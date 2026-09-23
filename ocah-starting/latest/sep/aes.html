@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>AES Cipher :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP AES integration, entropy interface, and Key Manager key delivery.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="aes.html">AES Cipher</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">AES Cipher</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="aes-cipher" class="paragraph">
+<p>The module is based on the
+<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
+</div>
+<div class="paragraph">
+<p>Key sizes: 128, 192 and 256
+Modes: ECB, CBC, CFB, OFB, CTR, CTR-GCM</p>
+</div>
+<div class="paragraph">
+<p>The accelerator consumes 128-bit data blocks written into its CSR memory
+space and produces 128-bit output blocks <em>round</em> number of cycles. The
+<em>round</em> value depends on the key size used.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>128 bit key: 10 rounds</p>
+</li>
+<li>
+<p>192 bit key: 12 rounds</p>
+</li>
+<li>
+<p>256 bit key: 14 rounds</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="och-modifications-2"><a class="anchor" href="#och-modifications-2"></a><a class="link" href="#och-modifications-2">1. OCAH Modifications</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>AXI4-lite key bus slave interface replaces side loading interface</p>
+</li>
+<li>
+<p>AXI4-lite control/status bus slave interface</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The AES host path follows the standard conversion and isolation sequence in the
+crypto interconnect (64-bit AXI → 32-bit AXI → AXI-Lite → isolate), without
+address adjustment or cache-attribute patching. <code>aes_wrapper</code> bridges the
+isolated path to TL-UL. EDN requests are served by the shared
+<code>drbg_axis_edn_adapter</code> instance
+<code>u_axis_edn_crypto_s3c_scan</code>, which converts the post-CSRNG DRBG AXI-Stream feed
+for the crypto sink domain into AES&#8217;s native-protocol EDN response. The adapter
+forwards the per-beat FIPS bit from the stream&#8217;s <code>tuser</code> sideband into
+<code>edn_fips</code>; AES itself does not consume the flag. The AES core uses <code>rst_ni</code> for
+both the main and shadow reset domains. Life-cycle escalation is tied to its
+inactive state. AES occupies alert indices <code>[4:3]</code> in
+<a href="crypto.html#sep-crypto-alert-policy" class="xref page">OpenTitan Alert Termination</a> and exports an <code>idle_o</code> status output but no
+interrupt.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager delivers a 256-bit AES key as eight words per share, in the
+format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. Software shall set
+<code>CTRL_SHADOWED.sideload</code> to select the delivered key. While that bit is 0 the
+engine uses its software key registers and the delivered key has no effect,
+and no error is reported. Software shall also program <code>CTRL_SHADOWED.key_len</code>
+to the 256-bit encoding to consume the whole delivered key: the key length is
+independent of the delivery path, and a shorter setting consumes only part of
+it. AES carries the two shares into the cipher datapath as a masked pair and
+does not combine them on the delivery path.</p>
+</div>
+<div class="paragraph">
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

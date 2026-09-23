@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Verification Dashboard :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <link rel="prev" href="ip-reference.html">
+    <link rel="prev" href="referenced-documents.html">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../_/css/site.css">
     <link rel="stylesheet" href="../../_/css/extra.css">
@@ -197,23 +197,62 @@
     <a class="nav-link" href="sep/crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="ip/drbg/doc/index.html">DRBG</a>
+</ul>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="sep/periphs.html">Fuse Controller and Peripherals</a>
+    <a class="nav-link" href="sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
 <ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="sep/token_processing.html">Token Processing</a>
   </li>
@@ -321,7 +360,16 @@
     <a class="nav-link" href="aou-interrupts-errors.html">Interrupts and Errors</a>
   </li>
   <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="aou-ppa-appendices.html">PPA and Appendices</a>
+    <a class="nav-link" href="aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -329,6 +377,9 @@
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="referenced-documents.html">Referenced Documents</a>
   </li>
   <li class="nav-item is-current-page" data-depth="1">
     <a class="nav-link" href="dashboard.html">Verification Dashboard</a>
@@ -408,7 +459,7 @@
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="4">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
@@ -457,7 +508,7 @@ branch by the <code>dashboard</code> workflow.</p>
 </div>
 </div>
 <nav class="pagination">
-  <span class="prev"><a href="ip-reference.html">IP Reference</a></span>
+  <span class="prev"><a href="referenced-documents.html">Referenced Documents</a></span>
 </nav>
 </article>
   </div>
@@ -478,6 +529,8 @@ branch by the <code>dashboard</code> workflow.</p>
     </div>
   </div>
 </footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
 <script src="../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../_/js/a11y-patches.js"></script>
 <script src="../../_/js/vendor/viewer.min.js"></script>

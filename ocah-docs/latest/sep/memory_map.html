@@ -199,23 +199,62 @@
     <a class="nav-link" href="crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/drbg/doc/index.html">DRBG</a>
+</ul>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="periphs.html">Fuse Controller and Peripherals</a>
+    <a class="nav-link" href="periphs.html">Fuse Controller and Lifecycle Controller</a>
 <ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="reset_controller.html">SEP Reset Controller</a>
+  </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="token_processing.html">Token Processing</a>
   </li>
@@ -323,7 +362,16 @@
     <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
   </li>
   <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../aou-ppa-appendices.html">PPA and Appendices</a>
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -331,6 +379,9 @@
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
@@ -413,7 +464,7 @@
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="4">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
@@ -602,7 +653,7 @@ access is refused.</p>
 does not decode offsets inside that window, so every access reaches the TRNG
 slave. Intra-aperture decode is an integrator constraint: an address that owns
 no register must return SLVERR and must not alias onto a live register. See the
-Integrator Guide.</p>
+<a href="../referenced-documents.html#ref-ocah-integrator-guide" class="xref page">Integrator Guide</a>.</p>
 </div>
 <div class="paragraph">
 <p>The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
@@ -1069,7 +1120,7 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_cpu_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x8</td><td><a href="#CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>TODO: clock-gate control - placeholder fields, not yet implemented.</td></tr>
@@ -1107,7 +1158,7 @@ corresponds to a unit in the SEP memory map above.</p>
 <tr><td>0x1C0</td><td><a href="#PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle<br>clear pulse to that block&#x27;s latch; bit order matches<br>PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block<br>cannot discard a fault another block raised between the status read and<br>this write. A fault arriving in the same cycle as its own clear still<br>latches.</td></tr>
 <tr><td>0x1000</td><td><a href="#SEP_VERSION_ID">SEP_VERSION_ID</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1350,7 +1401,7 @@ corresponds to a unit in the SEP memory map above.</p>
 <li><strong>meigwctrl[256]</strong>: 256 registers, base 0x4000, stride 0x4</li>
 <li><strong>meigwclr[256]</strong>: 256 registers, base 0x5000, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x3FC</td><td><a href="#meipl_256_">meipl[256]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
@@ -1360,7 +1411,7 @@ corresponds to a unit in the SEP memory map above.</p>
 <tr><td>0x4000 - 0x43FC</td><td><a href="#meigwctrl_256_">meigwctrl[256]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
 <tr><td>0x5000 - 0x53FC</td><td><a href="#meigwclr_256_">meigwclr[256]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="meipl_256_">meipl[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1410,12 +1461,12 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_reset_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#SW_RESET_N">SW_RESET_N</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="SW_RESET_N">SW_RESET_N</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1438,14 +1489,14 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_lifecycle_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#FEAT_CTRL">FEAT_CTRL</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#DEMOTE_1">DEMOTE_1</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#DEMOTE_2">DEMOTE_2</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="FEAT_CTRL">FEAT_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1486,12 +1537,12 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <ul>
 <li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x8</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x38</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="SCRATCH_8_">SCRATCH[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1508,7 +1559,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_efuse_map</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
@@ -1555,7 +1606,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0x3C0</td><td><a href="#spare7">spare7</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x3E0</td><td><a href="#spare8">spare8</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="LOCKS">LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1893,7 +1944,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <li><strong>RMA_CHIPLET_TOKEN_I[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
 <li><strong>SEC_DISABLE_TOKEN_I[8]</strong>: 8 registers, base 0x40, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
@@ -1905,7 +1956,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0x6C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x70</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1972,7 +2023,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: aon_timer</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
@@ -1990,7 +2041,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0x30</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x34</td><td><a href="#WKUP_CAUSE">WKUP_CAUSE</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -2093,7 +2144,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <li><strong>DATA_IN[4]</strong>: 4 registers, base 0x54, stride 0x4</li>
 <li><strong>DATA_OUT[4]</strong>: 4 registers, base 0x64, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
@@ -2109,7 +2160,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0x84</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x88</td><td><a href="#CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -2209,7 +2260,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <li><strong>KEY[32]</strong>: 32 registers, base 0x24, stride 0x4</li>
 <li><strong>DIGEST[16]</strong>: 16 registers, base 0xA4, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
@@ -2226,7 +2277,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0xE4</td><td><a href="#MSG_LENGTH_LOWER">MSG_LENGTH_LOWER</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xE8</td><td><a href="#MSG_LENGTH_UPPER">MSG_LENGTH_UPPER</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -2334,7 +2385,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <li><strong>KEY_SHARE1[16]</strong>: 16 registers, base 0x70, stride 0x4</li>
 <li><strong>PREFIX[11]</strong>: 11 registers, base 0xB4, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
@@ -2355,7 +2406,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0xB4 - 0xDC</td><td><a href="#PREFIX_11_">PREFIX[11]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xE0</td><td><a href="#ERR_CODE">ERR_CODE</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -2500,7 +2551,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: otbn</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
@@ -2515,7 +2566,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0x24</td><td><a href="#INSN_CNT">INSN_CNT</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x28</td><td><a href="#LOAD_CHECKSUM">LOAD_CHECKSUM</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -2623,7 +2674,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: entropy_source</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#COMPONENT_ID">COMPONENT_ID</a></td><td>R</td><td>Identifies the entropy-source register interface.</td></tr>
@@ -2696,7 +2747,7 @@ SEP aggregate.</p>
 <tr><td>0x174</td><td><a href="#NOISE_OBS_STATUS">NOISE_OBS_STATUS</a></td><td>R</td><td>Reports raw-noise observe FIFO occupancy and pointers.</td></tr>
 <tr><td>0x178</td><td><a href="#NOISE_OBS_RDATA">NOISE_OBS_RDATA</a></td><td>R</td><td>Provides the next packed raw-noise observe word.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="COMPONENT_ID">COMPONENT_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -3196,7 +3247,7 @@ SEP aggregate.</p>
 <h3 id="drbg"><a class="anchor" href="#drbg"></a><a class="link" href="#drbg">2.7. DRBG</a></h3>
 <div class="paragraph">
 <p>The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
-(see <a href="../ip/drbg/doc/index.html" class="xref page">Architecture</a>). Their register maps are reported here.</p>
+(see <a href="trng.html#drbg-deterministic-random-bit-generator" class="xref page">Architecture</a>). Their register maps are reported here.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -3207,7 +3258,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: csrng</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
@@ -3235,7 +3286,7 @@ SEP aggregate.</p>
 <tr><td>0x58</td><td><a href="#ERR_CODE_TEST">ERR_CODE_TEST</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x5C</td><td><a href="#MAIN_SM_STATE">MAIN_SM_STATE</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -3421,7 +3472,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: edn</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
@@ -3443,7 +3494,7 @@ SEP aggregate.</p>
 <tr><td>0x40</td><td><a href="#ERR_CODE_TEST">ERR_CODE_TEST</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x44</td><td><a href="#MAIN_SM_STATE">MAIN_SM_STATE</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -3604,7 +3655,7 @@ SEP aggregate.</p>
 <li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x19020, stride 0x4</li>
 <li><strong>KEY[8]</strong>: 8 registers, base 0x1C400, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x10000</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
@@ -3831,7 +3882,7 @@ SEP aggregate.</p>
 <tr><td>0x19020 - 0x1903C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x1C400 - 0x1C41C</td><td><a href="#KEY_8_">KEY[8]</a></td><td>R</td><td>One 32-bit word of ML-KEM shared key output. Written by hardware<br>when key is ready; read by KM firmware to consume. Hardware clears<br>all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="KM_WRITE_DATA">KM_WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -5229,7 +5280,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: km_csr</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#VERSION">VERSION</a></td><td>R</td><td>Hardware version register (semantic versioning: major.minor.patch)</td></tr>
@@ -5377,7 +5428,7 @@ SEP aggregate.</p>
 <tr><td>0x4B8</td><td><a href="#OTP_SEP_SYS_ID_CPL_6">OTP_SEP_SYS_ID_CPL_6</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
 <tr><td>0x4BC</td><td><a href="#OTP_SEP_SYS_ID_CPL_7">OTP_SEP_SYS_ID_CPL_7</a></td><td>R</td><td>Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field&#x27;s bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="VERSION">VERSION</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -6181,6 +6232,485 @@ SEP aggregate.</p>
 <tr><td>31:0</td><td>value</td><td>R</td><td>-</td><td>32-bit OTP word. No reset; power-up value undefined.</td></tr>
 </table>
 </div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: km_kpv</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>WORD[16]</strong>: 16 registers, base 0x0, stride 0x4</li>
+<li><strong>CTRL[64]</strong>: 64 registers, base 0x1000, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x3C</td><td><a href="#WORD_16_">WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
+<tr><td>0x1000 - 0x10FC</td><td><a href="#CTRL_64_">CTRL[64]</a></td><td>RW</td><td>Per-slot control: lock bits (W1S) and the erase trigger</td></tr>
+<tr><td>0x1100</td><td><a href="#KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</a></td><td>RW</td><td>32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.</td></tr>
+<tr><td>0x1104</td><td><a href="#KPV_SCRAMBLER_CTRL">KPV_SCRAMBLER_CTRL</a></td><td>RW</td><td>KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="WORD_16_">WORD[16]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>-</td><td>32-bit key data word. No reset for security; power-up value undefined.<br>Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.</td></tr>
+</table>
+<h3 id="CTRL_64_">CTRL[64]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>rsvd_31_4</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>seal</td><td>RW</td><td>0x0</td><td>Seals this key entry until warm reset. Read-any, write-1-only. Setting this<br>bit also sets lock_write in hardware, so a single write seals the slot: its<br>data can be read but not overwritten. Erase remains available, and erasing<br>a sealed slot retires it rather than freeing it (see ERASE), so a sealed<br>slot&#x27;s material can be destroyed but its slot never reused.</td></tr>
+<tr><td>2</td><td>erase</td><td>RW</td><td>0x0</td><td>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key<br>words (through the KPV scrambler). Hardware self-clears this bit when the<br>erase completes. Never blocked: neither lock_write, lock_use nor seal<br>prevents an erase. The slot&#x27;s seal state when the erase completes decides<br>the outcome. Unsealed, the slot CTRL register is cleared and the slot is<br>reusable. Sealed, lock_write stays set and lock_use is set, retiring the<br>slot: its data is destroyed and it can be neither read, rewritten nor<br>reused until warm reset. A seal taken while an erase is already in flight<br>therefore still retires the slot.</td></tr>
+<tr><td>1</td><td>lock_use</td><td>RW</td><td>0x0</td><td>Prevents KM read of this key entry data until reset. Read-any, write-1-only.<br>Hardware sets this bit when an erase of a sealed slot completes, retiring<br>the slot: its destroyed contents cannot be read back.</td></tr>
+<tr><td>0</td><td>lock_write</td><td>RW</td><td>0x0</td><td>Prevents KM write to this key entry data until reset; this register stays<br>writable so that a locked slot can still be read-locked and erased.<br>Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is<br>set, so sealing a slot write-locks it without a separate write here.</td></tr>
+</table>
+<h3 id="KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>key</td><td>RW</td><td>-</td><td>Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.</td></tr>
+</table>
+<h3 id="KPV_SCRAMBLER_CTRL">KPV_SCRAMBLER_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>1 = scramble key entry data on write, descramble on read; 0 = passthrough.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: km_drbg_sampler</h2>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#DATA">DATA</a></td><td>R</td><td>One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.</td></tr>
+<tr><td>0x4</td><td><a href="#CFG">CFG</a></td><td>RW</td><td>Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.</td></tr>
+<tr><td>0x8</td><td><a href="#STATUS">STATUS</a></td><td>RW</td><td>Status: DRBG_READY, PREFETCHED, TIMEOUT_ERR (W1C), STREAM_ERR (W1C), COUNT_BAD, COUNT_GOOD.</td></tr>
+<tr><td>0xC</td><td><a href="#PREFETCH_DATA">PREFETCH_DATA</a></td><td>R</td><td>Prefetched word (read-only, for debugging). Cleared when PREFETCH=0. No reset; power-up undefined.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="DATA">DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>32-bit random data from DRBG. No reset for security; power-up value undefined.</td></tr>
+</table>
+<h3 id="CFG">CFG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>timeout</td><td>RW</td><td>0x100</td><td>Cycles to wait for DRBG on active CPU read; 0 = disable. Default 256.</td></tr>
+<tr><td>15:1</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>prefetch</td><td>RW</td><td>0x0</td><td>Enable prefetch. When 0, prefetch data register is cleared.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>15:8</td><td>count_bad</td><td>RW</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>7:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>3</td><td>stream_err</td><td>RW</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
+<tr><td>2</td><td>timeout_err</td><td>RW</td><td>0x0</td><td>Set when a DRBG read from the KM CPU times out. Write 1 to clear.</td></tr>
+<tr><td>1</td><td>prefetched</td><td>R</td><td>0x0</td><td>Prefetched data available</td></tr>
+<tr><td>0</td><td>drbg_ready</td><td>R</td><td>0x0</td><td>TVALID asserted from DRBG</td></tr>
+</table>
+<h3 id="PREFETCH_DATA">PREFETCH_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>Prefetched 32-bit random data. No reset for security; power-up value undefined.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: km_mailbox_km</h2>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
+<tr><td>0x4</td><td><a href="#KM_WRITE_SEPARATOR">KM_WRITE_SEPARATOR</a></td><td>RW</td><td>Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.</td></tr>
+<tr><td>0x8</td><td><a href="#KM_READ_DATA">KM_READ_DATA</a></td><td>R</td><td>Read data from inbound FIFO (SEP→KM messages)</td></tr>
+<tr><td>0xC</td><td><a href="#KM_STATUS">KM_STATUS</a></td><td>RW</td><td>FIFO status information</td></tr>
+<tr><td>0x10</td><td><a href="#KM_IRQ_STATUS">KM_IRQ_STATUS</a></td><td>RW</td><td>Interrupt status register</td></tr>
+<tr><td>0x14</td><td><a href="#KM_IRQ_ENABLE">KM_IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable register for KM CPU</td></tr>
+<tr><td>0x18</td><td><a href="#KM_CTRL">KM_CTRL</a></td><td>RW</td><td>Control register for mailbox behavior configuration</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KM_WRITE_DATA">KM_WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>0x0</td><td>32-bit data word to write to outbound FIFO</td></tr>
+</table>
+<h3 id="KM_WRITE_SEPARATOR">KM_WRITE_SEPARATOR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>set</td><td>RW</td><td>0x0</td><td>Write 1 to set message separator on next outbound write. Cleared by hardware when that write completes.</td></tr>
+</table>
+<h3 id="KM_READ_DATA">KM_READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>32-bit data word read from inbound FIFO</td></tr>
+</table>
+<h3 id="KM_STATUS">KM_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:26</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>25</td><td>outbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
+<tr><td>24</td><td>inbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
+<tr><td>23</td><td>outbound_underflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>22</td><td>inbound_underflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>21</td><td>outbound_overflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>20</td><td>inbound_overflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>19:12</td><td>outbound_depth</td><td>R</td><td>0x0</td><td>Outbound FIFO fill level (number of words in FIFO)</td></tr>
+<tr><td>11:4</td><td>inbound_depth</td><td>R</td><td>0x0</td><td>Inbound FIFO fill level (number of words in FIFO)</td></tr>
+<tr><td>3</td><td>outbound_full</td><td>R</td><td>0x0</td><td>Outbound FIFO is full (cannot write more data)</td></tr>
+<tr><td>2</td><td>outbound_empty</td><td>R</td><td>0x1</td><td>Outbound FIFO is empty (no data available for SEP to read)</td></tr>
+<tr><td>1</td><td>inbound_full</td><td>R</td><td>0x0</td><td>Inbound FIFO is full</td></tr>
+<tr><td>0</td><td>inbound_empty</td><td>R</td><td>0x1</td><td>Inbound FIFO is empty (no data available for KM to read)</td></tr>
+</table>
+<h3 id="KM_IRQ_STATUS">KM_IRQ_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>flushed_by_sep</td><td>RW</td><td>0x0</td><td>SEP performed a mailbox flush. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>inbound_underflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO underflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>outbound_overflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO overflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>outbound_write_space_avail</td><td>R</td><td>0x0</td><td>Outbound FIFO has space available for KM to write (level-sensitive). 1 = space available, 0 = full.</td></tr>
+<tr><td>0</td><td>inbound_read_data_avail</td><td>R</td><td>0x0</td><td>Inbound FIFO has data available for KM to read (level-sensitive). 1 = data available, 0 = empty.</td></tr>
+</table>
+<h3 id="KM_IRQ_ENABLE">KM_IRQ_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>flushed_by_sep_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when SEP performs a mailbox flush</td></tr>
+<tr><td>3</td><td>inbound_underflow_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when inbound FIFO underflow is detected</td></tr>
+<tr><td>2</td><td>outbound_overflow_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when outbound FIFO overflow is detected</td></tr>
+<tr><td>1</td><td>outbound_write_space_avail_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when outbound FIFO has space available (KM-&gt;SEP messages)</td></tr>
+<tr><td>0</td><td>inbound_read_data_avail_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to KM when inbound FIFO has data available (SEP-&gt;KM messages)</td></tr>
+</table>
+<h3 id="KM_CTRL">KM_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>flush</td><td>RW</td><td>0x0</td><td>Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.</td></tr>
+<tr><td>1</td><td>inbound_underflow_resp</td><td>RW</td><td>0x0</td><td>Response type for inbound FIFO underflow: 0=SLVERR (default), 1=OKAY</td></tr>
+<tr><td>0</td><td>outbound_overflow_resp</td><td>RW</td><td>0x0</td><td>Response type for outbound FIFO overflow: 0=SLVERR (default), 1=OKAY</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: km_mailbox_sep</h2>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#SEP_WRITE_DATA">SEP_WRITE_DATA</a></td><td>W</td><td>Write data to inbound FIFO (SEP→KM messages)</td></tr>
+<tr><td>0x4</td><td><a href="#SEP_WRITE_SEPARATOR">SEP_WRITE_SEPARATOR</a></td><td>RW</td><td>Write 1 to set message separator on next inbound (SEP→KM) write. Cleared by hardware when that write completes.</td></tr>
+<tr><td>0x8</td><td><a href="#SEP_READ_DATA">SEP_READ_DATA</a></td><td>R</td><td>Read data from outbound FIFO (KM→SEP messages)</td></tr>
+<tr><td>0xC</td><td><a href="#SEP_STATUS">SEP_STATUS</a></td><td>RW</td><td>FIFO status information</td></tr>
+<tr><td>0x10</td><td><a href="#SEP_IRQ_STATUS">SEP_IRQ_STATUS</a></td><td>RW</td><td>Interrupt status register</td></tr>
+<tr><td>0x14</td><td><a href="#SEP_IRQ_ENABLE">SEP_IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable register for SEP host</td></tr>
+<tr><td>0x18</td><td><a href="#SEP_CTRL">SEP_CTRL</a></td><td>RW</td><td>Control register for mailbox behavior configuration</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="SEP_WRITE_DATA">SEP_WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>0x0</td><td>32-bit data word to write to inbound FIFO</td></tr>
+</table>
+<h3 id="SEP_WRITE_SEPARATOR">SEP_WRITE_SEPARATOR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>set</td><td>RW</td><td>0x0</td><td>Write 1 to set message separator on next inbound write. Cleared by hardware when that write completes.</td></tr>
+</table>
+<h3 id="SEP_READ_DATA">SEP_READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>32-bit data word read from outbound FIFO</td></tr>
+</table>
+<h3 id="SEP_STATUS">SEP_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:26</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>25</td><td>outbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from outbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
+<tr><td>24</td><td>inbound_separator</td><td>R</td><td>0x0</td><td>Message separator: 1 if the last word read from inbound FIFO had the separator bit set (last word of message). Read-only, not sticky.</td></tr>
+<tr><td>23</td><td>outbound_underflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>22</td><td>inbound_underflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO underflow detected (read attempted when empty). Sticky, write 1 to clear.</td></tr>
+<tr><td>21</td><td>outbound_overflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>20</td><td>inbound_overflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO overflow detected (write attempted when full). Sticky, write 1 to clear.</td></tr>
+<tr><td>19:12</td><td>outbound_depth</td><td>R</td><td>0x0</td><td>Outbound FIFO fill level (number of words in FIFO)</td></tr>
+<tr><td>11:4</td><td>inbound_depth</td><td>R</td><td>0x0</td><td>Inbound FIFO fill level (number of words in FIFO)</td></tr>
+<tr><td>3</td><td>outbound_full</td><td>R</td><td>0x0</td><td>Outbound FIFO is full</td></tr>
+<tr><td>2</td><td>outbound_empty</td><td>R</td><td>0x1</td><td>Outbound FIFO is empty (no data available for SEP to read)</td></tr>
+<tr><td>1</td><td>inbound_full</td><td>R</td><td>0x0</td><td>Inbound FIFO is full (cannot write more data)</td></tr>
+<tr><td>0</td><td>inbound_empty</td><td>R</td><td>0x1</td><td>Inbound FIFO is empty (no data available for KM to read)</td></tr>
+</table>
+<h3 id="SEP_IRQ_STATUS">SEP_IRQ_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>flushed_by_km</td><td>RW</td><td>0x0</td><td>KM performed a mailbox flush. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>outbound_underflow</td><td>RW</td><td>0x0</td><td>Outbound FIFO underflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>inbound_overflow</td><td>RW</td><td>0x0</td><td>Inbound FIFO overflow detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>inbound_write_space_avail</td><td>R</td><td>0x0</td><td>Inbound FIFO has space available for SEP to write (level-sensitive). 1 = space available, 0 = full.</td></tr>
+<tr><td>0</td><td>outbound_read_data_avail</td><td>R</td><td>0x0</td><td>Outbound FIFO has data available for SEP to read (level-sensitive). 1 = data available, 0 = empty.</td></tr>
+</table>
+<h3 id="SEP_IRQ_ENABLE">SEP_IRQ_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>4</td><td>flushed_by_km_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to SEP when KM performs a mailbox flush</td></tr>
+<tr><td>3</td><td>outbound_underflow_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to SEP when outbound FIFO underflow is detected</td></tr>
+<tr><td>2</td><td>inbound_overflow_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to SEP when inbound FIFO overflow is detected</td></tr>
+<tr><td>1</td><td>inbound_write_space_avail_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to SEP when inbound FIFO has space available (SEP-&gt;KM messages)</td></tr>
+<tr><td>0</td><td>outbound_read_data_avail_en</td><td>RW</td><td>0x0</td><td>Enable interrupt to SEP when outbound FIFO has data available (KM-&gt;SEP messages)</td></tr>
+</table>
+<h3 id="SEP_CTRL">SEP_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>2</td><td>flush</td><td>RW</td><td>0x0</td><td>Write 1 to flush all mailbox FIFOs (inbound and outbound). Cleared by hardware when flush completes.</td></tr>
+<tr><td>1</td><td>outbound_underflow_resp</td><td>RW</td><td>0x0</td><td>Response type for outbound FIFO underflow: 0=SLVERR (default), 1=OKAY</td></tr>
+<tr><td>0</td><td>inbound_overflow_resp</td><td>RW</td><td>0x0</td><td>Response type for inbound FIFO overflow: 0=SLVERR (default), 1=OKAY</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: abr_wrapper_key</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+<li><strong>KEY[8]</strong>: 8 registers, base 0x400, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x40</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Seed control register. Writing KEY_VALID=1 marks the seed as loaded.<br>Write 0 to invalidate. The KV shim gates the AB kv_read response<br>on this bit.</td></tr>
+<tr><td>0x400 - 0x41C</td><td><a href="#KEY_8_">KEY[8]</a></td><td>R</td><td>One 32-bit word of ML-KEM shared key output. Written by hardware<br>when key is ready; read by KM firmware to consume. Hardware clears<br>all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).</td></tr>
+<tr><td>0x424</td><td><a href="#IRQ_STATUS">IRQ_STATUS</a></td><td>RW</td><td>Interrupt status for ML-KEM shared key. Sticky bit set by<br>hardware when a new shared key becomes valid; cleared by writing 1.</td></tr>
+<tr><td>0x428</td><td><a href="#IRQ_ENABLE">IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable for ML-KEM shared key. Mask for the<br>PicoRV32 IRQ vector bit driven by the shared-key-valid event.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.<br>Write 0 to invalidate and allow a new seed to be written.</td></tr>
+</table>
+<h3 id="KEY_8_">KEY[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>0x0</td><td>32-bit shared-key word. Hardware writes on key-ready event;<br>hardware clears to 0 on key-consume event (KEY_VALID cleared).</td></tr>
+</table>
+<h3 id="IRQ_STATUS">IRQ_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>ML-KEM shared key valid. Sticky, write 1 to clear.</td></tr>
+</table>
+<h3 id="IRQ_ENABLE">IRQ_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid_en</td><td>RW</td><td>0x0</td><td>1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.<br>0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: aes_wrapper_key</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x40</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the AES core.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: hmac_wrapper_key</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x40</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the HMAC core.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: kmac_wrapper_key</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x40</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the KMAC core.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: otbn_wrapper_key</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>KEY_SHARE0[12]</strong>: 12 registers, base 0x0, stride 0x4</li>
+<li><strong>KEY_SHARE1[12]</strong>: 12 registers, base 0x30, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x2C</td><td><a href="#KEY_SHARE0_12_">KEY_SHARE0[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x30 - 0x5C</td><td><a href="#KEY_SHARE1_12_">KEY_SHARE1[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
+<tr><td>0x60</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the OTBN core.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="KEY_SHARE0_12_">KEY_SHARE0[12]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_SHARE1_12_">KEY_SHARE1[12]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>W</td><td>-</td><td>32-bit key data word. Write-only for security.</td></tr>
+</table>
+<h3 id="KEY_CTRL">KEY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>0</td><td>key_valid</td><td>RW</td><td>0x0</td><td>When 1, asserts keymgr_key_i.valid to indicate key is loaded.<br>Write 0 to invalidate the current key.</td></tr>
+</table>
+</div>
 </div>
 <div class="sect2">
 <h3 id="secure-dma"><a class="anchor" href="#secure-dma"></a><a class="link" href="#secure-dma">2.9. Secure DMA</a></h3>
@@ -6202,7 +6732,7 @@ SEP aggregate.</p>
 <li><strong>INTR_SRC_ADDR_0[11]</strong>: 11 registers, base 0xA4, stride 0x4</li>
 <li><strong>INTR_SRC_WR_VAL_0[11]</strong>: 11 registers, base 0x124, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>R</td><td>-</td></tr>
@@ -6234,7 +6764,7 @@ SEP aggregate.</p>
 <tr><td>0xA4 - 0xCC</td><td><a href="#INTR_SRC_ADDR_0_11_">INTR_SRC_ADDR_0[11]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x124 - 0x14C</td><td><a href="#INTR_SRC_WR_VAL_0_11_">INTR_SRC_WR_VAL_0[11]</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -6439,7 +6969,7 @@ register map follows.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: spi_controller</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
@@ -6455,7 +6985,7 @@ register map follows.</p>
 <tr><td>0x30</td><td><a href="#ERROR_STATUS">ERROR_STATUS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x34</td><td><a href="#EVENT_ENABLE">EVENT_ENABLE</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="INTR_STATE">INTR_STATE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -6572,6 +7102,35 @@ register map follows.</p>
 </table>
 </div>
 </div>
+<div class="sect2">
+<h3 id="external-window-reference-model"><a class="anchor" href="#external-window-reference-model"></a><a class="link" href="#external-window-reference-model">2.11. External Window Reference Model</a></h3>
+<div class="paragraph">
+<p>The SEP external-window model supplies the eFuse SHIM control register below.
+Its execute-in-place region is a memory window rather than a register bank.
+Adopter-specific external devices require their own register documentation.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: sep_external</h2>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>init_time</td><td>RW</td><td>0x20</td><td>Most OTP have a initialization time before sensing can be done</td></tr>
+</table>
+</div>
+</div>
 </div>
 </div>
 <nav class="pagination">
@@ -6597,6 +7156,8 @@ register map follows.</p>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

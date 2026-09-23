@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>OTBN PKA Public Key Accelerator :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP OTBN integration, entropy interface, and Key Manager key delivery.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smu.html">SMU Top-Level Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="otbn.html">OTBN PKA Public Key Accelerator</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">OTBN PKA Public Key Accelerator</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="otbn-pka-public-key-accelerator" class="paragraph">
+<p>The module is based on the
+<a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
+OTBN</a> design.</p>
+</div>
+<div class="paragraph">
+<p>Features:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Fully programmable big integer processor</p>
+<div class="ulist">
+<ul>
+<li>
+<p>256-bit data path with 32 entry register file</p>
+</li>
+<li>
+<p>32-bit control path with 32 entry register file</p>
+</li>
+<li>
+<p>Complex flow control: conditional branching, loops, call/return with
+optimized hardware for performance</p>
+</li>
+<li>
+<p>Dual status control bits to assist in big integer computation</p>
+</li>
+<li>
+<p>Optimized modular arithmetic on big integers</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Access to entropy noise stream from the TRNG</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The OTBN is programmed in assembly and its runtime driver library
+currently supports the following algorithms:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>ECDSA P256, P384</p>
+</li>
+<li>
+<p>ECDH P256, P384</p>
+</li>
+<li>
+<p>Ed25519</p>
+</li>
+<li>
+<p>X25519</p>
+</li>
+<li>
+<p>RSA 2k, 3k, 4k</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Key generation, signature generation and signature verification</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>SHA256, SHA-512</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Since the OTBN is programmable, more algorithms can easily be developed
+at a later time. The microcode is loaded into SRAM based instruction
+memory allowing firmware updates to be made in the field.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="och-modifications-1"><a class="anchor" href="#och-modifications-1"></a><a class="link" href="#och-modifications-1">1. OCAH Modifications</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>AXI4-lite key bus slave interface replaces side loading interface</p>
+</li>
+<li>
+<p>AXI4-lite control/status bus slave interface</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The OTBN host path is the most complex OpenTitan path. The crypto interconnect
+applies a <code>CACHE_MODIFIABLE</code> bit fix before the <code>axi_dw_converter</code>, because the
+VeeR CPU may emit non-modifiable cache attributes for MMIO accesses that would
+be rejected by the AXI-to-AXI-Lite converter. After data-width conversion and
+AXI-Lite isolation, <code>sep_crypto_otbn_wrapper</code> bridges the request to TL-UL and
+drives the standard <code>otbn</code> core configured with <code>Stub = 0</code> and
+<code>RegFile = RegFileFF</code>.</p>
+</div>
+<div class="paragraph">
+<p>OTBN&#8217;s instruction and data memories are external SRAM macros; the IMEM and
+DMEM <code>prim_ram_1p_scr</code> ports are brought out of the wrapper to the <code>sep_crypto</code>
+top level. The two random-number request ports (<code>edn_rnd</code>, <code>edn_urnd</code>) are
+served over native-protocol EDN by the shared
+<code>drbg_axis_edn_adapter</code> instance <code>u_axis_edn_crypto_s3c_scan</code> in <code>sep_crypto</code>,
+which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink
+domain into per-client EDN responses. The adapter forwards the per-beat FIPS
+provenance through a generic AXI-Stream <code>tuser</code> sideband so OTBN RND observes
+compliant entropy and does not assert <code>rnd_fips_chk_fail</code>. The OTP scramble key
+handshake is tied to fixed values. Life-cycle escalation and RMA request
+signals are tied to their inactive state. OTBN occupies alert indices <code>[2:1]</code>
+in <a href="crypto.html#sep-crypto-alert-policy" class="xref page">OpenTitan Alert Termination</a> and exports a single <code>intr_done_o</code> interrupt.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager delivers a 384-bit OTBN key as twelve words per share, the
+widest delivery in the subsystem, in the format given in <a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>.
+OTBN is the only accelerator that does not combine the shares in hardware. The
+shares are exposed to the executing program through the <code>KEY_S0_L</code> /
+<code>KEY_S0_H</code> and <code>KEY_S1_L</code> / <code>KEY_S1_H</code> special registers, each share split into
+a 256-bit low and a 128-bit high half, and the program is responsible for
+reconstructing the key as the XOR of the two shares. Each share is qualified
+independently: reading a share whose key is not valid sets
+<code>ERR_BITS.KEY_INVALID</code> and stops the program rather than returning key
+material.</p>
+</div>
+<div class="paragraph">
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan OTBN
+documentation</a> for the authoritative core functionality of the IP. The
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

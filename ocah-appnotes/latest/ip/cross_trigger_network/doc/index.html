@@ -324,135 +324,16 @@ of one of these four cross trigger signals, and the pad controls and I/O data
 signals are connected to the associated CTP.</p>
 </div>
 <div class="paragraph">
-<p>The following diagram and table illustrate the logical behavior and signal
-interface of a CTP module:</p>
+<p>The following diagram illustrates the logical structure of a CTP module:</p>
 </div>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/ctp_module_diagram.png" alt="CTP Module Diagram">
 </div>
 </div>
-<div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 12%;">
-<col style="width: 58%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">mode</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Indicates the operational mode of the CTP. 0 for wire-OR
-and 1 for peer-to-peer. The value at reset should be 0.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_src</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core-side cross trigger input pulse.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_dst</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core-side cross trigger output pulse.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">busy</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional signal indicating that an outgoing cross trigger
-pulse transfer is in progress.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">reset</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Resets the outgoing peer-to-peer handshake logic.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">stretch_mult[N-1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the pulse duration of the pulse
-stretcher module for wire-OR mode.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_dout_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the output driver for the
-<em>CT_Req_out</em> pad. In wire-OR mode this signal is enabled by a cross
-trigger pulse from the pulse stretcher. In peer-to-peer mode it is
-always enabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_din_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the
-<em>CT_Req_out</em> pad. In wire-OR mode this signal is enabled and in
-peer-to-peer mode it is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_dout</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The output data to drive on the <em>CT_Req_out</em>
-pad. In peer-to-peer mode the pulse capture latch controls this signal.
-In wire-OR mode it is held static-low.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_din</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the
-<em>CT_Req_out</em> pad. In wire-OR mode this signal triggers a pulse on
-<em>ct_dst</em> after synchronization. In peer-to-peer mode it is unused.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_in_din_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the <em>CT_Req_in</em>
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_in_din</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the <em>CT_Req_in</em>
-pad. In peer-to-peer mode this signal triggers a pulse on <em>ct_dst</em> after
-synchronization. In wire-OR mode it is unused.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_in_din_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the <em>CT_Ack_in</em>
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_in_din</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the <em>CT_Ack_in</em>
-pad. This signal clears the cross trigger request output in peer-to-peer
-mode. In wire-OR mode it is unused.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_out_dout_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the output driver for the
-<em>CT_Ack_out</em> pad. In peer-to-peer mode this signal is enabled and in
-wire-OR mode it is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_out_dout</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The output data to drive on the <em>CT_Ack_out</em>
-pad. In peer-to-peer mode the <em>ct_req_in</em> pulse synchronizer controls
-this signal. In wire-OR mode it is unused.</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>Signal names, directions, and pad controls are listed in the
+<a href="#cross-trigger-network-interface">CTP Signal Interface</a>.</p>
 </div>
 <div class="paragraph">
 <p>The register interface for each CTP module is described in the
@@ -922,13 +803,9 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 <div class="sect2">
 <h3 id="cross-trigger-network-interface"><a class="anchor" href="#cross-trigger-network-interface"></a><a class="link" href="#cross-trigger-network-interface">4.1. Cross Trigger Port (CTP)</a></h3>
 <div class="paragraph">
-<p>The following diagram and table illustrate the logical behavior and signal
-interface of a CTP module:</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="../../_images/ctp_module_diagram.png" alt="CTP Module Diagram">
-</div>
+<p>The table below lists the CTP signals and their mode-dependent behavior.
+For the module diagram and signalling modes, see
+<a href="#cross-trigger-network-architecture">CTN Architecture</a>.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port interface" tabindex="0">
 <table class="tableblock frame-all grid-all stretch port-reference">
@@ -1222,12 +1099,12 @@ common source for these addresses and for the generated RTL constants.</p>
 <ul>
 <li><strong>CT_SRC[26].CONFIG_0</strong>: 26 registers, base 0x0, stride 0x8</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0xC8</td><td><a href="#CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1250,14 +1127,75 @@ common source for these addresses and for the generated RTL constants.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: cross_trigger_port</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
 <tr><td>0x4</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
 <tr><td>0x8</td><td><a href="#STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
+<h3 id="CONFIG">CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="STRETCH_MULT">STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="composite-network-registers"><a class="anchor" href="#composite-network-registers"></a><a class="link" href="#composite-network-registers">5.3. Composite Network Registers</a></h3>
+<div class="paragraph">
+<p>This map gives the CTM and CTP register offsets within the generated CTN
+composition. The individual block maps above give offsets within each block.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: cross_trigger_network</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>CT_SRC[26].CONFIG_0</strong>: 26 registers, base 0x0, stride 0x8</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xC8</td><td><a href="#CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
+<tr><td>0x200</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x204</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x208</td><td><a href="#STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>25:0</td><td>CT_DST_SELECT</td><td>RW</td><td>0x0</td><td>Selects the CT_Dst port(s) to forward on the CT_Src output<br>at this array index. Each bit corresponds to one CT_Dst<br>port, from CT_Dst[0] at bit 0 upwards. Multiple ports may<br>be selected as a trigger source. All selected source ports<br>are then OR&#x27;d together to produce the CT_Src output. Set<br>this register to all-zero to disable that output.</td></tr>
+</table>
 <h3 id="CONFIG">CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1306,6 +1244,8 @@ common source for these addresses and for the generated RTL constants.</p>
     </div>
   </div>
 </footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
 <script src="../../../../../_/js/vendor/viewer.min.js"></script>

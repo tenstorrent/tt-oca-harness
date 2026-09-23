@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Key Manager (KM) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="Key Manager hardware architecture and firmware reference.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../../../_/css/site.css">
     <link rel="stylesheet" href="../../../../../_/css/extra.css">
@@ -186,6 +187,16 @@
 <h1 class="page">Key Manager (KM)</h1>
 <div id="preamble">
 <div class="sectionbody">
+<div id="key-manager-km-key-manager-km" class="paragraph">
+<p>The Key Manager provides isolated key derivation, storage, policy checking,
+and delivery to the cryptographic accelerators. The following sections
+describe its hardware architecture and firmware interface.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="key-manager-architecture"><a class="anchor" href="#key-manager-architecture"></a><a class="link" href="#key-manager-architecture">Architecture</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The KM module aims to support a superset of the
 <a href="https://opentitan.org/book/hw/ip/keymgr/index.html">OpenTitan Key
@@ -301,11 +312,8 @@ fault: the KM notifies the SEP host and halts (see
 <img src="../../_images/SEP_Key_Manager.png" alt="SEP_Key_Manager">
 </div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">Parameters</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">Parameters</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -349,10 +357,8 @@ fault: the KM notifies the SEP host and halts (see
 </tbody>
 </table>
 </div>
-</div>
-<div class="sect1">
-<h2 id="key-manager-memory-map"><a class="anchor" href="#key-manager-memory-map"></a><a class="link" href="#key-manager-memory-map">Memory Map</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="key-manager-memory-map"><a class="anchor" href="#key-manager-memory-map"></a><a class="link" href="#key-manager-memory-map">Memory Map</a></h3>
 <div class="paragraph">
 <p>The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.</p>
 </div>
@@ -580,10 +586,8 @@ bits and replaces the upper bits with the integration parameter
 </tbody>
 </table>
 </div>
-</div>
-<div class="sect1">
-<h2 id="reset-conditioning"><a class="anchor" href="#reset-conditioning"></a><a class="link" href="#reset-conditioning">Reset Conditioning</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="reset-conditioning"><a class="anchor" href="#reset-conditioning"></a><a class="link" href="#reset-conditioning">Reset Conditioning</a></h3>
 <div class="paragraph">
 <p>The KM exposes two independent external reset inputs that map to two
 distinct reset domains. This split allows the SEP host to recover the KM
@@ -925,10 +929,8 @@ data structure as described below.</p>
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="adams-bridge-key-sideload"><a class="anchor" href="#adams-bridge-key-sideload"></a><a class="link" href="#adams-bridge-key-sideload">Adams Bridge Key Sideload Interfaces</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="adams-bridge-key-sideload"><a class="anchor" href="#adams-bridge-key-sideload"></a><a class="link" href="#adams-bridge-key-sideload">Adams Bridge Key Sideload Interfaces</a></h3>
 <div class="paragraph">
 <p>The KM provides dedicated sideload interfaces to the Adams Bridge (ABR)
 post-quantum engine, exposed as a single AXI4-Lite register block mapped at
@@ -1012,10 +1014,8 @@ KPV slot in response to a SEP <code>CMD_ABR_SK_TRANSFER</code> command (see the 
 documentation).</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="key-manager-cpu-interrupt-processing"><a class="anchor" href="#key-manager-cpu-interrupt-processing"></a><a class="link" href="#key-manager-cpu-interrupt-processing">Key Manager CPU Interrupt Processing</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="key-manager-cpu-interrupt-processing"><a class="anchor" href="#key-manager-cpu-interrupt-processing"></a><a class="link" href="#key-manager-cpu-interrupt-processing">Key Manager CPU Interrupt Processing</a></h3>
 <div class="paragraph">
 <p>The KM receives interrupts from the KM Management CSR register block.
 The register block collects error and information status from the
@@ -1065,10 +1065,8 @@ All event signals can also be triggered by a parallel software interrupt
 register to enable testing of interrupt service routines (ISR).</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="key-and-policy-vault-kpv"><a class="anchor" href="#key-and-policy-vault-kpv"></a><a class="link" href="#key-and-policy-vault-kpv">Key and Policy Vault (KPV)</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="key-and-policy-vault-kpv"><a class="anchor" href="#key-and-policy-vault-kpv"></a><a class="link" href="#key-and-policy-vault-kpv">Key and Policy Vault (KPV)</a></h3>
 <div class="paragraph">
 <p>The Key and Policy Vault (KPV) is a custom implementation with a
 single-port AXI4-Lite interface for full read/write access by KM
@@ -1210,10 +1208,8 @@ power up with random (undefined) values for security. The implementation
 must not connect reset to key entry storage flops.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="kpv-scrambling"><a class="anchor" href="#kpv-scrambling"></a><a class="link" href="#kpv-scrambling">KPV Scrambling</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="kpv-scrambling"><a class="anchor" href="#kpv-scrambling"></a><a class="link" href="#kpv-scrambling">KPV Scrambling</a></h3>
 <div class="paragraph">
 <p>The KPV supports address and data scrambling during normal operation for
 all key entry data reads and writes, using the same PRESENT-based
@@ -1248,10 +1244,8 @@ and lock) resets to 0. On an emergency wipe (rising edge of
 control registers, and the KPV scrambler key and control registers.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="wipe-state"><a class="anchor" href="#wipe-state"></a><a class="link" href="#wipe-state">Wipe State</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="wipe-state"><a class="anchor" href="#wipe-state"></a><a class="link" href="#wipe-state">Wipe State</a></h3>
 <div class="paragraph">
 <p>The KM has a <em>wipe_state</em> control input for emergency wipe. The
 <em>wipe_state</em> signal must be held high for at least one complete KM clock
@@ -1277,10 +1271,8 @@ the register itself. The emergency wipe is software-initiated only: no
 hardware tamper or alarm source asserts <em>wipe_state</em>.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-scan-and-scan-dump-protection"><a class="anchor" href="#km-scan-and-scan-dump-protection"></a><a class="link" href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-scan-and-scan-dump-protection"><a class="anchor" href="#km-scan-and-scan-dump-protection"></a><a class="link" href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a></h3>
 <div class="paragraph">
 <p>For simplicity, the <strong>entire</strong> KM&#8201;&#8212;&#8201;every register and downstream logic block,
 including the KPV, KMCSR, mailbox, and DRBG sampler&#8201;&#8212;&#8201;is treated
@@ -1345,10 +1337,8 @@ cannot retain runtime secrets.</p>
 secret-bearing scan chain.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="remote-attestation-support-in-kpv-and-pcrv"><a class="anchor" href="#remote-attestation-support-in-kpv-and-pcrv"></a><a class="link" href="#remote-attestation-support-in-kpv-and-pcrv">Remote Attestation Support in KPV and PCRV</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="remote-attestation-support-in-kpv-and-pcrv"><a class="anchor" href="#remote-attestation-support-in-kpv-and-pcrv"></a><a class="link" href="#remote-attestation-support-in-kpv-and-pcrv">Remote Attestation Support in KPV and PCRV</a></h3>
 <div class="paragraph">
 <p>This section describes facilities to support TPM 2.0 attestation. Here
 are the basic constraints and procedures:</p>
@@ -1386,10 +1376,8 @@ firmware. Once the entries are in place, the KM can read them and derive
 further keys, populating other KPV slots with the KDF results.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="pk-key-generation-support"><a class="anchor" href="#pk-key-generation-support"></a><a class="link" href="#pk-key-generation-support">PK Key Generation support</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="pk-key-generation-support"><a class="anchor" href="#pk-key-generation-support"></a><a class="link" href="#pk-key-generation-support">PK Key Generation support</a></h3>
 <div class="paragraph">
 <p>KM must be able to generate a public-private key pair during device test
 and provisioning manufacturing steps. RSA is a complicated process as
@@ -1403,10 +1391,8 @@ and the public key is exported. Export is performed through the outbound
 mailbox path.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">Key Manager Control and Status Registers (KMCSR)</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">Key Manager Control and Status Registers (KMCSR)</a></h3>
 <div class="paragraph">
 <p>This block of 32-bit registers is separate from the Key and Policy
 register block. Its purpose is to manage the configuration and operation
@@ -2600,10 +2586,8 @@ demotion, PCR, and so on). Inclusion is selected per signing operation; only
 inclusion in the signed hash cryptographically attests the configuration.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="crc-accelerator"><a class="anchor" href="#crc-accelerator"></a><a class="link" href="#crc-accelerator">CRC Accelerator</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="crc-accelerator"><a class="anchor" href="#crc-accelerator"></a><a class="link" href="#crc-accelerator">CRC Accelerator</a></h3>
 <div class="paragraph">
 <p>The KM CPU is fitted with a CRC accelerator attached through the PicoRV32
 PCPI (Pico Co-Processor Interface). It provides hardware versions of the
@@ -2712,10 +2696,8 @@ the PicoRV32 built-in multiply/divide support remains enabled and
 unchanged.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="key-manager-rom-code"><a class="anchor" href="#key-manager-rom-code"></a><a class="link" href="#key-manager-rom-code">Key Manager ROM Code</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="key-manager-rom-code"><a class="anchor" href="#key-manager-rom-code"></a><a class="link" href="#key-manager-rom-code">Key Manager ROM Code</a></h3>
 <div class="paragraph">
 <p>The KM ROM will be as minimal as possible and support just a few
 functions described next. Any other functions will be loaded dynamically
@@ -2822,10 +2804,8 @@ not tied to a configuration; they are used where a unique secret — not a
 deterministic derivation — is needed.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="rom-and-sram-error-detection"><a class="anchor" href="#rom-and-sram-error-detection"></a><a class="link" href="#rom-and-sram-error-detection">ROM and SRAM Error Detection</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="rom-and-sram-error-detection"><a class="anchor" href="#rom-and-sram-error-detection"></a><a class="link" href="#rom-and-sram-error-detection">ROM and SRAM Error Detection</a></h3>
 <div class="paragraph">
 <p>Data will be stored with byte-wise odd parity. This feature cannot be
 turned off, but the interrupt mask register can disable this event from
@@ -2833,10 +2813,8 @@ propagating up the interrupt tree to the KM CPU as well as to the
 external error event signal output.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="parity-error-protection"><a class="anchor" href="#parity-error-protection"></a><a class="link" href="#parity-error-protection">Parity Error Protection</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="parity-error-protection"><a class="anchor" href="#parity-error-protection"></a><a class="link" href="#parity-error-protection">Parity Error Protection</a></h3>
 <div class="paragraph">
 <p>Parity bits will be ``out-of-band'' from the data and hence not part of
 the scrambled word. The motivation for this is to minimize any data path
@@ -2845,10 +2823,8 @@ descrambling. Parity is on a byte-wise basis so will add an additional 4
 bits next to the 32-bit data word.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="sram-write-locking"><a class="anchor" href="#sram-write-locking"></a><a class="link" href="#sram-write-locking">SRAM Write Locking</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="sram-write-locking"><a class="anchor" href="#sram-write-locking"></a><a class="link" href="#sram-write-locking">SRAM Write Locking</a></h3>
 <div class="paragraph">
 <p>The SRAM interface incorporates a write-locking mechanism to designate
 specific 1 KB memory regions as read-only; 32 regions cover the whole 32 KB
@@ -2871,10 +2847,8 @@ the KM CPU always re-enters ROM after a warm reset, mutable firmware never
 executes against an unlocked SRAM region.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="rom-warm-persist-region"><a class="anchor" href="#rom-warm-persist-region"></a><a class="link" href="#rom-warm-persist-region">ROM Warm-Persistent SRAM Region</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="rom-warm-persist-region"><a class="anchor" href="#rom-warm-persist-region"></a><a class="link" href="#rom-warm-persist-region">ROM Warm-Persistent SRAM Region</a></h3>
 <div class="paragraph">
 <p>The highest 1 KB of KM SRAM (region 31, <code>0x0000_FC00</code>–<code>0x0000_FFFF</code>) are
 reserved as a ROM-managed warm-persistent data structure (<code>rom_persist</code>). The
@@ -2933,10 +2907,8 @@ is cleared on the next warm or cold reset; ROM re-establishes it
 before transferring control to mutable code.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="mutable-firmware-model"><a class="anchor" href="#mutable-firmware-model"></a><a class="link" href="#mutable-firmware-model">Mutable Firmware Model</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="mutable-firmware-model"><a class="anchor" href="#mutable-firmware-model"></a><a class="link" href="#mutable-firmware-model">Mutable Firmware Model</a></h3>
 <div class="paragraph">
 <p>The KM ROM supports loading and executing a mutable software image from SRAM,
 controlled by the <code>CMD_SRAM_LOAD_EXEC</code> and <code>CMD_SRAM_EXEC</code> mailbox commands.</p>
@@ -3046,8 +3018,9 @@ whole-SRAM scramble writing into locked firmware regions).</p>
 </div>
 </div>
 </div>
+</div>
 <div class="sect1">
-<h2 id="key-manager-km-firmware"><a class="anchor" href="#key-manager-km-firmware"></a><a class="link" href="#key-manager-km-firmware">Key Manager (KM) Firmware</a></h2>
+<h2 id="key-manager-km-firmware"><a class="anchor" href="#key-manager-km-firmware"></a><a class="link" href="#key-manager-km-firmware">Firmware</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>This section is the developer reference for the KM ROM firmware that runs
@@ -3115,21 +3088,16 @@ failure unless mutable (SRAM-loaded) firmware is present and executing;
 because the ROM hands control to the mutable firmware before returning,
 <code>CMD_SRAM_VER</code> is only meaningful when sent to running mutable firmware.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-global-parameters"><a class="anchor" href="#km-firmware-global-parameters"></a><a class="link" href="#km-firmware-global-parameters">Firmware Global Parameters</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-global-parameters"><a class="anchor" href="#km-firmware-global-parameters"></a><a class="link" href="#km-firmware-global-parameters">Firmware Global Parameters</a></h3>
 <div class="paragraph">
 <p><code>SHRED_ITER</code> indicates the number of extra overwrite passes used during
 shred operations. Any shred sequence therefore performs <code>SHRED_ITER + 1</code>
 total passes.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-command-message-reference"><a class="anchor" href="#km-firmware-command-message-reference"></a><a class="link" href="#km-firmware-command-message-reference">Command Message Reference</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-command-message-reference"><a class="anchor" href="#km-firmware-command-message-reference"></a><a class="link" href="#km-firmware-command-message-reference">Command Message Reference</a></h3>
 <div class="paragraph">
 <p>The SEP communicates with the KM through a framed command/response
 protocol carried over the mailbox FIFOs. Every direct SEP command elicits
@@ -3295,8 +3263,8 @@ zero within the message or payload shown. In the message layouts, <code>n</code>
 </tr>
 </tbody>
 </table>
-<div class="sect2">
-<h3 id="km-cmd-hw-ver"><a class="anchor" href="#km-cmd-hw-ver"></a><a class="link" href="#km-cmd-hw-ver">0x00 - CMD_HW_VER</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-hw-ver"><a class="anchor" href="#km-cmd-hw-ver"></a><a class="link" href="#km-cmd-hw-ver">0x00 - CMD_HW_VER</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3323,8 +3291,8 @@ and a return argument containing the version of the hardware.</p>
 <div class="title">Figure 2. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-rom-ver"><a class="anchor" href="#km-cmd-rom-ver"></a><a class="link" href="#km-cmd-rom-ver">0x01 - CMD_ROM_VER</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-rom-ver"><a class="anchor" href="#km-cmd-rom-ver"></a><a class="link" href="#km-cmd-rom-ver">0x01 - CMD_ROM_VER</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3351,8 +3319,8 @@ and a return argument containing the version of the ROM firmware.</p>
 <div class="title">Figure 3. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-sram-ver"><a class="anchor" href="#km-cmd-sram-ver"></a><a class="link" href="#km-cmd-sram-ver">0x02 - CMD_SRAM_VER</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-sram-ver"><a class="anchor" href="#km-cmd-sram-ver"></a><a class="link" href="#km-cmd-sram-ver">0x02 - CMD_SRAM_VER</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3392,8 +3360,8 @@ containing the version of the SRAM firmware.</p>
 <div class="title">Figure 4. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-stat"><a class="anchor" href="#km-cmd-stat"></a><a class="link" href="#km-cmd-stat">0x03 - CMD_STAT</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-stat"><a class="anchor" href="#km-cmd-stat"></a><a class="link" href="#km-cmd-stat">0x03 - CMD_STAT</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3447,8 +3415,8 @@ and a return argument containing the KM status information.</p>
 </tbody>
 </table>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-recov-ack"><a class="anchor" href="#km-cmd-recov-ack"></a><a class="link" href="#km-cmd-recov-ack">0x04 - CMD_RECOV_ACK</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-recov-ack"><a class="anchor" href="#km-cmd-recov-ack"></a><a class="link" href="#km-cmd-recov-ack">0x04 - CMD_RECOV_ACK</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3470,8 +3438,8 @@ and a return argument containing the KM status information.</p>
 and no return argument.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-exec-rom"><a class="anchor" href="#km-cmd-exec-rom"></a><a class="link" href="#km-cmd-exec-rom">0x10 - CMD_EXEC_ROM</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-exec-rom"><a class="anchor" href="#km-cmd-exec-rom"></a><a class="link" href="#km-cmd-exec-rom">0x10 - CMD_EXEC_ROM</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3497,8 +3465,8 @@ first call, or <em>failure</em> if a handover command has already been issued in
 this epoch (including a prior <code>CMD_EXEC_ROM</code>).</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-sram-load-exec"><a class="anchor" href="#km-cmd-sram-load-exec"></a><a class="link" href="#km-cmd-sram-load-exec">0x11 - CMD_SRAM_LOAD_EXEC</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-sram-load-exec"><a class="anchor" href="#km-cmd-sram-load-exec"></a><a class="link" href="#km-cmd-sram-load-exec">0x11 - CMD_SRAM_LOAD_EXEC</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3667,8 +3635,8 @@ or image exceeds the stack guard region), a <code>RESP_CMD</code> error response
 sent by the normal dispatcher path.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-sram-exec"><a class="anchor" href="#km-cmd-sram-exec"></a><a class="link" href="#km-cmd-sram-exec">0x12 - CMD_SRAM_EXEC</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-sram-exec"><a class="anchor" href="#km-cmd-sram-exec"></a><a class="link" href="#km-cmd-sram-exec">0x12 - CMD_SRAM_EXEC</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3705,8 +3673,8 @@ is responsible for sending its own ready message to the SEP.</p>
 <p>If the handover-disabled flag is set, the command returns <em>failure</em>.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-key-generate"><a class="anchor" href="#km-cmd-key-generate"></a><a class="link" href="#km-cmd-key-generate">0x22 - CMD_KEY_GENERATE</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-key-generate"><a class="anchor" href="#km-cmd-key-generate"></a><a class="link" href="#km-cmd-key-generate">0x22 - CMD_KEY_GENERATE</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3814,8 +3782,8 @@ size.</p>
 <div class="title">Figure 8. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-key-revoke"><a class="anchor" href="#km-cmd-key-revoke"></a><a class="link" href="#km-cmd-key-revoke">0x23 - CMD_KEY_REVOKE</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-key-revoke"><a class="anchor" href="#km-cmd-key-revoke"></a><a class="link" href="#km-cmd-key-revoke">0x23 - CMD_KEY_REVOKE</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -3860,8 +3828,8 @@ the revoked key.</p>
 <div class="title">Figure 10. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-key-transfer"><a class="anchor" href="#km-cmd-key-transfer"></a><a class="link" href="#km-cmd-key-transfer">0x24 - CMD_KEY_TRANSFER</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-key-transfer"><a class="anchor" href="#km-cmd-key-transfer"></a><a class="link" href="#km-cmd-key-transfer">0x24 - CMD_KEY_TRANSFER</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4024,8 +3992,8 @@ and a bitfield of the crypto engines to which the key was transferred.</p>
 </tbody>
 </table>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-engine-shred"><a class="anchor" href="#km-cmd-engine-shred"></a><a class="link" href="#km-cmd-engine-shred">0x25 - CMD_ENGINE_SHRED</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-engine-shred"><a class="anchor" href="#km-cmd-engine-shred"></a><a class="link" href="#km-cmd-engine-shred">0x25 - CMD_ENGINE_SHRED</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4185,8 +4153,8 @@ engines that were purged.</p>
 </tbody>
 </table>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-key-load"><a class="anchor" href="#km-cmd-key-load"></a><a class="link" href="#km-cmd-key-load">0x26 - CMD_KEY_LOAD</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-key-load"><a class="anchor" href="#km-cmd-key-load"></a><a class="link" href="#km-cmd-key-load">0x26 - CMD_KEY_LOAD</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4364,8 +4332,8 @@ handle.</p>
 <div class="title">Figure 16. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-abr-sk-transfer"><a class="anchor" href="#km-cmd-abr-sk-transfer"></a><a class="link" href="#km-cmd-abr-sk-transfer">0x27 - CMD_ABR_SK_TRANSFER</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-abr-sk-transfer"><a class="anchor" href="#km-cmd-abr-sk-transfer"></a><a class="link" href="#km-cmd-abr-sk-transfer">0x27 - CMD_ABR_SK_TRANSFER</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4477,8 +4445,8 @@ return argument containing the handle of the newly stored key.</p>
 <div class="title">Figure 18. RESP_CMD <em>Success</em> Return Argument</div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-cmd-otp-read-lock-cold"><a class="anchor" href="#km-cmd-otp-read-lock-cold"></a><a class="link" href="#km-cmd-otp-read-lock-cold">0x28 - CMD_OTP_READ_LOCK_COLD</a></h3>
+<div class="sect3">
+<h4 id="km-cmd-otp-read-lock-cold"><a class="anchor" href="#km-cmd-otp-read-lock-cold"></a><a class="link" href="#km-cmd-otp-read-lock-cold">0x28 - CMD_OTP_READ_LOCK_COLD</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4604,10 +4572,8 @@ and returns <code>RESP_CMD</code> <em>success</em> with <code>return_arg</code> 
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-response-message-reference"><a class="anchor" href="#km-firmware-response-message-reference"></a><a class="link" href="#km-firmware-response-message-reference">Response Message Reference</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-response-message-reference"><a class="anchor" href="#km-firmware-response-message-reference"></a><a class="link" href="#km-firmware-response-message-reference">Response Message Reference</a></h3>
 <div class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_response_message.svg" alt="Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: RESPONSE_ID; bits 7 to 0: RESP_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32." width="544">
@@ -4665,8 +4631,8 @@ relationship between command IDs and response IDs.</p>
 </tr>
 </tbody>
 </table>
-<div class="sect2">
-<h3 id="km-resp-cmd"><a class="anchor" href="#km-resp-cmd"></a><a class="link" href="#km-resp-cmd">0x00 - RESP_CMD</a></h3>
+<div class="sect3">
+<h4 id="km-resp-cmd"><a class="anchor" href="#km-resp-cmd"></a><a class="link" href="#km-resp-cmd">0x00 - RESP_CMD</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4766,8 +4732,8 @@ is answered <code>failure</code> with no return argument, and its handler is nev
 (<a href="#km-seq-error-recovery">Error Recovery</a>).</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-resp-km-ready"><a class="anchor" href="#km-resp-km-ready"></a><a class="link" href="#km-resp-km-ready">0x55 - RESP_KM_READY</a></h3>
+<div class="sect3">
+<h4 id="km-resp-km-ready"><a class="anchor" href="#km-resp-km-ready"></a><a class="link" href="#km-resp-km-ready">0x55 - RESP_KM_READY</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4783,8 +4749,8 @@ life indicator for the SEP.</p>
 <p>This message has no payload.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-resp-abr-shared-key-ready"><a class="anchor" href="#km-resp-abr-shared-key-ready"></a><a class="link" href="#km-resp-abr-shared-key-ready">0x56 - RESP_ABR_SHARED_KEY_READY</a></h3>
+<div class="sect3">
+<h4 id="km-resp-abr-shared-key-ready"><a class="anchor" href="#km-resp-abr-shared-key-ready"></a><a class="link" href="#km-resp-abr-shared-key-ready">0x56 - RESP_ABR_SHARED_KEY_READY</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4803,8 +4769,8 @@ KPV and obtain a handle.</p>
 <p>This message has no payload.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-resp-recoverable-fault"><a class="anchor" href="#km-resp-recoverable-fault"></a><a class="link" href="#km-resp-recoverable-fault">0xFE - RESP_RECOVERABLE_FAULT</a></h3>
+<div class="sect3">
+<h4 id="km-resp-recoverable-fault"><a class="anchor" href="#km-resp-recoverable-fault"></a><a class="link" href="#km-resp-recoverable-fault">0xFE - RESP_RECOVERABLE_FAULT</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -4869,8 +4835,8 @@ full payload word. Only <code>[7:0]</code> is meaningful; because every code is 
 </tbody>
 </table>
 </div>
-<div class="sect2">
-<h3 id="km-resp-unrecoverable-fault"><a class="anchor" href="#km-resp-unrecoverable-fault"></a><a class="link" href="#km-resp-unrecoverable-fault">0xFF - RESP_UNRECOVERABLE_FAULT</a></h3>
+<div class="sect3">
+<h4 id="km-resp-unrecoverable-fault"><a class="anchor" href="#km-resp-unrecoverable-fault"></a><a class="link" href="#km-resp-unrecoverable-fault">0xFF - RESP_UNRECOVERABLE_FAULT</a></h4>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
@@ -5001,12 +4967,10 @@ full payload word. Only <code>[7:0]</code> is meaningful; because every code is 
 </table>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-common-sequences"><a class="anchor" href="#km-firmware-common-sequences"></a><a class="link" href="#km-firmware-common-sequences">Common Sequences</a></h2>
-<div class="sectionbody">
 <div class="sect2">
-<h3 id="km-seq-initial-boot"><a class="anchor" href="#km-seq-initial-boot"></a><a class="link" href="#km-seq-initial-boot">Initial Boot</a></h3>
+<h3 id="km-firmware-common-sequences"><a class="anchor" href="#km-firmware-common-sequences"></a><a class="link" href="#km-firmware-common-sequences">Common Sequences</a></h3>
+<div class="sect3">
+<h4 id="km-seq-initial-boot"><a class="anchor" href="#km-seq-initial-boot"></a><a class="link" href="#km-seq-initial-boot">Initial Boot</a></h4>
 <div class="paragraph">
 <p>As soon as the KM is taken out of reset, it begins executing out of the
 ROM. The ROM performs basic setup routines such as initialization of
@@ -5020,8 +4984,8 @@ boot process is complete, the KM sends a liveness message to the SEP via
 and status via the <code>CMD_HW_VER</code>, <code>CMD_ROM_VER</code>, and <code>CMD_STAT</code>.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-seq-sep-key-loading"><a class="anchor" href="#km-seq-sep-key-loading"></a><a class="link" href="#km-seq-sep-key-loading">SEP Key Loading</a></h3>
+<div class="sect3">
+<h4 id="km-seq-sep-key-loading"><a class="anchor" href="#km-seq-sep-key-loading"></a><a class="link" href="#km-seq-sep-key-loading">SEP Key Loading</a></h4>
 <div class="paragraph">
 <p>The KM supports loading host-provided key material into the KPV directly
 over the mailbox using the <code>CMD_KEY_LOAD</code> command. The SEP never writes
@@ -5050,8 +5014,8 @@ management operations.</p>
 </ol>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-seq-key-transfer-purge"><a class="anchor" href="#km-seq-key-transfer-purge"></a><a class="link" href="#km-seq-key-transfer-purge">Key Transfer and Sideload Purge</a></h3>
+<div class="sect3">
+<h4 id="km-seq-key-transfer-purge"><a class="anchor" href="#km-seq-key-transfer-purge"></a><a class="link" href="#km-seq-key-transfer-purge">Key Transfer and Sideload Purge</a></h4>
 <div class="paragraph">
 <p>The SEP requests transfer of a key from the KPV to any crypto engine
 sideload key register via the <code>CMD_KEY_TRANSFER</code> command. The SEP
@@ -5068,8 +5032,8 @@ registers. The KM will respond with <em>success</em> when the operation is
 complete.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-seq-abr-shared-key-capture"><a class="anchor" href="#km-seq-abr-shared-key-capture"></a><a class="link" href="#km-seq-abr-shared-key-capture">Adams Bridge Shared-Key Capture</a></h3>
+<div class="sect3">
+<h4 id="km-seq-abr-shared-key-capture"><a class="anchor" href="#km-seq-abr-shared-key-capture"></a><a class="link" href="#km-seq-abr-shared-key-capture">Adams Bridge Shared-Key Capture</a></h4>
 <div class="paragraph">
 <p>The Adams Bridge ML-KEM shared-key interface flows in the opposite direction
 from the seed and engine sideloads: Adams Bridge computes a shared key and
@@ -5107,8 +5071,8 @@ including transferring the captured key to a permitted engine.</p>
 </ol>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-seq-key-revocation"><a class="anchor" href="#km-seq-key-revocation"></a><a class="link" href="#km-seq-key-revocation">Key Revocation</a></h3>
+<div class="sect3">
+<h4 id="km-seq-key-revocation"><a class="anchor" href="#km-seq-key-revocation"></a><a class="link" href="#km-seq-key-revocation">Key Revocation</a></h4>
 <div class="paragraph">
 <p>The SEP requests revocation of a key in the KPV via the <code>CMD_KEY_REVOKE</code>
 command. The KM erases every slot the key occupies and then removes the key from
@@ -5122,8 +5086,8 @@ revocation is retired instead of freed, and is neither readable nor reusable
 until warm reset.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-seq-error-recovery"><a class="anchor" href="#km-seq-error-recovery"></a><a class="link" href="#km-seq-error-recovery">Error Recovery</a></h3>
+<div class="sect3">
+<h4 id="km-seq-error-recovery"><a class="anchor" href="#km-seq-error-recovery"></a><a class="link" href="#km-seq-error-recovery">Error Recovery</a></h4>
 <div class="paragraph">
 <p>The KM can encounter a variety of recoverable and unrecoverable errors.</p>
 </div>
@@ -5249,8 +5213,8 @@ the wiping is skipped. The condition is reachable only through a firmware bug or
 memory corruption, since every caller passes a compile-time-bounded count.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-seq-sram-fw-handover"><a class="anchor" href="#km-seq-sram-fw-handover"></a><a class="link" href="#km-seq-sram-fw-handover">SRAM Firmware Handover</a></h3>
+<div class="sect3">
+<h4 id="km-seq-sram-fw-handover"><a class="anchor" href="#km-seq-sram-fw-handover"></a><a class="link" href="#km-seq-sram-fw-handover">SRAM Firmware Handover</a></h4>
 <div class="paragraph">
 <p>The KM ROM supports handing control from immutable ROM to mutable SRAM
 firmware via the <code>CMD_SRAM_LOAD_EXEC</code> (load + run) or <code>CMD_SRAM_EXEC</code>
@@ -5426,8 +5390,8 @@ firmware runs its <code>.text</code> from there. VROM does not exist in producti
 and carries no security requirement.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-rom-stack-budget"><a class="anchor" href="#km-rom-stack-budget"></a><a class="link" href="#km-rom-stack-budget">ROM Stack Budget and the Static Load Ceiling</a></h3>
+<div class="sect3">
+<h4 id="km-rom-stack-budget"><a class="anchor" href="#km-rom-stack-budget"></a><a class="link" href="#km-rom-stack-budget">ROM Stack Budget and the Static Load Ceiling</a></h4>
 <div class="paragraph">
 <p>Mutable firmware is loaded from the SRAM base (<code>0x8000</code>) and grows upward,
 while the ROM stack grows downward from <code>STACK</code> (the top of the ROM&#8217;s
@@ -5483,12 +5447,10 @@ IRQ stack depths and deepest paths:</p>
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-bootloader"><a class="anchor" href="#km-firmware-bootloader"></a><a class="link" href="#km-firmware-bootloader">Bootloader</a></h2>
-<div class="sectionbody">
 <div class="sect2">
-<h3 id="km-boot-sequence"><a class="anchor" href="#km-boot-sequence"></a><a class="link" href="#km-boot-sequence">Boot Sequence</a></h3>
+<h3 id="km-firmware-bootloader"><a class="anchor" href="#km-firmware-bootloader"></a><a class="link" href="#km-firmware-bootloader">Bootloader</a></h3>
+<div class="sect3">
+<h4 id="km-boot-sequence"><a class="anchor" href="#km-boot-sequence"></a><a class="link" href="#km-boot-sequence">Boot Sequence</a></h4>
 <div class="paragraph">
 <p>The ROM bootloader will perform the following sequence of steps:</p>
 </div>
@@ -5594,10 +5556,8 @@ message to the SEP. These two steps are adjacent and last by design:
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-message-buffers"><a class="anchor" href="#km-firmware-message-buffers"></a><a class="link" href="#km-firmware-message-buffers">Message Buffers</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-message-buffers"><a class="anchor" href="#km-firmware-message-buffers"></a><a class="link" href="#km-firmware-message-buffers">Message Buffers</a></h3>
 <div class="paragraph">
 <p>The message receive and transmit buffers are fixed size SRAM-based linear
 buffers that store message frames that have been read from or are ready to be
@@ -5639,12 +5599,10 @@ mask the mailbox IRQ for the duration of the mutation and then restore it to
 its previous state.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-prng"><a class="anchor" href="#km-firmware-prng"></a><a class="link" href="#km-firmware-prng">Pseudorandom Generators</a></h2>
-<div class="sectionbody">
 <div class="sect2">
-<h3 id="km-prng-firmware"><a class="anchor" href="#km-prng-firmware"></a><a class="link" href="#km-prng-firmware">Firmware PRNG</a></h3>
+<h3 id="km-firmware-prng"><a class="anchor" href="#km-firmware-prng"></a><a class="link" href="#km-firmware-prng">Pseudorandom Generators</a></h3>
+<div class="sect3">
+<h4 id="km-prng-firmware"><a class="anchor" href="#km-prng-firmware"></a><a class="link" href="#km-prng-firmware">Firmware PRNG</a></h4>
 <div class="paragraph">
 <p>The KM firmware shall use the xoshiro128++ algorithm as its
 general-purpose pseudorandom number generator. The PRNG is used for
@@ -5685,8 +5643,8 @@ object in SRAM and the PRNG routines are called from drivers throughout the ROM.
 The state object is overwritten along with the rest of SRAM when the shred runs.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-prng-register-shuffling"><a class="anchor" href="#km-prng-register-shuffling"></a><a class="link" href="#km-prng-register-shuffling">Register Access Shuffling</a></h3>
+<div class="sect3">
+<h4 id="km-prng-register-shuffling"><a class="anchor" href="#km-prng-register-shuffling"></a><a class="link" href="#km-prng-register-shuffling">Register Access Shuffling</a></h4>
 <div class="paragraph">
 <p>All operations requiring pseudorandom-order register access must use the
 Fisher-Yates shuffle to generate the access order. This covers the shred and key
@@ -5714,10 +5672,8 @@ insufficient bits remain. Bits are consumed from LSB to MSB.</p>
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-interrupt-handlers"><a class="anchor" href="#km-firmware-interrupt-handlers"></a><a class="link" href="#km-firmware-interrupt-handlers">Interrupt Handlers</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-interrupt-handlers"><a class="anchor" href="#km-firmware-interrupt-handlers"></a><a class="link" href="#km-firmware-interrupt-handlers">Interrupt Handlers</a></h3>
 <div class="paragraph">
 <p>The PicoRV32 has a very basic interrupt controller that does not support
 hardware interrupt priority or nested interrupts. Due to these
@@ -5726,8 +5682,8 @@ interrupt handlers must be kept as short as possible to minimize interrupt
 response latency. The main ISR must process all currently active
 interrupts within a single call.</p>
 </div>
-<div class="sect2">
-<h3 id="km-irq-priority"><a class="anchor" href="#km-irq-priority"></a><a class="link" href="#km-irq-priority">Interrupt Priority</a></h3>
+<div class="sect3">
+<h4 id="km-irq-priority"><a class="anchor" href="#km-irq-priority"></a><a class="link" href="#km-irq-priority">Interrupt Priority</a></h4>
 <div class="paragraph">
 <p>Interrupt priority must be handled by firmware within the PicoRV32&#8217;s main
 interrupt service routine (ISR). Any new interrupts that arrive while the
@@ -5809,8 +5765,8 @@ boot sequence (<a href="#km-boot-sequence">Boot Sequence</a>) determines which s
 ROM.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-ebreak"><a class="anchor" href="#km-irq-ebreak"></a><a class="link" href="#km-irq-ebreak">EBREAK / Illegal Instruction</a></h3>
+<div class="sect3">
+<h4 id="km-irq-ebreak"><a class="anchor" href="#km-irq-ebreak"></a><a class="link" href="#km-irq-ebreak">EBREAK / Illegal Instruction</a></h4>
 <div class="paragraph">
 <p>The EBREAK / illegal instruction interrupt handler distinguishes the
 faulting instruction by reading the opcode at the saved PC. An EBREAK
@@ -5819,16 +5775,16 @@ Any other illegal instruction triggers an unrecoverable fault with the
 <code>illegal_insn</code> fault code. The interrupt status bit is not cleared.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-bus-error"><a class="anchor" href="#km-irq-bus-error"></a><a class="link" href="#km-irq-bus-error">Bus Error or Misaligned Access</a></h3>
+<div class="sect3">
+<h4 id="km-irq-bus-error"><a class="anchor" href="#km-irq-bus-error"></a><a class="link" href="#km-irq-bus-error">Bus Error or Misaligned Access</a></h4>
 <div class="paragraph">
 <p>The bus error or misaligned access interrupt handler will trigger an
 unrecoverable fault. The interrupt status bit is not cleared. This
 behavior may change in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-wipe-state"><a class="anchor" href="#km-irq-wipe-state"></a><a class="link" href="#km-irq-wipe-state">Wipe State</a></h3>
+<div class="sect3">
+<h4 id="km-irq-wipe-state"><a class="anchor" href="#km-irq-wipe-state"></a><a class="link" href="#km-irq-wipe-state">Wipe State</a></h4>
 <div class="paragraph">
 <p>The wipe state interrupt handler will purge keys from all crypto engines,
 trigger an unrecoverable fault, and finally shred the entire SRAM.
@@ -5857,48 +5813,48 @@ from the DRBG.
 </table>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-rom-parity"><a class="anchor" href="#km-irq-rom-parity"></a><a class="link" href="#km-irq-rom-parity">ROM Parity Error</a></h3>
+<div class="sect3">
+<h4 id="km-irq-rom-parity"><a class="anchor" href="#km-irq-rom-parity"></a><a class="link" href="#km-irq-rom-parity">ROM Parity Error</a></h4>
 <div class="paragraph">
 <p>The ROM parity error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-sram-parity"><a class="anchor" href="#km-irq-sram-parity"></a><a class="link" href="#km-irq-sram-parity">SRAM Parity Error</a></h3>
+<div class="sect3">
+<h4 id="km-irq-sram-parity"><a class="anchor" href="#km-irq-sram-parity"></a><a class="link" href="#km-irq-sram-parity">SRAM Parity Error</a></h4>
 <div class="paragraph">
 <p>The SRAM parity error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-rom-write"><a class="anchor" href="#km-irq-rom-write"></a><a class="link" href="#km-irq-rom-write">ROM Write Error</a></h3>
+<div class="sect3">
+<h4 id="km-irq-rom-write"><a class="anchor" href="#km-irq-rom-write"></a><a class="link" href="#km-irq-rom-write">ROM Write Error</a></h4>
 <div class="paragraph">
 <p>The ROM write error interrupt handler will trigger an unrecoverable fault.
 The interrupt status bit is not cleared. This behavior may change in
 future firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-sram-write-lock"><a class="anchor" href="#km-irq-sram-write-lock"></a><a class="link" href="#km-irq-sram-write-lock">SRAM Write Lock Error</a></h3>
+<div class="sect3">
+<h4 id="km-irq-sram-write-lock"><a class="anchor" href="#km-irq-sram-write-lock"></a><a class="link" href="#km-irq-sram-write-lock">SRAM Write Lock Error</a></h4>
 <div class="paragraph">
 <p>The SRAM write lock error interrupt handler will trigger an unrecoverable
 fault. The interrupt status bit is not cleared. This behavior may change
 in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-axi-decerr"><a class="anchor" href="#km-irq-axi-decerr"></a><a class="link" href="#km-irq-axi-decerr">AXI DECERR</a></h3>
+<div class="sect3">
+<h4 id="km-irq-axi-decerr"><a class="anchor" href="#km-irq-axi-decerr"></a><a class="link" href="#km-irq-axi-decerr">AXI DECERR</a></h4>
 <div class="paragraph">
 <p>The AXI DECERR interrupt handler will trigger an unrecoverable fault. The
 interrupt status bit is not cleared. This behavior may change in future
 firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-axi-slverr"><a class="anchor" href="#km-irq-axi-slverr"></a><a class="link" href="#km-irq-axi-slverr">AXI SLVERR</a></h3>
+<div class="sect3">
+<h4 id="km-irq-axi-slverr"><a class="anchor" href="#km-irq-axi-slverr"></a><a class="link" href="#km-irq-axi-slverr">AXI SLVERR</a></h4>
 <div class="paragraph">
 <p>The AXI SLVERR interrupt handler will trigger an unrecoverable fault with the
 <code>axi_slverr</code> fault code. It is reached only when the DRBG error status bit is
@@ -5907,8 +5863,8 @@ interrupt status bit is not cleared. This behavior may change in future
 firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-drbg-error"><a class="anchor" href="#km-irq-drbg-error"></a><a class="link" href="#km-irq-drbg-error">DRBG Error</a></h3>
+<div class="sect3">
+<h4 id="km-irq-drbg-error"><a class="anchor" href="#km-irq-drbg-error"></a><a class="link" href="#km-irq-drbg-error">DRBG Error</a></h4>
 <div class="paragraph">
 <p>The DRBG error interrupt handler will trigger an unrecoverable fault with the
 <code>drbg_err</code> fault code. It is checked before the AXI SLVERR handler, because a
@@ -5919,8 +5875,8 @@ status bit is not cleared. This behavior may change in future firmware
 revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-otp-sigint"><a class="anchor" href="#km-irq-otp-sigint"></a><a class="link" href="#km-irq-otp-sigint">OTP Integrity Violation</a></h3>
+<div class="sect3">
+<h4 id="km-irq-otp-sigint"><a class="anchor" href="#km-irq-otp-sigint"></a><a class="link" href="#km-irq-otp-sigint">OTP Integrity Violation</a></h4>
 <div class="paragraph">
 <p>The OTP integrity violation interrupt handler will trigger an
 unrecoverable fault with the <code>otp_sigint</code> fault code. This interrupt is
@@ -5929,8 +5885,8 @@ on a redundantly-encoded OTP field. The interrupt status bit is not
 cleared. This behavior may change in future firmware revisions.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-exec-violation"><a class="anchor" href="#km-irq-exec-violation"></a><a class="link" href="#km-irq-exec-violation">Execute Permission Violation</a></h3>
+<div class="sect3">
+<h4 id="km-irq-exec-violation"><a class="anchor" href="#km-irq-exec-violation"></a><a class="link" href="#km-irq-exec-violation">Execute Permission Violation</a></h4>
 <div class="paragraph">
 <p>The execute permission violation interrupt handler will trigger an
 unrecoverable fault with the <code>exec</code> fault code. This interrupt is asserted when
@@ -5939,8 +5895,8 @@ execute-permission whitelist, other than the ROM. The interrupt status bit is
 not cleared.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-rom-access-violation"><a class="anchor" href="#km-irq-rom-access-violation"></a><a class="link" href="#km-irq-rom-access-violation">ROM Access Violation</a></h3>
+<div class="sect3">
+<h4 id="km-irq-rom-access-violation"><a class="anchor" href="#km-irq-rom-access-violation"></a><a class="link" href="#km-irq-rom-access-violation">ROM Access Violation</a></h4>
 <div class="paragraph">
 <p>The ROM access violation interrupt handler will trigger an unrecoverable fault
 with the <code>rom_access</code> fault code. This interrupt is asserted when a ROM
@@ -5955,8 +5911,8 @@ after the lockout engages, containment is the illegal-instruction trap on the
 zeros a blocked fetch returns.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-otp-change"><a class="anchor" href="#km-irq-otp-change"></a><a class="link" href="#km-irq-otp-change">OTP Change Status</a></h3>
+<div class="sect3">
+<h4 id="km-irq-otp-change"><a class="anchor" href="#km-irq-otp-change"></a><a class="link" href="#km-irq-otp-change">OTP Change Status</a></h4>
 <div class="paragraph">
 <p>The OTP change status interrupt is an informational (non-fault) source
 that indicates one or more monitored OTP fields have changed. Unlike the
@@ -5983,8 +5939,8 @@ leaving an informational interrupt masked keeps it from adding ISR entries durin
 boot. Firmware that overrides the hook enables the source itself.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-mailbox"><a class="anchor" href="#km-irq-mailbox"></a><a class="link" href="#km-irq-mailbox">Mailbox</a></h3>
+<div class="sect3">
+<h4 id="km-irq-mailbox"><a class="anchor" href="#km-irq-mailbox"></a><a class="link" href="#km-irq-mailbox">Mailbox</a></h4>
 <div class="paragraph">
 <p>The mailbox interrupt handler transfers message frames between the mailbox
 FIFOs and the message buffers. It also handles any other interrupts raised
@@ -6149,8 +6105,8 @@ disable the incoming mailbox FIFO interrupt.</p>
 </ol>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-abr-sharedkey"><a class="anchor" href="#km-irq-abr-sharedkey"></a><a class="link" href="#km-irq-abr-sharedkey">Adams Bridge ML-KEM Shared Key</a></h3>
+<div class="sect3">
+<h4 id="km-irq-abr-sharedkey"><a class="anchor" href="#km-irq-abr-sharedkey"></a><a class="link" href="#km-irq-abr-sharedkey">Adams Bridge ML-KEM Shared Key</a></h4>
 <div class="paragraph">
 <p>The Adams Bridge shared-key interrupt is an informational (non-fault) source
 delivered on its own PicoRV32 interrupt (bit 5), separate from the
@@ -6178,8 +6134,8 @@ automatically. The main loop sends <code>RESP_ABR_SHARED_KEY_READY</code> to the
 it observes the pending-notify flag.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-irq-spurious"><a class="anchor" href="#km-irq-spurious"></a><a class="link" href="#km-irq-spurious">Spurious IRQ</a></h3>
+<div class="sect3">
+<h4 id="km-irq-spurious"><a class="anchor" href="#km-irq-spurious"></a><a class="link" href="#km-irq-spurious">Spurious IRQ</a></h4>
 <div class="paragraph">
 <p>After all known IRQ sources have been serviced, the ISR checks for any
 unrecognised bits in the IRQ mask. If any are set, the ISR triggers an
@@ -6189,10 +6145,8 @@ sources.</p>
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-incoming-message-handler"><a class="anchor" href="#km-firmware-incoming-message-handler"></a><a class="link" href="#km-firmware-incoming-message-handler">Incoming Message Handler</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-incoming-message-handler"><a class="anchor" href="#km-firmware-incoming-message-handler"></a><a class="link" href="#km-firmware-incoming-message-handler">Incoming Message Handler</a></h3>
 <div class="paragraph">
 <p>The incoming message handler parses incoming message frames from the
 message receive buffer in SRAM, checks their properties, and calls the
@@ -6387,10 +6341,8 @@ return argument from the command handler.</p>
 </ol>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-outgoing-message-handler"><a class="anchor" href="#km-firmware-outgoing-message-handler"></a><a class="link" href="#km-firmware-outgoing-message-handler">Outgoing Message Handler</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-outgoing-message-handler"><a class="anchor" href="#km-firmware-outgoing-message-handler"></a><a class="link" href="#km-firmware-outgoing-message-handler">Outgoing Message Handler</a></h3>
 <div class="paragraph">
 <p>The outgoing message handler constructs a message from a given response
 payload and writes it into the message transmit buffer in SRAM. The
@@ -6450,10 +6402,8 @@ sent at handover. Each of these is followed immediately by a CPU halt or by
 interrupt masking, so a buffered frame would never be drained.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-command-handlers"><a class="anchor" href="#km-firmware-command-handlers"></a><a class="link" href="#km-firmware-command-handlers">Command Handlers</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-command-handlers"><a class="anchor" href="#km-firmware-command-handlers"></a><a class="link" href="#km-firmware-command-handlers">Command Handlers</a></h3>
 <div class="paragraph">
 <p>Each supported KM command has an associated command handler function. They
 are called by the incoming message handler, validate the arguments
@@ -6465,10 +6415,8 @@ errors it will return a <em>success</em> code and provide an optional return
 argument.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-drbg-driver"><a class="anchor" href="#km-firmware-drbg-driver"></a><a class="link" href="#km-firmware-drbg-driver">DRBG Driver</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-drbg-driver"><a class="anchor" href="#km-firmware-drbg-driver"></a><a class="link" href="#km-firmware-drbg-driver">DRBG Driver</a></h3>
 <div class="paragraph">
 <p><strong>Initialize DRBG</strong></p>
 </div>
@@ -6526,10 +6474,8 @@ reading it in a loop returns one value repeatedly instead of a stream — which
 would silently yield a key made of a single repeated word.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-kpv-driver"><a class="anchor" href="#km-firmware-kpv-driver"></a><a class="link" href="#km-firmware-kpv-driver">KPV Driver</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-kpv-driver"><a class="anchor" href="#km-firmware-kpv-driver"></a><a class="link" href="#km-firmware-kpv-driver">KPV Driver</a></h3>
 <div class="paragraph">
 <p>These functions provide firmware abstractions for the KPV. The vault holds 64
 slots of 16 words each, and each slot carries a <code>CTRL</code> register holding the
@@ -6700,10 +6646,8 @@ erased. A sealed slot gains <code>lock_use</code> only from an erase completing,
 <code>lock_use</code> is what separates a retired slot from a sealed live one.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-crypto-drivers"><a class="anchor" href="#km-firmware-crypto-drivers"></a><a class="link" href="#km-firmware-crypto-drivers">Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-crypto-drivers"><a class="anchor" href="#km-firmware-crypto-drivers"></a><a class="link" href="#km-firmware-crypto-drivers">Crypto Engine Drivers (HMAC / KMAC / AES / OTBN / Adams Bridge)</a></h3>
 <div class="paragraph">
 <p>Each crypto engine (HMAC, KMAC, AES, OTBN) and each of the four Adams Bridge
 seed inputs (ML-DSA seed, ML-KEM seed D, ML-KEM seed Z, ML-KEM message) has a
@@ -6807,10 +6751,8 @@ acknowledgement rather than toggling the enable per event.</p>
 </ul>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-kdf-library"><a class="anchor" href="#km-firmware-kdf-library"></a><a class="link" href="#km-firmware-kdf-library">Key Derivation Function Library</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-kdf-library"><a class="anchor" href="#km-firmware-kdf-library"></a><a class="link" href="#km-firmware-kdf-library">Key Derivation Function Library</a></h3>
 <div class="paragraph">
 <p>The <code>rom_kdf</code> library implements the NIST SP 800-108r1 counter-mode key
 derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.
@@ -6959,10 +6901,8 @@ material should run it and fail closed, but nothing in the current ROM enforces
 that.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-crc-library"><a class="anchor" href="#km-firmware-crc-library"></a><a class="link" href="#km-firmware-crc-library">CRC Function Library</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-crc-library"><a class="anchor" href="#km-firmware-crc-library"></a><a class="link" href="#km-firmware-crc-library">CRC Function Library</a></h3>
 <div class="paragraph">
 <p>The CRC function library contains routines for CRC computations. The
 high-level functions (<code>rom_crc8_rohc</code>, <code>rom_crc32c</code>) preserve their public
@@ -6976,8 +6916,8 @@ updates, and applies the final XOR once at the end. See the CRC Accelerator
 section of the architecture documentation for the instruction encodings
 and engine behavior.</p>
 </div>
-<div class="sect2">
-<h3 id="km-crc8-rohc"><a class="anchor" href="#km-crc8-rohc"></a><a class="link" href="#km-crc8-rohc">CRC-8/ROHC</a></h3>
+<div class="sect3">
+<h4 id="km-crc8-rohc"><a class="anchor" href="#km-crc8-rohc"></a><a class="link" href="#km-crc8-rohc">CRC-8/ROHC</a></h4>
 <div class="paragraph">
 <p>Compute the CRC-8/ROHC for a given block of data.</p>
 </div>
@@ -7029,8 +6969,8 @@ and engine behavior.</p>
 from least significant byte to most significant byte.</p>
 </div>
 </div>
-<div class="sect2">
-<h3 id="km-crc32c"><a class="anchor" href="#km-crc32c"></a><a class="link" href="#km-crc32c">CRC-32C</a></h3>
+<div class="sect3">
+<h4 id="km-crc32c"><a class="anchor" href="#km-crc32c"></a><a class="link" href="#km-crc32c">CRC-32C</a></h4>
 <div class="paragraph">
 <p>Compute the CRC-32C (Castagnoli) for a given block of data.</p>
 </div>
@@ -7087,10 +7027,8 @@ least significant byte to most significant byte.</p>
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-key-registry"><a class="anchor" href="#km-firmware-key-registry"></a><a class="link" href="#km-firmware-key-registry">Key Registry</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-key-registry"><a class="anchor" href="#km-firmware-key-registry"></a><a class="link" href="#km-firmware-key-registry">Key Registry</a></h3>
 <div class="paragraph">
 <p>KM firmware maintains a mapping between key handles and key slots in the
 KPV, called the key registry. Key handles are unique 8-bit numbers that
@@ -7256,10 +7194,8 @@ Allocating a free run of slots is the caller&#8217;s responsibility
 used again. Returns with an error if the given key handle does not exist.</p>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-key-management"><a class="anchor" href="#km-firmware-key-management"></a><a class="link" href="#km-firmware-key-management">Key Management</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-key-management"><a class="anchor" href="#km-firmware-key-management"></a><a class="link" href="#km-firmware-key-management">Key Management</a></h3>
 <div class="paragraph">
 <p>These functions provide high-level key management operations. In general,
 they are called by command handler functions.</p>
@@ -7476,10 +7412,8 @@ returning with an error if any are invalid.</p>
 </ol>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="km-firmware-main-event-loop"><a class="anchor" href="#km-firmware-main-event-loop"></a><a class="link" href="#km-firmware-main-event-loop">Main Event Loop</a></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="km-firmware-main-event-loop"><a class="anchor" href="#km-firmware-main-event-loop"></a><a class="link" href="#km-firmware-main-event-loop">Main Event Loop</a></h3>
 <div class="paragraph">
 <p>After the bootloader initializes the KM, the main loop of the KM
 continuously monitors the incoming message buffer for commands. When the
@@ -7498,8 +7432,8 @@ around the flag sample/clear and the wait-for-interrupt decision so that a
 notification set by the ISR can neither be dropped (lost update) nor leave the
 CPU sleeping with work pending (lost wakeup).</p>
 </div>
-<div class="sect2">
-<h3 id="km-main-fault-handling"><a class="anchor" href="#km-main-fault-handling"></a><a class="link" href="#km-main-fault-handling">Fault Handling</a></h3>
+<div class="sect3">
+<h4 id="km-main-fault-handling"><a class="anchor" href="#km-main-fault-handling"></a><a class="link" href="#km-main-fault-handling">Fault Handling</a></h4>
 <div class="paragraph">
 <p>When the KM encounters an unrecoverable fault it purges key material, flushes
 the mailbox FIFOs, and then writes a <code>RESP_UNRECOVERABLE_FAULT</code> message directly
@@ -7524,6 +7458,7 @@ triggered the fault.</p>
 </div>
 </div>
 </div>
+</div>
 </article>
   </div>
 </main>
@@ -7543,6 +7478,8 @@ triggered the fault.</p>
     </div>
   </div>
 </footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
 <script src="../../../../../_/js/vendor/viewer.min.js"></script>

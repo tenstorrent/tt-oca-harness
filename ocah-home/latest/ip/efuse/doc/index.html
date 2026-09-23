@@ -1495,7 +1495,7 @@ instance documented in this section.</p>
 <li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x28, stride 0x8</li>
 <li><strong>SPARE[28]</strong>: 28 registers, base 0x80, stride 0x20</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.</td></tr>
@@ -1505,7 +1505,7 @@ instance documented in this section.</p>
 <tr><td>0x78</td><td><a href="#OCCP_TRANSPORT_TIMEOUT">OCCP_TRANSPORT_TIMEOUT</a></td><td>RW</td><td>OCCP transport timeout in the low word; upper word reserved.</td></tr>
 <tr><td>0x80 - 0x3E0</td><td><a href="#SPARE_28_">SPARE[28]</a></td><td>RW</td><td>Individually lockable 256-bit spare region, reserved for fields assigned after the<br>RTL is frozen. Each element has its own write/read lock pair in LOCKS.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="LOCKS">LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1628,7 +1628,7 @@ authentication, including RMA tokens and security disable tokens.</p>
 <li><strong>RMA_CHIPLET_TOKEN_I[8]</strong>: 8 registers, base 0x20, stride 0x4</li>
 <li><strong>SEC_DISABLE_TOKEN_I[8]</strong>: 8 registers, base 0x40, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
@@ -1640,7 +1640,7 @@ authentication, including RMA tokens and security disable tokens.</p>
 <tr><td>0x6C</td><td><a href="#SEC_DISABLE_TOKEN_MATCH">SEC_DISABLE_TOKEN_MATCH</a></td><td>R</td><td>Token match status. Reports the result of the token hash comparison (match, mismatch, or error).</td></tr>
 <tr><td>0x70</td><td><a href="#TOKEN_MATCH_FAULT">TOKEN_MATCH_FAULT</a></td><td>R</td><td>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6&#x27;b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1714,7 +1714,7 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: efuse_interface_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
@@ -1725,7 +1725,7 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 <tr><td>0x14</td><td><a href="#EFUSE_READ_REQ_TIMEOUT">EFUSE_READ_REQ_TIMEOUT</a></td><td>RW</td><td>Read interface timeout configuration. Sets the number of cycles the read interface waits for a SHIM response and enables the read timeout.</td></tr>
 <tr><td>0x18</td><td><a href="#EFUSE_PROGRAM_REQ_TIMEOUT">EFUSE_PROGRAM_REQ_TIMEOUT</a></td><td>RW</td><td>Program interface timeout configuration. Sets the number of cycles the program interface waits for a SHIM response and enables the program timeout.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1810,12 +1810,12 @@ does not appear at a fixed address in the generated OCAH map.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: efuse_shim_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -2062,6 +2062,8 @@ own the command path.</p>
     </div>
   </div>
 </footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
 <script src="../../../../../_/js/vendor/viewer.min.js"></script>

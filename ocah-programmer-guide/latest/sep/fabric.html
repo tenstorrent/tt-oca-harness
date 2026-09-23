@@ -236,7 +236,7 @@ handle</p>
 <h2 id="top-level-axi4"><a class="anchor" href="#top-level-axi4"></a><a class="link" href="#top-level-axi4">1. Top Level AXI4</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The diagram below shows the crossbar connectivity implemented in
+<p><a href="#sep-axi-connectivity">Figure 1</a> shows the crossbar connectivity implemented in
 <code>hw/sys/sep/rtl/sep_local_axi_xbar.sv</code>, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
@@ -284,7 +284,7 @@ else back into this crossbar&#8217;s System Interface initiator. The inbound fil
 controls which addresses the external master may reach; it is block-by-default
 after POR and configured by SEP firmware.</p>
 </div>
-<div class="imageblock">
+<div id="sep-axi-connectivity" class="imageblock">
 <div class="content">
 <img src="_images/sep_axi_connectivity.svg" alt="SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path" width="720">
 </div>
@@ -320,8 +320,13 @@ OTBN IMEM, OTBN DMEM</p>
 <div class="sect1">
 <h2 id="local-and-external-axi4-traffic-remapping"><a class="anchor" href="#local-and-external-axi4-traffic-remapping"></a><a class="link" href="#local-and-external-axi4-traffic-remapping">3. Local and External AXI4 Traffic Remapping</a></h2>
 <div class="sectionbody">
+<div class="imageblock">
+<div class="content">
+<img src="_images/SEP_System.png" alt="SEP_System">
+</div>
+</div>
 <div class="paragraph">
-<p>The figure below illustrates the AXI4 traffic management performed by
+<p>The figure above illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
 the local masters from the SEP i.e. the CPU or the DMA controller.
 Traffic may be local to the SEP or outbound to external resources either
@@ -367,15 +372,15 @@ SMN system NoC.</p>
 <p>Provide security services and</p>
 </li>
 <li>
-<p>extend its protection to the reset of the system</p>
+<p>Extend its protection to the rest of the system</p>
 </li>
 </ol>
 </div>
 <div class="paragraph">
-<p>For 1 the outbound traffic traverses the AP controlled remappers and for
-2 the traffic goes directly to the SMN system fabric. SEP differentiates
-between the two scenarios 1 and 2 and enforces that the correct path is
-used.</p>
+<p>Outbound security service traffic traverses the AP controlled remappers.
+When protecting the rest of the system, SEP traffic goes directly to the
+SMN system fabric. The SEP differentiates between these two cases and
+enforces that the correct path is used.</p>
 </div>
 <div class="paragraph">
 <p>When SEP accesses shared resources such as shared memory for example,
@@ -613,11 +618,6 @@ action required by SEP.</p></td>
 </tr>
 </tbody>
 </table>
-<div class="imageblock">
-<div class="content">
-<img src="_images/SEP_System.png" alt="SEP_System">
-</div>
-</div>
 </div>
 </div>
 </div>
@@ -640,6 +640,8 @@ action required by SEP.</p></td>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

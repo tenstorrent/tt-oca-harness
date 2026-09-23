@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Referenced Documents :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="ip-reference.html">
+    <link rel="next" href="dashboard.html">
+    <meta name="description" content="Specifications and external design documentation referenced throughout the OCAH TRM.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="index.html">Documentation Overview</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="sep/test_mode.html">Test Mode Entry</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="referenced-documents.html">Referenced Documents</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="dashboard.html">Verification Dashboard</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li><a href="referenced-documents.html">Referenced Documents</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Referenced Documents</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>This appendix collects the companion guides, specifications and external
+design documentation referenced by the subsystem and IP chapters. Revisions
+below are those cited in this manual; an unspecified revision does not imply
+the latest edition.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ocah-documentation"><a class="anchor" href="#ocah-documentation"></a><a class="link" href="#ocah-documentation">1. OCAH Documentation</a></h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Document</th>
+<th class="tableblock halign-left valign-top">Referenced for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-ocah-integrator-guide"></a> <a href="../../ocah-integrator-guide/latest/index.html" class="xref page">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Subsystem integration and external interfaces, including the SEP external
+TRNG aperture&#8217;s register decode and error-response requirements.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="oca-specifications"><a class="anchor" href="#oca-specifications"></a><a class="link" href="#oca-specifications">2. OCA Specifications</a></h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Document</th>
+<th class="tableblock halign-left valign-top">Referenced for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-occt"></a> Open Chiplet Cross Triggering (OCCT) specification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP cross-trigger fabric, Cross-Trigger Network and Cross-Trigger Port.
+The cited revision and a document-specific URL are not specified in this manual.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Open Chiplet Atlas specification: Open Chiplet Time Synchronization (OCTS)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer OCTS protocol and credit-based synchronization.
+The cited revision is not specified in this manual.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://www.openchipletatlas.org/specifications/aou/latest">AXI-over-UCIe (AoU) specification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AoU bridge protocol. The imported AoU microarchitecture specification cites
+revision 0.7 (2025).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interface-and-security-standards"><a class="anchor" href="#interface-and-security-standards"></a><a class="link" href="#interface-and-security-standards">3. Interface and Security Standards</a></h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Document</th>
+<th class="tableblock halign-left valign-top">Referenced for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Universal Chiplet Interconnect Express (UCIe) specification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AoU FDI interface, flit cancellation and stall handling.
+The cited revision is not specified in this manual.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IEEE 1149.1-2013</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP JTAG TAPs, instruction registers and IC_RESET test data register.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IEEE 1838-2019</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP hierarchical multi-chiplet test access and STAP 3D control register.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">IEEE 1687-2014</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP iJTAG instrumentation and segment insertion bits (SIBs).</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C-bus specification, revisions 6 and 7.0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller. The feature overview cites revision 7.0; the architecture
+chapter cites revision 6 for electrical and timing requirements.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Management Bus (SMBus) specification, revision 3.2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller SMBus operation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power Management Bus (PMBus) specification, revision 1.4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller PMBus operation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus specification, version 1.3.1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus controller voltage-scaling frames and responses.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MIPI I3C Basic specification, versions 1.0 and 1.1.1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C core controller interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MIPI I3C Host Controller Interface (HCI) specification, version 1.2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C core controller register map.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TCRI recovery specification, version 1.0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C core controller recovery interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://csrc.nist.gov/pubs/sp/800/90/a/r1/final">NIST SP 800-90A, revision 1</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG and SEP random-number generation.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://csrc.nist.gov/publications/detail/sp/800-90b/final">NIST SP 800-90B</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Source and SEP TRNG entropy assessment and health tests.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIPS 140-2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Source discussion of planned certification readiness.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIPS 203</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge ML-KEM-1024 operations.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">FIPS 204</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge ML-DSA-87 operations and SEP lifecycle signing policy.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="external-design-documentation"><a class="anchor" href="#external-design-documentation"></a><a class="link" href="#external-design-documentation">4. External Design Documentation</a></h2>
+<div class="sectionbody">
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 40%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Document or project</th>
+<th class="tableblock halign-left valign-top">Referenced for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html">Rocket Core</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU and memory system.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/index.html">VeeR EL2 Programmer&#8217;s Reference Manual</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU architecture, CSRs and interrupt behavior.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/pulp-platform/iDMA">iDMA</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC DMA engine.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-adams-bridge"></a> <a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP post-quantum cryptographic accelerator.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-opentitan-hmac"></a> <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP HMAC-SHA2 accelerator and programming model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-opentitan-otbn"></a> <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan OTBN documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP public-key accelerator and programming model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-opentitan-aes"></a> <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP AES cipher and programming model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-opentitan-kmac"></a> <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP KMAC-SHA3 accelerator and programming model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://opentitan.org/book/hw/ip/keymgr/index.html">OpenTitan Key Manager</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager architecture and firmware interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://opentitan.org/book/hw/ip/csrng/">OpenTitan CSRNG</a> and
+<a href="https://opentitan.org/book/hw/ip/edn/">EDN</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DRBG core register semantics and application entropy delivery.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://opentitan.org/book/hw/ip/dma/index.html">OpenTitan DMA Controller</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP DMA and its programming model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-opentitan-spi-host"></a> <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP SPI host and programming model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-opentitan-aon-timer"></a> <a href="https://opentitan.org/book/hw/ip/aon_timer/">OpenTitan Always-On Timer documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog timer and programming model.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a id="ref-opentitan-i2c"></a> <a href="https://opentitan.org/book/hw/ip/i2c/index.html">OpenTitan I2C Controller documentation</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC I2C controller architecture and programming model. The I2C chapter also
+cites the <a href="https://github.com/lowRISC/opentitan/tree/master/hw/ip/i2c">upstream source</a>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/lowRISC/opentitan/tree/master/sw/device/lib/dif/dif_i2c.h">OpenTitan I2C Device Interface Functions</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller firmware interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html">OpenTitan Cryptolib API</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP cryptographic software interface background.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="ip-reference.html">IP Reference</a></span>
+  <span class="next"><a href="dashboard.html">Verification Dashboard</a></span>
+</nav>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

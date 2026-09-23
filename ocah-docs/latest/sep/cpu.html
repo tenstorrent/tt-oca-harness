@@ -199,23 +199,62 @@
     <a class="nav-link" href="crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/drbg/doc/index.html">DRBG</a>
+</ul>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="periphs.html">Fuse Controller and Peripherals</a>
+    <a class="nav-link" href="periphs.html">Fuse Controller and Lifecycle Controller</a>
 <ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="reset_controller.html">SEP Reset Controller</a>
+  </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="token_processing.html">Token Processing</a>
   </li>
@@ -323,7 +362,16 @@
     <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
   </li>
   <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../aou-ppa-appendices.html">PPA and Appendices</a>
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -331,6 +379,9 @@
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
@@ -413,7 +464,7 @@
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="4">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
@@ -601,9 +652,8 @@ the first stage of external firmware AKA BL1.</p>
 fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
 manifest and payload validation, secure boot, demotion, attestation and
 hand-off, with requirement identifiers and an implementation-status matrix.
-The summary below exists to place the ROM in the context of this chapter; it is
-deliberately not a second description of the same flow, because two would
-drift.</p>
+The summary below places the ROM in the context of this chapter, the definitive
+description is in  the production ROM documentation</p>
 </div>
 <div class="ulist">
 <ul>
@@ -893,6 +943,8 @@ SEP</p>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

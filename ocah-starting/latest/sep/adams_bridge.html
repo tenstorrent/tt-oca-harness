@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Adams Bridge (ABR) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP Adams Bridge integration, post-quantum algorithms, and seed delivery.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="adams_bridge.html">Adams Bridge (ABR)</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Adams Bridge (ABR)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="adams-bridge-abr" class="paragraph">
+<p>The module is a post-quantum accelerator based on the
+<a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
+</div>
+<div class="paragraph">
+<p>Algorithms:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>ML-DSA-87 (FIPS 204)&#8201;&#8212;&#8201;key generation, signature generation and verification</p>
+</li>
+<li>
+<p>ML-KEM-1024 (FIPS 203)&#8201;&#8212;&#8201;key generation, encapsulation and decapsulation</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>ML-DSA is the post-quantum signature path intended for secure boot: each owner
+may be provisioned with an ML-DSA root public key alongside its classical key,
+with <code>REQUIRED_SIGNERS</code> selecting which owners must sign and <code>REQUIRED_ALGS</code>
+selecting, per owner, which of the two algorithms it must sign with (see
+<a href="lifecycle_controller.html#life-cycle-controller-lcc-life-cycle-controller-lcc" class="xref page">Life Cycle Controller (LCC)</a>). SEP ROM does not use
+this path today&#8201;&#8212;&#8201;it verifies a single classical RSA-3072 signature, and
+combined classical + PQC signing is deferred to a later release.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="och-modifications-5"><a class="anchor" href="#och-modifications-5"></a><a class="link" href="#och-modifications-5">1. OCAH Modifications</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>AXI4-lite key bus slave interface replaces the Caliptra Key Vault</p>
+</li>
+<li>
+<p>AXI4 control/status bus slave interface, bridged to the core&#8217;s native AHB-lite</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>ABR is the one accelerator in the subsystem that is not an OpenTitan TL-UL
+design, so it does not use the standard three-stage bus pipeline.
+<code>sep_crypto_abr_wrapper</code> bridges its 64-bit AXI4 slave port straight to AHB-lite
+with the same <code>axi4_to_ahb</code> bridge that <code>sep_cpu</code> instantiates, and drives
+<code>abr_top</code>. The wrapper occupies a 64 kB aperture at <code>0x1094_0000</code>, decoded as
+port <code>SepCryptoAxiAbr</code> of the crypto demux.</p>
+</div>
+<div id="abr-aperture-decode" class="paragraph">
+<p>Inside that aperture there is no further decode. The vendored register block
+consumes all sixteen address bits and applies no address-validity or permission
+check, so the window is fully consumed but not fully populated: 24,160 of its
+65,536 bytes are defined. Objects sit at coarse offsets with the space between
+them unused&#8201;&#8212;&#8201;most on a 4 kB boundary, the interrupt block at <code>0x8100</code>,
+<code>MLKEM_MSG</code> at <code>0x9080</code> and <code>MLKEM_CIPHERTEXT</code> at <code>0xB800</code>&#8201;&#8212;&#8201;and the map ends
+at <code>0xC018</code>, leaving the last 16,360 bytes undefined.</p>
+</div>
+<div class="paragraph">
+<p>An access to any unpopulated offset completes with <code>OKAY</code>. A write is discarded;
+a read returns <code>0x0000_0000</code>. ABR never drives <code>hresp</code> to error, so the AHB error
+response its slave interface implements is unreachable. This is narrower than
+every other answer in the subsystem: an address outside the aperture, or any
+burst, is answered with DECERR by the demux (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>), and
+the wrapper&#8217;s own <code>abr_wrapper_key_reg</code> CSRs answer an unmapped access with
+SLVERR. Software shall not rely on a bus error to detect a malformed ABR
+register address.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This follows from the vendored collateral rather than a SEP decision.
+<code>abr_reg.sv</code> is generated in the Adams Bridge repository, not by the OCAH
+register flow, and address-validity decode is a PeakRDL-regblock exporter option
+rather than a SystemRDL property; the committed file predates that option.
+Changing it is an upstream change.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Upstream, Adams Bridge draws its secrets from the Caliptra Key Vault. OCAH does
+not instantiate that vault. The Key Manager&#8217;s private AXI4-Lite key bus
+terminates inside the wrapper at the <code>abr_wrapper_key_reg</code> CSR block&#8201;&#8212;&#8201;the same
+convention as the AES and OTBN wrappers&#8201;&#8212;&#8201;and <code>sep_abr_kv_shim</code> presents the
+recovered dual-share secrets to <code>abr_top</code> over the Caliptra <code>kv_read</code> / <code>kv_write</code>
+port protocol. Only the Key Vault client helpers are vendored; the vault storage
+block is not compiled. This leaves the vendored core unmodified while giving ABR
+the same kind of key path as every other accelerator, one mastered by the Key
+Manager.</p>
+</div>
+<div class="paragraph">
+<p>ABR is delivered seeds rather than keys, and is the only accelerator with more
+than one delivery destination. Four blocks are qualified independently&#8201;&#8212;&#8201;<code>MLDSA_SEED</code>, <code>MLKEM_SEED_D</code>, <code>MLKEM_SEED_Z</code> and <code>MLKEM_MSG</code>&#8201;&#8212;&#8201;each carrying
+eight words per share with its own <code>KEY_CTRL.KEY_VALID</code>, in the format given in
+<a href="crypto.html#km-key-delivery" class="xref page">Key Manager Key Delivery</a>. The ML-DSA seed and the ML-KEM message are read as single
+256-bit values. The ML-KEM seed is read as one 512-bit value formed by
+concatenating <code>MLKEM_SEED_D</code> followed by <code>MLKEM_SEED_Z</code>, so that read completes
+only when both blocks are valid. Software shall enable the seed read before
+starting an operation that consumes a delivered seed.</p>
+</div>
+<div class="paragraph">
+<p>The ML-KEM shared key travels in the opposite direction, making this the only
+delivery destination that is also a source: the accelerator writes the shared
+key into <code>MLKEM_SHARED_KEY.KEY</code>, and on the final word sets that block&#8217;s
+<code>KEY_CTRL.KEY_VALID</code> and <code>IRQ_STATUS.KEY_VALID</code>, which raises the gated
+shared-key interrupt consumed by the Key Manager.</p>
+</div>
+<div class="paragraph">
+<p>The working SRAM is brought out of the wrapper as packed
+<code>abr_mem_req_t</code> / <code>abr_mem_rsp_t</code> structs. Word-write channels are <code>we</code> / <code>re</code> /
+address / data; <code>sig_z</code> and <code>pk</code> also carry one-bit-per-byte <code>wstrobe</code>.
+<code>SEP_ABR_SRAM_LATENCY</code> is the macros' native registered-read latency (default 1).
+<code>SEP_ABR_MASKING_EN</code> (default 1) selects Adams Bridge 2-share DOM: thirteen 1R1W
+macros versus nine, plus a second NTT. That choice changes ABR internal behavior
+(sequencing, SCA, memory topology), not merely throughput.</p>
+</div>
+<div class="paragraph">
+<p>ABR has no alert channel&#8201;&#8212;&#8201;it is the only crypto accelerator that reports faults
+solely by interrupt (Adams Bridge error and notification in
+<a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>), plus a gated ML-KEM shared-key interrupt
+consumed directly by the Key Manager. Whether the block is present in a build is
+controlled by <code>SEP_ABR_EN</code>, which always implies the vendored RTL&#8217;s <code>CALIPTRA</code>
+define; when it is absent, both the crypto crossbar port and the Key Manager key
+bus are terminated with AXI4-Lite error slaves.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Adams Bridge does not auto-return to its RESET state when an operation
+finishes. The sequencer parks at the operation&#8217;s end state with <code>STATUS.VALID</code>
+set, and <code>STATUS.READY</code> re-asserts only after a <code>zeroize</code> or a reset. Firmware
+therefore detects completion from <code>VALID</code>, and must issue a <code>zeroize</code> between
+back-to-back operations.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Consult the <a href="https://github.com/chipsalliance/adams-bridge">Adams Bridge
+documentation</a> for the authoritative core functionality of the IP. Its CSRs are
+defined by the vendored Caliptra register package rather than by an OCAH PeakRDL
+source, so unlike the other accelerators they do not appear in
+<a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

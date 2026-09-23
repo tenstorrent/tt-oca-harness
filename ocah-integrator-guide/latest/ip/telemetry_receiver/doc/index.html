@@ -204,8 +204,8 @@
 telemetry transmitters. It implements a receiver for a probe-ID and
 multi-counter message format.</p>
 </div>
-<div class="sect4">
-<h5 id="telemetry-receiver-message-format"><a class="anchor" href="#telemetry-receiver-message-format"></a><a class="link" href="#telemetry-receiver-message-format">Message Format</a></h5>
+<div class="sect2">
+<h3 id="telemetry-receiver-message-format"><a class="anchor" href="#telemetry-receiver-message-format"></a><a class="link" href="#telemetry-receiver-message-format">1.1. Message Format</a></h3>
 <div class="paragraph">
 <p>Eight little-endian ATB beats form a 64-bit packet. One or more packets
 form a message that ends when <code>last_packet</code> is set.</p>
@@ -750,7 +750,7 @@ with the system clock domain.</p>
 <ul>
 <li><strong>TELEMETRY_COUNTER[32]</strong>: 32 registers, base 0x80, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
@@ -762,7 +762,94 @@ with the system clock domain.</p>
 <tr><td>0x18</td><td><a href="#TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
 <tr><td>0x80 - 0xFC</td><td><a href="#TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
+<h3 id="CTRL">CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:12</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold. The Telemetry Buffer Threshold Interrupt is<br>asserted when the number of entries in the buffer is greater than this value.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
+<tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and<br>all other storage elements in the Telemetry Receiver.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUFFER_POP</td><td>W</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_FULL</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Full.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUFFER_EMPTY</td><td>R</td><td>0x1</td><td>Telemetry Message Buffer Empty.</td></tr>
+</table>
+<h3 id="INTR_STATUS">INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of<br>telemetry messages in the Telemetry Message Buffer is greater than<br>`CTRL.BUFFER_THRESHOLD`.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
+</table>
+<h3 id="INTR_ENABLE">INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Enable.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt Enable.</td></tr>
+</table>
+<h3 id="INTR_TEST">INTR_TEST</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>W</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+</table>
+<h3 id="TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4:0</td><td>PROBE_ID</td><td>R</td><td>0x0</td><td>Probe ID. Contains the Probe ID field of the telemetry message at the bottom of<br>the Telemetry Message Buffer.</td></tr>
+</table>
+<h3 id="TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNTER_VLDS</td><td>R</td><td>0x0</td><td>Counter Valid Bits. Indicates which of the counter values in the telemetry<br>message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for<br>the `i`-th counter.</td></tr>
+</table>
+<h3 id="TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COUNTER</td><td>R</td><td>0x0</td><td>Counter Value. Contains one of the 32 counter values in the telemetry message<br>at the bottom of the Telemetry Message Buffer.</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: telemetry_receiver_wrap</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>TELEMETRY_COUNTER[32]</strong>: 32 registers, base 0x80, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x4</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x8</td><td><a href="#INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
+<tr><td>0xC</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
+<tr><td>0x10</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x14</td><td><a href="#TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</a></td><td>R</td><td>Telemetry Probe ID Register</td></tr>
+<tr><td>0x18</td><td><a href="#TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
+<tr><td>0x80 - 0xFC</td><td><a href="#TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
 <h3 id="CTRL">CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -846,6 +933,8 @@ with the system clock domain.</p>
     </div>
   </div>
 </footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
 <script src="../../../../../_/js/vendor/viewer.min.js"></script>

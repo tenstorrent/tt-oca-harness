@@ -199,23 +199,62 @@
     <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/drbg/doc/index.html">DRBG</a>
+</ul>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Peripherals</a>
+    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
 <ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
   </li>
@@ -323,7 +362,16 @@
     <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
   </li>
   <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../aou-ppa-appendices.html">PPA and Appendices</a>
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -331,6 +379,9 @@
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
@@ -413,7 +464,7 @@
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="4">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
@@ -1177,7 +1228,7 @@ efficient and responsive multi-core management.</p>
 <li><strong>CORE2_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2300, stride 0x4</li>
 <li><strong>CORE3_SEIP_ENABLE[11]</strong>: 11 registers, base 0x2380, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x540</td><td><a href="#PRIORITY_337_">PRIORITY[337]</a></td><td>RW</td><td>-</td></tr>
@@ -1207,7 +1258,7 @@ efficient and responsive multi-core management.</p>
 <tr><td>0x207000</td><td><a href="#CORE3_SEIP_THRESHOLD">CORE3_SEIP_THRESHOLD</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x207004</td><td><a href="#CORE3_SEIP_CLAIM_COMPLETE">CORE3_SEIP_CLAIM_COMPLETE</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="PRIORITY_337_">PRIORITY[337]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1373,6 +1424,8 @@ efficient and responsive multi-core management.</p>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

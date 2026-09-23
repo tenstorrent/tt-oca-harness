@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>SEP Reset Controller :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP software reset requests, AXI isolation, and TRNG reset sequencing.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="reset_controller.html">SEP Reset Controller</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">SEP Reset Controller</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="sep-reset-controller" class="paragraph">
+<p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="software-reset-register"><a class="anchor" href="#software-reset-register"></a><a class="link" href="#software-reset-register">1. Software Reset Register</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The controller contains a single 64-bit register <code>SW_RESET_N</code> at offset <code>0x0</code> with the following fields:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 10%;">
+<col style="width: 20%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bit</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Access</th>
+<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">km_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KM reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">otbn_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">aes_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">hmac_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">HMAC reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">kmac_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">KMAC reset (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">trng_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">abr_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge reset (0=assert, 1=release)</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>On power-up, <code>SW_RESET_N</code> resets to <code>0x7E</code>: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, the TRNG, and Adams Bridge are released. The SEP host firmware
+writes <code>1</code> to release an IP from reset and writes <code>0</code> to request its software
+reset.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="isolation-and-reset-sequencing"><a class="anchor" href="#isolation-and-reset-sequencing"></a><a class="link" href="#isolation-and-reset-sequencing">2. Isolation and Reset Sequencing</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each <code>SW_RESET_N</code> bit is a request to a per-domain sequencer. The sequencer
+isolates the domain&#8217;s AXI paths, waits for outstanding transactions to drain,
+and then asserts reset. New transactions presented while isolated terminate
+with SLVERR. Isolation remains asserted for the duration of reset and is
+released with reset when software removes the request.</p>
+</div>
+<div class="paragraph">
+<p>An accelerator reset waits for both its host CSR path and Key Manager key path
+to isolate. A Key Manager reset waits for all of its outgoing accelerator and
+eFuse key paths. This prevents either endpoint of a key path from entering
+reset with a transaction in flight.</p>
+</div>
+<div class="paragraph">
+<p>The sequenced resets are ANDed with <code>sep_reset_n</code>, which holds every IP in reset
+until eFuse sensing completes during boot. The per-IP JTAG override muxes are
+applied last, allowing debug to force reset without waiting for isolation.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-trng-reset"><a class="anchor" href="#sep-trng-reset"></a><a class="link" href="#sep-trng-reset">3. Resetting the TRNG</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The TRNG reset bit controls one reset domain containing the entropy source,
+CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
+independent demux ports, a shared coordinator requests isolation on all three
+converted AXI4-Lite paths and does not assert the TRNG reset until all three
+report isolated. Reset and isolation are released together.</p>
+</div>
+<div class="paragraph">
+<p>The fabric entropy-pool AXI responder is not reset, so accesses remain
+responsive. While the TRNG reset is active, both post-mux EDN adapters and the
+pool synchronously clear their pending and buffered state, including the pool&#8217;s
+half-packed word, FIFO contents, and fill-stall state.</p>
+</div>
+<div class="paragraph">
+<p>Consumers are not part of the reset coordinator. Native EDN requests from AES,
+KMAC, and OTBN receive no acknowledgement while the post-mux adapter is
+clearing, remain asserted, and are serviced with fresh entropy after the chain
+restarts. Software may wait for those consumers to become idle and hold them in
+reset when policy requires aborting in-flight operations, but that is not
+required to assert the TRNG reset.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager stream has no post-mux adapter, so TRNG reset does not scrub
+it. If the DRBG sampler is requesting or assembling a word when the reset
+asserts, the next DATA read can mix leftover bytes with new beats, or the
+sampler can flag a stream error. The SEP host must keep the Key Manager idle
+before asserting the TRNG reset. Holding KM in software reset is sufficient;
+hardware does not enforce the ordering.</p>
+</div>
+<div class="paragraph">
+<p>Following reset release, software reprograms ESRC, waits for startup health
+testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
+Consumers are released only after fresh endpoint/pool progress is observed.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

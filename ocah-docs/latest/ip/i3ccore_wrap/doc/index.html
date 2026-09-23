@@ -196,23 +196,62 @@
     <a class="nav-link" href="../../../sep/crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../../entropy_source/doc/index.html">Entropy Source</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../../drbg/doc/index.html">DRBG</a>
+</ul>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../../../sep/periphs.html">Fuse Controller and Peripherals</a>
+    <a class="nav-link" href="../../../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
 <ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../../../sep/token_processing.html">Token Processing</a>
   </li>
@@ -320,7 +359,16 @@
     <a class="nav-link" href="../../../aou-interrupts-errors.html">Interrupts and Errors</a>
   </li>
   <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../../../aou-ppa-appendices.html">PPA and Appendices</a>
+    <a class="nav-link" href="../../../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -328,6 +376,9 @@
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../../../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../referenced-documents.html">Referenced Documents</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../../../dashboard.html">Verification Dashboard</a>
@@ -407,7 +458,7 @@
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="4">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
@@ -1923,7 +1974,7 @@ controller-role request only while in standby mode and while the bus is idle.</p
 <li><strong>DAT_MEMORY[128]</strong>: 128 registers, base 0x400, stride 0x8</li>
 <li><strong>DCT_MEMORY[128]</strong>: 128 registers, base 0x800, stride 0x10</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#HCI_VERSION">HCI_VERSION</a></td><td>R</td><td>Identifies the implemented MIPI I3C HCI version.</td></tr>
@@ -2074,7 +2125,7 @@ controller-role request only while in standby mode and while the bus is idle.</p
 <tr><td>0x400 - 0x7F8</td><td><a href="#DAT_MEMORY_128_">DAT_MEMORY[128]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x800 - 0xFF0</td><td><a href="#DCT_MEMORY_128_">DCT_MEMORY[128]</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="HCI_VERSION">HCI_VERSION</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -3313,6 +3364,8 @@ controller-role request only while in standby mode and while the bus is idle.</p
     </div>
   </div>
 </footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
 <script src="../../../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../../../_/js/a11y-patches.js"></script>
 <script src="../../../../../_/js/vendor/viewer.min.js"></script>

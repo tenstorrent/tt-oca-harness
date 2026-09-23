@@ -248,8 +248,15 @@ whenever a new accelerator is added to the subsystem.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/SEP_Crypto_Complex.png" alt="SEP_Crypto_Complex">
+<img src="_images/SEP_Crypto_Complex.png" alt="SEP cryptographic subsystem with integrator-supplied Key Manager, OTBN and Adams Bridge memories">
 </div>
+<div class="title">Figure 1. SEP cryptographic subsystem and external memories. Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9 with masking disabled.</div>
+</div>
+<div class="paragraph">
+<p>The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
+connect them through the dedicated <code>abr_mem</code> request/response interface.
+For the memory interface and configuration requirements, see
+<a href="../smu.html#sep-memory-interfaces" class="xref page">SEP Memory Interfaces in the Integrator Guide</a>.</p>
 </div>
 <div class="paragraph">
 <p>The <code>sep_crypto</code> module implements the integration layer, with
@@ -271,7 +278,7 @@ the Key Manager or the destination accelerator enters software reset.</p>
 Controller drains and isolates both its host and Key Manager paths before
 asserting reset; a Key Manager reset similarly drains all of its key paths. The
 entropy source, CSRNG, and EDN share one coordinated reset. See
-<a href="periphs.html#sep-reset-controller" class="xref page">SEP Reset Controller</a> and <a href="periphs.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>.</p>
+<a href="reset_controller.html#sep-reset-controller" class="xref page">SEP Reset Controller</a> and <a href="reset_controller.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>.</p>
 </div>
 </div>
 </div>
@@ -389,8 +396,11 @@ infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 DECERR on every beat, whatever its address; no beat reaches an accelerator.
 Software must access the whole crypto region with single-beat transactions.</p>
 </div>
-<div class="sect3">
-<h4 id="km-key-delivery"><a class="anchor" href="#km-key-delivery"></a><a class="link" href="#km-key-delivery">2.1. Key Manager Key Delivery</a></h4>
+</div>
+</div>
+<div class="sect1">
+<h2 id="km-key-delivery"><a class="anchor" href="#km-key-delivery"></a><a class="link" href="#km-key-delivery">3. Key Manager Key Delivery</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The Key Manager delivers keys and seeds to the crypto accelerators over a
 private key interface that software cannot read. Every delivery uses the same
@@ -410,8 +420,8 @@ value, and while it is 0 the destination has no valid key or seed.</p>
 <p>The words per share, whether software must select the delivered key in
 preference to the accelerator&#8217;s own software key registers, whether software
 must also declare the key length, and the behavior on an invalid or mismatched
-key are accelerator-specific. They are stated in the sections below and
-summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per accelerator</a>.</p>
+key are accelerator-specific. They are stated in the accelerator reference
+pages and summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per accelerator</a>.</p>
 </div>
 <table id="km-key-delivery-summary" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Key Manager key delivery per accelerator</caption>
@@ -469,678 +479,65 @@ summarized in <a href="#km-key-delivery-summary">Key Manager key delivery per ac
 </tr>
 </tbody>
 </table>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">3. HMAC-SHA2</a></h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>The HMAC component is based on the
-<a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
+<p>Cryptographic subsystem reference pages:</p>
 </div>
-<div class="sect2">
-<h3 id="och-modifications-4"><a class="anchor" href="#och-modifications-4"></a><a class="link" href="#och-modifications-4">3.1. OCAH Modifications</a></h3>
+<span id="true-random-number-generator-trng-true-random-number-generator-trng"></span>
 <div class="ulist">
 <ul>
 <li>
-<p>AXI4-lite key bus slave interface replaces side loading interface</p>
-</li>
-<li>
-<p>AXI4-lite control/status bus slave interface</p>
+<p><a href="trng.html" class="xref page">TRNG and DRBG</a></p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<p>The crypto interconnect narrows HMAC&#8217;s host path from 64-bit AXI to 32-bit AXI,
-converts and isolates it as AXI-Lite, then <code>hmac_wrapper</code> bridges it to TL-UL
-for the <code>tt_hmac</code> core. The address path subtracts the HMAC base address and
-masks to a 13-bit window (8 KB), accommodating both the register space and the
-message FIFO window at offset <code>0x1000</code>. HMAC exposes a single fatal
-alert channel (index <code>[0]</code> in <a href="#sep-crypto-alert-policy">OpenTitan Alert Termination</a>), three interrupts
-(<code>done</code>, <code>fifo_empty</code>, <code>err</code>), and an <code>idle_o</code> status output. Unlike the other
-crypto wrappers, HMAC has no EDN connection.</p>
-</div>
-<div class="paragraph">
-<p>The Key Manager delivers a 256-bit HMAC key as eight words per share, in the
-format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>. HMAC has no select bit: the delivered key
-is used in preference to the engine&#8217;s software key registers whenever
-<code>KEY_CTRL.KEY_VALID</code> is set.</p>
-</div>
-<div class="paragraph">
-<p>The delivered key is most-significant-bit justified in the engine&#8217;s 1024-bit
-key field, and the engine takes its key length from <code>CFG.key_length</code>, which the
-delivery path does not write. Software shall program <code>CFG.key_length</code> to the
-256-bit encoding to match the delivered key. An unset or unsupported length
-raises a configuration error when hashing starts. A supported length that
-disagrees with the delivered key does not raise an error: the engine takes key
-material from the top of the 1024-bit field, so the padding below the delivered
-key is mixed into the key and the resulting digest is wrong but repeatable.</p>
-</div>
-<div class="paragraph">
-<p>Consult the
-<a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC
-documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">4. OTBN PKA Public Key Accelerator</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The module is based on the
-<a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
-OTBN</a> design.</p>
-</div>
-<div class="paragraph">
-<p>Features:</p>
-</div>
+<span id="aes-cipher"></span>
+<span id="och-modifications-2"></span>
 <div class="ulist">
 <ul>
 <li>
-<p>Fully programmable big integer processor</p>
+<p><a href="aes.html" class="xref page">AES Cipher</a></p>
+</li>
+</ul>
+</div>
+<span id="hmac-sha2"></span>
+<span id="och-modifications-4"></span>
 <div class="ulist">
 <ul>
 <li>
-<p>256-bit data path with 32 entry register file</p>
-</li>
-<li>
-<p>32-bit control path with 32 entry register file</p>
-</li>
-<li>
-<p>Complex flow control: conditional branching, loops, call/return with
-optimized hardware for performance</p>
-</li>
-<li>
-<p>Dual status control bits to assist in big integer computation</p>
-</li>
-<li>
-<p>Optimized modular arithmetic on big integers</p>
+<p><a href="hmac.html" class="xref page">HMAC-SHA2</a></p>
 </li>
 </ul>
 </div>
-</li>
-<li>
-<p>Access to entropy noise stream from the TRNG</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The OTBN is programmed in assembly and its runtime driver library
-currently supports the following algorithms:</p>
-</div>
+<span id="kmac-sha3"></span>
+<span id="och-modifications-3"></span>
 <div class="ulist">
 <ul>
 <li>
-<p>ECDSA P256, P384</p>
+<p><a href="kmac.html" class="xref page">KMAC-SHA3</a></p>
 </li>
-<li>
-<p>ECDH P256, P384</p>
-</li>
-<li>
-<p>Ed25519</p>
-</li>
-<li>
-<p>X25519</p>
-</li>
-<li>
-<p>RSA 2k, 3k, 4k</p>
+</ul>
+</div>
+<span id="adams-bridge-abr"></span>
+<span id="och-modifications-5"></span>
 <div class="ulist">
 <ul>
 <li>
-<p>Key generation, signature generation and signature verification</p>
+<p><a href="adams_bridge.html" class="xref page">Adams Bridge (ABR)</a></p>
 </li>
 </ul>
 </div>
-</li>
-<li>
-<p>SHA256, SHA-512</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>Since the OTBN is programmable, more algorithms can easily be developed
-at a later time. The microcode is loaded into SRAM based instruction
-memory allowing firmware updates to be made in the field.</p>
-</div>
-<div class="sect2">
-<h3 id="och-modifications-1"><a class="anchor" href="#och-modifications-1"></a><a class="link" href="#och-modifications-1">4.1. OCAH Modifications</a></h3>
+<span id="otbn-pka-public-key-accelerator"></span>
+<span id="och-modifications-1"></span>
 <div class="ulist">
 <ul>
 <li>
-<p>AXI4-lite key bus slave interface replaces side loading interface</p>
+<p><a href="otbn.html" class="xref page">OTBN PKA Public Key Accelerator</a></p>
 </li>
 <li>
-<p>AXI4-lite control/status bus slave interface</p>
+<p><a href="../ip/key_manager/doc/index.html" class="xref page">Key Manager</a></p>
 </li>
 </ul>
 </div>
-<div class="paragraph">
-<p>The OTBN host path is the most complex OpenTitan path. The crypto interconnect
-applies a <code>CACHE_MODIFIABLE</code> bit fix before the <code>axi_dw_converter</code>, because the
-VeeR CPU may emit non-modifiable cache attributes for MMIO accesses that would
-be rejected by the AXI-to-AXI-Lite converter. After data-width conversion and
-AXI-Lite isolation, <code>sep_crypto_otbn_wrapper</code> bridges the request to TL-UL and
-drives the standard <code>otbn</code> core configured with <code>Stub = 0</code> and
-<code>RegFile = RegFileFF</code>.</p>
-</div>
-<div class="paragraph">
-<p>OTBN&#8217;s instruction and data memories are external SRAM macros; the IMEM and
-DMEM <code>prim_ram_1p_scr</code> ports are brought out of the wrapper to the <code>sep_crypto</code>
-top level. The two random-number request ports (<code>edn_rnd</code>, <code>edn_urnd</code>) are
-served over native-protocol EDN by the shared
-<code>drbg_axis_edn_adapter</code> instance <code>u_axis_edn_crypto_s3c_scan</code> in <code>sep_crypto</code>,
-which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink
-domain into per-client EDN responses. The adapter forwards the per-beat FIPS
-provenance through a generic AXI-Stream <code>tuser</code> sideband so OTBN RND observes
-compliant entropy and does not assert <code>rnd_fips_chk_fail</code>. The OTP scramble key
-handshake is tied to fixed values. Life-cycle escalation and RMA request
-signals are tied to their inactive state. OTBN occupies alert indices <code>[2:1]</code>
-in <a href="#sep-crypto-alert-policy">OpenTitan Alert Termination</a> and exports a single <code>intr_done_o</code> interrupt.</p>
-</div>
-<div class="paragraph">
-<p>The Key Manager delivers a 384-bit OTBN key as twelve words per share, the
-widest delivery in the subsystem, in the format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>.
-OTBN is the only accelerator that does not combine the shares in hardware. The
-shares are exposed to the executing program through the <code>KEY_S0_L</code> /
-<code>KEY_S0_H</code> and <code>KEY_S1_L</code> / <code>KEY_S1_H</code> special registers, each share split into
-a 256-bit low and a 128-bit high half, and the program is responsible for
-reconstructing the key as the XOR of the two shares. Each share is qualified
-independently: reading a share whose key is not valid sets
-<code>ERR_BITS.KEY_INVALID</code> and stops the program rather than returning key
-material.</p>
-</div>
-<div class="paragraph">
-<p>Consult the
-<a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan OTBN
-documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">5. AES Cipher</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The module is based on the
-<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
-</div>
-<div class="paragraph">
-<p>Key sizes: 128, 192 and 256
-Modes: ECB, CBC, CFB, OFB, CTR, CTR-GCM</p>
-</div>
-<div class="paragraph">
-<p>The accelerator consumes 128-bit data blocks written into its CSR memory
-space and produces 128-bit output blocks <em>round</em> number of cycles. The
-<em>round</em> value depends on the key size used.</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>128 bit key: 10 rounds</p>
-</li>
-<li>
-<p>192 bit key: 12 rounds</p>
-</li>
-<li>
-<p>256 bit key: 14 rounds</p>
-</li>
-</ul>
-</div>
-<div class="sect2">
-<h3 id="och-modifications-2"><a class="anchor" href="#och-modifications-2"></a><a class="link" href="#och-modifications-2">5.1. OCAH Modifications</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p>AXI4-lite key bus slave interface replaces side loading interface</p>
-</li>
-<li>
-<p>AXI4-lite control/status bus slave interface</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The AES host path follows the standard conversion and isolation sequence in the
-crypto interconnect (64-bit AXI → 32-bit AXI → AXI-Lite → isolate), without
-address adjustment or cache-attribute patching. <code>aes_wrapper</code> bridges the
-isolated path to TL-UL. EDN requests are served by the shared
-<code>drbg_axis_edn_adapter</code> instance
-<code>u_axis_edn_crypto_s3c_scan</code>, which converts the post-CSRNG DRBG AXI-Stream feed
-for the crypto sink domain into AES&#8217;s native-protocol EDN response. The adapter
-forwards the per-beat FIPS bit from the stream&#8217;s <code>tuser</code> sideband into
-<code>edn_fips</code>; AES itself does not consume the flag. The AES core uses <code>rst_ni</code> for
-both the main and shadow reset domains. Life-cycle escalation is tied to its
-inactive state. AES occupies alert indices <code>[4:3]</code> in
-<a href="#sep-crypto-alert-policy">OpenTitan Alert Termination</a> and exports an <code>idle_o</code> status output but no
-interrupt.</p>
-</div>
-<div class="paragraph">
-<p>The Key Manager delivers a 256-bit AES key as eight words per share, in the
-format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>. Software shall set
-<code>CTRL_SHADOWED.sideload</code> to select the delivered key. While that bit is 0 the
-engine uses its software key registers and the delivered key has no effect,
-and no error is reported. Software shall also program <code>CTRL_SHADOWED.key_len</code>
-to the 256-bit encoding to consume the whole delivered key: the key length is
-independent of the delivery path, and a shorter setting consumes only part of
-it. AES carries the two shares into the cipher datapath as a masked pair and
-does not combine them on the delivery path.</p>
-</div>
-<div class="paragraph">
-<p>Consult the
-<a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES
-documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">6. KMAC-SHA3</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The module is based on the
-<a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC</a> design.</p>
-</div>
-<div class="sect2">
-<h3 id="och-modifications-3"><a class="anchor" href="#och-modifications-3"></a><a class="link" href="#och-modifications-3">6.1. OCAH Modifications</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p>AXI4-lite key bus slave interface replaces side loading interface</p>
-</li>
-<li>
-<p>AXI4-lite control/status bus slave interface</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The KMAC host path uses the same conversion and isolation sequence as AES. The
-address path subtracts the KMAC base address and masks to a 12-bit window
-(4 KB) before the <code>axi_to_axi_lite</code> stage, aligning the internal decoder with
-the OpenTitan register block. <code>kmac_wrapper</code> bridges the isolated AXI-Lite path
-to TL-UL. EDN is handled identically to AES: KMAC is one of the four clients
-arbitrated by <code>u_axis_edn_crypto_s3c_scan</code> (the shared
-<code>drbg_axis_edn_adapter</code>), served from the same post-CSRNG DRBG AXI-Stream feed.
-The <code>app_i</code> application interface is tied off since the SEP does not use the
-KMAC hardware application path. Life-cycle escalation is inactive. KMAC
-occupies alert indices <code>[6:5]</code> in <a href="#sep-crypto-alert-policy">OpenTitan Alert Termination</a> and exports three
-interrupts: <code>done</code>, <code>fifo_empty</code>, and <code>err</code>.</p>
-</div>
-<div class="paragraph">
-<p>The Key Manager delivers a 256-bit KMAC key as eight words per share, in the
-format given in <a href="#km-key-delivery">Key Manager Key Delivery</a>. Software shall set <code>CFG_SHADOWED.sideload</code>
-to select the delivered key; while that bit is 0 the engine uses its software
-key registers. Unlike AES and HMAC, software does not declare a key length for
-a delivered key: the engine applies the delivered key&#8217;s length automatically
-and ignores its key-length register for that operation. KMAC is also the only
-accelerator that fails loudly on a missing key&#8201;&#8212;&#8201;beginning a keyed operation
-that uses the delivered key while <code>KEY_CTRL.KEY_VALID</code> is 0 raises an error
-instead of producing a digest.</p>
-</div>
-<div class="paragraph">
-<p>Consult the
-<a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC
-documentation</a> for the authoritative core functionality of the IP. The
-register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">7. Adams Bridge (ABR)</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The module is a post-quantum accelerator based on the
-<a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
-</div>
-<div class="paragraph">
-<p>Algorithms:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>ML-DSA-87 (FIPS 204)&#8201;&#8212;&#8201;key generation, signature generation and verification</p>
-</li>
-<li>
-<p>ML-KEM-1024 (FIPS 203)&#8201;&#8212;&#8201;key generation, encapsulation and decapsulation</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>ML-DSA is the post-quantum signature path intended for secure boot: each owner
-may be provisioned with an ML-DSA root public key alongside its classical key,
-with <code>REQUIRED_SIGNERS</code> selecting which owners must sign and <code>REQUIRED_ALGS</code>
-selecting, per owner, which of the two algorithms it must sign with (see
-<a href="lifecycle_controller.html#life-cycle-controller-lcc-life-cycle-controller-lcc" class="xref page">Life Cycle Controller (LCC)</a>). SEP ROM does not use
-this path today&#8201;&#8212;&#8201;it verifies a single classical RSA-3072 signature, and
-combined classical + PQC signing is deferred to a later release.</p>
-</div>
-<div class="sect2">
-<h3 id="och-modifications-5"><a class="anchor" href="#och-modifications-5"></a><a class="link" href="#och-modifications-5">7.1. OCAH Modifications</a></h3>
-<div class="ulist">
-<ul>
-<li>
-<p>AXI4-lite key bus slave interface replaces the Caliptra Key Vault</p>
-</li>
-<li>
-<p>AXI4 control/status bus slave interface, bridged to the core&#8217;s native AHB-lite</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>ABR is the one accelerator in the subsystem that is not an OpenTitan TL-UL
-design, so it does not use the standard three-stage bus pipeline.
-<code>sep_crypto_abr_wrapper</code> bridges its 64-bit AXI4 slave port straight to AHB-lite
-with the same <code>axi4_to_ahb</code> bridge that <code>sep_cpu</code> instantiates, and drives
-<code>abr_top</code>. The wrapper occupies a 64 kB aperture at <code>0x1094_0000</code>, decoded as
-port <code>SepCryptoAxiAbr</code> of the crypto demux.</p>
-</div>
-<div id="abr-aperture-decode" class="paragraph">
-<p>Inside that aperture there is no further decode. The vendored register block
-consumes all sixteen address bits and applies no address-validity or permission
-check, so the window is fully consumed but not fully populated: 24,160 of its
-65,536 bytes are defined. Objects sit at coarse offsets with the space between
-them unused&#8201;&#8212;&#8201;most on a 4 kB boundary, the interrupt block at <code>0x8100</code>,
-<code>MLKEM_MSG</code> at <code>0x9080</code> and <code>MLKEM_CIPHERTEXT</code> at <code>0xB800</code>&#8201;&#8212;&#8201;and the map ends
-at <code>0xC018</code>, leaving the last 16,360 bytes undefined.</p>
-</div>
-<div class="paragraph">
-<p>An access to any unpopulated offset completes with <code>OKAY</code>. A write is discarded;
-a read returns <code>0x0000_0000</code>. ABR never drives <code>hresp</code> to error, so the AHB error
-response its slave interface implements is unreachable. This is narrower than
-every other answer in the subsystem: an address outside the aperture, or any
-burst, is answered with DECERR by the demux (<a href="#crypto-single-beat-only">Single-Beat Access Only</a>), and
-the wrapper&#8217;s own <code>abr_wrapper_key_reg</code> CSRs answer an unmapped access with
-SLVERR. Software shall not rely on a bus error to detect a malformed ABR
-register address.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-This follows from the vendored collateral rather than a SEP decision.
-<code>abr_reg.sv</code> is generated in the Adams Bridge repository, not by the OCAH
-register flow, and address-validity decode is a PeakRDL-regblock exporter option
-rather than a SystemRDL property; the committed file predates that option.
-Changing it is an upstream change.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Upstream, Adams Bridge draws its secrets from the Caliptra Key Vault. OCAH does
-not instantiate that vault. The Key Manager&#8217;s private AXI4-Lite key bus
-terminates inside the wrapper at the <code>abr_wrapper_key_reg</code> CSR block&#8201;&#8212;&#8201;the same
-convention as the AES and OTBN wrappers&#8201;&#8212;&#8201;and <code>sep_abr_kv_shim</code> presents the
-recovered dual-share secrets to <code>abr_top</code> over the Caliptra <code>kv_read</code> / <code>kv_write</code>
-port protocol. Only the Key Vault client helpers are vendored; the vault storage
-block is not compiled. This leaves the vendored core unmodified while giving ABR
-the same kind of key path as every other accelerator, one mastered by the Key
-Manager.</p>
-</div>
-<div class="paragraph">
-<p>ABR is delivered seeds rather than keys, and is the only accelerator with more
-than one delivery destination. Four blocks are qualified independently&#8201;&#8212;&#8201;<code>MLDSA_SEED</code>, <code>MLKEM_SEED_D</code>, <code>MLKEM_SEED_Z</code> and <code>MLKEM_MSG</code>&#8201;&#8212;&#8201;each carrying
-eight words per share with its own <code>KEY_CTRL.KEY_VALID</code>, in the format given in
-<a href="#km-key-delivery">Key Manager Key Delivery</a>. The ML-DSA seed and the ML-KEM message are read as single
-256-bit values. The ML-KEM seed is read as one 512-bit value formed by
-concatenating <code>MLKEM_SEED_D</code> followed by <code>MLKEM_SEED_Z</code>, so that read completes
-only when both blocks are valid. Software shall enable the seed read before
-starting an operation that consumes a delivered seed.</p>
-</div>
-<div class="paragraph">
-<p>The ML-KEM shared key travels in the opposite direction, making this the only
-delivery destination that is also a source: the accelerator writes the shared
-key into <code>MLKEM_SHARED_KEY.KEY</code>, and on the final word sets that block&#8217;s
-<code>KEY_CTRL.KEY_VALID</code> and <code>IRQ_STATUS.KEY_VALID</code>, which raises the gated
-shared-key interrupt consumed by the Key Manager.</p>
-</div>
-<div class="paragraph">
-<p>The working SRAM is brought out of the wrapper as packed
-<code>abr_mem_req_t</code> / <code>abr_mem_rsp_t</code> structs. Word-write channels are <code>we</code> / <code>re</code> /
-address / data; <code>sig_z</code> and <code>pk</code> also carry one-bit-per-byte <code>wstrobe</code>.
-<code>SEP_ABR_SRAM_LATENCY</code> is the macros' native registered-read latency (default 1).
-<code>SEP_ABR_MASKING_EN</code> (default 1) selects Adams Bridge 2-share DOM: thirteen 1R1W
-macros versus nine, plus a second NTT. That choice changes ABR internal behavior
-(sequencing, SCA, memory topology), not merely throughput.</p>
-</div>
-<div class="paragraph">
-<p>ABR has no alert channel&#8201;&#8212;&#8201;it is the only crypto accelerator that reports faults
-solely by interrupt (Adams Bridge error and notification in
-<a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>), plus a gated ML-KEM shared-key interrupt
-consumed directly by the Key Manager. Whether the block is present in a build is
-controlled by <code>SEP_ABR_EN</code>, which always implies the vendored RTL&#8217;s <code>CALIPTRA</code>
-define; when it is absent, both the crypto crossbar port and the Key Manager key
-bus are terminated with AXI4-Lite error slaves.</p>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-Adams Bridge does not auto-return to its RESET state when an operation
-finishes. The sequencer parks at the operation&#8217;s end state with <code>STATUS.VALID</code>
-set, and <code>STATUS.READY</code> re-asserts only after a <code>zeroize</code> or a reset. Firmware
-therefore detects completion from <code>VALID</code>, and must issue a <code>zeroize</code> between
-back-to-back operations.
-</td>
-</tr>
-</table>
-</div>
-<div class="paragraph">
-<p>Consult the <a href="https://github.com/chipsalliance/adams-bridge">Adams Bridge
-documentation</a> for the authoritative core functionality of the IP. Its CSRs are
-defined by the vendored Caliptra register package rather than by an OCAH PeakRDL
-source, so unlike the other accelerators they do not appear in
-<a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">8. True Random Number Generator (TRNG)</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Entropy bits are fundamental data for key generation as well as for
-attack countermeasure implementations. The entropy source must be high
-quality, meaning that it meets the
-<a href="https://csrc.nist.gov/publications/detail/sp/800-90b/final">NIST SP
-800-90B</a> statistical requirements for a cryptographic source.</p>
-</div>
-<div class="paragraph">
-<p>The True Random Number Generator subsystem consists of the following
-elements:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Entropy source</p>
-</li>
-<li>
-<p>Entropy extractor, debiaser and whitener</p>
-</li>
-<li>
-<p>Statistical health online testing and reporting</p>
-</li>
-<li>
-<p>Entropy distributor</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The entropy source is typically a digital circuit employing ring
-oscillators which produces the random bit stream. Random bits are
-generated based on metastable sampling effects resulting from process,
-voltage and temperature variations in the delay of the asynchronous
-oscillator sampling. Once the entropy source is enabled it generates a
-continuous stream of random bits. The raw entropy stream will usually
-exhibit statistical biases. Debiasing is done with an LFSR like circuit
-which combines bits at a distance and down samples the stream. The
-debiaser is followed by a whitener which is most often implemented using
-a cryptographic hash function such as SHA256. Acceptable choices are
-listed in the NIST specification. The debiaser and whitener will improve
-the statistical properties of the stream, increasing the entropy rate,
-while reducing the actual bit stream rate.</p>
-</div>
-<div class="paragraph">
-<p>The online health tester monitors statistical metrics on both the raw
-entropy stream as well as the post-processed, whitened entropy stream on
-the TRNG output. Health monitoring tests include repetition count and
-markov tests, specified by NIST in addition to other tests such as
-bucket and Markov tests. The goal of the health monitor is to detect any
-measurable degradation in entropy quality due to external effects such
-as environment or active attack and to alert the security system of the
-degradation via alarm interrupts. Metrics can be queried by software via
-the CSRs.</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="_images/SEP_TRNG_Entropy.png" alt="SEP_TRNG_Entropy">
-</div>
-</div>
-<div class="paragraph">
-<p>In OCAH the whitened entropy stream from the noise source is not routed
-directly to the cryptographic accelerators. Instead it seeds the DRBG,
-and the post-CSRNG output of the DRBG (NIST SP 800-90A; HMAC-SHA2 or
-AES-CTR construction) is what fans out to the rest of the crypto
-subsystem. The DRBG exposes three AXI-Stream EDN endpoints
-(<code>u_drbg_s3c_scan.edn_axis_o[2:0]</code>) that carry conditioned, DRBG-generated bits,
-one per sink domain:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>endpoint <code>[0]</code> feeds the Key Manager sink domain;</p>
-</li>
-<li>
-<p>endpoint <code>[1]</code> feeds the four native-EDN crypto clients
-(AES, KMAC, OTBN edn_rnd, OTBN edn_urnd) through
-<code>u_axis_edn_crypto_s3c_scan</code> — the <code>drbg_axis_edn_adapter</code> that converts the
-32-bit AXI-Stream feed into a small round-robin native-protocol EDN
-fan-out;</p>
-</li>
-<li>
-<p>endpoint <code>[2]</code> feeds the fabric-level entropy-pool FIFO (<code>u_entropy_fifo</code> in
-<code>sep.sv</code>) through <code>u_axis_edn_pool_s3c_scan</code>. The pool generates three
-dedicated interrupts (<code>entropy_pool_low</code>, <code>entropy_pool_fill_stall</code>, and
-<code>entropy_pool_err</code>) listed in <a href="interrupts.html#sep-cpu-interrupt-vector-map" class="xref page">SEP CPU Interrupt Vector Map</a>.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>FIPS provenance is carried per-beat on a generic AXI-Stream <code>tuser</code>
-sideband. The adapter forwards this bit into each client&#8217;s <code>edn_fips</code> so
-that FIPS-aware consumers such as OTBN RND — which latches the bit and
-raises <code>rnd_fips_chk_fail</code> on a non-FIPS ack — observe the correct
-provenance of the bits they are receiving.</p>
-</div>
-<div class="paragraph">
-<p>The internal entropy complex uses one software-reset request,
-<code>SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N</code>. It resets ESRC, CSRNG, EDN, and the
-DRBG endpoint queues. A coordinator drains and isolates their three converted
-AXI4-Lite CSR paths before asserting the shared reset. While reset is active,
-the two post-mux EDN adapters and the fabric entropy pool synchronously clear
-their pending and buffered state; the pool remains AXI-accessible.</p>
-</div>
-<div class="paragraph">
-<p>There is no atomic reset boundary across the entropy consumers. Alarm recovery
-stops new TRNG CSR traffic before asserting the TRNG reset. A native EDN request
-already in flight stalls while the adapter clears and resumes with fresh entropy
-after reinitialization. Firmware may wait for AES, KMAC, or OTBN to become idle
-and reset them when policy requires aborting their operations, but that is not
-required by the TRNG reset coordinator.</p>
-</div>
-<div class="paragraph">
-<p>The Key Manager stream is not behind a post-mux adapter and is not scrubbed.
-The SEP host must keep the Key Manager idle before asserting the TRNG reset;
-see <a href="periphs.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>. After release, firmware fully reinitializes ESRC, CSRNG,
-and EDN and waits for fresh entropy progress before releasing consumers. The
-post-mux adapters reset even when an external source is selected, so an
-external stream is interrupted and cleanly restarted; the external TRNG CSR
-passthrough itself is unaffected.</p>
-</div>
-<div class="paragraph">
-<p>The Class 2 entropy boundary starts at
-<code>u_trng_wrapper_s3c_scan</code>, whose sequencer, 128-bit release stage, and stream
-FIFOs retain seed material. Its vendor core remains covered by its delivered
-DFT view. In <code>sep_crypto.u_sep_trng</code>, <code>u_entropy_source_s3c_scan</code> covers the
-entropy FIFO and SHA-256 whitener, <code>u_drbg_s3c_scan</code> covers CSRNG/EDN and endpoint state,
-and <code>u_axis_edn_crypto_s3c_scan</code> covers staging outside the DRBG root. The
-combinational source-selection muxes are not scan assets.</p>
-</div>
-<div class="paragraph">
-<p>The noise is distributed via streaming interfaces. The stream interface is
-generic and compatible with AXI-Stream and TLUL-Stream. The following table
-describes the stream interface. Source is the generator of the signal. Sink is
-the consumer. The entropy streaming interface will not require address or mask
-signals.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 20%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Polarity</th>
-<th class="tableblock halign-left valign-top">Width Range</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">valid</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">source</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active high indicates that the streaming data beat is valid.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ready</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">sink</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>Backpressure from the receiver. Active high indicates the sink can accept new
-data. Low informs the transmitter that it should hold off sending more data
-until the sink is ready again.</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">source</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[1,N]</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>Streaming payload data can be any width 1 to N bits. If the mask signal is
-used its width must be a multiple of bytes.</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">source</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">[0,M]</p></td>
-<td class="tableblock halign-left valign-top"><div class="content"><div class="paragraph">
-<p>Optional. Used when multiple sink endpoints are available. M can be any
-integer width</p>
-</div></div></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">mask</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">source</p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional. Byte mask if only a subset of the data is consumed by the sink</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 </article>
@@ -1162,6 +559,8 @@ integer width</p>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

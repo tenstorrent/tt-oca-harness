@@ -365,11 +365,10 @@ digest is extracted from OTP or gates, the token will remain unknown to
 the attacker.</p>
 </div>
 <div class="paragraph">
-<p>As just stated, the <em>SEC_DIS secret is stored</em> only in gates, not in
-OTP. The reason for this is that SEC_DIS is an emergency feature used to
-unlock the chip when the OTP fuse sensing logic is non-functional but we
-still need to unlock the chip. If we were to rely on the non-functioning
-OTP, we would be unable to unlock the chip.</p>
+<p>The SEC_DIS secret is stored only in gates and not in OTP. SEC_DIS is an
+emergency feature to unlock when the OTP is not functional so that the chip can
+still be unlocked. See
+<a href="security_disable.html#security-disable-sec_dis" class="xref page">Security Disable (SEC_DIS)</a>.</p>
 </div>
 </div>
 </div>
@@ -413,9 +412,8 @@ broken.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The actual matching logic is a vulnerable attack point via FIB or fault
-injection. We protect this by using triple-redundant matching logic on
-fully differential signals resulting in a 6-bit output as illustrated
-below.</p>
+injection. This is protected by using triple-redundant matching logic on fully
+differential signals resulting in a 6-bit output as illustrated below.</p>
 </div>
 <div class="paragraph">
 <p>This is not a majority vote scheme. While a comparison is in flight two
@@ -505,6 +503,8 @@ described in <em>OTP fuse controller</em> in this chapter.</p>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

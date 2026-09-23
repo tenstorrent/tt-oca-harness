@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Serial Peripheral Interface (SPI) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="description" content="SEP SPI host features, flash access, interrupts, and integration.">
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></li>
+    <li><a href="spi.html">Serial Peripheral Interface (SPI)</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Serial Peripheral Interface (SPI)</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div id="serial-peripheral-interface-spi-serial-peripheral-interface-spi" class="paragraph">
+<p>SEP will have one SPI host to support access to external NOR flash
+devices which are the primary BL1 image source. Modern devices are MT35
+type and have octal x8 DDR interfaces; the OpenTitan SPI Host does not
+drive those, so SEP uses the x4 and x1 channel modes it does support and
+attaches MT25 category devices.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="spi-use-cases"><a class="anchor" href="#spi-use-cases"></a><a class="link" href="#spi-use-cases">1. Use Cases</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>BL1 boot image access from external flash device</p>
+</li>
+<li>
+<p>Sensor interfaces (automotive primarily)</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">2. Features</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The component will be based on the
+<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host</a>
+design and support the following features:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Single channel (x1) mode, clock frequency up to 80 MHz</p>
+</li>
+<li>
+<p>Dual channel (x2) mode</p>
+</li>
+<li>
+<p>QSPI (x4), quad channel mode, clock frequency up to 166 MHz</p>
+</li>
+<li>
+<p>Separate FIFOs for transmit and receive. Each can be parameterized for
+distinct depth.</p>
+</li>
+<li>
+<p>AXI4-lite slave port for system interconnect</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Quad is the widest mode the IP offers: it drives four data lines, and its
+per-segment speed selector encodes only standard, dual and quad. All transfers
+are single transfer rate, so there is no octal (x8) mode, no DDR mode and no
+DQS read data strobe. An integrator needing those must substitute their own
+controller at the <code>sep_io_spi</code> boundary.</p>
+</div>
+<div class="paragraph">
+<p>The SPI pass-through mode supported by OpenTitan is used on discrete
+secure element designs as a security bridge to filter, modify or
+otherwise modify traffic coming from a separate SPI slave device. We do
+<em>not support</em> this feature and will leave this interface on the
+component unconnected or terminated. Furthermore, there is no SPI Slave
+device present in the SEP peripheral subsystem.</p>
+</div>
+<div class="paragraph">
+<p>The SEP instantiates a SPI host controller for boot. The <code>sep_ot_spi_wrap</code> module wraps the unmodified OpenTitan SPI host on its native TL-UL register interface and bridges the AXI4-Lite bus the peripheral fabric presents, the same arrangement the cryptographic accelerators use. It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output and a DMA trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the <code>sep_io_spi</code> boundary. The controller&#8217;s interrupt is consumed internally: it feeds the SEP PIC via <code>sep_internal_interrupts</code> (through the <code>irq</code> field of <code>sep_io_spi_req_t</code>). The two OpenTitan interrupt sources, error and SPI event, are combined onto that single line, so software reads <code>INTR_STATE</code> to tell them apart. There is no busy output: the OpenTitan host reports activity only through <code>STATUS.ACTIVE</code>, which software reads over the register interface. The block&#8217;s access-control (RACL) and SPI pass-through interfaces are not used and are tied off.</p>
+</div>
+<div class="paragraph">
+<p>The interrupt semantics are the OpenTitan ones throughout.
+<code>INTR_STATE.ERROR</code> is a latched event: an error
+condition or a write to <code>INTR_TEST</code> sets it, it stays set once the cause goes
+away and once <code>INTR_TEST</code> is written back to zero, and software clears it by
+writing 1 to it. Clearing <code>ERROR_STATUS</code> does not clear it.
+<code>INTR_STATE.SPI_EVENT</code> is a status bit that instead follows the level of the
+events selected by <code>EVENT_ENABLE</code>. <code>INTR_ENABLE</code> qualifies only the outgoing
+interrupt line; neither state bit is gated by it, so both read their source with
+the enable clear.</p>
+</div>
+<div class="paragraph">
+<p>SEP instantiates the vendored OpenTitan SPI Host without RTL modification.
+Before the core, <code>sep_io</code> narrows the 64-bit peripheral AXI bus to 32 bits and
+the wrapper converts AXI4-Lite to TL-UL. An 8-byte write is therefore emitted
+as two 4-byte writes. If its byte strobes select only one half, the other
+reaches the AXI4-Lite bridge with all strobes clear. The bridge completes that
+no-op locally with OKAY and does not issue a TL-UL request; if forwarded, the
+upstream register block would set <code>ERROR_STATUS.ACCESSINVAL</code> and return an
+error.</p>
+</div>
+<div class="paragraph">
+<p>Consult the
+<a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host
+documentation</a> for the authoritative core functionality of the IP.
+The
+register map is reported in the <a href="memory_map.html#sep-detailed-register-map" class="xref page">Detailed Register Map</a>.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

@@ -199,23 +199,62 @@
     <a class="nav-link" href="crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/drbg/doc/index.html">DRBG</a>
+</ul>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="periphs.html">Fuse Controller and Peripherals</a>
+    <a class="nav-link" href="periphs.html">Fuse Controller and Lifecycle Controller</a>
 <ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="reset_controller.html">SEP Reset Controller</a>
+  </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="token_processing.html">Token Processing</a>
   </li>
@@ -323,7 +362,16 @@
     <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
   </li>
   <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../aou-ppa-appendices.html">PPA and Appendices</a>
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -331,6 +379,9 @@
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
@@ -408,17 +459,19 @@
     <li>OCAH Platform Components</li>
     <li><a href="../smu/index.html">System Management Unit (SMU)</a></li>
     <li><a href="index.html">Security Processor (SEP)</a></li>
-    <li><a href="periphs.html">Fuse Controller and Peripherals</a></li>
+    <li><a href="periphs.html">Fuse Controller and Lifecycle Controller</a></li>
     <li><a href="security_disable.html">Security Disable</a></li>
   </ul>
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="4">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
 <h1 class="page">Security Disable (SEC_DIS)</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div id="security-disable-sec_dis" class="paragraph">
 <p>Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
 silicon. On deassertion of power-on reset, the fuse sense logic runs before
@@ -436,6 +489,11 @@ chain to a dump: that chain admits only test commands, and only at
 <code>secure_tm = 1</code>, independently of the feature-control bits (see the Life Cycle
 Controller chapter, <em>`secure_tm` and the Secure Scan Chain</em>).</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="token-activation"><a class="anchor" href="#token-activation"></a><a class="link" href="#token-activation">1. Token Activation</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>SEC_DIS is activated by presenting a secret token: SEC_DIS_TOKEN_I is passed
 into the SEP via the JTAG port, hashed, and redundantly compared against an
@@ -445,6 +503,11 @@ debug access, and the feature-control output follows the SEC_DIS rules in the
 Life Cycle Controller chapter. Once SEC_DIS is active,
 the SEP can boot even if the fuse sense logic never completes.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="silicon-revision-scope"><a class="anchor" href="#silicon-revision-scope"></a><a class="link" href="#silicon-revision-scope">2. Silicon Revision Scope</a></h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>SEC_DIS is intended for A0 silicon only and is removed in later revisions
 (A1/B0) by a simple metal-mask ECO: the token comparator&#8217;s enable is
@@ -452,9 +515,11 @@ implemented in a metal-programmable revision cell, strapped to 1 (comparator
 enabled) in A0 silicon and re-strapped to 0 at top metal in later revisions,
 so the feature is killed without a re-spin.</p>
 </div>
-<div class="paragraph">
-<p>Implementation requirements:</p>
 </div>
+</div>
+<div class="sect1">
+<h2 id="implementation-requirements"><a class="anchor" href="#implementation-requirements"></a><a class="link" href="#implementation-requirements">3. Implementation Requirements</a></h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
@@ -494,6 +559,8 @@ post-layout extracted netlist with <strong><em>gate-level simulation</em></stron
 </li>
 </ul>
 </div>
+</div>
+</div>
 <nav class="pagination">
   <span class="prev"><a href="token_processing.html">Token Processing</a></span>
   <span class="next"><a href="lifecycle_controller.html">Life Cycle Controller</a></span>
@@ -517,6 +584,8 @@ post-layout extracted netlist with <strong><em>gate-level simulation</em></stron
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

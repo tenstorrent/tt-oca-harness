@@ -744,6 +744,94 @@ firmware.</p>
 <p>The unallocated remainder of the window is passed through to the chip-level
 adopter external port.</p>
 </div>
+<div class="sect2">
+<h3 id="external-window-reference-maps"><a class="anchor" href="#external-window-reference-maps"></a><a class="link" href="#external-window-reference-maps">External Window Reference Maps</a></h3>
+<div class="paragraph">
+<p>The PLL and PVT maps below describe placeholder memory footprints used by the
+open verification models. Their memory words do not specify the control
+registers of an adopter&#8217;s clock or sensor implementation. The straps map
+describes captured GPIO values. Placement of these blocks within the external
+window is integration-specific.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: pll_wrap</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>mem_array[954]</strong>: 954 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0xEE4</td><td><a href="#mem_array_954_">mem_array[954]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="mem_array_954_">mem_array[954]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: pvt_wrap</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>mem_array[594]</strong>: 594 registers, base 0x0, stride 0x4</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0 - 0x944</td><td><a href="#mem_array_594_">mem_array[594]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="mem_array_594_">mem_array[594]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: straps</h2>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#STRAPS_LO">STRAPS_LO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4</td><td><a href="#STRAPS_HI">STRAPS_HI</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="STRAPS_LO">STRAPS_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.<br>Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still<br>latch their pad value here, but no strap function consumes it.<br>Strap assignments in this range:<br>* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap<br>* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap<br>* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process<br>* bit 14: TEST_EN - Enable DFT test mode<br>* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap<br>* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0<br>* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel<br>* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted<br>* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default<br>* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field<br>* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap<br>* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master<br>* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted</td></tr>
+</table>
+<h3 id="STRAPS_HI">STRAPS_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.<br>All bits other than those listed below have no strap assigned. Those GPIOs<br>still latch their pad value here, but no strap function consumes it.<br>GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie<br>outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).<br>Strap assignments in this range:<br>* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot<br>* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM</td></tr>
+</table>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -846,8 +934,7 @@ reporting</p></td>
 programmer-visible spare SMC blocks. They are spare but essential: for
 example, the scratch block provides general-purpose registers, and the
 chip-config and NDM-reset blocks hold system-level configuration and
-reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as described in
-<a href="periphs.html#peripherals" class="xref page">Peripherals</a>.</p>
+reset control.</p>
 </div>
 <div class="sect2">
 <h3 id="smc-ndm-reset-block"><a class="anchor" href="#smc-ndm-reset-block"></a><a class="link" href="#smc-ndm-reset-block">Chip Config, Scratch, NDM Reset, and Misc Wrap</a></h3>
@@ -860,7 +947,7 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: chip_config</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
@@ -868,7 +955,7 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 <tr><td>0x8</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
 <tr><td>0xC</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="VERSION_LO">VERSION_LO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -904,12 +991,12 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 <ul>
 <li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="SCRATCH_8_">SCRATCH[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -925,14 +1012,14 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: ndm_reset</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#NDMRESET_REQUEST">NDMRESET_REQUEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -963,7 +1050,7 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 <ul>
 <li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
@@ -975,7 +1062,7 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 <tr><td>0x204</td><td><a href="#NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x208</td><td><a href="#NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="SCRATCH_8_">SCRATCH[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1031,7 +1118,7 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: smc_base_config</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#GLOBAL_BASE">GLOBAL_BASE</a></td><td>RW</td><td>-</td></tr>
@@ -1045,7 +1132,7 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 <tr><td>0x40</td><td><a href="#HANG_DET_DATA_ACCEL_CTRL">HANG_DET_DATA_ACCEL_CTRL</a></td><td>RW</td><td>AXI hang detector control.</td></tr>
 <tr><td>0x48</td><td><a href="#HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD">HANG_DET_DATA_ACCEL_TIMEOUT_THRESHOLD</a></td><td>RW</td><td>Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="GLOBAL_BASE">GLOBAL_BASE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1143,14 +1230,14 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: dfx_ctrl_status</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#STATUS_SMU">STATUS_SMU</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#DEBUG_CTRL">DEBUG_CTRL</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#DEBUG_BUS_MUX">DEBUG_BUS_MUX</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="STATUS_SMU">STATUS_SMU</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1203,13 +1290,13 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: gpio_poc_pbias_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CONTROL">CONTROL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1229,6 +1316,1397 @@ reset control. <code>oca_i3c_wrap</code> is omitted; I3C remains deferred as des
 <tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.</td></tr>
 </table>
 </div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-i3c-registers"><a class="anchor" href="#smc-i3c-registers"></a><a class="link" href="#smc-i3c-registers">I3C Controller Registers</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The generated I3C register map describes the current register specification.
+I3C integration verification remains a work in progress.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2>Address Map: oca_i3c_wrap</h2>
+<p><strong>Register Arrays:</strong></p>
+<ul>
+<li><strong>DAT_MEMORY[128]</strong>: 128 registers, base 0x400, stride 0x8</li>
+<li><strong>DCT_MEMORY[128]</strong>: 128 registers, base 0x800, stride 0x10</li>
+</ul>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#HCI_VERSION">HCI_VERSION</a></td><td>R</td><td>Identifies the implemented MIPI I3C HCI version.</td></tr>
+<tr><td>0x4</td><td><a href="#HC_CONTROL">HC_CONTROL</a></td><td>RW</td><td>Controls host-controller bus operation, mode selection, transaction abort, and Hot-Join handling.</td></tr>
+<tr><td>0x8</td><td><a href="#CONTROLLER_DEVICE_ADDR">CONTROLLER_DEVICE_ADDR</a></td><td>RW</td><td>Configures the controller dynamic address and indicates whether that address is valid.</td></tr>
+<tr><td>0xC</td><td><a href="#HC_CAPABILITIES">HC_CAPABILITIES</a></td><td>R</td><td>Reports the host-controller capabilities implemented by this instance.</td></tr>
+<tr><td>0x10</td><td><a href="#RESET_CONTROL">RESET_CONTROL</a></td><td>RW</td><td>Requests a controller soft reset or selective PIO queue and FIFO resets. Reset requests are self-clearing.</td></tr>
+<tr><td>0x14</td><td><a href="#PRESENT_STATE">PRESENT_STATE</a></td><td>R</td><td>Reports current controller state, including active-controller bus ownership.</td></tr>
+<tr><td>0x20</td><td><a href="#INTR_STATUS">INTR_STATUS</a></td><td>RW</td><td>Reports host-controller error and exceptional-condition status. Implemented status fields are write-one-to-clear.</td></tr>
+<tr><td>0x24</td><td><a href="#INTR_STATUS_ENABLE">INTR_STATUS_ENABLE</a></td><td>RW</td><td>Enables individual host-controller interrupt status sources.</td></tr>
+<tr><td>0x28</td><td><a href="#INTR_SIGNAL_ENABLE">INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>Routes enabled host-controller interrupt sources to the interrupt output.</td></tr>
+<tr><td>0x2C</td><td><a href="#INTR_FORCE">INTR_FORCE</a></td><td>W</td><td>Forces host-controller interrupts for software testing.</td></tr>
+<tr><td>0x30</td><td><a href="#DAT_SECTION_OFFSET">DAT_SECTION_OFFSET</a></td><td>R</td><td>Reports the Device Address Table section offset and size.</td></tr>
+<tr><td>0x34</td><td><a href="#DCT_SECTION_OFFSET">DCT_SECTION_OFFSET</a></td><td>RW</td><td>Configures the Device Characteristic Table section offset, size, and ENTDAA index.</td></tr>
+<tr><td>0x38</td><td><a href="#RING_HEADERS_SECTION_OFFSET">RING_HEADERS_SECTION_OFFSET</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3C</td><td><a href="#PIO_SECTION_OFFSET">PIO_SECTION_OFFSET</a></td><td>R</td><td>Reports the PIO section offset.</td></tr>
+<tr><td>0x40</td><td><a href="#EXT_CAPS_SECTION_OFFSET">EXT_CAPS_SECTION_OFFSET</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4C</td><td><a href="#INT_CTRL_CMDS_EN">INT_CTRL_CMDS_EN</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x58</td><td><a href="#IBI_NOTIFY_CTRL">IBI_NOTIFY_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x5C</td><td><a href="#IBI_DATA_ABORT_CTRL">IBI_DATA_ABORT_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x60</td><td><a href="#DEV_CTX_BASE_LO">DEV_CTX_BASE_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x64</td><td><a href="#DEV_CTX_BASE_HI">DEV_CTX_BASE_HI</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x68</td><td><a href="#DEV_CTX_SG">DEV_CTX_SG</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x80</td><td><a href="#COMMAND_PORT">COMMAND_PORT</a></td><td>W</td><td>Accepts a 64-bit command descriptor as two consecutive 32-bit writes. The second write enqueues the descriptor.</td></tr>
+<tr><td>0x84</td><td><a href="#RESPONSE_PORT">RESPONSE_PORT</a></td><td>R</td><td>Returns one 32-bit response descriptor from the response queue.</td></tr>
+<tr><td>0x88</td><td><a href="#TX_DATA_PORT">TX_DATA_PORT</a></td><td>W</td><td>Writes transmit data to the TX FIFO. This port shares its address with the read-only RX data port.</td></tr>
+<tr><td>0x88</td><td><a href="#RX_DATA_PORT">RX_DATA_PORT</a></td><td>R</td><td>Reads received data from the RX FIFO. This port shares its address with the write-only TX data port.</td></tr>
+<tr><td>0x8C</td><td><a href="#IBI_PORT">IBI_PORT</a></td><td>R</td><td>Returns IBI status and payload data. Payload data is padded to a 4-byte boundary.</td></tr>
+<tr><td>0x90</td><td><a href="#QUEUE_THLD_CTRL">QUEUE_THLD_CTRL</a></td><td>RW</td><td>Configures command, response, and IBI queue thresholds.</td></tr>
+<tr><td>0x94</td><td><a href="#DATA_BUFFER_THLD_CTRL">DATA_BUFFER_THLD_CTRL</a></td><td>RW</td><td>Configures TX and RX start and ready thresholds, encoded as powers of two.</td></tr>
+<tr><td>0x98</td><td><a href="#QUEUE_SIZE">QUEUE_SIZE</a></td><td>R</td><td>Reports command, response, IBI, TX, and RX queue depths.</td></tr>
+<tr><td>0x9C</td><td><a href="#ALT_QUEUE_SIZE">ALT_QUEUE_SIZE</a></td><td>R</td><td>Reports extended IBI and alternate response queue sizes.</td></tr>
+<tr><td>0xA0</td><td><a href="#PIO_INTR_STATUS">PIO_INTR_STATUS</a></td><td>RW</td><td>Reports PIO queue-threshold and transfer-event interrupt status.</td></tr>
+<tr><td>0xA4</td><td><a href="#PIO_INTR_STATUS_ENABLE">PIO_INTR_STATUS_ENABLE</a></td><td>RW</td><td>Enables individual PIO interrupt status sources.</td></tr>
+<tr><td>0xA8</td><td><a href="#PIO_INTR_SIGNAL_ENABLE">PIO_INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>Routes enabled PIO interrupt sources to the interrupt output.</td></tr>
+<tr><td>0xAC</td><td><a href="#PIO_INTR_FORCE">PIO_INTR_FORCE</a></td><td>W</td><td>-</td></tr>
+<tr><td>0xB0</td><td><a href="#PIO_CONTROL">PIO_CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x100</td><td><a href="#EXTCAP_HEADER">EXTCAP_HEADER</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#PROT_CAP_0">PROT_CAP_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#PROT_CAP_1">PROT_CAP_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#PROT_CAP_2">PROT_CAP_2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x110</td><td><a href="#PROT_CAP_3">PROT_CAP_3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x114</td><td><a href="#DEVICE_ID_0">DEVICE_ID_0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x118</td><td><a href="#DEVICE_ID_1">DEVICE_ID_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x11C</td><td><a href="#DEVICE_ID_2">DEVICE_ID_2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x120</td><td><a href="#DEVICE_ID_3">DEVICE_ID_3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x124</td><td><a href="#DEVICE_ID_4">DEVICE_ID_4</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x128</td><td><a href="#DEVICE_ID_5">DEVICE_ID_5</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x12C</td><td><a href="#DEVICE_ID_RESERVED">DEVICE_ID_RESERVED</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x130</td><td><a href="#DEVICE_STATUS_0">DEVICE_STATUS_0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x134</td><td><a href="#DEVICE_STATUS_1">DEVICE_STATUS_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x138</td><td><a href="#DEVICE_RESET">DEVICE_RESET</a></td><td>RW</td><td>For devices which support reset, this register will reset the device or management entity</td></tr>
+<tr><td>0x13C</td><td><a href="#RECOVERY_CTRL">RECOVERY_CTRL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x140</td><td><a href="#RECOVERY_STATUS">RECOVERY_STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x144</td><td><a href="#HW_STATUS">HW_STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x148</td><td><a href="#INDIRECT_FIFO_CTRL_0">INDIRECT_FIFO_CTRL_0</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x14C</td><td><a href="#INDIRECT_FIFO_CTRL_1">INDIRECT_FIFO_CTRL_1</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x150</td><td><a href="#INDIRECT_FIFO_STATUS_0">INDIRECT_FIFO_STATUS_0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x154</td><td><a href="#INDIRECT_FIFO_STATUS_1">INDIRECT_FIFO_STATUS_1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x158</td><td><a href="#INDIRECT_FIFO_STATUS_2">INDIRECT_FIFO_STATUS_2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x15C</td><td><a href="#INDIRECT_FIFO_STATUS_3">INDIRECT_FIFO_STATUS_3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x160</td><td><a href="#INDIRECT_FIFO_STATUS_4">INDIRECT_FIFO_STATUS_4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x164</td><td><a href="#INDIRECT_FIFO_RESERVED">INDIRECT_FIFO_RESERVED</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x168</td><td><a href="#INDIRECT_FIFO_DATA">INDIRECT_FIFO_DATA</a></td><td>R</td><td>Indirect memory access to address space configured in INDIRECT_FIFO_CTRL at the Head Pointer offset.</td></tr>
+<tr><td>0x184</td><td><a href="#STBY_CR_CONTROL">STBY_CR_CONTROL</a></td><td>RW</td><td>Configures standby-controller operation, dynamic-address-assignment methods, target transactions, and controller-role handoff.</td></tr>
+<tr><td>0x188</td><td><a href="#STBY_CR_DEVICE_ADDR">STBY_CR_DEVICE_ADDR</a></td><td>RW</td><td>Configures standby-controller dynamic and static addresses.</td></tr>
+<tr><td>0x18C</td><td><a href="#STBY_CR_CAPABILITIES">STBY_CR_CAPABILITIES</a></td><td>R</td><td>Reports standby-controller capabilities.</td></tr>
+<tr><td>0x190</td><td><a href="#STBY_CR_VIRTUAL_DEVICE_CHAR">STBY_CR_VIRTUAL_DEVICE_CHAR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x194</td><td><a href="#STBY_CR_STATUS">STBY_CR_STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x198</td><td><a href="#STBY_CR_DEVICE_CHAR">STBY_CR_DEVICE_CHAR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x19C</td><td><a href="#STBY_CR_DEVICE_PID_LO">STBY_CR_DEVICE_PID_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1A0</td><td><a href="#STBY_CR_INTR_STATUS">STBY_CR_INTR_STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1A4</td><td><a href="#STBY_CR_VIRTUAL_DEVICE_PID_LO">STBY_CR_VIRTUAL_DEVICE_PID_LO</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1A8</td><td><a href="#STBY_CR_INTR_SIGNAL_ENABLE">STBY_CR_INTR_SIGNAL_ENABLE</a></td><td>RW</td><td>When set to 1&#x27;b1, and the corresponding interrupt status field is set in register<br>STBY_CR_INTR_STATUS, the Host Controller shall assert an interrupt to the Host.</td></tr>
+<tr><td>0x1AC</td><td><a href="#STBY_CR_INTR_FORCE">STBY_CR_INTR_FORCE</a></td><td>RW</td><td>For software testing, when set to 1&#x27;b1, forces the corresponding interrupt<br>to be sent to the Host, if the corresponding fields are set in register<br>STBY_CR_INTR_SIGNAL_ENABLE</td></tr>
+<tr><td>0x1B0</td><td><a href="#STBY_CR_CCC_CONFIG_GETCAPS">STBY_CR_CCC_CONFIG_GETCAPS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1B4</td><td><a href="#STBY_CR_CCC_CONFIG_RSTACT_PARAMS">STBY_CR_CCC_CONFIG_RSTACT_PARAMS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1B8</td><td><a href="#STBY_CR_VIRT_DEVICE_ADDR">STBY_CR_VIRT_DEVICE_ADDR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1BC</td><td><a href="#STBY_CR_MWL">STBY_CR_MWL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1C0</td><td><a href="#STBY_CR_MRL">STBY_CR_MRL</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x204</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x208</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Status Register</td></tr>
+<tr><td>0x210</td><td><a href="#QUEUE_STATUS">QUEUE_STATUS</a></td><td>R</td><td>Dynamic queue full/empty status for debug and monitoring</td></tr>
+<tr><td>0x214</td><td><a href="#DESC_QUEUE_DEPTH">DESC_QUEUE_DEPTH</a></td><td>R</td><td>Current number of entries in descriptor queues</td></tr>
+<tr><td>0x218</td><td><a href="#DATA_QUEUE_DEPTH">DATA_QUEUE_DEPTH</a></td><td>R</td><td>Current number of DWORD entries in data queues</td></tr>
+<tr><td>0x21C</td><td><a href="#IBI_QUEUE_DEPTH">IBI_QUEUE_DEPTH</a></td><td>R</td><td>Current number of entries in IBI queue</td></tr>
+<tr><td>0x220</td><td><a href="#INTERRUPT_STATUS">INTERRUPT_STATUS</a></td><td>RW</td><td>Interrupt Status.<br><br>How a bit is cleared depends on the bit:<br><br>- Auto-cleared by hardware on a specific access: RX_DESC_STAT, RX_DESC_THLD_STAT<br>and RX_DATA_THLD_STAT clear when software reads the corresponding RX queue; IBI_DONE<br>clears when software reads STATUS.LAST_IBI_STATUS. These bits are also write-1-to-clear,<br>but the normal servicing access clears them without an explicit write here.<br><br>- Write-1-to-clear only (no hardware auto-clear): TX_DESC_COMPLETE, TX_DESC_STAT,<br>TX_DESC_THLD_STAT, TX_DATA_THLD_STAT, IBI_THLD_STAT, and the not-implemented<br>TRANSFER_ERR_STAT, TRANSFER_ABORT_STAT, TX_DESC_TIMEOUT, RX_DESC_TIMEOUT. Write 1 to<br>the bit in this register to clear it.<br><br>- Read-only, hardware-driven level status that cannot be cleared by software:<br>PENDING_IBI and PENDING_INTERRUPT track live conditions.</td></tr>
+<tr><td>0x224</td><td><a href="#INTERRUPT_ENABLE">INTERRUPT_ENABLE</a></td><td>RW</td><td>Interrupt Enable</td></tr>
+<tr><td>0x228</td><td><a href="#INTERRUPT_FORCE">INTERRUPT_FORCE</a></td><td>RW</td><td>Interrupt Force</td></tr>
+<tr><td>0x22C</td><td><a href="#TARGET_ERR_CTRL">TARGET_ERR_CTRL</a></td><td>RW</td><td>Target Error Detection Control. Set bits to enable error detection. Clear to disable.</td></tr>
+<tr><td>0x230</td><td><a href="#TARGET_ERR_INTR_STATUS">TARGET_ERR_INTR_STATUS</a></td><td>RW</td><td>Target Error Interrupt Status. Write 1 to clear individual bits.</td></tr>
+<tr><td>0x234</td><td><a href="#TARGET_ERR_INTR_ENABLE">TARGET_ERR_INTR_ENABLE</a></td><td>RW</td><td>Target Error Interrupt Enable. Set bits to enable corresponding interrupts.</td></tr>
+<tr><td>0x238</td><td><a href="#TARGET_ERR_INTR_FORCE">TARGET_ERR_INTR_FORCE</a></td><td>RW</td><td>Target Error Interrupt Force. Set bits to force corresponding interrupts for testing.</td></tr>
+<tr><td>0x23C</td><td><a href="#TARGET_ERR_CNT_TE0">TARGET_ERR_CNT_TE0</a></td><td>RW</td><td>Counts TE0 errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x240</td><td><a href="#TARGET_ERR_CNT_TE1">TARGET_ERR_CNT_TE1</a></td><td>RW</td><td>Counts TE1 errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x244</td><td><a href="#TARGET_ERR_CNT_TE2">TARGET_ERR_CNT_TE2</a></td><td>RW</td><td>Counts TE2 errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x248</td><td><a href="#TARGET_ERR_CNT_TE3">TARGET_ERR_CNT_TE3</a></td><td>RW</td><td>Counts TE3 errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x24C</td><td><a href="#TARGET_ERR_CNT_TE4">TARGET_ERR_CNT_TE4</a></td><td>RW</td><td>Counts TE4 errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x250</td><td><a href="#TARGET_ERR_CNT_TE5">TARGET_ERR_CNT_TE5</a></td><td>RW</td><td>Counts TE5 errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x254</td><td><a href="#TARGET_ERR_CNT_FRAMING">TARGET_ERR_CNT_FRAMING</a></td><td>RW</td><td>Counts framing errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x258</td><td><a href="#TARGET_ERR_CNT_RI_PEC">TARGET_ERR_CNT_RI_PEC</a></td><td>RW</td><td>Counts Recovery Interface PEC errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x25C</td><td><a href="#TARGET_ERR_CNT_RI_LENGTH">TARGET_ERR_CNT_RI_LENGTH</a></td><td>RW</td><td>Counts Recovery Interface length mismatch errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x260</td><td><a href="#TARGET_ERR_CNT_RI_READONLY">TARGET_ERR_CNT_RI_READONLY</a></td><td>RW</td><td>Counts Recovery Interface write-to-read-only errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x264</td><td><a href="#TARGET_ERR_CNT_RI_UNSUPPORTED">TARGET_ERR_CNT_RI_UNSUPPORTED</a></td><td>RW</td><td>Counts Recovery Interface unsupported command errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x268</td><td><a href="#TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW">TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW</a></td><td>RW</td><td>Counts Recovery Interface RX FIFO overflow errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x26C</td><td><a href="#TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW">TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW</a></td><td>RW</td><td>Counts Recovery Interface INDIRECT FIFO overflow errors. Saturates at 255. Write 0 to clear.</td></tr>
+<tr><td>0x270</td><td><a href="#RX_DESC_QUEUE_PORT">RX_DESC_QUEUE_PORT</a></td><td>R</td><td>RX Descriptor Queue Port</td></tr>
+<tr><td>0x278</td><td><a href="#TX_DESC_QUEUE_PORT">TX_DESC_QUEUE_PORT</a></td><td>W</td><td>TX Descriptor Queue Port</td></tr>
+<tr><td>0x288</td><td><a href="#IBI_QUEUE_SIZE">IBI_QUEUE_SIZE</a></td><td>R</td><td>IBI Queue Size</td></tr>
+<tr><td>0x304</td><td><a href="#SOC_MGMT_CONTROL">SOC_MGMT_CONTROL</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x308</td><td><a href="#SOC_MGMT_STATUS">SOC_MGMT_STATUS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30C</td><td><a href="#REC_INTF_CFG">REC_INTF_CFG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x310</td><td><a href="#REC_INTF_REG_W1C_ACCESS">REC_INTF_REG_W1C_ACCESS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x314</td><td><a href="#SOC_MGMT_RSVD_2">SOC_MGMT_RSVD_2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x318</td><td><a href="#SOC_MGMT_RSVD_3">SOC_MGMT_RSVD_3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x31C</td><td><a href="#SOC_PAD_CONF">SOC_PAD_CONF</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x320</td><td><a href="#SOC_PAD_ATTR">SOC_PAD_ATTR</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x324</td><td><a href="#SOC_MGMT_FEATURE_2">SOC_MGMT_FEATURE_2</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x328</td><td><a href="#SOC_MGMT_FEATURE_3">SOC_MGMT_FEATURE_3</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x32C</td><td><a href="#T_R_REG">T_R_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x330</td><td><a href="#T_F_REG">T_F_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x334</td><td><a href="#T_SU_DAT_REG">T_SU_DAT_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x338</td><td><a href="#T_SU_DAT_I2C_REG">T_SU_DAT_I2C_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x33C</td><td><a href="#T_HD_DAT_REG">T_HD_DAT_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x340</td><td><a href="#T_HIGH_REG">T_HIGH_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x344</td><td><a href="#T_HIGH_OD_REG">T_HIGH_OD_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x348</td><td><a href="#T_HIGH_INIT_OD_REG">T_HIGH_INIT_OD_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x34C</td><td><a href="#T_HIGH_I2C_REG">T_HIGH_I2C_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x350</td><td><a href="#T_LOW_REG">T_LOW_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x354</td><td><a href="#T_LOW_OD_REG">T_LOW_OD_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x358</td><td><a href="#T_LOW_I2C_REG">T_LOW_I2C_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x35C</td><td><a href="#T_HD_STA_REG">T_HD_STA_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x360</td><td><a href="#T_HD_STA_I2C_REG">T_HD_STA_I2C_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x364</td><td><a href="#T_HD_RSTA_REG">T_HD_RSTA_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x368</td><td><a href="#T_SU_STA_REG">T_SU_STA_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x36C</td><td><a href="#T_SU_STA_I2C_REG">T_SU_STA_I2C_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x370</td><td><a href="#T_SU_STO_REG">T_SU_STO_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x374</td><td><a href="#T_SU_STO_I2C_REG">T_SU_STO_I2C_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x378</td><td><a href="#T_DS_OD_REG">T_DS_OD_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x37C</td><td><a href="#T_FREE_REG">T_FREE_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x380</td><td><a href="#T_FREE_I2C_REG">T_FREE_I2C_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x384</td><td><a href="#T_AVAL_REG">T_AVAL_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x388</td><td><a href="#T_IDLE_REG">T_IDLE_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x38C</td><td><a href="#HDR_TIMEOUT_EN_REG">HDR_TIMEOUT_EN_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x390</td><td><a href="#T_HDR_TIMEOUT_REG">T_HDR_TIMEOUT_REG</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x39C</td><td><a href="#CONTROLLER_CONFIG">CONTROLLER_CONFIG</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3A0</td><td><a href="#TERMINATION_EXTCAP_HEADER">TERMINATION_EXTCAP_HEADER</a></td><td>R</td><td>Register after the last EC must advertise ID == 0.<br>Termination register is added to guarantee that the discovery mechanism<br>reaches termination value.</td></tr>
+<tr><td>0x400 - 0x7F8</td><td><a href="#DAT_MEMORY_128_">DAT_MEMORY[128]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x800 - 0xFF0</td><td><a href="#DCT_MEMORY_128_">DCT_MEMORY[128]</a></td><td>R</td><td>-</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="HCI_VERSION">HCI_VERSION</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>VERSION</td><td>R</td><td>0x120</td><td>-</td></tr>
+</table>
+<h3 id="HC_CONTROL">HC_CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>BUS_ENABLE</td><td>RW</td><td>0x0</td><td>Host Controller Bus Enable</td></tr>
+<tr><td>30</td><td>RESUME</td><td>RW</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
+<tr><td>29</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Host Controller Abort when set to 1</td></tr>
+<tr><td>28:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>HALT_ON_CMD_SEQ_TIMEOUT</td><td>RW</td><td>0x0</td><td>Halt on Command Sequence Timeout when set to 1</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>HOT_JOIN_CTRL</td><td>RW</td><td>0x0</td><td>Hot-Join ACK/NACK Control:<br><br>0 - ACK Hot-Join request<br><br>1 - NACK Hot-Join request and send Broadcast CCC to disable Hot-Join</td></tr>
+<tr><td>7</td><td>I2C_DEV_PRESENT</td><td>RW</td><td>0x0</td><td>I2C Device Present on Bus:<br><br>0 - pure I3C bus<br><br>1 - legacy I2C devices on the bus</td></tr>
+<tr><td>6</td><td>MODE_SELECTOR</td><td>R</td><td>0x1</td><td>DMA/PIO Mode Selector:<br><br>0 - DMA<br><br>1 - PIO</td></tr>
+<tr><td>5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>4</td><td>DATA_BYTE_ORDER_MODE</td><td>R</td><td>0x0</td><td>Data Byte Ordering Mode:<br><br>0 - Little Endian<br><br>1 - Big Endian</td></tr>
+<tr><td>3</td><td>AUTOCMD_DATA_RPT</td><td>R</td><td>0x0</td><td>Auto-Command Data Report:<br><br>0 - coalesced reporting<br><br>1 - separated reporting</td></tr>
+<tr><td>2:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>IBA_INCLUDE</td><td>RW</td><td>0x0</td><td>Include I3C Broadcast Address:<br><br>0 - skips I3C Broadcast Address for private transfers<br><br>1 - includes I3C Broadcast Address for private transfers</td></tr>
+</table>
+<h3 id="CONTROLLER_DEVICE_ADDR">CONTROLLER_DEVICE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>DYNAMIC_ADDR_VALID</td><td>RW</td><td>0x0</td><td>Dynamic Address is Valid:<br><br>0 - dynamic address is invalid<br><br>1 - dynamic address is valid</td></tr>
+<tr><td>30:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22:16</td><td>DYNAMIC_ADDR</td><td>RW</td><td>0x0</td><td>Device Dynamic Address</td></tr>
+<tr><td>15:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="HC_CAPABILITIES">HC_CAPABILITIES</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>30</td><td>SG_CAPABILITY_DC_EN</td><td>R</td><td>0x0</td><td>Device context memory:<br><br>0 - must be physically continuous<br><br>1 - controller supports scatter-gather</td></tr>
+<tr><td>29</td><td>SG_CAPABILITY_IBI_EN</td><td>R</td><td>0x0</td><td>DMA only: IBI status and IBI Data rings memory:<br><br>0 - must be physically continuous<br><br>1 - controller supports scatter-gather</td></tr>
+<tr><td>28</td><td>SG_CAPABILITY_CR_EN</td><td>R</td><td>0x0</td><td>DMA only: Command and Response rings memory:<br><br>0 - must be physically continuous<br><br>1 - controller supports scatter-gather</td></tr>
+<tr><td>27:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>21:20</td><td>CMD_SIZE</td><td>R</td><td>0x0</td><td>Size and structure of the Command Descriptor:<br><br>2&#x27;b0: 2 DWORDs,<br><br>all other reserved.</td></tr>
+<tr><td>19:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>SCHEDULED_COMMANDS_EN</td><td>R</td><td>0x0</td><td>Controller command scheduling:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>12</td><td>IBI_CREDIT_COUNT_EN</td><td>R</td><td>0x0</td><td>Controller IBI credit count:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>11</td><td>IBI_DATA_ABORT_EN</td><td>R</td><td>0x0</td><td>Controller IBI data abort:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>10</td><td>CMD_CCC_DEFBYTE</td><td>R</td><td>0x1</td><td>CCC with defining byte:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>9:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>HDR_TS_EN</td><td>R</td><td>0x0</td><td>HDR-Ternary transfers:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>6</td><td>HDR_DDR_EN</td><td>R</td><td>0x0</td><td>HDR-DDR transfers:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>5</td><td>STANDBY_CR_CAP</td><td>R</td><td>0x0</td><td>Switching from active to standby mode:<br><br>0 - not supported, this controller is always active on I3C<br><br>1- supported, this controller can hand off I3C to secondary controller</td></tr>
+<tr><td>4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>AUTO_COMMAND</td><td>R</td><td>0x0</td><td>Automatic read command on IBI:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>2</td><td>COMBO_COMMAND</td><td>R</td><td>0x0</td><td>Controller combined command:<br><br>0 - not supported<br><br>1 - supported</td></tr>
+<tr><td>1:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="RESET_CONTROL">RESET_CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>IBI_QUEUE_RST</td><td>RW</td><td>0x0</td><td>Clear IBI queue from software. Valid only in PIO mode.</td></tr>
+<tr><td>4</td><td>RX_FIFO_RST</td><td>RW</td><td>0x0</td><td>Clear RX FIFO from software. Valid only in PIO mode.</td></tr>
+<tr><td>3</td><td>TX_FIFO_RST</td><td>RW</td><td>0x0</td><td>Clear TX FIFO from software. Valid only in PIO mode.</td></tr>
+<tr><td>2</td><td>RESP_QUEUE_RST</td><td>RW</td><td>0x0</td><td>Clear response queue from software. Valid only in PIO mode.</td></tr>
+<tr><td>1</td><td>CMD_QUEUE_RST</td><td>RW</td><td>0x0</td><td>Clear command queue from software. Valid only in PIO mode.</td></tr>
+<tr><td>0</td><td>SOFT_RST</td><td>RW</td><td>0x0</td><td>Reset controller from software. Not supported currently</td></tr>
+</table>
+<h3 id="PRESENT_STATE">PRESENT_STATE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>AC_CURRENT_OWN</td><td>R</td><td>0x0</td><td>Controller I3C state:<br><br>0 - not bus owner<br><br>1 - bus owner</td></tr>
+<tr><td>1:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="INTR_STATUS">INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
+<tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="INTR_STATUS_ENABLE">INTR_STATUS_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable SCHED_CMD_MISSED_TICK_STAT monitoring.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable HC_ERR_CMD_SEQ_TIMEOUT_STAT monitoring.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable HC_WARN_CMD_SEQ_STALL_STAT monitoring.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable HC_SEQ_CANCEL_STAT monitoring.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable HC_INTERNAL_ERR_STAT monitoring.</td></tr>
+<tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="INTR_SIGNAL_ENABLE">INTR_SIGNAL_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable SCHED_CMD_MISSED_TICK_STAT interrupt.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable HC_ERR_CMD_SEQ_TIMEOUT_STAT interrupt.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable HC_WARN_CMD_SEQ_STALL_STAT interrupt.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable HC_SEQ_CANCEL_STAT interrupt.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable HC_INTERNAL_ERR_STAT interrupt.</td></tr>
+<tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="INTR_FORCE">INTR_FORCE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_FORCE</td><td>W</td><td>0x0</td><td>Force SCHED_CMD_MISSED_TICK_STAT interrupt.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_FORCE</td><td>W</td><td>0x0</td><td>Force HC_ERR_CMD_SEQ_TIMEOUT_STAT interrupt.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_FORCE</td><td>W</td><td>0x0</td><td>Force HC_WARN_CMD_SEQ_STALL_STAT interrupt.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_FORCE</td><td>W</td><td>0x0</td><td>Force HC_SEQ_CANCEL_STAT interrupt.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_FORCE</td><td>W</td><td>0x0</td><td>Force HC_INTERNAL_ERR_STAT interrupt.</td></tr>
+<tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="DAT_SECTION_OFFSET">DAT_SECTION_OFFSET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>ENTRY_SIZE</td><td>R</td><td>0x0</td><td>Individual DAT entry size.<br>0 - 2 DWRODs,<br>1:15 - reserved.</td></tr>
+<tr><td>27:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>18:12</td><td>TABLE_SIZE</td><td>R</td><td>0x7F</td><td>Max number of DAT entries.</td></tr>
+<tr><td>11:0</td><td>TABLE_OFFSET</td><td>R</td><td>0x400</td><td>DAT entry offset in respect to BASE address.</td></tr>
+</table>
+<h3 id="DCT_SECTION_OFFSET">DCT_SECTION_OFFSET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:28</td><td>ENTRY_SIZE</td><td>R</td><td>0x0</td><td>Individual DCT entry size.<br><br>0 - 4 DWORDs,<br><br>1:15 - Reserved.</td></tr>
+<tr><td>27:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:19</td><td>TABLE_INDEX</td><td>RW</td><td>0x0</td><td>Index to DCT used during ENTDAA.</td></tr>
+<tr><td>18:12</td><td>TABLE_SIZE</td><td>R</td><td>0x7F</td><td>Max number of DCT entries.</td></tr>
+<tr><td>11:0</td><td>TABLE_OFFSET</td><td>R</td><td>0x800</td><td>DCT entry offset in respect to BASE address.</td></tr>
+</table>
+<h3 id="RING_HEADERS_SECTION_OFFSET">RING_HEADERS_SECTION_OFFSET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>SECTION_OFFSET</td><td>R</td><td>0x0</td><td>DMA ring headers section offset. Invalid if 0.</td></tr>
+</table>
+<h3 id="PIO_SECTION_OFFSET">PIO_SECTION_OFFSET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>SECTION_OFFSET</td><td>R</td><td>0x80</td><td>PIO section offset. Invalid if 0.</td></tr>
+</table>
+<h3 id="EXT_CAPS_SECTION_OFFSET">EXT_CAPS_SECTION_OFFSET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>SECTION_OFFSET</td><td>R</td><td>0x100</td><td>Extended Capabilities section offset. Invalid if 0.</td></tr>
+</table>
+<h3 id="INT_CTRL_CMDS_EN">INT_CTRL_CMDS_EN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:1</td><td>MIPI_CMDS_SUPPORTED</td><td>R</td><td>0x35</td><td>Bitmask of supported MIPI commands.</td></tr>
+<tr><td>0</td><td>ICC_SUPPORT</td><td>R</td><td>0x1</td><td>Internal Control Commands:<br><br>1 - some or all internals commands sub-commands are supported,<br><br>0 - illegal.</td></tr>
+</table>
+<h3 id="IBI_NOTIFY_CTRL">IBI_NOTIFY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>NOTIFY_IBI_REJECTED</td><td>RW</td><td>0x0</td><td>Notify about rejected IBI:<br><br>0 - do not enqueue rejected IBI,<br><br>1 = enqueue rejected IBI on IBI queue/ring.</td></tr>
+<tr><td>2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>NOTIFY_CRR_REJECTED</td><td>RW</td><td>0x0</td><td>Notify about rejected controller role request:<br><br>0 - do not enqueue rejected CRR,<br><br>1 = enqueue rejected CRR on IBI queue/ring.</td></tr>
+<tr><td>0</td><td>NOTIFY_HJ_REJECTED</td><td>RW</td><td>0x0</td><td>Notify about rejected hot-join:<br><br>0 - do not enqueue rejected HJ,<br><br>1 = enqueue rejected HJ on IBI queue/ring.</td></tr>
+</table>
+<h3 id="IBI_DATA_ABORT_CTRL">IBI_DATA_ABORT_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>IBI_DATA_ABORT_MON</td><td>RW</td><td>0x0</td><td>Enable/disable IBI monitoring logic.</td></tr>
+<tr><td>30:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20:18</td><td>MATCH_STATUS_TYPE</td><td>RW</td><td>0x0</td><td>Define which IBI should be aborted:<br><br>3&#x27;b000 - Regular IBI,<br><br>3&#x27;b100 - Autocmd IBI,<br><br>other values - not supported.</td></tr>
+<tr><td>17:16</td><td>AFTER_N_CHUNKS</td><td>RW</td><td>0x0</td><td>Number of data chunks to be allowed before forced termination:<br><br>0 - immediate,<br><br>1:3 - delay by 1-3 data chunks.</td></tr>
+<tr><td>15:8</td><td>MATCH_IBI_ID</td><td>RW</td><td>0x0</td><td>IBI target address:<br><br>[15:9] - device address,<br><br>[8] - must always be set to 1&#x27;b1</td></tr>
+<tr><td>7:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="DEV_CTX_BASE_LO">DEV_CTX_BASE_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BASE_LO</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEV_CTX_BASE_HI">DEV_CTX_BASE_HI</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BASE_HI</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEV_CTX_SG">DEV_CTX_SG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>BLP</td><td>R</td><td>0x0</td><td>Buffer vs list pointer in device context:<br><br>0 - continuous physical memory region,<br><br>1 - pointer to SG descriptor list.</td></tr>
+<tr><td>30:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>LIST_SIZE</td><td>R</td><td>0x0</td><td>Number of SG entries.</td></tr>
+</table>
+<h3 id="COMMAND_PORT">COMMAND_PORT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>COMMAND_DATA</td><td>W</td><td>-</td><td>-</td></tr>
+</table>
+<h3 id="RESPONSE_PORT">RESPONSE_PORT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RESPONSE_DATA</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+<h3 id="TX_DATA_PORT">TX_DATA_PORT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>TX_DATA</td><td>W</td><td>-</td><td>-</td></tr>
+</table>
+<h3 id="RX_DATA_PORT">RX_DATA_PORT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RX_DATA</td><td>R</td><td>-</td><td>-</td></tr>
+</table>
+<h3 id="IBI_PORT">IBI_PORT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>IBI_DATA</td><td>R</td><td>-</td><td>Data Read from IBI Data Buffer.<br><br>The IBI Port is mapped to the IBI Data Queue.<br>IBI Data is always aligned to a 4-byte boundary and then put into the IBI Queue.<br>If the incoming data is not aligned to a 4-byte boundary,<br>then there will be extra (unused) bytes at the end of the transferred IBI data.<br>This can be determined from the value of field DATA_LENGTH in the IBI Status Descriptor.</td></tr>
+</table>
+<h3 id="QUEUE_THLD_CTRL">QUEUE_THLD_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>IBI_STATUS_THLD</td><td>RW</td><td>0x1</td><td>Triggers IBI_STATUS_THLD_STAT interrupt when IBI queue has N or more entries. Accepted values are 1:255</td></tr>
+<tr><td>23:16</td><td>IBI_DATA_SEGMENT_SIZE</td><td>RW</td><td>0x1</td><td>IBI Queue data segment size. Valida values are 1:63</td></tr>
+<tr><td>15:8</td><td>RESP_BUF_THLD</td><td>RW</td><td>0x1</td><td>Triggers RESP_READY_STAT interrupt when RESP queue has N or more entries. Accepted values are 1:255</td></tr>
+<tr><td>7:0</td><td>CMD_EMPTY_BUF_THLD</td><td>RW</td><td>0x1</td><td>Triggers CMD_QUEUE_READY_STAT interrupt when CMD queue has N or more free entries. Accepted values are 1:255</td></tr>
+</table>
+<h3 id="DATA_BUFFER_THLD_CTRL">DATA_BUFFER_THLD_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26:24</td><td>RX_START_THLD</td><td>RW</td><td>0x1</td><td>Postpone read command until RX queue has 2^(N+1) free entries</td></tr>
+<tr><td>23:19</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>18:16</td><td>TX_START_THLD</td><td>RW</td><td>0x1</td><td>Postpone write command until TX queue has 2^(N+1) entries</td></tr>
+<tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:8</td><td>RX_BUF_THLD</td><td>RW</td><td>0x1</td><td>Trigger RX_THLD_STAT interrupt when RX queue has 2^(N+1) or more entries</td></tr>
+<tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>TX_BUF_THLD</td><td>RW</td><td>0x1</td><td>Trigger TX_THLD_STAT interrupt when TX queue has 2^(N+1) or more free entries</td></tr>
+</table>
+<h3 id="QUEUE_SIZE">QUEUE_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>TX_DATA_BUFFER_SIZE</td><td>R</td><td>0x5</td><td>TX queue size is equal to 2^(N+1), where N is this field value</td></tr>
+<tr><td>23:16</td><td>RX_DATA_BUFFER_SIZE</td><td>R</td><td>0x5</td><td>RX queue size is equal to 2^(N+1), where N is this field value</td></tr>
+<tr><td>15:8</td><td>IBI_STATUS_SIZE</td><td>R</td><td>0x20</td><td>IBI Queue size is equal to N</td></tr>
+<tr><td>7:0</td><td>CR_QUEUE_SIZE</td><td>R</td><td>0x40</td><td>Command/Response queue size is equal to N</td></tr>
+</table>
+<h3 id="ALT_QUEUE_SIZE">ALT_QUEUE_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>28</td><td>EXT_IBI_QUEUE_EN</td><td>R</td><td>0x0</td><td>1 indicates that IBI queue size is equal to 8*IBI_STATUS_SIZE</td></tr>
+<tr><td>27:25</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>24</td><td>ALT_RESP_QUEUE_EN</td><td>R</td><td>0x1</td><td>If set, response and command queues are not equal lengths, then<br>ALT_RESP_QUEUE_SIZE contains response queue size</td></tr>
+<tr><td>23:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>ALT_RESP_QUEUE_SIZE</td><td>R</td><td>0x20</td><td>Valid only if ALT_RESP_QUEUE_EN is set. Contains response queue size</td></tr>
+</table>
+<h3 id="PIO_INTR_STATUS">PIO_INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>Transfer error</td></tr>
+<tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>Transfer aborted</td></tr>
+<tr><td>4</td><td>RESP_READY_STAT</td><td>R</td><td>0x0</td><td>Response queue fulfils RESP_BUF_THLD</td></tr>
+<tr><td>3</td><td>CMD_QUEUE_READY_STAT</td><td>R</td><td>0x0</td><td>Command queue fulfils CMD_EMPTY_BUF_THLD</td></tr>
+<tr><td>2</td><td>IBI_STATUS_THLD_STAT</td><td>R</td><td>0x0</td><td>IBI queue fulfils IBI_STATUS_THLD</td></tr>
+<tr><td>1</td><td>RX_THLD_STAT</td><td>R</td><td>0x0</td><td>RX queue fulfils RX_BUF_THLD</td></tr>
+<tr><td>0</td><td>TX_THLD_STAT</td><td>R</td><td>0x0</td><td>TX queue fulfils TX_BUF_THLD</td></tr>
+</table>
+<h3 id="PIO_INTR_STATUS_ENABLE">PIO_INTR_STATUS_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable transfer error monitoring</td></tr>
+<tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable transfer abort monitoring</td></tr>
+<tr><td>4</td><td>RESP_READY_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable response queue monitoring</td></tr>
+<tr><td>3</td><td>CMD_QUEUE_READY_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable command queue monitoring</td></tr>
+<tr><td>2</td><td>IBI_STATUS_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable IBI queue monitoring</td></tr>
+<tr><td>1</td><td>RX_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable RX queue monitoring</td></tr>
+<tr><td>0</td><td>TX_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enable TX queue monitoring</td></tr>
+</table>
+<h3 id="PIO_INTR_SIGNAL_ENABLE">PIO_INTR_SIGNAL_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable transfer error interrupt</td></tr>
+<tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable transfer abort interrupt</td></tr>
+<tr><td>4</td><td>RESP_READY_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable response ready interrupt</td></tr>
+<tr><td>3</td><td>CMD_QUEUE_READY_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable command queue interrupt</td></tr>
+<tr><td>2</td><td>IBI_STATUS_THLD_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable IBI queue interrupt</td></tr>
+<tr><td>1</td><td>RX_THLD_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable RX queue interrupt</td></tr>
+<tr><td>0</td><td>TX_THLD_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>Enable TX queue interrupt</td></tr>
+</table>
+<h3 id="PIO_INTR_FORCE">PIO_INTR_FORCE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_FORCE</td><td>W</td><td>0x0</td><td>Force transfer error</td></tr>
+<tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_FORCE</td><td>W</td><td>0x0</td><td>Force transfer aborted</td></tr>
+<tr><td>4</td><td>RESP_READY_FORCE</td><td>W</td><td>0x0</td><td>Force response queue interrupt</td></tr>
+<tr><td>3</td><td>CMD_QUEUE_READY_FORCE</td><td>W</td><td>0x0</td><td>Force command queue interrupt</td></tr>
+<tr><td>2</td><td>IBI_THLD_FORCE</td><td>W</td><td>0x0</td><td>Force IBI queue interrupt</td></tr>
+<tr><td>1</td><td>RX_THLD_FORCE</td><td>W</td><td>0x0</td><td>Force RX queue interrupt</td></tr>
+<tr><td>0</td><td>TX_THLD_FORCE</td><td>W</td><td>0x0</td><td>Force TX queue interrupt</td></tr>
+</table>
+<h3 id="PIO_CONTROL">PIO_CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Stop current command descriptor execution forcefully and hold remaining commands.<br>1 - Request PIO Abort,<br>0 - Resume PIO execution</td></tr>
+<tr><td>1</td><td>RS</td><td>RW</td><td>0x0</td><td>Run/Stop execution of enqueued commands.<br>When set to 0, it holds execution of enqueued commands and runs current command to completion.<br>1 - PIO Queue start request,<br>0 - PIO Queue stop request.</td></tr>
+<tr><td>0</td><td>ENABLE</td><td>RW</td><td>0x1</td><td>Enables PIO queues. When disabled, SW may not read from/write to PIO queues.<br>1 - PIO queue enable request,<br>0 - PIO queue disable request</td></tr>
+</table>
+<h3 id="EXTCAP_HEADER">EXTCAP_HEADER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:8</td><td>CAP_LENGTH</td><td>R</td><td>0x20</td><td>Capability Structure Length in DWORDs</td></tr>
+<tr><td>7:0</td><td>CAP_ID</td><td>R</td><td>0xC0</td><td>Extended Capability ID</td></tr>
+</table>
+<h3 id="PROT_CAP_0">PROT_CAP_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>REC_MAGIC_STRING_0</td><td>R</td><td>0x2050434F</td><td>Magic string &#x27;OCP &#x27; (1st part of &#x27;OCP RECV&#x27;) in ASCII code - &#x27;0x4f 0x43 0x50 0x20&#x27;</td></tr>
+</table>
+<h3 id="PROT_CAP_1">PROT_CAP_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>REC_MAGIC_STRING_1</td><td>R</td><td>0x56434552</td><td>Magic string &#x27;RECV&#x27; (2nd part of &#x27;OCP RECV&#x27;) in ASCII code - &#x27;0x52 0x45 0x43 0x56&#x27;</td></tr>
+</table>
+<h3 id="PROT_CAP_2">PROT_CAP_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>AGENT_CAPS</td><td>RW</td><td>0x0</td><td>Agent capabilities:<br><br>* bit 0: Identification (DEVICE_ID structure)<br><br>* bit 1: Forced Recovery (From RESET)<br><br>* bit 2: Mgmt reset (From RESET)<br><br>* bit 3: Device Reset (From RESET)<br><br>* bit 4: Device status (DEVICE_STATUS)<br><br>* bit 5: Recovery memory access (INDIRECT_CTRL)<br><br>* bit 6: Local C-image support<br><br>* bit 7: Push C-image support<br><br>* bit 8: Interface isolation<br><br>* bit 9: Hardware status<br><br>* bit 10: Vendor command<br><br>* bit 11: Flashless boot (From RESET)<br><br>* bit 12: FIFO CMS support (INDIRECT_FIFO_CTRL)<br><br>* bits 13-15: Reserved</td></tr>
+<tr><td>15:0</td><td>REC_PROT_VERSION</td><td>RW</td><td>0x0</td><td>* Byte 0: Major version number = 0x1<br><br>* Byte 1: Minor version number = 0x1</td></tr>
+</table>
+<h3 id="PROT_CAP_3">PROT_CAP_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>HEARTBEAT_PERIOD</td><td>RW</td><td>0x0</td><td>0-255: Heartbeat period, 2^x microseconds (us), 0 indicates not supported</td></tr>
+<tr><td>15:8</td><td>MAX_RESP_TIME</td><td>RW</td><td>0x0</td><td>0-255: Maximum response time in 2^x microseconds(us).</td></tr>
+<tr><td>7:0</td><td>NUM_OF_CMS_REGIONS</td><td>RW</td><td>0x0</td><td>0-255: The total number of component memory space (CMS) regions a device supports. This number includes any logging, code and vendor defined regions</td></tr>
+</table>
+<h3 id="DEVICE_ID_0">DEVICE_ID_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>DATA</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15:8</td><td>VENDOR_SPECIFIC_STR_LENGTH</td><td>RW</td><td>0x0</td><td>0x0-0xFF: Total length of Vendor Specific String, 0 indicates not supported</td></tr>
+<tr><td>7:0</td><td>DESC_TYPE</td><td>RW</td><td>0x0</td><td>Based on table 8 from [DMTF PLDM FM]:<br><br>* 0x00: PCI Vendor<br><br>* 0x1: IANA<br><br>* 0x2: UUID<br><br>* 0x3: PnP Vendor<br><br>* 0x4: ACPI Vendor<br><br>* 0x5: IANA Enterprise Type<br><br>* 0x6-0xFE: Reserved<br><br>* 0xFF: NVMe-MI</td></tr>
+</table>
+<h3 id="DEVICE_ID_1">DEVICE_ID_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEVICE_ID_2">DEVICE_ID_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEVICE_ID_3">DEVICE_ID_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEVICE_ID_4">DEVICE_ID_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEVICE_ID_5">DEVICE_ID_5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEVICE_ID_RESERVED">DEVICE_ID_RESERVED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="DEVICE_STATUS_0">DEVICE_STATUS_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>REC_REASON_CODE</td><td>RW</td><td>0x0</td><td>* 0x0: No Boot Failure detected (BFNF)<br><br>* 0x1: Generic hardware error (BFGHWE)<br><br>* 0x2: Generic hardware soft error (BFGSE) - soft error may be recoverable<br><br>* 0x3: Self-test failure (BFSTF) (e.g., RSA self test failure, FIPs self test failure,, etc.)<br><br>* 0x4: Corrupted/missing critical data (BFCD)<br><br>* 0x5: Missing/corrupt key manifest (BFKMMC)<br><br>* 0x6: Authentication Failure on key manifest (BFKMAF)<br><br>* 0x7: Anti-rollback failure on key manifest (BFKIAR)<br><br>* 0x8: Missing/corrupt boot loader (first mutable code) firmware image (BFFIMC)<br><br>* 0x9: Authentication failure on boot loader ( 1st mutable code) firmware image (BFFIAF)<br><br>* 0xA: Anti-rollback failure boot loader (1st mutable code) firmware image (BFFIAR)<br><br>* 0xB: Missing/corrupt main/management firmware image (BFMFMC)<br><br>* 0xC: Authentication Failure main/management firmware image (BFMFAF)<br><br>* 0xD: Anti-rollback Failure main/management firmware image (BFMFAR)<br><br>* 0xE: Missing/corrupt recovery firmware (BFRFMC)<br><br>* 0xF: Authentication Failure recovery firmware (BFRFAF)<br><br>* 0x10: Anti-rollback Failure on recovery firmware (BFRFAR)<br><br>* 0x11: Forced Recovery (FR)<br><br>* 0x12: Flashless/Streaming Boot (FSB)<br><br>* 0x13-0x7F: Reserved<br><br>* 0x80-0xFF: Vendor Unique Boot Failure Codes</td></tr>
+<tr><td>15:8</td><td>PROT_ERROR</td><td>RW</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
+<tr><td>7:0</td><td>DEV_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Status Pending (Recover Reason Code not populated)<br><br>* 0x1: Device healthy (Recover Reason Code not populated)<br><br>* 0x2: Device Error (“soft” error or other error state) - (Recover Reason Code not populated)<br><br>* 0x3: Recovery mode - ready to accept recovery image - (Recover Reason Code populated)<br><br>* 0x4: Recovery Pending (waiting for activation) - (Recover Reason Code populated)<br><br>* 0x5: Running Recovery Image ( Recover Reason Code not populated)<br><br>* 0x6-0xD: Reserved<br><br>* 0xE: Boot Failure (Recover Reason Code populated)<br><br>* 0xF: Fatal Error (Recover Reason Code not populated)<br><br>* 0x10-FF:Reserved</td></tr>
+</table>
+<h3 id="DEVICE_STATUS_1">DEVICE_STATUS_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:25</td><td>VENDOR_STATUS</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>24:16</td><td>VENDOR_STATUS_LENGTH</td><td>RW</td><td>0x0</td><td>0-248: Length in bytes of just VENDOR_STATUS. Zero indicates no vendor status and zero additional bytes.</td></tr>
+<tr><td>15:0</td><td>HEARTBEAT</td><td>RW</td><td>0x0</td><td>0-4095: Incrementing number (counter wraps)</td></tr>
+</table>
+<h3 id="DEVICE_RESET">DEVICE_RESET</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>IF_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: Disable Interface mastering<br><br>* 0x1: Enable Interface mastering</td></tr>
+<tr><td>15:8</td><td>FORCED_RECOVERY</td><td>RW</td><td>0x0</td><td>* 0x0: No forced recovery<br><br>* 0x01-0xD: Reserved<br><br>* 0xE: Enter flashless boot mode on next platform reset<br><br>* 0xF: Enter recovery mode on next platform reset<br><br>* 0x10-FF: Reserved</td></tr>
+<tr><td>7:0</td><td>RESET_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
+</table>
+<h3 id="RECOVERY_CTRL">RECOVERY_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
+<tr><td>15:8</td><td>REC_IMG_SEL</td><td>RW</td><td>0x0</td><td>* 0x0: No operation<br><br>* 0x1: Use Recovery Image from memory window (CMS)<br><br>* 0x2: Use Recovery Image stored on device (C-image)<br><br>* 0x3-FF: reserved</td></tr>
+<tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>* 0-255: Selects a component memory space where the recovery image is. 0 is the default</td></tr>
+</table>
+<h3 id="RECOVERY_STATUS">RECOVERY_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>VENDOR_SPECIFIC_STATUS</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:4</td><td>REC_IMG_INDEX</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>3:0</td><td>DEV_REC_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Not in recovery mode<br><br>* 0x1: Awaiting recovery image<br><br>* 0x2: Booting recovery image<br><br>* 0x3: Recovery successful<br><br>* 0xc: Recovery failed<br><br>* 0xd: Recovery image authentication error<br><br>* 0xe: Error entering Recovery mode (might be administratively disabled)<br><br>* 0xf: Invalid component address space</td></tr>
+</table>
+<h3 id="HW_STATUS">HW_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>VENDOR_HW_STATUS_LEN</td><td>RW</td><td>0x0</td><td>0-251: Length in bytes of Vendor Specific Hardware Status.</td></tr>
+<tr><td>23:16</td><td>CTEMP</td><td>RW</td><td>0x0</td><td>Current temperatureof device in degrees Celsius: Compatible with NVMe-MI command code 0 offset 3.<br><br>* 0x00-0x7e: 0 to 126 C<br><br>* 0x7f: 127 C or higher<br><br>* 0x80: no temperature data, or data is older than 5 seconds<br><br>* 0x81: temperature sensor failure<br><br>* 0x82-0x83: reserved<br><br>* 0xc4: -60 C or lower<br><br>* 0xc5-0xff: -59 to -1 C (in two&#x27;s complement)</td></tr>
+<tr><td>15:8</td><td>VENDOR_HW_STATUS</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:3</td><td>RESERVED_7_3</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>2</td><td>FATAL_ERR</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>1</td><td>SOFT_ERR</td><td>RW</td><td>0x0</td><td>Hardware Soft Error (may need reset to clear)</td></tr>
+<tr><td>0</td><td>TEMP_CRITICAL</td><td>RW</td><td>0x0</td><td>Device temperature is critical (may need reset to clear)</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_CTRL_0">INDIRECT_FIFO_CTRL_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>RESET</td><td>RW</td><td>0x0</td><td>Reset (Write 1 Clear):<br><br>* 0x0: idle<br><br>* 0x1: reset Write Index and Read Index to initial value.<br><br>* 0x2 to 0xFF: reserved</td></tr>
+<tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>This register selects a region within the device. Read/write access is through address<br>spaces. Each space represents a FIFO.<br>Component Memory Space (CMS):<br><br>* 0-255: Address region within a device.</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_CTRL_1">INDIRECT_FIFO_CTRL_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>IMAGE_SIZE</td><td>RW</td><td>0x0</td><td>Image Size: Size of the image to be loaded in 4B units</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_STATUS_0">INDIRECT_FIFO_STATUS_0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:8</td><td>REGION_TYPE</td><td>R</td><td>0x0</td><td>Memory Region Type:<br><br>* 0b000: Code space for recovery. (write only)<br><br>* 0b001: Log uses the defined debug format (read only)<br><br>* 0b100: Vendor Defined Region (write only)<br><br>* 0b101: Vendor Defined Region (read only)<br><br>* 0b111: Unsupported Region (address space out of range)</td></tr>
+<tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>FULL</td><td>R</td><td>0x0</td><td>If set, FIFO is full</td></tr>
+<tr><td>0</td><td>EMPTY</td><td>R</td><td>0x1</td><td>If set, FIFO is empty</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_STATUS_1">INDIRECT_FIFO_STATUS_1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>WRITE_INDEX</td><td>R</td><td>0x0</td><td>Offset incremented for each access by the Recovery Agent in 4B units</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_STATUS_2">INDIRECT_FIFO_STATUS_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>READ_INDEX</td><td>R</td><td>0x0</td><td>Offset incremented for each access by the device in 4B units</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_STATUS_3">INDIRECT_FIFO_STATUS_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>FIFO_SIZE</td><td>R</td><td>0x40</td><td>Size of memory window specified in 4B units. Current implementation supports only a constant size of 64.</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_STATUS_4">INDIRECT_FIFO_STATUS_4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>MAX_TRANSFER_SIZE</td><td>R</td><td>0x40</td><td>Max size of the data payload in each read/write to INDIRECT_FIFO_DATA in 4B units<br><br>Enforced to 256 bytes (64 DWORDs) by Caliptra Subsystem Recovery Sequence</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_RESERVED">INDIRECT_FIFO_RESERVED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="INDIRECT_FIFO_DATA">INDIRECT_FIFO_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>DATA</td><td>R</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="STBY_CR_CONTROL">STBY_CR_CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:30</td><td>STBY_CR_ENABLE_INIT</td><td>RW</td><td>0x0</td><td>Enables or disables the Secondary Controller:<br><br>2&#x27;b00 - DISABLED: Secondary Controller is disabled.<br><br>2&#x27;b01 - ACM_INIT: Secondary Controller is enabled,<br>but Host Controller initializes in Active Controller mode.<br><br>2&#x27;b10 - SCM_RUNNING: Secondary Controller operation is enabled,<br>Host Controller initializes in Standby Controller mode.<br><br>2&#x27;b11 - SCM_HOT_JOIN: Secondary Controller operation is enabled,<br>Host Controller conditionally becomes a Hot-Joining Device<br>to receive its Dynamic Address before operating in Standby Controller mode.</td></tr>
+<tr><td>29:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>RSTACT_DEFBYTE_02</td><td>RW</td><td>0x0</td><td>Controls whether I3C Secondary Controller Logic supports RSTACT CCC with<br>Defining Byte 0x02.<br><br>1&#x27;b0: NOT_SUPPORTED: Do not ACK Defining Byte 0x02<br><br>1&#x27;b1: HANDLE_INTR: Support Defining Byte 0x02</td></tr>
+<tr><td>19:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15</td><td>DAA_ENTDAA_ENABLE</td><td>RW</td><td>0x0</td><td>Indicates ENTDAA method is enabled.<br><br>1&#x27;b0: DISABLED: will not respond<br><br>1&#x27;b1: ENABLED: will respond</td></tr>
+<tr><td>14</td><td>DAA_SETDASA_ENABLE</td><td>RW</td><td>0x0</td><td>Indicates SETDASA method is enabled.<br><br>1&#x27;b0: DISABLED: will not respond<br><br>1&#x27;b1: ENABLED: will respond</td></tr>
+<tr><td>13</td><td>DAA_SETAASA_ENABLE</td><td>RW</td><td>0x0</td><td>Indicates SETAASA method is enabled.<br><br>1&#x27;b0: DISABLED: will not respond<br><br>1&#x27;b1: ENABLED: will respond</td></tr>
+<tr><td>12</td><td>TARGET_XACT_ENABLE</td><td>RW</td><td>0x1</td><td>Indicates whether Read-Type/Write-Type transaction servicing is enabled, via<br>an I3C Target Transaction Interface to software (Section 6.17.3).<br><br>1&#x27;b0: DISABLED: not available<br><br>1&#x27;b1: ENABLED: available for software</td></tr>
+<tr><td>11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>10:8</td><td>BAST_CCC_IBI_RING</td><td>RW</td><td>0x0</td><td>Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.<br>The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.</td></tr>
+<tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>CR_REQUEST_SEND</td><td>W</td><td>0x0</td><td>Write of 1&#x27;b1 to this field shall instruct the Secondary Controller Logic<br>to attempt to send a Controller Role Request to the I3C Bus.</td></tr>
+<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
+<tr><td>3</td><td>PRIME_ACCEPT_GETACCCR</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>2</td><td>ACR_FSM_OP_SELECT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>1</td><td>HANDOFF_DELAY_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>0</td><td>PENDING_RX_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="STBY_CR_DEVICE_ADDR">STBY_CR_DEVICE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>DYNAMIC_ADDR_VALID</td><td>RW</td><td>0x0</td><td>Indicates whether or not the value in the DYNAMIC_ADDR field is valid.<br>1&#x27;b0: DYNAMIC_ADDR field is not valid<br>1&#x27;b1: DYNAMIC_ADDR field is valid</td></tr>
+<tr><td>30:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22:16</td><td>DYNAMIC_ADDR</td><td>RW</td><td>0x0</td><td>Contains the Host Controller Device’s Dynamic Address.</td></tr>
+<tr><td>15</td><td>STATIC_ADDR_VALID</td><td>RW</td><td>0x0</td><td>Indicates whether or not the value in the STATIC_ADDR field is valid.<br><br>1&#x27;b0: The Static Address field is not valid<br><br>1&#x27;b1: The Static Address field is valid</td></tr>
+<tr><td>14:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:0</td><td>STATIC_ADDR</td><td>RW</td><td>0x0</td><td>This field contains the Host Controller Device’s Static Address.</td></tr>
+</table>
+<h3 id="STBY_CR_CAPABILITIES">STBY_CR_CAPABILITIES</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15</td><td>DAA_ENTDAA_SUPPORT</td><td>R</td><td>0x0</td><td>Defines whether Dynamic Address Assignment with ENTDAA CCC is supported.<br><br>1&#x27;b0: DISABLED: Not supported<br><br>1&#x27;b1: ENABLED: Supported</td></tr>
+<tr><td>14</td><td>DAA_SETDASA_SUPPORT</td><td>R</td><td>0x1</td><td>Defines whether Dynamic Address Assignment with SETDASA CCC (using Static Address) is supported.<br><br>1&#x27;b0: DISABLED: Not supported<br><br>1&#x27;b1: ENABLED: Supported</td></tr>
+<tr><td>13</td><td>DAA_SETAASA_SUPPORT</td><td>R</td><td>0x1</td><td>Defines whether Dynamic Address Assignment with SETAASA CCC (using Static Address) is supported.<br><br>1&#x27;b0: DISABLED: Not supported<br><br>1&#x27;b1: ENABLED: Supported</td></tr>
+<tr><td>12</td><td>TARGET_XACT_SUPPORT</td><td>R</td><td>0x1</td><td>Defines whether an I3C Target Transaction Interface is supported.<br><br>1&#x27;b0: DISABLED: Not supported<br><br>1&#x27;b1: ENABLED: Supported via vendor-defined Extended Capability structure</td></tr>
+<tr><td>11:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5</td><td>SIMPLE_CRR_SUPPORT</td><td>R</td><td>0x0</td><td>-</td></tr>
+<tr><td>4:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="STBY_CR_VIRTUAL_DEVICE_CHAR">STBY_CR_VIRTUAL_DEVICE_CHAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>BCR_FIXED</td><td>RW</td><td>0x1</td><td>Bus Characteristics, Fixed Part.<br><br>Reset value is set to 3&#x27;b001, because this device is an I3C Target,<br>which supports extended capabilities.<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>28:24</td><td>BCR_VAR</td><td>RW</td><td>0x10</td><td>Bus Characteristics, Variable Part.<br><br>Reset value is set to 5&#x27;b10000, because this device:<br><br><br>- [bit4] is a Virtual Target<br><br>- [bit3] is not Offline Capable<br><br>- [bit2] does not apply due to bit1<br><br>- [bit1] is not capable of IBI requests<br><br>- [bit0] has no speed limitation<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>23:16</td><td>DCR</td><td>RW</td><td>0xBD</td><td>Device Characteristics Register. Value represents an OCP Recovery Device.<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>15:1</td><td>PID_HI</td><td>RW</td><td>0x7FFF</td><td>High part of the 48-bit Target Device Provisioned ID.<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="STBY_CR_STATUS">STBY_CR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>HJ_REQ_STATUS</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:5</td><td>SIMPLE_CRR_STATUS</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>4:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>AC_CURRENT_OWN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>1:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="STBY_CR_DEVICE_CHAR">STBY_CR_DEVICE_CHAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:29</td><td>BCR_FIXED</td><td>RW</td><td>0x1</td><td>Bus Characteristics, Fixed Part.<br><br>Reset value is set to 3&#x27;b001, because this device is an I3C Target,<br>which supports extended capabilities<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>28:24</td><td>BCR_VAR</td><td>RW</td><td>0x16</td><td>Bus Characteristics, Variable Part.<br><br>Reset value is set to 5&#x27;b10110, because this device:<br><br><br>- [bit4] exposes a Virtual Target<br><br>- [bit3] is not Offline Capable<br><br>- [bit2] (always) uses the MDB in the IBI Payload<br><br>- [bit1] is capable of IBI requests<br><br>- [bit0] has no speed limitation<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>23:16</td><td>DCR</td><td>RW</td><td>0xBD</td><td>Device Characteristics Register. Value represents an OCP Recovery Device.<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>15:1</td><td>PID_HI</td><td>RW</td><td>0x7FFF</td><td>High part of the 48-bit Target Device Provisioned ID.<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+<tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="STBY_CR_DEVICE_PID_LO">STBY_CR_DEVICE_PID_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PID_LO</td><td>RW</td><td>0x5A00A5</td><td>Low part of the 48-bit Target Device Provisioned ID.<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+</table>
+<h3 id="STBY_CR_INTR_STATUS">STBY_CR_INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19</td><td>CCC_FATAL_RSTDAA_ERR_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>18</td><td>CCC_UNHANDLED_NACK_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>17</td><td>CCC_PARAM_MODIFIED_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>16</td><td>STBY_CR_OP_RSTACT_STAT</td><td>RW</td><td>0x0</td><td>The Host Controller shall write 1&#x27;b1 to this field to indicate that the<br>Secondary Controller received a RSTACT CCC from the Active Controller, followed<br>by the Target Reset Pattern.</td></tr>
+<tr><td>15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14</td><td>STBY_CR_ACCEPT_ERR_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>13</td><td>STBY_CR_ACCEPT_OK_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>12</td><td>STBY_CR_ACCEPT_NACKED_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>11</td><td>STBY_CR_DYN_ADDR_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>10</td><td>CRR_RESPONSE_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>9:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>ACR_HANDOFF_ERR_M3_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>2</td><td>ACR_HANDOFF_ERR_FAIL_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>1</td><td>ACR_HANDOFF_OK_PRIMED_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>0</td><td>ACR_HANDOFF_OK_REMAIN_STAT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="STBY_CR_VIRTUAL_DEVICE_PID_LO">STBY_CR_VIRTUAL_DEVICE_PID_LO</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PID_LO</td><td>RW</td><td>0x5A10A5</td><td>Low part of the 48-bit Target Virtual Device Provisioned ID.<br><br>This field is Read-Only while the STBY_CR_ENABLE_INIT field in register<br>STBY_CR_CONTROL is not zero.</td></tr>
+</table>
+<h3 id="STBY_CR_INTR_SIGNAL_ENABLE">STBY_CR_INTR_SIGNAL_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19</td><td>CCC_FATAL_RSTDAA_ERR_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>18</td><td>CCC_UNHANDLED_NACK_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>17</td><td>CCC_PARAM_MODIFIED_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>16</td><td>STBY_CR_OP_RSTACT_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14</td><td>STBY_CR_ACCEPT_ERR_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>13</td><td>STBY_CR_ACCEPT_OK_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>12</td><td>STBY_CR_ACCEPT_NACKED_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>11</td><td>STBY_CR_DYN_ADDR_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>10</td><td>CRR_RESPONSE_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>9:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>ACR_HANDOFF_ERR_M3_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>2</td><td>ACR_HANDOFF_ERR_FAIL_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>1</td><td>ACR_HANDOFF_OK_PRIMED_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>0</td><td>ACR_HANDOFF_OK_REMAIN_SIGNAL_EN</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="STBY_CR_INTR_FORCE">STBY_CR_INTR_FORCE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19</td><td>CCC_FATAL_RSTDAA_ERR_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>18</td><td>CCC_UNHANDLED_NACK_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>17</td><td>CCC_PARAM_MODIFIED_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>16</td><td>STBY_CR_OP_RSTACT_FORCE</td><td>W</td><td>0x0</td><td>-</td></tr>
+<tr><td>15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14</td><td>STBY_CR_ACCEPT_ERR_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>13</td><td>STBY_CR_ACCEPT_OK_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>12</td><td>STBY_CR_ACCEPT_NACKED_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>11</td><td>STBY_CR_DYN_ADDR_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>10</td><td>CRR_RESPONSE_FORCE</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="STBY_CR_CCC_CONFIG_GETCAPS">STBY_CR_CCC_CONFIG_GETCAPS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>F2_CRCAP2_DEV_INTERACT</td><td>RW</td><td>0x0</td><td>-</td></tr>
+<tr><td>7:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2:0</td><td>F2_CRCAP1_BUS_CONFIG</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="STBY_CR_CCC_CONFIG_RSTACT_PARAMS">STBY_CR_CCC_CONFIG_RSTACT_PARAMS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>RESET_DYNAMIC_ADDR</td><td>RW</td><td>0x1</td><td>If set to 1&#x27;b1, then the Secondary Controller Logic must clear its Dynamic<br>Address in register STBY_CR_DEVICE_ADDR after receiving<br>a Target Reset Pattern that followed a Broadcast or Direct SET RSTACT CCC sent<br>to the Dynamic Address, with Defining Byte 0x01 or 0x02.<br>Requires support for Dynamic Address Assignment with at least one supported<br>method, such as the ENTDAA CCC, with field DAA_ENTDAA_ENABLE set to 1&#x27;b1 in<br>register STBY_CR_CONTROL.<br>If field ACR_FSM_OP_SELECT in register STBY_CR_CONTROL is set to 1&#x27;b1, then<br>this field shall be cleared (i.e., readiness to accept the Controller Role<br>shall be revoked) with this Target Reset Pattern.</td></tr>
+<tr><td>30:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>RESET_TIME_TARGET</td><td>RW</td><td>0x0</td><td>For Direct GET CCC, this field is returned for Defining Byte 0x82.</td></tr>
+<tr><td>15:8</td><td>RESET_TIME_PERIPHERAL</td><td>RW</td><td>0x0</td><td>For Direct GET CCC, this field is returned for Defining Byte 0x81.</td></tr>
+<tr><td>7:0</td><td>RST_ACTION</td><td>R</td><td>0x1</td><td>Contains the Defining Byte received with the last Direct SET CCC sent by the Active Controller. If not armed (START or RSTACT with unsupported defining byte) set to spec default 0x1.</td></tr>
+</table>
+<h3 id="STBY_CR_VIRT_DEVICE_ADDR">STBY_CR_VIRT_DEVICE_ADDR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>VIRT_DYNAMIC_ADDR_VALID</td><td>RW</td><td>0x0</td><td>Indicates whether or not the value in the VIRT_DYNAMIC_ADDR field is valid.<br>1&#x27;b0: VIRT_DYNAMIC_ADDR field is not valid<br>1&#x27;b1: VIRT_DYNAMIC_ADDR field is valid</td></tr>
+<tr><td>30:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>22:16</td><td>VIRT_DYNAMIC_ADDR</td><td>RW</td><td>0x0</td><td>Contains the Controller Virtual Device’s Dynamic Address.</td></tr>
+<tr><td>15</td><td>VIRT_STATIC_ADDR_VALID</td><td>RW</td><td>0x0</td><td>Indicates whether or not the value in the VIRT_STATIC_ADDR field is valid.<br><br>1&#x27;b0: The Virtual Device Static Address field is not valid<br><br>1&#x27;b1: The Virtual Device Static Address field is valid</td></tr>
+<tr><td>14:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:0</td><td>VIRT_STATIC_ADDR</td><td>RW</td><td>0x0</td><td>This field contains the Host Controller Device’s Static Address.</td></tr>
+</table>
+<h3 id="STBY_CR_MWL">STBY_CR_MWL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>MWL</td><td>R</td><td>0x100</td><td>This field contains the maximum write length (MWL) (read-only)</td></tr>
+</table>
+<h3 id="STBY_CR_MRL">STBY_CR_MRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>IBIL</td><td>R</td><td>0x10</td><td>This field contains the IBI payload size (IBIL) (read-only)</td></tr>
+<tr><td>15:0</td><td>MRL</td><td>R</td><td>0x100</td><td>This field contains the maximum read length (MRL) (read-only)</td></tr>
+</table>
+<h3 id="CONTROL">CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:13</td><td>IBI_RETRY_NUM</td><td>RW</td><td>0x0</td><td>Number of times the Target Device will try to request an IBI before giving up.<br><br>Values:<br><br>0x0 - Device will never retry.<br><br>0x1-0x6 - Device will retry this many times.<br><br>0x7 - Device will retry indefinitely until the Active Controller sets<br>DISINT bit in the DISEC command.</td></tr>
+<tr><td>12</td><td>IBI_EN</td><td>RW</td><td>0x1</td><td>Enable the IBI queue servicing.<br><br>Values:<br><br>0x0 - Device will not service the IBI queue.<br><br>0x1 - Device will send IBI requests onto the bus, if possible.</td></tr>
+<tr><td>11</td><td>CRR_EN</td><td>RW</td><td>0x0</td><td>Enable Controller Role Request.<br><br>Values:<br><br>0x0 - Device is allowed to perform Controller Role Request.<br><br>0x1 - Device is not allowed to perform Controller Role Request.</td></tr>
+<tr><td>10</td><td>HJ_EN</td><td>RW</td><td>0x1</td><td>Enable Hot-Join capability.<br><br>Values:<br><br>0x0 - Device is allowed to attempt Hot-Join.<br><br>0x1 - Device is not allowed to attempt Hot-Join.</td></tr>
+<tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="STATUS">STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>14:12</td><td>LAST_IBI_STATUS</td><td>R</td><td>0x0</td><td>Status of last IBI. Should be read after IBI_DONE interrupt.<br><br>Values:<br><br>000 - Success: IBI was transmitted and ACK&#x27;d by the Active Controller.<br>001 - FailureNack: Active Controller NACK&#x27;d the IBI before any data was sent.<br>The device will retry sending the IBI as long as permitted by the retry counter.<br>010 - FailurePartialData: Active Controller NACK&#x27;d the IBI after data was<br>partially sent. The remaining part of data in the IBI queue is considered<br>corrupted and will be discarded.<br>011 - FailureRetry: IBI could not be serviced due to reached retry count.<br>100 - FailureArbitration:: IBI could not be serviced as arbitration was lost<br>during the address header. The device will retry sending the IBI as long as<br>permitted by the retry counter.</td></tr>
+<tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>8</td><td>PROTOCOL_ERROR</td><td>R</td><td>0x0</td><td>Protocol error occurred in the past. This field can only be reset<br>by the Controller, if it issues the GETSTATUS CCC.<br><br>Values:<br><br>0 - no error occurred<br><br>1 - generic protocol error occurred in the past. It will be set until reception<br>of the next GETSTATUS command.</td></tr>
+<tr><td>7:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="QUEUE_STATUS">QUEUE_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9</td><td>IBI_QUEUE_EMPTY</td><td>R</td><td>0x1</td><td>IBI Queue is empty</td></tr>
+<tr><td>8</td><td>IBI_QUEUE_FULL</td><td>R</td><td>0x0</td><td>IBI Queue is full</td></tr>
+<tr><td>7</td><td>TX_DATA_QUEUE_EMPTY</td><td>R</td><td>0x1</td><td>TX Data Queue is empty</td></tr>
+<tr><td>6</td><td>TX_DATA_QUEUE_FULL</td><td>R</td><td>0x0</td><td>TX Data Queue is full</td></tr>
+<tr><td>5</td><td>RX_DATA_QUEUE_EMPTY</td><td>R</td><td>0x1</td><td>RX Data Queue is empty</td></tr>
+<tr><td>4</td><td>RX_DATA_QUEUE_FULL</td><td>R</td><td>0x0</td><td>RX Data Queue is full</td></tr>
+<tr><td>3</td><td>TX_DESC_QUEUE_EMPTY</td><td>R</td><td>0x1</td><td>TX Descriptor Queue is empty</td></tr>
+<tr><td>2</td><td>TX_DESC_QUEUE_FULL</td><td>R</td><td>0x0</td><td>TX Descriptor Queue is full</td></tr>
+<tr><td>1</td><td>RX_DESC_QUEUE_EMPTY</td><td>R</td><td>0x1</td><td>RX Descriptor Queue is empty</td></tr>
+<tr><td>0</td><td>RX_DESC_QUEUE_FULL</td><td>R</td><td>0x0</td><td>RX Descriptor Queue is full</td></tr>
+</table>
+<h3 id="DESC_QUEUE_DEPTH">DESC_QUEUE_DEPTH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>TX_DESC_QUEUE_DEPTH</td><td>R</td><td>0x0</td><td>Number of entries in TX Descriptor Queue</td></tr>
+<tr><td>7:0</td><td>RX_DESC_QUEUE_DEPTH</td><td>R</td><td>0x0</td><td>Number of entries in RX Descriptor Queue</td></tr>
+</table>
+<h3 id="DATA_QUEUE_DEPTH">DATA_QUEUE_DEPTH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>TX_DATA_QUEUE_DEPTH</td><td>R</td><td>0x0</td><td>Number of DWORD entries in TX Data Queue</td></tr>
+<tr><td>7:0</td><td>RX_DATA_QUEUE_DEPTH</td><td>R</td><td>0x0</td><td>Number of DWORD entries in RX Data Queue</td></tr>
+</table>
+<h3 id="IBI_QUEUE_DEPTH">IBI_QUEUE_DEPTH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>IBI_QUEUE_DEPTH</td><td>R</td><td>0x0</td><td>Number of entries in IBI Queue</td></tr>
+</table>
+<h3 id="INTERRUPT_STATUS">INTERRUPT_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>24:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>20</td><td>PENDING_IBI</td><td>R</td><td>0x0</td><td>At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).</td></tr>
+<tr><td>19:16</td><td>PENDING_INTERRUPT</td><td>RW</td><td>0x0</td><td>Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.</td></tr>
+<tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>IBI_DONE</td><td>RW</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+</table>
+<h3 id="INTERRUPT_ENABLE">INTERRUPT_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TRANSFER_ERR_STAT`</td></tr>
+<tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TX_DESC_COMPLETE_EN`</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TRANSFER_ABORT_STAT`</td></tr>
+<tr><td>24:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>IBI_DONE_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `IBI_DONE`</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TTI_IBI_THLD_STAT`</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TTI_RX_DESC_THLD_STAT`</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TTI_TX_DESC_THLD_STAT`</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TTI_RX_DATA_THLD_STAT`</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TTI_TX_DATA_THLD_STAT`</td></tr>
+<tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TX_DESC_TIMEOUT_EN`</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RX_DESC_TIMEOUT_EN`</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TX_DESC_STAT_EN`</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RX_DESC_STAT_EN`</td></tr>
+</table>
+<h3 id="INTERRUPT_FORCE">INTERRUPT_FORCE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TRANSFER_ERR_STAT_FORCE`</td></tr>
+<tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TX_DESC_COMPLETE_FORCE`</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TRANSFER_ABORT_STAT_FORCE`</td></tr>
+<tr><td>24:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>IBI_DONE_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `IBI_DONE_FORCE`</td></tr>
+<tr><td>12</td><td>IBI_THLD_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TTI_IBI_THLD_STAT` to be set to 1</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TTI_RX_DESC_THLD_STAT` to be set to `1`</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TTI_TX_DESC_THLD_STAT` to be set to `1`</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TTI_RX_DATA_THLD_STAT` to be set to `1`</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TTI_TX_DATA_THLD_STAT` to be set to `1`</td></tr>
+<tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TX_DESC_TIMEOUT_FORCE`</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RX_DESC_TIMEOUT_FORCE`</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TX_DESC_STAT_FORCE`</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT_FORCE</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RX_DESC_STAT_FORCE`</td></tr>
+</table>
+<h3 id="TARGET_ERR_CTRL">TARGET_ERR_CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>12</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable Recovery Interface INDIRECT FIFO overflow error detection and transition to Error state. Set to 0 to disable (overflow is still recorded in interrupt status).</td></tr>
+<tr><td>11</td><td>RI_RX_FIFO_OVERFLOW_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable Recovery Interface RX FIFO overflow error detection and transition to Error state. Set to 0 to disable (overflow is still recorded in interrupt status).</td></tr>
+<tr><td>10</td><td>RI_UNSUPPORTED_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable Recovery Interface unsupported command error detection. Set to 0 to disable.</td></tr>
+<tr><td>9</td><td>RI_READONLY_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable Recovery Interface write-to-read-only error detection. Set to 0 to disable.</td></tr>
+<tr><td>8</td><td>RI_LENGTH_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable Recovery Interface length error detection. Set to 0 to disable.</td></tr>
+<tr><td>7</td><td>RI_PEC_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable Recovery Interface PEC/CRC error detection. Set to 0 to disable.</td></tr>
+<tr><td>6</td><td>FRAMING_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable framing error detection. Set to 0 to disable.</td></tr>
+<tr><td>5</td><td>TE5_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable TE5 error detection. Set to 0 to disable.</td></tr>
+<tr><td>4</td><td>TE4_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable TE4 error detection. Set to 0 to disable.</td></tr>
+<tr><td>3</td><td>TE3_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable TE3 error detection. Set to 0 to disable.</td></tr>
+<tr><td>2</td><td>TE2_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable TE2 error detection. Set to 0 to disable.</td></tr>
+<tr><td>1</td><td>TE1_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable TE1 error detection. Set to 0 to disable.</td></tr>
+<tr><td>0</td><td>TE0_ERR_DET_EN</td><td>RW</td><td>0x1</td><td>Enable TE0 error detection. Set to 0 to disable.</td></tr>
+</table>
+<h3 id="TARGET_ERR_INTR_STATUS">TARGET_ERR_INTR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
+<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
+<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
+<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
+<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
+<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
+<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
+<tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="TARGET_ERR_INTR_ENABLE">TARGET_ERR_INTR_ENABLE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT`</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RI_RX_FIFO_OVERFLOW_ERR_STAT`</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RI_UNSUPPORTED_ERR_STAT`</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RI_READONLY_ERR_STAT`</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RI_LENGTH_ERR_STAT`</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `RI_PEC_ERR_STAT`</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `FRAMING_ERR_STAT`</td></tr>
+<tr><td>6</td><td>TE5_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TE5_ERR_STAT`</td></tr>
+<tr><td>5</td><td>TE4_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TE4_ERR_STAT`</td></tr>
+<tr><td>4</td><td>TE3_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TE3_ERR_STAT`</td></tr>
+<tr><td>3</td><td>TE2_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TE2_ERR_STAT`</td></tr>
+<tr><td>2</td><td>TE1_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TE1_ERR_STAT`</td></tr>
+<tr><td>1</td><td>TE0_ERR_EN</td><td>RW</td><td>0x0</td><td>Enables the corresponding interrupt bit `TE0_ERR_STAT`</td></tr>
+<tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="TARGET_ERR_INTR_FORCE">TARGET_ERR_INTR_FORCE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` to be set to 1</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `RI_RX_FIFO_OVERFLOW_ERR_STAT` to be set to 1</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `RI_UNSUPPORTED_ERR_STAT` to be set to 1</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `RI_READONLY_ERR_STAT` to be set to 1</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `RI_LENGTH_ERR_STAT` to be set to 1</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `RI_PEC_ERR_STAT` to be set to 1</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `FRAMING_ERR_STAT` to be set to 1</td></tr>
+<tr><td>6</td><td>TE5_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TE5_ERR_STAT` to be set to 1</td></tr>
+<tr><td>5</td><td>TE4_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TE4_ERR_STAT` to be set to 1</td></tr>
+<tr><td>4</td><td>TE3_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TE3_ERR_STAT` to be set to 1</td></tr>
+<tr><td>3</td><td>TE2_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TE2_ERR_STAT` to be set to 1</td></tr>
+<tr><td>2</td><td>TE1_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TE1_ERR_STAT` to be set to 1</td></tr>
+<tr><td>1</td><td>TE0_ERR_FORCE</td><td>RW</td><td>0x0</td><td>Forces the corresponding interrupt bit `TE0_ERR_STAT` to be set to 1</td></tr>
+<tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_TE0">TARGET_ERR_CNT_TE0</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_TE1">TARGET_ERR_CNT_TE1</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_TE2">TARGET_ERR_CNT_TE2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_TE3">TARGET_ERR_CNT_TE3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_TE4">TARGET_ERR_CNT_TE4</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_TE5">TARGET_ERR_CNT_TE5</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_FRAMING">TARGET_ERR_CNT_FRAMING</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_RI_PEC">TARGET_ERR_CNT_RI_PEC</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_RI_LENGTH">TARGET_ERR_CNT_RI_LENGTH</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_RI_READONLY">TARGET_ERR_CNT_RI_READONLY</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_RI_UNSUPPORTED">TARGET_ERR_CNT_RI_UNSUPPORTED</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW">TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW">TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>CNT</td><td>RW</td><td>0x0</td><td>Error count (saturates at 255). Write 0 to clear.</td></tr>
+</table>
+<h3 id="RX_DESC_QUEUE_PORT">RX_DESC_QUEUE_PORT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>RX_DESC</td><td>R</td><td>0x0</td><td>RX Data</td></tr>
+</table>
+<h3 id="TX_DESC_QUEUE_PORT">TX_DESC_QUEUE_PORT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>TX_DESC</td><td>W</td><td>0x0</td><td>TX Data</td></tr>
+</table>
+<h3 id="IBI_QUEUE_SIZE">IBI_QUEUE_SIZE</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>IBI_QUEUE_SIZE</td><td>R</td><td>0x4</td><td>IBI Queue Size in DWORDs calculated as `2^(N+1)`</td></tr>
+</table>
+<h3 id="SOC_MGMT_CONTROL">SOC_MGMT_CONTROL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PLACEHOLDER</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="SOC_MGMT_STATUS">SOC_MGMT_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PLACEHOLDER</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="REC_INTF_CFG">REC_INTF_CFG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>REC_PAYLOAD_DONE</td><td>RW</td><td>0x0</td><td>Inform Recovery Handler that payload transfer is finished.</td></tr>
+<tr><td>0</td><td>REC_INTF_BYPASS</td><td>RW</td><td>0x0</td><td>Choose Recovery Interface access type:<br><br>* 0 - I3C Core<br><br>* 1 - direct AXI</td></tr>
+</table>
+<h3 id="REC_INTF_REG_W1C_ACCESS">REC_INTF_REG_W1C_ACCESS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>INDIRECT_FIFO_CTRL_RESET</td><td>RW</td><td>0x0</td><td>Write to &#x27;Indirect memory configuration - reset&#x27; register, mocking a hardware access (bypassing &#x27;write 1 to clear&#x27; register property).</td></tr>
+<tr><td>15:8</td><td>RECOVERY_CTRL_ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>Write to &#x27;Recovery Control - Activate Recovery Image&#x27; register, mocking a hardware access (bypassing &#x27;write 1 to clear&#x27; register property).</td></tr>
+<tr><td>7:0</td><td>DEVICE_RESET_CTRL</td><td>RW</td><td>0x0</td><td>Write to &#x27;Reset control - Device Reset Control&#x27; register, mocking a hardware access (bypassing &#x27;write 1 to clear&#x27; register property).</td></tr>
+</table>
+<h3 id="SOC_MGMT_RSVD_2">SOC_MGMT_RSVD_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PLACEHOLDER</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="SOC_MGMT_RSVD_3">SOC_MGMT_RSVD_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PLACEHOLDER</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="SOC_PAD_CONF">SOC_PAD_CONF</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>PAD_TYPE</td><td>RW</td><td>0x1</td><td>Select pad type<br><br>0 - Bidirectional<br><br>1 - Open-drain<br><br>2 - Input-only<br><br>3 - Analog input</td></tr>
+<tr><td>23:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>VIRTUAL_OD_EN</td><td>RW</td><td>0x0</td><td>Enable virtual open drain:<br><br>0 - disabled<br><br>1 - enabled</td></tr>
+<tr><td>6</td><td>OD_EN</td><td>RW</td><td>0x0</td><td>Enable Open-Drain:<br><br>0 - disabled<br><br>1 - enabled</td></tr>
+<tr><td>5</td><td>IO_INVERSION</td><td>RW</td><td>0x0</td><td>Invert I/O signal:<br><br>0 - signals pass-through<br><br>1 - signals are inverted</td></tr>
+<tr><td>4</td><td>PULL_EN</td><td>RW</td><td>0x0</td><td>Enable Pull:<br><br>0 - disabled<br><br>1 - enabled</td></tr>
+<tr><td>3</td><td>PULL_DIR</td><td>RW</td><td>0x0</td><td>Direction of the pull:<br><br>0 - Pull down<br><br>1 - Pull up</td></tr>
+<tr><td>2</td><td>KEEPER_EN</td><td>RW</td><td>0x0</td><td>Enable the High-Keeper:<br><br>0 - disabled<br><br>1 - enabled</td></tr>
+<tr><td>1</td><td>SCHMITT_EN</td><td>RW</td><td>0x0</td><td>Enable the Schmitt Trigger:<br><br>0 - disabled<br><br>1 - enabled</td></tr>
+<tr><td>0</td><td>INPUT_ENABLE</td><td>RW</td><td>0x1</td><td>Enable input:<br><br>0 - enabled<br><br>1 - disabled</td></tr>
+</table>
+<h3 id="SOC_PAD_ATTR">SOC_PAD_ATTR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>DRIVE_STRENGTH</td><td>RW</td><td>0xF</td><td>Select driver strength<br><br>&#x27;0 - lowest<br><br>&#x27;1 - highest</td></tr>
+<tr><td>23:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:8</td><td>DRIVE_SLEW_RATE</td><td>RW</td><td>0xF</td><td>Select driver slew rate<br><br>&#x27;0 - lowest<br><br>&#x27;1 - highest</td></tr>
+<tr><td>7:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="SOC_MGMT_FEATURE_2">SOC_MGMT_FEATURE_2</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PLACEHOLDER</td><td>RW</td><td>0x0</td><td>Reserved for: I/O ring and pad configuration</td></tr>
+</table>
+<h3 id="SOC_MGMT_FEATURE_3">SOC_MGMT_FEATURE_3</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>PLACEHOLDER</td><td>RW</td><td>0x0</td><td>Reserved for: I/O ring and pad configuration</td></tr>
+</table>
+<h3 id="T_R_REG">T_R_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_R</td><td>RW</td><td>0x0</td><td>Rise time of both SDA and SCL in clock units</td></tr>
+</table>
+<h3 id="T_F_REG">T_F_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_F</td><td>RW</td><td>0x0</td><td>Fall time of both SDA and SCL in clock units</td></tr>
+</table>
+<h3 id="T_SU_DAT_REG">T_SU_DAT_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_SU_DAT</td><td>RW</td><td>0x0</td><td>Data setup time in clock units</td></tr>
+</table>
+<h3 id="T_SU_DAT_I2C_REG">T_SU_DAT_I2C_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_SU_DAT_I2C</td><td>RW</td><td>0x0</td><td>Data setup time in I2C mode in clock units</td></tr>
+</table>
+<h3 id="T_HD_DAT_REG">T_HD_DAT_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HD_DAT</td><td>RW</td><td>0x0</td><td>Data hold time in clock units</td></tr>
+</table>
+<h3 id="T_HIGH_REG">T_HIGH_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HIGH</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="T_HIGH_OD_REG">T_HIGH_OD_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HIGH_OD</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="T_HIGH_INIT_OD_REG">T_HIGH_INIT_OD_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HIGH_INIT_OD</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="T_HIGH_I2C_REG">T_HIGH_I2C_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HIGH_I2C</td><td>RW</td><td>0x0</td><td>-</td></tr>
+</table>
+<h3 id="T_LOW_REG">T_LOW_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_LOW</td><td>RW</td><td>0x0</td><td>Low period of the SCL in clock units</td></tr>
+</table>
+<h3 id="T_LOW_OD_REG">T_LOW_OD_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_LOW_OD</td><td>RW</td><td>0x0</td><td>Low period of the SCL in Open-Drain mode in clock units</td></tr>
+</table>
+<h3 id="T_LOW_I2C_REG">T_LOW_I2C_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_LOW_I2C</td><td>RW</td><td>0x0</td><td>Low period of the SCL in I2C mode in clock units</td></tr>
+</table>
+<h3 id="T_HD_STA_REG">T_HD_STA_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HD_STA</td><td>RW</td><td>0x0</td><td>Hold time for START in clock units</td></tr>
+</table>
+<h3 id="T_HD_STA_I2C_REG">T_HD_STA_I2C_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HD_STA_I2C</td><td>RW</td><td>0x0</td><td>Hold time for START in I2C mode in clock units</td></tr>
+</table>
+<h3 id="T_HD_RSTA_REG">T_HD_RSTA_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HD_RSTA</td><td>RW</td><td>0x0</td><td>Hold time for repeated START in clock units</td></tr>
+</table>
+<h3 id="T_SU_STA_REG">T_SU_STA_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_SU_STA</td><td>RW</td><td>0x0</td><td>Setup time for repeated START in clock units</td></tr>
+</table>
+<h3 id="T_SU_STA_I2C_REG">T_SU_STA_I2C_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_SU_STA_I2C</td><td>RW</td><td>0x0</td><td>Setup time for repeated START in I2C mode in clock units</td></tr>
+</table>
+<h3 id="T_SU_STO_REG">T_SU_STO_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_SU_STO</td><td>RW</td><td>0x0</td><td>Setup time for STOP in clock units</td></tr>
+</table>
+<h3 id="T_SU_STO_I2C_REG">T_SU_STO_I2C_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_SU_STO_I2C</td><td>RW</td><td>0x0</td><td>Setup time for STOP in in I2C mode clock units</td></tr>
+</table>
+<h3 id="T_DS_OD_REG">T_DS_OD_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_DS_OD</td><td>RW</td><td>0x0</td><td>Setup time for SDA during START in clock units</td></tr>
+</table>
+<h3 id="T_FREE_REG">T_FREE_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>T_FREE</td><td>RW</td><td>0xC</td><td>Bus Free Time Between a STOP and a START</td></tr>
+</table>
+<h3 id="T_FREE_I2C_REG">T_FREE_I2C_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>T_FREE_I2C</td><td>RW</td><td>0xC</td><td>Bus Free Time Between a STOP and a START in I2C mode</td></tr>
+</table>
+<h3 id="T_AVAL_REG">T_AVAL_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>T_AVAL</td><td>RW</td><td>0x12C</td><td>-</td></tr>
+</table>
+<h3 id="T_IDLE_REG">T_IDLE_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>T_IDLE</td><td>RW</td><td>0xEA60</td><td>Time in clock cycles from STOP detection until Bus Idle Condition (tIDLE). Configure based on System Clock</td></tr>
+</table>
+<h3 id="HDR_TIMEOUT_EN_REG">HDR_TIMEOUT_EN_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>HDR_TIMEOUT_EN</td><td>RW</td><td>0x0</td><td>Enable bit for the optional 60us HDR error recovery timer (I3C spec 5.1.10.1.9). When enabled, the Target can recover from TE0/TE1 errors if both SCL and SDA stay High for a period exceeding the configured threshold. Disabled on reset.</td></tr>
+</table>
+<h3 id="T_HDR_TIMEOUT_REG">T_HDR_TIMEOUT_REG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>19:0</td><td>T_HDR_TIMEOUT</td><td>RW</td><td>0xEA60</td><td>Timer threshold in clock cycles for the optional HDR error recovery (I3C spec 5.1.10.1.9). If both SCL and SDA stay High for this many clock cycles during a TE0/TE1 error-induced HDR mode, the Target exits HDR mode and returns to Idle. Configure based on System Clock to achieve 60us.</td></tr>
+</table>
+<h3 id="CONTROLLER_CONFIG">CONTROLLER_CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>5:4</td><td>OPERATION_MODE</td><td>R</td><td>0x1</td><td>-</td></tr>
+<tr><td>3:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+</table>
+<h3 id="TERMINATION_EXTCAP_HEADER">TERMINATION_EXTCAP_HEADER</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:8</td><td>CAP_LENGTH</td><td>R</td><td>0x1</td><td>Capability Structure Length in DWORDs</td></tr>
+<tr><td>7:0</td><td>CAP_ID</td><td>R</td><td>0x0</td><td>Extended Capability ID</td></tr>
+</table>
+<h3 id="DAT_MEMORY_128_">DAT_MEMORY[128]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:59</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>58:51</td><td>AUTOCMD_HDR_CODE</td><td>RW</td><td>-</td><td>Device auto command in HDR mode</td></tr>
+<tr><td>50:48</td><td>AUTOCMD_MODE</td><td>RW</td><td>-</td><td>Auto command mode and speed</td></tr>
+<tr><td>47:40</td><td>AUTOCMD_VALUE</td><td>RW</td><td>-</td><td>IBI value that triggers auto command</td></tr>
+<tr><td>39:32</td><td>AUTOCMD_MASK</td><td>RW</td><td>-</td><td>IBI mask</td></tr>
+<tr><td>31</td><td>DEVICE</td><td>RW</td><td>-</td><td>Device type:<br>0 - I3C device,<br>1 - I2C device.</td></tr>
+<tr><td>30:29</td><td>DEV_NACK_RETRY_CNT</td><td>RW</td><td>-</td><td>Number of retries before giving up</td></tr>
+<tr><td>28:26</td><td>RING_ID</td><td>RW</td><td>-</td><td>Send IBI read to ring bundle</td></tr>
+<tr><td>25:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>23:16</td><td>DYNAMIC_ADDRESS</td><td>RW</td><td>-</td><td>I3C dynamic address</td></tr>
+<tr><td>15</td><td>TS</td><td>RW</td><td>-</td><td>Enable/disable IBI timestamp</td></tr>
+<tr><td>14</td><td>CRR_REJECT</td><td>RW</td><td>-</td><td>Reject device&#x27;s request for controller change</td></tr>
+<tr><td>13</td><td>IBI_REJECT</td><td>RW</td><td>-</td><td>Reject device&#x27;s request for IBI</td></tr>
+<tr><td>12</td><td>IBI_PAYLOAD</td><td>RW</td><td>-</td><td>Device&#x27;s IBI contains data payload</td></tr>
+<tr><td>11:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6:0</td><td>STATIC_ADDRESS</td><td>RW</td><td>-</td><td>I3C/I2C static device address</td></tr>
+</table>
+<h3 id="DCT_MEMORY_128_">DCT_MEMORY[128]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>127:104</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>103:96</td><td>DYNAMIC_ADDRESS</td><td>R</td><td>-</td><td>Device I3C Dynamic Address after ENTDAA</td></tr>
+<tr><td>95:80</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>79:72</td><td>BCR</td><td>R</td><td>-</td><td>Value of the I3C device&#x27;s Bus Characteristics Register</td></tr>
+<tr><td>71:64</td><td>DCR</td><td>R</td><td>-</td><td>Value of the I3C device&#x27;s Device Characteristics Register</td></tr>
+<tr><td>63:48</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>47:32</td><td>PID_LO</td><td>R</td><td>-</td><td>Device Provisional ID Low</td></tr>
+<tr><td>31:0</td><td>PID_HI</td><td>R</td><td>-</td><td>Device Provisional ID High</td></tr>
+</table>
 </div>
 </div>
 </div>
@@ -1326,6 +2804,8 @@ Timer registers</p></td>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>

@@ -267,6 +267,21 @@ capabilities</p>
 <div class="paragraph">
 <p>Downloadable PDFs are also accessible from the above location.</p>
 </div>
+<div class="paragraph">
+<p>Generated register maps provide links from register names to their field tables,
+with each register listed in the contents and PDF bookmarks. The AsciiDoc
+partials contain a level-one address-map heading and level-two register headings.
+When including one, set <code>leveloffset</code> to the level of the containing section so
+both stay beneath it; for example, beneath <code>=== Detailed Register Map</code>, use
+<code>include::../regs/gen/adoc/example.adoc[leveloffset=+2]</code>.</p>
+</div>
+<div class="paragraph">
+<p>The TRM PDF build checks every generated register map in the open register
+inventory against the assembled document. A missing map, missing register
+section, or section deeper than the contents or bookmark limit fails the build.
+Include new maps under their owning block and keep integration reference models
+labelled as such.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="updating-documentation"><a class="anchor" href="#updating-documentation"></a><a class="link" href="#updating-documentation">1.2. Updating documentation</a></h3>
@@ -463,6 +478,8 @@ KROKI_SERVER_URL=http://localhost:8001 make doc-all-html</code></pre>
     </div>
   </div>
 </footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
 <script src="../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../_/js/a11y-patches.js"></script>
 <script src="../../_/js/vendor/viewer.min.js"></script>

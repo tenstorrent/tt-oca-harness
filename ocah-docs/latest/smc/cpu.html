@@ -199,23 +199,62 @@
     <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
     <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/drbg/doc/index.html">DRBG</a>
+</ul>
   </li>
   <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
   </li>
-  <li class="nav-item" data-depth="5">
-    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Key Manager Firmware</a>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="4">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Peripherals</a>
+    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
 <ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
   <li class="nav-item" data-depth="5">
     <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
   </li>
@@ -323,7 +362,16 @@
     <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
   </li>
   <li class="nav-item" data-depth="3">
-    <a class="nav-link" href="../aou-ppa-appendices.html">PPA and Appendices</a>
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -331,6 +379,9 @@
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
   </li>
   <li class="nav-item" data-depth="1">
     <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
@@ -413,7 +464,7 @@
 </nav>
 </div>
   <div class="content">
-<aside class="toc sidebar" data-title="Contents" data-levels="4">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
@@ -915,7 +966,7 @@ firmware development and diagnostics.</p>
 <li><strong>SEMA[4]</strong>: 4 registers, base 0x260, stride 0x8</li>
 <li><strong>DUMMY_ROM_NULL[4]</strong>: 4 registers, base 0x2A0, stride 0x8</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x18</td><td><a href="#RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
@@ -940,7 +991,7 @@ firmware development and diagnostics.</p>
 <tr><td>0x298</td><td><a href="#DUMMY_ROM_3">DUMMY_ROM_3</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x2A0 - 0x2B8</td><td><a href="#DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="RESET_VECTOR_4_">RESET_VECTOR[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1103,14 +1154,14 @@ firmware development and diagnostics.</p>
 <li><strong>MSIP[4]</strong>: 4 registers, base 0x0, stride 0x4</li>
 <li><strong>MTIMECMP[4]</strong>: 4 registers, base 0x4000, stride 0x8</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0xC</td><td><a href="#MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4000 - 0x4018</td><td><a href="#MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xBFF8</td><td><a href="#MTIME">MTIME</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="MSIP_4_">MSIP[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1143,7 +1194,7 @@ firmware development and diagnostics.</p>
 <li><strong>confstrptr[3]</strong>: 3 registers, base 0x64, stride 0x4</li>
 <li><strong>progbuf[16]</strong>: 16 registers, base 0x80, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x10 - 0x3C</td><td><a href="#abstractdata_12_">abstractdata[12]</a></td><td>RW</td><td>Abstract Data Register. Used for arguments/return values of abstract commands.</td></tr>
@@ -1173,7 +1224,7 @@ firmware development and diagnostics.</p>
 <tr><td>0xFC</td><td><a href="#sbdata3">sbdata3</a></td><td>RW</td><td>Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
 <tr><td>0x100</td><td><a href="#haltsum0">haltsum0</a></td><td>R</td><td>Read-only. Each bit indicates whether one specific hart is halted. Unavailable/nonexistent harts are not considered halted. LSB for hart {hartsel[19:5],5&#x27;h0}, MSB for hart {hartsel[19:5],5&#x27;h1f}.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="abstractdata_12_">abstractdata[12]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1376,7 +1427,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: bus_error_unit</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
@@ -1386,7 +1437,7 @@ firmware development and diagnostics.</p>
 <tr><td>0x20</td><td><a href="#ACCRUED_ENABLE">ACCRUED_ENABLE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x28</td><td><a href="#LOCAL_ENABLE">LOCAL_ENABLE</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CAUSE">CAUSE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1461,7 +1512,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: wdt</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
@@ -1471,7 +1522,7 @@ firmware development and diagnostics.</p>
 <tr><td>0x1C</td><td><a href="#KEY">KEY</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x20</td><td><a href="#CMP">CMP</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CTRL">CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -1540,6 +1591,8 @@ firmware development and diagnostics.</p>
     </div>
   </div>
 </footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
 <script src="../../../_/js/keyboard-shortcuts.js"></script>
 <script src="../../../_/js/a11y-patches.js"></script>
 <script src="../../../_/js/vendor/viewer.min.js"></script>
