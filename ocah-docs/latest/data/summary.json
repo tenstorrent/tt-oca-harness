@@ -17,7 +17,7 @@
     {
       "flow": "sep",
       "framework": "cocotb",
-      "pass_rate": 0.0,
+      "pass_rate": 98.2,
       "tests_total": 167,
       "tool": "vcs"
     },
@@ -36,7 +36,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-09-23T13:22:52+00:00",
+  "generated_at": "2026-09-23T13:52:14+00:00",
   "results": [
     {
       "coverage": {
@@ -72,7 +72,15 @@
     },
     {
       "coverage": {
-        "effective_metrics": {}
+        "effective_metrics": {
+          "assertion": 47.81,
+          "branch": 53.68,
+          "condition": 55.74,
+          "fsm_state": 23.49,
+          "functional": 98.57,
+          "line": 54.47,
+          "toggle": 50.55
+        }
       },
       "flow": "sep",
       "framework": "cocotb",
