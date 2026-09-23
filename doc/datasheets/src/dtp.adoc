@@ -182,9 +182,8 @@ INTEGRATION DEPENDENCIES
   active-high debug-disable contract.
 * Replace the zero-valued IDCODE manufacturer, part, revision, and OCAH version
   defaults with release-specific values.
-* Provide safe clock, reset, CDC, pad, and clock-gating integration. Establish
-  project-specific TCK constraints; this beta sheet does not specify a
-  characterized operating frequency.
+* Provide safe clock, reset, CDC, pad, and clock-gating integration, and
+  establish project-specific TCK constraints.
 * Configure the SMC, SEP, and adopter reset-control output types and enables,
   and connect or correctly bypass every enabled scan and secondary-TAP chain.
 * Connect enabled AXI manager ports only to address maps permitted by the
@@ -208,7 +207,8 @@ controls, and lifecycle-disable matrices. Scoreboards, reference models,
 coverage intent, and deliberately corrupted-checker tests guard against vacuous
 passes.
 
-No third-party standards certification, silicon characterization, or portable
+This beta sheet does not specify a characterized operating frequency, and no
+third-party standards certification, silicon characterization, or portable
 frequency, area, and power figures are claimed. Those results depend on the
 selected configuration, libraries, constraints, physical implementation, and
 target process.
