@@ -310,18 +310,13 @@ protection attribute policies.
 
 == Outbound Filtering
 
-Outbound filtering manages which external resources the SMC can access,
-restricting SMC-initiated requests to defined system peripherals or
-memory regions. The filtering system:
+The outbound filter uses explicit matching entries to allow or block
+SMC-initiated requests. Unmatched requests pass because this instance uses
+`BlockByDefault = 0`. An allow entry is therefore not an allowlist: denying
+traffic requires a matching entry whose read or write permission is clear.
 
-* *Controls destinations*: Specifies allowable external resource access,
-reinforcing separation and limiting SMC influence on the rest of the SoC
-* *Adapts to privilege levels*: Dynamically adjusts policies based on
-software privilege level—higher privilege modes receive broader access
-while lower privilege software is constrained
-* *Enforces security*: Serves as a gatekeeper preventing unauthorized
-access attempts by blocking traffic that doesn't meet configured
-privilege or destination criteria
+Address, source ID, and NS matching select an entry. The filter does not
+infer software privilege or grant broader access to a higher privilege mode.
 
 All outbound traffic, after passing through any privilege remap stages,
 is subject to outbound filtering enforcement based on address, security
@@ -377,8 +372,9 @@ described in the AXI Traffic Filter decode section referenced above.
 
 This filtering occurs in `axi_filter_wrap`, where each transaction's
 `aw.prot[1]` (write) or `ar.prot[1]` (read) is compared against the
-filter's `allow_ns` configuration. Transactions that no entry admits are
-routed to an error slave, which returns a decode error response.
+filter's `allow_ns` configuration. A matching deny entry routes the transaction to an error slave, which returns
+a decode error. With no matching entry, the inbound instance blocks the
+transaction and the outbound instance passes it.
 
 === Full 3-Bit Protection Matching (AXI-Lite)
 
@@ -411,22 +407,27 @@ the originating master.
 
 === Configuration Examples
 
-**Example 1: Secure-only access to a peripheral**
+**Example 1: Secure-only inbound access to a peripheral**
 ....
 Configure filter with:
-- allow_ns = 0
-- Address range matching peripheral region
-Result: Only secure transactions (prot[1] = 0) are allowed
+- Enable a matching entry with allow_ns = 0 and the required read/write permissions
+- Set the address range and source ID match for the peripheral
+- Ensure no other entry permits unwanted access
+Result: Unmatched non-secure traffic is blocked by the inbound default policy
 ....
 
-**Example 2: Privileged-only register access**
+For outbound traffic, the same secure-only allow entry does not block
+non-secure requests: unmatched traffic passes. Add matching deny entries for
+the non-secure traffic to be blocked, accounting for entry priority.
+
+**Example 2: Secure privileged data access to AXI-Lite registers**
 ....
 Configure AXI-Lite filter with:
 - awprot_requirement = 0x1 (Data, Secure, Privileged)
 - arprot_requirement = 0x1
 - write_filter_enable = 1
 - read_filter_enable = 1
-Result: Only privileged transactions (prot[0] = 1) are allowed
+Result: Only transactions with all three PROT bits equal to 0x1 are allowed
 ....
 
 == Traffic Routing and Flow
