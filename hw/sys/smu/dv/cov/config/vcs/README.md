@@ -80,8 +80,13 @@ field that stays uncovered is a stimulus gap for a leaf on this bench.
 ## Reading a finished run
 
 ```
-python3 tools/dv/run_dv.py --dut smu --tool vcs --items hosted --cov
+python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov
 ```
+
+`all` is the coverage set, as it is for SEP: the 102 leaves of the package
+regression, including the SEP firmware and lifecycle leaves whose images the
+`c_compile` stage builds with the RISC-V toolchain. `hosted` is the
+toolchain-free subset the workflows run and leaves that stimulus out.
 
 The runner compiles with the scope, runs the group, merges, writes the urg
 report with the exclusion file, and prints one `coverage` line with every

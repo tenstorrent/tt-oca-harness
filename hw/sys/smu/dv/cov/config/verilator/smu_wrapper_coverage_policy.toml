@@ -7,8 +7,11 @@
 # graded run left unhit, each carried with a category, a rationale, an owner
 # and an expiry. Regenerate them from a fresh coverage-details.json rather
 # than editing them by hand; this header is the only part written by a person.
-# They were measured from `--dut smu --items hosted --cov` on the single
-# `compile_smu_chiplet` target.
+# They were measured from `--dut smu --items all --cov` on the single
+# `compile_smu_chiplet` target (2026-09-23, 102 leaves, Verilator 5.050:
+# user 98 of 107 points hit, 94.23 effective after the three rows below). `all` is the coverage
+# set, as it is for SEP; `hosted` is its toolchain-free subset and leaves the
+# SEP firmware and lifecycle stimulus out.
 #
 # No floor is set on the `user` family; one is set only from a measured
 # weekly `--cov` database, by the SMU DV owner, together with
