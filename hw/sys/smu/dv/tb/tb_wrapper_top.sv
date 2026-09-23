@@ -248,6 +248,9 @@ module smu_wrapper_uvm_top (
   output logic                                          tb_stap_smc_trst_n,
   output logic                                          tb_stap_smc_tdi,
   output logic                                          tb_stap_smc_tdo_oen,
+  // SEP STAP host TCK/TMS as the DTP drives them.
+  output logic                                          tb_stap_sep_tck,
+  output logic                                          tb_stap_sep_tms,
   output logic             ext_in_rvalid,
   input  wire logic        ext_in_rready,
   output logic [7:0]       ext_in_rid,
@@ -1255,6 +1258,8 @@ module smu_wrapper_uvm_top (
   assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
   assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
+  assign tb_stap_sep_tck     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tck;
+  assign tb_stap_sep_tms     = u_dut.u_smu.dtp_sep_stap_tap_ctrl.tms;
   // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
   // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
   // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
