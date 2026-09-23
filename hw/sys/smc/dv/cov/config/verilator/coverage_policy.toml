@@ -44,8 +44,10 @@
 # 89.07, expression 86.46 and user 407 of 467. The `[[holes]]` below are
 # the points that measurement left unhit; two PLIC points the hosted
 # measurement had waived are hit by smc_fw_plic_claim_test and carry no
-# row. This file carries 52 accepted user rows (every `expected_matches`
-# is 1).
+# row. This file carries 56 accepted user rows (every `expected_matches`
+# is 1); the four rows dated 2026-09-23 classify what the `hosted fw`
+# measurement left unhit and unclassified beside the map points #2226
+# re-derives.
 #
 # Hole categories in this file:
 #   missing_stimulus  no enrolled test drives the condition; the rationale
@@ -1026,3 +1028,75 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_zeroer_fcov.c_data_phase_beat_count_matches_addresses"
+
+[[holes]]
+id = "fcov-smc-c_locks_cleared_access_permitted"
+title = "locks cleared access permitted"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero while a read or program completes, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half; the same image blocks c_write_unlocked_field_updated (SMC-EFUSE-LOCKS.S1:locks-cleared-access-permitted)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_locks_cleared_access_permitted"
+
+[[holes]]
+id = "fcov-smc-c_read_unlocked_field_returned"
+title = "read unlocked field returned"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero while a read completes with a non-zero word, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half; the same image blocks c_write_unlocked_field_updated (SMC-EFUSE-LOCKS.S3:read-unlocked-field-returned)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_read_unlocked_field_returned"
+
+[[holes]]
+id = "fcov-smc-c_efuse_jtag_bresp_slverr"
+title = "efuse jtag bresp slverr"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "unreachable from this bench boundary: smc_efuse_wrapper demuxes the eFuse JTAG AXI-Lite port between the eFuse interface controller and the lifecycle filter's error slave. The controller's PeakRDL regblock has no address or access check (efuse_interface_ctrl_reg.sv: decoded_err, cpuif_wr_err and readback_err hold zero), so it answers OKAY; the error slave answers DECERR, which c_efuse_jtag_bresp_decerr records. No responder on the port produces SLVERR (SMC-EFUSE-JTAG.S2:bresp-slverr)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_bresp_slverr"
+
+[[holes]]
+id = "fcov-smc-c_efuse_jtag_rresp_slverr"
+title = "efuse jtag rresp slverr"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "unreachable from this bench boundary: smc_efuse_wrapper demuxes the eFuse JTAG AXI-Lite port between the eFuse interface controller and the lifecycle filter's error slave. The controller's PeakRDL regblock has no address or access check (efuse_interface_ctrl_reg.sv: decoded_err, cpuif_wr_err and readback_err hold zero), so it answers OKAY; the error slave answers DECERR, which c_efuse_jtag_rresp_decerr records. No responder on the port produces SLVERR (SMC-EFUSE-JTAG.S2:rresp-slverr)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_rresp_slverr"
