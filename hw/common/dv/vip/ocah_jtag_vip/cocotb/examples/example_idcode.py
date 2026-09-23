@@ -192,7 +192,7 @@ async def example_stap_idcode(dut):
 async def example_cpu_tap_idcode(dut):
     """Read IDCODE from the CPU debug TAP.
 
-    CPU TAPs typically have a wider IR (e.g., 10-bit for ARM DAP).
+    CPU debug TAPs often have a wider IR than the chip-level TAP.
     Demonstrates overriding ir_width per-instance.
     """
 
@@ -202,7 +202,7 @@ async def example_cpu_tap_idcode(dut):
         dut.jtag_cpu_if,
         name="cpu_tap",
         tck_period_ns=10,
-        ir_width=10,  # ARM DAP uses 10-bit IR (others may differ)
+        ir_width=10,  # wider CPU-debug IR; width is per instance
         tap_type="cpu_tap",
     )
 

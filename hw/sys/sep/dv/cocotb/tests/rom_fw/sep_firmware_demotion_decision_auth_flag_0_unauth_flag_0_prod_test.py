@@ -1,16 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD, selector bit CLEAR, BL2 demotion requested -> DEMOTE_1 left UNWRITTEN.
+"""PROD, BL1_DEMOTION_VALID clear, BL2 demotion requested -> DEMOTE_1 left UNWRITTEN.
 
-Outcome **O4** of the [C15] decision table in
+Outcome **O4** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 
-**THIS IS THE HIGHEST-VALUE ROW OF THE WHOLE DEMOTION GROUP, and both the VP half
-and batch R3 said so before it was written** (``batch_runs_0904_vp/FINDINGS.md``
-F07 "ACTIONABLE FOR BATCH V4 / R4"; the R4 guidance in
-``sep_demotion_decision_base.py``). It is the only one of the seven outcomes
-where:
+**THIS IS THE HIGHEST-VALUE ROW OF THE WHOLE DEMOTION GROUP.** It is the only one
+of the seven outcomes where:
 
   * ``lock_demotion`` goes false (``rom_main.c``) -- on every other path it
     keeps its initialiser;
@@ -19,9 +16,9 @@ where:
     DEMOTE_1 is left entirely unwritten at its reset value.
 
 ``+AUTH_FLAG_0`` is also set and is IGNORED, for the same reason as in the O5
-sibling: ``selector_bits`` bit 17 is clear, so ``rom_main.c`` does not take
-the first arm and ``usage_constraints.flags`` is never read. The deferral is
-decided by ``flag_args`` bit 0 alone (, tested).
+sibling: ``demotion_control`` BL1_DEMOTION_VALID is clear, so ``rom_main.c`` does not take
+the first arm and ``demotion_control`` is never read. The deferral is
+decided by the ``demotion_control`` BL2 request alone.
 
 **THE UNWRITTEN REGISTER IS ASSERTED THROUGH THE TRANSITION RECORD, NOT THROUGH
 AN END-OF-RUN READ, AND THAT IS DELIBERATE.** ``expect_demote_1 = (0, 0)`` is
@@ -52,13 +49,7 @@ are demonstrably live in the same regression: the O2b sibling drives
 ``lk1`` 0 -> 1 and R3's PROD_END member drives ``lk2`` 0 -> 1 through the same
 wiring. The cross-member argument is stated here rather than left implicit.
 
-The reference expects ``STATUS: DEMOTION_NOT_SELECTED`` + ``DEMOTION_NOT_LOCKED``
-for this row (``sep_demotion_uid_checker.py``). Neither code exists on
-this ROM -- ``grep -n DEMOT bootrom/prod/include/status_values.h`` is empty -- so
-the console tokens plus the register channel are the substitution, as recorded in
-the base's disclosed gaps and in this row's ``flow_deviation``.
-
-No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
+No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 """
 
 from __future__ import annotations

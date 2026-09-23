@@ -68,34 +68,34 @@ int main(void) {
            (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;
 
-    // Test 3: CTRL - POR from generated aggregate
-    printf("\nTest 3: CTRL\n");
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    expected_val = SPI_CONTROLLER__CTRL_reset;
+    // Test 3: CONTROL - POR from generated aggregate
+    printf("\nTest 3: CONTROL\n");
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    expected_val = SPI_CONTROLLER__CONTROL_reset;
     printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
            (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
+    // SW_RST is left clear: it is a level, so setting it here would hold the
+    // core in reset for every check below.
     write_val = 0xA0001234; // Set SPIEN, OUTPUT_EN, and watermarks
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, write_val);
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    // Mask out SW_RST bit which is write-only singlepulse
-    expected_val = write_val & ~SPI_CONTROLLER__CTRL__SW_RST_bm;
-    printf("  Write 0x%08x, readback 0x%08x (expected 0x%08x) - %s\n", write_val, read_val,
-           expected_val, (read_val == expected_val) ? "PASS" : "FAIL");
-    if (read_val != expected_val) pass = 0;
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, write_val);
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    printf("  Write 0x%08x, readback 0x%08x - %s\n", (unsigned)write_val, (unsigned)read_val,
+           (read_val == write_val) ? "PASS" : "FAIL");
+    if (read_val != write_val) pass = 0;
 
-    // Test 4: CFG - POR from generated aggregate
-    printf("\nTest 4: CFG\n");
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
-    expected_val = SPI_CONTROLLER__CFG_reset;
+    // Test 4: CONFIGOPTS - POR from generated aggregate
+    printf("\nTest 4: CONFIGOPTS\n");
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    expected_val = SPI_CONTROLLER__CONFIGOPTS_reset;
     printf("  Read default: 0x%08x (expected 0x%08x) - %s\n", read_val, expected_val,
            (read_val == expected_val) ? "PASS" : "FAIL");
     if (read_val != expected_val) pass = 0;
 
     write_val = 0xCF0F5678; // Set CPOL, CPHA, FULLCYC, timing fields, CLKDIV
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, write_val);
-    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, write_val);
+    read_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     printf("  Write 0x%08x, readback 0x%08x - %s\n", write_val, read_val,
            (read_val == write_val) ? "PASS" : "FAIL");
     if (read_val != write_val) pass = 0;

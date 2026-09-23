@@ -238,12 +238,12 @@ module efuse_token_processing #(
   end
 
   prim_rev_cell u_sec_disable_rev[31:0] (
-    .LO      (sec_disable_rev_lo),
-    .HI      (sec_disable_rev_hi),
-    .IN      (sec_disable_rev_in_sel),
-    .OUT     (sec_disable_token_rev),
-    .SRC_LOW (1'b0),
-    .SRC_HIGH(1'b1)
+    .lo_o      (sec_disable_rev_lo),
+    .hi_o      (sec_disable_rev_hi),
+    .in_i      (sec_disable_rev_in_sel),
+    .out_o     (sec_disable_token_rev),
+    .src_low_i (1'b0),
+    .src_high_i(1'b1)
   );
 
   efuse_triple_redundant_comparator u_triple_redundant_comparator_sec_disable_token (
@@ -283,13 +283,13 @@ module efuse_token_processing #(
   // Disable sec_disable_feature during A2/B1
   logic [7:0] low, high;
 
-  prim_rev_cell sep_sec_disable (
-    .LO(low[7:0]),
-    .HI(high[7:0]),
-    .IN({low[7],low[6], low[5], low[4], low[3], low[2], low[1], high[0]}),
-    .OUT(tt_rev_d_out[7:0]),
-    .SRC_LOW(1'b0),
-    .SRC_HIGH(1'b1)
+  prim_rev_cell u_sep_sec_disable (
+    .lo_o(low[7:0]),
+    .hi_o(high[7:0]),
+    .in_i({low[7],low[6], low[5], low[4], low[3], low[2], low[1], high[0]}),
+    .out_o(tt_rev_d_out[7:0]),
+    .src_low_i(1'b0),
+    .src_high_i(1'b1)
   );
 
   assign final_sec_disable = tt_rev_d_out[0] && (sec_disable_token_match == TOKEN_MATCH_CODE);

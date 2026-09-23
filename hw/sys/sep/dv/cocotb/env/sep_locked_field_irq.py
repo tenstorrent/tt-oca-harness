@@ -14,13 +14,16 @@ SECURE_TM payloads always change a bit. That is the seed-to-image map for
 
 from __future__ import annotations
 
+from sep_efuse_field_map import spec_secure_tm_blocked
 from sep_efuse_image import LOCK_BITS_PER_SLOT
 from sep_seeded_rng import SepSeededRng
+from sep_spec_tables import agg_from_pic
 
 SENTINEL = 0xBADCAB1E
-IRQ_LOCKED_FIELD = 33
+IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
 RESP_OKAY = 0
 SPARE_COUNT = 8
+# otp_fuse_controller.adoc LOCKS slots 0–31, LOCKS_SPARE slots 32–40. Spare k is slot 32+k.
 SPARE0_SLOT = 32
 
 
@@ -29,7 +32,7 @@ def spare_field_name(spare_idx: int) -> str:
 
 
 def spare_write_lock_bit(spare_idx: int) -> int:
-    """Global lock-vector bit of spare ``k``'s write-lock."""
+    """Global lock-vector bit of spare ``k``'s write-lock (otp_fuse_controller.adoc)."""
     if not 0 <= spare_idx < SPARE_COUNT:
         raise ValueError(f"spare_idx {spare_idx} not in 0..{SPARE_COUNT - 1}")
     return (SPARE0_SLOT + spare_idx) * LOCK_BITS_PER_SLOT
@@ -55,18 +58,15 @@ def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
     return 0xA5A5A5A5
 
 
-# Fields the eFuse field map marks SECURE_TM_LOCK, so a shadow write to them is
-# refused while the TEST_EN strap is latched (sep_efuse_pkg EfuseFieldMap; the
-# access-control term is ``secure_tm_i & lock[3]``). LOCKS and LOCKS_SPARE are
-# one field-map entry, so one positive control covers both apertures.
-SECURE_TM_LOCK_FIELDS = ("LOCKS", "LOCKS_SPARE", "LC_STATE", "SIP_DIS", "SYS_DIS")
+# Fields the specification says must refuse a write while SECURE_TM=1
+# (otp_fuse_controller.adoc). LOCKS and LOCKS_SPARE are one 96-bit LOCK field.
+SECURE_TM_LOCK_FIELDS = spec_secure_tm_blocked()
 
 # LC_STATE bytes [31:8] OR-merge as ordinary shadow bytes and do not disturb the
 # lifecycle nibble, so they are the safe payload for this field.
 LC_STATE_UPPER_MASK = 0xFFFF_FF00
 
-# Lock slot 31 is SEP_SYS_ID; its write-lock is LOCKS bit 62
-# (sep_efuse_pkg.sv, `idx 31: SEP_SYS_ID -- lock slot 31 (LOCKS[62:63])`).
+# Lock slot 31 is SEP_SYS_ID (otp_fuse_controller.adoc); write-lock is bit 2n = 62.
 SEP_SYS_ID_WRITE_LOCK_BIT = 62
 SEP_SYS_ID_WRITE_LOCK_WORD = SEP_SYS_ID_WRITE_LOCK_BIT // 32
 

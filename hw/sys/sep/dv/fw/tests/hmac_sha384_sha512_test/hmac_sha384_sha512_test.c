@@ -6,9 +6,6 @@
  *
  * Verifies SHA-384 and SHA-512 digest computation against NIST FIPS 180-4
  * known-answer vectors for message "abc".
- *
- * Execution:
- * make test-sep TEST_NAME=sep_hmac_sha384_sha512_test STACK=sim
  */
 
 #include <stdint.h>

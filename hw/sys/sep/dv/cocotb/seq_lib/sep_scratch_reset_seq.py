@@ -5,11 +5,9 @@
 Direct-AXI R/W of the SEP System-block dual scratch banks over the CPU-LSU bus
 (the no_cpu splice). The two banks live in different reset domains:
 
-  * SCRATCH_COLD (base 0x1080_2000) -- COLD domain: its register block is reset by
-    ``rst_ni`` only (sep_system_csr.sv u_sep_scratch_reg_cold ``.arst_n(rst_ni)``).
-  * SCRATCH_WARM (base 0x1080_2080) -- WARM domain: reset by
-    ``rst_warm_ni`` (u_sep_scratch_reg_warm), where
-    ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni``.
+  * SCRATCH_COLD (base 0x1080_2000) -- COLD domain: cleared only by ``rst_ni``.
+  * SCRATCH_WARM (base 0x1080_2080) -- WARM domain: cleared by a warm reset
+    (``wdt_rst_ni_i``). See VPLAN ``sep_warm_cold_reset_scratch_test``.
 
 Each bank is 8 x 64-bit registers (sep_scratch.rdl), 0x8 stride, only the lower
 32 bits used, reset default 0x0. The driver carries the per-index addresses and
@@ -30,15 +28,45 @@ SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")  # cold domain: .arst
 SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")  # warm domain: .arst_n(rst_warm_ni)
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
-# Both banks hold SCRATCH[8] (sep_scratch.rdl), 0x8 stride.
-SCRATCH_N = 8
-SCRATCH_COLD_ADDRS = tuple(sym(f"SEP_SCRATCH_COLD_SCRATCH_{i}__REG_ADDR") for i in range(SCRATCH_N))
-SCRATCH_WARM_ADDRS = tuple(sym(f"SEP_SCRATCH_WARM_SCRATCH_{i}__REG_ADDR") for i in range(SCRATCH_N))
+
+def _bank_addrs(bank: str) -> tuple[int, ...]:
+    """Every SCRATCH register of one bank, in index order, from the register export.
+
+    The depth is the array the RDL declares, not a number a sequence carries: a
+    sweep with its own literal silently stops short of the tail the day
+    ``sep_scratch.rdl`` grows the array, and reports a clean pass over the part
+    it still reaches.
+    """
+    addrs: list[int] = []
+    while True:
+        try:
+            addrs.append(sym(f"SEP_SCRATCH_{bank}_SCRATCH_{len(addrs)}__REG_ADDR"))
+        except KeyError:
+            break
+    if not addrs:
+        raise RuntimeError(
+            f"no SEP_SCRATCH_{bank}_SCRATCH_<n>__REG_ADDR symbols in the register "
+            "export; the scratch sweep would walk nothing"
+        )
+    return tuple(addrs)
+
+
+SCRATCH_COLD_ADDRS = _bank_addrs("COLD")
+SCRATCH_WARM_ADDRS = _bank_addrs("WARM")
+SCRATCH_N = len(SCRATCH_COLD_ADDRS)
+if len(SCRATCH_WARM_ADDRS) != SCRATCH_N:
+    raise RuntimeError(
+        f"scratch banks differ in depth (cold {SCRATCH_N}, warm "
+        f"{len(SCRATCH_WARM_ADDRS)}); the paired sweeps assume one depth"
+    )
+# Register pitch, taken from the export so a width change moves it.
+SCRATCH_STRIDE = SCRATCH_COLD_ADDRS[1] - SCRATCH_COLD_ADDRS[0]
 
 # Test patterns (mirror the reference sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).
 COLD_PATTERN = 0xCAFE_BABE
 WARM_PATTERN = 0xDEAD_BEEF
 WARM_PATTERN2 = 0xA5A5_5A5A  # post-warm-reset recovery write
+COLD_PATTERN2 = 0xBEEF_CAFE  # post-warm-reset cold-bank write
 
 # One distinct nonzero pattern per register, and no value repeated between the two
 # banks: a readback that matches its own index proves per-register storage, and any

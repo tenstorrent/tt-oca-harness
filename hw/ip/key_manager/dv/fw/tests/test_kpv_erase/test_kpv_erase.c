@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_kpv_erase.c
- * @brief KPV per-slot hardware erase test (issue #3193)
+ * @brief KPV per-slot hardware erase test
  *
  * Exercises the per-slot CTRL.erase control and rom_kpv_erase_slot():
  * - Erase overwrites all key words of a slot even when the slot is

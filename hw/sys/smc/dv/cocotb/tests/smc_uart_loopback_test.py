@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_uart_loopback_test(smc_base_test):
     """U4-1: AXI-program UART0 THR and capture the byte on pad12 TX."""
 
+    required_evidence = ("CHK-UART-TX-PAD-CAPTURE",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -24,10 +27,8 @@ class smc_uart_loopback_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
-            # Conservative stimulus floor: 9 accesses observed in the retained
-            # regression runs; the TX-empty poll is a timing-dependent
-            # remainder, so the floor is set below it. Literal here, not read
-            # from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the TX-empty poll is timing-dependent.
             min_csr_accesses=7,
             csr_accesses=seq.accesses,
             proxy=False,

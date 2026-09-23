@@ -7,7 +7,7 @@ module sep_lifecycle_ctrl #(
   localparam int unsigned DEMOTE_OUT_WIDTH = 2 * DEMOTE_WIDTH
 ) (
   input logic clk_i,
-  input logic reset_n_i,
+  input logic rst_ni,
 
   input logic test_en_i,
 
@@ -44,7 +44,7 @@ module sep_lifecycle_ctrl #(
     .Width(DEMOTE_WIDTH)
   ) u_demote_1_diff_enc (
     .clk_i,
-    .rst_ni  (reset_n_i),
+    .rst_ni  (rst_ni),
     .data_i  (demote_reg_1.demote),
     .data_o  (lcc_demote_state_1_o)
   );
@@ -54,7 +54,7 @@ module sep_lifecycle_ctrl #(
     .Width(DEMOTE_WIDTH)
   ) u_demote_2_diff_enc (
     .clk_i,
-    .rst_ni  (reset_n_i),
+    .rst_ni  (rst_ni),
     .data_i  (demote_reg_2.demote),
     .data_o  (lcc_demote_state_2_o)
   );
@@ -64,7 +64,7 @@ module sep_lifecycle_ctrl #(
     .Width(LC_STATE_WIDTH)
   ) u_lc_state_dec (
     .clk_i,
-    .rst_ni  (reset_n_i),
+    .rst_ni  (rst_ni),
     .data_i  (shadow_regs_i.fields.lc_state.lc_state[2*LC_STATE_WIDTH-1:0]),
     .data_o  (lc_state_raw),
     .sigint_o(lc_sigint_err_o)
@@ -155,9 +155,9 @@ module sep_lifecycle_ctrl #(
     .full_resp_t    (sep_pkg::sep_32_64_6_12_axi_resp_t),
     .lite_req_t     (sep_pkg::sep_32_64_axil_req_t),
     .lite_resp_t    (sep_pkg::sep_32_64_axil_resp_t)
-  ) lifecycle_axi_to_axi_lite (
+  ) u_lifecycle_axi_to_axi_lite (
     .clk_i(clk_i),
-    .rst_ni(reset_n_i),
+    .rst_ni(rst_ni),
     .test_i(test_en_i),
     // from AXI (32-bit after DW conversion)
     .slv_req_i (lifecycle_axi_req_i),
@@ -188,7 +188,7 @@ module sep_lifecycle_ctrl #(
 
   sep_lifecycle_ctrl_reg u_sep_lifecycle_ctrl_reg (
     .clk(clk_i),
-    .arst_n(reset_n_i),
+    .arst_n(rst_ni),
     .s_axil_awready(lifecycle_axil_resp.aw_ready),
     .s_axil_awvalid(lifecycle_axil_req.aw_valid),
     .s_axil_awaddr(lifecycle_axil_req.aw.addr[4:0]),

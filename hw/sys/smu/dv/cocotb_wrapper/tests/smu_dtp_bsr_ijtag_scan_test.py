@@ -17,7 +17,7 @@ class smu_dtp_bsr_ijtag_scan_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_dtp_bsr_ijtag_scan_test TierC DTP-BSR-IJTAG SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_dtp_bsr_ijtag_scan_test TierC DTP-BSR-IJTAG SEP=1 JTAG"
         )
         seq = smu_dtp_bsr_ijtag_scan_test_seq(self)
         await seq.run()

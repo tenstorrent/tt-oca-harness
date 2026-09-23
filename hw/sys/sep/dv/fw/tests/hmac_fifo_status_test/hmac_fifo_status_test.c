@@ -6,9 +6,6 @@
  *
  * Verifies MSG FIFO accepts data (MSG_LENGTH) and drains after hash_process.
  * Note: fifo_full@32 is not required under CPU MMIO (Pass-through absorb).
- *
- * Execution:
- * make test-sep TEST_NAME=sep_hmac_fifo_status_test STACK=sim
  */
 
 #include <stdint.h>

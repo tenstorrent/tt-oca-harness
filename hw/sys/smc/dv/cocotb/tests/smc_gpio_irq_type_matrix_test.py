@@ -15,6 +15,9 @@ from smc_base_test import smc_base_test
 class smc_gpio_irq_type_matrix_test(smc_base_test):
     """Drive GPIO0 for both level polarities and check the IRQ aggregate."""
 
+    required_evidence = ("CHK-GPIO-IRQ-TYPE-POLARITY",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

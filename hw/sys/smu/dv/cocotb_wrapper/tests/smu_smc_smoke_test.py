@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC firmware smoke under the production SMU wrapper with SEP disabled."""
+"""SMC firmware smoke under the production SMU wrapper (SEP=1 elaboration)."""
 
 from __future__ import annotations
 
@@ -14,9 +14,19 @@ from smu_base_test import smu_base_test
 class smu_smc_smoke_test(smu_base_test):
     """Require real SMC ROM execution, scratch activity, and TEST_PASS."""
 
+    #: Stamped by the boot scoreboard's verdict, which run_scenario finalizes
+    #: so the base test's evidence gate can read them.
+    required_evidence = (
+        "SMC_ROM_READ_OK",
+        "SMC_SCRATCH_WRITE_OK",
+        "SMC_TEST_PASS_OK",
+        "CHK-NONVAC",
+    )
+
     def build_phase(self) -> None:
         super().build_phase()
         self.scoreboard = SmuSmcBootScoreboard("smc_boot_scoreboard", self)
 
     async def run_scenario(self) -> None:
         await SmuSmcSmokeSeq(self, self.scoreboard).run()
+        self.scoreboard.finalize()

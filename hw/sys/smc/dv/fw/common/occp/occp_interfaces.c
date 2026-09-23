@@ -21,8 +21,8 @@ bool is_secure_mode(void) {
 }
 
 #ifndef I3C_USE_HCI_CORE
-/* Only reachable from the Cadence-core branch of enable_i3c_gpio_overrides() below; guarded so an
- * HCI-core build does not carry -Wunused warnings.
+/* Only reachable from the non-HCI branch of enable_i3c_gpio_overrides() below; the guard keeps an
+ * HCI-core build free of -Wunused warnings.
  * CONTROL is the first register in gpio_ctrl_t (offset 0x0). */
 static const uint32_t GPIO_CTRL_CONTROL_OFFSET = 0x0u;
 
@@ -46,19 +46,15 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
 
 #ifdef I3C_USE_HCI_CORE
     /* I3C_CORE=swap (OCA/HCI i3c-core as the OCCP controller): the OCA core reaches the i3c pads
-     * via the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
-     * smc_ip_integration hw2_ovrd override path that the Cadence core uses. Setting hw2_ovrd here
-     * would force the gpio_shim onto the override path, whose drive/input-enable signals are gated
-     * OFF for the OCA instance -> the pad would be disconnected and the OCA controller never
-     * drives/senses the bus. So leave hw2_ovrd=0 (reset default); the OCA core's LSIO routing
-     * serves the shared bus. Mirrors the target-side gating in
-     * hw/sys/smc/bootrom/prod/lib/src/occp.c. fw.mk defines I3C_USE_HCI_CORE unconditionally, so
-     * today this is the only reachable branch; the #else is kept for a Cadence-core build. */
+     * through the gpio LSIO path (lsio_interface_select, driven by smc_padring), not the
+     * smc_ip_integration hw2_ovrd override path. The override path's drive/input-enable signals
+     * are gated off for the OCA instance, so hw2_ovrd must stay 0 (reset default) for the
+     * controller to drive and sense the bus. Mirrors the target-side gating in
+     * hw/sys/smc/bootrom/prod/lib/src/occp.c. The #else branch serves a build without
+     * I3C_USE_HCI_CORE, whose controller reaches the pads through hw2_ovrd. */
     return true;
 #else
-    /* Mirror the proven bring-up sequence used by i3c_loop_back:
-     * enable hw2_ovrd on all I3C-related GPIOs so the I3C HW function reaches the pads.
-     */
+    /* Enable hw2_ovrd on every I3C-related GPIO so the I3C HW function reaches the pads. */
     bool ok = true;
     enable_gpio_hw_override(27); /* I3C0 SCL */
     enable_gpio_hw_override(28); /* I3C0 SDA */
@@ -108,18 +104,14 @@ static void wait_for_target_up_gpio(void) {
 bool initialize_i2c_controller(I2C_Driver **drv) {
     simputs("Starting OCCP Master Test\n");
 
-    // Do any pre-boot initialization (e.g. clock configuration)
-    // for the master bfm, we just use this strap to disable pll programming in case of using PLL
-    // disable hack
+    // Pre-boot clock configuration; the BL0_PLLCLK strap skips PLL programming.
     if (!smc_strap_is_set(SMC_STRAP_BL0_PLLCLK)) {
         program_cgm0_functional();
     }
 
-    // Determine which I3C controller to use based on security mode and straps
+    // Pick the I2C controller at random.
     uint32_t controller_id;
 
-    // Read LC_STATE register to check security mode
-    // Check strap values for BOOT_RECOVERY and PRIMARY_CHIPLET
     bool boot_recovery = smc_strap_is_set(SMC_STRAP_BOOT_RECOVERY);
     bool primary_chiplet = smc_strap_is_set(SMC_STRAP_PRIMARY_CHIPLET);
 
@@ -141,8 +133,8 @@ bool initialize_i2c_controller(I2C_Driver **drv) {
         return false;
     }
 
-    // Initialize the controller as MASTER. Controller fixed as I2C1 in Master BFM
-    // scratch reg 4 has both I2C IDs 8 bits each
+    // Initialize the controller as MASTER; scratch reg 4 carries both I2C target addresses,
+    // 8 bits each.
     uint8_t i2c_addr =
         (random_val == 0) ? (read_scratch(4) & 0x7F) : ((read_scratch(4) >> 8) & 0x7F);
     if ((*drv)->init_i2c_ctrlr(*drv, i2c_addr) != I2C_OK) {
@@ -155,20 +147,13 @@ bool initialize_i2c_controller(I2C_Driver **drv) {
 bool initialize_i3c_controller(I3C_Driver **drv) {
     simputs("Starting OCCP Master Test\n");
 
-    // Do any pre-boot initialization (e.g. clock configuration)
-    // for the master bfm, we just use this strap to disable pll programming in case of using PLL
-    // disable hack
+    // Pre-boot clock configuration; the BL0_PLLCLK strap skips PLL programming.
     if (!smc_strap_is_set(SMC_STRAP_BL0_PLLCLK)) {
         program_cgm0_functional();
     }
 
-    // Determine which I3C controller to use based on security mode and straps
+    // Pick the I3C controller at random.
     uint32_t controller_id;
-
-    // Read LC_STATE register to check security mode
-    // TODO: once LC_STATE is corrected, update this to use full range of values
-    uint32_t lc_state = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR) & 0xF;
-    bool is_secure_mode = (lc_state == 1) || (lc_state == 8);
 
     // Check strap values for BOOT_RECOVERY and PRIMARY_CHIPLET
     bool boot_recovery = smc_strap_is_set(SMC_STRAP_BOOT_RECOVERY);

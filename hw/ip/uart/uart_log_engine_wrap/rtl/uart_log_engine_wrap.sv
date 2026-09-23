@@ -143,7 +143,7 @@ module uart_log_engine_wrap
     .SpillB          (1'b0),
     .SpillAr         (1'b1),
     .SpillR          (1'b0)
-  ) csr_axi_lite_demux (
+  ) u_csr_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (1'b0),
@@ -164,7 +164,7 @@ module uart_log_engine_wrap
     .RESP_WIDTH     (REG_DATA_WIDTH),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
-  ) csr_axi_lite_err_slv (
+  ) u_csr_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
@@ -180,7 +180,7 @@ module uart_log_engine_wrap
   uart_16550 #(
     .TX_FIFO_DEPTH (UART_TX_FIFO_DEPTH),
     .RX_FIFO_DEPTH (UART_RX_FIFO_DEPTH)
-  ) uart_16550 (
+  ) u_uart_16550 (
     // Global Interface
     .clk_i,
     .rst_ni,
@@ -254,7 +254,7 @@ module uart_log_engine_wrap
 
     log_engine #(
       .FIFO_DEPTH(LOG_ENGINE_FIFO_DEPTH)
-    ) log_engine (
+    ) u_log_engine (
       // Global Interface
       .clk_i,
       .rst_ni,
@@ -303,7 +303,7 @@ module uart_log_engine_wrap
       .SpillB      (1'b0),
       .SpillAr     (1'b1),
       .SpillR      (1'b0)
-    ) log_write_axi_lite_mux (
+    ) u_log_write_axi_lite_mux (
       .clk_i,
       .rst_ni,
       .test_i      (1'b0),
@@ -330,7 +330,7 @@ module uart_log_engine_wrap
 
   uart_log_engine_ctrl_reg_pkg::uart_log_engine_ctrl__out_t reg_out;
 
-  uart_log_engine_ctrl_reg uart_log_engine_ctrl_reg (
+  uart_log_engine_ctrl_reg u_uart_log_engine_ctrl_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 

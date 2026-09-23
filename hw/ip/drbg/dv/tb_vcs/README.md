@@ -1,9 +1,8 @@
 # DRBG Wrapper Cocotb Flow
 
-This directory contains the shared `cocotb` environment for the `hw/comp/drbg`
-wrapper. VCS is the primary day-to-day simulator, but the supported directed
-scope is intended to run through the same `tb_drbg.sv` plus `test_drbg.py`
-environment in both VCS and Verilator.
+This directory contains the `cocotb` environment for the `hw/ip/drbg` wrapper.
+The same `tb_drbg.sv` plus `test_drbg.py` environment runs under VCS (default)
+and Verilator.
 
 ## Prerequisites
 
@@ -16,31 +15,30 @@ environment in both VCS and Verilator.
 2. Regenerate or verify the Bender filelist if new wrapper files were added:
 
    ```bash
-   make -C hw/comp/drbg/tb_vcs filelist
+   make -C hw/ip/drbg/dv/tb_vcs filelist
    ```
 
-3. Use the `drbg` Bender target added by this feature so the wrapper and its
-   wrapped IP dependencies are compiled together.
+3. Use the `drbg` Bender target so the wrapper and its wrapped IP dependencies
+   are compiled together.
 
 ## Primary Workflow
 
-VCS is the expected default simulator while the wrapper is under active
-development.
+VCS is the default simulator.
 
 ```bash
-make -C hw/comp/drbg/tb_vcs sim-vcs
+make -C hw/ip/drbg/dv/tb_vcs sim-vcs
 ```
 
 To run a single named `cocotb` test:
 
 ```bash
-make -C hw/comp/drbg/tb_vcs sim-vcs TESTCASE=test_entropy_routing_priority
+make -C hw/ip/drbg/dv/tb_vcs sim-vcs TESTCASE=test_entropy_routing_priority
 ```
 
 Enable simple waveform dumping:
 
 ```bash
-make -C hw/comp/drbg/tb_vcs sim-vcs WAVES=1
+make -C hw/ip/drbg/dv/tb_vcs sim-vcs WAVES=1
 ```
 
 ## Verilator Parity Flow
@@ -48,20 +46,21 @@ make -C hw/comp/drbg/tb_vcs sim-vcs WAVES=1
 Run the same harness and Python tests through Verilator:
 
 ```bash
-make -C hw/comp/drbg/tb_vcs sim-verilator
+make -C hw/ip/drbg/dv/tb_vcs sim-verilator
 ```
 
-Use the same `TESTCASE=<name>` knob for focused debug. The wrapper support goal
-for this feature is pass/fail parity for the directed tests that do not depend
-on simulator-specific behavior.
+Use the same `TESTCASE=<name>` knob for focused debug. The directed tests avoid
+simulator-specific behavior so that VCS and Verilator give the same pass/fail
+result.
 
-## Lint and Build Targets
+## Build Targets
 
 ```bash
-make -C hw/comp/drbg/tb_vcs lint
-make -C hw/comp/drbg/tb_vcs lint-verilator
-make -C hw/comp/drbg/tb_vcs build-verilator
+make -C hw/ip/drbg/dv/tb_vcs build-verilator
 ```
+
+RTL lint for this wrapper is the shared flow (`make lint-slang-all`
+/`lint-verilator-all` on the parent system), not a testbench target.
 
 ## Non-default Parameter Smoke
 
@@ -69,8 +68,8 @@ The wrapper must also be exercised with at least one non-default elaboration to
 cover configurable FIFO depths and multiple EDN endpoints.
 
 ```bash
-make -C hw/comp/drbg/tb_vcs smoke-nondefault-vcs
-make -C hw/comp/drbg/tb_vcs smoke-nondefault-verilator
+make -C hw/ip/drbg/dv/tb_vcs smoke-nondefault-vcs
+make -C hw/ip/drbg/dv/tb_vcs smoke-nondefault-verilator
 ```
 
 These targets override:

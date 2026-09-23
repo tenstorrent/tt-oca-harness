@@ -16,11 +16,11 @@ same defect" replaces that trigger through :meth:`corrupt_primary` and
 because the defect marker no longer identifies a slot on its own.
 
 This ROM runs the manifest loop and the crypto chain as two separate stages
-(``rom_main.c`` then ``manifest_load.c``): ``rom_manifest_boot`` checks each slot's structure, hash
+(``rom_main.c`` then ``oca_boot.c``): ``rom_manifest_boot`` checks each slot's structure, hash
 and usage constraints, and only after a slot passes does
-``manifest_crypto_validate`` check security_version, key selection and the
+the crypto stage checks security_version, key selection and the
 signature. So a backup with a cryptographic defect legitimately prints
-``MANIFEST_OK`` first and then fails with ``CRYPTO_FAIL=`` -- which is why
+``MANIFEST_OK`` first and then fails with ``MANIFEST_ERR=`` -- which is why
 ``MANIFEST_OK`` is not in the forbidden list.
 
 ``SepBootScoreboard`` is not used: it requires ``fw_done`` and ``fw_pass``, and the
@@ -36,6 +36,7 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import RisingEdge
 from env import sep_manifest_mutate as mm
+from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
 from sep_base_test import sep_base_test
@@ -43,19 +44,39 @@ from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
-_SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "secure_boot.bin")
+_SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h
-MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-MANIFEST_ERR_SIG_FAILED = 0x0003_000C
-MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
-MANIFEST_ERR_KEY_REVOKED = 0x0003_0015
-MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
+# oca_layout.h / constants.py
+# Rejection codes the ROM prints as MANIFEST_ERR=<code>, derived from the
+# validator's result enum rather than copied: the enum renumbers as the library
+# grows, and a stale value fails a test for the wrong reason while still reading
+# as the planted defect.
+MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
+MANIFEST_ERR_SIG_FAILED = mm.boot_err("OCA_FAIL_SIGNATURE")
+MANIFEST_ERR_VERSION_ROLLBACK = mm.boot_err("OCA_FAIL_SECURITY_VERSION")
+MANIFEST_ERR_KEY_REVOKED = mm.boot_err("OCA_FAIL_ROOT_KEY_REVOKED")
+# Every refusal from plat_is_key_authorized() carries this one code -- slot
+# reserved, selector ambiguous or empty, slot unprovisioned, algorithm or encoding
+# unsupported, digest mismatch. The code means "this key is not authorized"; the
+# console marker beside it is what says which arm refused, so a member pins the
+# code here and the reason through its defect marker.
+# MANIFEST_ERR_KEY_HASH_MISMATCH below is the same value under the narrower name
+# the digest-mismatch members use.
+MANIFEST_ERR_KEY_UNAUTHORIZED = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
+# A signature/public-key size or algorithm field that disagrees with itself is
+# refused structurally, before key selection runs, so this arm prints no PUBK_*
+# marker at all.
+MANIFEST_ERR_SIG_TYPE_INVALID = mm.boot_err("OCA_FAIL_CRYPTO_FIELD_SIZE")
+# Secure boot is in force and the manifest names no signature class to verify
+# with. Reached through any input the precedence consults, most often a device
+# whose lifecycle enforces secure boot handed a validly unsigned manifest.
+MANIFEST_ERR_SIG_CLASS_CONTROL = mm.boot_err("OCA_FAIL_SIGNATURE_CLASS_CONTROL")
+MANIFEST_ERR_KEY_HASH_MISMATCH = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
 
 # Slot identity is asserted on MANIFEST_SRC=, never on the MANIFEST_PRIMARY /
 # MANIFEST_BACKUP label: the ROM derives the label from the retry counter but the
-# offset from the (possibly rotated) slot index (manifest_load.c),
+# offset from the (possibly rotated) slot index (oca_boot.c),
 # so under rotate_update the label and the slot disagree. The offset cannot lie.
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -100,13 +121,13 @@ class sep_backup_manifest_fail_base(sep_base_test):
     def corrupt_primary(self, buf: bytearray) -> None:
         """Make the primary slot fail, so the backup is reached at all.
 
-        Default is the magic word, rejected by ``validate_manifest_header`` before
+        Default is the magic word, rejected by ``oca_peek_manifest`` before
         any hash or crypto work, so the failover trigger cannot interact with the
         defect under test. A subclass overrides this only when the primary's defect
         is itself part of the scenario, and must set ``primary_expected_error`` to
         match.
         """
-        mm.set_identifier(buf, "primary")
+        mm.break_magic(buf, "primary")
 
     def corrupt_backup(self, buf: bytearray) -> None:
         raise NotImplementedError
@@ -117,7 +138,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
     # --- scenario ----------------------------------------------------------
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         # Primary: the failover trigger. By default a broken magic word, rejected
-        # by validate_manifest_header before the hash check -- a deterministic
+        # by oca_peek_manifest before the hash check -- a deterministic
         # BAD_MAGIC rather than a verdict that depends on check order, and not the
         # defect under test. See corrupt_primary().
         self.corrupt_primary(buf)
@@ -130,6 +151,15 @@ class sep_backup_manifest_fail_base(sep_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         from ocah_spi_vip import OcahSpiFlash
+
+        # +esrc_noise_force only FORCES the decorrelator inputs from
+        # esrc_noise_ext_i; it generates nothing, and sep_base_test leaves that
+        # port at 0. Without a driver the repetition health test trips and the ROM
+        # refuses to boot on a dead entropy source, so every member of this family
+        # dies at ESRC_HEALTH_FAIL before reaching the verdict it exists to check.
+        # sep_rom_ot_dma_boot_test starts this for the families that descend from
+        # it; this base descends straight from sep_base_test, so it starts its own.
+        cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
 
         assert self.backup_defect_marker, "subclass must set backup_defect_marker"
         assert self.expected_error, "subclass must set expected_error"
@@ -149,7 +179,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         self.check_efuse(image)
         self.write_efuse_image(image)
         self.logger.info(
-            "CHK-STIMULUS-EFUSE: LC raw=0x%x, BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            "CHK-STIMULUS-EFUSE PASS: LC raw=0x%x, BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
             lc,
             image.field_int("BL1_VERSION"),
             image.field_int("CHIPLET_PUBK_REVOKE"),
@@ -185,7 +215,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         # `MANIFEST_SRC=` only says which address the ROM intended to read; the
         # BFM's transaction record says which address the device actually served
         # and in what order, and the successful half of boot_flash_reinit()
-        # (manifest_load.c) prints nothing at all. Two attribute stores, read
+        # (oca_boot.c) prints nothing at all. Two attribute stores, read
         # by nobody else -- no existing subclass references either name, so this
         # cannot change any established behaviour.
         self._flash = flash
@@ -342,7 +372,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         i_primary = index_of(_PRIMARY_SRC)
         i_primary_err = index_of(primary_err)
         i_backup = index_of(_BACKUP_SRC)
-        crypto_fail = f"CRYPTO_FAIL=0x{self.expected_error:08x}"
+        crypto_fail = f"MANIFEST_ERR=0x{self.expected_error:08x}"
         i_crypto = index_of(crypto_fail)
 
         # CHK-PRIMARY: the primary slot was attempted and rejected for the reason
@@ -398,10 +428,18 @@ class sep_backup_manifest_fail_base(sep_base_test):
             f"ROM never printed {crypto_fail}; the terminal error code is not the "
             f"one this defect should produce. Console: {console}"
         )
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        # The console code and the status word live in different spaces: the console
+        # carries OCA_BOOT_ERR_BASE | oca_result_t, the ring carries
+        # STATUS_ENCODE(type, SEP_MSG_*). status_for_result() in oca_boot.c is the only
+        # bridge, so the expectation goes through it rather than masking the console
+        # code -- for most codes the two differ, and asserting the masked half is
+        # asserting on a word the ROM never writes.
+        sep_msg = mm.rom_status_for_result(self.expected_error)
+        expected_status = 0x0F01_0000 | sep_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
+            f"(STATUS_ENCODE(ERROR, SEP_MSG 0x{sep_msg:04x}), which is what "
+            f"status_for_result() maps MANIFEST_ERR=0x{self.expected_error:08x} to); "
             f"observed {status_hex}"
         )
         assert fw_done, (
@@ -411,7 +449,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         )
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
         log.info(
-            "CHK-TERMINAL: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
+            "CHK-TERMINAL PASS: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
             crypto_fail,
             expected_status,
         )

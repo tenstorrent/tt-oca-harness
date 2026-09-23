@@ -2,11 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_jtag_reset_override_test - IC_RESET TDR override of EXT/SMC slices.
 
-SMU IC_RESET TDR is 139 bits (68 SMC + 1 EXT ports + hold), not the 7-bit
-standalone DTP smoke geometry.
+SMU IC_RESET TDR is 155 bits on the SEP=1 wrapper (68 SMC + 8 SEP + 1 EXT ports
++ hold), not the 7-bit standalone DTP smoke geometry. The EXT port sits
+nearest TDO, so it is the one port whose position does not survive a wrong
+SEP slice width in the helper geometry: a DR shifted short of the TDR lands
+the EXT fields in the SEP slice and the ext ovrd leg below fails.
 
 Real checkers:
-  - Default IC_RESET readback is all-ones
+  - Default IC_RESET readback is all-ones over the whole DR
   - EXT enable=0/control=0 asserts ext ovrd=1 and ctrl_n=0
   - SMC cold_reset port override updates hierarchical SMC slice
   - Clearing TDR restores ovrd=0
@@ -23,6 +26,7 @@ from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_SMC_COLD_PORT,
     make_smu_jtag_tap,
     pack_ic_reset_ports,
+    require_jtag_tdo_resolved,
 )
 from smu_base_test import smu_base_test
 
@@ -50,9 +54,10 @@ class smu_jtag_reset_override_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 8)
 
         default = await jtag.read("IC_RESET", shift_value=SMU_IC_RESET_DEFAULT)
+        require_jtag_tdo_resolved("IC_RESET default readback")
         sb.expect_eq(
             "IC_RESET default",
-            int(default) & SMU_IC_RESET_DEFAULT,
+            int(default),
             SMU_IC_RESET_DEFAULT,
             evidence="IC_RESET_DEFAULT",
         )
@@ -91,9 +96,10 @@ class smu_jtag_reset_override_test(smu_base_test):
             evidence="IC_RESET_DOMAIN_EXCL",
         )
         rb = await jtag.read("IC_RESET", shift_value=ext_assert)
+        require_jtag_tdo_resolved("IC_RESET EXT pattern readback")
         sb.expect_eq(
             "IC_RESET EXT pattern readback",
-            int(rb) & SMU_IC_RESET_DEFAULT,
+            int(rb),
             ext_assert,
         )
 

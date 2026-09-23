@@ -14,7 +14,7 @@ SEP master interfaces brought out in tb_top:
     block-by-default, skipped only when feat_ctrl.sep_debug=1). Used by the
     inbound-filter-gating test to prove external AXI is blocked/allowed.
 Set ``agent.axi_prefix`` right after constructing a second agent; it defaults to
-``s_axi`` so existing single-master tests are unchanged.
+``s_axi``.
 """
 
 from __future__ import annotations
@@ -71,13 +71,18 @@ class SepAxiItem(uvm_sequence_item):
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
         # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
-        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4). Default 0 keeps
-        # every existing caller bit-identical.
+        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4).
         self.user: int = 0
         # AXI AxBURST. None lets the VIP default (INCR). Leave None everywhere
         # except the inbound-filter burst checkers, which opt in with INCR and
         # a multi-beat length so AxLEN != 0.
         self.burst: int | None = None
+        # AXI AxID. Every access defaults to 0, which is what the whole suite
+        # used before this field existed, so the transaction ID is not a
+        # dimension a test gets for free -- it opts in. The crossbars prepend
+        # the master index to it, and the demux keeps one outstanding counter
+        # per ID, so an access that never leaves 0 exercises one ID slot.
+        self.axi_id: int = 0
         # Filled in by the driver. resp_ok defaults False (fail closed): only a
         # confirmed OKAY response sets it True. resp_code is the worst (max) AXI
         # response code observed (OKAY=0, EXOKAY=1, SLVERR=2, DECERR=3), or -1 if
@@ -149,7 +154,7 @@ class SepAxiDriver(uvm_driver):
         common = {
             "size": item.size,
             "burst": item.burst,
-            "id": 0,
+            "id": item.axi_id,
             "prot": None,
             "check_response": False,
             "timeout_ns": self.cfg.axi_timeout_ns,

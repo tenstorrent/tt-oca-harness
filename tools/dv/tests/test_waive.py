@@ -35,13 +35,12 @@ from runlib.models import ConfigError, Dut  # noqa: E402
 
 DUT = closure.DUT
 TOOL = closure.TOOL
-FINISHED = closure.FIXTURE / "finished"
 SIMULATORS = {TOOL: {"supports_cov": closure.SUPPORTED_METRICS}}
 COVERAGE_FILES = {
     name: rel for name, rel in closure.GRADED_FILES.items() if name != "cov_report.log"
 }
 RUN_FILES = {**closure.GRADED_FILES, "result.json": Path("run/result.json")}
-REGRESSION_REL = Path("stages/regress/regression.json")
+REGRESSION_REL = closure.REGRESSION_REL
 NATIVE_REL = Path("dut/cov/config/verilator/verilator_native.cfg")
 WAIVE_CAPTURE_EN_FALL = """
 [[holes]]
@@ -80,25 +79,27 @@ def make_flow(root: Path) -> Dut:
 
 
 def stage_finished_run(root: Path, run_rel: str = "run") -> Path:
-    """Stage a finished, coverage-graded run (report FAIL on thresholds) at `root/run_rel`."""
-    run_dir = closure.stage_fixture(root, run_rel)
-    for name, rel in closure.GRADED_FILES.items():
-        target = run_dir / rel.relative_to("run")
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(closure.GOLDEN / name, target)
-    shutil.copyfile(FINISHED / "result.json", run_dir / "result.json")
-    (run_dir / REGRESSION_REL).parent.mkdir(parents=True)
-    shutil.copyfile(FINISHED / "regression.json", run_dir / REGRESSION_REL)
-    return run_dir
+    """Stage a finished, coverage-graded run (report FAIL on thresholds) recorded at `root/run`,
+    moved to `root/run_rel` when that differs, as a run tree relocated after the fact."""
+    run_dir = closure.finish_run(root, "run")
+    if run_rel == "run":
+        return run_dir
+    target = root / run_rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(run_dir), str(target))
+    return target
+
+
+def graded_key_sets(root: Path) -> dict[str, set[str]]:
+    """The top-level keys of every graded coverage file under `root`."""
+    return {name: set(read_json(root / rel)) for name, rel in COVERAGE_FILES.items()}
 
 
 def make_policy_failure(root: Path, run_dir: Path) -> None:
     """Turn the staged run into one whose grade failed on the policy (ERROR / config_error)."""
     for name in ("summary.json", "coverage-details.json", "policy-application.json"):
         (run_dir / "cov" / "report" / name).unlink()
-    shutil.copyfile(
-        closure.FIXTURE / "run" / "cov" / "coverage.json", run_dir / "cov" / "coverage.json"
-    )
+    closure.write_manifest(run_dir, root)
     result = read_json(run_dir / "result.json")
     record = cov_report_record(result)
     record.update(
@@ -313,6 +314,7 @@ class WaiveRegrade(FixtureCase):
         run_dir = stage_finished_run(self.root)
         old_result = read_json(run_dir / "result.json")
         old_record = cov_report_record(old_result)
+        old_keys = graded_key_sets(self.root)
         old_log = (run_dir / "stages" / "cov_report" / "logs" / "cov_report.log").read_bytes()
         rc, out, err = run_waive(
             self.root, run_dir, "--fail-under", "50", policy=self.write_waive_file(run_dir)
@@ -343,12 +345,9 @@ class WaiveRegrade(FixtureCase):
             self.assertEqual(record[key], old_record[key])
         regression = read_json(run_dir / REGRESSION_REL)
         self.assertEqual((regression["status"], regression["exit_code"]), ("PASS", 0))
-        self.assertTrue(regression["coverage"]["threshold_met"])
-        for name, rel in COVERAGE_FILES.items():
-            with self.subTest(file=name):
-                self.assertEqual(
-                    set(read_json(self.root / rel)), set(read_json(closure.GOLDEN / name))
-                )
+        self.assertNotIn("coverage", regression)
+        self.assertTrue(regression["artifacts"]["coverage_summary"])
+        self.assertEqual(graded_key_sets(self.root), old_keys)
         self.assertEqual(
             (run_dir / "stages" / "cov_report" / "logs" / "cov_report.log").read_bytes(), old_log
         )
@@ -407,6 +406,26 @@ class WaiveRegrade(FixtureCase):
         self.assertEqual(manifest["tool_version"], closure.TOOL_VERSION)
         self.assertEqual(manifest["generated_at"], "2026-09-01T08:00:00+00:00")
         self.assertEqual(result["tool_version"], old_result["tool_version"])
+
+    def test_lapsed_waiver_is_applied_not_refused(self):
+        run_dir = stage_finished_run(self.root)
+        edit_text(
+            self.root / closure.POLICY_REL,
+            'date = "2026-09-01"\n[[holes.native]]\ntool = "verilator"\nmetric_family = "toggle"\n'
+            'native_locator = "*|o=scan_ctrl_i.capture_en:0->1|*"',
+            'date = "2026-09-01"\nexpires = "2020-01-01"\n[[holes.native]]\ntool = "verilator"\n'
+            'metric_family = "toggle"\nnative_locator = "*|o=scan_ctrl_i.capture_en:0->1|*"',
+        )
+        rc, out, err = run_waive(self.root, run_dir)
+        self.assertEqual((rc, err), (1, ""))
+        self.assertIn("coverage=FAIL", out)
+        summary = read_json(run_dir / "cov" / "report" / "summary.json")
+        self.assertEqual(summary["holes_summary"]["accepted"], 0)
+        application = read_json(run_dir / "cov" / "report" / "policy-application.json")
+        self.assertEqual(
+            application["warnings"],
+            ["toggle-capture_en-rise expired on 2020-01-01; treated as open"],
+        )
 
     def test_second_run_is_idempotent(self):
         run_dir = stage_finished_run(self.root)
@@ -509,6 +528,8 @@ class WaiveRegrade(FixtureCase):
 class PolicyFailureRepair(FixtureCase):
     def test_repair_creates_the_summary_and_grades_the_record(self):
         run_dir = stage_finished_run(self.root)
+        graded_record = cov_report_record(read_json(run_dir / "result.json"))
+        graded_keys = graded_key_sets(self.root)
         make_policy_failure(self.root, run_dir)
         self.assertFalse((run_dir / "cov" / "report" / "summary.json").exists())
         rc, out, err = run_waive(self.root, run_dir)
@@ -516,7 +537,6 @@ class PolicyFailureRepair(FixtureCase):
         self.assertIn("coverage=FAIL status=FAIL", out)
         summary = read_json(run_dir / "cov" / "report" / "summary.json")
         self.assertEqual(summary["threshold"], 60.0)
-        graded_record = cov_report_record(read_json(FINISHED / "result.json"))
         result = read_json(run_dir / "result.json")
         record = cov_report_record(result)
         self.assertEqual(set(record), set(graded_record))
@@ -526,11 +546,7 @@ class PolicyFailureRepair(FixtureCase):
             ("FAIL", 1, "coverage_threshold"),
         )
         self.assertEqual((result["status"], result["exit_code"]), ("FAIL", 1))
-        for name, rel in COVERAGE_FILES.items():
-            with self.subTest(file=name):
-                self.assertEqual(
-                    set(read_json(self.root / rel)), set(read_json(closure.GOLDEN / name))
-                )
+        self.assertEqual(graded_key_sets(self.root), graded_keys)
         regression = read_json(run_dir / REGRESSION_REL)
         self.assertEqual((regression["status"], regression["exit_code"]), ("FAIL", 1))
 

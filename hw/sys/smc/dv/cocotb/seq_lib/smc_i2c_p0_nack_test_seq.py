@@ -106,7 +106,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
                 if not (status & I2C_STATUS_HOSTIDLE):
                     left_idle = True
                     break
-                await Timer(1, units="us")
+                await Timer(1, unit="us")
             if not left_idle:
                 raise AssertionError(
                     f"{label}: I2C0 host never left hostidle (STATUS=0x{status:08x})"
@@ -115,7 +115,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(f"{label}: I2C0 host stuck busy (STATUS=0x{status:08x})")
 
     async def _clear_events(self) -> None:
@@ -149,7 +149,7 @@ class smc_i2c_p0_nack_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if events & I2C_CONTROLLER_EVENTS_NACK:
                 return events, status
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(
             f"{label}: timeout waiting for CONTROLLER_EVENTS.NACK "
             f"(STATUS=0x{status:08x} EVENTS=0x{events:08x})"

@@ -252,6 +252,7 @@ module sep_crypto #(
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_req;
   drbg_pkg::drbg_axis_rsp_t [EXT_TRNG_NUM_AXIS-1:0] drbg_int_axis_rsp;
   logic trng_reset_active;
+  logic [sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT-1:0] crypto_edn_endpoint_rst_n;
 
   // Muxed AXI-Stream outputs (one per mux)
   drbg_pkg::drbg_axis_req_t [EXT_TRNG_NUM_AXIS-1:0] entropy_muxed_req;
@@ -293,8 +294,10 @@ module sep_crypto #(
   sep_pkg::sep_32_32_axil_resp_t esrc_axil_isolated_resp;
   drbg_pkg::drbg_axil64_req_t csrng_axil_isolated_req, edn_axil_isolated_req;
   drbg_pkg::drbg_axil64_resp_t csrng_axil_isolated_resp, edn_axil_isolated_resp;
-  sep_pkg::sep_32_64_6_12_axi_req_t fuse_axi_req, lifecycle_axi_req, abr_axi_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp, abr_axi_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t fuse_axi_req, lifecycle_axi_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_isolated_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_isolated_resp;
 
   sep_crypto_axi_interconnect u_sep_crypto_axi_interconnect (
     .clk_i                        (clk_i),
@@ -350,8 +353,8 @@ module sep_crypto #(
     .fuse_axi_resp_i              (fuse_axi_resp),
     .lifecycle_axi_req_o          (lifecycle_axi_req),
     .lifecycle_axi_resp_i         (lifecycle_axi_resp),
-    .abr_axi_req_o                (abr_axi_req),
-    .abr_axi_resp_i               (abr_axi_resp)
+    .abr_axi_isolated_req_o       (abr_axi_isolated_req),
+    .abr_axi_isolated_resp_i      (abr_axi_isolated_resp)
   );
 
   // Internal entropy complex: coordinated reset/isolation, ESRC, and DRBG.
@@ -360,6 +363,7 @@ module sep_crypto #(
     .NUM_AXIS(EXT_TRNG_NUM_AXIS)
   ) u_sep_trng (
     .clk_i                     (clk_i),
+    .por_rst_ni                (rst_ni),
     .rst_ni                    (gated_rst_ni.trng),
     .entropy_rosc_sample_clk_i (entropy_rosc_sample_clk_i),
     .esrc_axil_req_i           (esrc_axil_isolated_req),
@@ -395,7 +399,7 @@ module sep_crypto #(
   // HMAC Wrapper //
   //////////////////
 
-  hmac_wrapper hmac_wrapper_s3c_scan (
+  hmac_wrapper u_hmac_wrapper_s3c_scan (
     .clk_i                   (clk_i),
     .rst_ni                  (gated_rst_ni.hmac),
     .hmac_axil_req_i         (hmac_axil_isolated_req),
@@ -417,7 +421,7 @@ module sep_crypto #(
   // OTBN Wrapper //
   //////////////////
 
-  sep_crypto_otbn_wrapper sep_crypto_otbn_wrapper_s3c_scan (
+  sep_crypto_otbn_wrapper u_sep_crypto_otbn_wrapper_s3c_scan (
     .clk_i,
     .rst_ni                       (gated_rst_ni.otbn),
     .otbn_axil_req_i              (otbn_axil_isolated_req),
@@ -444,7 +448,7 @@ module sep_crypto #(
   // AES Wrapper //
   /////////////////
 
-  aes_wrapper aes_wrapper_s3c_scan (
+  aes_wrapper u_aes_wrapper_s3c_scan (
     .clk_i               (clk_i),
     .rst_ni              (gated_rst_ni.aes),
     .aes_axil_req_i      (aes_axil_isolated_req),
@@ -465,7 +469,7 @@ module sep_crypto #(
   // KMAC Wrapper //
   //////////////////
 
-  kmac_wrapper kmac_wrapper_s3c_scan (
+  kmac_wrapper u_kmac_wrapper_s3c_scan (
     .clk_i                   (clk_i),
     .rst_ni                  (gated_rst_ni.kmac),
     .kmac_axil_req_i         (kmac_axil_isolated_req),
@@ -527,10 +531,10 @@ module sep_crypto #(
     .SRAM_LATENCY (SRAM_LATENCY)
   ) u_sep_crypto_abr_wrapper_s3c_scan (
     .clk_i                 (clk_i),
-    .rst_ni                (sep_reset_ni),
+    .rst_ni                (gated_rst_ni.abr),
     // Control/status path: ABR AXI aperture off the crypto interconnect
-    .abr_axi_req_i         (abr_axi_req),
-    .abr_axi_resp_o        (abr_axi_resp),
+    .abr_axi_req_i         (abr_axi_isolated_req),
+    .abr_axi_resp_o        (abr_axi_isolated_resp),
     // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
     .abr_key_axil_req_i    (abr_key_axil_isolated_req),
     .abr_key_axil_resp_o   (abr_key_axil_isolated_resp),
@@ -561,18 +565,22 @@ module sep_crypto #(
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),
-    .slv_req_i  (abr_axi_req),
-    .slv_resp_o (abr_axi_resp)
+    .slv_req_i  (abr_axi_isolated_req),
+    .slv_resp_o (abr_axi_isolated_resp)
   );
 
   // (2) Terminate the KM's private ABR key bus with DECERR. The key CSR block
   //     now lives inside the CALIPTRA-only wrapper, so there is no OKAY
   //     responder here; use an AXI4-Lite err-slave (mirrors u_abr_axi_err_slv).
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (km_intf_pkg::KM_AXI_ADDR_WIDTH),
+    .AXI_DATA_WIDTH (km_intf_pkg::KM_AXI_DATA_WIDTH),
     .axil_req_t     (km_intf_pkg::km_axil_req_t),
-    .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
+    .axil_resp_t    (km_intf_pkg::km_axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (km_intf_pkg::KM_AXI_DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
     .rst_ni      (rst_ni),
@@ -718,7 +726,7 @@ module sep_crypto #(
     .LC_STATE_WIDTH(sep_pkg::LC_STATE_BIT_WIDTH)
   ) u_sep_lifecycle_ctrl (
     .clk_i                (clk_i),
-    .reset_n_i            (rst_ni),
+    .rst_ni               (rst_ni),
     .test_en_i            (test_en_i),
 
     .security_disable_i   (security_disable_o),
@@ -741,11 +749,16 @@ module sep_crypto #(
   // Assemble km_otp_data_t from efuse shadow registers and lifecycle ctrl.
   // LC state and demotion state arrive already differentially encoded from
   // their respective sources (shadow register and LCC output).
-  // The four 256-bit secret fields (chiplet_uid, class_key, sip_uid, sys_uid)
-  // and the three 256-bit public identity fields (sep_chiplet_id, sep_sip_id,
-  // sep_sys_id) are dual-rail encoded here at the source (Sep->KM boundary)
+  // Seven 256-bit fields are dual-rail encoded here at the Sep->KM boundary
   // using prim_diff_encode_multi so that any fault on the wire is detectable.
   // Encoded format: data_o = {~value[255:0], value[255:0]} (512 bits total).
+  //
+  // The four secrets (chiplet_uid, sip_uid, sys_uid, class_key) sit in
+  // sep_efuse_pkg::SecretShadowRanges. Under secure_tm the eFuse shadow
+  // hardware output zeros those words, so the encoder dual-rail-encodes
+  // zero. The three public identity fields (sep_chiplet_id, sep_sip_id,
+  // sep_sys_id) are outside SecretShadowRanges and remain on the shadow
+  // output in secure test mode.
 
   km_intf_pkg::km_otp_data_t km_otp_data;
 
@@ -797,14 +810,13 @@ module sep_crypto #(
     .data_o (km_otp_data.sys_uid)
   );
 
-  // The SEP_*_ID fuses are not in the efuse map yet, so encode a zero value.
   prim_diff_encode_multi #(
     .Width      (256),
     .OutputFlop (1'b0)
   ) u_sep_chiplet_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_chiplet_id.id),
     .data_o (km_otp_data.sep_chiplet_id)
   );
 
@@ -814,7 +826,7 @@ module sep_crypto #(
   ) u_sep_sip_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_sip_id.id),
     .data_o (km_otp_data.sep_sip_id)
   );
 
@@ -824,7 +836,7 @@ module sep_crypto #(
   ) u_sep_sys_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_sys_id.id),
     .data_o (km_otp_data.sep_sys_id)
   );
 
@@ -871,17 +883,22 @@ module sep_crypto #(
   // These post-mux adapters also serve the external source, so they remain in
   // the POR reset domain. An internal-TRNG reset synchronously clears buffered
   // entropy and handshake state without exporting a generated reset domain.
+  // Client resets cancel only their own endpoint. OTBN owns both RND and URND.
+  assign crypto_edn_endpoint_rst_n = {
+    gated_rst_ni.otbn, gated_rst_ni.otbn, gated_rst_ni.kmac, gated_rst_ni.aes
+  };
 
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT)
   ) u_axis_edn_crypto_s3c_scan (
-    .clk_i      (clk_i),
-    .rst_ni     (rst_ni),
-    .clear_i    (trng_reset_active),
-    .axis_req_i (entropy_muxed_req[1]),
-    .axis_rsp_o (entropy_muxed_rsp[1]),
-    .edn_req_i  (crypto_edn_req),
-    .edn_rsp_o  (crypto_edn_rsp)
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .endpoint_rst_ni (crypto_edn_endpoint_rst_n),
+    .clear_i         (trng_reset_active),
+    .axis_req_i      (entropy_muxed_req[1]),
+    .axis_rsp_o      (entropy_muxed_rsp[1]),
+    .edn_req_i       (crypto_edn_req),
+    .edn_rsp_o       (crypto_edn_rsp)
   );
 
   //=========================================================================
@@ -898,13 +915,14 @@ module sep_crypto #(
   drbg_axis_edn_adapter #(
     .NUM_ENDPOINTS(sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT)
   ) u_axis_edn_pool_s3c_scan (
-    .clk_i      (clk_i),
-    .rst_ni     (rst_ni),
-    .clear_i    (trng_reset_active),
-    .axis_req_i (entropy_muxed_req[2]),
-    .axis_rsp_o (entropy_muxed_rsp[2]),
-    .edn_req_i  (pool_edn_req),
-    .edn_rsp_o  (pool_edn_rsp)
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .endpoint_rst_ni ({sep_crypto_pkg::SEP_CRYPTO_POOL_EDN_CLIENT_COUNT{rst_ni}}),
+    .clear_i         (trng_reset_active),
+    .axis_req_i      (entropy_muxed_req[2]),
+    .axis_rsp_o      (entropy_muxed_rsp[2]),
+    .edn_req_i       (pool_edn_req),
+    .edn_rsp_o       (pool_edn_rsp)
   );
 
   //=========================================================================

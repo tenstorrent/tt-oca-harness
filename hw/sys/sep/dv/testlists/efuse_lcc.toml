@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -35,22 +35,29 @@ timeout_sec = 1800
 tags = ["lcc", "subsystem", "efuse"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-# Program-failure injection = deterministic floor + seed-driven extras:
-# count=1 fails the first program attempt after each reset (one failure per
-# reset, not per bit), so the retry path runs once per sense regardless of
-# seed -- the floor that the test's non-vacuity assert relies on.
-# percent=30 -> after the floor, inject extra failures probabilistically; the
-# generic efuse model's LFSR is seeded from the regression RANDOM_SEED
-# via `+sep_efuse_prog_fail_seed={seed}` (the runlib renders {seed} into
-# run_mode/test args), so `--regress` sweeps the injection pattern per
-# leaf. Each retry is an independent draw, so exhausting the firmware's
-# 10-attempt budget is negligibly unlikely (0.3^10).
-# The count=1 floor keeps it from ever going vacuous even on a zero-extra seed.
+# Program-failure injection is a one-shot per reset. count=1 fails the first
+# bank write after each reset, which is the floor the retry check requires.
+# percent stays 0: a second probabilistic failure is the same PROGRAM_DONE+ERR
+# the secure-TM guard produces, so it cannot be told apart from the guard.
+# The model's LFSR seed is still passed so the one-shot is reproducible.
 args = [
     "+sep_efuse_prog_fail_count=1",
-    "+sep_efuse_prog_fail_percent=30",
+    "+sep_efuse_prog_fail_percent=0",
     "+sep_efuse_prog_fail_seed={seed}",
 ]
+
+[[tests]]
+# TEST_DEV JTAG allow leg for the two windows the PROD mux test denies.
+# Real fuse sense (no +skip_fuse_sense): the JTAG gate reads the sensed
+# LC_STATE. TEST_DEV is not PROD or RMA_SIP, so shadow and
+# EFUSE_PROGRAM_CTRL answer OKAY.
+name = "sep_efuse_jtag_window_allow_test"
+module = "efuse.sep_efuse_jtag_window_allow_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "jtag"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
 
 [[tests]]
 # eFuse JTAG-AXIL + EL2-CPU mux arbitration (the reference suite's
@@ -62,7 +69,6 @@ args = [
 # +skip_fuse_sense -- the JTAG LC gate depends on the sensed lc_state).
 # PROD/RMA_SIP JTAG may reach the MMR token block (TOKEN_I / TOKEN_EOP /
 # MATCH) and must DECERR on shadow and the program/read interface.
-# After sense-done both OTP JTAG2AXIL dbg_disable bits read 0 (LCC ungated).
 name = "sep_efuse_jtag_axil_el2_cpu_mux_test"
 module = "efuse.sep_efuse_jtag_axil_el2_cpu_mux_test"
 firmware = "efuse_jtag_el2_mux_test"
@@ -79,8 +85,8 @@ run_modes = ["cpu"]
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
-# No reseed: the walk visits SPARE0..SPARE7 every run, so slot coverage no longer
-# depends on how many seeds CI draws. Only the bit offsets within each spare are
+# No reseed: the walk visits SPARE0..SPARE7 every run, so slot coverage does not
+# depend on how many seeds CI draws. Only the bit offsets within each spare are
 # seed-selected.
 timeout_sec = 1800
 tags = ["efuse", "lock", "subsystem"]
@@ -100,10 +106,10 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse set-only shadow OR-merge on version / revoke / required-signer
-# and Class-1 DIS fields (never LC_STATE). RANDCFG: every seed walks
-# seven legal set-only fields; word index and bit patterns come from
-# the run seed.
+# eFuse shadow write-policy sweep: every otp_fuse_controller.adoc fuse-field row
+# except LC_STATE. RANDCFG: set-only rows OR-merge; SW-writable rows
+# overwrite. LOCK is both RDL windows after the other rows. Word index
+# and bit patterns come from the run seed.
 # Real fuse sense. Program x lock stays a different mechanism.
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"
@@ -174,6 +180,10 @@ target = "lsu_stub_all_live"
 # move and the locked-field interrupt must pulse. A SECURE_TM_UNLOCK spare stays
 # writable with the strap up, so the deny is the lock and not a dead write path.
 # Real fuse sense, LC_PROD, no_cpu.
+#
+# Plusarg-selected variant: the module is the locked-field leaf, and
+# +secure_tm_lock selects this scenario, so the module does not end in this
+# entry name. See Naming Rules in docs/SEP_VPLAN.adoc.
 name = "sep_efuse_secure_tm_write_lock_test"
 module = "efuse.sep_locked_field_access_irq_path_test"
 seed = 1
@@ -183,6 +193,24 @@ tags = ["efuse", "interrupt", "lock", "secure_tm", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+secure_tm_lock"]
+
+[[tests]]
+# Both eFuse FSMs fail closed from an illegal state. read_state_q and
+# program_state_q are two bits whose legal encodings are 2'b01 and 2'b10; no
+# frontdoor stimulus can produce 2'b00 or 2'b11, so the recovery the RTL
+# asserts on them is unreachable without injection. Forces one illegal encoding
+# for one cycle, on each FSM, for both illegal values, and grades the recovery
+# on DUT outputs: back to idle, no command to the bank, error+done set,
+# and the read-back data is not the sensed control word. A live read precedes
+# and follows
+# the injections, so the refusal is not a dead block. Real fuse sense, LC_PROD.
+name = "sep_efuse_illegal_state_fail_closed_test"
+module = "efuse.sep_efuse_illegal_state_fail_closed_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "fault", "fail-closed", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
 
 [[tests]]
 # LC_STATE next state on the shadow write-1-to-set path -- the writer the
@@ -195,6 +223,11 @@ args = ["+secure_tm_lock"]
 # of the same state. RANDCFG: tokens and the LC_STATE[31:8] pattern come from
 # the seed; the cells within a leaf are fixed, so no contract is seed-selected.
 # Real fuse sense, no_cpu.
+#
+# The six sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of one
+# module, sep_lcc_lc_state_transition_matrix_test: +lc_start=N picks the start
+# state, so none of them ends the module name. See Naming Rules in
+# docs/SEP_VPLAN.adoc.
 #
 # PROD: W1S no-clear, the RMA_SIP token gate, the RMA_CHIPLET ordering gate
 # (with its token gate already open), then the authorized advance to RMA_SIP.

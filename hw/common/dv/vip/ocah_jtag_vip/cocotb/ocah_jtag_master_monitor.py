@@ -87,6 +87,7 @@ class OcahJtagMasterMonitor:
             self.bus = JTAGBus.from_entity(_JtagIntfProxy(jtag_intf, smap))
 
         self._callbacks: list[Callable[[OcahJtagScanItem], None]] = []
+        self.callback_errors = 0
         self._ir_callbacks: list[Callable[[OcahJtagScanItem], None]] = []
         self._dr_callbacks: list[Callable[[OcahJtagScanItem], None]] = []
         self._ir_history: list[OcahJtagScanItem] = []
@@ -158,6 +159,7 @@ class OcahJtagMasterMonitor:
             "resets": self._resets,
             "current_state": self._state.name,
             "current_instruction": self._active_instruction,
+            "callback_errors": self.callback_errors,
         }
 
     async def _run(self) -> None:
@@ -252,5 +254,10 @@ class OcahJtagMasterMonitor:
         for callback in callbacks:
             try:
                 callback(item)
+            except AssertionError:
+                # A checker verdict is never swallowed; the retained finding
+                # still exists for aggregate mode.
+                raise
             except Exception as exc:  # noqa: BLE001
+                self.callback_errors += 1
                 self.log.error("Exception in JTAG monitor callback %s: %s", callback, exc)

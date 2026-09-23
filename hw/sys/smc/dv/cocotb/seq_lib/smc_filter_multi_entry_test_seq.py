@@ -3,7 +3,7 @@
 """Filter multi-entry sweep.
 
 RTL exposes 16 inbound + 16 outbound filter entries; this sweep covers every
-one of the 32 slots rather than entry 0 of each direction.
+one of the 32 slots.
 
 Each of the 32 slots is proven *individually discriminable*, not merely
 "a window that answers 0x3000": every slot gets a signature value unique to
@@ -23,7 +23,7 @@ readback fails.
 
 Phase 1 checks the RDL reset content of every window before anything is
 written, and phases 4/5 restore and re-confirm the RDL default, so the run
-also keeps the reset-value evidence it had before.
+also carries reset-value evidence for every slot.
 """
 
 from __future__ import annotations

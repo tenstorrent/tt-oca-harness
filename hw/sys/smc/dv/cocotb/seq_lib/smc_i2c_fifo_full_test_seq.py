@@ -80,9 +80,9 @@ _ACQ_FILL_WORDS = len(_ACQ_FILL_PAYLOAD) + 2
 _STATUS_POLL_ITERS = 64
 _STATUS_POLL_STEP_NS = 100
 # Bus-traffic fill bound. The ACQ frame (100 kHz, 3 bytes) needs well under
-# 1 ms of sim time and the RX read completes sooner still, so 400 x 10 us =
-# 4 ms is ~4x the worst observed latency: generous enough that a real transfer
-# is never cut short, tight enough that a FIFO that never fills fails quickly.
+# 1 ms of sim time and the RX read completes sooner, so 400 x 10 us = 4 ms is
+# generous enough that a real transfer is never cut short and tight enough that
+# a FIFO that never fills fails quickly.
 _BUS_POLL_ITERS = 400
 _BUS_POLL_STEP_US = 10
 
@@ -173,7 +173,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             lvl = lvl_fn(await self.csr_read(f"{label}_{i}", lvl_a))
             if lvl >= want:
                 return lvl
-            await Timer(_BUS_POLL_STEP_US, units="us")
+            await Timer(_BUS_POLL_STEP_US, unit="us")
         raise AssertionError(
             f"{label}: FIFO level reached only {lvl}, expected >= {want} -- "
             f"the positive control never filled the FIFO, so a following "
@@ -194,7 +194,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             st = await self.csr_read(f"{label}_{i}", status_a)
             if (st & want_set) == want_set and (st & want_clear) == 0:
                 return st
-            await Timer(_STATUS_POLL_STEP_NS, units="ns")
+            await Timer(_STATUS_POLL_STEP_NS, unit="ns")
         raise AssertionError(
             f"{label} timeout STATUS=0x{st:08x} want_set=0x{want_set:x} want_clear=0x{want_clear:x}"
         )
@@ -205,7 +205,7 @@ class smc_i2c_fifo_full_test_seq(SmcCsrSeq):
             lvl = lvl_fn(await self.csr_read(f"{label}_{i}", lvl_a))
             if lvl == 0:
                 return
-            await Timer(_STATUS_POLL_STEP_NS, units="ns")
+            await Timer(_STATUS_POLL_STEP_NS, unit="ns")
         raise AssertionError(f"{label} level stuck at {lvl}")
 
     async def _test_fmt(self) -> None:

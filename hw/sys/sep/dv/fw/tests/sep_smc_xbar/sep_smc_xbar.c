@@ -12,9 +12,9 @@
 /*
  * smc_sep_xbar  --  SEP (consumer/producer) firmware.
  *
- * Force-free SEP-DRIVEN bring-up (pivoted off ext_in, which segfaults VCS on a CPU_CTRL
- * write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU opens its outbound egress window,
- * polls SMC SRAM for the exact preload cookie, then re-vectors + releases the four SMC cores
+ * Force-free SEP-DRIVEN bring-up (no ext_in traffic to CPU_CTRL): the real SEP CPU opens its
+ * outbound egress window, polls SMC SRAM for the exact preload cookie, then re-vectors +
+ * releases the four SMC cores
  * over the SEP->SMC alias (sep_smc_bringup helpers). It then runs the fixed-alias
  * bidirectional datapath: SEP->SMC store/load of the correlated word at the dedicated
  * scratch8 alias (proves both remap stages), and the SMC->SEP command/DONE channel via the

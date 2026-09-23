@@ -25,16 +25,13 @@ static void run_unsecure_boot_test(test_context_t *ctx) {
     ctx->overall_result = true;
     int retval;
 
-    // // Execute some random OCCP commands for system stability
-
     simputs("=== Reading bootcode parameters ===\n");
 
     // Read bootcode parameters from scratch registers (set by CocoTB)
     uint64_t master_bootcode_addr = read_scratch(5);
     uint64_t bootcode_size = read_scratch(6);
     uint64_t target_dut_addr = read_scratch(7);
-    // Where main() sits inside the bootcode image, derived by the loader from the
-    // build's own symbol map so this test does not assume a fixed image layout.
+    // Offset of main() within the bootcode image, published by the loader in scratch 8.
     uint64_t entry_offset = read_scratch(8);
 
     simputshex64("Master bootcode address: 0x", master_bootcode_addr);

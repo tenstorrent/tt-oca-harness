@@ -14,6 +14,14 @@ from smc_base_test import smc_base_test
 class smc_i2c_target_smbus_test(smc_base_test):
     """VIP ARA + external SMBSUS# into DUT I2C0 SMBus target."""
 
+    required_evidence = (
+        "CHK-I2C-TGT-SMBUS-ALERT",
+        "CHK-I2C-TGT-SMBUS-ARA",
+        "CHK-I2C-TGT-SMBUS-SUS-ASSERT",
+        "CHK-I2C-TGT-SMBUS-SUS-CLR",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -25,10 +33,8 @@ class smc_i2c_target_smbus_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 36 accesses observed in the retained
-            # regression runs; the ARA/SMBSUS status polls are a
-            # timing-dependent remainder, so the floor is set below it. Literal
-            # here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the ARA/SMBSUS status polls are timing-dependent.
             min_csr_accesses=28,
             csr_accesses=seq.accesses,
             proxy=False,

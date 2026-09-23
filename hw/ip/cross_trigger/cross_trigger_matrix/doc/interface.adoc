@@ -2,11 +2,16 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctm-interface]]
-==== Interface
 
-===== Signal Interface
+=== Signal Interface
 
-[cols="<,<,<,<",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTM signal interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<24,<13,<10,<53",options="header",role="port-reference"]
 |===
 |Signal |Direction |Width |Description
 |clk_i |Input |1 |System clock
@@ -18,9 +23,15 @@
 |route_cfg_i |Input |varies |Routing configuration per output port
 |===
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 Where N = NUM_CTP and M = NUM_INT_CT.
 
-===== Data Ports
+=== Data Ports
 
 The CTM has the following data ports:
 
@@ -31,7 +42,7 @@ The CTM has the following data ports:
   CTPs, or other cross trigger generating devices, where M is the number of
   these cross trigger sources.
 
-===== Dependencies
+=== Dependencies
 
 The CTM depends on the following components:
 

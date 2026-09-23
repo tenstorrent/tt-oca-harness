@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI flash command-breadth test (PyUVM, cpu-firmware, randomized).
 
-SPI-subsystem Phase-2 rep SPI flash command breadth (lead of the dedicated OpenTitan-SPI sweep). A
+SPI flash command breadth. A
 cpu-firmware port of the reference spi_ot_flash_write_read_test +
 spi_ot_flash_sector_erase_test, upgraded to a randomized representative
 ([RAND-REP], stronger than the directed reference suite source). Boots the VeeR EL2 core
@@ -13,11 +13,11 @@ and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host (@
     WREN -> SECTOR ERASE -> READ + verify == 0xFF, ERROR_STATUS == 0 throughout,
     then the write-protect / RDSR2 breadth and the ERROR_STATUS injections.
 
-cpu-firmware mode (not no_cpu): every reference spi_ot flash test + the Phase-1
+cpu-firmware mode (not no_cpu): every reference spi_ot flash test and
 sep_spi_ot_dma_rx run the multi-command SPI flash sequence from firmware.
 Distinct from `sep_spi_ot_dma_rx_test` (RX+DMA) and the JEDEC smoke.
 
-Randomization (this test is the SINGLE source of randomness; AGENTS.md s9/s11):
+Randomization (this test is the SINGLE source of randomness):
   The scenario -- flash address (page-aligned), word count (1..16), and the data
   words -- is generated here from the runner seed (RANDOM_SEED) and patched into
   the staged DTCM image at the firmware's SPI1_PARAM_MAGIC sentinel. The same
@@ -40,8 +40,9 @@ Checks:
                            ERROR_STATUS.UNDERFLOW; SW_RST + W1C releases it.
     CHK-ERR-CMDINVAL     : a COMMAND with the reserved SPEED encoding latches
                            exactly ERROR_STATUS.CMDINVAL; recovery clears it.
-    CHK-ERR-CSIDINVAL    : a segment with CSID beyond NUM_CS latches exactly
-                           ERROR_STATUS.CSIDINVAL; recovery clears it.
+    CHK-ERR-CSIDINVAL    : a segment with CSID at the top of the 32-bit field
+                           latches exactly ERROR_STATUS.CSIDINVAL; recovery
+                           clears it.
     CHK-ERR-RECOVER      : JEDEC works again afterwards, so the host was really
                            released rather than left disabled by a stuck latch.
   cocotb golden cross-check (independent of the firmware readback):
@@ -90,7 +91,7 @@ _BANNER = "SEP SPI OT flash cmd test"
 
 # Mirror of the firmware g_spi1_params block (spi_ot_flash_cmd_test.c).
 _PARAM_MAGIC = 0x5A11C0DE
-# Status register 2 the device model is built with. Deliberately non-zero and
+# Status register 2 the device model is built with. Non-zero and
 # distinct from the 0x02 SR1 reads with the write-enable latch set, so a decode
 # that folds 0x35 onto 0x05 and an all-zero receive path both fail CHK-RDSR2.
 # Must equal FLASH_SR2_SEEDED in fw/tests/spi_ot_flash_cmd_test.
@@ -106,7 +107,7 @@ class SepSpiFlashCmdCfg:
 
     The randomized page-program address + data, the firmware g_spi1_params block,
     and the golden BFM opcode order + PAGE PROGRAM expectations all derive from this
-    one object (AGENTS.md s9/s11; mirrors SepSpiDmaTxCfg). Page-aligned addr so the
+    one object (mirrors SepSpiDmaTxCfg). Page-aligned addr so the
     program stays inside one BFM page; a varied sector exercises erase across seeds.
     """
 
@@ -225,7 +226,7 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             mosi=dut.spi_mosi_o,
             miso=dut.spi_miso_i,
             name="sep_spi1_flash",
-            # Deliberately non-zero, and distinct from the 0x02 that SR1 reads
+            # Non-zero, and distinct from the 0x02 that SR1 reads
             # with WEL set. CHK-RDSR2 in the firmware compares against this exact
             # value (FLASH_SR2_SEEDED), so a stuck-low MISO returning 0x00 fails
             # the check instead of passing it.
@@ -377,5 +378,5 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         )
         self.logger.info(
             "CHK-RAND-REP PASS: walked BFM-visible opcodes "
-            "JEDEC/WREN/RDSR/RDSR2/WRDI/PP/READ/FAST/ERASE (dual/quad infra-gated)"
+            "JEDEC/WREN/RDSR/RDSR2/WRDI/PP/READ/FAST/ERASE (dual/quad not walked)"
         )

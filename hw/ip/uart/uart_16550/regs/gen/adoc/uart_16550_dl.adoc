@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-uart_16550_dl]
+== Address Map: uart_16550_dl
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | DLL | RW a| Divisor Latch Least Significant Byte Register
-| 0x4 | DLM | RW a| Divisor Latch Most Significant Byte Register
+| 0x0 | <<reg-{regmap-instance}-uart_16550_dl-DLL,DLL>> | RW a| Divisor Latch Least Significant Byte Register
+| 0x4 | <<reg-{regmap-instance}-uart_16550_dl-DLM,DLM>> | RW a| Divisor Latch Most Significant Byte Register
 |===
 
+[#reg-{regmap-instance}-uart_16550_dl-DLL]
+=== DLL
+
 [cols="1,3,1,1,6", options="header"]
-.DLL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -19,8 +25,10 @@
 to `0`, the transmitter and receiver logic are disabled.
 |===
 
+[#reg-{regmap-instance}-uart_16550_dl-DLM]
+=== DLM
+
 [cols="1,3,1,1,6", options="header"]
-.DLM Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved

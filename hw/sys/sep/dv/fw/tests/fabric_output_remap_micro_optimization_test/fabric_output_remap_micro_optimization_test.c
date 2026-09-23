@@ -4,9 +4,9 @@
 /*
  * fabric_output_remap_micro_optimization_test
  *
- * Strategy: Micro boundary-case fill-in; focus on the last untouched toggle bits
+ * Strategy: Micro boundary cases; fine-grained toggle bits
  *
- * Focus on finest boundary conditions and untouched corner cases
+ * Focus on the finest boundary conditions and corner cases
  */
 
 #include "sep_test_common.h"
@@ -15,7 +15,7 @@
 // Micro boundary and anomaly scenarios
 #define MICRO_REMAP_SCENARIOS 12
 
-// Boundary values - focus on untouched edges
+// Boundary values at the 32-bit edges
 #define ADDR_BOUNDARY_EDGE_LOW 0x7FFFFFFE  // 32-bit boundary - 2
 #define ADDR_BOUNDARY_EDGE_HIGH 0x80000001 // 32-bit boundary + 1
 #define OFFSET_MICRO_PATTERN_1 0x00000003  // micro offset patterns
@@ -171,7 +171,6 @@ int main(void) {
     printf("Output Remap Micro-Optimization Test\n");
     printf("Focus: boundary-case and residual field-toggle coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_output_remap_micro_optimization_test");
         return TEST_FAIL;

@@ -10,12 +10,12 @@ or SLVERR; the specification does not mandate which), and no live
 register in that block may change. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
-registers as well. ``memory_map.adoc`` states the rule: within an
-aperture only the unit's register extent responds, the remainder
-returns DECERR, and an access there never reaches the unit.
+registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
+address past the extent a unit allocates, and such an access never
+reaches a unit. It names no response flavour.
 
-Keep the full probe set. Do not XFAIL. Do not drop the addresses that
-already wrap.
+Every probe in the set is asserted, the wrapping anchors included; the
+contract is not carried by a probe that is logged or waived.
 
 CHK-DEADSPACE-BURST asserts the same refusal on a beat a single-beat probe
 cannot reach: AXI decodes the request address only, so an INCR begun in a
@@ -36,7 +36,6 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_deadspace_seq import (
     DEADSPACE_ANCHORS,
-    RESP_DECERR,
     RESP_OKAY,
     SepDeadspace,
     SepDeadspaceCfg,
@@ -50,6 +49,12 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
     async def run_scenario(self) -> None:
         cfg = SepDeadspaceCfg(self.random_seed())
         self.logger.info("deadspace config: %s", cfg.summary())
+        assert not cfg.short_windows, (
+            "CHK-DEADSPACE-RAND FAIL: window(s) short of the random-probe quota: "
+            + ", ".join(
+                f"{name}={got}/{want}" for name, (got, want) in sorted(cfg.short_windows.items())
+            )
+        )
         await self.bring_up_no_cpu()
         dead = SepDeadspace(self)
 
@@ -102,20 +107,20 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 )
 
         # Burst reachability of the refused span, and a HARD FAIL when a beat
-        # lands there. `memory_map.adoc` says the span past a unit's extent
-        # returns DECERR and never reaches the unit; it draws no distinction
+        # lands there. `memory_map.adoc` says an address past a unit's extent
+        # is refused at the fabric and never reaches a unit; it draws no distinction
         # between a single beat and a later beat of a burst. An INCR begun in the
         # last live words carries its later beats past REG_MAP_SIZE because AXI
         # decodes the request address only.
         #
-        # Those later beats must be refused too.
-        # Do not XFAIL and do not demote to a log line --
-        # the same rule as the wrap anchors above.
+        # Those later beats must be refused too, and the refusal is asserted,
+        # not logged, like the wrap anchors above.
         burst_audited: list[str] = []
         burst_skipped: list[str] = []
         beat_audited: list[str] = []
         beat_discriminating: list[str] = []
         beat_skipped: list[str] = []
+        data_compared: list[str] = []
         for win in cfg.windows.values():
             # A window whose dead space starts on a 4KB boundary cannot be
             # entered by a legal burst, and one with no live words before it
@@ -197,13 +202,15 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     f"RRESP sequence for the burst at 0x{start:08x}"
                 )
 
-            # The aggregate still fails a fabric that answers the whole burst
-            # OKAY while refusing the same address as a single beat.
+            # CHK-DEADSPACE-BURST: any non-OKAY single-beat refusal, not
+            # DECERR-only. The specification does not mandate DECERR vs SLVERR.
+            # A window whose past-extent single beat answers SLVERR must still
+            # fail an OKAY burst to the same address.
             worst = max(resps) if resps else RESP_OKAY
             for i, (sresp, sdata) in enumerate(singles):
                 addr = start + 4 * i
                 if addr >= win.dead_lo:
-                    if sresp == RESP_DECERR and worst == RESP_OKAY:
+                    if sresp != RESP_OKAY and worst == RESP_OKAY:
                         burst_fails.append(
                             f"{win.name} 0x{addr:08x} is refused as a single "
                             f"beat (resp={sresp}) but the burst beginning "
@@ -211,13 +218,16 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                         )
                         break
                     continue
-                # Inside the extent, and only when the burst was accepted: an
-                # accepted burst must read what the single-beat path reads. A
-                # refused burst carries the error slave's poison on every beat,
-                # which is not data and is not compared.
-                if worst != RESP_OKAY:
+                # Inside the extent: compare a beat the burst actually served.
+                # The master's collapsed response is the worst beat of the
+                # burst, so a refused tail would skip an in-extent beat that
+                # answered OKAY. Poison on a refused beat is not data.
+                beat_r = beat_resps[i] if i < len(beat_resps) else None
+                if beat_r != RESP_OKAY or sresp != RESP_OKAY:
                     continue
-                if sresp == RESP_OKAY and words[i] != sdata:
+                if win.name not in data_compared:
+                    data_compared.append(win.name)
+                if words[i] != sdata:
                     burst_fails.append(
                         f"{win.name} 0x{addr:08x} reads 0x{sdata:08x} as a "
                         f"single beat but 0x{words[i]:08x} as beat{i} of the "
@@ -235,8 +245,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             len(DEADSPACE_ANCHORS),
             cfg.seed,
         )
-        # Reported, not asserted: memory_map.adoc names DECERR for the reserved
-        # remainder inside an aperture, and which other error responses are
+        # Reported, not asserted: memory_map.adoc says such an access is
+        # refused but names no response flavour, and which error responses are
         # permitted is a specification question for the design owner.
         for line in dead.flavour_findings:
             self.logger.info("DEADSPACE-FLAVOUR: %s", line)
@@ -284,12 +294,20 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             "CHK-DEADSPACE-BURST FAIL: no window could carry the burst "
             "contract, so it has no evidence here (" + "; ".join(burst_skipped) + ")"
         )
+        missing_data = [name for name in beat_discriminating if name not in data_compared]
+        if missing_data:
+            raise AssertionError(
+                "CHK-DEADSPACE-BURST FAIL: in-extent OKAY beats were not "
+                "compared to the single-beat value: " + ", ".join(missing_data)
+            )
         self.logger.info(
             "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
-            "that ends past its allocated extent (%s); %d not auditable (%s)",
+            "that ends past its allocated extent (%s); in-extent data "
+            "compared on %s; %d not auditable (%s)",
             len(burst_audited),
             len(cfg.windows),
             ", ".join(burst_audited),
+            ", ".join(data_compared) or "none",
             len(burst_skipped),
             "; ".join(burst_skipped) or "none",
         )

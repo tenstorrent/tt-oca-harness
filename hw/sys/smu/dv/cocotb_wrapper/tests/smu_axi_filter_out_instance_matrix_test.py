@@ -13,14 +13,14 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_axi_filter_out_instance_matrix_test(smu_base_test):
-    """Outbound filter S1 DECODE; S2/S3 deferred (needs ext_out); no Force."""
+    """Outbound filter S1 DECODE; S2/S3 need an ext_out peer; no Force."""
 
     use_shared_env = True
 
     async def run_scenario(self) -> None:
         self.logger.info(
             "DUT_TAG=WRAPPER smu_axi_filter_out_instance_matrix_test "
-            "TierA FAB_SMC_025 SEP=0 J2A S1-only"
+            "TierA FAB_SMC_025 SEP=1 J2A S1-only"
         )
         seq = smu_axi_filter_out_instance_matrix_test_seq(self)
         await seq.run()

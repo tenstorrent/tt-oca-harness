@@ -1,38 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GPIO `interrupt_enable` as an output mask -- reproducer for issue #1602.
+"""GPIO `interrupt_enable` as an output mask.
 
-**This sequence is expected to FAIL against current RTL.** It exists to convert
-an unverified transition into tracked evidence, not to pass. It is deliberately
-kept out of the `ci` tag and the `smoke` group.
-
-SPEC (`hw/ip/gpio/doc/architecture.adoc:122`) defines the enable as a
-combinational mask::
+`hw/ip/gpio/doc/architecture.adoc` defines the enable as a combinational
+mask::
 
     interrupt_o = interrupt_enable && interrupt_trigger
 
-RTL disagrees. `hw/ip/gpio/rtl/gpio.sv:253-261` uses `reg__interrupt_enable` as
-the **clock enable** of the `interrupt` flop rather than as an output mask, and
-`:302` is a bare ``assign interrupt_o = interrupt;`` with no AND. The
-``always_comb`` at `:297-299` does compute ``nxt_interrupt = 1'b0`` when the
-enable is low, but that value can never be captured because the same signal
-gates the flop -- which is what shows the hold is not a deliberate latch: the
-clear was written and the clock enable prevents it taking effect.
+`hw/ip/gpio/rtl/gpio.sv` implements it that way: the `interrupt` flop tracks
+the trigger whether or not the enable is set, and `interrupt_o` is that flop
+ANDed with `reg__interrupt_enable`, so clearing the enable releases the line
+without disturbing the tracked trigger.
 
-Why the existing GPIO suite cannot see this. `smc_gpio_irq_type_matrix_test_seq`
-bakes `interrupt_enable` into the static constants `CFG_ACTIVE_HIGH` /
-`CFG_ACTIVE_LOW` and never varies it, so it only ever proves "IRQ tracks the pad
-with the enable held 1" -- the `interrupt_trigger` half of the spec formula.
-`smc_gpio_p0_int_test_seq.py:91` does clear the enable, but as an unobserved
-teardown, after the external pad drive is released at `:90`, and in edge-trigger
-mode where the IRQ has already self-cleared. Neither drives the mask half.
+The sibling GPIO IRQ sequences hold `interrupt_enable` at 1 while the pad is
+driven, so they prove the `interrupt_trigger` half of the spec formula only;
+this sequence drives the mask half.
 
 Structure. The check is two phases and the first is load-bearing:
 
 * **S5a (arm).** Prove `interrupt_o == 0` with the pad low, then drive the pad
   high, require `interrupt_o == 1`, and **hold** it stable. Leave the pad high.
 * **S5b (mask).** The *only* stimulus is the `interrupt_enable = 0` write; the
-  pad is deliberately not touched. Require `interrupt_o` to fall and stay low.
+  pad is not touched. Require `interrupt_o` to fall and stay low.
 
 Without S5a this proves nothing -- sampling a 0 that already held is satisfied
 by a DUT with no interrupt logic at all.
@@ -63,11 +52,10 @@ _HOLD = 32
 
 
 class smc_gpio_irq_mask_deassert_test_seq(SmcCsrSeq):
-    """#1602: clearing interrupt_enable must de-assert interrupt_o."""
+    """Clearing interrupt_enable must de-assert interrupt_o."""
 
     def __init__(self, name: str = "smc_gpio_irq_mask_deassert_test_seq") -> None:
         super().__init__(name)
-        self.chk_seen: set[str] = set()
 
     def _irq(self, dut) -> int:
         return int(dut.tb_gpio_irq_any.value)
@@ -119,7 +107,6 @@ class smc_gpio_irq_mask_deassert_test_seq(SmcCsrSeq):
             CFG_ARMED,
             _HOLD,
         )
-        self.chk_seen.add("CHK-GPIO-IRQ-MASK-ARM")
 
         # ---- S5b: clear interrupt_enable ONLY; the pad stays high ----
         await self.csr_write("GPIO0_MASKED", GPIO0_DATA_CTRL, CFG_MASKED)
@@ -128,13 +115,9 @@ class smc_gpio_irq_mask_deassert_test_seq(SmcCsrSeq):
         assert got == 0, (
             f"CHK-GPIO-IRQ-MASK-DEASSERT: tb_gpio_irq_any stayed {got} after "
             f"DATA_CTRL 0x{CFG_ARMED:08x} -> 0x{CFG_MASKED:08x} (interrupt_enable "
-            f"1->0, bit 18) with the pad still high and no other stimulus. SPEC "
-            f"hw/ip/gpio/doc/architecture.adoc:122 requires "
-            f"interrupt_o = interrupt_enable && interrupt_trigger. This is "
-            f"issue #1602: gpio.sv:253-261 uses the enable as the interrupt "
-            f"flop's clock enable and gpio.sv:302 drives interrupt_o from that "
-            f"flop unqualified, so the cleared value at gpio.sv:297-299 can "
-            f"never be captured"
+            f"1->0, bit 18) with the pad still high and no other stimulus. "
+            f"hw/ip/gpio/doc/architecture.adoc requires "
+            f"interrupt_o = interrupt_enable && interrupt_trigger"
         )
         await self._hold(dut, 0, "mask hold")
         cocotb.log.info(
@@ -147,12 +130,9 @@ class smc_gpio_irq_mask_deassert_test_seq(SmcCsrSeq):
             CFG_MASKED,
             _HOLD,
         )
-        self.chk_seen.add("CHK-GPIO-IRQ-MASK-DEASSERT")
 
         # Restore: pad released and the wrap returned to its reset configuration,
-        # so this sequence leaves no interrupt_enable programmed behind it. The
-        # sibling irq_type_matrix sequence does not restore DATA_CTRL, which its
-        # own audit flags as state pollution.
+        # so this sequence leaves no interrupt_enable programmed behind it.
         dut.tb_gpio_ext_drive_en.value = 0x0
         await self.csr_write("GPIO0_RESTORE", GPIO0_DATA_CTRL, 0)
         await self.csr_read("GPIO0_RESTORE_RB", GPIO0_DATA_CTRL, expected=0)

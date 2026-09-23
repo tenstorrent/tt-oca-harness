@@ -242,7 +242,7 @@ module efuse_shadow_regs
       .efuse_apb_resp_t (efuse_apb_resp_t),
       .efuse_addr_t     (efuse_addr_t),
       .efuse_data_t     (efuse_data_t)
-  ) efuse_shadow_reg_access_control (
+  ) u_efuse_shadow_reg_access_control (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
 
@@ -732,6 +732,8 @@ module efuse_shadow_regs
       ActualNumClass1ShadowWords <= NumShadowWords)
   `OCAH_OT_ASSERT_INIT(SecretShadowRangesValid_A,
       efuse_pkg::shadow_range_map_is_valid(SECRET_SHADOW_RANGES, NumShadowWords))
+  `OCAH_OT_ASSERT_INIT(NumShadowWordsFitsWordCounter_A,
+      $clog2(NumShadowWords + 1) <= $bits(efuse_word_counter_t))
 
   for (genvar i = 0; i < NumShadowWords; i++) begin : gen_secret_word_assert
     if (efuse_pkg::shadow_range_map_contains_word(SECRET_SHADOW_RANGES, i)) begin : gen_masked

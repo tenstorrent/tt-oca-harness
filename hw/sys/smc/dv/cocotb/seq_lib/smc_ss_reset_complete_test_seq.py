@@ -34,17 +34,14 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_ss_reset_complete_test_seq") -> None:
         super().__init__(name)
         # Values captured for the evidence tokens and the testcase-level gate.
-        # HONEST ACCOUNTING of what each one can report:
         #   * `idle_csr` / `drop_csr` / `restore_csr` come from `_await_csr`,
-        #     which raises unless the value matches -- so they are the wanted
-        #     constants and a testcase-level compare against them adds no
-        #     failure mode. The teeth are `_await_csr`'s expiry path.
-        #   * `warm_pins` likewise comes from `_await_warm_pin`; same caveat.
-        #   * `warm_csr` is DIFFERENT and is the one worth gating on: those
-        #     three words come from plain `csr_read` with NO `expected=`, and
-        #     this sequence only asserts bit 0 of the asserted/released reads,
-        #     so a full-word compare at testcase level genuinely covers the
-        #     other 31 bits ([NO-ALWAYS-PASS-CHECKER]).
+        #     which raises unless the value matches, so they hold the wanted
+        #     constants; the fail-capable content is `_await_csr`'s expiry path.
+        #   * `warm_pins` likewise comes from `_await_warm_pin`.
+        #   * `warm_csr` holds three plain `csr_read` words with NO `expected=`;
+        #     this sequence asserts only bit 0 of the asserted/released reads, so
+        #     a full-word compare at testcase level covers the other 31 bits
+        #     ([NO-ALWAYS-PASS-CHECKER]).
         self.idle_csr: int | None = None
         self.drop_csr: int | None = None
         self.restore_csr: int | None = None

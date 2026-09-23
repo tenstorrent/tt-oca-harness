@@ -125,6 +125,10 @@ class SepCpuTraceMonitor(uvm_component):
         # or ["trap", pc, ecause, interrupt, tval]. Index 0 is outermost.
         self.stack: list[list] = []
         self.max_depth = 0
+        # Snapshot at the most recent trap push. max_depth is run-global and
+        # can be satisfied by crt0 before the chain is live.
+        self.trap_depth = 0
+        self.trap_stack: list[list] = []
         self.trap_events: list[tuple[int, int, int, int, int]] = []
         self.reset_flushes = 0
         self.resync_notes = 0
@@ -163,6 +167,8 @@ class SepCpuTraceMonitor(uvm_component):
         if exc:
             self.trap_events.append((cycle, pc, ecause, interrupt, tval))
             self._push(["trap", pc, ecause, interrupt, tval])
+            self.trap_depth = len(self.stack)
+            self.trap_stack = [list(frame) for frame in self.stack]
             self.logger.warning(
                 "trap at cycle %d: %s pc=0x%08x (%s) tval=0x%08x",
                 cycle,
@@ -238,11 +244,11 @@ class SepCpuTraceMonitor(uvm_component):
         def rd(name: str) -> int:
             s = sig[name]
             if s is None:
-                return 0
+                raise AssertionError(f"CPU trace signal {name} is not bound")
             try:
                 return int(s.value)
-            except Exception:
-                return 0
+            except Exception as exc:
+                raise AssertionError(f"CPU trace signal {name} is not a known 0/1 value") from exc
 
         clk = dut.clk_i
         cycle = 0
@@ -301,12 +307,13 @@ class SepCpuTraceMonitor(uvm_component):
         log(
             level,
             "CPU state: %d retired, %d distinct PCs, last pc 0x%08x (%s), "
-            "max call depth %d, %d trap(s), %d reset flush(es), %d resync note(s)",
+            "max call depth %d, trap-live depth %d, %d trap(s), %d reset flush(es), %d resync note(s)",
             self.trace_count,
             len(self.pcs),
             self.last_pc,
             self._sym(self.last_pc),
             self.max_depth,
+            self.trap_depth,
             len(self.trap_events),
             self.reset_flushes,
             self.resync_notes,

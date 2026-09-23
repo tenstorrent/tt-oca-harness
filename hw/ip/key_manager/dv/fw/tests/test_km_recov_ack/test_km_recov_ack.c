@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_recov_ack.c
- * @brief T062 - Fault acknowledgment full flow test
+ * @brief Fault acknowledgment full flow test
  *
  * Exercises the complete recoverable fault lifecycle:
  *   1. Boot, generate a key to establish normal operation

@@ -14,10 +14,6 @@
  * 4. Test TX watermark (TXWM) with configurable TX_WATERMARK
  * 5. Write until TXFULL, verify overflow error
  * 6. SW_RST, verify TXEMPTY after reset
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -49,16 +45,16 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
+    spi_controller__CONTROL_t ctrl;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
 
     /* Enable controller */
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
     ctrl.f.TX_WATERMARK = 4;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Step 1: Verify TX FIFO empty initially */
     printf("\nStep 1: TX FIFO initial state\n");
@@ -81,7 +77,7 @@ int main(void) {
     printf("\nStep 2: Write 8 words to TX FIFO\n");
     uint32_t i;
     for (i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xA0000000 | i);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xA0000000 | i);
     }
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  After 8 writes: TXQD=%u, TXEMPTY=%u, TXFULL=%u\n", status.f.TXQD, status.f.TXEMPTY,
@@ -114,7 +110,7 @@ int main(void) {
     printf("\nStep 4: Fill TX FIFO until TXFULL\n");
     uint32_t fill_count = 8; /* already written in step 2 */
     while (!status.f.TXFULL && fill_count < TX_FILL_LIMIT) {
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xB0000000 | fill_count);
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xB0000000 | fill_count);
         fill_count++;
         status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     }
@@ -138,7 +134,7 @@ int main(void) {
     /* Clear any prior errors */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xDEADBEEF);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xDEADBEEF);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x, OVERFLOW=%u\n", err_status.w, err_status.f.OVERFLOW);
     if (err_status.f.OVERFLOW) {
@@ -153,16 +149,22 @@ int main(void) {
 
     /* Step 6: Software reset and verify drain */
     printf("\nStep 6: SW_RST drain test\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    if (wait_for_tx_empty(TIMEOUT_LIMIT)) {
+    /* Confirm the drain while SW_RST is still held, then release: the field is a
+     * level and the core stays in reset until it is cleared. */
+    int drained = wait_for_tx_empty(TIMEOUT_LIMIT);
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    ctrl.f.SW_RST = 0;
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+
+    if (drained) {
         pass = 0;
         goto done;
     }
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  After SW_RST: TXEMPTY=%u, TXQD=%u\n", status.f.TXEMPTY, status.f.TXQD);
     if (status.f.TXEMPTY != 1) {
         printf("  FAIL: TXEMPTY should be 1 after SW_RST drain\n");

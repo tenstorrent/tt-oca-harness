@@ -7,7 +7,7 @@ MSG FIFO, waits for done, and reads the digest -- mirroring the reference suite
 sep_km_hmac_sideload_kat_test_seq op helpers (RAL there; direct AXI here, like
 SepAes/SepOtbn). 32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
 
-HMAC register map (base 0x1091_1000; vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_reg_pkg.sv):
+HMAC register map (base from the generated SEP header; offsets from hmac.adoc):
   INTR_STATE @ 0x000 (RW1C: bit0 hmac_done, bit2 hmac_err)
   CFG        @ 0x010   CMD @ 0x014   STATUS @ 0x018   ERR_CODE @ 0x01C
   KEY_0..31  @ 0x024..0x0A0   DIGEST_0..7 @ 0x0A4..0x0C0
@@ -41,28 +41,38 @@ HMAC_NUM_PUBLIC_KEY = 32
 # CFG keyed HMAC-SHA256, 256-bit key (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
 # digest_size SHA2_256 -> bit5, key_length 256 -> bit10 (field [14:9]=2);
 # endian_swap/digest_swap = 0 (digest word0 = MSB == standard big-endian digest).
-HMAC_CFG_KEYED_256 = 0x0000_0423
-# Plain SHA-256 (no key): same as keyed-256 but hmac_en[0]=0 and no key_length
-# (bit10) -- sha_en[1]=1 + digest_size SHA2_256 (bit5). Digest is the standard
-# big-endian SHA-256 (digest word0 = MSB), so DIGEST_i == big-endian word i.
-HMAC_CFG_SHA256 = 0x0000_0022
+HMAC_CMD_HASH_START = HMAC.field_mask("CMD", "hash_start")
+HMAC_CMD_HASH_PROCESS = HMAC.field_mask("CMD", "hash_process")
 
-HMAC_CMD_HASH_START = 1 << 0
-HMAC_CMD_HASH_PROCESS = 1 << 1
+HMAC_STATUS_FIFO_FULL = HMAC.field_mask("STATUS", "fifo_full")
+# STATUS.hmac_idle: set while the core holds no in-flight message. Taken from
+# the generated block, so a field move cannot leave a stale literal here.
+HMAC_STATUS_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
+HMAC_INTR_DONE = HMAC.field_mask("INTR_STATE", "hmac_done")
+HMAC_INTR_ERR = HMAC.field_mask("INTR_STATE", "hmac_err")
 
-HMAC_STATUS_FIFO_FULL = 1 << 2
-HMAC_INTR_DONE = 1 << 0
-HMAC_INTR_ERR = 1 << 2
-
-# CFG field encodings (prim_sha2_pkg.sv digest_mode_e / key_length_e, one-hot;
-# hmac.sv CFG layout: hmac_en[0] sha_en[1] endian_swap[2] digest_swap[3]
-# key_swap[4] digest_size[8:5] key_length[14:9]).
+# CFG field encodings (hmac.adoc digest_size / key_length, one-hot).
 HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
 HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
-# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.sv:265-277).
+# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.adoc).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
-# Illegal keyed combo: SHA-256 supports keys up to 512-bit only (hmac.sv:819).
-HMAC_ILLEGAL_KEYED = {(256, 1024)}
+# SHA-2 block size per digest size, in bits. hmac.adoc: "the key length cannot
+# be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to
+# 512-bit for SHA-2 256."
+HMAC_BLOCK_BITS = {256: 512, 384: 1024, 512: 1024}
+# Keyed cells the register specification blocks, derived from that rule rather
+# than listed: hmac.adoc states a start with KEY_LENGTH = Key_1024 while
+# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". Deriving
+# it keeps the legal set the specification's, not the design's -- an RTL bound
+# that disagreed with the block-size rule would now drive a cell this set calls
+# legal.
+HMAC_ILLEGAL_KEYED = {
+    (sha_bits, key_bits)
+    for sha_bits in HMAC_DIGEST_SIZE
+    for key_bits in HMAC_KEY_LENGTH
+    if key_bits > HMAC_BLOCK_BITS[sha_bits]
+}
+assert HMAC_ILLEGAL_KEYED == {(256, 1024)}, HMAC_ILLEGAL_KEYED
 
 
 def build_cfg(
@@ -77,18 +87,23 @@ def build_cfg(
     """Build the HMAC CFG word for a SHA-2 variant / mode / key-length.
 
     ``sha_bits`` in {256,384,512}; ``key_bits`` in {128,256,384,512,1024} for keyed
-    HMAC (pass None for plain SHA). Reproduces the hand-picked HMAC_CFG_* constants
-    above (verified: keyed-256 -> 0x423, plain-256 -> 0x22).
+    HMAC (pass None for plain SHA). Field positions come from the HMAC RDL
+    through ``HMAC.field_lsb`` / ``HMAC_DIGEST_SIZE``.
     """
-    cfg = int(bool(hmac_en)) | (1 << 1)  # sha_en always 1
-    cfg |= (endian_swap & 1) << 2
-    cfg |= (digest_swap & 1) << 3
-    cfg |= (key_swap & 1) << 4
-    cfg |= HMAC_DIGEST_SIZE[sha_bits] << 5
+    cfg = int(bool(hmac_en)) << HMAC.field_lsb("CFG", "hmac_en")
+    cfg |= 1 << HMAC.field_lsb("CFG", "sha_en")
+    cfg |= (endian_swap & 1) << HMAC.field_lsb("CFG", "endian_swap")
+    cfg |= (digest_swap & 1) << HMAC.field_lsb("CFG", "digest_swap")
+    cfg |= (key_swap & 1) << HMAC.field_lsb("CFG", "key_swap")
+    cfg |= HMAC_DIGEST_SIZE[sha_bits] << HMAC.field_lsb("CFG", "digest_size")
     if hmac_en:
         assert key_bits is not None, "keyed HMAC needs key_bits"
-        cfg |= HMAC_KEY_LENGTH[key_bits] << 9
+        cfg |= HMAC_KEY_LENGTH[key_bits] << HMAC.field_lsb("CFG", "key_length")
     return cfg & 0xFFFF_FFFF
+
+
+HMAC_CFG_KEYED_256 = build_cfg(hmac_en=True, sha_bits=256, key_bits=256)
+HMAC_CFG_SHA256 = build_cfg(hmac_en=False, sha_bits=256)
 
 
 @dataclass
@@ -97,8 +112,8 @@ class SepHmacCfg:
     programming (CFG + key) and the golden expectation (env/sep_hmac_golden).
 
     The SW-key byte convention (``key_word_rev``/``key_be``/``msg_be``/
-    ``digest_swap``) is pinned once at directed bring-up (OT DV key_swap=0 =>
-    KEY_0 first, big-endian per word; distinct from the keymgr sideload path).
+    ``digest_swap``) follows OT DV key_swap=0: KEY_0 first, big-endian per word
+    (distinct from the keymgr sideload path).
     """
 
     sha_bits: int  # 256/384/512
@@ -168,7 +183,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one keyed HMAC over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words to MSG_FIFO -> process -> wait done -> read
-        DIGEST -> W1C the done event and assert it cleared (RW1C contract, §7).
+        DIGEST -> W1C the done event and assert it cleared (RW1C contract).
         """
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
@@ -200,7 +215,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one SHA-256 over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words -> process -> wait done -> read DIGEST -> W1C
-        the done event and assert it cleared (RW1C, §7). DIGEST then HOLDS."""
+        the done event and assert it cleared (RW1C). DIGEST then HOLDS."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()
@@ -230,7 +245,7 @@ class SepHmac(SepAxiRegDriver):
 
         Returns the DIGEST words for the SHA-2 variant (8/12/16). start -> push
         message -> process -> wait done -> read DIGEST -> W1C the done event and
-        assert it cleared (RW1C, §7)."""
+        assert it cleared (RW1C)."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()
@@ -244,6 +259,19 @@ class SepHmac(SepAxiRegDriver):
             f"HMAC INTR_STATE.hmac_done not cleared by W1C (0x{post:08x})"
         )
         return digest
+
+    async def wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
+        """Poll STATUS until hmac_idle. A caller that has just released this
+        domain from reset needs the core to be accepting again before it can
+        attribute a refusal to anything other than the core being busy."""
+        for i in range(timeout):
+            if await self._rd(HMAC_STATUS) & HMAC_STATUS_IDLE:
+                self.log.info("HMAC idle (%s) after %d polls", tag, i)
+                return
+            if i and i % 500 == 0:
+                self.log.info("HMAC wait_idle (%s): poll %d", tag, i)
+            await ClockCycles(cocotb.top.clk_i, poll_cycles)
+        raise AssertionError(f"HMAC did not reach STATUS.hmac_idle ({tag})")
 
     async def _wait_fifo_space(self, *, timeout: int = 2_000, poll_cycles: int = 10) -> None:
         for _ in range(timeout):

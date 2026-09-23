@@ -6,7 +6,7 @@
 
 #include "smc_reg_access.h"
 
-/* Raw DMA_CTRL register-block accessors (the smc_dma.* driver builds on these). */
+/* Raw DMA_CTRL register-block accessors. */
 
 static inline void write_dma_ctrl_reg(uint64_t offset, uint64_t value) {
     volatile uint64_t *p_addr =

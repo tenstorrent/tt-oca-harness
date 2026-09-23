@@ -140,7 +140,7 @@ class SepKpvScrambler:
 
         The budget is sized against the ROM's longest silence -- the two
         whole-file scans before the first report -- with room to spare, and
-        deliberately well inside the leaf's own timeout. A bound that outlives
+        well inside the leaf's own timeout. A bound that outlives
         the leaf is not a bound: the runner would kill the run first and the
         attributed message below would never be printed, which is the whole
         reason for polling with a limit rather than waiting forever.

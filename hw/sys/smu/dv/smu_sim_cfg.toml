@@ -8,39 +8,52 @@ schema_version = 1
 # hw/common/dv/configs/duts.toml registers as an `alias_of = "smu"` and so
 # resolves to this same config and identity.
 #
-# This is the SMU regression. The bare `smu #(.SEP(0))` block bench is
-# smu_block_sim_cfg.toml.
+# This is the SMU regression.
 #
 # DUT is hw/top/smu_wrapper.sv (smu + smc_ip_integration + sep_ip_integration),
 # pulled through the `smu_wrapper` bender target — same OSS composition as
 # smc_wrapper / sep_wrapper. The CPU memory macros come with
 # smc_ip_integration; the TB keeps the cocotb observe surface.
-#
-# Independent of the residual SEP=0 block-bench catalog in
-# smu_block_sim_cfg.toml; both configs share this DV root and the build/runs
-# evidence directory.
 name = "smu"
 profile = "native"
-description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke"
+description = "Production-wrapper OSS regression on the single SEP=1 compile profile"
 default_tool = "verilator"
 tools = ["verilator", "vcs", "xcelium"]
 
 [testlist]
-path = "testlists/wrapper.toml"
+path = "testlists/all.toml"
 format = "toml_list"
 
-# Waive abr_reg.sv external wr/rd_ack $error. On the wrapper SEP=1 profile the
-# ABR datapath is not meaningfully exercised; the assertion fires at t=0 and
-# again after reset release (e.g. 8 ns), so waive by file (not only "at time 0").
+# Waive the abr_reg.sv external wr/rd_ack $error, and only that assertion
+# class. On the wrapper SEP=1 profile the ABR datapath is not exercised; the
+# assertion fires at t=0 and again after reset release (e.g. 8 ns), so it is
+# waived at any time -- but a line naming abr_reg.sv for any other reason
+# still fails the run.
+#
+# Every other PeakRDL-regblock external-ack check fires once at time 0 on a
+# four-state simulator: the check is an immediate assertion in the `else`
+# branch of the reset always_ff, and the first clock edge sees `arst_n` = X.
+# It is generated code, so it cannot be gated in the tree, and $assertoff
+# races the time-0 evaluation. Ignore exactly the time-0 fire; the same
+# assertion failing at any later time stays a hard fail.
 [pass_fail]
-extra_ignore_patterns = ['abr_reg\.sv']
+extra_ignore_patterns = [
+  'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack',
+  'assert_bad_ext_(wr|rd)_ack: at time 0 [a-z]s$',
+  # SEP's assertions are SEP's bench's contract: under the wrapper the SEP core
+  # is elaborated but, in most leaves, never brought up, so its known-value
+  # checks fire on quiescent X and its prim_count AssertConnected_A checks ask
+  # for an OpenTitan alert SEP does not have. The wrapper is graded on its
+  # interface; hw/sys/sep/dv/tb/tb_top.sv scopes the same classes off.
+  'u_dut\.u_smu\.gen_sep\.u_sep\..*: at time',
+]
+extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
 
 [native.stages.clean]
 kind = "clean"
 paths = [
   "{run_dir}",
-  "hw/sys/smu/dv/build/cocotb_wrapper_no_sep",
-  "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl",
+  "hw/sys/smu/dv/build/cocotb_wrapper",
   "hw/sys/smu/dv/build/work_wrapper",
   "hw/sys/smu/dv/build/firmware",
 ]
@@ -63,9 +76,8 @@ common_bender_targets = [
 ]
 # smu pulls smc+dtp; sep+sep_el2 supply the real SEP subsystem and EL2 CPU;
 # smu_wrapper adds hw/top/{smu_wrapper,smc_ip_integration,sep_ip_integration}.
-# `simulation` is deliberately NOT set: the
-# sep×simulation slice references absolute /tech and /vendor_ip model paths
-# that only exist on internal hosts.
+# `simulation` is not a target here: the sep×simulation slice references
+# simulation models by absolute paths outside the repository.
 bender_targets = [
   "smu",
   "smc",
@@ -74,22 +86,16 @@ bender_targets = [
   "sep_el2",
   "smu_wrapper",
 ]
-# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
-# (see smu_block_sim_cfg.toml).
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
-  # ocah_fcov_macros.svh. Kept so an assertion or coverage include resolves
-  # here too; the cov/sv functional-coverage modules themselves are
-  # instantiated in tb/tb_top.sv and compile on smu_block, not here.
+  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
 ]
-# Licensed/vendor sim collateral pulled by the sep×simulation bender slice is
-# not part of the OSS wrapper hierarchy — mirror the smu/sep OSS excludes.
-# Stale foundry path keep-listed (file absent in OSS tree). SEP=1 needs no TCM
-# shim: the ram_<DEPTH>x39 ICCM/DCCM macros that hw/sys/sep/rtl/sep_tcm_wrapper.sv
-# instantiates are already supplied by the upstream VeeR mem_lib.sv on the
-# sep_el2 Bender closure, and tb_wrapper_top.sv backdoors their ram_core arrays.
+# Vendor simulation collateral that an overlay of the sep bender graph can pull
+# in and that the smu_wrapper hierarchy never instantiates: a licensed SPI
+# controller wrapper and its DLL PHY, the pad and ESD libraries,
+# padring_dv_wrapper and the SPI flash models. Excluded so Verilator is not
+# made to parse their switch-level primitives.
 exclude_files = [
   "sep_cdns_spi_wrap.sv",
   "cdn_ip6184_19e8_dll_phy",
@@ -102,14 +108,15 @@ exclude_files = [
   "tt_spi_devices.sv",
   "tt_bidir_delay.sv",
   "meta/models/spi",
-  "hw/sep/sep_tcm_wrapper.sv",
-  # Mirror OSS SMC: Bender.lock may still resolve Package(i3c-core) to stale
-  # deps/i3c-core while smc also lists vendor/chipsalliance/i3c-core (TimingWidth
-  # / rlt_mem_*). Drop the stale deps tree so i3c_pkg matches upstream.
-  "deps/i3c-core",
 ]
 stubs = [
-  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
+  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # VCS only, the runner drops any stub whose basename the Bender graph
+  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # receives both files like Verilator does. The leaves that read a
+  # signal behind one, and the record that keeps those claims honest, are
+  # in docs/SMU_VPLAN.adoc, Known Limitations (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
@@ -146,6 +153,19 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
+  # Functional-coverage modules (cov/sv/), instantiated in tb/tb_wrapper_top.sv
+  # on this bench's signal names. Their cover properties are the `user`
+  # points --coverage-user records.
+  "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clk_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lc_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dtp_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_ext_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clkstop_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dbg_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_alias_fcov.sv",
 ]
 
 [build.verilator]
@@ -153,30 +173,88 @@ public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [coverage.verilator]
-# Line / branch (--coverage-line), expression, and SVL user coverage. Toggle is
-# deliberately absent: this DUT elaborates the real SEP/SMC/DTP wrappers, and
-# unscoped toggle is the 0.5 GB-per-leaf case. Scoped toggle from #1662 lives
-# on `--dut smu_block`. This replaces the simulator default `--coverage`, which
-# would enable every form including toggle.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# Line / branch (--coverage-line), expression and SVL user coverage, replacing
+# the simulator default `--coverage`. Toggle is left out, as the DTP Verilator
+# set leaves it out: Verilator's `coverage_off -file` does not apply to a
+# source file whose last line has no newline, and the vendored and
+# hw/common files in that state carry tens of thousands of toggle points of
+# SMC, DTP and SEP logic into the wrapper's database. The wrapper's toggle is
+# graded on the VCS flow, where -cm_hier scopes it at compile time.
+#
+# --output-groups 0 compiles the generated .cpp files one by one, as the other
+# DUTs do: grouped, one unit of the coverage-instrumented model grows past
+# what the CI compiler finishes in time.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
+]
+# The policy file is named explicitly rather than discovered at
+# cov/config/verilator/coverage_policy.toml.
+policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.toml"
+
+[coverage.vcs]
+# Commercial signoff path, the same shape as hw/sys/sep/dv/sep_sim_cfg.toml
+# [coverage.vcs]. The simulator defaults (`-cm`, `-cm_dir`) are restated
+# because a DUT table replaces the list, then the scope file is added.
+# `-cm_hier` limits what is instrumented at compile time; `-cm_common_hier`
+# extends the same file to assertion coverage, which carries the cov/sv
+# `cover property` points, and needs `-lca`. `-cm_tgl portsonly` keeps toggle
+# on module ports; with the subtrees below dropped that is the ports of
+# smu_wrapper. `-cm_noconst` and `-cm_seqnoconst` leave nets a constant
+# drives out of the toggle population, as the DTP scope does. The coverage
+# database lands next to simv under the wrapper's one compile profile,
+# compile_smu_chiplet; the runner's default looks under a `default` build
+# directory this DUT never compiles into, so design_db names the database the
+# profile writes. cov/config/vcs/README.md explains the scope file and how a
+# finished run is read.
+# Edit `smu_wrapper_cov_scope.hier` then `--rebuild`.
+# Two DUTs share this dv tree, so the policy is named per DUT rather than
+# discovered at cov/config/vcs/coverage_policy.toml.
+policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_coverage_policy.toml"
+design_db = "hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb"
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_noconst",
+  "-cm_seqnoconst",
+  "-cm_hier",
+  "{repo_root}/hw/sys/smu/dv/cov/config/vcs/smu_wrapper_cov_scope.hier",
+  "-cm_tgl",
+  "portsonly",
+  "-lca",
+  "-cm_common_hier",
+]
 
 [build.options]
-build_jobs = 8
+# The hosted CI runner has four vCPUs and 16 GB; the wrapper model (SEP with
+# the EL2, the four-core SMC and the DTP) is the largest Verilated model in the
+# tree, so the compile parallelism matches that runner instead of oversubscribing it.
+build_jobs = 4
 
 [frameworks.cocotb]
-# Wrapper flow keeps its own PyUVM tree so module names stay independent of
-# the bare-smu cocotb/ catalog sharing this DV root.
+# The PyUVM test tree: test bodies under cocotb_wrapper/tests, with the `env`
+# and `seq_lib` packages spanning cocotb_wrapper/ and cocotb/.
 python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
-  # Shared PyUVM env and seq_lib, one package each for both DUTs. seq_lib had
-  # to merge rather than be shared by path: its modules import each other as
-  # `from seq_lib.x`, so they only resolve inside a package of that name, and
-  # `seq_lib` can only ever be one package. The two trees had 49 and 28 modules
-  # and no name in common, so they are one package -- see
-  # smu_block_sim_cfg.toml, which puts the same directory on its path.
-  "hw/sys/smu/dv/common",
+  # `env` and `seq_lib` are namespace packages (no __init__.py) spanning two
+  # directories: the half under this DUT's python_root above, and the half
+  # under cocotb/ (the PyUVM env, scoreboard, evidence map and FCOV ledger,
+  # and the pin, address-map, AXI, JTAG and lifecycle helpers). No regular
+  # package of either name may appear anywhere on this path, or it would
+  # shadow both halves.
+  "hw/sys/smu/dv/cocotb",
+  # The DTP bench's DV-owned JTAG tables (dtp_types: instruction opcodes, IR
+  # width) as top-level modules. The DTP `env` package itself cannot go on
+  # the path: `env` is the wrapper flow's own PyUVM package.
+  "hw/sys/dtp/dv/cocotb/env",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -184,6 +262,17 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # Firmware/preload builds. Outputs are the staging manifest: the sim stage
 # copies each declared output into the per-test run directory, where the
 # time-zero SV loaders resolve the plusarg basenames.
+#
+# Every block runs fw/build_firmware.py, which owns the toolchain decision for
+# this DV root: the caller's RISCV_TOOLCHAIN/RISCV_PREFIX when that gcc has
+# picolibc, otherwise the same invocation inside the OCAH toolchain container
+# through scripts/docker-run.sh run-here (`run-here`, not `run`: `run` remaps
+# the repo to /work and the engine's OCAH_ROOT would not resolve). There is no
+# site, PATH or home-directory probe, so no block here needs a RISC-V gcc on
+# the host. `preloads` compiles nothing and never resolves a toolchain.
+#
+# argv goes through str.format() for {fw_target}, and the runlib rejects any
+# other placeholder.
 [c_build.elaboration]
 cwd = "."
 argv = [
@@ -212,97 +301,13 @@ argv = [
 outputs = [
   "hw/sys/smu/dv/build/firmware/smu_smc_smoke/smu_smc_smoke.rom.hex",
   "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
-]
-
-# Real SEP DV firmware, built by the SEP fw engine rather than this DV root's
-# build_firmware.py. That engine links against picolibc + libsep.a, which the
-# host toolchain does not carry, so the build runs in the OCAH toolchain
-# container (scripts/docker-run.sh auto-selects podman, else docker).
-#
-# PREREQUISITE: the container image must exist -- `./scripts/docker-run.sh build`.
-# On hosts whose $HOME is small, point podman storage elsewhere first, e.g.
-#   export XDG_DATA_HOME=<big-fs>/podman/share XDG_RUNTIME_DIR=<big-fs>/podman/run
-#
-# Unlike the smu/dv/fw images, these are `objcopy -O verilog` hex (an @0 record
-# plus space-separated bytes). Both forms are byte-wide $readmemh input, so the
-# tb_wrapper_top.sv TCM loader reads either without change.
-# Shared by every real-SEP-firmware test: one build, every image staged. Adding
-# a P2 anchor means appending its TEST= to the argv and its images to outputs,
-# not cloning this table.
-#
-# Two producers. The SEP boot-ROM trampoline, SMC arm ROM and efuse preloads
-# come from this DV root's freestanding builder; the TCM images come from the
-# container. The trampoline jumps to 0xC000_0000, which is each image's _start.
-[c_build.sep_dv_fw]
-cwd = "."
-argv = [
-  "bash",
-  "-c",
-  "python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_smoke && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_boot_health && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_sanity && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_modules && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_efuse && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_wdt && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_dma && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_bidirect && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_remap && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=rom_no_tcm_preload_mem_init && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_spi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_xbar && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_notify && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=hello_world && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_lcc_flow && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_entropy_bringup && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_aes && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_otbn && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_sep_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smc_sep_xbar && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_bidirect && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_ext_axi",
-]
-outputs = [
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_boot_health/sep_smu_boot_health.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_boot_health/sep_smu_boot_health.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_boot_health/sep_smu_boot_health.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_sanity/sep_smu_sanity.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_sanity/sep_smu_sanity.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_sanity/sep_smu_sanity.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_modules/sep_smu_modules.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_modules/sep_smu_modules.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_modules/sep_smu_modules.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_efuse/sep_smu_efuse.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_efuse/sep_smu_efuse.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_efuse/sep_smu_efuse.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt/sep_smu_wdt.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt/sep_smu_wdt.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt/sep_smu_wdt.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_dma/sep_smu_dma.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_dma/sep_smu_dma.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_dma/sep_smu_dma.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_bidirect/sep_smu_bidirect.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_bidirect/sep_smu_bidirect.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_bidirect/sep_smu_bidirect.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_remap/sep_smu_remap.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_remap/sep_smu_remap.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_remap/sep_smu_remap.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/rom_no_tcm_preload_mem_init/rom_no_tcm_preload_mem_init.vmem",
-  "hw/sys/sep/dv/fw/build/tests/rom_no_tcm_preload_mem_init/rom_no_tcm_preload_mem_init.rom_only.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_spi/sep_smu_spi.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_spi/sep_smu_spi.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_spi/sep_smu_spi.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smc_xbar/sep_smc_xbar.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smc_xbar/sep_smc_xbar.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smc_xbar/sep_smc_xbar.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smc_notify/sep_smc_notify.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smc_notify/sep_smc_notify.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smc_notify/sep_smc_notify.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/hello_world/hello_world.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/hello_world/hello_world.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_lcc_flow/sep_smu_lcc_flow.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_lcc_flow/sep_smu_lcc_flow.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_lcc_flow/sep_smu_lcc_flow.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_entropy_bringup/sep_smu_entropy_bringup.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_entropy_bringup/sep_smu_entropy_bringup.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_entropy_bringup/sep_smu_entropy_bringup.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_aes/sep_smu_aes.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_aes/sep_smu_aes.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_aes/sep_smu_aes.tcm.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_otbn/sep_smu_otbn.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_otbn/sep_smu_otbn.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_otbn/sep_smu_otbn.tcm.sym",
-  "hw/sys/smc/dv/fw/build/tests/smc_sep_xbar/smc_sep_xbar.ecc.hex",
-  "hw/sys/smc/dv/fw/build/tests/smc_sep_xbar/smc_sep_xbar.sram.sym",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_ext_axi/sep_smu_ext_axi.itcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_ext_axi/sep_smu_ext_axi.dtcm.hex",
-  "hw/sys/sep/dv/fw/build/tests/sep_smu_ext_axi/sep_smu_ext_axi.tcm.sym",
-  "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.ecc.hex",
-  "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.sram.sym",
-  "hw/sys/smu/dv/build/firmware/smu_sep_ext_axi_arm/smu_sep_ext_axi_arm.rom.hex",
-  "hw/sys/smu/dv/build/firmware/smu_sep_bidirect_arm/smu_sep_bidirect_arm.rom.hex",
-  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
-  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
-  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  # The SEP=1 wrapper loads its SEP boot ROM, TCMs and eFuse at time zero and
+  # is fatal without them; build_firmware.py writes these zero-filled preloads
+  # for every --target, so staging them costs nothing.
   "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
 ]
 
 [c_build.sep_smoke]
@@ -323,50 +328,278 @@ outputs = [
   "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
 ]
 
-[run_modes.smoke]
-description = "Production-wrapper baseline for no-SEP and real-SEP targets"
-timeout_sec = 1800
-args = [
-  "+skip_fuse_sense",
-  # Required with +skip_fuse_sense after efuse_shadow_regs preload gate (mirror smc_wrapper).
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+# Real SEP DV firmware: the {fw_target} image from the SEP firmware engine
+# (hw/sys/sep/dv/fw, picolibc + libsep.a) together with the SMC arm ROM, the
+# SEP boot-ROM trampoline and the blank eFuse preloads from this DV root's
+# builder. Tests select it with `firmware = { name = "<engine test>", mode =
+# "sep_dv_fw" }`; the trampoline jumps to 0xC000_0000, which is each image's
+# _start.
+#
+# The engine images are `objcopy -O verilog` hex (an @0 record plus
+# space-separated bytes) while the smu/dv/fw images are one byte per line.
+# Both forms are byte-wide $readmemh input, so the tb_wrapper_top.sv TCM loader
+# reads either without change.
+[c_build.sep_dv_fw]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  # ELF + nm listing from the same link: +sep_sym resolves the terminal-loop
+  # PCs from the .sym, and staging both keeps sim-only reruns hermetic.
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
 ]
 
-[run_modes.no_sep]
-description = "SMC firmware boot in the OSS smu_wrapper with SEP=0"
-timeout_sec = 1800
-args = [
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+# The one engine image that boots from ROM with no TCM preload: fw.mk links it
+# in its rom_only mode and emits a VMEM for +sep_boot_rom_hex instead of TCM
+# hex, so the SEP boot-ROM trampoline is not staged.
+[c_build.sep_dv_fw_rom_only]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
 ]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.vmem",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.rom_only.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.rom_only.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+# SEP<->SMC bidirectional handshake: the SMC half is the smu_sep_bidirect_arm
+# ROM from this DV root's builder in place of smu_sep_arm.
+[c_build.sep_dv_fw_bidirect_arm]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_bidirect",
+  "--sep-test",
+  "{fw_target}",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_bidirect_arm/smu_sep_bidirect_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+# Dual-firmware leaves: the SEP {fw_target} image plus one SMC engine image
+# (hw/sys/smc/dv/fw; the 72-bit ECC hex for +smc_scratch_ram_hex and its nm
+# listing for +smc_sym). {fw_target} is the only placeholder the runlib
+# renders, so the SMC image is fixed per block and each dual test selects the
+# block carrying the SMC image its args name.
+[c_build.sep_dv_fw_smc_sep_xbar]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
+  "--smc-test",
+  "smc_sep_xbar",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smc_sep_xbar/smc_sep_xbar.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smc_sep_xbar/smc_sep_xbar.sram.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+[c_build.sep_dv_fw_smu_sep_ext_axi]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
+  "--smc-test",
+  "smu_sep_ext_axi",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.sram.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+[c_build.sep_dv_fw_smu_sep_debug_bus]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
+  "--smc-test",
+  "smu_sep_debug_bus",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_debug_bus/smu_sep_debug_bus.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_debug_bus/smu_sep_debug_bus.sram.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+[c_build.sep_dv_fw_smu_sep_boot]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
+  "--smc-test",
+  "smu_sep_boot",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_boot/smu_sep_boot.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_boot/smu_sep_boot.sram.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+[c_build.sep_dv_fw_smu_sep_lc_handoff]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
+  "--smc-test",
+  "smu_sep_lc_handoff",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_lc_handoff/smu_sep_lc_handoff.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_lc_handoff/smu_sep_lc_handoff.sram.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+[c_build.sep_dv_fw_smu_cla_sep_cpu_debug]
+cwd = "."
+argv = [
+  "python3",
+  "hw/sys/smu/dv/fw/build_firmware.py",
+  "--target",
+  "smu_sep_arm",
+  "--sep-test",
+  "{fw_target}",
+  "--smc-test",
+  "smu_cla_sep_cpu_debug",
+]
+outputs = [
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.elf",
+  "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.sram.sym",
+  "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",
+  "hw/sys/smu/dv/build/firmware/boot_rom/smu_sep_boot_rom.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+]
+
+# Run modes carry no eFuse plusargs. `+skip_fuse_sense` and the shadow-register
+# preloads are declared per test in testlists/all.toml, next to the reason
+# each claim tolerates the skip; the boot-stall leaves carry none and sense
+# their OTP image through the wrapper's SMC eFuse model. $value$plusargs
+# returns the first match, so a preload named here would override a test's own.
+[run_modes.smoke]
+description = "Production-wrapper baseline"
+timeout_sec = 1800
+args = []
 
 [run_modes.sep_rtl]
 description = "SMC-assisted real SEP RTL boot in the OSS smu_wrapper"
 timeout_sec = 3600
-args = [
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  # SEP shadow array is 256×32b (8Kb); do not reuse the 768-word SMC preload.
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-]
+args = []
 
-# Same as sep_rtl but WITHOUT a SEP shadow-register preload, so a test can
-# supply its own. Verilator's $value$plusargs returns the first match, so a
-# per-test +sep_shadow_reg_preload appended after the run-mode one would lose;
-# the run mode has to leave the plusarg unset instead.
 [run_modes.sep_rtl_no_shadow]
-description = "Real-SEP wrapper with the SEP shadow preload left to the test"
+description = "Real-SEP wrapper for the lifecycle leaves, whose SEP shadow image is their own"
+timeout_sec = 3600
+args = []
+
+# Fuse-sense run modes. Every other run mode above passes +skip_fuse_sense,
+# under which efuse_shadow_regs.sv drives fuse_sense_done from the plusarg
+# rather than from the sense sequence and loads the shadow array from the
+# preload file. A test that observes fuse-sense completion has to run without
+# it, so the eFuse bank models supply the sensed data. The shadow preload
+# plusargs are read only under +skip_fuse_sense, so the SMC one is inert here
+# and the SEP one is left off entirely.
+[run_modes.sep_rtl_fuse_sense]
+description = "Real-SEP wrapper with real SMC and SEP fuse sense"
 timeout_sec = 3600
 args = [
-  "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [targets.default]
-description = "Fallback: OSS wrapper no-SEP profile"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
+description = "Fallback: the single OSS wrapper profile (SEP=1, real EL2 CPU)"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
-  "SMU_NO_SEP",
 ]
 
 [targets.default.tools.verilator]
@@ -376,27 +609,13 @@ flags = [
   "+define+ASSERTS_OFF",
 ]
 
-[targets.compile_smu_chiplet_no_sep]
-description = "OSS smu_wrapper with NoSepCfg and SEP=0"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
-defines = [
-  "SMU_NO_SEP",
-]
-
-[targets.compile_smu_chiplet_no_sep.tools.verilator]
-flags = [
-  "-Wno-BLKLOOPINIT",
-  "+define+VERILATOR",
-  "+define+ASSERTS_OFF",
-]
-
-[targets.compile_smu_chiplet_sep_rtl]
+[targets.compile_smu_chiplet]
 description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
 ]
 
-[targets.compile_smu_chiplet_sep_rtl.tools.verilator]
+[targets.compile_smu_chiplet.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",

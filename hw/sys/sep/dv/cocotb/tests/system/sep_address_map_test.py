@@ -4,8 +4,8 @@
 
 Intention: prove the CPU-LSU can decode sep_cpu_ctrl and one safe CSR in every
 LSU-reachable CSR block (including ABR and the entropy pool), and that the
-interior reserved span inside sep_cpu_ctrl completes with an error response
-rather than hanging. Not a full dead-space walk.
+interior reserved span inside sep_cpu_ctrl completes (does not hang) and is
+not a live alias of the neighbouring registers. Not a full dead-space walk.
 
 Bring-up holds the CPU off. Expected offsets/resets/masks come from
 env/sep_reg_meta.py and the ABR / pool seq constants — see sep_address_map_seq.
@@ -16,16 +16,55 @@ from __future__ import annotations
 import pyuvm
 from env.sep_axi_agent import SepAxiOp
 from sep_base_test import sep_base_test
+from sep_reg_meta import SEP_CPU_CTRL, sym
 from seq_lib.sep_address_map_seq import CPU_CTRL_INTERIOR_HOLES, sep_address_map_seq
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
-RESP_SLVERR = 2
+RESP_OKAY = 0
 RESP_DECERR = 3
+MASK32 = 0xFFFF_FFFF
+
+# Generated SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP window. An unmapped address
+# in the remainder of that external aperture answers DECERR (AXI decode).
+EFUSE_SHIM_BASE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_BASE_ADDR")
+EFUSE_SHIM_SIZE = sym("SEP_EXTERNAL_EFUSE_SHIM_CTRL_REG_MAP_SIZE")
 
 
 @pyuvm.test()
 class sep_address_map_test(sep_base_test):
     """Register sweep of sep_cpu_ctrl over the CPU LSU bus."""
+
+    # Every graded contract this leaf owns. Dropping any one of them is the
+    # failure mode a clean exit would otherwise hide.
+    required_evidence = (
+        "CHK-REFCNT-READ",
+        "CHK-BASEADDR-RW",
+        "CHK-RW-READBACK",
+        "CHK-FABRIC-WALK",
+        "CHK-CPU-CTRL-HOLE",
+        "CHK-EXT-DEMUX-BOUND",
+    )
+    min_evidence = 6
+
+    async def _access(
+        self,
+        op: SepAxiOp,
+        addr: int,
+        *,
+        wdata: int = 0,
+        expect_error: bool = False,
+    ) -> SepAxiAccessSeq:
+        seq = SepAxiAccessSeq(
+            f"cpu_ctrl_{op.value}_0x{addr:08x}",
+            op=op,
+            addr=addr,
+            wdata=wdata,
+            length=4,
+            size=2,
+            expect_error=expect_error,
+        )
+        await self.start_seq(seq)
+        return seq
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -42,7 +81,7 @@ class sep_address_map_test(sep_base_test):
             f"the PASS summary; first: {sb_errors[0]}"
         )
         self.logger.info(
-            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable as 0x%08x_%08x",
+            "CHK-REFCNT-READ PASS: REFERENCE_COUNTER readable and advancing, last read 0x%08x_%08x",
             seq.ref_counter_high,
             seq.ref_counter_low,
         )
@@ -65,31 +104,119 @@ class sep_address_map_test(sep_base_test):
             "CHK-FABRIC-WALK PASS: %d LSU-reachable block CSR(s) decoded",
             seq.fabric_walk_checks,
         )
+
+        # 0x158-0x177 owns no register: sep_cpu_ctrl.rdl places
+        # SEP_FUSE_SENSE_STATUS at 0x150 and SEP_SW_DEBUG at 0x178 and declares
+        # nothing between. memory_map.adoc states the contract for an offset
+        # inside a unit's allocated extent that owns no register: the unit
+        # accepts it, reads return zero and writes are discarded, both OKAY.
+        # That is the graded expectation here.
+        #
+        # The same passage says such an offset cannot alias a live register
+        # because register decode is an exact address match rather than a range
+        # -- not because the access is refused. So the alias check is the second
+        # half of the contract, not a consolation for not grading the response.
+        sw_addr = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
+
+        # Positive control for the alias check. SEP_SW_DEBUG is `sw = rw`
+        # (sep_cpu_ctrl.rdl), so a write must move it; without proving that, "the
+        # neighbour did not change after a hole write" also holds when the write
+        # path is dead. SEP_FUSE_SENSE_STATUS is not usable as a control here --
+        # it is `sw = r`, so no AXI write can ever change it.
+        sw_restore = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
+        probe = sw_restore ^ 0xA5A5_5A5A
+        await self._access(SepAxiOp.WRITE, sw_addr, wdata=probe)
+        sw_live = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
+        assert sw_live == probe, (
+            f"CHK-CPU-CTRL-HOLE FAIL: control write to SEP_SW_DEBUG 0x{sw_addr:08x} "
+            f"read back 0x{sw_live:08x}, expected 0x{probe:08x} -- the write path is "
+            "dead, so the no-alias check below would hold for the wrong reason"
+        )
+
         hole_ok = 0
         for addr in CPU_CTRL_INTERIOR_HOLES:
-            self.env.axi_monitor.arm_expected_decerr(1)
-            hole = SepAxiAccessSeq(
-                f"cpu_ctrl_hole_0x{addr:08x}",
-                op=SepAxiOp.READ,
-                addr=addr,
-                length=4,
-                size=2,
-                expect_error=True,
-            )
-            await self.start_seq(hole)
-            if hole.timed_out or hole.resp_code != RESP_DECERR:
-                self.env.axi_monitor.release_expected_decerr(1)
+            hole = await self._access(SepAxiOp.READ, addr)
             assert not hole.timed_out, (
-                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} timed out; the "
-                "reserved span must complete with SLVERR or DECERR"
+                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} timed out; whatever the "
+                "response ought to be, the access has to retire"
             )
-            assert hole.resp_code in (RESP_SLVERR, RESP_DECERR), (
+            assert hole.resp_code == RESP_OKAY, (
                 f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} resp={hole.resp_code}, "
-                "expected SLVERR or DECERR"
+                "expected OKAY -- memory_map.adoc says a unit accepts an offset "
+                "inside its extent that owns no register"
+            )
+            got = hole.rdata & MASK32
+            assert got == 0, (
+                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} data=0x{got:08x}, expected zero"
             )
             hole_ok += 1
+
+        # A hole write must not land on the live neighbour, whose value is now the
+        # probe the control above proved writable.
+        named = CPU_CTRL_INTERIOR_HOLES[1]
+        wr = await self._access(SepAxiOp.WRITE, named, wdata=0xFFFF_FFFF)
+        assert not wr.timed_out, f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} timed out"
+        assert wr.resp_code == RESP_OKAY, (
+            f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} resp={wr.resp_code}, "
+            "expected OKAY -- memory_map.adoc says a unit accepts an offset "
+            "inside its extent that owns no register"
+        )
+        sw_after = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
+        assert sw_after == probe, (
+            f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} changed SEP_SW_DEBUG "
+            f"0x{probe:08x}->0x{sw_after:08x}; the hole aliases a live register"
+        )
+        await self._access(SepAxiOp.WRITE, sw_addr, wdata=sw_restore)
+
         self.logger.info(
-            "CHK-CPU-CTRL-HOLE PASS: %d reserved sep_cpu_ctrl word(s) refused "
-            "with SLVERR/DECERR (not a timeout)",
+            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) read OKAY with zero, "
+            "the hole write retired OKAY, and none aliases SEP_SW_DEBUG "
+            "(control write proved it writable)",
             hole_ok,
+        )
+
+        # CHK-EXT-DEMUX-BOUND. ext_demux_decode() in sep.sv is TT-owned decode
+        # on an adopter-owned aperture: the first word selects the eFuse shim
+        # port, the next word leaves SEP and is terminated by the extension
+        # error slave. Nothing else in the suite selects the shim port, so
+        # u_efuse_shim_demux has only ever seen one of its two master ports.
+        # The two responses must differ. The value behind the shim is adopter
+        # owned and is not graded -- only which port the decode chose.
+        off = EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE
+        # Keyed off the response rather than the monitor tally: the monitor
+        # counts on its own clock edge, which may not have run when start_seq
+        # returns, and a standing credit would absorb the next unexpected DECERR
+        # anywhere on this bus.
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        past = await self._access(SepAxiOp.READ, off, expect_error=True)
+        if past.timed_out or past.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        assert not past.timed_out, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} timed out; the external "
+            f"port must be terminated, not left to hang"
+        )
+        assert past.resp_code == RESP_DECERR, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} resp={past.resp_code}, "
+            f"expected DECERR (3) from the extension error slave -- one word past "
+            f"the shim window must leave SEP"
+        )
+
+        inside = await self._access(SepAxiOp.READ, EFUSE_SHIM_BASE)
+        assert not inside.timed_out, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{EFUSE_SHIM_BASE:08x} timed out"
+        )
+        assert inside.resp_code != RESP_DECERR, (
+            f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{EFUSE_SHIM_BASE:08x} also answered "
+            f"DECERR, so the shim port was never selected and the decode boundary "
+            f"is not proven -- both addresses took the external path"
+        )
+        self.logger.info(
+            "CHK-EXT-DEMUX-BOUND PASS: 0x%08x selected the shim port (resp=%d) "
+            "and 0x%08x left SEP to the extension error slave (DECERR); the "
+            "%d-byte window boundary is graded, the adopter value is not",
+            EFUSE_SHIM_BASE,
+            inside.resp_code,
+            off,
+            EFUSE_SHIM_SIZE,
         )

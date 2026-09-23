@@ -4,9 +4,7 @@
 
 The fuse arm of the gate in ``bootrom/prod/src/vector.S``, and the one neither
 ``sep_firmware_mbist_fail_test`` nor ``sep_firmware_mbist_pass_test`` covers --
-both of those say so in their own docstrings. Labels rather than line numbers
-below: the line numbers went stale once already when the gate grew a second arm.
-The gate is::
+both of those say so in their own docstrings. The gate, by label::
 
     lw   t1, (SMC_DFX_CTRL_STATUS_SMU)      # smc_base + 0xB800 (smc_addr.h)
     # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
@@ -29,13 +27,11 @@ This testcase drives the failure injection AND blows the bypass, so the run must
 take the failure branch, publish the raw status, record the WARN, and then
 continue -- reaching the C runtime and completing an ordinary boot.
 
-WHAT Q07 ASKED FOR, AND WHAT THIS SETTLES. The tracker note reads "Encoding
-pending Q07". The bypass is not the ``MBIST_NO_HANG`` fuse the procedure names --
-no such fuse exists anywhere in the tree -- it is ``STATUS_RPT`` bit 2, which
-``vector.S`` calls ``STATUS_RPT_SKIP_MEM_CHECK``. Bit 2 is still inside
-``reserved[31:2]`` in ``sep_efuse_map.rdl:794-806``, so the ROM's use of it is
-undeclared in the register model; that is a documentation gap, not a blocker for
-this arm, because the bit is readable and the ROM demonstrably branches on it.
+THE BYPASS FUSE. It is not the ``MBIST_NO_HANG`` fuse the procedure names -- no
+such fuse exists anywhere in the tree -- but ``STATUS_RPT`` bit 2, which
+``vector.S`` calls ``STATUS_RPT_SKIP_MEM_CHECK``. Bit 2 is inside
+``reserved[31:2]`` in ``sep_efuse_map.rdl``, so the ROM's use of it is undeclared
+in the register model; the bit is readable and the ROM branches on it.
 
 TWO WORDS, NOT A STRING. The procedure expects "a WARNING: MBIST_FAIL_NO_HANG (or
 equivalent) to scratch 1". The gate runs before the C runtime, so ``simputs()``
@@ -53,12 +49,10 @@ check is never reached -- even though the same word has ``mbist_pass`` SET.
 What this testcase therefore proves is the FUSE POLICY on the shared failure
 handler: a failed gate plus ``SKIP_MEM_CHECK`` blown means the boot continues.
 That policy is common to both arms, so the result carries over. But this is NOT
-coverage of "MBIST failed and the boot continued" -- no testcase drives that
-combination, which would need ``+sep_dft_status=00000012`` plus the fuse.
+coverage of "MBIST failed and the boot continued", which needs
+``+sep_dft_status=00000012`` plus the fuse.
 
-An earlier version of this docstring claimed the ROM "reads none of" the MBIST
-bits. That was true of the ROM as it stood and is now false: the gate reads
-``mbist_done`` and ``mbist_pass`` (A46, FINDINGS F15).
+The gate reads ``mbist_done`` and ``mbist_pass``.
 """
 
 from __future__ import annotations
@@ -77,7 +71,7 @@ _DFT_STATUS_FAIL = 0xFFFF_FFFD
 # bootrom/prod/include/sep_smc_interface.h:64-65.
 _MEM_REPAIR_DONE_BIT = 0
 _MEM_REPAIR_SUCCESS_BIT = 1
-# dfx_ctrl_status.rdl. The ROM's second arm DOES read this bit (A46/F15); it is
+# dfx_ctrl_status.rdl. The ROM's second arm reads this bit; it is
 # asserted below to show that this run never gets that far, having already left on
 # the repair arm.
 _MBIST_PASS_BIT = 8

@@ -13,6 +13,9 @@ from smc_base_test import smc_base_test
 class smc_state_fault_inject_test(smc_base_test):
     """Inject every known unused state encoding and score recovery."""
 
+    required_evidence = ("CHK-STATE-FAULT", "CHK-ZEROER-START-CONTROL")
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -1,10 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# SEP VCS coverage policy. Today it carries scope only -- which hierarchy the
-# code-coverage report grades -- and no [[thresholds]] and no [[holes]]: there is
-# no agreed score target for this DUT yet, and a threshold nobody has signed off
-# on would fail runs without saying anything true.
+# SEP VCS coverage policy: scope only -- which hierarchy the code-coverage report
+# grades -- with no [[thresholds]] and no [[holes]]: a threshold without an agreed
+# score target would fail runs without saying anything true.
 #
 # Scope is NOT owned here. `-cm_hier` + `-cm_common_hier` at compile time decide
 # what enters the database and therefore what the number means; the entry below
@@ -17,12 +16,11 @@
 
 schema_version = 1
 dut = "sep"
-scope_epoch = "sep-code-cov-v1"
+scope_epoch = "sep-code-cov-v2"
 
-# Report-page pruning only. Measured: `urg -hier` drops rows from the report
-# (hierarchy listing 85,152 -> 49,771 lines) but still scores the whole database
-# (24.72 -> 24.70), so this is here to keep the pages aligned with the
-# instrumented scope and to record the file's hash in the manifest -- NOT to
+# Report-page pruning only. `urg -hier` drops rows from the report but scores
+# the whole database regardless, so this entry keeps the pages aligned with the
+# instrumented scope and records the file's hash in the manifest; it does not
 # produce the number. The number's scope comes from `-cm_hier` at compile time.
 [[native_files]]
 tool = "vcs"
@@ -33,3 +31,26 @@ apply_phase = "report"
 # `-hier` prune assertion pages as well as code pages, so the report matches the
 # instrumented scope instead of showing assertion rows for excluded hierarchy.
 args = ["-hier", "{path}", "-cm_common_hier"]
+
+# Point-level structural ties in the PeakRDL-generated regblocks. Hierarchy-level
+# scope lives in sep_cov_scope.hier; this file waives individual coverage objects
+# inside blocks that stay graded, which `-hier` cannot express.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_regblock_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# External-TRNG AXI-Stream payload. The stream has no master in this
+# elaboration -- sep_ip_integration.sv:773 ties the request struct to zero in
+# RTL, not in the testbench -- so tvalid/tdata/tstrb cannot present a second
+# value on any of the three modules the struct crosses. The source-select mux
+# that consumes the stream is deliberately NOT in this file: its select is a
+# CSR field, so both arms stay graded.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_ext_trng_payload_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]

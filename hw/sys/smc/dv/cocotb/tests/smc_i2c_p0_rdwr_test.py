@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_rdwr_test(smc_base_test):
     """Commercial P0 intent: internal dual-controller write/read proof."""
 
+    required_evidence = (
+        "CHK-I2C-P0-RDWR-READ",
+        "CHK-I2C-P0-RDWR-WRITE",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -26,15 +32,13 @@ class smc_i2c_p0_rdwr_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Stimulus floor, literal here rather than read from
-            # `seq.accesses`. The write leg alone was observed at 41-42 accesses
-            # (the ACQ drain polls vary with timing). The read leg adds five
-            # unconditional writes -- two FIFO resets, the target TX preload and
-            # the two FDATA entries -- plus at least two host-idle polls and two
-            # RX polls, so at least nine more. 45 therefore sits above the write
-            # leg's observed maximum, which is the point: the floor cannot be met
-            # by the write leg alone, and it stays well under the ~50 a full run
-            # issues so poll variance cannot make it flaky.
+            # Stimulus floor, literal here rather than read from `seq.accesses`.
+            # It sits above what the write leg alone can issue (its ACQ drain
+            # polls vary with timing) and below what a full run issues: the read
+            # leg adds five unconditional writes -- two FIFO resets, the target TX
+            # preload and the two FDATA entries -- plus at least two host-idle
+            # polls and two RX polls, so the floor cannot be met by the write leg
+            # alone and poll variance cannot make it flaky.
             min_csr_accesses=45,
             # The scoreboard's own per-bus tally, stamped by the driver that
             # completed each access, rather than `seq.accesses`, which the

@@ -15,11 +15,11 @@ module OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0 (
     .out_o (reset_n)
   );
 
-  prim_flop_3sync_r prim_flop_3sync_r (
-    .i_CK(clock),
-    .i_RN(reset_n),
-    .i_D(io_d),
-    .o_Q(io_rst_synced)
+  prim_flop_3sync_r u_prim_flop_3sync_r (
+    .clk_i(clock),
+    .rst_ni(reset_n),
+    .d_i(io_d),
+    .q_o(io_rst_synced)
   );
 
   prim_and2 #(
@@ -30,11 +30,11 @@ module OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0 (
     .out_o (io_rstbypass)
   );
 
-  prim_rstbypass_stdmux2 rstbypass (
-    .i_reset_n(io_rstbypass),
-    .i_test_reset_n(1'b0),
-    .i_test_mode(1'b0),
-    .o_reset_n(io_q)
+  prim_rstbypass_stdmux2 u_rstbypass (
+    .rst_ni(io_rstbypass),
+    .test_rst_ni(1'b0),
+    .test_mode_i(1'b0),
+    .rst_no(io_q)
   );
 
 endmodule

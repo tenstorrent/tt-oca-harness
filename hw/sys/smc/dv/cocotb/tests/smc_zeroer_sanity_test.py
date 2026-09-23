@@ -14,6 +14,18 @@ from smc_base_test import smc_base_test
 class smc_zeroer_sanity_test(smc_base_test):
     """Run zeroer over output-fabric payload bytes and check the model."""
 
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-ZEROER-CMD-READBACK",
+        "CHK-ZEROER-CTRL-STATUS",
+        "CHK-ZEROER-REGION-DECODE",
+        "CHK-ZEROER-REGION-ZEROED",
+        "CHK-ZEROER-STATUS-BUSY-ASSERTED",
+        "CHK-ZEROER-STATUS-LIFECYCLE",
+        "CHK-ZEROER-TRIGGER-STARTS",
+    )
+    min_evidence = 8
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

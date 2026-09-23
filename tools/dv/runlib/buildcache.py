@@ -3,10 +3,10 @@
 
 """Build acceleration knobs, object cache, and a fingerprinted build cache.
 
-All behavior here is opt-in via the DUT `[build.options]` and `[build.cache]` config tables so a
-contributor controls the full stack:
+All behavior here is opt-in via the DUT `[build.options]` config table so a contributor controls
+the full stack:
 
-`[build.options]` carries simulator-neutral knobs (OD-19 folded the former `[build.cache]` in here):
+`[build.options]` carries simulator-neutral knobs:
 
 - build acceleration — parallel build (`build_jobs`) and dev-time `cflags` (e.g. ``-O0``).
   Tool-specific acceleration, such as Verilator `output_split` and `ccache`, lives under
@@ -23,6 +23,7 @@ contributor controls the full stack:
 from __future__ import annotations
 
 import hashlib
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -134,13 +135,11 @@ def xcelium_build_args(
     - ``extra_args``        -> appended verbatim
 
     ``build_jobs`` does not reach Xcelium on its own. On Verilator and VCS it is
-    a build-time knob (``--build-jobs`` / ``-j``), but the nearest Xcelium option
-    is ``-mce``, which turns on the Multi-Core Engine for the *simulation* and so
+    a build-time knob (``--build-jobs`` / ``-j``); the nearest Xcelium option is
+    ``-mce``, which turns on the Multi-Core Engine for the *simulation* and so
     makes ``xmsim`` check out an ``Xcelium_Multi_Core`` feature instead of
-    ``Xcelium_Single_Core``. Treating a compile-parallelism setting as a request
-    for a different runtime licence class means a single-core entitlement cannot
-    run at all, which is a steep price for elaboration speed. Sites holding a
-    multi-core licence ask for it by name via ``[build.xcelium] mce``.
+    ``Xcelium_Single_Core``. A single-core entitlement cannot run under ``-mce``,
+    so only ``[build.xcelium] mce`` requests it.
     """
     extra: list[str] = []
     if bool(xcelium_cfg.get("mce", False)):
@@ -197,6 +196,32 @@ def xcelium_version(root: Path) -> str:
     return binary_version("xrun", ["-version"], root)
 
 
+# The compile job count each tool's build arguments carry: `-j<N>` on VCS, and
+# the flag plus its value on Verilator and Xcelium. It sets how fast a model
+# builds, not what it contains, and a cluster build job takes it from its core
+# request while the coordinator takes `--build-jobs`, so it stays out of the
+# fingerprint: both must name one model directory.
+_JOB_COUNT_FLAG = re.compile(r"-j\d+")
+_JOB_COUNT_FLAGS_WITH_VALUE = {"--build-jobs", "-mce_build_thread_count"}
+
+
+def fingerprint_build_args(build_args: list[str]) -> list[str]:
+    """The build arguments that enter the fingerprint: all but the compile job count."""
+    kept: list[str] = []
+    skip_value = False
+    for arg in build_args:
+        if skip_value:
+            skip_value = False
+            continue
+        if arg in _JOB_COUNT_FLAGS_WITH_VALUE:
+            skip_value = True
+            continue
+        if _JOB_COUNT_FLAG.fullmatch(arg):
+            continue
+        kept.append(arg)
+    return kept
+
+
 def build_fingerprint(
     *,
     build_args: list[str],
@@ -205,9 +230,18 @@ def build_fingerprint(
     filelist_text: str,
     extra: list[str],
 ) -> str:
-    """Stable 12-hex digest over the declared build inputs (not per-seed)."""
+    """Stable 12-hex digest over the declared build inputs (not per-seed).
+
+    The compile job count in ``build_args`` is left out (``fingerprint_build_args``).
+    """
     hasher = hashlib.sha256()
-    for part in (top_module, tool_version, filelist_text, *build_args, *extra):
+    for part in (
+        top_module,
+        tool_version,
+        filelist_text,
+        *fingerprint_build_args(build_args),
+        *extra,
+    ):
         hasher.update(str(part).encode("utf-8"))
         hasher.update(b"\0")
     return hasher.hexdigest()[:12]

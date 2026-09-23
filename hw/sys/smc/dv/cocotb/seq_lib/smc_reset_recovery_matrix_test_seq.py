@@ -58,10 +58,6 @@ class smc_reset_recovery_matrix_test_seq(SmcResetSeqBase):
     # scoreboard's reset_raw_checks_seen floor below.
     MID_ASSERT_LEGS = 3
 
-    # `_send` (with its `expect_*` keyword guard), `_raw_after`, `_hold_raw` and
-    # `_wait_released` come from SmcResetSeqBase so the guard is defined once
-    # for the whole reset family ([REUSE-AND-LAYERING]).
-
     async def _recover_and_sample(self) -> SmcResetItem:
         await self._wait_released()
         return await self._send(SmcResetOp.SAMPLE)
@@ -147,13 +143,10 @@ class smc_reset_recovery_matrix_test_seq(SmcResetSeqBase):
         await self._raw_after(16)
         await self._recover_and_sample()
 
-        # Sequence structure (baseline + 3 recovery SAMPLEs, RAW snapshots at the
-        # transitions) is a property of the code above, not of the DUT, so it is
-        # stated here as a comment rather than as asserts that could only fail on
-        # a source edit. `resolvable` on every checked item is already asserted by
-        # the scoreboard. The activity gate below is the real one: it counts only
-        # the fail-capable legs, so the expectation-free transition snapshots
-        # cannot satisfy it ([NO-ZERO-ACTIVITY-PASS]).
+        # The activity gate counts only the fail-capable legs, so the
+        # expectation-free transition snapshots cannot satisfy it
+        # ([NO-ZERO-ACTIVITY-PASS]); `resolvable` on every checked item is
+        # asserted by the scoreboard.
         sb = self.env.scoreboard
         assert sb.reset_wait_checks_seen >= 6, (
             f"expected 6 bounded reset WAIT_STATE checks (3 asserts + 3 "

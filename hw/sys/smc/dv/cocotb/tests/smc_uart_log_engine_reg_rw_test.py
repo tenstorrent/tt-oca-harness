@@ -18,6 +18,12 @@ from smc_base_test import smc_base_test
 class smc_uart_log_engine_reg_rw_test(smc_base_test):
     """Run UART/log-engine register write/readback/restore checks."""
 
+    required_evidence = (
+        "CHK-UART-LOG-ENGINE-REG-RESTORE",
+        "CHK-UART-LOG-ENGINE-REG-RW",
+    )
+    min_evidence = 2
+
     # An auto stamp is labelled by the scoreboard as "activity record, NOT a
     # check" and carries a floor of 0. This scenario records its own item with a
     # real floor instead.

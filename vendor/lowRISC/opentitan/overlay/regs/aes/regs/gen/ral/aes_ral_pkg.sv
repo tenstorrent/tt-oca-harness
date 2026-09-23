@@ -9,18 +9,18 @@
     // reg - aes.ALERT_TEST
     class aes__ALERT_TEST extends uvm_reg;
         `uvm_object_utils(aes__ALERT_TEST)
-        rand uvm_reg_field recov_ctrl_update_err;
-        rand uvm_reg_field fatal_fault;
+        rand uvm_reg_field RECOV_CTRL_UPDATE_ERR;
+        rand uvm_reg_field FATAL_FAULT;
 
         function new(string name = "aes__ALERT_TEST");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
         virtual function void build();
-            this.recov_ctrl_update_err = uvm_reg_field::type_id::create("recov_ctrl_update_err");
-            this.recov_ctrl_update_err.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
-            this.fatal_fault = uvm_reg_field::type_id::create("fatal_fault");
-            this.fatal_fault.configure(this, 1, 1, "WO", 0, 'h0, 1, 1, 0);
+            this.RECOV_CTRL_UPDATE_ERR = uvm_reg_field::type_id::create("RECOV_CTRL_UPDATE_ERR");
+            this.RECOV_CTRL_UPDATE_ERR.configure(this, 1, 0, "WO", 0, 'h0, 1, 1, 0);
+            this.FATAL_FAULT = uvm_reg_field::type_id::create("FATAL_FAULT");
+            this.FATAL_FAULT.configure(this, 1, 1, "WO", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__ALERT_TEST
 
@@ -141,9 +141,9 @@
 
         virtual function void build();
             this.KEY_TOUCH_FORCES_RESEED = uvm_reg_field::type_id::create("KEY_TOUCH_FORCES_RESEED");
-            this.KEY_TOUCH_FORCES_RESEED.configure(this, 1, 0, "RW", 1, 'h1, 1, 1, 0);
+            this.KEY_TOUCH_FORCES_RESEED.configure(this, 1, 0, "RW", 0, 'h1, 1, 1, 0);
             this.FORCE_MASKS = uvm_reg_field::type_id::create("FORCE_MASKS");
-            this.FORCE_MASKS.configure(this, 1, 1, "RW", 1, 'h0, 1, 1, 0);
+            this.FORCE_MASKS.configure(this, 1, 1, "RW", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : aes__CTRL_AUX_SHADOWED
 
@@ -158,7 +158,7 @@
 
         virtual function void build();
             this.CTRL_AUX_REGWEN = uvm_reg_field::type_id::create("CTRL_AUX_REGWEN");
-            this.CTRL_AUX_REGWEN.configure(this, 1, 0, "W0C", 1, 'h1, 1, 1, 0);
+            this.CTRL_AUX_REGWEN.configure(this, 1, 0, "W0C", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : aes__CTRL_AUX_REGWEN
 

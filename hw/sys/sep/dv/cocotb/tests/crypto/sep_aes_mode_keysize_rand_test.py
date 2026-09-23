@@ -3,16 +3,15 @@
 """Standalone AES mode x key-size breadth, RAND-REP (AES mode/key-size breadth).
 
 Drives the OpenTitan AES engine directly over the CPU-LSU AXI master (no_cpu, no
-firmware, SW key) across the full standalone matrix the Phase-1 KM->AES sideload
+firmware, SW key) across the full standalone matrix the KM->AES sideload
 KAT (`sep_km_aes_sideload_kat_test`, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
-reference parity: MERGED_INTO rep of the reference suite aes mode/keylen directed set. The reference suite
-uvm_tests/aes suite is register/alert-centric with no standalone CBC/CTR/128/192
-ciphertext golden, so the independent pure-Python golden (env/sep_aes_golden.py:
-FIPS-197 ECB 128/192/256 + SP800-38A CBC/CTR self-tested) is the reference and
-this rep is stronger than the reference suite for encryption breadth. DISTINCT from
+Reference parity: the reference suite uvm_tests/aes suite is register/alert-centric
+with no standalone CBC/CTR/128/192 ciphertext golden, so the independent
+pure-Python golden (env/sep_aes_golden.py: FIPS-197 ECB 128/192/256 + SP800-38A
+CBC/CTR self-tested) is the reference here. DISTINCT from
 `sep_km_aes_sideload_kat_test` (ECB-256 via sideload) -- AES mode/key-size breadth
 is standalone SW-key across modes/sizes.
 
@@ -126,11 +125,6 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             f"  golden={[hex(w) for w in golden]}"
         )
 
-        # No golden-vs-golden guards here. With the DUT result already pinned
-        # bit-exact against the golden above, any further comparison between that
-        # result and another golden-model output reduces to a property of the model
-        # alone -- it holds with the simulator switched off. Model sanity belongs in
-        # the golden's import-time KAT block, not in a per-cell DUT check.
         await self.aes.check_status_clean(cell + "-enc")  # CHK-STATUS
 
         # --- CHK-RT: recover the plaintext -----------------------------------

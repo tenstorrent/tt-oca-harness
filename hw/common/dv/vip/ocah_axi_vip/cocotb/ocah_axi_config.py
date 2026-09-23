@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeAlias
 
 from cocotb.handle import Deposit, Force, Immediate
 from cocotb.types import LogicArray
@@ -27,7 +27,11 @@ from cocotbext.axi import AxiBus, AxiLiteBus
 
 from .ocah_axi_types import OcahAxiProtocol
 
-__all__ = ["OcahAxiConfig"]
+__all__ = ["OcahAxiBus", "OcahAxiConfig"]
+
+# The bus handle ``OcahAxiConfig.bus()`` returns and every agent, monitor, and
+# watcher of this package accepts; consumers pass it through unchanged.
+OcahAxiBus: TypeAlias = AxiBus | AxiLiteBus
 
 _ADDR_MEMBERS = ("awaddr", "araddr")
 _DATA_MEMBERS = ("wdata", "rdata")
@@ -133,8 +137,8 @@ class OcahAxiConfig:
             return {f"{prefix}_{name}": width for name, width in widths.items()}
         return widths
 
-    def bus(self, scope: Any, *, prefix: str | None = None) -> AxiBus | AxiLiteBus:
-        """Bind ``scope`` as a cocotbext bus of this protocol at this geometry.
+    def bus(self, scope: Any, *, prefix: str | None = None) -> OcahAxiBus:
+        """Bind ``scope`` at this geometry and return the package's bus handle.
 
         ``scope`` is an interface instance handle, or any hierarchy handle
         whose members are the AXI signals; ``prefix`` selects a flattened

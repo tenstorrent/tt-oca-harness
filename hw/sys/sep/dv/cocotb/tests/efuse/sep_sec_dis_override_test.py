@@ -12,15 +12,16 @@ on). A later mismatch drops
 ``sec_dis`` and restores the fail-closed PROD golden. The test does not
 force ``sec_dis``.
 
-A SEC_DIS match does not by itself boot SEP. ``reset_n = fuse_sense_done
-&& rst_ni && ext_boot_seq_done_i`` (``efuse_interface_controller.sv``) has
-no SEC_DIS term, and the owner ruling on issue 1462 is that the release is
-a separate DTP ``sep_reset_n`` TDR step. So the first match is presented
-after ``release_no_cpu_reset`` and before ``sep_fuse_sense_done_o``, and
-with ``ext_boot_seq_done_i`` already 1 the reset probes must stay 0. The
-token is written over the CPU-LSU AXI MMR (xbar and eFuse sit on
-``rst_ni``). The TDR release itself is not claimed here, and neither is
-JTAG ``TOKEN_EOP`` activate.
+A SEC_DIS match does not by itself boot SEP. ``security_disable.adoc``
+says the SEP can boot even if fuse sense never completes: that sentence
+is the DTP ``sep_reset_n`` TDR bring-up path, which is outside this DUT
+and is not claimed here. This leaf grades the implemented sense-gated
+reset: match does not release ``sep_cpu_reset_n`` / ``sep_reset_n`` while
+sense is still open. The first match is presented after
+``release_no_cpu_reset`` and before ``sep_fuse_sense_done_o``, and with
+``ext_boot_seq_done_i`` already 1 the reset probes must stay 0. The
+token is written over the CPU-LSU AXI MMR. The TDR release itself is
+not claimed here, and neither is JTAG ``TOKEN_EOP`` activate.
 """
 
 from __future__ import annotations
@@ -86,15 +87,15 @@ class sep_sec_dis_override_test(sep_base_test):
     def _check_reset_stays_sense_gated(self) -> None:
         """A SEC_DIS match alone must NOT release the sense-gated reset.
 
-        ``reset_n = fuse_sense_done && rst_ni && ext_boot_seq_done_i``
-        (``hw/ip/efuse/rtl/efuse_interface_controller.sv``) carries no
-        SEC_DIS term. Issue 1462: the release is a DTP ``sep_reset_n`` TDR
-        step, not a side effect of the match. ``ext_boot_seq_done_i`` is
-        already 1, so sense is the only term still holding the reset --
-        this checker fails if SEC_DIS were ever to bypass it.
+        The implemented sense-gated reset has no SEC_DIS term. The
+        architecture sentence that SEP can boot if sense never completes
+        is the DTP ``sep_reset_n`` TDR path, not a match bypass of sense.
+        ``ext_boot_seq_done_i`` is already 1, so sense is the only term
+        still holding the reset -- this checker fails if a match releases
+        it.
         """
         dut = cocotb.top
-        assert not self.rd(dut.sep_fuse_sense_done_o), (
+        assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-SENSE-GATED-RESET WINDOW-CLOSED: sense finished during the token "
             "write, so the pre-sense window was never observed. This is not the RTL "
             "contract failing -- rerun; if it repeats, present the token earlier"
@@ -107,8 +108,8 @@ class sep_sec_dis_override_test(sep_base_test):
         assert sec_dis == 1, (
             f"CHK-SENSE-GATED-RESET FAIL: sec_dis={sec_dis} want 1 before the reset check"
         )
-        cpu_rst = self.rd(dut.sep_cpu_reset_n_o)
-        fabric_rst = self.rd(dut.dbg_sep_reset_n_o)
+        cpu_rst = self.rd_known(dut.sep_cpu_reset_n_o)
+        fabric_rst = self.rd_known(dut.dbg_sep_reset_n_o)
         assert cpu_rst == 0 and fabric_rst == 0, (
             f"CHK-SENSE-GATED-RESET FAIL: sec_dis=1 sense_done=0 ext_boot_seq_done=1 "
             f"but sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0 "
@@ -127,12 +128,10 @@ class sep_sec_dis_override_test(sep_base_test):
 
         zero_digest = token_digest(_MATCH_TOKEN)
         assert zero_digest == _TB_SEC_DIS_DIGEST, (
-            "CHK-DIGEST-BIND FAIL: SHA-256(0)="
-            f"0x{zero_digest:064x} want 0x{_TB_SEC_DIS_DIGEST:064x}"
-        )
-        self.logger.info(
-            "CHK-DIGEST-BIND PASS: SHA-256(0)=0x%064x (tb_top SEP_SEC_DISABLE_TOKEN bind)",
-            zero_digest,
+            "test bug: SHA-256(0)="
+            f"0x{zero_digest:064x} want TB digest 0x{_TB_SEC_DIS_DIGEST:064x} "
+            "-- the match token and the tb_top bind constant disagree "
+            "(DV consistency, not a DUT checker)"
         )
 
         closed = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=0)
@@ -147,6 +146,13 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         self._check_reset_stays_sense_gated()
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        cpu_rst = self.rd_known(cocotb.top.sep_cpu_reset_n_o)
+        fabric_rst = self.rd_known(cocotb.top.dbg_sep_reset_n_o)
+        assert cpu_rst == 1 and fabric_rst == 1, (
+            f"CHK-SENSE-GATED-RESET FAIL: after sense-done "
+            f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 1/1 "
+            "-- the pre-sense low check has no live high control without this"
+        )
 
         mm = await self._present(_MISMATCH_TOKEN)
         assert mm.match_code == TOKEN_MISMATCH, (

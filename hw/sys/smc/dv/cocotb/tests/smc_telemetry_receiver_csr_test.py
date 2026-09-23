@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: TELEMETRY_RECEIVER 0/1/2 CSR precheck."""
+"""SMC OSS TELEMETRY_RECEIVER 0/1/2 CSR precheck."""
 
 from __future__ import annotations
 
@@ -13,6 +13,13 @@ from smc_base_test import smc_base_test
 @pyuvm.test()
 class smc_telemetry_receiver_csr_test(smc_base_test):
     """U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any."""
+
+    required_evidence = (
+        "CHK-TELEMETRY-RECEIVER-1-ATB",
+        "CHK-TELEMETRY-RECEIVER-2-ATB",
+        "CHK-TELEMETRY-RECEIVER-CSR",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 

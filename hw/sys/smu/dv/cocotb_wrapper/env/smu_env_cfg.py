@@ -56,9 +56,8 @@ class SmuEnvCfg(uvm_object):
         self.powergood_delay_cycles = rng.randint(6, 10)
         self.reset_hold_cycles = rng.randint(10, 16)
         self.post_reset_cycles = rng.randint(20, 32)
-        # Same draws as the bare-smu SmuEnvCfg. Sequences shared with that
-        # catalog read these off cfg, so a leaf migrated onto this DUT hits
-        # AttributeError without them rather than any DUT difference.
+        # The sequences under cocotb/seq_lib read these off cfg and raise
+        # AttributeError without them.
         self.jtag_period_ns = rng.choice((32, 40, 48))
         self.idle_tck = rng.randint(2, 4)
         self.post_reset_settle_cycles = rng.randint(500, 700)

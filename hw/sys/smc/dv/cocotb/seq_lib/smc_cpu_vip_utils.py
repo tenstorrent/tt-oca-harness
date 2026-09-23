@@ -12,6 +12,9 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from .smc_addr_map import cpu_ctrl_u32
+from .smc_pad_table import pad_index
+
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -53,16 +56,26 @@ CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 
 # Matches CPU_CTRL_RESET_CTRL_REG_DEFAULT (cores+uncore released).
 CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
-# Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
-CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
-# Pulse-start bits [7:4] for cores 0-3.
-CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | 0x0000_00F0  # 0x1FF
-# debug_reset_n_n0_scan[24] defaults to 0 (DM held in reset). DMI/dmstatus
-# needs this bit set; FW and U7-3 release it explicitly.
-CPU_RESET_CTRL_DEBUG_RELEASE = CPU_RESET_CTRL_DEFAULT | (1 << 24)  # 0x0100_010F
+# Hold cores (core*_reset_n=0) while keeping uncore out of reset. Field masks
+# come from the generated cpu_ctrl.h, never from a hand-placed bit.
+CPU_RESET_CTRL_HOLD_CORES = cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__UNCORE_RESET_N_N0_SCAN_bm")
+# Pulse-start fields for cores 0-3.
+CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | (
+    cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE0_RESET_PULSE_START_N0_SCAN_bm")
+    | cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE1_RESET_PULSE_START_N0_SCAN_bm")
+    | cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE2_RESET_PULSE_START_N0_SCAN_bm")
+    | cpu_ctrl_u32("CPU_CTRL__RESET_CTRL__CORE3_RESET_PULSE_START_N0_SCAN_bm")
+)
+# debug_reset_n_n0_scan defaults to 0 (DM held in reset). DMI/dmstatus needs
+# this field set.
+CPU_RESET_CTRL_DEBUG_RELEASE = CPU_RESET_CTRL_DEFAULT | cpu_ctrl_u32(
+    "CPU_CTRL__RESET_CTRL__DEBUG_RESET_N_N0_SCAN_bm"
+)
 
-# RESET_TIMEOUT: timeout_value[15:0]=32, timeout_mode[16]=1 (force apply).
-CPU_RESET_TIMEOUT_FORCE = 0x0001_0020
+# RESET_TIMEOUT: timeout_value=32 in its field, timeout_mode set (force apply).
+CPU_RESET_TIMEOUT_FORCE = (
+    32 << cpu_ctrl_u32("CPU_CTRL__RESET_TIMEOUT__TIMEOUT_VALUE_bp")
+) | cpu_ctrl_u32("CPU_CTRL__RESET_TIMEOUT__TIMEOUT_MODE_bm")
 
 CPU_FW_SUCCESS_MAGIC = 0xACAF_ACA1
 CPU_FW_FAIL_MASK = 0xFFFF_0000
@@ -72,16 +85,12 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # failures actually leave behind.
 CPU_FW_TEST_FAIL = 0xFFFF_FFFF
 
-# Name kept for callers. min_pass posts 0xACAFACA1 to CPU_CTRL SCRATCH_0
-# (0xC0039080), not to scratch SRAM. The boot verdict reads that CSR.
-CPU_FW_SRAM_MAILBOX = CPU_CTRL_SCRATCH_0
-
-# boot_stall is an lsio pad; smc_padring.sv holds the assignment.
-BOOT_STALL_PAD = 57
-
-# Backward-compatible aliases.
-CPU_RESET_VECTOR = CPU_RESET_VECTOR_ROM
-CPU_RESET_RELEASE_ALL = CPU_RESET_CTRL_PULSE_ALL
+# The boot-stall pad, looked up by function in the Integrator Guide's GPIO
+# table (doc/integrator/meta/ocah_gpio_table.csv): "Stall after fuse sensing
+# ... boot will resume when this GPIO is released". `_release_boot_stall`
+# proves the index by requiring the DUT's boot_stall_combined_o to drop when
+# the pad is released.
+BOOT_STALL_PAD = pad_index("Boot Stall")
 
 
 # Bound for the post-bring-up observability state this helper claims to observe.
@@ -131,11 +140,19 @@ async def check_cpu_bfm_observability() -> None:
     )
 
 
+# Bound on the pad -> boot_stall_combined_o path after a release (pad shim,
+# synchronizer and sticky flop); a release that has not reached the DUT's
+# combined output by then means the pad driven was not the boot-stall pad.
+BOOT_STALL_RELEASE_BOUND_CYCLES = 64
+
+
 def _set_boot_stall(asserted: bool) -> None:
     """Drive the boot_stall pad (active-high) via the TB GPIO override."""
     dut = cocotb.top
-    if not hasattr(dut, "tb_gpio_ext_drive_en"):
-        return
+    assert hasattr(dut, "tb_gpio_ext_drive_en"), (
+        "tb_gpio_ext_drive_en is not exported by this bench, so the boot-stall pad cannot "
+        "be driven and no boot release below can be believed"
+    )
     en = int(dut.tb_gpio_ext_drive_en.value)
     val = int(dut.tb_gpio_ext_drive_value.value)
     mask = 1 << BOOT_STALL_PAD
@@ -148,6 +165,37 @@ def _set_boot_stall(asserted: bool) -> None:
         val &= ~mask
     dut.tb_gpio_ext_drive_en.value = en
     dut.tb_gpio_ext_drive_value.value = val
+
+
+async def _release_boot_stall() -> None:
+    """Release the held boot-stall pad and prove the release reached the DUT.
+
+    Positive control for ``BOOT_STALL_PAD``: with ``+smc_hold_cpu_boot`` the pad
+    has held ``boot_stall_combined_o`` high since t=0, and dropping the pad this
+    helper names must drop it. A boot that proceeds without that transition was
+    never stalled by this pad, and is failed rather than credited.
+    """
+    dut = cocotb.top
+    combined = dut.tb_boot_stall_combined_o.value
+    assert combined.is_resolvable and int(combined) == 1, (
+        f"boot_stall_combined_o={combined} before the release; +smc_hold_cpu_boot should "
+        f"have held it through GPIO_PAD[{BOOT_STALL_PAD}]"
+    )
+    _set_boot_stall(False)
+    for cycle in range(BOOT_STALL_RELEASE_BOUND_CYCLES):
+        await ClockCycles(dut.clk_smc_i, 1)
+        combined = dut.tb_boot_stall_combined_o.value
+        if combined.is_resolvable and int(combined) == 0:
+            cocotb.log.info(
+                "boot_stall_combined_o 1->0 %d cycle(s) after releasing GPIO_PAD[%d] (Boot Stall)",
+                cycle + 1,
+                BOOT_STALL_PAD,
+            )
+            return
+    raise AssertionError(
+        f"boot_stall_combined_o stayed {combined} for {BOOT_STALL_RELEASE_BOUND_CYCLES} cycles "
+        f"after releasing GPIO_PAD[{BOOT_STALL_PAD}]; the released pad is not the boot-stall pad"
+    )
 
 
 def _hold_cpu_boot_plusarg() -> bool:
@@ -172,8 +220,8 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
     the scratch (or ROM) vector.
 
     Note: full Freedom-metal applications can barrier on cluster-local CLINT
-    MSIP (0xC800_0000), which SEP-IN AXI cannot reach. The U3 contract uses the
-    sync-free hello_world C test built by the run_dv c_compile stage.
+    MSIP (0xC800_0000), which SEP-IN AXI cannot reach. The boot contract uses
+    the sync-free hello_world C test built by the c_compile stage.
     """
     await seq.csr_write(
         "CPU_BOOT_RESET_TIMEOUT_FORCE",
@@ -192,7 +240,7 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
     )
     await ClockCycles(cocotb.top.clk_smc_i, settle_cycles)
 
-    _set_boot_stall(False)
+    await _release_boot_stall()
     await ClockCycles(cocotb.top.clk_smc_i, settle_cycles * 4)
     cocotb.log.info("CPU boot: released +smc_hold_cpu_boot with vector=0x%08x", reset_vector)
 
@@ -249,7 +297,7 @@ async def _compare_image_in_memory(seq, boot_from_scratch: bool, reset_vector: i
     decode internal to smc_cpu_mem_dv.
 
     A MISMATCH means the AXI view of scratch and the built image disagree, which
-    now points at the loader: `smc_dual_axi_sram_probe_test` requires the same
+    points at the loader: `smc_dual_axi_sram_probe_test` requires the same
     decode to agree with AXI across both stripe bits, the wrap of the four-bank
     cycle and a group boundary, so a decode that is wrong in any of those fields
     fails there first. It stays a report rather than an assertion because it
@@ -391,7 +439,7 @@ async def check_cpu_firmware_boot_contract(
     armed = arm_value is None
     # The boot image is short; poll the CSR the firmware actually writes.
     #
-    # tb_cpu_fw_mailbox is deliberately NOT part of the verdict. It is driven by
+    # tb_cpu_fw_mailbox is not part of the verdict. It is driven by
     # the FW_MAGIC snoop in models/smc_cpu_mem_dv.sv, which watches the scratch
     # RAM and L1 D-cache *write ports* -- not the CPU_CTRL SCRATCH CSR that
     # test_pass() stores to. So for any image that reports through smc_test.h it

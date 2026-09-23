@@ -18,10 +18,9 @@
  * exchanges TOKEN -> RESPONSE -> ACK -> SEP_PASS, write-1-to-clearing the mailbox read IRQ
  * (and confirming IRQ status/pending drop to 0) after each pop.
  *
- * STACKLESS BY DESIGN (smc_stackless_test.h): the SMU cocotb / SEP-driven boot does NOT
- * initialise the SMC SRAM stack, so main() makes NO function calls and uses only the SMC_*
- * absolute-MMIO/poll macros -> no stack frame. If a future edit reintroduces `add sp,sp,-N`
- * in the entry, it will hang -- verify the .dis.
+ * STACKLESS (smc_stackless_test.h): the SMU cocotb / SEP-driven boot does not initialise the
+ * SMC SRAM stack, so main() makes no function calls and uses only the SMC_* absolute-MMIO/poll
+ * macros; any `add sp,sp,-N` in the entry hangs the core.
  */
 SMC_STACKLESS_ENTRY(sep_interop_entry)
 
@@ -41,15 +40,7 @@ SMC_STACKLESS_ENTRY(sep_interop_entry)
 #define SMC_MBOX_FILTER_CONFIG \
     0x0000000100030013ULL /* read/write/enable/src_id=3; allow_burst=0 \
                              so the sub-4KB window END stores EXACTLY \
-                             (allow_burst=1 rounds to 0x..FFF -- 003 lesson) */
-
-/* FILTER_CONFIG has an RO, hardware-driven data_bus_width[14:12] (reads its own bus-width
- * value, not what we wrote) and no storage above the defined fields (the written reserved
- * bit[32] reads back 0). Compare only the SW-writable functional bits so the read-back is a
- * genuine check that never false-fails on those hardware-fixed bits. Mask =
- * read_allowed|write_allowed|entry_enabled|allow_ns |
- * src_id[19:16]|group_id[23:20]|allow_burst[24]. */
-#define SMC_FILTER_CFG_RW_MASK 0x0000000001FF0113ULL
+                             (allow_burst=1 rounds END to 0x..FFF) */
 
 /* SMC-facing mailbox port (INBOUND_MAILBOX_0) absolute register addresses. */
 #define SMC_MBOX_WRITE_DATA (SMC_INBOUND_MBOX_BASE + MBOX_WRITE_DATA_OFFSET) /* 0x10A00800 */
@@ -89,11 +80,10 @@ int main(void) {
     SMC_FENCE();
 
     /* b. Open the SMC outbound egress filter over the mailbox window (START/END before CONFIG
-     *    so it enables atomically). PROGRAM-AND-GO: do NOT fw-read-back+compare the filter CSRs.
-     *    Per the SEP_SMU_003 lesson, a fw filter readback returns hardware-injected/converted bits
-     *    (RO data_bus_width, reserved bit[32], allow_burst-rounded START/END) that never match the
-     *    written value and false-fail the test. The filter programming is verified PASSIVELY in the
-     *    cocotb checker (CHK-SETUP) via filter_ctrl_reg.field_storage, not here. */
+     *    so it enables atomically). No firmware read-back compare of the filter CSRs: a
+     *    read-back returns hardware-fixed bits (RO data_bus_width, reserved bit[32],
+     *    allow_burst-rounded START/END) that differ from the written value. The cocotb checker
+     *    (CHK-SETUP) verifies the filter programming via filter_ctrl_reg.field_storage. */
     SMC_WR64(SMC_OUTBOUND_FILTER_BASE + SMC_FILTER_START_OFFSET, SMC_MBOX_WINDOW_START);
     SMC_WR64(SMC_OUTBOUND_FILTER_BASE + SMC_FILTER_END_OFFSET, SMC_MBOX_WINDOW_END);
     SMC_WR64(SMC_OUTBOUND_FILTER_BASE + SMC_FILTER_CONFIG_OFFSET, SMC_MBOX_FILTER_CONFIG);

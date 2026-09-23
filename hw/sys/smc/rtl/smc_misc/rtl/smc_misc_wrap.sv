@@ -80,7 +80,7 @@ module smc_misc_wrap #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i            (clk_i),
     .rst_ni           (rst_ni),
     .test_i           (test_en_i),
@@ -100,7 +100,7 @@ module smc_misc_wrap #(
   //////////////////////////
 
   // 8 scratch registers that are reset by cold reset
-  scratch_reg smc_scratch_reg_cold (
+  scratch_reg u_smc_scratch_reg_cold (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -127,7 +127,7 @@ module smc_misc_wrap #(
   );
 
   // 8 scratch registers that are reset by cold and warm reset
-  scratch_reg smc_scratch_reg_cold_warm (
+  scratch_reg u_smc_scratch_reg_cold_warm (
     .clk            (clk_i),
     .arst_n         (rst_warm_ni),
 
@@ -159,7 +159,7 @@ module smc_misc_wrap #(
 
   logic [63:0] version_id;
 
-  smc_version_id_wrap smc_version_id_wrap (.version_id_o(version_id));
+  smc_version_id_wrap u_smc_version_id_wrap (.version_id_o(version_id));
 
   ///////////////////////////
   // Chip Config Registers //
@@ -167,7 +167,7 @@ module smc_misc_wrap #(
 
   chip_config_reg_pkg::chip_config__in_t hwif_in;
 
-  chip_config_reg smc_chip_config_reg (
+  chip_config_reg u_smc_chip_config_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -207,7 +207,7 @@ module smc_misc_wrap #(
   ndm_reset_reg_pkg::ndm_reset__in_t  ndm_hwif_in;
   ndm_reset_reg_pkg::ndm_reset__out_t ndm_hwif_out;
 
-  ndm_reset_reg smc_ndm_reset_reg (
+  ndm_reset_reg u_smc_ndm_reset_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -254,7 +254,7 @@ module smc_misc_wrap #(
     .RESP           (axi_pkg::RESP_DECERR),
     .RESP_WIDTH     (32),
     .RESP_DATA      (32'hBADCAB1E)
-  ) prim_axi_lite_err_slv (
+  ) u_prim_axi_lite_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),

@@ -7,15 +7,15 @@ AXI master (no_cpu): local-master alias-remap, AP/STEE output-remap, and the
 inbound/outbound filter config banks. Proves field R/W + 64-bit upper-word access +
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
 field, with a non-vacuity anchor (a written value differs from reset and is confined
-to its field). RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W
-(clearable), NOT woset -- only the filter locked bit is woset (CHK-VALID-RW vs
-CHK-WOSET). CSR layer only -- this entry does not prove live remap translation
+to its field). The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
+not woset; only the filter locked bit is woset (CHK-VALID-RW vs CHK-WOSET). CSR
+layer only -- this entry does not prove live remap translation
 or outbound-filter drop.
 
 reference refs: sep_fabric_64bit_regwidth_test (64-bit + locked/valid
 woset), sep_outbound_filter_cfg_test (FILTER_CONFIG incl. RO
 data_bus_width=3), sep_cpuctrl_misc_regs_test, and the System-block
-subset of sep_reg_sanity_test. Mapping: COVERED_BY. Distinct from
+subset of sep_reg_sanity_test. Distinct from
 sep_address_map_test (which only read-touched alias/AP remap for decode
 reachability -- no field R/W, no 64-bit upper word, no woset, no filter banks) and
 from the inbound-filter rule matrix test (real PROD fuse + external master; this is
@@ -32,6 +32,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     ALIAS_ATTRS,
     ALIAS_BASE,
     ALIAS_END,
+    ALIAS_END_RESET,
     ALIAS_START,
     ALIAS_STRIDE,
     AP_BASE,
@@ -79,9 +80,36 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         await self._chk_alias_rw_and_nonvac()
         await self._chk_ap_stee_rw()
         await self._chk_filter_cfg_and_ro()
+        await self._chk_bank_independence()
         await self._chk_woset()
-        # No CHK-ALL summary line. It asserted nothing, and a plan row keyed on it
-        # would record coverage against a string with no checker behind it.
+        # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
+        # row keyed on a bare summary string would record coverage with no checker
+        # behind it.
+
+    async def _chk_bank_independence(self) -> None:
+        """CHK-BANK-INDEP over every R/W word of every alias and filter entry.
+
+        Runs before the woset leg: locking a filter entry freezes its words, so a
+        locked entry would fail the readback for a reason that is not an aliasing
+        defect.
+        """
+        count, mismatches = await self.fab.bank_field_walk()
+        # The expected total is the plan's number, written out: a walk that
+        # covered fewer words would otherwise pass on whatever it reached.
+        assert count == 224, (
+            f"CHK-BANK-INDEP FAIL: the walk covered {count} words, not the 224 "
+            f"the address map declares (16 alias x 5 + 48 filter entries x 3)"
+        )
+        assert not mismatches, (
+            f"CHK-BANK-INDEP FAIL: {len(mismatches)} of {count} bank words did not "
+            f"hold their own value; first: {mismatches[0]}"
+        )
+        self.logger.info(
+            "CHK-BANK-INDEP PASS: %d R/W words across all 16 alias regions, 16 "
+            "inbound and 32 outbound filter entries each held their own "
+            "bank-and-index-derived pattern",
+            count,
+        )
 
     async def _chk_alias_rw_and_nonvac(self) -> None:
         """CHK-ALIAS-RW + CHK-NONVAC on the seeded alias-remap region (no woset touched)."""
@@ -106,8 +134,9 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
             f"pre-write value -- the write did not change observable state"
         )
         neighbor = await self.fab.read32(end_lo)
-        assert neighbor == 0, (
-            f"alias END_lo neighbor changed to 0x{neighbor:08x} after START_lo write (not confined)"
+        assert neighbor == ALIAS_END_RESET, (
+            f"alias END_lo neighbor changed to 0x{neighbor:08x} after START_lo write "
+            f"(not confined); expected its reset value 0x{ALIAS_END_RESET:08x}"
         )
         self.logger.info(
             "CHK-NONVAC PASS: alias r%d START_lo 0x%08x->0x%08x (observed change), "
@@ -175,7 +204,7 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
                 entry,
             )
             # CHK-RO: data_bus_width ignores a write (stays 3).
-            orig, after = await self.fab.ro_probe(cfg_lo, DBW_LSB, 3)
+            orig, after = await self.fab.ro_probe(cfg_lo, DBW_LSB, DBW_MASK.bit_count())
             assert orig == DBW_RO_VAL and after == DBW_RO_VAL, (
                 f"{name} e{entry} data_bus_width RO: orig={orig} after-write={after}, expected 3/3"
             )

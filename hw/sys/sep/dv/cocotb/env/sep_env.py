@@ -18,7 +18,7 @@ class SepEnv(uvm_env):
         self.axi_agent = SepAxiAgent("axi_agent", self)
         # Secondary: SMN-inbound EXTERNAL master (prefix m_axi). Traverses the
         # inbound filter (block-by-default; skipped only when sep_debug=1). It
-        # idles unless a test drives it, so existing tests are unaffected. The
+        # idles unless a test drives it. The
         # prefix attribute is read by the agent's build_phase (top-down, so it is
         # set in time). The OSS analog of the reference suite's ext_axi_sqr (master[0]).
         self.ext_axi_agent = SepAxiAgent("ext_axi_agent", self)
@@ -28,7 +28,7 @@ class SepEnv(uvm_env):
         # the in-tb substitute for the Verilator-disabled RTL assertions). One per
         # AXI bus. The CPU-LSU bus has no inbound filter, so a DECERR there is a
         # real decode bug (fail). The external SMN-inbound bus' inbound filter
-        # intentionally routes blocked accesses to DECERR (the gating test asserts
+        # routes blocked accesses to DECERR (the gating test asserts
         # that), so the external monitor tallies DECERR without failing -- it still
         # catches all-X data on a *successful* external read.
         self.axi_monitor = SepAxiMonitor("axi_monitor", self)

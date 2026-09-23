@@ -14,7 +14,7 @@ STUB:DECLARED
   site: tb_top jtag_bsr_host_scan_in_i <- jtag_bsr_host_scan_out_o
   length: DTP_BSR_MODEL_LEN (compact 8-bit model)
   scope: TB EXTEST DR path only — NOT LIVE pad BSR / SEP STAP proof
-  real-path: deferred until a pad-BSR / STAP model is enrolled
+  real-path: needs a pad-BSR / STAP model
 
 Patterns whose retimed expectation is all-zero are forbidden: the JTAG driver's
 _logic_int maps X/Z TDO to 0, which would make an all-zero expect can't-fail.
@@ -46,6 +46,9 @@ _PATTERNS = (0xFF, 0xA5, 0x5A, 0xC3, 0x3C, 0x01)
 
 def _sample(signal, name: str) -> int:
     val = signal.value
+    if isinstance(val, int):
+        # An enum-typed handle (jtag_ptap_inst_decoded) reads back as a plain int on VCS.
+        return val
     if not val.is_resolvable:
         raise AssertionError(f"X/Z sample on {name}: {val}")
     return int(val)

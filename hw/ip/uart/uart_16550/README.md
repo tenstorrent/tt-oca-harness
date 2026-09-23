@@ -13,4 +13,5 @@ Authoritative description and register maps: `hw/ip/uart/uart_16550/doc/` (publi
 
 ## Verification
 
-No dedicated block TB in this tree; covered by SMC DV.
+Block-level bench on the unified DV flow: `dv/README.md`
+(`python3 tools/dv/run_dv.py --dut uart_16550`). SMC-level scenarios live under `hw/sys/smc/dv/`.

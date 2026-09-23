@@ -4,13 +4,15 @@
 
 FEATURE. ``STRAPS_HI[26]`` tells the ROM to try the
 slots in the opposite order. ``rom_manifest_boot`` keeps the offset table fixed
-and rotates the INDEX instead (``manifest_load.c:737-740``)::
+and rotates the INDEX instead (``oca_boot.c``)::
 
     uint32_t slot = retry;
-    if (straps->rotate_update && from_spi) slot ^= 1u;
+    if (straps->rotate_update) slot ^= 1u;
 
-so on a rotated boot the FIRST attempt -- ``retry == 0``, still labelled
-``MANIFEST_PRIMARY`` -- reads ``BACKUP_MANIFEST_OFFSET`` (0x41000).
+so on a rotated boot the FIRST attempt -- ``retry == 0`` -- reads
+``BACKUP_MANIFEST_OFFSET`` (0x41000). The slot label follows the slot, not the
+retry counter, so that first attempt prints ``MANIFEST_BACKUP``: the label and
+``MANIFEST_SRC`` name the same slot.
 
 WHY THE PRIMARY SLOT IS ERASED. If both slots held a valid image, a ROM that
 ignored the strap would boot from 0x1000 and a ROM that honoured it would boot
@@ -21,8 +23,9 @@ is the whole test, and it is asserted three independent ways:
 
   * ``MANIFEST_SRC=0x00041000`` appears and ``MANIFEST_SRC=0x00001000`` never
     does -- the ROM's own statement of which address it read;
-  * ``MANIFEST_BACKUP`` never appears and no ``MANIFEST_ERR=`` is printed, so the
-    boot happened on the FIRST attempt rather than through a retry;
+  * ``MANIFEST_BACKUP`` appears and ``MANIFEST_PRIMARY`` never does, and no
+    ``MANIFEST_ERR=`` is printed. A ROM ignoring the strap would print both
+    labels and an error, because its first attempt would read the erased slot;
   * on the device side, no read transaction lands anywhere in the primary slot's
     flash span, which is measured at the flash model rather than inferred.
 
@@ -30,7 +33,7 @@ is the whole test, and it is asserted three independent ways:
 actually read, so the run is attributable to this stimulus and not to a strap
 that happened to be set some other way.
 
-The image is the unsigned one and the OTP is the inherited TEST_DEV, on purpose.
+The image is the unsigned one and the OTP is the inherited TEST_DEV.
 Slot selection is upstream of the crypto chain, so adding secure boot here would
 only introduce failure modes that say nothing about rotation.
 """
@@ -53,9 +56,13 @@ _STRAP_ROTATE_ECHO = " rotate=1"  # boot_straps.c:34
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _MANIFEST_OK = "MANIFEST_OK"
-# manifest_load.c:764 prints this only for retry == 1, so its absence is what
+# The ROM prints this only for the second attempt, so its absence is what
 # says the rotated slot was the FIRST attempt and not a fallback.
-_SECOND_ATTEMPT = "MANIFEST_BACKUP"
+# The slot label, which follows the slot rather than the retry counter, so on a
+# rotated boot the first attempt is the backup. MANIFEST_PRIMARY appearing would
+# mean the ROM read 0x1000, which this test erased.
+_BACKUP_SLOT_LABEL = "MANIFEST_BACKUP"
+_PRIMARY_SLOT_LABEL = "MANIFEST_PRIMARY"
 _ANY_SLOT_ERROR = "MANIFEST_ERR="
 
 
@@ -71,11 +78,12 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         _ROTATE_ECHO,
         _STRAP_ROTATE_ECHO,
         _BACKUP_SRC,
+        _BACKUP_SLOT_LABEL,
         _MANIFEST_OK,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _PRIMARY_SRC,
-        _SECOND_ATTEMPT,
+        _PRIMARY_SLOT_LABEL,
         _ANY_SLOT_ERROR,
         "MANIFEST_ALL_FAILED",
     )
@@ -114,11 +122,10 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         assert rds, "flash BFM served no read transactions; nothing was fetched over SPI"
 
         # CHK-ROTATE-FIRST-READ: the device's own record of which slot was
-        # interrogated first. Independent of the console, and the claim the
-        # console cannot make -- the ROM labels the first attempt
-        # "MANIFEST_PRIMARY" whichever offset it uses. Indexed on the first read
-        # that lands in EITHER slot, not on read[0], so an unrelated controller
-        # access (an ID probe, a re-init read) cannot decide the verdict.
+        # interrogated first, measured at the flash model rather than taken from
+        # the ROM's account of itself. Indexed on the first read that lands in
+        # EITHER slot, not on read[0], so an unrelated controller access (an ID
+        # probe, a re-init read) cannot decide the verdict.
         p_idx = ev.slot_read_indices(rds, "primary", self._image_len)
         b_idx_all = ev.slot_read_indices(rds, "backup", self._image_len)
         assert b_idx_all, (

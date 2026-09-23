@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Hang-detector OR reaches the PLIC on peripheral_interrupts[30].
 
-Covers the smc_base -> smc_peripherals[30] -> cpu_interrupts route added so FW
-can service an armed detector. The observation point is the PLIC source pin on
+Covers the smc_base -> smc_peripherals[30] -> cpu_interrupts route through which
+FW services an armed detector. The observation point is the PLIC source pin on
 ``u_smc_cpu_wrapper.interrupts_i`` (raw bit NUM_EXT_INTERRUPTS+30 = 286 in the
 4-core config, PLIC source ID 287). PLIC register-level claim/complete needs CPU
 firmware and is not claimed here.
@@ -24,8 +24,8 @@ from .smc_addr_map import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# irq_o is combinational after the CTRL flop, and the new route to the PLIC pin
-# is combinational too, so the AXI write completion already implies the update.
+# irq_o is combinational after the CTRL flop, and the route to the PLIC pin is
+# combinational too, so the AXI write completion already implies the update.
 # This bound is only the fail-closed ceiling.
 _IRQ_BOUND = 64
 

@@ -13,6 +13,16 @@ extern "C" {
 #include <stdint.h>
 #include <assert.h>
 
+// mem - km_rom
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t mem[4096];
+} km_rom_t;
+
+// mem - km_sram
+typedef struct __attribute__ ((__packed__)) {
+    uint32_t mem[8192];
+} km_sram_t;
+
 // reg - km_mailbox_km::write_data_reg
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bm 0xffffffff
 #define KM_MAILBOX_KM__WRITE_DATA_REG__DATA_bp 0
@@ -315,14 +325,14 @@ typedef struct __attribute__ ((__packed__)) {
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bp 35
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS__ROM_CTL_READ_LOCK_reset 0x0
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_WRITE_LOCK_bm 0x1000000000
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_WRITE_LOCK_bp 36
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_WRITE_LOCK_bw 1
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_WRITE_LOCK_reset 0x0
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_READ_LOCK_bm 0x2000000000
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_READ_LOCK_bp 37
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_READ_LOCK_bw 1
-#define SEP_EFUSE_MAP__LOCKS__SPI_CONFIG_EN_READ_LOCK_reset 0x0
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bm 0x1000000000
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bp 36
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_bw 1
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_WRITE_LOCK_reset 0x0
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bm 0x2000000000
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bp 37
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_bw 1
+#define SEP_EFUSE_MAP__LOCKS__SYSCLK_FREQ_MHZ_READ_LOCK_reset 0x0
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bm 0x4000000000
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bp 38
 #define SEP_EFUSE_MAP__LOCKS__CHIPLET_PUBK_HASH0_WRITE_LOCK_bw 1
@@ -493,9 +503,17 @@ typedef struct __attribute__ ((__packed__)) {
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bp 15
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_bw 1
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE7_READ_LOCK_reset 0x0
-#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bm 0xffff0000
-#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bp 16
-#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bw 16
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bm 0x10000
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bp 16
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_bw 1
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_WRITE_LOCK_reset 0x0
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bm 0x20000
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bp 17
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_bw 1
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE8_READ_LOCK_reset 0x0
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bm 0xfffc0000
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bp 18
+#define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_bw 14
 #define SEP_EFUSE_MAP__LOCKS_SPARE__SPARE_LOCK_RSVD_reset 0x0
 
 // reg - sep_efuse_map::LC_STATE
@@ -652,67 +670,15 @@ typedef struct __attribute__ ((__packed__)) {
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_bw 26
 #define SEP_EFUSE_MAP__ROM_CTL__RESERVED_reset 0x0
 
-// reg - sep_efuse_map::SEP_SPI_CTRL_FIELD_EN
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_bm 0xff
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_bp 0
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_bw 8
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_reset 0x0
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm 0x7ff00
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bp 8
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bw 11
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_reset 0x0
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_RSVD_bm 0xfff80000
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_RSVD_bp 19
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_RSVD_bw 13
-#define SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SPI_CONTROL_FIELD_EN_RSVD_reset 0x0
-
-// reg - sep_efuse_map::SPI_DISCOVERY_CTRL
-#define SEP_EFUSE_MAP__SPI_DISCOVERY_CTRL__DISCOVERY_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_DISCOVERY_CTRL__DISCOVERY_bp 0
-#define SEP_EFUSE_MAP__SPI_DISCOVERY_CTRL__DISCOVERY_bw 32
-#define SEP_EFUSE_MAP__SPI_DISCOVERY_CTRL__DISCOVERY_reset 0x0
-
-// reg - sep_efuse_map::SPI_PHY_DQ_TIMING
-#define SEP_EFUSE_MAP__SPI_PHY_DQ_TIMING__DQ_TIMING_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_PHY_DQ_TIMING__DQ_TIMING_bp 0
-#define SEP_EFUSE_MAP__SPI_PHY_DQ_TIMING__DQ_TIMING_bw 32
-#define SEP_EFUSE_MAP__SPI_PHY_DQ_TIMING__DQ_TIMING_reset 0x0
-
-// reg - sep_efuse_map::SPI_PHY_DQS_TIMING
-#define SEP_EFUSE_MAP__SPI_PHY_DQS_TIMING__DQS_TIMING_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_PHY_DQS_TIMING__DQS_TIMING_bp 0
-#define SEP_EFUSE_MAP__SPI_PHY_DQS_TIMING__DQS_TIMING_bw 32
-#define SEP_EFUSE_MAP__SPI_PHY_DQS_TIMING__DQS_TIMING_reset 0x0
-
-// reg - sep_efuse_map::SPI_PHY_GATE_LPBK
-#define SEP_EFUSE_MAP__SPI_PHY_GATE_LPBK__GATE_LPBK_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_PHY_GATE_LPBK__GATE_LPBK_bp 0
-#define SEP_EFUSE_MAP__SPI_PHY_GATE_LPBK__GATE_LPBK_bw 32
-#define SEP_EFUSE_MAP__SPI_PHY_GATE_LPBK__GATE_LPBK_reset 0x0
-
-// reg - sep_efuse_map::SPI_PHY_DLL_SLAVE
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_SLAVE__DLL_SLAVE_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_SLAVE__DLL_SLAVE_bp 0
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_SLAVE__DLL_SLAVE_bw 32
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_SLAVE__DLL_SLAVE_reset 0x0
-
-// reg - sep_efuse_map::SPI_PHY_DLL_MASTER
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_MASTER__DLL_MASTER_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_MASTER__DLL_MASTER_bp 0
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_MASTER__DLL_MASTER_bw 32
-#define SEP_EFUSE_MAP__SPI_PHY_DLL_MASTER__DLL_MASTER_reset 0x0
-
-// reg - sep_efuse_map::SPI_PHY_MISC
-#define SEP_EFUSE_MAP__SPI_PHY_MISC__MISC_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_PHY_MISC__MISC_bp 0
-#define SEP_EFUSE_MAP__SPI_PHY_MISC__MISC_bw 32
-#define SEP_EFUSE_MAP__SPI_PHY_MISC__MISC_reset 0x0
-
-// reg - sep_efuse_map::SPI_RB_VALID_TIME
-#define SEP_EFUSE_MAP__SPI_RB_VALID_TIME__RB_VALID_TIME_bm 0xffffffff
-#define SEP_EFUSE_MAP__SPI_RB_VALID_TIME__RB_VALID_TIME_bp 0
-#define SEP_EFUSE_MAP__SPI_RB_VALID_TIME__RB_VALID_TIME_bw 32
-#define SEP_EFUSE_MAP__SPI_RB_VALID_TIME__RB_VALID_TIME_reset 0x0
+// reg - sep_efuse_map::SYSCLK_FREQ_MHZ
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm 0x7ff
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp 0
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bw 11
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_reset 0x0
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bm 0xfffff800
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bp 11
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_bw 21
+#define SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__RSVD_reset 0x0
 
 // reg - sep_efuse_map::CHIPLET_PUBK_HASH
 #define SEP_EFUSE_MAP__CHIPLET_PUBK_HASH__KEY_HASH_bm 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
@@ -800,15 +766,7 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t SYS_UID[8];
     uint32_t STATUS_RPT;
     uint32_t ROM_CTL;
-    uint32_t SEP_SPI_CTRL_FIELD_EN;
-    uint32_t SPI_DISCOVERY_CTRL;
-    uint32_t SPI_PHY_DQ_TIMING;
-    uint32_t SPI_PHY_DQS_TIMING;
-    uint32_t SPI_PHY_GATE_LPBK;
-    uint32_t SPI_PHY_DLL_SLAVE;
-    uint32_t SPI_PHY_DLL_MASTER;
-    uint32_t SPI_PHY_MISC;
-    uint32_t SPI_RB_VALID_TIME;
+    uint32_t SYSCLK_FREQ_MHZ;
     uint32_t CHIPLET_PUBK_HASH0[8];
     uint32_t CHIPLET_PUBK_HASH1[8];
     uint32_t REQUIRED_SIGNERS;
@@ -830,6 +788,7 @@ typedef struct __attribute__ ((__packed__)) {
     uint32_t spare5[8];
     uint32_t spare6[8];
     uint32_t spare7[8];
+    uint32_t spare8[8];
 } sep_efuse_map_t;
 
 // reg - efuse_interface_ctrl::EFUSE_INTERFACE_CTRL_STATUS
@@ -1984,7 +1943,9 @@ typedef struct __attribute__ ((__packed__)) {
 
 // addrmap - key_manager
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t RESERVED_0_ffff[0x10000];
+    km_rom_t rom;
+    uint8_t RESERVED_4000_7fff[0x4000];
+    km_sram_t sram;
     km_mailbox_km_t mailbox_km;
     uint8_t RESERVED_1001c_10fff[0xfe4];
     sep_efuse_map_t otp_efuse_map;

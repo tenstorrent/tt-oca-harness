@@ -32,6 +32,6 @@ module gpio_model #(
   // Receive logic: pad to core
   assign pad2core_o = pad2core_en_i ? GPIO_PAD : 1'b0;
 
-  assign gpio_status = status_t'('0); // Placeholder for status output
+  assign gpio_status = status_t'('0); // the pad model has no status source
 
 endmodule

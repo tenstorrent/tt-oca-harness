@@ -7,7 +7,7 @@ Access-port identity: the sweep runs on
 ``bus_name = "SEP_IN AXI"`` (``env/smc_sys_axi_agent.py``), and ``tb_top.sv``
 wires the top-level ``s_axi_*`` pins into ``smc.sep_axi_in_req_i``. This is NOT
 the SYS_IN ingress port -- that one is ``env.sys_in_axi_agent``, which this test
-never starts -- so this run gives no SYS_IN decode coverage. The historical
+never starts -- so this run gives no SYS_IN decode coverage. The
 ``sys_axi_agent`` handle name is misleading; see the sequence docstring.
 """
 
@@ -32,6 +32,13 @@ EXPECTED_VALUE_COMPARES = 6
 @pyuvm.test()
 class smc_default_reg_rd_test(smc_base_test):
     """Run a compact OSS-safe default-register read sweep."""
+
+    required_evidence = (
+        "CHK-DEFAULT-REG-SWEEP",
+        "CHK-DEFAULT-REG-VALUE",
+        "CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 

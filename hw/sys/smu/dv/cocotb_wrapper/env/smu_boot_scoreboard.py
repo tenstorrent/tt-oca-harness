@@ -18,6 +18,7 @@ class SmuSmcBootScoreboard(uvm_component):
         self.fail_seen = False
         self.max_rom_reads = 0
         self.max_scratch_writes = 0
+        self._finalized = False
 
     def sample(self, *, passed: int, failed: int, rom_reads: int, scratch_writes: int) -> None:
         self.pass_seen |= bool(passed)
@@ -33,7 +34,16 @@ class SmuSmcBootScoreboard(uvm_component):
             logger.info("EVIDENCE:CHK-%s", token)
             logger.info("EVIDENCE: CHK-%s", token)
 
-    def check_phase(self) -> None:
+    def finalize(self) -> None:
+        """Grade the samples once and stamp the evidence tokens.
+
+        The leaf calls it at the end of run_scenario so the tokens are in the
+        log before the base test's evidence gate reads them; check_phase runs
+        top-down in pyuvm, after that gate, and calls it only as a fallback.
+        """
+        if self._finalized:
+            return
+        self._finalized = True
         self.logger.info(
             "SMC boot evidence: pass=%s fail=%s rom_reads=%d scratch_writes=%d",
             self.pass_seen,
@@ -51,19 +61,22 @@ class SmuSmcBootScoreboard(uvm_component):
         if self.max_scratch_writes == 0:
             errors.append("SMC scratch SRAM had no write activity")
         assert not errors, "SMC boot scoreboard: " + "; ".join(errors)
-        # aidv tokens for wrapper firmware smoke (distinct from DUT cocotb smoke)
+        # Evidence tokens of the wrapper firmware smoke
         self._log_evidence(self.logger, "SMC_ROM_READ_OK")
         self._log_evidence(self.logger, "SMC_SCRATCH_WRITE_OK")
         self._log_evidence(self.logger, "SMC_TEST_PASS_OK")
         self._log_evidence(self.logger, "CHK-NONVAC")
 
+    def check_phase(self) -> None:
+        self.finalize()
+
 
 class SmuSepBootScoreboard(uvm_component):
     """Require real SEP reset, boot-ROM fetch, ICCM execution, and DCCM stores.
 
-    This is the boot-readiness bar of the SMU-level SEP smoke (mirroring the
-    internal `smu_sep_smoke_test` contract): SEP must be observed fetching
-    from the boot-ROM entry window and then executing firmware from ICCM.
+    This is the boot-readiness bar of the SMU-level SEP smoke: SEP must be
+    observed fetching from the boot-ROM entry window and then executing
+    firmware from ICCM.
     Console/STDOUT checking over the external AXI path is out of scope here.
     """
 
@@ -93,6 +106,7 @@ class SmuSepBootScoreboard(uvm_component):
         self.iccm_seen = False
         self.max_dccm_writes = 0
         self.console = bytearray()
+        self._finalized = False
 
     @property
     def fuse_sense_skipped(self) -> bool:
@@ -176,7 +190,15 @@ class SmuSepBootScoreboard(uvm_component):
             logger.info("EVIDENCE:CHK-%s", token)
             logger.info("EVIDENCE: CHK-%s", token)
 
-    def check_phase(self) -> None:
+    def finalize(self) -> None:
+        """Grade the samples once and stamp the evidence tokens.
+
+        Same contract as SmuSmcBootScoreboard.finalize: the leaf calls it at
+        the end of run_scenario, ahead of the base test's evidence gate.
+        """
+        if self._finalized:
+            return
+        self._finalized = True
         self.logger.info(
             "SEP boot evidence: reset(low/high)=%s/%s fuse(low/high)=%s/%s "
             "fuse_sense_skipped=%s smc_arm=%s traces=%d distinct_pcs=%d "
@@ -235,3 +257,6 @@ class SmuSepBootScoreboard(uvm_component):
         self._log_evidence(self.logger, "SEP_ICCM_OK")
         self._log_evidence(self.logger, "SEP_DCCM_WRITE_OK")
         self._log_evidence(self.logger, "CHK-NONVAC")
+
+    def check_phase(self) -> None:
+        self.finalize()

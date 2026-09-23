@@ -16,11 +16,16 @@ module cross_trigger_network
     import cross_trigger_network_pkg::*;
 
     `include "axi/typedef.svh"
+    `include "prim_assert.sv"
 #(
+    parameter int unsigned NUM_CTP          = DEFAULT_NUM_CTP,
+    parameter int unsigned NUM_INT_CT       = DEFAULT_NUM_INT_CT,
+    parameter int unsigned NUM_CLK_STOP_REQ = DEFAULT_NUM_CLK_STOP_REQ,
+
     // Internal CTP mode configuration (per internal CTP)
     // 0 = simple pulse synchronization (ack signals unused)
     // 1 = req/ack four-phase handshaking
-    parameter logic [DEFAULT_NUM_INT_CT-1:0] INT_CT_MODE = '0,
+    parameter logic [NUM_INT_CT-1:0] INT_CT_MODE = '0,
 
     // AXI-Lite interface types (parameterized for flexibility)
     parameter type axil_req_t  = ctn_axil_req_t,
@@ -35,41 +40,41 @@ module cross_trigger_network
     output axil_resp_t  axil_resp_o,
 
     // Clock stop control interface
-    input  logic [DEFAULT_NUM_CLK_STOP_REQ-1:0]  clk_stop_req_i,   // Clock stop requests from CLAs
-    input  logic                                 jtag_clock_stop_i, // JTAG DEBUG_CONTROL clock stop
-    output logic                                 stop_clks_o,      // Registered halt (JTAG OR CLA requests)
-    output logic                                 cla_clock_stop_o, // CLA clock stop status (for JTAG)
+    input  logic [NUM_CLK_STOP_REQ-1:0]  clk_stop_req_i,   // Clock stop requests from CLAs
+    input  logic                         jtag_clock_stop_i, // JTAG DEBUG_CONTROL clock stop
+    output logic                         stop_clks_o,      // Registered halt (JTAG OR CLA requests)
+    output logic                         cla_clock_stop_o, // CLA clock stop status (for JTAG)
 
     // Internal cross trigger interface (directly to/from CTM)
     // These connect to internal cross trigger sources/sinks (e.g., CLAs)
-    output logic [DEFAULT_NUM_INT_CT-1:0]  ctm_src_req_o,   // Requests sourced from CTM to internal sinks
-    input  logic [DEFAULT_NUM_INT_CT-1:0]  ctm_src_ack_i,   // Acks for CTM-sourced requests
-    input  logic [DEFAULT_NUM_INT_CT-1:0]  ctm_dst_req_i,   // Requests destined for CTM from internal sources
-    output logic [DEFAULT_NUM_INT_CT-1:0]  ctm_dst_ack_o,   // Acks for CTM-destined requests
+    output logic [NUM_INT_CT-1:0]  ctm_src_req_o,   // Requests sourced from CTM to internal sinks
+    input  logic [NUM_INT_CT-1:0]  ctm_src_ack_i,   // Acks for CTM-sourced requests
+    input  logic [NUM_INT_CT-1:0]  ctm_dst_req_i,   // Requests destined for CTM from internal sources
+    output logic [NUM_INT_CT-1:0]  ctm_dst_ack_o,   // Acks for CTM-destined requests
 
     // External CTP GPIO pad interface - CT_Req_out
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_req_out_dout_o,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_req_out_dout_en_o,
-    input  logic [DEFAULT_NUM_CTP-1:0]  ctp_req_out_din_i,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_req_out_din_en_o,
+    output logic [NUM_CTP-1:0]  ctp_req_out_dout_o,
+    output logic [NUM_CTP-1:0]  ctp_req_out_dout_en_o,
+    input  logic [NUM_CTP-1:0]  ctp_req_out_din_i,
+    output logic [NUM_CTP-1:0]  ctp_req_out_din_en_o,
 
     // External CTP GPIO pad interface - CT_Req_in
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_req_in_dout_o,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_req_in_dout_en_o,
-    input  logic [DEFAULT_NUM_CTP-1:0]  ctp_req_in_din_i,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_req_in_din_en_o,
+    output logic [NUM_CTP-1:0]  ctp_req_in_dout_o,
+    output logic [NUM_CTP-1:0]  ctp_req_in_dout_en_o,
+    input  logic [NUM_CTP-1:0]  ctp_req_in_din_i,
+    output logic [NUM_CTP-1:0]  ctp_req_in_din_en_o,
 
     // External CTP GPIO pad interface - CT_Ack_in
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_in_dout_o,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_in_dout_en_o,
-    input  logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_in_din_i,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_in_din_en_o,
+    output logic [NUM_CTP-1:0]  ctp_ack_in_dout_o,
+    output logic [NUM_CTP-1:0]  ctp_ack_in_dout_en_o,
+    input  logic [NUM_CTP-1:0]  ctp_ack_in_din_i,
+    output logic [NUM_CTP-1:0]  ctp_ack_in_din_en_o,
 
     // External CTP GPIO pad interface - CT_Ack_out
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_out_dout_o,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_out_dout_en_o,
-    input  logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_out_din_i,
-    output logic [DEFAULT_NUM_CTP-1:0]  ctp_ack_out_din_en_o
+    output logic [NUM_CTP-1:0]  ctp_ack_out_dout_o,
+    output logic [NUM_CTP-1:0]  ctp_ack_out_dout_en_o,
+    input  logic [NUM_CTP-1:0]  ctp_ack_out_din_i,
+    output logic [NUM_CTP-1:0]  ctp_ack_out_din_en_o
 );
 
     // Tie off unused signals to satisfy lint
@@ -80,13 +85,14 @@ module cross_trigger_network
     // Local Parameters
     //--------------------------------------------------------------------------
 
-    // Port counts, from cross_trigger_network_pkg
-    localparam int unsigned NUM_CTP          = DEFAULT_NUM_CTP;
-    localparam int unsigned NUM_INT_CT       = DEFAULT_NUM_INT_CT;
-    localparam int unsigned NUM_CLK_STOP_REQ = DEFAULT_NUM_CLK_STOP_REQ;
-
-    // Total number of CTM ports (external CTPs + internal CTPs)
+    // Total number of CTM ports (external CTPs + internal CTPs). The generated
+    // matrix register map has one CT_Src and one CT_Dst for each of these.
     localparam int unsigned NUM_CTM_PORTS = NUM_CTP + NUM_INT_CT;
+
+    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
+        CtmSrcMatchesElaboratedPorts_A, NUM_CTM_PORTS == cross_trigger_matrix_pkg::NUM_CT_SRC)
+    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
+        CtmDstMatchesElaboratedPorts_A, NUM_CTM_PORTS == cross_trigger_matrix_pkg::NUM_CT_DST)
 
     // Number of AXI-Lite master ports (external CTPs + CTM)
     // Internal CTPs don't have CSRs

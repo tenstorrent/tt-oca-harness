@@ -16,20 +16,14 @@ word can only follow a claim of the registered source. The handler's own
 `id != TEST_INTERRUPT_ID` branch is unreachable for that same reason and is
 not relied on here.
 
-Why this is worth a firmware test when the package prefers cocotb sequences:
-
-* **The CPU is the only master that can program this PLIC.** The aperture at
-  0xC400_0000 answers SEP_IN AXI reads but takes no writes from it -- measured
-  by `smc_cluster_plic_csr_test`, which is in the tree unenrolled with that
-  finding. So the enable/threshold/priority path simply cannot be driven from
-  a cocotb sequence in this integration, and firmware is not a stylistic
-  preference here but the only route.
-* **Nothing else claims.** `smc_ext_interrupts_pin_test` says so in its own
-  docstring -- it watches `ext_interrupts_i[0]` through the synchroniser and
-  "does not claim PLIC". `smc_hang_detector_plic_route_test` checks a route
-  with testbench probes and reads no PLIC register. This closes that loop:
-  pin -> synchroniser -> gateway -> enable and priority against threshold ->
-  MEIP -> trap -> claim -> the ID the CPU reads back -> complete.
+The CPU is the only master that can program this PLIC: the aperture at
+0xC400_0000 answers SEP_IN AXI reads but takes no writes from it, so the
+enable/threshold/priority path is driven by firmware. The path proven is
+pin -> synchroniser -> gateway -> enable and priority against threshold ->
+MEIP -> trap -> claim -> the ID the CPU reads back -> complete;
+`smc_ext_interrupts_pin_test` watches `ext_interrupts_i[0]` through the
+synchroniser only, and `smc_hang_detector_plic_route_test` checks a route with
+testbench probes and reads no PLIC register.
 
 The stimulus is `ext_interrupts_i[0]`, driven on the same `tb_ext_interrupt_0_i`
 that `smc_ext_interrupts_pin_test` drives. No forced internal state: the pin is
@@ -69,12 +63,9 @@ QUIET_CYCLES = 2_000
 # before it arms: __metal_driver_riscv_plic0_init walks all 336 sources,
 # disabling each and zeroing its priority, and plic_sanity.c clears every
 # context's enable words on top of that -- each one an MMIO round trip across
-# the cluster boundary. Measured on Verilator 5.050: the arm word appears at
-# 1.568 ms and the verdict at 1.589 ms, so PASS needs about 2400 iterations and
-# the default 2000 expires with hart0 still inside that loop at
-# __metal_driver_riscv_plic0_init+0x8a. 6000 is 2.5x the measurement, which
-# leaves headroom without making a genuine failure cost half an hour of
-# wall-clock before it reports.
+# the cluster boundary, so the verdict lands after the default bound. The
+# bound leaves a few multiples of headroom above that init time without letting
+# a genuine failure run long before it reports.
 POLL_ITERATIONS = 6_000
 
 

@@ -52,12 +52,12 @@ module smc_reset_ctrl (
   // Wait 32 cycles after power good de-assertion before broadcasting to rest of chip
   prim_sync_reset #(
     .WIDTH(32)
-  ) powergood_stretcher_n0_scan (
-    .clk(clk_ref_i),
-    .rst_n(powergood_i),
-    .test_mode(test_en_i),
-    .scan_rst_n(scan_rst_ni),
-    .sync_rst_n(powergood_stable)
+  ) u_powergood_stretcher_n0_scan (
+    .clk_i(clk_ref_i),
+    .rst_ni(powergood_i),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(powergood_stable)
   );
 
   /////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,11 +80,11 @@ module smc_reset_ctrl (
     end
   end
 
-  prim_rstbypass_stdmux2 cold_rst_pre_extend_rstbypass (
-    .i_reset_n(cold_rst_deglitch_to_rstbypass),
-    .i_test_reset_n(scan_rst_ni),
-    .i_test_mode(test_en_i),
-    .o_reset_n(cold_rst_pre_extend)
+  prim_rstbypass_stdmux2 u_cold_rst_pre_extend_rstbypass (
+    .rst_ni(cold_rst_deglitch_to_rstbypass),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no(cold_rst_pre_extend)
   );
 
   // Cold reset extender circuit

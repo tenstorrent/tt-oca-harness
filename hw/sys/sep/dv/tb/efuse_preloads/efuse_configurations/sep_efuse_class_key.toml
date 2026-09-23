@@ -4,11 +4,13 @@
 # TEST_DEV lifecycle carrying the class key the encrypted-payload test decrypts.
 #
 # CLASS_KEY is the KBKDF root: ROM derives the payload AES key from it, so this
-# value must stay byte-identical to the key pack_images.py encrypts with, or
-# sep_firmware_encrypted_boot_test decrypts to garbage. It is a published test
-# vector, not a device secret.
+# value must stay byte-identical to the secret the packer encrypts with --
+# configs/oca_encrypted_boot_test.yaml `encryption_secret`, the 32 bytes
+# 00 01 .. 1f, stored little-endian -- or the payload decrypts to garbage. It is
+# a published test vector, not a device secret. No testcase reads this preload
+# today; sep_rom_oca_encrypted_boot_test builds its eFuse image in Python.
 #
-# TEST_DEV rather than PROD on purpose: the test exercises decryption, and PROD
+# TEST_DEV rather than PROD: the test exercises decryption, and PROD
 # would additionally demand a valid signature, so a signature failure could mask
 # a decryption failure.
 
@@ -18,4 +20,4 @@
 
 [CLASS_KEY]
   [CLASS_KEY.fields.key]
-  value = 0x0000000000000000000000000000000054e01f1d0eb208a04dbd502a53bda99b
+  value = 0x1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100

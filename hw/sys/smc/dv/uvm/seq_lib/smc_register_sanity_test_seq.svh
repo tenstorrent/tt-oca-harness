@@ -73,7 +73,9 @@ class smc_register_sanity_test_seq extends smc_base_test_seq;
 
     wait_fuse_sense_done();
 
-    foreach (cases[i]) csr_read_check(ChkCsrIdle, cases[i].addr, 32'h0, {cases[i].name, ".idle"});
+    foreach (cases[i])
+      csr_read_check(ChkCsrIdle, cases[i].addr, 32'(SCRATCH_SCRATCH_REG_DEFAULT), {
+                     cases[i].name, ".idle"});
 
     foreach (cases[i]) begin
       csr_write(cases[i].addr, cases[i].pattern, {cases[i].name, ".directed"});
@@ -90,8 +92,9 @@ class smc_register_sanity_test_seq extends smc_base_test_seq;
     end
 
     foreach (cases[i]) begin
-      csr_write(cases[i].addr, 32'h0, {cases[i].name, ".restore"});
-      csr_read_check(ChkCsrRestore, cases[i].addr, 32'h0, {cases[i].name, ".restore"});
+      csr_write(cases[i].addr, 32'(SCRATCH_SCRATCH_REG_DEFAULT), {cases[i].name, ".restore"});
+      csr_read_check(ChkCsrRestore, cases[i].addr, 32'(SCRATCH_SCRATCH_REG_DEFAULT), {
+                     cases[i].name, ".restore"});
     end
 
     check_evidence(

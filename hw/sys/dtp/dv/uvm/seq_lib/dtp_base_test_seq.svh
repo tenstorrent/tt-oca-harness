@@ -51,15 +51,18 @@ class dtp_base_test_seq extends ocah_sequence;
   // while executing a TAP_RESET item.
   virtual ocah_jtag_if jtag_vif;
   // Env-owned evidence and observation handles: the aggregate JTAG
-  // recorder, the pin-level scan reconstruction (a scenario clears the
-  // handle to skip scan-length evidence), and the scan-window monitor.
+  // recorder, the pin-level scan reconstruction with the DUT's Shift-x
+  // episodes (a scenario clears the handle to skip scan-length evidence),
+  // and the scan-window monitor.
   ocah_jtag_checker       evidence;
-  ocah_jtag_scan_builder  scan_builder;
+  dtp_jtag_scan_builder   scan_builder;
   dtp_scan_window_monitor scan_window;
 
   // TAP state tracked across operations (each operation re-syncs the VIP
   // model from it and hands the landing state back).
   protected ocah_jtag_tap_state_e m_tap_state = OCAH_JTAG_TEST_LOGIC_RESET;
+  // TAP state sampled by set_trst with TRST_N low and no TCK edge since.
+  protected bit [15:0] m_trst_async_state;
 
   function new(string name = "dtp_base_test_seq");
     super.new(name);
@@ -170,7 +173,7 @@ class dtp_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   // `checker_tag` because bare `checker` is an IEEE 1800 reserved word.
-  function void check_state(tap_state_e expected, string checker_tag, string what);
+  function void check_state(dtp_tap_state_e expected, string checker_tag, string what);
     if (tb_vif.tap_state !== expected)
       `uvm_error(checker_tag, $sformatf(
                  "%s: expected TAP state %s (0x%04h), got 0x%04h",
@@ -184,10 +187,27 @@ class dtp_base_test_seq extends ocah_sequence;
                 UVM_MEDIUM)
   endfunction
 
+  // CHK-RESET-COUNT: the tb_top assertion counter of a reset this sequence
+  // drove advanced by exactly one across the pulse, so a reset claim rests
+  // on a reset that happened rather than on the checks it withdrew.
+  function void check_reset_counted(string which, logic [31:0] before_count,
+                                    logic [31:0] after_count, string context_s);
+    string ctx = $sformatf(
+        "%s before=%0d after=%0d %s", which, before_count, after_count, context_s
+    );
+    if (evidence != null)
+      void'(evidence.expect_equal("CHK-RESET-COUNT", 64'(after_count - before_count), 64'd1, ctx));
+    else if (after_count !== before_count + 32'd1)
+      `uvm_error("reset_count_chk", {"reset assertion counter did not advance: ", ctx})
+    else `uvm_info("reset_count_chk", {"reset counted: ", ctx}, UVM_MEDIUM)
+  endfunction
+
   // Power-on/system reset sequencing (DTP-local, via dtp_tb_if), the same
   // ladder the base test walks at bring-up. The JTAG pins idle under the
   // VIP driver (tck=0, tms=1, trst_n=1); tap_reset() follows.
   task sys_reset();
+    logic [31:0] por_before = tb_vif.por_assert_count;
+    logic [31:0] sys_before = tb_vif.sys_rst_assert_count;
     `uvm_info(get_type_name(), "sequencing power-on and system resets", UVM_MEDIUM)
     tb_vif.por_rst_n <= 1'b0;
     tb_vif.sys_rst_n <= 1'b0;
@@ -196,6 +216,9 @@ class dtp_base_test_seq extends ocah_sequence;
     wait_sys_cycles(SysResetHoldCycles);
     tb_vif.sys_rst_n <= 1'b1;
     wait_sys_cycles(PostResetCycles);
+    check_reset_counted("por_assert_count", por_before, tb_vif.por_assert_count, "sys_reset");
+    check_reset_counted("sys_rst_assert_count", sys_before, tb_vif.sys_rst_assert_count,
+                        "sys_reset");
   endtask
 
   // TAP reset: TRST pulse via the driver -> Test-Logic-Reset.
@@ -217,27 +240,41 @@ class dtp_base_test_seq extends ocah_sequence;
     check_state(TEST_LOGIC_RESET, "sanity_scan_path_chk", "after 5x TMS=1");
   endtask
 
-  // Hold or release TRST directly (active-low), stepping TCK with TMS=1 so
-  // the env's per-cycle FSM checker prediction (TLR self-loop) stays valid
-  // while the asynchronous reset dominates.
+  // Hold or release TRST directly (active-low). Asserting samples the TAP
+  // state once the pin has settled and before any TCK edge (the driver
+  // idles TCK between items), then clocks TCK with TMS low, which leaves
+  // Test-Logic-Reset unless the reset holds the controller there. Releasing
+  // clocks TCK with TMS high, the Test-Logic-Reset self-loop.
   task set_trst(bit value, int unsigned cycles = 1);
     if (jtag_vif == null)
       `uvm_fatal(get_type_name(), "set_trst() needs jtag_vif plumbed by the test")
     jtag_vif.trst_n <= value;
-    repeat (cycles > 0 ? cycles : 1) step(1'b1);
+    if (value == 1'b0) begin
+      wait_sys_cycles(1);
+      m_trst_async_state = tb_vif.tap_state;
+    end
+    repeat (cycles > 0 ? cycles : 1) step(value);
     if (value == 1'b0) begin
       sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
       if (evidence != null) evidence.reset_model();
     end
   endtask
 
+  // The TAP state set_trst sampled under TRST_N before any TCK edge.
+  function bit [15:0] trst_async_state();
+    return m_trst_async_state;
+  endfunction
+
   // Pulse power-on reset while TCK keeps stepping with TMS=1 (the TAP's
   // POR independence contract is checked by the caller from tb_vif state).
   task pulse_por(int unsigned cycles = 5);
+    logic [31:0] before_count = tb_vif.por_assert_count;
     tb_vif.por_rst_n <= 1'b0;
     repeat (cycles > 0 ? cycles : 1) step(1'b1);
     tb_vif.por_rst_n <= 1'b1;
     wait_sys_cycles(DbgDisableSysCycles);
+    check_reset_counted("por_assert_count", before_count, tb_vif.por_assert_count, $sformatf(
+                        "pulse_por cycles=%0d", cycles));
   endtask
 
   // IR scan from Run-Test/Idle (LSB-first), back to Run-Test/Idle.
@@ -318,19 +355,28 @@ class dtp_base_test_seq extends ocah_sequence;
   virtual function void note_scan(bit is_ir, int unsigned width);
   endfunction
 
-  // CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN: the newest reconstructed scan of
-  // this kind (published on the Shift->Exit1 edge, cycles before the
-  // driver's back-to-RTI leg completes) must span exactly the driven width.
+  // CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN: the TCK cycles the DUT's exported TAP
+  // state (jtag_ptap_state_o) spent in Shift-x for the newest scan of this
+  // kind equal the width the sequence drove. The episode closes on the
+  // Shift->Exit1 edge, cycles before the driver's back-to-RTI leg completes.
   function void check_last_scan_length(bit is_ir, int unsigned width, string context_s);
-    ocah_jtag_scan_item item;
+    int unsigned observed;
     if (evidence == null || scan_builder == null) return;
-    if (is_ir ? scan_builder.ir_items.size() == 0 : scan_builder.dr_items.size() == 0) begin
-      `uvm_error("sanity_scan_len_chk", $sformatf("no reconstructed %s scan observed (%s)",
-                                                  is_ir ? "IR" : "DR", context_s))
+    if (is_ir ? scan_builder.dut_ir_shift_lens.size() == 0 :
+        scan_builder.dut_dr_shift_lens.size() == 0) begin
+      `uvm_error("sanity_scan_len_chk", $sformatf(
+                                            "the DUT TAP state showed no Shift-%s episode (%s)",
+                                            is_ir ? "IR" : "DR", context_s))
       return;
     end
-    item = is_ir ? scan_builder.ir_items[$] : scan_builder.dr_items[$];
-    void'(evidence.check_scan_length(item, width, context_s));
+    observed = is_ir ? scan_builder.dut_ir_shift_lens[$] : scan_builder.dut_dr_shift_lens[$];
+    void'(evidence.expect_equal(
+        is_ir ? "CHK-SCAN-IR-LEN" : "CHK-SCAN-DR-LEN",
+        64'(observed),
+        64'(width),
+        $sformatf(
+            "kind=%s source=jtag_ptap_state_o %s", is_ir ? "IR" : "DR", context_s)
+    ));
   endfunction
 
   // Read the 32-bit device-identification register via IDCODE.
@@ -369,9 +415,7 @@ class dtp_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   // System-clock cycles: the sequence layer holds no clock handle, so the
-  // wait is derived from the period the env published on tb_if (the one
-  // time-derived wait in DTP class code outside drivers and the reset
-  // ladder).
+  // wait is derived from the period the env published on tb_if.
   task wait_sys_cycles(int unsigned cycles = 4);
     if (tb_vif.clk_period_ns == 0)
       `uvm_fatal(get_type_name(), "tb_if.clk_period_ns is 0; the env did not publish it")
@@ -397,16 +441,19 @@ class dtp_base_test_seq extends ocah_sequence;
 
   // Pulse rst_n_i without POR/TRST, preserving TAP accessibility.
   task pulse_system_reset(int unsigned cycles = 5);
+    logic [31:0] before_count = tb_vif.sys_rst_assert_count;
     tb_vif.sys_rst_n <= 1'b0;
     wait_sys_cycles(cycles);
     tb_vif.sys_rst_n <= 1'b1;
     wait_sys_cycles(cycles);
+    check_reset_counted("sys_rst_assert_count", before_count, tb_vif.sys_rst_assert_count,
+                        $sformatf("pulse_system_reset cycles=%0d", cycles));
   endtask
 
   // Drive the lifecycle disable vector, then settle through the DUT's
   // 2-stage TCK-domain synchronizers.
   task set_dbg_disable(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
-    tb_vif.dbg_disable <= d;
+    tb_vif.drive_dbg_disable(d);
     for (int unsigned i = 0; i < DbgDisableTckCycles; i++) step(1'b0);
     wait_sys_cycles(DbgDisableSysCycles);
     `uvm_info(get_type_name(), $sformatf("dbg_disable=0x%03h", d), UVM_MEDIUM)

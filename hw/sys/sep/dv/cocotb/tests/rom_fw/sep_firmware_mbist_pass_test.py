@@ -5,39 +5,30 @@
 The pass-side partner of ``sep_firmware_mbist_fail_test``. Same gate, same
 injection mechanism, opposite stimulus and opposite expectation.
 
-WHAT THIS SETTLES OF Q07, AND WHAT IT DOES NOT. Q07 asks for the MBIST register
-LOCATION and its pass/fail ENCODING, confirmed from RTL.
+THE REGISTER, FROM THE RTL. Encoding:
+``hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl`` declares
+``mem_repair_done[0]``, ``mem_repair_success[1]``, ``mem_repair_abort[2]``,
+``mbist_done[4]``, ``mbist_pass[8]`` and ``mbist_abort[12]``; the gate keys on
+``mem_repair_success`` AND ``mbist_pass``, after waiting for ``mbist_done``.
+Location: ``smc_addr.h`` places ``SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR`` at
+0xC000_B800, seen from SEP as 0x4000_B800. 0x4000_F800 is unmapped here -- the gap
+between ``DFX_CTRL_DEBUG_BUS_MUX`` (0xC000_B810) and ``SMC_BASE_CONFIG``
+(0xC001_0000) -- so a ROM reading it would see only the flat responder's answer.
 
-  * Encoding: settled from the RTL register description, not from the firmware
-    header. ``hw/sys/smc/regs/blocks/dfx_ctrl_status/dfx_ctrl_status.rdl`` declares
-    ``mem_repair_done[0]``, ``mem_repair_success[1]``, ``mem_repair_abort[2]``,
-    ``mbist_done[4]``, ``mbist_pass[8]`` and ``mbist_abort[12]``. The gate now keys
-    on ``mem_repair_success`` AND ``mbist_pass``, after waiting for ``mbist_done``.
-  * Location: SETTLED, and the answer was that the ROM had it wrong. The
-    authority is this design's generated SMC map: ``smc_addr.h`` places
-    ``SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR`` at 0xC000_B800, seen from SEP as
-    0x4000_B800. The ROM read 0x4000_F800, which is unmapped here -- the gap
-    between ``DFX_CTRL_DEBUG_BUS_MUX`` (0xC000_B810) and ``SMC_BASE_CONFIG``
-    (0xC001_0000). Corrected under A51, together with three other drifted
-    offsets (scratch base and both fuse-map entries).
+Note what this testcase does NOT do, because it shapes how much the run
+below proves: the SMC responder is a flat memory that answers at whatever
+address the ROM presents, so every candidate offset "works" and no test in
+this suite can fail on the address. ``tb_top.sv`` carries an address-decode
+check (``smc_addr_violations_o``) that errors on any SEP->SMC access outside
+a window declared in ``smc_addr.h``, so the class of defect is detectable
+-- but this test does not target the address itself.
 
-    Note what this testcase does NOT do, because it shapes how much the run
-    below proves: the SMC responder is a flat memory that answers at whatever
-    address the ROM presents, so every candidate offset "works" and no test in
-    this suite can fail on the address. ``tb_top.sv`` carries an address-decode
-    check (``smc_addr_violations_o``) that errors on any SEP->SMC access outside
-    a window declared in ``smc_addr.h``, so the class of defect is detectable
-    -- but this test does not target the address itself.
+THE GATE THIS ARM EXERCISES. A gate reading ``mem_repair_success`` alone would be a
+memory-repair gate wearing an MBIST name, and the pass/fail pair would not notice:
+its pass arm boots with ``mbist_pass`` CLEAR. The injection is therefore 0x112, not
+0x02, so both arms are load-bearing.
 
-THE GATE THIS ARM EXERCISES, AND THAT IT CHANGED. It used to read
-``mem_repair_success`` alone, and this test used to inject 0x02. That was a
-memory-repair gate wearing an MBIST name, and the pass/fail pair proved it: the
-pass arm booted with ``mbist_pass`` CLEAR. F002 ("Verify BL0 checks SMU MBIST
-results") was therefore not implemented, while its testcases were green --
-faithful to the ROM, and blind to the spec. Corrected under A46; see
-``dv/docs/rom_boot_flow_vs_reference.md`` finding N.
-
-The gate is now two arms (``bootrom/prod/src/vector.S``)::
+The gate is two arms (``bootrom/prod/src/vector.S``)::
 
     # arm 1: memory repair, skipped entirely if BYPASS_SRAM_REPAIR is strapped
     and  t2, straps_lo, STRAP_BYPASS_SRAM_REPAIR
@@ -74,8 +65,8 @@ additionally rules out the plausible wrong implementations:
     block on repair, and 0x12 must still block on MBIST. The three together pin
     the ROM to bits 1, 4 and 8.
 
-WHAT A PASS HERE DOES NOT COVER. FIVE paths through this gate have no testcase and
-must be treated as unverified:
+WHAT A PASS HERE DOES NOT COVER. Five paths through this gate are outside this
+test:
 
   1. the ``BYPASS_SRAM_REPAIR`` strap arm (arm 1 skipped entirely);
   2. the ``MBIST_BYPASS`` strap arm (arm 2 skipped entirely);
@@ -85,13 +76,10 @@ must be treated as unverified:
      itself is covered by ``sep_mbist_fail_continue_test``, but that test enters
      it from the REPAIR failure; no test reaches the fuse from an MBIST failure.
 
-Item 4 is WRITABLE, not structurally unreachable: this test leaves the SMC
-responder's word static, so ``mbist_done`` never rises mid-run, but
-``+sep_dft_status=00000002`` leaves it clear
-so the loop runs its full 10000 iterations and then times out -- exercising both
-the back edge and the timeout exit in one run, for roughly 300K cycles. Stimulus
-for items 1 and 2 exists as well (``+sep_straps_lo`` / ``+sep_straps_hi``);
-``+sep_straps_lo`` currently has zero users in any testlist.
+Item 4 is reachable with ``+sep_dft_status=00000002``: ``mbist_done`` stays
+clear, so the loop runs its full 10000 iterations and times out, exercising the
+back edge and the timeout exit in one run (roughly 300K cycles). Items 1 and 2
+are reachable with ``+sep_straps_lo`` / ``+sep_straps_hi``.
 
 This test also says nothing about SPI vs SMC-SRAM transport -- the gate is
 upstream of that split -- it merely reuses the OT-SPI boot as the "and then it
@@ -114,9 +102,8 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 # the gate polls for it before trusting the verdict, because the hardware releases
 # the SEP CPU after repair alone and MBIST may still be running.
 #
-# This was 0x2 while the gate read only mem_repair_success. That value now hangs,
-# and correctly so: with mbist_done clear the gate waits for MBIST, times out and
-# treats it as a failure.
+# 0x2 (mem_repair_success alone) hangs: with mbist_done clear the gate waits for
+# MBIST, times out and treats it as a failure.
 #
 # The MBIST arm's FAILURE path is covered by sep_firmware_mbist_only_fail_test,
 # which injects 0x12 (mem_repair_success + mbist_done, mbist_pass CLEAR) so it
@@ -139,9 +126,8 @@ _STATUS_MBIST_WARN = 0x0801_0000 | 0x219  # WARN + SEP_MSG_MBIST_FAIL
 _STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | 0xD001  # ERROR + ROM_ERR_DFT_GATE_BLOCKED
 # Written by vector.S immediately BEFORE the gate: the
 # STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_BOOTROM_PRESTART_DONE) store, the last
-# thing that runs ahead of the `lw` of DFX_CTRL_STATUS_SMU. (Named by symbol, not
-# by line: the line numbers in this file went stale once already when the gate
-# grew.) Its presence places execution at the gate's
+# thing that runs ahead of the `lw` of DFX_CTRL_STATUS_SMU. Its presence places
+# execution at the gate's
 # doorstep, so "the boot completed" is a statement about this gate rather than
 # about some path that never reached it.
 _STATUS_PRESTART_DONE = 0x8001_0056

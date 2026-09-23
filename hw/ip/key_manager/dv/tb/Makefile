@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# Key Manager standalone cocotb/VCS testbench (open tree).
+# Key Manager standalone cocotb/VCS testbench.
 #
 # Design RTL is gathered from Bender (see bender-targets.mk); the testbench top
-# tb_key_manager.sv is added below. Firmware images are built by the shared open
+# tb_key_manager.sv is added below. Firmware images are built by the shared
 # DV firmware dispatcher (`make -f ocah.mk ocah-dv-fw-tests TARGET=key_manager`)
 # which emits per-test ROM/VROM hex under hw/ip/key_manager/dv/fw/build/tests/.
 
@@ -16,7 +16,9 @@ else ifndef OCH_ROOT
   $(error Not in a git repository and OCH_ROOT is not set)
 endif
 export OCH_ROOT
-SHELL := /bin/bash
+# cocotb's Makefile.inc resets SHELL to bash once it is included; .SHELLFLAGS
+# stays at its default so that reassignment keeps every later shell call valid.
+SHELL := bash
 
 KM_ROOT := $(OCH_ROOT)/hw/ip/key_manager
 FW_BUILD_TESTS := $(KM_ROOT)/dv/fw/build/tests
@@ -193,17 +195,16 @@ $(TB_FILELIST): $(RTL_FILELIST) $(TB_SV_FILE) | $(TEST_LOG_DIR)
 $(SIM_BUILD): $(TB_FILELIST)
 
 #===========================================================================
-# Firmware images (built by the shared open DV firmware dispatcher)
+# Firmware images (built by the shared DV firmware dispatcher)
 #===========================================================================
-# Toolchain resolution mirrors the SMC/SEP cgen stages (see
-# hw/sys/sep/dv/sep_sim_cfg.toml's [c_build] blocks): an explicit
-# RISCV_TOOLCHAIN wins outright, since that is the one contract that lets a
-# toolchain off the standard PATH be used (hw/common/dv/fw/compile.mk).
-# Otherwise probe whatever `riscv64-unknown-elf-gcc`/`riscv-none-elf-gcc` is
-# on PATH for picolibc.specs -- compile.mk always builds with
-# --specs=picolibc.specs, and a stock or site RISC-V toolchain rarely ships
-# it. Only fall back to the toolchain container when neither resolves, so a
-# host with a working toolchain never touches Docker/Podman.
+# Firmware compiles in the OCAH toolchain container unless RISCV_TOOLCHAIN
+# names a directory of `riscv64-unknown-elf-*` or `riscv-none-elf-*` tools whose
+# gcc has picolibc.specs (compile.mk builds with --specs=picolibc.specs). That
+# variable is the only host override, the same contract as the SMC/SEP cgen
+# stages (hw/sys/sep/dv/sep_sim_cfg.toml [c_build] blocks); a toolchain on PATH
+# is not consulted. `run-here` keeps host paths 1:1 so the absolute -C
+# $(OCH_ROOT) resolves inside the sandbox, where RISCV_TOOLCHAIN/RISCV_PREFIX
+# are unset so compile.mk takes the sandbox's own tools.
 FW_DISPATCH_MK := -C $(OCH_ROOT) -f ocah.mk ocah-dv-fw-tests OCAH_ROOT=$(OCH_ROOT) TARGET=key_manager
 define ocah_km_fw_dispatch
 set -e; \
@@ -214,14 +215,13 @@ if [ -n "$$RV_TC" ] && [ -z "$$RV_PFX" ]; then \
 	else RV_PFX=riscv64-unknown-elf-; fi; \
 fi; \
 if [ -z "$$RV_PFX" ]; then RV_PFX=riscv64-unknown-elf-; fi; \
-if [ -n "$$RV_TC" ]; then GCC="$$RV_TC/$$RV_PFX"gcc; else GCC="$$RV_PFX"gcc; fi; \
-if command -v "$$GCC" >/dev/null 2>&1 && "$$GCC" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then \
+if [ -n "$$RV_TC" ] && "$$RV_TC/$$RV_PFX"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then \
 	$(MAKE) $(FW_DISPATCH_MK) RISCV_TOOLCHAIN="$$RV_TC" RISCV_PREFIX="$$RV_PFX" $(1); \
 elif [ -x $(OCH_ROOT)/scripts/docker-run.sh ]; then \
-	echo "[build_fw] no picolibc-enabled RISC-V toolchain found ('$$GCC'); building key_manager firmware in the OCAH toolchain container"; \
+	echo "[build_fw] RISCV_TOOLCHAIN is unset or has no picolibc; building key_manager firmware in the OCAH toolchain container"; \
 	env -u RISCV_TOOLCHAIN -u RISCV_PREFIX $(OCH_ROOT)/scripts/docker-run.sh run-here $(MAKE) $(FW_DISPATCH_MK) $(1); \
 else \
-	echo "error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh" >&2; exit 1; \
+	echo "error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh" >&2; exit 1; \
 fi
 endef
 
@@ -265,7 +265,7 @@ else ifeq ($(VUART_PRINT),1)
   SIM_ARGS += +VUART_PRINT=1
 endif
 
-# Build one firmware image via the open dispatcher.
+# Build one firmware image via the shared dispatcher.
 .PHONY: build_fw
 build_fw:
 ifndef FW_TEST
@@ -274,7 +274,7 @@ endif
 	@echo "Building firmware via open dispatcher: $(FW_TEST)"
 	@$(call ocah_km_fw_dispatch,TEST=$(FW_TEST))
 
-# Build all discovered firmware images via the open dispatcher.
+# Build all discovered firmware images via the shared dispatcher.
 .PHONY: build_all_fw
 build_all_fw:
 	@echo "Building all key_manager firmware via open dispatcher..."
@@ -314,7 +314,7 @@ compile_first: $(SIM_BUILD)/simv
 #===========================================================================
 # Regression: build all firmware, compile once, run every test in parallel
 #===========================================================================
-# Discover firmware tests from the open DV firmware tree (per-test directories).
+# Discover firmware tests from the DV firmware tree (per-test directories).
 FW_TESTS := $(notdir $(wildcard $(KM_ROOT)/dv/fw/tests/test_*))
 
 # Concurrent simulations. Each job is one simv process of a small design, so the
@@ -335,7 +335,7 @@ REGRESSION_JOBS := $(addprefix regression-run-,$(FW_TESTS))
 
 # One test. Failures are recorded rather than raised so that a single bad test
 # does not stop the other jobs; the summary below turns the status files into the
-# regression's exit code. Deliberately not .PHONY: make does not apply pattern
+# regression's exit code. Not .PHONY: make does not apply pattern
 # rules to phony targets, and nothing creates a file by this name anyway, so the
 # recipe runs on every invocation.
 regression-run-%:
@@ -396,8 +396,8 @@ help:
 	@echo "Common variables:"
 	@echo "  TEST=<name>        - Cocotb test selector (default: test_rom_interface)"
 	@echo "  FW_TEST=<name>     - Firmware test to build/run with generic runner"
-	@echo "  RISCV_TOOLCHAIN=<dir> - Toolchain dir (riscv64-unknown-elf-* tools); falls"
-	@echo "                     back to PATH, then the toolchain container"
+	@echo "  RISCV_TOOLCHAIN=<dir> - Picolibc-enabled toolchain dir (riscv64-unknown-elf-*"
+	@echo "                     tools); unset, firmware builds in the toolchain container"
 	@echo "  WAVES=1 FSDB=1     - Waveform dumping (VCD default; FSDB optional)"
 	@echo "  DEBUG=1            - Broader VCS debug access"
 	@echo "  VUART_PRINT=1      - Enable VUART printf output"

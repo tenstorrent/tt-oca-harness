@@ -15,6 +15,26 @@
 control/status registers, mailbox, and external crypto engine ports.
 This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:description>
       <ipxact:addressBlock>
+        <ipxact:name>rom</ipxact:name>
+        <ipxact:displayName>Key Manager ROM</ipxact:displayName>
+        <ipxact:description>Key Manager boot ROM</ipxact:description>
+        <ipxact:baseAddress>'h0</ipxact:baseAddress>
+        <ipxact:range>'h4000</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:usage>memory</ipxact:usage>
+        <ipxact:access>read-only</ipxact:access>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
+        <ipxact:name>sram</ipxact:name>
+        <ipxact:displayName>Key Manager SRAM</ipxact:displayName>
+        <ipxact:description>Key Manager data and executable SRAM</ipxact:description>
+        <ipxact:baseAddress>'h8000</ipxact:baseAddress>
+        <ipxact:range>'h8000</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:usage>memory</ipxact:usage>
+        <ipxact:access>read-write</ipxact:access>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
         <ipxact:name>mailbox_km</ipxact:name>
         <ipxact:displayName>Key Manager Mailbox KM Side</ipxact:displayName>
         <ipxact:description>Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</ipxact:description>
@@ -1005,8 +1025,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>SPI_CONFIG_EN_WRITE_LOCK</ipxact:name>
-            <ipxact:description>spi_config_en_write_lock, when set, the SPI_CONFIG group is not write-able (neither the eFuse nor the shadow register)</ipxact:description>
+            <ipxact:name>SYSCLK_FREQ_MHZ_WRITE_LOCK</ipxact:name>
+            <ipxact:description>sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</ipxact:description>
             <ipxact:bitOffset>36</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1018,8 +1038,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>SPI_CONFIG_EN_READ_LOCK</ipxact:name>
-            <ipxact:description>spi_config_en_read_lock, when set, the SPI_CONFIG group is not read-able (neither the eFuse nor the shadow register)</ipxact:description>
+            <ipxact:name>SYSCLK_FREQ_MHZ_READ_LOCK</ipxact:name>
+            <ipxact:description>sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</ipxact:description>
             <ipxact:bitOffset>37</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1582,15 +1602,41 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>SPARE_LOCK_RSVD</ipxact:name>
-            <ipxact:description>Unassigned lock slots 40-47. Reserved for future field lock assignments.</ipxact:description>
+            <ipxact:name>SPARE8_WRITE_LOCK</ipxact:name>
+            <ipxact:description>spare8_write_lock (slot 40): when set, spare8 is not write-able.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>SPARE8_READ_LOCK</ipxact:name>
+            <ipxact:description>spare8_read_lock (slot 40): when set, spare8 is not read-able.</ipxact:description>
+            <ipxact:bitOffset>17</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>SPARE_LOCK_RSVD</ipxact:name>
+            <ipxact:description>Unassigned lock slots 41-47. Reserved for future field lock assignments.</ipxact:description>
+            <ipxact:bitOffset>18</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>14</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
@@ -2198,26 +2244,13 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
-          <ipxact:name>SEP_SPI_CTRL_FIELD_EN</ipxact:name>
+          <ipxact:name>SYSCLK_FREQ_MHZ</ipxact:name>
           <ipxact:addressOffset>'h174</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
-            <ipxact:name>spi_control_field_en</ipxact:name>
-            <ipxact:description>8 bit which indicates the following 8 spi config regs are enabled or not. SPI_CONFIG_EN[7:0] corresponds to SPI config words 1-8. When bit N is set, configuration register N+1 is valid in fuses and will be written into the specified SPI configuration register during SPI controller initialization. 1-&gt;enabled; 0-&gt;disabled</ipxact:description>
+            <ipxact:name>sysclk_freq_mhz</ipxact:name>
+            <ipxact:description>Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>smu_pll_sysclk</ipxact:name>
-            <ipxact:description>11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0</ipxact:description>
-            <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -2228,166 +2261,22 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>spi_control_field_en_rsvd</ipxact:name>
-            <ipxact:description>Reserved 13 bits</ipxact:description>
-            <ipxact:bitOffset>19</ipxact:bitOffset>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:description>Reserved</ipxact:description>
+            <ipxact:bitOffset>11</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>13</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_DISCOVERY_CTRL</ipxact:name>
-          <ipxact:addressOffset>'h178</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>discovery</ipxact:name>
-            <ipxact:description>spi discovery control reg</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_PHY_DQ_TIMING</ipxact:name>
-          <ipxact:addressOffset>'h17c</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>dq_timing</ipxact:name>
-            <ipxact:description>spi phy dq timing reg</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_PHY_DQS_TIMING</ipxact:name>
-          <ipxact:addressOffset>'h180</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>dqs_timing</ipxact:name>
-            <ipxact:description>spi phy dqs timing reg</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_PHY_GATE_LPBK</ipxact:name>
-          <ipxact:addressOffset>'h184</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>gate_lpbk</ipxact:name>
-            <ipxact:description>spi phy gate lpbk ctrl reg</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_PHY_DLL_SLAVE</ipxact:name>
-          <ipxact:addressOffset>'h188</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>dll_slave</ipxact:name>
-            <ipxact:description>spi phy dll slv ctrl reg</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_PHY_DLL_MASTER</ipxact:name>
-          <ipxact:addressOffset>'h18c</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>dll_master</ipxact:name>
-            <ipxact:description>spi phy dll mst ctrl reg</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_PHY_MISC</ipxact:name>
-          <ipxact:addressOffset>'h190</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>misc</ipxact:name>
-            <ipxact:description>spi init phy misc</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>SPI_RB_VALID_TIME</ipxact:name>
-          <ipxact:addressOffset>'h194</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>rb_valid_time</ipxact:name>
-            <ipxact:description>spi init rb valid time</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:bitWidth>21</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>CHIPLET_PUBK_HASH0</ipxact:name>
-          <ipxact:addressOffset>'h198</ipxact:addressOffset>
+          <ipxact:addressOffset>'h178</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2405,7 +2294,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>CHIPLET_PUBK_HASH1</ipxact:name>
-          <ipxact:addressOffset>'h1b8</ipxact:addressOffset>
+          <ipxact:addressOffset>'h198</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2423,7 +2312,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>REQUIRED_SIGNERS</ipxact:name>
-          <ipxact:addressOffset>'h1d8</ipxact:addressOffset>
+          <ipxact:addressOffset>'h1b8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>required_signers</ipxact:name>
@@ -2454,7 +2343,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>REQUIRED_ALGS</ipxact:name>
-          <ipxact:addressOffset>'h1dc</ipxact:addressOffset>
+          <ipxact:addressOffset>'h1bc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>chiplet_algs</ipxact:name>
@@ -2511,7 +2400,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>CHIPLET_PUBK_PQC_HASH0</ipxact:name>
-          <ipxact:addressOffset>'h1e0</ipxact:addressOffset>
+          <ipxact:addressOffset>'h1c0</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2529,7 +2418,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>CHIPLET_PUBK_PQC_HASH1</ipxact:name>
-          <ipxact:addressOffset>'h200</ipxact:addressOffset>
+          <ipxact:addressOffset>'h1e0</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2547,7 +2436,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SIP_PUBK_PQC_HASH0</ipxact:name>
-          <ipxact:addressOffset>'h220</ipxact:addressOffset>
+          <ipxact:addressOffset>'h200</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2565,7 +2454,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SYS_PUBK_PQC_HASH</ipxact:name>
-          <ipxact:addressOffset>'h240</ipxact:addressOffset>
+          <ipxact:addressOffset>'h220</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2583,7 +2472,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SIP_PUBK_HASH1</ipxact:name>
-          <ipxact:addressOffset>'h260</ipxact:addressOffset>
+          <ipxact:addressOffset>'h240</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2601,7 +2490,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SIP_PUBK_PQC_HASH1</ipxact:name>
-          <ipxact:addressOffset>'h280</ipxact:addressOffset>
+          <ipxact:addressOffset>'h260</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
@@ -2619,7 +2508,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SEP_CHIPLET_ID</ipxact:name>
-          <ipxact:addressOffset>'h2a0</ipxact:addressOffset>
+          <ipxact:addressOffset>'h280</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>id</ipxact:name>
@@ -2637,7 +2526,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SEP_SIP_ID</ipxact:name>
-          <ipxact:addressOffset>'h2c0</ipxact:addressOffset>
+          <ipxact:addressOffset>'h2a0</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>id</ipxact:name>
@@ -2655,7 +2544,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SEP_SYS_ID</ipxact:name>
-          <ipxact:addressOffset>'h2e0</ipxact:addressOffset>
+          <ipxact:addressOffset>'h2c0</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>id</ipxact:name>
@@ -2673,11 +2562,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare0</ipxact:name>
-          <ipxact:addressOffset>'h300</ipxact:addressOffset>
+          <ipxact:addressOffset>'h2e0</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2691,11 +2580,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare1</ipxact:name>
-          <ipxact:addressOffset>'h320</ipxact:addressOffset>
+          <ipxact:addressOffset>'h300</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2709,11 +2598,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare2</ipxact:name>
-          <ipxact:addressOffset>'h340</ipxact:addressOffset>
+          <ipxact:addressOffset>'h320</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2727,11 +2616,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare3</ipxact:name>
-          <ipxact:addressOffset>'h360</ipxact:addressOffset>
+          <ipxact:addressOffset>'h340</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2745,11 +2634,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare4</ipxact:name>
-          <ipxact:addressOffset>'h380</ipxact:addressOffset>
+          <ipxact:addressOffset>'h360</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2763,11 +2652,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare5</ipxact:name>
-          <ipxact:addressOffset>'h3a0</ipxact:addressOffset>
+          <ipxact:addressOffset>'h380</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2781,11 +2670,11 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare6</ipxact:name>
-          <ipxact:addressOffset>'h3c0</ipxact:addressOffset>
+          <ipxact:addressOffset>'h3a0</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2799,11 +2688,29 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>spare7</ipxact:name>
+          <ipxact:addressOffset>'h3c0</ipxact:addressOffset>
+          <ipxact:size>256</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>rsvd</ipxact:name>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>256</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>spare8</ipxact:name>
           <ipxact:addressOffset>'h3e0</ipxact:addressOffset>
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>rsvd</ipxact:name>
-            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</ipxact:description>
+            <ipxact:description>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3077,7 +2984,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_status</ipxact:name>
-            <ipxact:description>0: No Error.  1: Logic error, assert read_go when read is not enabled</ipxact:description>
+            <ipxact:description>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</ipxact:description>
             <ipxact:bitOffset>26</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

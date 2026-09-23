@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+version = 1
+
+[[sources]]
+name = "main"
+rdl = "hw/sys/sep/regs/sep.rdl"
+top = "och_sep_top"
+
+[[sources]]
+name = "logical"
+rdl = "hw/sys/sep/regs/include/sep_cpu_logical.rdl"
+top = "sep_cpu_logical"
+
+[[views]]
+name = "sep-cpu-logical"
+title = "SEP CPU Logical Address Space"
+source = "logical"
+include_all = true
+columns = ["base", "end", "size", "label", "description"]
+
+[[views]]
+name = "sep-cpu-resources"
+title = "SEP EL2 CPU Resources"
+source = "main"
+derive_gaps = true
+bounds_source = "logical"
+bounds_selector = "sep_cpu_resources"
+columns = ["base", "end", "size", "label", "description"]
+
+[[views.rows]]
+selector = "sep_iccm"
+label = "ICCM"
+
+[[views.rows]]
+selector = "sep_dccm"
+label = "DCCM"
+
+[[views.rows]]
+selector = "pic"
+label = "PIC"
+
+[[views]]
+name = "sep-components"
+title = "SEP Component Address Map"
+source = "main"
+include_all = true
+derive_gaps = true
+bounds_source = "logical"
+bounds_selector = "sep_local"
+columns = ["base", "end", "size", "occupied_size", "label", "description"]

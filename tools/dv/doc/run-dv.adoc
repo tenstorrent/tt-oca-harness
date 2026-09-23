@@ -13,18 +13,11 @@ logs and schema-version-1 result files.
 _Native_ means the flow is owned by this runner end to end — stage plan,
 tool invocation, and results — in contrast to wrapped or external flows.
 
-[NOTE]
-====
-This page describes the implementation in the current source tree. The
-architecture notes used to design the runner also contain roadmap material;
-unsupported roadmap features are identified in <<runner-current-limitations>>.
-====
-
 == Architecture
 
-image::dv-runner-architecture.drawio.svg[Current DV/FV runner control flow,scaledwidth=95.0%]
+image::dv-runner-architecture.drawio.svg[DV/FV runner control flow,scaledwidth=95.0%]
 
-The entry point is intentionally thin. It prepares the Python environment and
+The entry point prepares the Python environment and
 then delegates command parsing and orchestration to `tools/dv/runlib/cli.py`.
 The runner modules divide responsibility as follows:
 
@@ -53,6 +46,15 @@ coverage stages, and generated replay material.
 |`runlib/waves.py`
 |Wave format validation, failure-window calculation, retention, viewer
 commands, and same-seed replay metadata.
+
+|`runlib/executors/`
+|The executor contract (submit, poll, cancel, collect), the local executor,
+the cluster executor that runs the registry's argv templates, the LSF and
+Slurm dialects that read scheduler output, and the leaf manifest that
+describes one attempt.
+
+|`runlib/worker.py`
+|The `--worker-manifest` entry point: one leaf attempt on a farm machine.
 |===
 
 The runner and the dashboard do not call each other. Their integration boundary
@@ -98,9 +100,9 @@ is supplied by the resolved configuration and recorded as `framework` in
 Tool::
 A simulator or formal engine registered in
 `hw/common/dv/configs/simulators.toml` (for example `verilator`, `vcs`,
-`xcelium`) and selected with `--tool`. The words _backend_ and _simulator_ in
-this guide refer to the same axis: "backend" names the stage implementation
-that renders and executes the tool's commands.
+`xcelium`, `sby`) and selected with `--tool`. The words _backend_ and
+_simulator_ in this guide refer to the same axis: "backend" names the stage
+implementation that renders and executes the tool's commands.
 
 Test::
 One entry in a DUT testlist. Its `module` field names the code that
@@ -119,6 +121,11 @@ inventory (for example a VPLAN test-case count) honest.
 
 Tag::
 A label carried by tests, used by `--tag` as an OR filter.
+
+Expected failure::
+A test whose entry carries `expect_fail = "<reason>"`: it reproduces a filed
+defect and FAILS on a DUT that still carries it. The runner grades that FAIL
+as PASS and an observed PASS as FAIL (<<runner-expected-failures>>).
 
 Item::
 Any name accepted by `--items`: a test name or a group name.
@@ -152,8 +159,13 @@ first selected group, the single test name, `multi`, or `build`. It is
 recorded in `result.json`.
 
 Executor::
-The dispatch mechanism for leaves, declared in `executors.toml`. Only `local`
-dispatch is implemented.
+The dispatch mechanism for leaves, declared in `executors.toml` and selected
+with `--executor` or the profile's `[scheduler] default_executor`. Every
+executor implements the same four operations, submit, poll, cancel, and
+collect, and the regression loop runs on them (<<runner-executor-registry>>).
+`local` runs leaves in this process; a cluster entry names a scheduler driver,
+`lsf` or `slurm`, and runs each leaf attempt as a scheduler job through the
+commands the registry declares (<<runner-cluster-dispatch>>).
 
 == Prerequisites and bootstrap
 
@@ -177,11 +189,20 @@ Before parsing the command, the launcher:
 The supported Python range is 3.11 through 3.13. Install
 https://docs.astral.sh/uv/[`uv`] before the first run. The locked `dv`
 dependency group provides cocotb and the shared Python DV packages.
+<<runner-environment-matrix>> lists every other component a run needs, the
+file that pins it, and the check behind it.
 
 `OCAH_DV_SKIP_UV=1` skips only the `uv` re-execution. Use it for a
 pre-provisioned CI or developer environment that already supplies the required
 packages. Repository-root discovery, `OCH_ROOT`, and namespace synchronization
 still occur.
+
+`run_dv.py --worker-manifest <manifest>` is the farm worker a cluster
+executor submits (<<runner-executor-registry>>). That branch neither
+re-executes through `uv` nor synchronizes the bridge: it runs on the
+interpreter the coordinator provisioned, attaches the bridge the coordinator
+wrote, and exits `2` when that bridge is missing, so concurrent workers never
+race on a shared checkout.
 
 [WARNING]
 ====
@@ -195,6 +216,157 @@ The launcher may be invoked from any working directory because repository and
 checked-in paths are resolved from the script location. Relative `--run-dir`
 and `--result` paths, however, are resolved from the repository root.
 
+[[runner-environment-matrix]]
+=== Supported environments
+
+A run depends on the components below. Each row names where the pin lives
+rather than restating its value, so the named file is the authority; the
+doctor and the environment-matrix tests
+(`tools/dv/tests/test_environment_matrix.py`) fail when two of the files
+disagree.
+
+[cols="<2,<4,<3,<3",options="header"]
+|===
+|Component |Supported |Where it is pinned |How it is checked
+
+|Python
+|3.11 through 3.13. The hosted jobs, `.python-version`, and the launcher's
+`uv run` select an interpreter inside the range; `uv` downloads one when the
+host has none.
+|`requires-python` in `pyproject.toml` and `hw/common/dv/pyproject.toml`,
+the `uv.lock` header, `.python-version`, the composite action's
+`python-version` default, and `SUPPORTED_PYTHON_MIN` and
+`SUPPORTED_PYTHON_MAX_EXCLUSIVE` in `tools/dv/runlib/cli.py`.
+|The doctor's `python` row; the matrix tests hold every statement equal and
+the pinned interpreter inside the range.
+
+|Python packages
+|The versions `uv.lock` records for cocotb, pyuvm, cocotbext-axi, and
+cocotbext-jtag, the four dependencies of the `ocah-dv` workspace member,
+installed through a `uv` release that reads the lockfile's `revision`. The
+`dv` group adds them to the root project's own dependencies; the shared VIP
+and every DUT package import from the tree rather than from an installed
+distribution.
+|`hw/common/dv/pyproject.toml` (the ranges) and `uv.lock` (the resolution).
+|`uv sync --locked --group dv` and the launcher's `uv run --locked` refuse a
+lockfile that drifted from the project files; the doctor prints one row per
+locked distribution; the matrix tests hold the doctor's list, the package's
+dependency list, and the lock equal, and the locked versions inside the
+declared ranges.
+
+|Verilator
+|cocotb's documented floor, 5.036, or newer: the `VLT_MIN` its Makefile flow
+enforces. The Python runner the launcher uses checks no floor, so the
+doctor's version row is the check. Hosted CI builds the tag the composite
+action's `verilator-version` input defaults to from source; a developer host
+runs any release at or above the floor. A distribution package may sit below
+it: Ubuntu 24.04 ships 5.020.
+|`min_version` on the `[verilator]` table of
+`hw/common/dv/configs/simulators.toml` (the floor);
+`.github/actions/dv-run/action.yml` (the hosted tag).
+|The doctor prints the release the binary reports and fails the required
+tool below `min_version`; the matrix tests hold the registry floor equal to
+cocotb's `VLT_MIN` and the hosted tag at or above it.
+
+|Bender
+|Any release that resolves the checked-in `Bender.yml`. Hosted CI installs
+the current release through `pulp-platform/pulp-actions/bender-install`;
+nothing pins it, and the release a run used is recorded as
+`tool_versions.bender` in its `result.json`.
+|None.
+|Every hosted job's `flist` stage; the recorded release in each published
+run.
+
+|Simulators and formal backends
+|`verilator` and `sby` run with no license. `vcs` and `xcelium` need the
+license variables their registry tables name and a licensed self-hosted
+runner. A site renames a binary, wraps a tool in a launcher, or adds a tool
+in the site layer (<<runner-site-layer>>).
+|`hw/common/dv/configs/simulators.toml`; a table's `min_version`, where
+present, is the oldest release the doctor accepts.
+|The doctor names the file that supplied each tool; the matrix tests hold the
+registry to those four tools, with exactly `verilator` and `sby` license-free.
+
+|Host
+|The GitHub-hosted `ubuntu-latest` x86_64 image is the qualified host: every
+smoke, nightly, and weekly job runs on it, or on the larger GitHub-hosted
+label the `DV_LARGE_RUNNER` repository variable names for the rows it
+promotes, and the job log's `Operating System` group names the release the
+label resolved to. A Linux or macOS developer host that meets the rows above
+is supported but not qualified: no hosted job runs there, so its evidence is
+its own doctor report and smoke run. No other host is supported.
+|The `runner` key of each matrix row in `sim.yml` and `regress.yml`.
+|The hosted jobs at head; the matrix tests hold every row's `runner` to the
+hosted label or to the variable that falls back to it.
+
+|Firmware toolchain and container engine
+|A RISC-V toolchain that accepts `--specs=picolibc.specs`, named by
+`RISCV_TOOLCHAIN`, or the `ocah-toolchain` image built from
+`tools/docker/Dockerfile` and run through `scripts/docker-run.sh` (Podman
+when present, else Docker; bubblewrap when `OCAH_TOOLCHAIN_ROOTFS` names an
+extracted rootfs and `bwrap` is installed). Hosted CI installs neither.
+|`tools/docker/Dockerfile` (a digest-pinned base; the packages on it float
+with the distribution) and each DUT's `[c_build.*]` command, which owns the
+choice between the two.
+|`scripts/docker-run.sh verify`; a firmware leaf's `c_compile` stage, which
+fails when its DUT's command finds no usable toolchain.
+|===
+
+==== Hosted CI and a developer host
+
+Hosted CI is the qualified environment and the most constrained one. The
+composite action installs `uv` with the pinned interpreter, Bender, and
+Verilator with its runtime packages, and no container engine or RISC-V
+toolchain, so every hosted row names a group that needs no toolchain;
+`regress.yml` states the reason beside each row that names a group other
+than `all`. A developer host adds the firmware path, and each DUT's
+`[c_build.*]` command owns the toolchain choice. `sep`, and `smu` through
+`hw/sys/smu/dv/fw/build_firmware.py`, use the toolchain `RISCV_TOOLCHAIN`
+names when that compiler accepts `--specs=picolibc.specs` and otherwise
+build in the `ocah-toolchain` container through
+`scripts/docker-run.sh run-here`. `smc` uses `RISCV_TOOLCHAIN` whenever it
+is set and the container otherwise, and `hw/common/dv/fw/compile.mk` fails
+the build when the named compiler lacks picolibc. `make` tracks source
+timestamps and not toolchain identity, so after switching paths or rebuilding
+the image, run `make -f ocah.mk ocah-dv-fw-clean TARGET=<block>` before the
+next simulation.
+
+The `sep` tree carries the repository's one private submodule, under
+`hw/sys/sep/bootrom/prod/tools/`, and some of its test modules import it.
+The hosted `sep` jobs check it out with a repository secret before the run; a
+public clone runs without it, so those modules fail to import there. An
+unscoped `--doctor --dut sep` imports every testlist module and exits `2` on
+that account. Scope the doctor to the selection you will run:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut sep --items smoke
+----
+
+With `--items` or `--tag` the module probe covers the tests the same
+selection names, before a run's framework-binding and `--tool` filters drop
+any, and the `test modules` row names the selection.
+
+==== Unsupported configurations
+
+* Python 3.14 or newer. cocotb 2.0 publishes no build for it. The launcher's
+  `uv run --locked` selects an interpreter inside the range; only
+  `OCAH_DV_SKIP_UV=1` exposes the host interpreter, which the doctor's
+  `python` row then rejects.
+* Verilator older than 5.036, including the Ubuntu 24.04 package. cocotb
+  documents the floor, the registry carries it as `min_version`, and the
+  doctor fails the required tool below it. Build the hosted tag from source
+  as the composite action does, or install a newer release.
+* A `RISCV_TOOLCHAIN` whose compiler lacks picolibc. `sep` and `smu` build
+  in the container instead; `smc` fails at `c_compile` with the picolibc
+  error from `compile.mk`.
+* VCS, Xcelium, and the SV-UVM framework views in hosted CI
+  (<<runner-ci-support-matrix>>).
+* Formal mode in hosted CI (<<runner-formal>>).
+* Coverage collection in hosted CI: the coverage regression runs on the
+  licensed simulator flow (<<runner-ci-support-matrix>>).
+* Any host outside the Host row above.
+
 == Quick start
 
 Start with configuration and environment checks:
@@ -205,6 +377,7 @@ python3 tools/dv/run_dv.py --list
 python3 tools/dv/run_dv.py --validate-configs
 python3 tools/dv/run_dv.py --doctor --dut dtp
 python3 tools/dv/run_dv.py --dut dtp --items smoke --tool verilator --dry-run
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run
 ----
 
 Run one deterministic test:
@@ -257,17 +430,27 @@ python3 tools/dv/run_dv.py --help
 `hw/common/prim/<name>/dv`.
 
 Simulation mode, the default, loads `<name>_sim_cfg.toml`. Formal mode loads
-`<name>_formal_cfg.toml` or the registry's `formal_cfg` override:
+the `[duts.<name>].formal_cfg` pointer of the site layer
+(<<runner-site-layer>>), else the registry's `formal_cfg` override, else
+`<name>_formal_cfg.toml` beside the sim config:
 
 [source,bash]
 ----
 python3 tools/dv/run_dv.py --dut <dut> --mode formal --items <task>
 ----
 
+A selectable DUT that one of those names is also a _formal view_: `--list`
+shows it as a `fv` row and `--validate-configs` validates it as
+`<name> (formal)`. A site-named file that is absent leaves the view
+unavailable in both listings and is an error only when selected; a registry
+`formal_cfg` that is absent fails validation. A DV root that carries a formal
+config and no sim config is not a DUT. <<runner-formal>> is the contributor's
+route through formal mode.
+
 `--tool TOOL` overrides the DUT's `default_tool`, but the selected tool must be
 present in the flow's `tools` allowlist and in `simulators.toml`.
 
-The shared cocotb profile currently allows these simulation backends:
+The shared cocotb profile allows these simulation backends:
 
 [cols="<2,<2,<2,<3",options="header"]
 |===
@@ -278,18 +461,44 @@ The shared cocotb profile currently allows these simulation backends:
 |Xcelium |`xrun` |SHM |IMC
 |===
 
-The simulator registry also defines Jasper (`jg`) and VC Formal (`vcf`) as
-formal backends. A DUT still needs a formal configuration before either can be
-selected.
+The shared `native-formal` profile (`kind = "fv"`, framework `formal`) lists
+the open formal backend; a licensed backend reaches the runner through the
+site layer:
+
+[cols="<2,<2,<2,<5",options="header"]
+|===
+|Tool |Binary |License |Toolchain
+
+|SymbiYosys |`sby` |none |Profile default and the only formal backend the
+open registry names. Yosys with the yosys-slang frontend, `yosys-smtbmc`,
+`yosys-abc`, and an SMT solver on the same `PATH`. The property subset and
+task-file layout are in the Formal Property Style and Layout chapter of
+`hw/common/dv/docs/index.adoc`; the launch shape is in
+<<runner-formal-templates>> and the `sby-summary` policy grades its runs
+(<<runner-formal-grading>>).
+|Site-supplied backend |from its site table |per its `license_env` |A
+complete `[simulators.<name>]` table in the site layer
+(<<runner-site-layer>>) with `kind = "formal"`, `frameworks = ["formal"]`,
+and an `argv` launch template; the runner validates it with the registry
+schema and treats it exactly like a checked-in table. A DUT formal config
+that lists the name in `tools` selects it; the companion repository's site
+file and formal configs are the reference deployment.
+|===
+
+The profile carries `license = "none"` because the backend it lists needs no
+license; `--list` marks a site-supplied backend `(licensed)` from its
+`license_env`, and `--doctor` and the launcher point at that marking when
+the selected backend is absent. A DUT selects a backend only through its
+formal configuration (`<name>_formal_cfg.toml`).
 
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
-maintainer flow that currently allows VCS only; it carries
+maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
 launcher says so when the simulator is absent. The UVM library comes from the
 simulator via `-ntb_opts uvm`, tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
-policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
-behind a real-run sign-off gate; Questa is unsupported. The first user is the
+policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium and Questa are not
+in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
 guide — conventions plus the bring-up walkthrough for adding a UVM view to a
 cocotb-only DUT — is the SystemVerilog UVM Framework section of
@@ -304,12 +513,17 @@ name that maps to a concrete implementation per framework. Error messages and
 takes the same names it always has. A scenario binds its per-framework entry
 points through `module` — a bare string binds the DUT's default framework
 only, a map (`module = { cocotb = "...", uvm = "..." }`) binds each framework
-explicitly. Selecting a scenario not implemented in the chosen framework is
-an error;
-`--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead
-(the skipped names are printed and recorded in `result.json` under
-`selection.skipped_unimplemented`), while an explicitly named `--items` test
-always errors.
+explicitly. A map value of `false` (`module = { cocotb = "...", uvm = false }`)
+declares the scenario out of scope for that framework: group and tag
+selection skips it with no flag, and the skipped names are printed and
+recorded in `result.json` under `selection.skipped_excluded`. Selecting a
+scenario whose map has no entry at all for the chosen framework is an error;
+`--skip-unimplemented` skips group/tag-derived scenarios of that kind instead
+(printed, and recorded under `selection.skipped_unimplemented`), which is the
+bring-up aid while a framework port is incomplete. An explicitly named
+`--items` test errors in both cases. `--list` reports the three counts per
+framework (`uvm 151/153 (2 excluded)`); a nonzero `missing` count names
+scenarios that have neither a binding nor a `false` for that framework.
 
 === Tests, groups, and tags
 
@@ -334,12 +548,74 @@ python3 tools/dv/run_dv.py --dut dtp --items smoke --tag ci
 With `--items`, tags filter the expanded selection. Without `--items`, tags
 search the complete catalog.
 
+[[runner-expected-failures]]
+=== Expected failures
+
+A reproducer for a filed RTL defect is only evidence while someone runs it, and
+a regression that carries it is red every day it does its job. `expect_fail`
+resolves that without weakening the checker:
+
+[source,toml]
+----
+[[tests]]
+name = "smc_gpio_irq_mask_deassert_test"
+module = "smc_gpio_irq_mask_deassert_test"
+run_modes = ["smoke"]
+expect_fail = "#1602: clearing DATA_CTRL.interrupt_enable while a GPIO interrupt is asserted does not de-assert interrupt_o"
+----
+
+The value is the recorded reason and must be a non-empty string; `true` is
+rejected, because a flag with no reason cannot say when the entry should go.
+Grading applies per leaf on the `sim` and `regress` stages, after the parser
+policy has classified the log:
+
+* an observed `FAIL` is the recorded outcome and grades `PASS`, with `reason`
+  `expected_fail: <reason>`;
+* an observed `PASS` means the defect is gone and grades `FAIL`, in the
+  `expected_fail_passed` failure bucket -- move the test into its owning
+  feature testlist and drop the key;
+* `ERROR`, `TIMEOUT`, and `UNKNOWN` are not the recorded failure and keep
+  their status.
+
+The parser's `FAIL` says only that the leaf failed, not why. The leaf record
+therefore carries `observed_failures`: the message of every failure/error node
+in the leaf's `results/results.xml` (cocotb's `error_msg`, JUnit's `message`,
+or the node text), so a reader can compare what failed with the recorded
+reason. To make that comparison part of the grade, add `expect_fail_match`:
+
+[source,toml]
+----
+expect_fail = "#585: dead offsets wrap onto live registers with an OKAY response"
+expect_fail_match = "wrap_to_live=[1-9]"
+----
+
+With it, an observed `FAIL` grades `PASS` only when some observed failure
+message matches the regex (`re.search`); otherwise the leaf failed for a
+different reason than the one recorded and grades `FAIL` in the
+`expected_fail_mismatch` bucket, naming the first observed message. A leaf
+that recorded no failure message is a mismatch too. The key requires
+`expect_fail` and must compile as a Python regex.
+
+The leaf record carries `expected_fail` (`reason`, `observed_status`,
+`observed_reason`, `observed_failures`, `observed_buckets` -- the parser's
+failure bucket kinds and signatures -- and `match` when set) in its metadata
+and in the regression leaf summary, and the run-level `tests` summary counts
+graded leaves under `expected_failing`.
+The framework's own `results/results.xml` still records the observed
+failure; `result.json` is the graded, authoritative result. Keep such tests
+in a group of their own (for example `rtl_issue`) so they never feed a
+coverage regression as passes, and so the flip is visible as that group
+going red.
+
 === Targets and run modes
 
 Each selected test resolves a build target from its `target` field or the DUT
 default. Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
-different build images.
+different build images. A test `target` or a `--target` that names no
+`[targets.<name>]` entry is rejected when the run plans its builds, before
+any stage executes; `--validate-configs` does not check test targets
+(<<runner-validation>>).
 
 Run-mode selection uses:
 
@@ -365,7 +641,7 @@ run-mode arguments or timeout.
 
 == Configuration and precedence
 
-Configuration ownership is intentionally split:
+Configuration ownership is split:
 
 [cols="<3,<4",options="header"]
 |===
@@ -378,14 +654,21 @@ Configuration ownership is intentionally split:
 |Shared framework, tool allowlist, scheduler policy, defaults, and stage graph.
 
 |`hw/common/dv/configs/simulators.toml`
-|Tool binaries, capabilities, wave formats, parser extensions, and common
-build/coverage defaults.
+|Tool binaries, capabilities, wave formats, parser extensions, common
+build/coverage defaults, and formal launch templates.
 
 |`hw/common/dv/configs/executors.toml`
-|Executor declarations. Only `local` dispatch is implemented.
+|Executor declarations: the `local` executor, and cluster entries that name a
+scheduler driver (<<runner-executor-registry>>).
+
+|`hw/common/dv/configs/site.local.toml` (git-ignored), or the file `OCAH_DV_SITE` names
+|One deployment's tool binaries, launcher prefixes, environment hooks, added
+tool tables, and companion-owned formal config pointers, merged over the two
+registries above. See <<runner-site-layer>>.
 
 |`hw/common/dv/configs/parsers.toml`
-|Shared positive-evidence and failure-detection policies.
+|Shared positive-evidence and failure-detection policies for simulation
+logs, and the `grader = "formal"` policies that grade formal tasks.
 
 |`<dut-dv-root>/<dut>_sim_cfg.toml`
 |DUT identity, profile selection, test-list pointer, source/build intent,
@@ -393,7 +676,8 @@ targets, modes, and DUT-specific overrides.
 
 |`<dut-dv-root>/testlists/*.toml`
 |Tests, groups, tags, targets, seeds, reseed counts, timeouts, runtime
-arguments, and optional firmware metadata.
+arguments, optional firmware metadata, and `expect_fail` /
+`expect_fail_match` entries.
 
 |`<dut-dv-root>/cov/config/<tool>/coverage_policy.toml`
 |Optional detailed coverage thresholds, exclusions, and hole dispositions;
@@ -413,15 +697,260 @@ Some domains have more specific rules:
 * Simulation-leaf timeout: `--timeout` > test `timeout_sec` > run-mode
   `timeout_sec` > `[defaults].timeout_sec`.
 * Runtime arguments append in order: profile/DUT `[sim].args`, run-mode
-  `args`, test `args`, then CLI `--sim-arg` and `--plusarg`.
+  `args`, test `args`, then CLI `--sim-arg` and `--plusarg`; with `--cov`,
+  the tool's `[coverage.<tool>]` `sim_args` and `test_args` follow. Run-mode
+  and test `args` are rendered with `{seed}` and `{repo_root}`; the other
+  lists stay literal. Across those two lists a later scalar `+key=value`
+  replaces an earlier one with the same key, so a test entry overrides its
+  run mode, and each dropped argument is printed as `PLUSARG: dropping ...`.
+  Bare flags and `+uvm_set_*` arguments are never collapsed.
 * Regression multiplicity: a test's `reseed` value overrides `--reseed` for
   that test.
-* A positive `[build.options].build_jobs` value currently overrides CLI-derived
+* A positive `[build.options].build_jobs` value overrides CLI-derived
   build concurrency; otherwise `--build-jobs`, then `--sim-jobs`, supplies it.
 
 CLI overrides are curated rather than arbitrary TOML replacement. Stable
 settings belong in checked-in configuration; pass-through flags are intended
 for one-off debugging.
+
+[[runner-rejected-keys]]
+=== Schema versions and rejected keys
+
+The registries, each `<dut>_sim_cfg.toml`, and each testlist carry
+`schema_version = 1`; the profiles carry none. The loader accepts the key
+wherever it appears and enforces its value on the site file
+(<<runner-site-layer>>). An unknown key anywhere in a configuration, a
+misspelling included, is an error naming the file and the table.
+
+A setting has one spelling. A key in the left column below, and a key that
+duplicates a setting another table owns, is an error rather than an alias,
+reported as `deprecated duplicate-purpose config` together with the key to
+use:
+
+[cols="<3,<3",options="header"]
+|===
+|Rejected |Use instead
+
+|`[defaults].tool`
+|top-level `default_tool`
+
+|`[run_modes.<name>].tags`
+|testlist `tags`
+
+|`[build.options].ccache`, `[build.options].output_split`
+|`[build.verilator].ccache`, `[build.verilator].output_split`
+
+|`[targets.<name>].verilator_flags`, `.xcelium_flags`, `.vcs_flags`, and the
+same keys under `[target_defaults.<name>]`
+|`[targets.<name>.tools.<tool>].flags`
+
+|`[build.<tool>].extra_build_args`
+|`[build.<tool>].extra_args`
+
+|`[coverage.<tool>].<tool>_build_args`, `_compile_args`, `_sim_args`,
+`_test_args`, and the fixed names `verilator_build_args`,
+`xcelium_build_args`, `xcelium_test_args`, `vcs_compile_args`, and
+`vcs_sim_args` in any tool's table
+|`[coverage.<tool>].build_args`, `compile_args`, `sim_args`, `test_args`
+
+|A `[build.<tool>]` or `[coverage.<tool>]` value equal to that tool's
+`simulators.toml` default
+|Omit the key; the default applies
+|===
+
+`--stage filelist` is the only alias the command line accepts; it selects
+`flist`.
+
+[[runner-validation]]
+=== What validation checks
+
+`--validate-configs`, and every run before it resolves the requested DUT,
+validates each selectable DUT's views in this order. The first failure names
+the file and the table or entry:
+
+. The DUT DV root exists, and every tool in the flow's `tools` list is in
+  the merged registry and supports the selected framework.
+. Every `[native.stages.<name>]` names a canonical stage and carries a
+  `kind` that stage accepts.
+. Every table of the sim config holds only the keys its schema allows, and
+  every `{placeholder}` in a value is one the consuming stage defines.
+. `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
+. Each `[coverage.<tool>]` table is well formed and each coverage policy
+  file loads; a lapsed waiver is a warning, not a failure.
+. The scheduler's default and allowed executors are registered.
+. No key from the rejected-key table is present (<<runner-rejected-keys>>).
+. The test catalog loads after include expansion: each test's `run_modes`
+  and `tools` name declared entries, each scenario binds or excludes every
+  framework the DUT implements, `firmware` is a string or a table,
+  `expect_fail` carries a reason, every group member names a test, and each
+  `expected_count` matches its list.
+. The flow's parser policy extensions are registered.
+
+Validation proves configuration consistency. It does not probe a tool or a
+license (`--doctor` does), it does not check test `target` references (the
+run does, when it plans its builds), and it does not check that a firmware
+name builds: the `c_compile` stage rejects a test whose `firmware` names no
+`[c_build.<mode>]` template, dry run included, and the build tool reports a
+target the template cannot build.
+
+[[runner-formal-templates]]
+=== Formal launch templates
+
+A formal backend is launched from an `argv` template. The registry entry of
+every `kind = "formal"` tool carries one, and an app table
+(`[formal.apps.<app>.<tool>]` in the DUT's formal configuration) may set its
+own `argv` in its place. The app table also supplies `cwd` (the launch
+directory, repo- or DUT-relative, default `.`), `script` (the tool script,
+passed as written), and `args` (tokens spliced at `{args}`). A formal test
+item's `module` names the app; `--app` overrides it.
+
+A template is an array of strings. Each string renders these placeholders:
+
+[cols="<2,<5",options="header"]
+|===
+|Placeholder |Value
+
+|`{binary}` |The tool's registry `binary`.
+|`{script}` |The app's `script`, as written. A template that uses it fails
+when the app sets none.
+|`{cwd}` |The resolved launch directory.
+|`{run_dir}` |The run directory.
+|`{item}` |The formal test item being run.
+|`{args}` |The app's `args`, spliced in place. The placeholder is an element
+on its own.
+|`{formal_args}` |Every `--formal-arg` value, spliced in place. The
+placeholder is an element on its own.
+|`{proof_depth}` |The `--proof-depth` value. The placeholder sits inside an
+optional group.
+|===
+
+A nested array is an optional group: it renders whole when `--proof-depth` is
+given and is dropped otherwise, so a two-token flag stays intact.
+
+[source,toml]
+----
+[formal.apps.tap_fpv.sby]
+cwd = "formal/fpv/sby"
+script = "dtp.sby"
+args = ["tap_bmc", "tap_cover"]
+
+[formal.apps.tap_fpv.<tool>]
+argv = ["{binary}", ["-depth", "{proof_depth}"], "{script}", "{formal_args}"]
+----
+
+`--validate-configs` rejects a template that names an unknown placeholder,
+embeds a list placeholder in a longer string or in a group, places an
+optional placeholder outside a group, or is empty. A run rejects
+`--proof-depth` or `--formal-arg` when the selected template has no
+`{proof_depth}` or `{formal_args}` placeholder to carry it. `--dry-run`
+prints the rendered command on the `CMD  :` line.
+
+The SymbiYosys registry template is:
+
+[source,toml]
+----
+argv = ["{binary}", "-f", "--prefix", "{run_dir}/stages/formal/{item}", "{script}", "{args}", "{formal_args}"]
+----
+
+sby resolves the task file's `[files]` entries against its working
+directory, so the app's `cwd` is the directory holding the task file. Each
+task's work directory lands under the run's formal stage directory as
+`<item>_<task>`, and the app's `args` name the tasks to run. sby takes its
+depth from the task file, so its template has no `{proof_depth}` group. A
+site-supplied backend carries its template in its site tool table, where the
+generic shape `{binary} {args} {script} {formal_args}` suits a Tcl-driven
+tool; an app-table `argv` overrides it for one app.
+
+[[runner-formal-grading]]
+=== Formal result grading
+
+A formal backend's exit code is not evidence: batch tools exit zero with
+failed or inconclusive properties, and SymbiYosys encodes only the match
+against each task's `expect` option. The `formal` stage grades an item from
+what the backend wrote, through one of two sources.
+
+*Task status lines.* The tool's registry entry names a `parser_policy` whose
+`parsers.toml` table carries `grader = "formal"`. Its `task_status_patterns`
+match one line per finished task in the stage log, with a `(?P<status>...)`
+group and optional `(?P<workdir>...)` and `(?P<rc>...)` groups. Each task's
+work directory supplies the `status` file, the task `mode` from
+`config.sby`, and, with `task_results = "sby-junit"`, the JUnit report whose
+`ASSERT` and `COVER` test cases are counted per property. Work directories
+under the stage directory named `<item>` or `<item>_<task>` are read even
+when the log carries no status line. `evidence_patterns` copy matching log
+lines into `parser.evidence`; a `hard_fail_patterns` match grades the item
+`ERROR`. The `sby` entry names `sby-summary`.
+
+*Summary file.* An app table sets `[formal.apps.<app>.<tool>.evidence]` for
+a backend without a native task summary. `summary` names the file the tool
+script writes; it renders `{run_dir}`, `{item}`, and `{cwd}`, and a relative
+path resolves against the app's `cwd`. `pass_patterns` and `fail_patterns`
+are required; `inconclusive_patterns`, `cover_patterns`, and
+`unreached_patterns` are optional. Every matching line feeds the property
+counter of its list. The `evidence` table wins over the tool's
+`parser_policy`, and `--validate-configs` rejects an app backend that has
+neither.
+
+[source,toml]
+----
+[formal.apps.conn.<tool>]
+script = "run_conn.tcl"
+
+[formal.apps.conn.<tool>.evidence]
+summary = "{run_dir}/stages/formal/{item}/summary.txt"
+pass_patterns = ["^\\S+ proven$", "^\\S+ covered$"]
+fail_patterns = ["^\\S+ cex$"]
+inconclusive_patterns = ["^\\S+ undetermined$"]
+cover_patterns = ["^\\S+ covered$"]
+unreached_patterns = ["^\\S+ unreachable$"]
+----
+
+The item status is the worst task status in the order
+`ERROR > TIMEOUT > FAIL > UNKNOWN > PASS`, and then:
+
+* an unreached cover statement is `FAIL`, whatever the task status says;
+* no task status line, status file, or summary file is `UNKNOWN`;
+* an inconclusive summary line is `UNKNOWN`;
+* a non-zero exit code beside passing evidence is `UNKNOWN`.
+
+`FAIL` lands in the `formal_fail` failure bucket; `ERROR`, `TIMEOUT`, and
+`UNKNOWN` use `tool_error`, `timeout`, and `unknown`. Every executed formal
+item counts as one item in `tests`.
+
+Property totals count each property once across tasks: an assertion is
+`failed` if any task failed it, else `inconclusive` if any task left it open
+(an induction counterexample inside an `UNKNOWN` task is inconclusive), else
+`proven`; a cover statement is `covered` if a cover task reached it, else
+`unreached`. A task counts only the property kind its mode checks. The
+stage record and the leaf `result.json` carry the totals and the task list in
+a `formal` object:
+
+[source,json]
+----
+"formal": {
+  "grader": "sby-summary",
+  "tasks": [
+    {"name": "tap_bmc", "mode": "bmc", "status": "PASS", "return_code": 0,
+     "workdir": "hw/sys/dtp/dv/build/runs/<run>/stages/formal/dtp_tap_fpv_tap_bmc",
+     "proven": 11, "failed": 0, "inconclusive": 0, "covered": 0, "unreached": 0}
+  ],
+  "proven": 11, "failed": 0, "inconclusive": 0, "covered": 6, "unreached": 0
+}
+----
+
+The run-level `result.json` and `regression.json` of a formal run sum the
+counters over their items and add task totals:
+
+[source,json]
+----
+"formal": {
+  "proven": 11, "failed": 0, "inconclusive": 0, "covered": 6, "unreached": 0,
+  "tasks": {"total": 3, "passing": 3, "failing": 0}
+}
+----
+
+The `formal` object is additive: no simulation key changes, `tests` keeps
+its item-status meaning, and `coverage` keeps its simulation meaning.
 
 === Adopter overlay layer
 
@@ -455,55 +984,796 @@ hard error on the run path; `--validate-configs` validates non-listed views
 without the overlay and labels them `[overlay skipped: frameworks guard]`.
 
 |`[build]` `incdirs` / `sources` / `source_lists`
-|dedup-append after the DUT's own entries
-|Extra compile inputs. An overlay-supplied `source_lists` manifest expands
-exactly like a DUT-owned one (component entries ahead of DUT sources), so a
-vendor package can own its manifest the way the shipped VIPs do.
+|`$VAR` expansion, then dedup-append after the DUT's own entries
+|Extra compile inputs. `$VAR` / `+${VAR}+` in an entry expands from the process
+environment at config load; an unset variable is a hard config error naming
+the variable and the overlay file. An overlay-supplied `source_lists`
+manifest expands exactly like a DUT-owned one (component entries ahead of DUT
+sources), so a vendor package can own its manifest the way the shipped VIPs do.
 
 |`[target_defaults.<t>]` / `[targets.<t>]` `defines` / `flags`,
 `[...tools.<tool>].flags`
 |dedup-append (tables created when absent)
-|Gate defines (e.g. `OCAH_AXI_VENDOR_IF`) and extra tool flags (e.g.
-`-ntb_opts svt`).
+|Gate defines (e.g. `OCAH_AXI_VENDOR_IF`) and the extra tool flags the vendor
+package needs.
 
 |`[sim].args`
 |append after the merged `[sim].args`
 |Runtime args, e.g. the commercial-VIP factory override
 `+uvm_set_type_override=ocah_axi_master_env,<vendor>_axi_env` — run-mode,
 test, and CLI args still append after it.
+
+|`[env]` `NAME = "value"`
+|applied to the runner's process environment at run start; an overlay value
+replaces an ambient one
+|Runtime environment the vendor package needs, e.g. the install-root
+variable a commercial VIP refuses to start without. Values are literal
+strings. Every build and sim subprocess, stage `env/` snapshot, and
+in-process tool runner inherits the table; `--validate-configs` and `--list`
+accept it without applying it.
 |===
 
 Merge position: after the profile/DUT `[frameworks.<fw>]` merge (the overlay
 extends the selected view) and before `[build].source_lists` expansion. Any
-other key is rejected, as is `adopter_overlay` appearing in a sim config or
-profile (the recorded key is reserved for the runner). Application is
-deterministic and repeatable: list order is preserved, the dedup rules make
-re-application a no-op, and the applied path is recorded as `overlay` in
+other key is rejected, as are `adopter_overlay` and `adopter_overlay_env`
+appearing in a sim config or profile (the recorded keys are reserved for the
+runner). Application is deterministic and repeatable: list order is
+preserved, the dedup rules make re-application a no-op, and the applied path
+and `[env]` table are recorded as `overlay` and `overlay_env` in
 `result.json` so a result is attributable to its exact config layers.
 
 A typical commercial-VIP overlay:
 
 [source,toml]
 ----
-description = "SVT AXI integration for ocah_axi_vip consumers"
+description = "Vendor AXI VIP integration for ocah_axi_vip consumers"
 frameworks = ["uvm"]
 
 [build]
-incdirs = ["hw/common/dv/vip/axi/uvm"]          # supplies ocah_axi_vendor_if.svh
+incdirs = [
+  "hw/common/dv/vip/axi/uvm",                   # supplies ocah_axi_vendor_if.svh
+  "$VENDOR_VIP_HOME/include",                   # headers inside the vendor install
+]
 source_lists = ["hw/common/dv/vip/axi/uvm/sources.toml"]
 
 [target_defaults.default]
 defines = ["OCAH_AXI_VENDOR_IF"]
 
 [sim]
-args = ["+uvm_set_type_override=ocah_axi_master_env,svt_ocah_axi_env"]
+args = ["+uvm_set_type_override=ocah_axi_master_env,vendor_ocah_axi_env"]
+
+[env]
+VENDOR_VIP_HOME = "/opt/vendor/vip"             # the install root the VIP starts from
 ----
 
-(paths resolve repo-relative inside the checkout the overlay extends, or
-absolute). The `OCAH_<PROTO>_VENDOR_IF` defines activate the guarded
+Paths resolve repo-relative inside the checkout the overlay extends, or
+absolute. `$VAR` and `+${VAR}+` in the overlay's own `[build]` entries expand
+at config load from the environment of the `run_dv.py` process with the
+overlay's `[env]` table applied on top, so the emitted filelist carries the
+expanded path and one overlay file serves every site, whether the site
+exports the variable or the overlay declares it. An unset variable is a hard config error
+naming the variable and the overlay file; `--validate-configs` reports it as
+`FAIL` on each view the overlay targets. Expansion covers only the overlay's
+own entries: the paths listed inside a `source_lists` manifest and every
+checked-in config stay literal, repo-relative or absolute.
+
+The `[env]` table reaches the stages through the runner's own process
+environment: the run path applies it once, before the tool probes and the
+first stage, and every build and sim subprocess, stage `env/` snapshot, and
+in-process tool runner copies that environment. An overlay value replaces an
+ambient one, so the `overlay_env` recorded in `result.json` is exactly the
+environment the run saw; export the variable in the shell instead when the
+site, not the overlay, should decide its value. The run log lists the
+applied pairs on a `config overlay_env=...` line. The
+`OCAH_<PROTO>_VENDOR_IF` defines activate the guarded
 `+"`include`"+` hooks inside the shipped `ocah_<proto>_if` interfaces, which
 pull `ocah_<proto>_vendor_if.svh` from an overlay incdir — the OSS tree
 ships no copy of those files.
+
+[[runner-site-layer]]
+=== Site-local override layer
+
+The checked-in registries name each tool by its default executable and find
+it on `PATH`. A deployment whose tools carry other names, need an environment
+hook before they start, or run inside a container describes that in one
+git-ignored file, `hw/common/dv/configs/site.local.toml`, or in the file the
+`OCAH_DV_SITE` environment variable names (the variable wins). The layer is
+active exactly when one of those files exists; a companion checkout beside
+the tree changes nothing. `site.local.example.toml` in the same directory is
+a template to copy.
+
+The file merges over `simulators.toml` and `executors.toml` before any
+command reads them, so `--validate-configs`, `--doctor`, `--dry-run`, and the
+run path resolve one merged registry, for simulation and formal tools alike:
+
+[cols="<2,<1,<3",options="header"]
+|===
+|Key |Merge |Purpose
+
+|`[simulators.<tool>]` `binary`
+|replaces
+|The executable to run, found on `PATH` after `setup_hook` has been sourced.
+
+|`[simulators.<tool>]` `launcher = ["podman", "exec", "-i", "eda"]`
+|replaces
+|An argv prefix in front of every command of the tool: the container case.
+`--doctor` and the run-path probe check the prefix's first token on `PATH`,
+because the tool itself lives behind it.
+
+|`[simulators.<tool>]` `argv`
+|replaces
+|A formal launch template (<<runner-formal-templates>>) for a formal tool;
+rejected on a simulation tool.
+
+|`[simulators.<tool>]` `license_env`
+|replaces
+|The license variables `--list`, `--doctor`, and the launcher hint consult.
+
+|`[simulators.<tool>]` `extra_env = { NAME = "value" }`
+|replaces
+|Variables added to the tool's process environment.
+
+|`[simulators.<tool>]` `setup_hook = "path"`
+|replaces
+|A shell file `bash` sources once per run before the tool's first command;
+the variables it exports, changes, or unsets apply to every command of the
+tool. A relative path resolves against the site file; the file must exist.
+
+|`[simulators.<new-tool>]` (complete table)
+|adds
+|A tool the checked-in registry lacks. The registry schema validates it
+(`kind`, `frameworks`, `license_env`, `min_version` when present, and `argv`
+for a formal tool); a DUT
+selects it through its config's `tools` and `default_tool`.
+
+|`[executors.<name>]` any data key (`driver`, `binaries`, the argv
+templates, `defaults`, `limits`, `env_passthrough`, `history_parser`,
+`setup_hook`), or a complete table
+|replaces / adds
+|The same over `executors.toml` (<<runner-executor-registry>>); `kind` stays
+with the registry. `setup_hook` is site-only and resolves against the site
+file.
+
+|`[duts.<dut>]` `formal_cfg = "path"`
+|replaces
+|The formal config `--mode formal` loads for that DUT, ahead of the
+registry's `formal_cfg` and the `<name>_formal_cfg.toml` convention: how a
+companion-owned formal view is reached without editing `duts.toml`. The DUT
+must be selectable; the path is repo-relative or absolute. An absent file
+leaves the view `unavailable` in `--list` and `--validate-configs` and is an
+error only when the DUT is selected with `--mode formal`.
+|===
+
+Any other key fails validation, as does a checked-in registry that carries
+`launcher`, `extra_env`, or `setup_hook`. Inside one command the stage's own
+variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
+their values; below them the `setup_hook` exports win over `extra_env`,
+which wins over the ambient environment. The stage's `env/` snapshot records
+the result.
+
+Where the keys reach:
+
+* Every stage rendered from argv — the formal launch, the SV-UVM `vlogan`,
+  `vcs`, and `simv` adapters, the Xcelium adapters, the standalone Verilator
+  compile, and the coverage merge and report commands — runs
+  `launcher + command` with the merged environment and `binary` in place of
+  the tool's own executable.
+* The cocotb path (`cocotb_build`, `cocotb_sim`) honours `binary`,
+  `extra_env`, and `setup_hook`: cocotb's Python runner probes and spells the
+  simulator executable itself, and the runner substitutes `binary` through
+  the same command hook it uses for the Verilator public scope. A `launcher`
+  on a tool used through cocotb is a hard error, because that runner starts
+  the simulator from the `run_dv.py` process; run `run_dv.py` inside the
+  container instead.
+
+`--doctor` prints the active site file on its `site` line and a `source`
+column per tool (`simulators.toml`, `simulators.toml + <site> (binary,
+launcher)`, or `<site> (added)`); it sources the tool's `setup_hook` and
+reports a failing hook on the tool's row. `--validate-configs` reports the
+merged registries on a `site layer` line and never runs a hook. The run log
+carries a `config site=...` line, and `result.json` records the file under
+`site`.
+
+A container deployment:
+
+[source,toml]
+----
+schema_version = 1
+
+[simulators.vcs]
+launcher = ["podman", "exec", "-i", "-w", "/work", "eda"]
+license_env = ["SNPSLMD_LICENSE_FILE"]
+extra_env = { VCS_HOME = "/opt/vcs" }
+
+[simulators.sby]
+launcher = ["podman", "exec", "-i", "-w", "/work", "eda"]
+----
+
+The container sees the checkout and the run directory at the same paths as
+the host, so the rendered command, the replay script under `scripts/`, and
+the paths the tool prints hold on both sides. `--doctor --tool vcs` then
+checks `podman`, not `vcs`.
+
+[[runner-executor-registry]]
+=== Executor registry
+
+`hw/common/dv/configs/executors.toml` declares where leaves run. Every entry
+implements the same four operations behind the regression loop: submit an
+attempt, poll its state, cancel it, and collect its result. The loop never
+takes a verdict from the executor; the leaf's own `result.json` grades it, and
+an attempt that ends without one grades `ERROR` with a reason that starts with
+`environment_error`.
+
+[cols="<2,<1,<4",options="header"]
+|===
+|Key |Kind |Meaning
+
+|`kind = "local"`
+|both
+|Leaves run in this process. `submit_argv = []` and `wait_mode = "inline"`
+are its only other keys. At `--sim-jobs 1` an attempt runs on the calling
+thread; above that, a thread pool of that size runs them.
+
+|`kind = "cluster"`, `driver`
+|cluster
+|A scheduler driver, `lsf` or `slurm`. The entry validates and appears in
+`--doctor`; selecting an entry whose driver the runner has no dialect for, or
+whose `history_parser` that dialect does not implement, is a configuration
+error.
+
+|`binaries`
+|cluster
+|Every scheduler command the driver runs. `--doctor` looks each one up on
+`PATH` after sourcing `setup_hook`, and a missing one on the executor a run
+would select fails the doctor.
+
+|`submit_argv`, `query_argv`, `cancel_argv` (required); `history_argv`,
+`worker_argv`
+|cluster
+|Argv templates. A string element renders its `{placeholders}`; a nested list
+is an optional group that renders whole when every placeholder in it has a
+value and is dropped otherwise, so `["-q", "{queue}"]` costs nothing when no
+queue is set. `{job_ids_argv}` splices one token per job id.
+
+|`defaults`
+|cluster
+|The normalized resource vocabulary: `queue`, `cores`, `mem_mb`, `walltime`.
+`--queue`, `--cores`, `--mem-mb`, and `--walltime` win over a stage's
+`resources` table in the DUT config, which wins over these.
+
+|`limits`
+|cluster
+|Coordinator knobs, with the value an unset key takes in parentheses:
+`max_in_flight` (unbounded), `submit_batch_size` (25), `query_batch_size`
+(100), `poll_interval_sec` (10), `artifact_grace_sec` (60), `cancel_grace_sec`
+(30), `command_timeout_sec` (120), `array_chunk_size` (100).
+<<runner-cluster-dispatch>> says what each one bounds.
+
+|`arrays`
+|cluster
+|`true` submits the first attempts of a stage as job arrays of at most
+`array_chunk_size` elements; `false` submits one job per attempt. The
+checked-in `lsf` and `slurm` entries set it to `true`; a site turns it off in
+its own table. An executor whose templates cannot carry an array (a Slurm
+`submit_argv` without `{array_range}`, an LSF `query_argv` without `jobindex`)
+submits plain jobs and says so in the executor log.
+
+|`builds`, `build_defaults`, `build_submit_argv`
+|cluster
+|`builds = "scheduler"` (the value an unset key takes) runs each target build
+as a job of its own that the leaves wait for; `"local"` builds on the
+submitting host, and `--builds` overrides either for one run.
+`build_defaults` is the build's resource request where it differs from
+`defaults`, and `build_submit_argv` its submit template where a site's build
+needs other flags (a compile-licence application profile, say); both render
+the `submit_argv` placeholders.
+
+|`env_passthrough`, `history_parser`, `description`
+|cluster
+|Variables whose values at submission the job script exports before the
+worker starts; the named parser for `history_argv` output (`lsf_bhist_long`
+for LSF; `slurm_sacct` or `slurm_scontrol` for Slurm); a free-text note.
+
+|`setup_hook`
+|cluster, site layer only
+|A shell file sourced before every scheduler command, relative to the site
+file.
+|===
+
+[cols="<2,<4",options="header"]
+|===
+|Template |Placeholders
+
+|`submit_argv`, `build_submit_argv`
+|`{queue}` `{cores}` `{mem_mb}` `{mem_gb}` `{walltime}` `{walltime_sec}`
+`{walltime_min}` `{walltime_hms}` `{jobname}` `{joblog}` `{image}` `{script}`
+`{manifest}` `{python}` `{run_dir}` `{repo_root}` `{leaf_dir}` `{task_id}`
+`{executor}` `{array_range}` (set only on an array submission, as `1-N`; the
+LSF job name carries the range instead)
+
+|`query_argv`, `history_argv`, `cancel_argv`
+|`{job_id}` `{job_ids_csv}` `{job_ids_argv}`
+
+|`worker_argv`
+|`{python}` `{manifest}` `{repo_root}` `{run_dir}` `{leaf_dir}` `{task_id}`
+|===
+
+A wall time is written as minutes (`90`), with a unit suffix (`90m`, `2h`),
+or as a clock (`HH:MM`, `HH:MM:SS`, `D-HH:MM:SS`); the template picks the
+rendering its scheduler expects, so one request serves a scheduler that
+counts minutes and one that wants a clock. Memory is requested in megabytes
+and also renders as whole gigabytes, rounded up, for a scheduler whose unit is
+the gigabyte.
+
+The registry's LSF entry, with the values a site adds through
+`site.local.toml`:
+
+[source,toml]
+----
+[executors.lsf]
+kind = "cluster"
+driver = "lsf"
+binaries = ["bsub", "bjobs", "bhist", "bkill"]
+submit_argv = [
+  "bsub", ["-q", "{queue}"], ["-n", "{cores}"], ["-R", "rusage[mem={mem_gb}]"],
+  ["-W", "{walltime_min}"], "-J", "{jobname}", "-o", "{joblog}", "{script}",
+]
+query_argv = ["bjobs", "-json", "-o", "jobid jobindex stat exit_code exit_reason", "{job_ids_argv}"]
+history_argv = ["bhist", "-l", "{job_ids_argv}"]
+cancel_argv = ["bkill", "{job_ids_argv}"]
+history_parser = "lsf_bhist_long"
+env_passthrough = ["PATH", "LD_LIBRARY_PATH"]
+arrays = true
+defaults = { queue = "regress", cores = 1, mem_mb = 20480, walltime = "02:00" }
+setup_hook = "lsf.env"
+
+[executors.lsf.limits]
+max_in_flight = 200
+poll_interval_sec = 30
+----
+
+The checked-in registry is schema 2: the `local` entry plus generic `lsf`
+and `slurm` tables built from each scheduler's stock flags, carrying no site
+value. A site layer supplies the site's queue names, resource defaults,
+limits and `setup_hook`, replaces a template whose unit or flag differs at
+that site (an LSF cluster that counts memory in gigabytes renders
+`{mem_gb}`), or adds an executor the registry lacks.
+
+[[runner-cluster-dispatch]]
+==== Cluster dispatch
+
+A run selects a cluster executor with `--executor`, and the flow's
+`[scheduler] allowed` list must name it: the shared native profile allows
+`local`, `lsf` and `slurm`, the formal profile `local` only. `--sim-jobs` is
+then the number of attempts queued or running at once, bounded by the
+executor's `limits.max_in_flight`; the coordinator submits at most
+`submit_batch_size` attempts between two polls and asks about at most
+`query_batch_size` job ids per query command. A dry run submits nothing.
+The target build runs on the submitting host before the first submission,
+so an omitted `--build-jobs` derives from `--sim-jobs` capped at that host's
+CPU count.
+
+With `builds = "scheduler"`, or `--builds scheduler`, each target's build stage
+(`hdl_compile` or `elaborate`, and the model a parallel cocotb run builds
+before its leaves) is itself a job: a manifest with `role = "build"` and no
+item at `<run>/stages/regress/jobs/build-<stage>-<target>.json`, rendered
+through `build_submit_argv` when the executor has one and `submit_argv`
+otherwise, with the resources of the command line, the stage's `resources`
+table, `build_defaults`, then `defaults`. The worker runs the stage with the
+job's core request as its build concurrency, which leaves the model's
+fingerprint unchanged, and writes the build's result under
+`<run>/stages/regress/builds/<task>/`; the coordinator collects it into the
+run like an in-process build, so the leaves' manifests carry the same
+`target_build` and find the model where it names it. Every target builds at once and the leaves are submitted only
+once the builds have ended. A build that fails, times out or is lost blocks
+its target: every planned leaf of that target grades `ERROR` with a
+`dependency_blocked` failure bucket naming the build stage and target and a
+reason naming the build job and its state, without being submitted; the
+other targets' leaves run.
+The run's status follows from the build failure, and the run accounts for
+every planned leaf. The coordinator gates the leaves itself rather than
+through the schedulers' dependency expressions, which leave a dependent
+whose condition can no longer be met pending until someone cancels it. The
+`flist` stage and `c_compile` run on the submitting host.
+
+Every attempt is one job. The coordinator writes the leaf manifest, then a job
+script at `<run>/stages/regress/scripts/<task>.sh` that exports the
+`env_passthrough` values, changes to the checkout, and execs `worker_argv`
+(`run_dv.py --worker-manifest <manifest>` unless the registry says otherwise),
+and renders `submit_argv` with that script as `{script}`,
+`<run>/stages/regress/logs/<task>.log` as `{joblog}`, and
+`ocah.<run>.<task>` as `{jobname}`. Every scheduler command the executor runs,
+with its status and output, is appended to
+`<run>/stages/regress/logs/executor.log`; a leaf graded from a job carries the
+job id and final scheduler state under `metadata.scheduler` and its job log
+under `artifacts.executor_log`.
+
+With `arrays = true` the first attempts the coordinator submits in one turn go
+out as one job array per chunk of at most `array_chunk_size` attempts, bounded
+by the in-flight cap. The chunk has one script,
+`<run>/stages/regress/scripts/<stage>-arr<N>.sh`, which reads its element
+index from the scheduler (`LSB_JOBINDEX`, `SLURM_ARRAY_TASK_ID`) and picks its
+task from the sibling `<stage>-arr<N>.tasks` list, one
+`task<TAB>manifest<TAB>leaf directory` line per element; its job name is
+`ocah.<run>.<stage>-arr<N>` (`[1-N]` appended on LSF), its `{array_range}` is
+`1-N`, and its `{joblog}` carries the scheduler's index token (`%I`, `%a`) so
+every element logs to `<run>/stages/regress/logs/<stage>-arr<N>.<index>.log`.
+From then on each element is its own job to every command, under the
+scheduler's element id (`1001[3]` on LSF, `1001_3` on Slurm): polling,
+history, cancellation and collection treat it exactly like a plain job, and
+that id under `metadata.scheduler.job_id` is the leaf's whole record of the
+array. A `--retry` attempt and a `--waves-on-fail` rerun
+are plain jobs. An array the scheduler refuses grades every element `ERROR`
+(`environment_error`) and counts as one refused submission.
+
+The scheduler decides only whether an attempt is over. Each poll maps the
+driver's native states onto one lifecycle:
+
+[cols="<2,<5",options="header"]
+|===
+|State |Meaning, and the leaf's grade when the job left no `result.json`
+
+|`QUEUED`, `RUNNING`, `SUSPENDED`
+|Live in the scheduler. `SUSPENDED` waits like `RUNNING`.
+
+|`RECONCILING`
+|Missing from the live query, or reported finished before its `result.json`
+is visible. The completion record and `result.json` settle it first, then
+`history_argv`, and `artifact_grace_sec` without either ends the wait: a
+finished job grades `ERROR` (`environment_error`), a missing one is `LOST`.
+
+|`SUCCEEDED`, `FAILED`
+|The job ran to its end. The leaf's own `result.json` grades it, with the
+exit code recovered from the query or the completion record when the
+scheduler reports none; no `result.json` within the grace is `ERROR`
+(`environment_error`).
+
+|`TIMED_OUT`
+|The scheduler's wall time expired: `TIMEOUT`, with the job log as the
+leaf's log.
+
+|`CANCELLED`
+|Stopped by this run's cancellation: an interrupted leaf, as in a local run.
+
+|`PREEMPTED`, `LOST`
+|Preempted, requeued, or gone without a record: `ERROR`
+(`environment_error`), which `--retry` reruns as a new attempt.
+|===
+
+A query that fails, or hangs past `command_timeout_sec`, leaves every asked
+job in its previous state and doubles the next wait, up to eight times
+`poll_interval_sec`; five consecutive failed queries, or three consecutive
+refused submissions, abort the run, which cancels its jobs and writes the
+interrupted summary with `interruption.kind = "executor"` and exit status
+`2`. A single refused submission grades that attempt `ERROR`. On
+interruption the coordinator renders `cancel_argv` for the run's own job ids
+only, then confirms each within `cancel_grace_sec` by query; a job the
+scheduler reports finished counts as confirmed, and the ids it does not know
+or does not confirm are written to
+`<run>/stages/regress/jobs/cancel-unconfirmed.json` for the operator and
+repeated, with their leaves, under `interruption.cancellation` in the
+interrupted summary. A second signal during that wait ends it; the summary
+is written either way (<<runner-interrupted-checkpoints>>). A `--retry`
+attempt and a `--waves-on-fail` rerun are each their own job, submitted
+when the attempt they follow has been collected.
+
+`tools/dv/tests/test_cluster_executor.py` drives both drivers through
+`tools/dv/tests/fake_scheduler.py`, which answers
+with the output shapes the production schedulers print, including a
+submission filter's stderr banner in both its shapes, with and without a
+memory request, the `ERROR` record `bjobs -json` returns
+for an unknown id, `bkill`'s status 255 for a finished job, `squeue`'s
+failure for an id the controller dropped, and `scancel`'s success for any id.
+The `slurm-qualify` workflow, run by hand, then puts the Slurm driver against
+a live scheduler: a single-node Slurm with accounting that the job installs on
+the hosted runner, submitting the selected tests as jobs of the runner itself
+(<<runner-ci>>). The LSF driver's live qualification runs on the maintainer
+farm outside hosted CI. The state maps and parsers live in
+`runlib/executors/lsf.py` and `runlib/executors/slurm.py`.
+
+==== Leaf manifests and the worker
+
+A cluster driver runs each attempt through `run_dv.py --worker-manifest
+<run>/stages/regress/jobs/<task>.json`, a JSON brief the coordinator writes
+per attempt: DUT, framework, tool, stage, item, seed, attempt, the run and leaf
+directories, the resource request, and the command line the coordinator ran
+with. Its `plan_digest` covers every other key, so an edited manifest is
+refused, and the only command-line attributes a manifest may override are the
+wave and console options a debug rerun changes. The worker verifies the digest,
+the checkout, and the run tree, reloads the configuration from the tree, runs
+exactly one stage, writes the leaf's `result.json` and a `<task>.done.json`
+completion record beside the manifest, and exits with the leaf's status code.
+A manifest that cannot be trusted or run leaves an `ERROR` result whose reason
+starts with `environment_error` and exits `2`. Workers write nothing else: the
+coordinator is the single writer of every aggregate in the run tree.
+
+[[runner-formal]]
+== Formal verification
+
+Formal mode runs a property set through the same runner as a simulation:
+`--mode formal` selects a DUT's formal view, an item names an app, the app
+names the backend's script, and the runner renders one command, runs it, and
+grades the evidence the backend wrote into `result.json`. This chapter is the
+contributor's route through the pieces the reference sections define: the
+toolchain, a local run and a container run, the property style, the
+configuration a formal view needs, how a result is read, and where
+licensed-backend collateral lives. `hw/sys/dtp/dv/` is the reference
+implementation, the DTP TAP controller proven with SymbiYosys; its plan
+section is "Formal Verification Plan" in `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`.
+Hosted CI runs no formal job and no formal result reaches the dashboard:
+formal mode is a developer-host flow (<<runner-ci-support-matrix>>).
+
+[[runner-formal-toolchain]]
+=== Toolchain
+
+The open path is SymbiYosys (`sby`) driving Yosys with the yosys-slang
+frontend, `yosys-smtbmc`, `yosys-abc`, and an SMT solver, with `bender` for
+the filelist. The frontend must be a yosys-slang build that carries the
+concurrent-assertion lowering (releases from 2026-05 on); the `cover` task
+needs the SMT solver the task file names (`yices` in the DTP task file), and
+`abc pdr` needs none. `--doctor` probes `sby` alone, so the other tools must
+share its `PATH`:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut dtp --mode formal
+----
+
+The Open-path toolchain section of the Formal Property Style and Layout
+chapter (`hw/common/dv/docs/index.adoc`) is the authority for the frontend
+and solver requirements; a pip-only `sby` without a solver runs `bmc` and
+`prove` on the abc engines and no `cover` task.
+
+[[runner-formal-local-run]]
+=== A local run
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --list                              # the `dtp fv` row: the formal view and its tools
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run   # the planned stages and the rendered sby command
+python3 tools/dv/run_dv.py --dut dtp --mode formal             # the `smoke` group: dtp_tap_fpv
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items fpv # every item of the plan
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items dtp_tap_fpv --app tap_fpv
+----
+
+The `flist` stage writes the Bender filelist the task file reads through its
+`[files]` entry, then the `formal` stage runs every task of the item's app in
+one `sby` invocation from the app's `cwd`, the directory holding the task
+file. Under `<run>/stages/formal/` the run leaves `logs/<item>.log`, the
+replay script `scripts/formal.<item>.sh`, the `env/` snapshot, and one work
+directory per task, `<item>_<task>/` (`dtp_tap_fpv_tap_bmc` for the TAP
+block's `bmc` task), holding the model, the engine log, the
+`status` file, the JUnit report, and on a counterexample
+`engine_0/trace.vcd`; a reached cover writes its trace the same way inside
+the `cover` task's directory. The console ends with the item status and the
+run-level `result.json`, whose `formal` object carries the proven and covered
+counts and the task totals (<<runner-formal-grading>>).
+
+The FAIL path is checked by inverting one assertion body and running the same
+command: the `bmc` task reports `FAIL` with the trace, the `prove` task
+reports `FAIL`, the item is `FAIL` in the `formal_fail` bucket, and the exit
+code is non-zero. Restore the property afterwards; the DTP plan section names
+the assertion it uses for this check.
+
+[[runner-formal-container-run]]
+=== A container run
+
+When the tools live in a container image, the site layer's `launcher` puts
+the container command in front of every `sby` invocation while `run_dv.py`
+and `bender` stay on the host (<<runner-site-layer>>). Three constraints hold:
+
+* The container sees the checkout and the run directory at the same paths as
+  the host, because the generated filelist and the rendered command carry
+  host-absolute paths.
+* The launcher's first token is an absolute path or a bare name found on
+  `PATH`. The command starts from the app's `cwd`, so a checkout-relative
+  path does not resolve there.
+* The image carries a yosys-slang build with the concurrent-assertion
+  lowering and an SMT solver beside `sby` (<<runner-formal-toolchain>>).
+
+The repository's container helper meets the first constraint: `eda-run`
+mounts the checkout at its own host path and runs the command inside the EDA
+image (`tools/docker/README.md`). `OCAH_EDA_IMAGE` selects the image, and a
+launcher inherits the tool's `extra_env`, so one site file describes the
+whole arrangement:
+
+[source,toml]
+----
+schema_version = 1
+
+[simulators.sby]
+launcher = ["/path/to/checkout/scripts/docker-run.sh", "eda-run"]
+extra_env = { OCAH_EDA_IMAGE = "hpretl/iic-osic-tools:2026.08" }
+----
+
+`--doctor --dut dtp --mode formal` then reports `launcher found:` with the
+helper's path on the `sby` row, `--dry-run` prints the prefixed command, and
+`result.json` records the site file under `site`. The cocotb path cannot take
+a launcher; formal mode has no such restriction because every formal command
+is rendered from argv.
+
+[[runner-formal-properties]]
+=== Writing properties
+
+The Formal Property Style and Layout chapter of `hw/common/dv/docs/index.adoc`
+fixes how a property file is written so that it elaborates on the open path
+and on licensed backends alike. The rules a contributor meets first:
+
+* *Subset.* Every property body is a boolean over current and `$past` values.
+  The open frontend reads no sequences, implication operators, or the
+  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers
+  `ocah_axi_sva` and `ocah_jtag_sva` and the `OCAH_ASSERT` macros elaborate
+  on licensed backends only, while `ocah_axi_fv` and `ocah_jtag_fv` beside
+  them carry the handshake rules in the subset, each side asserted or
+  assumed by parameter (Accepted constructs, Shared protocol checkers).
+* *Macros and guards.* `hw/common/assert/ocah_fv_macros.svh` supplies
+  `OCAH_FV_ASSERT`, `OCAH_FV_ASSUME`, `OCAH_FV_COVER`, and
+  `OCAH_FV_INITIAL_RESET`, all gated on `FORMAL`, which every backend script
+  defines; a property file never tests `YOSYS` (Property macros, Preprocessor
+  guards).
+* *Attachment and labels.* A property module binds to the described block
+  with downward hierarchical references, and every label starts with `ast_`,
+  `asm_`, or `cov_` (Attaching a property module, Labels).
+* *Reset and clocks.* An `asm_initial_reset` holds the reset in the first
+  cycle; a DUT clocked on both edges of one clock models its clocks explicitly
+  under `multiclock on` with an environment module that asserts and then
+  releases the asynchronous resets (Reset and history, Clock modelling).
+* *Layout.* `<dut-dv-root>/formal/props/` holds the property and bind files,
+  `formal/<app>/sby/` the task file and the reset environment,
+  `formal/build/` the generated filelist and work directories (Layout under
+  the DUT DV root).
+* *Reachability.* Every `cov_` label stays reachable after any assumption
+  change, checked by the `cover` task of the same run; an unreached cover
+  fails the item (Cover reachability after assumption changes).
+
+A formal target starts with a plan section in the DUT's verification plan
+that scopes the described block, tabulates the labels against the plan rows,
+and justifies every bounded depth against the block's structural latency,
+as the DTP section does.
+
+[[runner-formal-config]]
+=== Configuring a formal view
+
+A DUT gains a formal view from `<name>_formal_cfg.toml` beside its sim
+config, or from a `formal_cfg` pointer in the registry or the site layer
+(Selection model). `hw/sys/dtp/dv/dtp_formal_cfg.toml` shows every key a
+view on the CLI run path needs:
+
+[cols="<3,<5",options="header"]
+|===
+|Key |Purpose
+
+|`name`, `profile = "native-formal"`, `description`
+|The DUT name, the shared formal profile (stage graph, `sby` as the default
+tool), and the `--list` description.
+
+|`[testlist]` `path`, `format = "toml_list"`
+|The formal testlist, DUT-DV-root-relative. Each item's `module` names the
+app it launches; groups collect items (`smoke` for the DTP item).
+
+|`[native.stages.flist]` `kind = "filelist"`
+|Regenerates the Bender filelist before every proof; the task file reads it
+through `[files]`. `[native.stages.clean]` names what `--stage clean`
+removes.
+
+|`[build]` `top_module`, `filelist`, `bender_filelist`, `work_dir`,
+`incdirs`, `common_bender_targets`, `bender_targets`
+|The design closure and include order. `hw/common/assert/yosys` precedes
+`hw/common/assert` so the frontend picks the assertion shim over the vendored
+header; the targets name the design only, never the simulation testbench.
+
+|`[targets.default]` `build_dir`
+|The one target a formal view carries.
+
+|`[formal.apps.<app>.<tool>]` `cwd`, `script`, `args`
+|One table per backend and app: the directory the tool starts from, the
+script it runs, and the tokens spliced at the template's `{args}` (the
+`sby` task names). An `argv` key overrides the tool's registry template and
+an `evidence` table grades a backend without a parser policy
+(<<runner-formal-templates>>, <<runner-formal-grading>>).
+|===
+
+`--validate-configs` validates the view as `<name> (formal)` and `--list`
+shows it as a `fv` row; `--list --json` entries carry `mode = "formal"` and
+`available`. The `tools` list comes from the profile unless the config sets
+its own, which a config that adds a site-supplied backend does
+(<<runner-formal-licensed>>).
+
+[[runner-formal-results]]
+=== Reading a result
+
+The runner grades an item from what the backend wrote, never from its exit
+code; <<runner-formal-grading>> carries the rules and the `formal` object.
+What each status means for the contributor:
+
+[cols="<1,<4",options="header"]
+|===
+|Status |Meaning and next step
+
+|`PASS`
+|Every task passed and every cover was reached. A passed `bmc` task is
+bounded evidence to its depth; the `prove` task is the unbounded proof.
+
+|`FAIL`
+|A counterexample, an induction failure, or an unreached cover. Open the
+task's `engine_0/trace.vcd`; for an unreached cover revisit the assumptions
+and the depth against the plan section's distance table before touching the
+cover.
+
+|`UNKNOWN`
+|No task evidence, an inconclusive task, or a non-zero exit beside passing
+evidence. "no formal task evidence" points at the launch template's
+`--prefix` or the app's `cwd`; an inconclusive `prove` (an induction
+counterexample) is an open proof that needs a stronger invariant or another
+engine. `sby` takes depths and timeouts from the task file, so a changed
+bound is a task-file edit; `--formal-arg` values reach the command only where
+the template has a `{formal_args}` placeholder.
+
+|`TIMEOUT`, `ERROR`
+|The task file's `timeout` fired, or the tool failed before writing
+evidence; the stage log carries the tool's diagnostic.
+|===
+
+The recorded status is the disposition. Formal results have no waiver
+mechanism: coverage waivers (<<runner-waive>>) apply to coverage bins only,
+and a property that is out of scope is removed from the property module with
+the reason recorded in the plan section rather than waived.
+
+[[runner-formal-licensed]]
+=== Licensed backends and the companion boundary
+
+The open tree carries the open path and nothing that names a licensed tool:
+the property and bind files, the `sby` task files and reset environments, the
+formal config with the `sby` app, and the plan section. The registry and the
+formal profile list `sby` alone. A licensed backend reaches the runner
+through the site layer (<<runner-site-layer>>), and its collateral lives in
+the companion repository or in an adopter's own tree:
+
+* *The site file* adds a complete tool table with `kind = "formal"`,
+  `frameworks = ["formal"]`, the binary, the license variables, an `argv`
+  launch template, and a `setup_hook` or `launcher` where the tool needs an
+  environment or a wrapper. The runner validates it with the registry schema
+  and treats it exactly like a checked-in table; `--list` marks it
+  `(licensed)` from its `license_env`.
+* *A companion-owned formal config*, named by the site file's
+  `[duts.<dut>] formal_cfg`, lists `tools = ["sby", "<tool>"]` and carries
+  the licensed app tables with their scripts and `evidence` hooks. Its `sby`
+  app reuses the open collateral by pointing `cwd` at the open tree's task
+  directory, so one view serves both backends.
+* *Activation* is explicit: the file at `hw/common/dv/configs/site.local.toml`
+  or the one `OCAH_DV_SITE` names. The presence of a companion checkout
+  changes nothing.
+
+[source,toml]
+----
+schema_version = 1
+
+[simulators.fvtool]
+kind = "formal"
+binary = "fvtool"
+frameworks = ["formal"]
+license_env = ["FVTOOL_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
+setup_hook = "eda/fvtool.env"
+
+[duts.dtp]
+formal_cfg = "/path/to/companion/hw/sys/dtp/dv/dtp_formal_cfg.toml"
+----
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut dtp --mode formal --tool fvtool
+python3 tools/dv/run_dv.py --dut dtp --mode formal --tool fvtool
+python3 tools/dv/run_dv.py --dut dtp --mode formal --tool sby
+----
+
+Both commands run the same item; the tool choice is the only difference, and
+each run records the site file under `site` in its `result.json`.
+`hw/common/dv/configs/site.local.example.toml` is the template for the site
+file.
 
 == Stage planning
 
@@ -575,13 +1845,113 @@ delete cached models and all prior runs. Inspect the `REMOVE` plan with
 `--stage clean --dry-run` before executing it.
 ====
 
+[[runner-build-reuse]]
+=== Build reuse
+
+A cocotb model is built into the target's `build_dir` with the tool name
+appended (`<build_dir>/<tool>`, or the sibling `<build_dir>/<tool>-coverage`
+under `--cov`; VCS adds one more component named after the target) and
+reused by every later run of the same target and tool. The
+`artifact build=<dir> (rebuild=<bool> reason=<why>)` line of a run names the
+directory it used and, when the model is rebuilt, why.
+
+cocotb's build step rebuilds a model only when a source it was handed is
+newer than the model, and this flow hands it none: the sources reach the
+compiler through the filelist. The runner therefore decides for it. Every
+build writes `build_record.json` into the model directory with the
+fingerprint of the inputs that produced the model, and the next run compares
+its own fingerprint with the record: a different fingerprint (`reason=inputs
+changed`), or a model directory without a record (`reason=no build record`),
+forces a clean build; `--rebuild` forces one regardless (`reason=requested`).
+An edit to any file the filelist reaches, including its `-f` includes, or to
+any file a build argument names, such as a coverage scope file, therefore
+rebuilds the model on the next run.
+
+`[build.options]` sets the sharing policy:
+
+* `cache_enabled = true` partitions the build directory by a fingerprint of
+  the build inputs, so configurations that differ never overwrite each
+  other's model and an unchanged configuration finds its build again. The
+  fingerprint covers the top module, the tool version, the generated filelist
+  text, a digest of every source the filelist reaches through its `-f`
+  includes, a digest of every file a build argument names, the rendered build
+  arguments, the selected `[targets.<name>]` table, the Verilator
+  public-scope list, the wave format, whether coverage is on, and the strings
+  in `cache_key_extra`.
+* `rebuild = true`, or `--rebuild`, forces a clean build of the selected
+  directory through the cocotb runner on every simulator, and removes a
+  firmware template's declared outputs before `c_compile` runs so an
+  incremental build tool cannot keep stale objects.
+* `cflags` and the `[build.<tool>]` knobs shape the build command and enter
+  the fingerprint through the arguments they add. `build_jobs` shapes the
+  command alone: a cluster build job takes its job count from its core
+  request while the coordinator takes `--build-jobs`, and both must name one
+  model directory.
+
+The shared profile leaves `cache_enabled` off, so one directory per target
+and tool is rebuilt in place when its inputs change.
+
+[[runner-dry-run-plan]]
+=== Reading a dry-run plan
+
+`--dry-run` resolves the configuration, plans the stages, and renders every
+command, script, and environment snapshot the run would use, without
+executing a backend tool or writing a result file. The plan for the DTP
+`smoke` group on Verilator with `--ui plain`, timestamps removed and the
+repository, run, and seed paths abbreviated:
+
+[source,text]
+----
+run        flow=dtp tool=verilator items=2 stages=flist,hdl_compile,sim run_dir=hw/sys/dtp/dv/build/runs/<stamp>__verilator__smoke mode=regression sim_jobs=1 executor=local backend=log
+config     merge_order=simulator-defaults < profile(native) < dut(hw/sys/dtp/dv/dtp_sim_cfg.toml) < cli
+config     effective_defaults=simulators.toml[verilator.build_defaults], simulators.toml[verilator.coverage_defaults], profile/DUT [defaults], profile/DUT [target_defaults], profile/DUT [build.options]
+stage      start name=flist item=- log=<run>/stages/flist/logs/flist.log
+CMD  : bender checkout
+CMD  : bender script flist-plus -t axi_rtl -t apb_rtl -t common_cells_rtl -t common_cell_sync_shim -t register_interface_l1 -t dtp -t simulation > <repo>/hw/sys/dtp/dv/build/dtp_bender.f
+WRITE: <run>/stages/flist/scripts/flist.sh
+WRITE: <run>/stages/flist/env/flist.env
+WRITE: <repo>/hw/sys/dtp/dv/build/dtp_dut_compile.f
+stage      done name=flist item=- status=PASS elapsed=0.0s
+stage      start name=hdl_compile item=- log=<run>/stages/hdl_compile/logs/hdl_compile.log
+artifact   build=<repo>/hw/sys/dtp/dv/build/cocotb/verilator (rebuild=False)
+WRITE: <run>/stages/hdl_compile/scripts/hdl_compile.sh
+WRITE: <run>/stages/hdl_compile/env/hdl_compile.env
+stage      done name=hdl_compile item=- status=PASS elapsed=0.0s
+regression start total=2 sim_jobs=1 executor=local seeds=1 retry=0
+WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
+CMD  : <python> <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
+WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.sh
+WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/env/sim.env
+regression done index=1/2 status=PASS item=dtp_sanity_test seed=<seed> attempt=0 elapsed=0.0s
+(the second leaf, dtp_jtag_idcode_test, repeats the five lines above)
+summary    passing=2 total=2 failing=0 skipped=0 elapsed=0.0s
+result     status=PASS tests=2 elapsed=0.0s run_dir=<run> json=<run>/result.json
+----
+
+Reading it:
+
+* The `run` line is the resolved selection: the two `smoke` members became
+  two leaves under the scheduler (`mode=regression`), and the implicit stage
+  path is `flist -> hdl_compile -> sim` because no selected test declares
+  firmware.
+* The two `config` lines state the merge order and the tables that supplied
+  defaults, in the order they were layered.
+* `CMD` lines are the exact commands, `WRITE` lines the scripts and
+  environment snapshots that a real run writes, and `REMOVE` lines, under
+  `--stage clean`, the paths it deletes. Nothing after a colon has run.
+* Every stage reports `status=PASS elapsed=0.0s` because the plan, not the
+  tool, was executed, and the `result` line names a `result.json` that the
+  dry run does not write.
+
+A dry run also loads the locked Python environment and may refresh the
+generated namespace bridge (<<runner-current-limitations>>).
+
 === Coverage stages
 
 `--cov` requires the flow to declare coverage stages: on a flow whose stage
-graph has no `cov_merge`/`cov_report` (for example the `uvm` framework, whose
-instrumentation wiring is a documented follow-up), the runner rejects `--cov`
-before any stage executes instead of failing after a full compile and
-simulation with a missing coverage artifact.
+graph has no `cov_merge`/`cov_report` (for example the `uvm` framework), the
+runner rejects `--cov` before any stage executes instead of failing after a
+full compile and simulation with a missing coverage artifact.
 
 On the implicit path, `--cov` instruments simulation and appends `cov_merge`
 and `cov_report` when the flow provides them:
@@ -619,20 +1989,175 @@ Non-dry-run coverage-only replay requires an existing `result.json`. The runner
 recovers the original tool, rejects a mismatched `--tool`, preserves
 non-coverage stage history, and replaces the replayed coverage records. A dry
 run can render a placeholder plan without that file, but cannot restore the
-original tool or history.
+original tool or history. A run that did not finish (`tests.completed` is
+`false`, or the record carries an `interruption`) is refused with exit code
+`2`: coverage is graded over a complete regression only, so the leaves that
+happen to have run cannot produce a threshold verdict.
 
-Coverage merge/report accepts at most one known target and one known build
-fingerprint. A multi-target run cannot be merged as one coverage database;
-pass `--target NAME` to compile every selected test on one elaboration.
-All-unknown legacy input provenance is accepted as a compatibility fallback.
-Coverage-only replay resolves the current/default target rather than restoring
-an original non-default target; use replay only when target and build-affecting
-configuration still match. This is especially important for the VCS design
-coverage database.
+[[runner-coverage-inputs]]
+==== Which databases merge
 
-The compatibility threshold uses `--fail-under`, then
-`[coverage.<tool>].fail_under`, then `0.0`. Detailed coverage-policy thresholds
-are enforced in addition to that scalar threshold.
+`cov_merge` selects its inputs from the leaf `result.json` records under the
+run directory, not from a directory listing. For every test and seed it
+takes the final attempt that wrote a coverage database, whatever that leaf's
+status, so a retried leaf contributes once and a failing or timed-out leaf
+contributes what it collected. A debug-only rerun and a leaf whose database
+is missing or empty are rejected with a recorded reason, and a fragment that
+records another flow or tool refuses the whole merge. A run directory without
+leaf records falls back to the tool's `input_glob`.
+
+The inputs must share one target and one build fingerprint. A multi-target
+run cannot be merged as one coverage database; pass `--target NAME` to
+compile every selected test on one elaboration. Inputs that all lack target
+and build-fingerprint provenance merge as one set, and a set that mixes
+recorded and missing provenance is refused. Coverage-only replay resolves the
+current/default target rather than restoring an original non-default target;
+use replay only when target and build-affecting configuration still match.
+This is especially important for the VCS design coverage database.
+
+The merge and report commands, the merged database name, and the input glob
+come from `[coverage.<tool>]`, layered as every other tool table is
+(<<Configuration and precedence>>), so the same run directory merges the same
+way on any host that has the tool. `cov/coverage.json` records the selection
+(<<runner-coverage-record>>): the selection policy and source, every input
+with its test, seed, attempt, status, target, and build fingerprint, every
+rejection with its reason, the exclusion files, and the policy file with its
+SHA-256 and `scope_epoch`.
+
+[[runner-cov-combine]]
+==== Combining finished runs
+
+`--cov-combine RUN_DIR...` combines the coverage of two or more finished runs
+into one new run directory and grades it, so a DUT whose scenarios run under
+two frameworks, or whose seeds run on two hosts, gets one signoff figure:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp \
+  --cov-combine hw/sys/dtp/dv/build/runs/<cocotb-run> hw/sys/dtp/dv/build/runs/<uvm-run> \
+  --run-dir hw/sys/dtp/dv/build/runs/<combined-run>
+----
+
+No simulator runs. Each input run must belong to the DUT, have finished, and
+carry a coverage record whose merge and report completed and whose merged
+database exists; its own grade does not matter, since the combined run is
+graded on its own. Every run must use one tool, and all must record one
+commit, since one figure describes one revision of the design. A run
+recorded on a dirty tree is accepted with a warning. The runs may sit in
+another checkout or in a retained copy: their artifact paths resolve against
+the tree that produced them, and a design database that the copy left out is
+skipped, since the merged database its own merge loaded already holds the
+design data.
+
+Two verbs, two operations. The `cov_merge` stage *merges* the leaf databases
+of one run into that run's merged database, and `--stage cov_merge --run-dir X`
+replays that in place. `--cov-combine` *combines* finished runs: the new run
+carries the DUT's `cov_merge` and `cov_report` stages, its merge runs the
+tool's `combine_cmd` over the runs' design databases and merged databases
+(`urg -flex_merge union` on VCS, because runs of different frameworks
+elaborate different harness tops and only the DUT subtree is common), and its
+report grades the result against the same policy, threshold and exclusion
+inputs as any run. `cov/coverage.json` lists the runs as its inputs (`item`
+of `run:<name>`, `selection_source` of `run_dirs`) and names each run's
+directory, framework, commit, tool version and database under
+`combine.input_runs`. `--run-dir` names the new directory; without it the run
+lands under the DUT's run tree with the label `combine`, and `latest` keeps
+pointing at the last simulation run, so the dashboard's default collection is
+unaffected and a combined run is collected by naming its directory.
+`--fail-under` and `--dry-run` apply; selection, seed, wave and build options
+do not.
+
+[[runner-coverage-grading]]
+==== How the grade forms
+
+`cov_report` runs the tool's report command, parses the report into scalar
+metrics and per-point observations, applies the DUT's coverage policy, and
+grades the result. Two kinds of threshold apply, and both must be met:
+
+[cols="<2,<5",options="header"]
+|===
+|Threshold |Rule
+
+|Compatibility threshold
+|`--fail-under`, then `[coverage.<tool>].fail_under`, then `0.0`, compared
+with the tool's own overall percentage (`overall_percent` in
+`summary.json`): Verilator's count of hit points over all points, or the
+urg / imc dashboard total. Accepted waivers do not move that figure, so a DUT
+gated by `--fail-under` alone sees no effect from its policy. On a `--waive`
+re-grade the run's recorded `threshold` stands unless `--fail-under` is
+given.
+
+|Policy thresholds
+|Each `pass:[[[thresholds]]]` rule of `coverage_policy.toml` names a metric
+family and a `minimum_percent`. `population = "effective"` (the default)
+grades hit points over the points that remain after accepted waivers and
+exclusions, and `population = "raw"` grades the unwaived figure. With the
+default `scope`, a family with several native metrics grades its weakest;
+a `scope` glob pools the family's in-scope points into one figure, and is
+not met when the parser recorded no complete point list. `tool` and
+`target` limit a rule to one tool or target; a rule that names another is
+skipped without an outcome. `max_unclassified_points` fails the rule when
+more uncovered points than that carry no `pass:[[[holes]]]` entry. A rule
+whose metric family has no points is not met.
+|===
+
+A `pass:[[[native_files]]]` entry hands the merge or report command an input in
+the tool's own format: `tool`, `role`, `path` (relative to the policy file),
+`apply_phase` (`merge` or `report`), and `args`, the arguments to add with
+`{path}` standing for the file (URG takes an exclusion list as
+`["-elfile", "{path}"]`). The entry may pin the file's `sha256`: a pinned
+digest that differs from the file refuses the policy, so a regenerated file
+takes a new review. `cov/coverage.json` records every entry with the digest of
+its file.
+
+A report tool that applies exclusion inputs while it reports (URG with
+`-elfile`) writes the effective figures only. When the report phase has such
+inputs, it runs the report command a second time without them into
+`cov/report_raw/`, and each family's `raw_percent` comes from that report while
+`effective_percent` comes from `cov/report/`; without exclusion inputs the one
+report supplies both. The stage log carries one `COVERAGE FAMILY` line per
+family with both figures, the console prints them on a `coverage` line, the
+manifest points at the raw report as `artifacts.report_raw`, and `result.json`
+carries the figures as `raw_metrics` and `effective_metrics`.
+
+The coverage status is `PASS` when every threshold is met and `FAIL`
+otherwise. A `FAIL` gives the `cov_report` record return code `1` and a
+`coverage_threshold` failure bucket, makes the run status `FAIL` and the exit
+code `1`, and names each missed threshold in the stage log. A DUT whose
+policy sets no `pass:[[[thresholds]]]` and whose configuration sets no
+`fail_under` grades against `0.0` and cannot fail on coverage.
+
+The grade is fail-closed on the policy itself, in two places. A policy that
+fails a grammar check is refused when `cov_merge` loads it, before any
+coverage file is written: that record is `ERROR` with a `config_error`
+bucket and the run status is `ERROR`. Grammar checks include a
+`schema_version` other than `1`, a `dut` other than the run's, an accepted
+waiver with `confidence = "low"`, an open entry with an actionable
+disposition and no GitHub issue, a duplicate id, a `minimum_percent` outside
+0 to 100, an `expected_matches` below 1, an entry without a
+`pass:[[[holes.native]]]` selector, a `pass:[[[native_files]]]` entry with a key
+outside its grammar or a `sha256` other than its file's, and a category,
+disposition, status, population, date, or selector key outside the grammar. A policy that
+contradicts the report is refused by `cov_report` after the report command
+ran: a `pass:[[[holes]]]` entry that matches a number of points other than
+`expected_matches`, an accepted waiver or exclusion that matches a covered
+point, or two entries that claim one point. That record is `ERROR` with a
+`config_error` bucket, the run status is `ERROR`, and
+`coverage-details.raw.json` is the only report file written. An accepted
+waiver past its `expires` date grades its points as open and adds a warning
+to `policy-application.json`, so a lapsed waiver lowers the effective figure
+instead of hiding a hole.
+
+In scheduler mode (a group, `--regress`, `--reseed`, `--retry`,
+`--max-failures`, or more than one item), the leaf stage never stops the
+plan: `cov_merge` and `cov_report` run after the leaves whatever their
+statuses, so a red regression still carries its coverage record and the
+databases of its failing and timed-out leaves are inputs like any other. A
+flat single-test run stops at its first failing stage and reaches the
+coverage stages only when the test passed. A run that did not finish
+(`tests.completed` is `false`, or the record carries an `interruption`) is
+refused by coverage-only replay and by `--waive` with exit code `2`:
+coverage is graded over a complete regression only.
 
 [[runner-waive]]
 ==== Waive coverage bins after a regression
@@ -644,10 +2169,10 @@ A hole reviewed after a regression is closed in the DUT's
   point with its `native_locator`, `hierarchy`, `source`, and `line`;
   `holes_summary` in `cov/report/summary.json` counts them by metric,
   category, and status.
-. Add or edit a `[[holes]]` entry. A waiver is an entry with
+. Add or edit a `pass:[[[holes]]]` entry. A waiver is an entry with
   `disposition = "waive"` (or `"exclude_scope"`), `status = "accepted"`,
   `confidence` of `medium` or `high`, a `rationale`, `owner`, `reviewer`, and
-  `date`, plus one or more `[[holes.native]]` selectors. `expected_matches`
+  `date`, plus one or more `pass:[[[holes.native]]]` selectors. `expected_matches`
   is an exact count. An accepted waiver that matches a covered point, a
   low-confidence waiver, and a `dut` that differs from the run's are rejected.
 . Re-grade the finished run against the policy:
@@ -662,13 +2187,14 @@ Bare `--waive` applies the policy the DUT configures (`policy_file`, else
 `cov/config/<tool>/coverage_policy.toml`); a DUT without one needs `FILE`.
 `--waive FILE` applies that file instead, and it must name the run's `dut`. A
 relative `FILE` resolves against the repository root, like `--run-dir`.
-. Collect the run again for the dashboard, or re-dispatch the publication
-  workflow for a weekly (see the dashboard page).
+. Collect the run again for the dashboard.
 
 No simulator or report tool runs: the run tree is the only input, so the
 command works on a copied or downloaded run tree and on a host without the
 tool. `--dut` must equal the run's `flow`; `--tool` and `--framework` are
-recovered from `result.json` and must match when given. The only other
+recovered from `result.json` and must match when given. The run must have
+finished: an interrupted or truncated run (`tests.completed` is `false`) is
+refused with exit code `2`. The only other
 options accepted are `--overlay`, `--fail-under`, `--verbose`, and `--quiet`.
 
 The re-grade rewrites values only: `cov/report/coverage-details.json`,
@@ -706,8 +2232,18 @@ Carried values: the tool version and supported metrics come from the run's
 `--fail-under` when given, else the recorded `threshold`, else
 `[coverage.<tool>].fail_under`, else `0.0`. In the repair case no threshold is
 recorded, so a `--fail-under` the original run used has to be passed again.
+The compatibility threshold grades the tool's raw overall figure, so a waiver
+changes the verdict only through a `pass:[[[thresholds]]]` rule.
 
-`[[native_files]]` entries act inside the merge and report commands, which the
+An accepted waiver may carry `expires` (`YYYY-MM-DD`). Past that date the
+waiver is lapsed at grade time for its own DUT: the hole keeps its `policy_id`
+and disposition, its `status` becomes `open`, it counts as an open hole and no
+longer shrinks the effective denominator, and `warnings` in
+`coverage-details.json` and `policy-application.json` carry
+`<rule id> expired on <date>; treated as open`. `--validate-configs` reports
+the expiry as a warning and stays `OK`; extending the date restores the waiver.
+
+`pass:[[[native_files]]]` entries act inside the merge and report commands, which the
 re-grade does not run. When the policy's native files differ from the digests
 the manifest recorded at merge time, `--waive` exits 2; rerun
 `--stage cov_report` instead.
@@ -742,7 +2278,7 @@ When scheduler mode executes `sim` or `regress`, seeds are fresh random
 positive integers and are recorded in leaf and regression results. `--seed` is
 rejected for those scheduler runs. Each cocotb simulation process receives the
 leaf seed as `RANDOM_SEED` and the directory its model was elaborated into as
-`OCAH_SIM_BUILD_DIR` (`<tool>/coverage` under the DUT build directory for a
+`OCAH_SIM_BUILD_DIR` (`<tool>-coverage` under the DUT build directory for a
 `--cov` run), so a test that records which model it simulated reads that
 variable instead of assuming the plain `<tool>` path. Reproduce a leaf as a
 single simulation with the recorded item and seed:
@@ -760,6 +2296,45 @@ python3 tools/dv/run_dv.py \
 `--retry N` retries a non-passing leaf up to `N` times. Earlier failures remain
 in `regression.json`; the final effective attempt determines the leaf result.
 A leaf that passes after a failed attempt is recorded as flaky.
+
+[[runner-regression-record]]
+=== The regression record
+
+`stages/regress/regression.json` is the scheduler's own summary beside the
+run-level `result.json`; both carry the run `status` and `exit_code`. Its
+`jobs` list holds one record per attempt: `stage`, `item`, `target`, `seed`,
+`attempt`, `status`, `return_code`, `reason`, `duration_sec`, `started_at`,
+`ended_at`, `log`, `failure_buckets`, `metadata` (the seed, the attempt,
+whether it is a wave-debug rerun, and on a cluster executor the `scheduler`
+job id and state), and `result_json`, the per-attempt
+`<test>/seed_<seed>/attempt_<n>/result.json` that holds the attempt's
+artifacts, parser evidence, and build, coverage, and provenance metadata.
+Attempts of one `(item, seed, target)` leaf are grouped, and the highest
+attempt is the leaf's final result.
+
+* `failed_tests` lists every leaf whose final attempt is `FAIL`, `ERROR`,
+  `TIMEOUT`, or `UNKNOWN`, with `attempt_count`, every attempt's summary, the
+  final failure buckets (a leaf without a classified bucket gets one
+  `unknown` bucket carrying its `reason`), the `expected_fail` record when
+  the entry carries one, and a `rerun` command that reproduces the final
+  attempt with its seed.
+* `flaky_tests` lists every leaf whose final attempt is `PASS` after an
+  earlier non-passing attempt: `flaky_reason` is `passed_after_retry`,
+  `failing_attempts`, `first_fail_attempt`, `first_failure_reason`, and
+  `passed_on_attempt` locate the flip, and `tests.flaky` counts these leaves.
+  A flaky leaf is a passing leaf in `tests.passing` and in the run status.
+* `rerun_commands` repeats the `rerun` of every failed and flaky record.
+* `failure_buckets` groups the failed leaves' buckets by `(kind, signature)`
+  with a `count`, the `affected` leaves, and up to five example paths; an
+  interruption adds one `interruption` bucket naming the interrupted leaves,
+  and a target whose scheduler-managed build failed adds one
+  `dependency_blocked` bucket per build stage and target
+  (<<runner-cluster-dispatch>>).
+
+A `--waves-on-fail` rerun is recorded on the final attempt as `wave_debug`
+with `debug_only = true` and `status_affects_final_result = false`; it never
+changes the leaf's status. A leaf skipped after `--max-failures` has one job
+with status `SKIP`, no leaf directory, and no JUnit file.
 
 `--max-failures N` stops launching new serial leaves after `N` final failures
 and records the remainder as `SKIP`. Supplying this option disables the
@@ -817,7 +2392,7 @@ Tcl script (`scripts/waves.<test>.tcl`).
 
 [NOTE]
 ====
-Exact ranged dumping is currently enforced only for Xcelium SHM and VCS
+Exact ranged dumping is enforced only for Xcelium SHM and VCS
 FSDB/VPD (via the generated dump scripts). Other backend/format combinations
 record the requested range and set `range_supported` to false.
 ====
@@ -873,18 +2448,28 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 
 |`--list`
 |List selectable DUTs, or details for `--dut`. Each row shows the DUT's
-default tool; flows that cannot run on open-source tools are marked
-`(licensed)`. The per-DUT detail view adds the `license` and `runnability`
-fields from the merged config.
+default tool; tools that need a license, and frameworks that no open-source
+tool serves, are marked `(licensed)`. A DUT with a formal config adds a `fv`
+row with the formal tool set; a site-named formal config that is absent
+shows as `unavailable`. The per-DUT detail view adds the `license` and
+`runnability` fields from the merged config; `--mode formal` selects the
+formal view.
 
 |`--validate-configs`
-|Validate registries and every selectable simulation DUT. Exit `2` if any
-fail. With `--overlay`, every framework view is additionally validated with
-the overlay applied (guard-excluded views fall back to base validation).
+|Validate registries (with the site layer merged in when one is active),
+every selectable DUT's simulation views, and every discovered formal view.
+Exit `2` if any fail; a site-named formal config that is absent is reported
+`UNAVAILABLE` without failing the set. With `--overlay`, every view is
+additionally validated with the overlay applied (guard-excluded views fall
+back to base validation).
 
 |`--doctor`
-|Report configuration and tool availability. With no selected DUT/tool it is
-an informational survey.
+|Report configuration and tool availability; each tool row names the file
+that supplied it and, for a registry tool found on `PATH`, is followed by
+the release the binary reports; a required tool below its table's
+`min_version` fails. With `--items` or `--tag` the cocotb module probe covers
+that selection; otherwise it covers every testlist module. With no selected
+DUT/tool it is an informational survey.
 
 |`--dry-run`
 |Render commands and artifacts without executing backend tools or writing
@@ -907,7 +2492,7 @@ cocotb's Python runner, so `--rebuild` behaves the same on each).
 |`--timeout SEC`
 |Bound supported subprocess stages and override the configured simulation-leaf
 timeout. Bender filelist generation and in-process cocotb build stages are
-currently unbounded.
+unbounded.
 |===
 
 Action dispatch precedence is `--validate-configs`, `--doctor`, `--list`, then
@@ -936,17 +2521,32 @@ them in automation.
 |Choose terminal rendering. Default: `auto`.
 
 |`--sim-jobs N`
-|Set scheduler fan-out. Default: `1`; must be at least `1`.
+|Set scheduler fan-out. Default: `1`; must be at least `1`. On a cluster
+executor it is the number of attempts queued or running at once, bounded by
+the executor's `limits.max_in_flight`.
 
 |`--build-jobs N`
 |Set backend/model build concurrency when configuration does not supply it;
-otherwise derives from `--sim-jobs`.
+otherwise derives from `--sim-jobs`, capped at this host's CPU count when a
+cluster executor is selected.
 
 |`--executor NAME`
-|Select an allowed executor. Only `local` dispatch is implemented.
+|Select an executor the flow's `[scheduler] allowed` list permits. `local`
+runs leaves in this process; `lsf` and `slurm` submit each attempt as a job
+(<<runner-cluster-dispatch>>). Selecting an entry whose driver the runner
+lacks is a configuration error, and a dry run dispatches nothing.
+
+|`--builds {local,scheduler}`
+|Where a cluster executor runs the target builds: as scheduler jobs the
+leaves wait for (`scheduler`), or on the submitting host (`local`). The
+executor's `builds` key applies when omitted; `scheduler` with the local
+executor is a configuration error, and a dry run builds locally.
 
 |`--queue NAME`, `--cores N`, `--mem-mb MB`, `--walltime TIME`
-|Record resource-request metadata. The local executor does not consume it.
+|The leaves' resource request. The command line wins over a stage's
+`resources` table, which wins over the executor's `defaults`
+(<<runner-executor-registry>>). The local executor records the request and
+enforces nothing.
 |===
 
 === Regression, waves, and coverage
@@ -990,12 +2590,19 @@ executes `sim` or `regress`.
 |Enable coverage instrumentation and, on an implicit run, merge/report stages.
 
 |`--fail-under PCT`
-|Override the report threshold. Valid range: 0 through 100.
+|Override the compatibility threshold on the tool's raw overall percentage;
+accepted waivers do not move it. Valid range: 0 through 100.
 
 |`--waive [FILE]`
 |Re-grade the finished run in `--run-dir` against the DUT's coverage policy,
 or against `FILE`; no simulator or report tool runs. Exits 0, 1, or 2 by the
 coverage grade alone. See <<runner-waive>>.
+
+|`--cov-combine RUN_DIR...`
+|Combine the coverage of two or more finished runs of the DUT into one new
+graded run directory (`--run-dir` names it); the runs must share the tool and
+the commit, and no simulator runs. Exits 0, 1, or 2 by the combined run's
+coverage grade. See <<runner-cov-combine>>.
 |===
 
 === Pass-through and formal options
@@ -1021,10 +2628,13 @@ coverage grade alone. See <<runner-waive>>.
 `--plusarg +FOO=1`.
 
 |`--proof-depth N`
-|Formal bounded-proof depth override.
+|Formal bounded-proof depth, rendered where the selected launch template
+places `{proof_depth}`; rejected when the template has no such placeholder.
+See <<runner-formal-templates>>.
 
 |`--formal-arg ARG`
-|Repeatable formal backend argument.
+|Repeatable formal backend argument, spliced at the launch template's
+`{formal_args}`; rejected when the template has none.
 
 |`--app NAME`
 |Formal app/task override.
@@ -1056,6 +2666,7 @@ leaf output:
 ├── stages/
 │   ├── flist/{scripts,env,logs}/
 │   ├── hdl_compile/{scripts,env,logs}/
+│   ├── formal/{scripts,env,logs}/  # formal mode; sby tasks in <item>_<task>/
 │   └── regress/regression.json
 ├── <test>/                         # flat single-test invocation
 │   ├── result.json
@@ -1085,11 +2696,62 @@ keys, or authentication data.
 
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
-tool versions, and per-stage details. It is the authoritative run result.
-When an adopter overlay was applied, its path is recorded under `overlay`
-(repo-relative when inside the checkout, absolute otherwise) in both the
-run-level `result.json` and `regression.json`.
+tool versions, and per-stage details. It is the authoritative run result,
+and the key set of every file below is pinned by the tests the interfaces
+page names. A run-level stage such as `hdl_compile` or `cov_report` carries
+its full record in `stages`. A leaf's entry carries its identity, status, timing, log,
+failure buckets, the `metadata` named above for a regression job, the job
+log of a cluster run under `artifacts.executor_log`, and `result_json`, the
+path of the leaf record that holds its artifacts, parser evidence, and build,
+coverage, and provenance metadata.
 
+The `tests` summary counts the recorded leaves (`total`, `passing`,
+`failing`, `skipped`) and records whether the run finished: `leaves_planned`
+is the number of (test, seed) leaves the selection planned, `leaves_run` the
+number that executed (a leaf skipped after `--max-failures` did not), and
+`completed` is `true` only when the two are equal and the record is not a
+checkpoint. `pass_rate` is `passing / total` for a completed run and `null`
+otherwise: an interrupted or truncated run has no denominator, so it
+publishes no figure that reads as a grade. `regression.json` carries the same
+fields, with one difference in `total`: `result.json` counts a skipped leaf in
+`total` and in `skipped`, `regression.json` counts only leaves with a final
+status in `total` and reports skipped leaves in `skipped` alone.
+A formal run adds a `formal` object with proof totals
+(<<runner-formal-grading>>).
+When an adopter overlay was applied, its path is recorded under `overlay`
+(repo-relative when inside the checkout, absolute otherwise) and its `[env]`
+table, when present, under `overlay_env` in both the run-level `result.json`
+and `regression.json`. When a site layer was active, its path is recorded
+under `site` in the same two files (<<runner-site-layer>>).
+
+[[runner-log-provenance]]
+=== Provenance lines in the per-test log
+
+A cocotb or VCS sim leaf ends its per-test log with one `PROVENANCE` line
+naming the commit, branch, dirty flag, build fingerprint and, where the flow
+has one, the filelist and its digest. The same facts are recorded under
+`metadata.provenance` in the leaf's `result.json`, so a log and its result
+record name the same build.
+
+Every `+key=value` simulator argument whose value is an existing regular file
+(firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
+`+sep_itcm_hex`, `+smc_efuse_hex` or `+smc_shadow_reg_preload`) is digested
+as well. Each one adds a line directly after `PROVENANCE`:
+
+----
+PROVENANCE commit=<sha> branch=<name> dirty=false build_fingerprint=<fp> filelist=<path> filelist_sha256=<digest>
+FW-PROVENANCE rom_hex=hw/sys/smc/dv/assets/smc_rom_default.hex sha256=<64 hex>
+FW-PROVENANCE smc_efuse_hex=hw/sys/smc/dv/assets/smc_efuse_default.hex sha256=<64 hex>
+----
+
+The path is repo-relative when the image sits inside the checkout and absolute
+otherwise, and the digest is the full SHA-256 of the file's bytes. The stage
+record carries the same map under `provenance.images`, keyed by the plusarg
+name. Bare flags, numeric values and values that do not name a regular file are
+not recorded. An image a testbench opens by a fixed name rather than a plusarg
+is outside this binding; pass it through a plusarg to bring it in.
+
+[[runner-interrupted-checkpoints]]
 === Interrupted-run checkpoints
 
 Before executing the first planned leaf, the runner writes an atomic
@@ -1098,20 +2760,45 @@ status `UNKNOWN`, so automation cannot mistake an incomplete run for a pass.
 It is replaced atomically after every completed leaf. An explicit `--result`
 copy follows the same lifecycle.
 
-The additive `progress` object records a stable identity for every planned leaf
-(`id`, stage, item, target, and seed) and partitions those identities into
-`completed`, `active`, `missing`, and `interrupted` lists with matching counts.
-Its `state`, `sequence`, and `updated_at` fields distinguish successive
-snapshots. A running checkpoint uses `active`; a handled interruption moves
-those identities to `interrupted`.
+The additive `progress` object counts the planned leaves (`expected_count`,
+`completed_count`, `active_count`, `missing_count`, and `interrupted_count`)
+and lists the identity (`id`, stage, item, target, and seed) of every leaf
+without a recorded result, under `active`, `missing`, and `interrupted`; a
+recorded leaf is its own `result.json` in the run tree. The `state`, `sequence`, and
+`updated_at` fields distinguish successive snapshots. A running checkpoint
+uses `active`; a handled interruption moves those identities to
+`interrupted`. On a cluster executor every `active` or `interrupted` leaf
+also lists its scheduler `jobs` as task id and job id, so a coordinator that
+dies without running its handler leaves the ids of its live jobs in its last
+checkpoint.
 
 SIGINT and SIGTERM produce an `ERROR` checkpoint with an `interruption` object
 that records the received signal and reason. External supervisors may use
 SIGTERM for either cancellation or a wall-clock timeout, so the runner records
-the signal rather than guessing which policy sent it. If termination prevents
-the final handler from running, the most recent atomic `UNKNOWN` checkpoint
-still preserves all completed leaves. Normal completion replaces all
-checkpoint-only fields with the ordinary final aggregate.
+the signal rather than guessing which policy sent it. The first signal stops
+new submissions, cancels every attempt in flight, and waits up to the
+executor's cancel grace for the scheduler to confirm each stop; a second
+signal ends that wait. When a stop goes unconfirmed,
+`interruption.cancellation` records the number of attempts asked to stop
+(`requested`), the number confirmed (`confirmed`), and the job ids without a
+confirmed stop (`unconfirmed`); the executor's
+`jobs/cancel-unconfirmed.json` names each of those jobs with its task, its
+last state, and the scheduler's reply. If termination
+prevents the final handler from running, the most recent atomic `UNKNOWN`
+checkpoint still preserves all completed leaves. Normal completion replaces
+all checkpoint-only fields with the ordinary final aggregate.
+
+Every checkpoint, running or interrupted, carries `tests.completed = false`
+and `tests.pass_rate = null`. A handled interruption also prints
+`incomplete run: N of M planned leaves ran, no pass rate` on the console
+instead of a pass count and writes one run-level `results/results.xml` with a
+single errored testcase (`type="interruption"`) naming the interruption, so a
+JUnit consumer does not read the finished leaves as the whole run. A run that
+stops early for any other reason (`--max-failures`, a failing leaf in a flat
+run, a build failure before the leaves) records `tests.completed = false` and
+`tests.pass_rate = null` and prints the same console note, but carries no
+`interruption` object and gets no run-level interruption testcase; its JUnit
+evidence is the leaf files it wrote.
 
 === Status and exit codes
 
@@ -1133,7 +2820,8 @@ in JSON, while the runner process exits with the conventional
 `128 + signal number` value (`130` or `143`).
 
 `--waive` exits by its coverage grade alone (`0`, `1`, or `2`; see
-<<runner-waive>>), independent of the run status it records.
+<<runner-waive>>), independent of the run status it records, and
+`--cov-combine` exits by the grade of the combined run it writes.
 
 Run-level aggregation uses:
 
@@ -1146,7 +2834,206 @@ For simulation, return code zero is not sufficient for `PASS`. The selected
 parser policy examines structured XML, hard-failure markers, required and
 failure patterns, framework summaries, and positive pass evidence. Missing or
 ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
+A leaf with `expect_fail` is graded after that classification: its `FAIL`
+becomes `PASS` and its `PASS` becomes `FAIL` (<<runner-expected-failures>>).
 
+For formal mode, the exit code is never the status source: task status lines,
+status files, and JUnit reports, or the app's summary file, are
+(<<runner-formal-grading>>). Missing evidence produces `UNKNOWN`.
+
+[[runner-leaf-grading]]
+=== How a simulation leaf is graded
+
+A `sim` or `regress` leaf that ran to the end is graded by its parser policy
+from three inputs: the structured result files the policy names under
+`results/`, the leaf log, and the process return code. The rules apply in
+this order, and the first that decides ends the grading:
+
+. A structured result with a `failure` or `error` node is `FAIL`
+  (`status_source` `structured_result`, bucket `sim_failure`). A structured
+  result with only passing testcases is positive evidence. A structured
+  result that is missing, empty, malformed, or has no testcase is
+  inconclusive and is remembered.
+. A log line matching a `hard_fail_patterns` entry is `ERROR`
+  (`log_pattern`, bucket `tool_error`).
+. A nonzero return code is `FAIL` (`return_code`, bucket `sim_failure`).
+. A `required_patterns` entry with no match in the log is `FAIL`.
+. A `fail_patterns` match that no `ignore_patterns` entry covers is `FAIL`;
+  an ignored match is recorded as evidence with status `IGNORED`.
+. The last match of each `summary_patterns` entry is read: counts with a
+  zero total, a nonzero failure figure, or a total that the passing and
+  skipped figures do not add up to, are `FAIL` (`log_summary`); otherwise the
+  summary is positive evidence.
+. A `pass_patterns` match is recorded, and counts as positive evidence only
+  when the policy names no structured result.
+. With an inconclusive structured result remembered, the leaf is `UNKNOWN`
+  (`structured result missing or inconclusive`, bucket `unknown`).
+. With `require_positive_evidence` set and no positive evidence, the leaf is
+  `UNKNOWN` (`no positive pass evidence matched`).
+. Otherwise the leaf is `PASS`.
+
+A leaf whose command exceeded its resolved timeout is `TIMEOUT` (bucket
+`timeout`) before any of this runs, and a leaf whose stage raised a
+configuration or tool exception is `ERROR` (bucket `config_error` or the
+stage's default). `expect_fail` grading follows (<<runner-expected-failures>>).
+Every decision records under `parser` the policy name, its fingerprint,
+`status_source`, the applied extensions, and up to 25 evidence records, each
+naming the file, its kind, the status it contributed, and the matched text.
+
+The policy is `[pass_fail].policy` in the sim config, else the framework's
+default: `cocotb-default` for cocotb (structured `results.xml`, the cocotb
+`TESTS=` summary line), `uvm-log` for SystemVerilog UVM (no structured
+result; `UVM_ERROR` and `UVM_FATAL` counts, `UVM Report Summary` required),
+and `generic-regex` otherwise, which validation rejects unless the flow names
+a positive-evidence source. `[pass_fail]` adds to a policy only:
+`extra_pass_patterns`, `extra_fail_patterns`, `extra_ignore_patterns`,
+`extra_required_patterns`, `extra_hard_fail_patterns`,
+`extra_summary_patterns`, and `extra_structured_results`; a `replace_*` key
+is rejected because it would weaken the policy. A tool's
+`[<tool>.parser_extensions]` table in `simulators.toml` adds
+`extra_fail_patterns` and `extra_hard_fail_patterns` for that simulator's
+own error markers. Every pattern is compiled at validation time.
+
+[[runner-status-vocabulary]]
+=== One vocabulary across result.json, JUnit, and the dashboard
+
+[cols="<1,<1,<3,<2",options="header"]
+|===
+|`result.json` status |Exit code |Synthesized JUnit node |Dashboard flow status
+
+|`PASS` |0 |none |`PASS`
+|`FAIL` |1 |`<failure type="<bucket kind>">`, `sim_failure` when no bucket
+|`FAIL`
+|`ERROR` |2 |`<error type="<bucket kind>">`, `tool_error` when no bucket
+|`FAIL`; `source.native_status` keeps `ERROR`
+|`TIMEOUT` |124 |`<error type="timeout">`
+|`FAIL`; `source.native_status` keeps `TIMEOUT`
+|`UNKNOWN` |5 |`<error type="unknown">` |`UNKNOWN`
+|`SKIP` |none |`<skipped>`; a skipped leaf writes no file |`SKIP` on the
+test, absent from the flow status
+|===
+
+The failure-bucket `kind` is the shared enum: `sim_failure`, `tool_error`,
+`unknown`, `timeout`, `config_error`, `compile_error`, `elaboration_error`,
+`coverage_threshold`, `formal_fail`, `expected_fail_passed`,
+`expected_fail_mismatch`, `interruption`, and `dependency_blocked` (a leaf
+whose scheduler-managed target build failed, <<runner-cluster-dispatch>>);
+the first bucket's kind is the JUnit `type` of a failed or errored leaf. A
+stage that fails without a
+parser decision takes its stage's default kind (`flist` `config_error`,
+`hdl_compile` and `c_compile` `compile_error`, `elaborate`
+`elaboration_error`, `sim` and `regress` `sim_failure`, the coverage stages
+and `clean` `tool_error`, `formal` `formal_fail`), and a `ConfigError` is
+`config_error` whichever stage raised it.
+
+[[runner-coverage-record]]
+=== The coverage record
+
+A run that collected coverage carries the grade in four places, all under
+the run directory, so a copied or downloaded tree describes itself:
+
+[cols="<2,<1,<5",options="header"]
+|===
+|File |Schema |Carries
+
+|`coverage` in `result.json`
+|`1` (the run record)
+|`enabled`; `status`, the rollup of the coverage stages (`SKIP` with
+`total_percent` `null` when the run had none); `total_percent`, the tool's
+raw overall figure; `threshold` and `threshold_met`; `metrics`, the
+parser's per-family figures overlaid with the effective percentage of every
+family that has point records; `raw_metrics` and `effective_metrics` per
+family; `policy_thresholds`; the `holes_summary` counts; `comparison_key`,
+`scope_fingerprint`, and `policy_fingerprint`; `target` and
+`build_fingerprint`; the tool version and supported metrics; and the paths
+of the files below.
+
+|`cov/coverage.json`
+|`2`
+|The merge manifest (<<runner-coverage-inputs>>) and, once the report has
+run, the grade: `status`, `metrics`, `overall_percent`, `threshold`,
+`threshold_met`, `policy_thresholds`, the `holes_summary` counts, the
+fingerprints, and the merge and report return codes, with
+`artifacts.report_raw` when the
+report ran without its exclusion inputs as well. A combined run's manifest
+lists the runs as its inputs (`selection_source` of `run_dirs`) and carries
+the `combine` block (<<runner-cov-combine>>).
+
+|`cov/report/summary.json`
+|`2`
+|The graded summary: `status`, `overall_percent`, `threshold`,
+`threshold_met`, `compatibility_threshold_met`, `policy_thresholds` (one
+outcome per rule that applies to the run's tool and target, with
+`actual_percent`, `unclassified_points`, and `met`),
+`metrics`, `holes_summary` (`open`, `accepted`, `unclassified`, counts by
+metric, category, disposition, and status, and up to 100 sample holes, which
+this file alone carries), `comparison_key`, `scope_fingerprint`,
+`policy_fingerprint`, and the artifact paths.
+
+|`cov/report/coverage-details.json`
+|`1`
+|Every observation with its `native_locator`, `hierarchy`, `source`, `line`,
+`count`, and `covered`, plus the fields the matching `pass:[[[holes]]]` entry
+stamped on it (`policy_id`, `category`, `disposition`, `status`,
+`confidence`, `rationale`, `owner`, `reviewer`, `issues`), and one record per
+native metric with `covered`, `total`, `excluded`, `raw_percent`, and
+`effective_percent`. `coverage-details.raw.json` is the same before the
+policy applied.
+
+|`cov/report/policy-application.json`
+|none
+|The policy path and SHA-256, the native policy files applied, every
+`matched` entry with the observation ids it claimed, and the warnings, one
+per lapsed waiver.
+|===
+
+Three fingerprints decide whether two grades are comparable.
+`policy_fingerprint` is the SHA-256 of the policy file. `scope_fingerprint`
+hashes the build fingerprint, the scope the parser recorded, and the policy's
+`scope_epoch`; without a policy it is the parser's hash alone and
+`policy_fingerprint` is `null`. `comparison_key` (`COVCMP-` and 16 hex digits) hashes the DUT,
+the tool, the target, and both fingerprints: two grades share a key only when
+the same design build was graded against the same policy, so compare trend
+points and `holes_summary` counts only when their keys match. A waiver added
+to the policy changes the key by design; the hit counts do not.
+
+The dashboard collector carries the `coverage` object into the normalized
+record and stages `coverage.json`, `summary.json`, and
+`policy-application.json` beside it; the details files and the merged
+database stay in the run tree (the Continuous integration section of
+xref:run-dashboard.adoc[DV and FV Dashboard]). Hosted CI keeps a weekly run
+tree for 30 days and the normalized bundle for 90 (<<runner-ci-budgets>>).
+
+[[runner-junit-ownership]]
+=== JUnit ownership
+
+Every executed simulation leaf ends with xUnit XML at
+`<leaf>/results/results.xml`. A framework that writes its own file, as cocotb
+does, owns it: the runner reads it as evidence and never rewrites it. When
+the file is absent after grading, for a SystemVerilog UVM leaf or a leaf
+whose simulator died before the framework could write, the runner
+synthesizes a single-testcase file from the graded result, with the node
+mapping above and a `system-out` block naming the log, the leaf
+`result.json`, the parser policy, the `status_source`, the failure buckets,
+and the attempt. Either way the path is recorded as `artifacts.results_xml`
+on the leaf.
+
+A synthesized file is a reporting artifact, written after grading, atomically,
+and never read back as evidence. Its suite carries a `producer` property
+with the value `run_dv.py junit-fallback`, and only a file carrying that
+marker is ever removed or replaced; a file without it is left alone even
+when it sits where the runner would write.
+
+Two run-level files follow the same rule. A handled interruption writes
+`<run>/results/results.xml` with one errored testcase of type `interruption`
+(<<runner-interrupted-checkpoints>>). A run that fails before any leaf
+executed writes the same path with one testcase for the first failing stage
+in `ERROR`, `TIMEOUT`, `FAIL`, `UNKNOWN` order, so a compile or filelist
+failure stays visible to a JUnit consumer; a run in which a leaf executed,
+or that passes, removes a marked run-level file left by an earlier
+invocation into the same directory.
+
+[[runner-ci]]
 == Continuous integration
 
 Two GitHub workflows run simulator jobs on GitHub-hosted runners. Both run
@@ -1161,36 +3048,44 @@ change can never alter the pull-request gate:
 
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, 60-minute
-budget per job. Target: under 30 minutes of wall clock per pull request. The
-job names `verilator-smoke (<dut>)` are the stable check contexts.
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, and `smc`, and
+`--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
+tests the hosted runner cannot build; 60-minute budget per job. The job
+names `verilator-smoke (<dut>)` are the stable check contexts. Every job
+runs for a documentation-only change too, so the contexts report; each job
+then prints one line and skips the simulation.
+
+|`qualify`
+|`slurm-qualify.yml`: `workflow_dispatch` only, with `dut`, `items` and
+`sim-jobs` inputs
+|Installs a single-node Slurm with accounting on the runner and runs the
+selected tests through `--executor slurm --mem-mb 2000 --walltime 30`; the
+result gate also requires every leaf to carry a Slurm job in a terminal
+state. A live check of the Slurm driver for a change to the driver, the
+registry's Slurm table or the worker; one node adds latency and no capacity,
+so it is not a tier and no pull request runs it.
 
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `smoke` and the three
-`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
-budgets are sized for the standard runner. Nightly is not a merge gate; a red
-nightly run is a triage signal, and the SEP testlist documents the reveals its
-class regression is expected to carry.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the IP-level
+benches' `all` groups (the three `cross_trigger` benches, the four UART-family
+benches, `system_timer_octs` and `scrambler`). No coverage.
+Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
-|The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
-`--cov` once the repository variable `DV_LARGE_RUNNER` names a larger
-runner, because their coverage-instrumented model builds exceed the standard
-runner's memory, and DTP reseeds three times on that runner. SMC `smoke` and
-the three `cross_trigger` benches' `all` groups run at three seeds with
-coverage. `--sim-jobs` follows the runner core count. The score is published
-but does not determine test pass/fail. SEP, SMU, and DTP instrument
-line/branch/expression/user and SMC line/branch/user, none with toggle, and
-every coverage block compiles the generated model per file
-(`--output-groups 0`; see `[coverage.verilator]` in each DUT's sim config for
-the sizing and build rationale). The `cross_trigger` benches use the
-simulator default (all forms).
+|The regression the dashboard publishes, one random seed per test on every
+row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
+and the IP-level benches' `all` groups. A second SMC row
+(`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
+`expect_fail` (<<runner-expected-failures>>), so the row is green while the
+filed defects stand and red the week one is fixed. `--sim-jobs` follows the
+runner core count. The coverage regression runs on the licensed simulator
+flow outside hosted CI; the coverage-instrumented Verilator models of DTP,
+SEP, and SMU do not fit a hosted job.
 |===
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
@@ -1205,18 +3100,56 @@ gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
 A label with no matching runner does not fail fast (the job queues until it
 times out), so the default stays the always-present standard runner.
 
+[[runner-ci-budgets]]
+=== Budgets, concurrency, and retention
+
+Every job carries a `timeout-minutes` budget: 60 for each smoke job, and
+360, the hosted runner's cap, for every nightly and weekly job; the
+scheduled tiers are bounded by that cap alone. A job that exceeds its
+budget is cancelled by the hosted runner;
+`run_dv.py` receives the cancellation as a signal and, when its handler
+completes, writes the interruption checkpoint and the run-level JUnit
+testcase, and otherwise its last `UNKNOWN` checkpoint stands
+(<<runner-interrupted-checkpoints>>). The artifact upload runs regardless of
+the outcome, so a cancelled job publishes non-passing evidence either way.
+Inside a job, each leaf is bounded by its resolved leaf timeout, and
+a leaf that exceeds it grades `TIMEOUT` without ending the run.
+
+A Verilator cache miss adds the from-source build to every job of that run
+that starts before one of them has saved the cache: the composite action
+keys its cache on the Verilator version, the runner operating system, and
+the architecture, so the first run after a version change pays the build in
+every row that starts together, and a coverage row pays it before its
+coverage-instrumented model build.
+
+Concurrency is per workflow: a pull-request push cancels the smoke run it
+supersedes, and a push to `main` never cancels a run in progress. The two
+regression crons and each dispatched tier are separate groups that are never
+cancelled: a dispatched tier runs beside a scheduled one and queues only
+behind an earlier dispatch of the same tier. Exactly one scheduled tier runs
+per day.
+
+Retention: smoke and nightly run trees for 14 days, weekly run trees for 30,
+the normalized dashboard bundle for 90; the `dv-dashboard-data` branch keeps
+the trend history trimmed to 90 points and each DUT's weekly archives to 90
+runs. The runner has
+no automatic retry in hosted CI; a leaf is graded on its single attempt, and
+the weekly digest's flaky list names a test whose seeds disagree within a
+run, which at one seed per test is only a test with its own `reseed` value.
+
 Each job writes an explicit per-run directory
 (`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
 recorded run identity unique for downstream trend history), gates on the
 native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
-`status` `PASS`). Coverage-enabled jobs additionally require a numeric score
-and recorded report/summary paths, but do not enforce a score threshold. The
-action uploads `dv-run-<dut>-<tool>-<tier>` (14-day retention, 30 for the
-weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
-are excluded after merge while the merged coverage report and normalized
-summary remain. Explicit run directories never create or update the `latest`
+`status` `PASS`). A caller that sets the action's `coverage` input adds
+coverage evidence to that gate; no hosted row does. The
+action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
+labelled row), including on failure, for the retention periods in
+<<runner-ci-budgets>>.
+Explicit run directories never create or update the `latest`
 symlink.
 
+[[runner-ci-support-matrix]]
 === CI support matrix
 
 [cols="<3,<4,<5",options="header"]
@@ -1224,46 +3157,54 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator; `cross_trigger_port`,
-`cross_trigger_matrix`, `cross_trigger_network` + Verilator (regression
-tiers only)
+|`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
+`cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
+`uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
+`system_timer_octs`, `scrambler` + Verilator (regression tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `sep0_all` / `smoke`). Main protection
+regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
+row). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
-pull-request contexts in addition to the GitLab mirror context. A failed,
+pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
-run in the same matrix but are not required contexts; the `cross_trigger`
-benches are enrolled in the regression tiers only.
+run in the same matrix but are not required contexts; the IP-level benches
+are enrolled in the regression tiers only.
 
-|Configured, not CI-qualified
+|Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
-|Valid configs exercised by maintainers with licensed tools or carrying
-historical local results only. Not run by hosted CI; do not add to the
-workflow matrix without a qualifying run at head.
+|Valid configs that hosted CI does not run; the UVM views need licensed
+tools. A pair joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
-|VCS/Xcelium anywhere; formal mode; `smu_wrapper` real-SEP group
-(`all_with_sep_exec`); non-local executors
-|VCS and Xcelium need licensed self-hosted runners. Formal mode has no DUT
-configs. The real-SEP `smu_wrapper` items stay out of the default `all`
-group. Non-local executor dispatch is not implemented.
+|VCS/Xcelium anywhere; formal mode; the `smu_wrapper` SEP firmware set
+(the part of its `all` outside `hosted`); the `lsf` executor
+|VCS and Xcelium need licensed self-hosted runners. Formal mode is a
+developer-host flow: hosted CI runs no formal job and no formal result
+reaches the dashboard (<<runner-formal>>). The `smu_wrapper` SEP firmware
+items are in its `all` but need the RISC-V toolchain container, which hosted
+runners lack, so the workflows select `hosted`. The `lsf` executor needs the
+maintainer farm; hosted CI checks both cluster drivers against fake scheduler
+commands, and the on-demand `slurm-qualify` workflow runs the `slurm` executor
+on a single-node Slurm it installs (<<runner-cluster-dispatch>>).
 |===
 
 === Framework-aware CI matrices
 
 Hosted invocations omit `--framework`, so every DUT runs its default
-framework (cocotb today) — adding a second framework to a DUT changes
+framework (cocotb) — adding a second framework to a DUT changes
 nothing for existing jobs. The canonical invocation for a licensed SV-UVM
-job maps a group to its UVM-implemented subset:
+job selects a group under the UVM view. A group whose cocotb-only members
+declare `uvm = false` runs its UVM-implemented subset with no flag; a DUT
+whose scenarios lack a `uvm` entry rides `--skip-unimplemented`:
 
 [source,bash]
 ----
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi
+python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
@@ -1272,11 +3213,15 @@ from configuration instead of hardcoding DUT names: `--list --json` emits one
 entry per view with its tool set, default tool, and license need, so
 a licensed UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
 joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
-— no CI edit. `--list --dut <dut> --json` additionally carries the
-per-scenario binding matrix (`tests.<name>.bindings`) and per-framework
-implemented counts for dashboards. `--validate-configs` validates every
-framework view a DUT implements, so a broken UVM overlay fails config
-validation even in cocotb-only CI.
+— no CI edit. Every entry carries `mode` (`sim` or `formal`) and
+`available`; a formal view whose site-named config is absent is listed with
+`available: false`, its `path`, and a `reason`, so a formal job selects
+`.duts[] | select(.mode == "formal" and .available)`. `--list --dut <dut>
+--json` additionally carries the per-scenario binding matrix
+(`tests.<name>.bindings`) and per-framework implemented counts for
+dashboards. `--validate-configs` validates every framework view a DUT
+implements and every available formal view, so a broken UVM overlay or
+formal config fails config validation even in cocotb-only CI.
 
 === Qualification and limits
 
@@ -1287,7 +3232,7 @@ promoting a pair into the CI-run tier.
 
 `--cores`, `--mem-mb`, and `--walltime` are executor metadata only and
 enforce nothing locally or in CI. The enforceable controls are the job
-`timeout-minutes` each caller sets (60 for smoke; per DUT for the regression
+`timeout-minutes` each caller sets (60 for smoke; 360 for the regression
 tiers), the pinned cached Verilator build, and the `--sim-jobs`/`--build-jobs`
 fan-out.
 
@@ -1295,9 +3240,11 @@ fan-out.
 
 === A different DUT's config blocks the run
 
-Normal execution validates every selectable simulation DUT before resolving
-the requested one. Run `--validate-configs` and fix every reported failure; a
-stale registry entry or config can block an otherwise unrelated DUT.
+Normal execution validates every selectable DUT, its simulation views and
+any available formal view, before resolving the requested one. Run
+`--validate-configs` and fix every reported failure; a stale registry entry
+or config can block an otherwise unrelated DUT. An unavailable site-named
+formal config does not block anything.
 
 === The selected tool is missing
 
@@ -1308,9 +3255,19 @@ Run:
 python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
 ----
 
-`--doctor` checks configured binaries on `PATH`, supported Python packages, and
-the presence count of configured license environment variables. For a cocotb
-DUT it also imports every testlist module in a child interpreter whose
+`--doctor` checks configured binaries on `PATH` (the launcher's first token
+when the site layer wraps the tool, after sourcing the tool's `setup_hook`),
+supported Python packages, and the presence count of configured license
+environment variables, and names the file that supplied each tool
+(<<runner-site-layer>>). Each found tool's row is followed by the release its
+binary reports (a tool the site layer wraps in a `launcher` reports none); a
+required tool below the `min_version` its registry table sets, as
+`verilator` does, fails the same way an absent one does
+(<<runner-environment-matrix>>). When the
+required tool is absent and needs a license, the result points at the
+`(licensed)` marking in `--list`. For a cocotb
+DUT it also imports every testlist module, or with `--items` or `--tag` the
+modules of that selection, in a child interpreter whose
 `PYTHONPATH` is rebuilt from the DUT config exactly as a run rebuilds it
 (`test_dir`, `python_root`, `python_paths`, and the generated namespace
 bridge), so an import failure reported here reproduces in a real run and an
@@ -1327,11 +3284,41 @@ shared VIP check imports `ocah_axi_vip` from its in-repo root
 doctor does not check out a license or comprehensively probe Bender, Make,
 coverage utilities, or every firmware toolchain.
 
+=== The doctor fails on modules the run would never import
+
+An unscoped `--doctor --dut <dut>` imports every module in the DUT's
+testlist, including modules whose dependencies a run of your selection never
+touches; the `sep` modules that import the private submodule are the case a
+public clone meets (<<runner-environment-matrix>>). Add the selection to the
+doctor:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut sep --items smoke
+----
+
+The `test modules` row then covers the tests the same `--items` and `--tag`
+select, before a run's framework-binding and `--tool` filters drop any, and
+names the selection; an unscoped failure prints the hint, and a selection the
+testlist cannot resolve is a usage error. A module that fails inside the
+selection fails the run too.
+
 === A zero-return-code simulation is UNKNOWN
 
 Inspect the leaf `result.json` fields `reason` and `parser.evidence`, then check
 the recorded log and `results/results.xml`. A missing, empty, or malformed
 structured result and absent positive log summary correctly fail closed.
+
+=== A formal run with exit code zero is FAIL or UNKNOWN
+
+The formal stage is graded from the backend's task status lines, status
+files, and JUnit reports, or from the app's summary file, never from the exit
+code (<<runner-formal-grading>>). Inspect the stage record's `reason`,
+`parser.evidence`, and `formal.tasks`. `UNKNOWN` with "no formal task
+evidence" means the log carried no task status line and the stage directory
+held no task work directory: check the launch template's `--prefix` and the
+app's `cwd`. <<runner-formal-results>> lists the next step for every
+status.
 
 === An explicit sim-only run cannot find build or firmware output
 
@@ -1349,36 +3336,48 @@ utility (`verilator_coverage`, URG, or IMC) is available.
 === A run's coverage grade failed on the policy
 
 The `cov_report` record is `ERROR` with a `config_error` bucket and
-`cov/report/summary.json` is absent: a `[[holes]]` entry matched a different
+`cov/report/summary.json` is absent: a `pass:[[[holes]]]` entry matched a different
 number of points than `expected_matches`, or an accepted waiver matched a
 covered point. Correct the entry and run `--run-dir <dir> --waive`; the report
 tool does not need to rerun. See <<runner-waive>>.
 
 [[runner-current-limitations]]
-== Current limitations and roadmap boundary
+== Limitations
 
-The following behaviors are not part of the implemented runner contract:
+The following behaviors are not part of the runner contract:
 
-* Only the `local` executor dispatches work. Queue, core, memory, and wall-time
-  flags are metadata; non-local scheduling remains roadmap work.
-* Formal CLI and stage plumbing exist, but this checkout contains no
-  `*_formal_cfg.toml`; a DUT cannot run formal mode until one is added.
-* `run.json`, background execution, and job lifecycle/status commands described
-  in older architecture notes are not emitted or implemented.
+* A cluster executor keeps the coordinator in the foreground: there is no
+  detached mode. First attempts go out as job arrays where the executor's
+  templates allow it and as one job per attempt otherwise; retries and
+  wave-debug reruns are always single jobs. A target build is a scheduler job
+  the coordinator waits for, or an in-process build with `builds = "local"`;
+  the leaves never carry a scheduler dependency expression, and every worker
+  verifies its ready marker before it simulates. Queue, core, memory, and
+  wall-time flags reach a cluster job's submit command; the local executor
+  records them and enforces nothing.
+* The runner writes no `run.json` and has no background execution or job
+  lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may
   still provision the locked `uv` environment and update the generated
   namespace bridge.
 * Configured test/run-mode timeouts apply to simulation leaves. CLI
   `--timeout` reaches many subprocess stages, but Bender filelist generation
-  and in-process Verilator/Xcelium cocotb build stages are currently unbounded.
+  and in-process Verilator/Xcelium cocotb build stages are unbounded.
 * An explicit `--run-dir` is reused as supplied, is not made unique, and does
   not update `latest`. Choose an empty directory unless performing the
   documented coverage replay.
-* `--max-failures 0` satisfies the current stop condition immediately and
-  therefore skips every scheduler leaf. The aggregate currently reports
-  `PASS` and exits `0` despite running no tests; use a positive threshold.
+* `--max-failures 0` satisfies the stop condition immediately and therefore
+  skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
+  despite running no tests; the record says so (`tests.completed = false`,
+  `leaves_run = 0`, `pass_rate = null`). Use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
-
-Do not infer support for LSF/SLURM, site-local TOML overrides, background jobs,
-or automatically discovered formal flows from architecture documents until
-those features are present in code and configuration.
+* A DV root that carries a formal config and no sim config is not a DUT;
+  formal views attach to selectable DUTs.
+* Hosted CI runs no formal job and no formal result reaches the dashboard;
+  formal mode is a developer-host flow (<<runner-formal>>).
+* Formal results have no waiver mechanism; coverage waivers apply to
+  coverage bins only.
+* `--doctor` compares a tool's release against `min_version` only where its
+  registry table sets one (`verilator`); the other rows report a release
+  without judging it, and Bender's release is recorded per run in
+  `result.json` rather than probed.

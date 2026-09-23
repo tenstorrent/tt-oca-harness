@@ -15,7 +15,7 @@
 <li><strong>DATA_IN[4]</strong>: 4 registers, base 0x54, stride 0x4</li>
 <li><strong>DATA_OUT[4]</strong>: 4 registers, base 0x64, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
@@ -31,89 +31,89 @@
 <tr><td>0x84</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x88</td><td><a href="#CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>fatal_fault</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
-<tr><td>0</td><td>recov_ctrl_update_err</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>1</td><td>FATAL_FAULT</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
+<tr><td>0</td><td>RECOV_CTRL_UPDATE_ERR</td><td>W</td><td>0x0</td><td>Write 1 to trigger one alert event of this kind.</td></tr>
 </table>
 <h3 id="KEY_SHARE0_8_">KEY_SHARE0[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>KEY_SHARE0</td><td>W</td><td>0x0</td><td>Initial Key Registers Share 0.<br><br>The actual initial key corresponds to Initial Key Registers<br>Share 0 XORed with Initial Key Registers Share 1.  Loaded into<br>the internal Full Key register upon starting<br>encryption/decryption of the next block.  All key registers<br>(Share 0 and Share 1) must be written at least once when the<br>key is changed, regardless of key length (write random data<br>for unused bits).  The order in which the registers are<br>updated does not matter.  Can only be updated when the AES<br>unit is idle.  If the AES unit is non-idle, writes to these<br>registers are ignored.<br>Upon reset, these registers are cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>KEY_SHARE0</td><td>W</td><td>0x0</td><td>Initial Key Share 0</td></tr>
 </table>
 <h3 id="KEY_SHARE1_8_">KEY_SHARE1[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>KEY_SHARE1</td><td>W</td><td>0x0</td><td>Initial Key Registers Share 1.<br><br>The actual initial key corresponds to Initial Key Registers<br>Share 0 XORed with Initial Key Registers Share 1.  Loaded into<br>the internal Full Key register upon starting<br>encryption/decryption of the next block.  All key registers<br>(Share 0 and Share 1) must be written at least once when the<br>key is changed, regardless of key length (write random data<br>for unused bits).  The order in which the registers are<br>updated does not matter.  Can only be updated when the AES<br>unit is idle.  If the AES unit is non-idle, writes to these<br>registers are ignored.  Upon reset, these registers are<br>cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>KEY_SHARE1</td><td>W</td><td>0x0</td><td>Initial Key Share 1</td></tr>
 </table>
 <h3 id="IV_4_">IV[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>IV</td><td>RW</td><td>0x0</td><td>Initialization Vector Registers.<br><br>The initialization vector (IV) or initial counter value must<br>be written to these registers when starting a new message in<br>CBC or CTR mode (see Control Register), respectively.  In CBC<br>and CTR modes, the AES unit does not start<br>encryption/decryption with a partially updated IV.  Each<br>register has to be written at least once.  The order in which<br>the registers are written does not matter.  If the AES unit is<br>non-idle, writes to these registers are ignored.  Whenever<br>starting a new message, the corresponding IV value must be<br>provided by the processor.  Once started, the AES unit<br>automatically updates the contents of these registers.  In ECB<br>mode, the IV registers are not used and do not need to be<br>configured.  Upon reset, these registers are cleared with<br>pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>IV</td><td>RW</td><td>0x0</td><td>Initialization Vector</td></tr>
 </table>
 <h3 id="DATA_IN_4_">DATA_IN[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA_IN</td><td>W</td><td>0x0</td><td>Input Data Registers.<br><br>If MANUAL_OPERATION=0 (see Control Register), the AES unit<br>automatically starts encryption/decryption after all Input<br>Data registers have been written.  Each register has to be<br>written at least once.  The order in which the registers are<br>written does not matter.  Loaded into the internal State<br>register upon starting encryption/decryption of the next<br>block.  After that, the processor can update the Input Data<br>registers (See INPUT_READY field of Status Register).  Upon<br>reset, these registers are cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>DATA_IN</td><td>W</td><td>0x0</td><td>Input Data</td></tr>
 </table>
 <h3 id="DATA_OUT_4_">DATA_OUT[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>DATA_OUT</td><td>R</td><td>0x0</td><td>Output Data Register.<br><br>Holds the output data produced by the AES unit during the last<br>encryption/decryption operation.  If MANUAL_OPERATION=0 (see<br>Control Register), the AES unit is stalled when the previous<br>output data has not yet been read and is about to be<br>overwritten.  Each register has to be read at least once.  The<br>order in which the registers are read does not matter.  Upon<br>reset, these registers are cleared with pseudo-random data.</td></tr>
+<tr><td>31:0</td><td>DATA_OUT</td><td>R</td><td>0x0</td><td>Output Data</td></tr>
 </table>
 <h3 id="CTRL_SHADOWED">CTRL_SHADOWED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>15</td><td>MANUAL_OPERATION</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit is operated in<br>normal/automatic mode (0) or fully manual mode (1).  In<br>automatic mode (0), the AES unit automatically i) starts<br>to encrypt/decrypt when it receives new input data, and<br>ii) stalls during the last encryption/decryption cycle if<br>the previous output data has not yet been read.  This is<br>the most efficient mode to operate in.  Note that the<br>corresponding status tracking is automatically cleared<br>upon a write to the Control Register.  In manual mode (1),<br>the AES unit i) only starts to encrypt/decrypt after<br>receiving a start trigger (see Trigger Register), and ii)<br>overwrites previous output data irrespective of whether it<br>has been read out or not.  This mode is useful if software needs full<br>control over the AES unit.</td></tr>
-<tr><td>14:12</td><td>PRNG_RESEED_RATE</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to control the reseeding rate<br>of the internal pseudo-random number generator (PRNG) used<br>for masking. Invalid input values, i.e., values with<br>multiple bits set and value 3&#x27;b000 are mapped to the<br>highest reseeding rate PER_1 (3&#x27;b001).</td></tr>
-<tr><td>11</td><td>SIDELOAD</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit uses the key<br>provided by the key manager via key sideload interface (1)<br>or the key provided by software via Initial Key Registers<br>KEY_SHARE1_0 - KEY_SHARE1_7 (0).</td></tr>
-<tr><td>10:8</td><td>KEY_LEN</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to select AES key length.<br>Invalid input values, i.e., values with multiple bits set,<br>value 3&#x27;b000, and value 3&#x27;b010 in case 192-bit keys are<br>not supported (because disabled at compile time) are<br>mapped to AES_256 (3&#x27;b100).</td></tr>
-<tr><td>7:2</td><td>MODE</td><td>RW</td><td>0x3F</td><td>6-bit one-hot field to select AES block cipher<br>mode.  Invalid input values, i.e., values with multiple<br>bits set and value 6&#x27;b00_0000, are mapped to AES_NONE<br>(6&#x27;b11_1111).</td></tr>
-<tr><td>1:0</td><td>OPERATION</td><td>RW</td><td>0x1</td><td>2-bit one-hot field to select the operation of AES<br>unit.  Invalid input values, i.e., values with multiple<br>bits set and value 2&#x27;b00, are mapped to AES_ENC (2&#x27;b01).</td></tr>
+<tr><td>15</td><td>MANUAL_OPERATION</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit is operated in normal/automatic mode (0) or fully manual mode (1).<br>In automatic mode (0), the AES unit automatically i) starts to encrypt/decrypt when it receives new input data, and ii) stalls during the last encryption/decryption cycle if the previous output data has not yet been read.<br>This is the most efficient mode to operate in.<br>Note that the corresponding status tracking is automatically cleared upon a write to the Control Register.<br>In manual mode (1), the AES unit i) only starts to encrypt/decrypt after receiving a start trigger (see Trigger Register), and ii) overwrites previous output data irrespective of whether it has been read out or not.<br>This mode is useful if software needs full control over the AES unit.</td></tr>
+<tr><td>14:12</td><td>PRNG_RESEED_RATE</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to control the reseeding rate of the internal pseudo-random number generator (PRNG) used for masking.<br>Invalid input values, i.e., values with multiple bits set and value 3&#x27;b000 are mapped to the highest reseeding rate PER_1 (3&#x27;b001).</td></tr>
+<tr><td>11</td><td>SIDELOAD</td><td>RW</td><td>0x0</td><td>Controls whether the AES unit uses the key provided by the key manager via key sideload interface (1) or the key provided by software via Initial Key Registers KEY_SHARE1_0 - KEY_SHARE1_7 (0).</td></tr>
+<tr><td>10:8</td><td>KEY_LEN</td><td>RW</td><td>0x1</td><td>3-bit one-hot field to select AES key length.<br>Invalid input values, i.e., values with multiple bits set, value 3&#x27;b000, and value 3&#x27;b010 in case 192-bit keys are not supported (because disabled at compile time) are mapped to AES_256 (3&#x27;b100).</td></tr>
+<tr><td>7:2</td><td>MODE</td><td>RW</td><td>0x3F</td><td>6-bit one-hot field to select AES block cipher mode.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to AES_NONE (6&#x27;b11_1111).</td></tr>
+<tr><td>1:0</td><td>OPERATION</td><td>RW</td><td>0x1</td><td>2-bit one-hot field to select the operation of AES unit.<br>Invalid input values, i.e., values with multiple bits set and value 2&#x27;b00, are mapped to AES_ENC (2&#x27;b01).</td></tr>
 </table>
 <h3 id="CTRL_AUX_SHADOWED">CTRL_AUX_SHADOWED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>FORCE_MASKS</td><td>RW</td><td>0x0</td><td>Allow the internal masking PRNG to advance (0) or<br>force its internal state (1) leading to constant masks.<br>Setting all masks to constant value can be useful when<br>performing SCA.  To completely disable the masking, the<br>second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be<br>zero as well.  In addition, a special seed needs to be<br>loaded into the masking PRNG using the EDN interface.<br>Only applicable if both the Masking parameter and the<br>SecAllowForcingMasks parameter are set to one.</td></tr>
-<tr><td>0</td><td>KEY_TOUCH_FORCES_RESEED</td><td>RW</td><td>0x1</td><td>Controls whether providing a new key triggers the reseeding<br>of internal pseudo-random number generators used for clearing and<br>masking (1) or not (0).</td></tr>
+<tr><td>1</td><td>FORCE_MASKS</td><td>RW</td><td>0x0</td><td>Allow the internal masking PRNG to advance (0) or force its internal state (1) leading to constant masks.<br>Setting all masks to constant value can be useful when performing SCA.<br>To completely disable the masking, the second key share (KEY_SHARE1_0 - KEY_SHARE1_7) must be zero as well.<br>In addition, a special seed needs to be loaded into the masking PRNG using the EDN interface.<br>Only applicable if both the Masking parameter and the SecAllowForcingMasks parameter are set to one.</td></tr>
+<tr><td>0</td><td>KEY_TOUCH_FORCES_RESEED</td><td>RW</td><td>0x1</td><td>Controls whether providing a new key triggers the reseeding of internal pseudo-random number generators used for clearing and masking (1) or not (0).</td></tr>
 </table>
 <h3 id="CTRL_AUX_REGWEN">CTRL_AUX_REGWEN</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW</td><td>0x1</td><td>Auxiliary Control Register configuration enable<br>bit.  If this is cleared to 0, the Auxiliary Control<br>Register cannot be written anymore.</td></tr>
+<tr><td>0</td><td>CTRL_AUX_REGWEN</td><td>RW</td><td>0x1</td><td>Auxiliary Control Register configuration enable bit.<br>If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.</td></tr>
 </table>
 <h3 id="TRIGGER">TRIGGER</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>PRNG_RESEED</td><td>W</td><td>0x1</td><td>Keep continuing with the current states of the<br>internal pseudo-random number generators used for register<br>clearing and masking (0) or perform a reseed of the internal<br>states from the connected entropy source (1).  If the<br>KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control<br>Register is set to one, this trigger will automatically get<br>set after providing a new initial key.</td></tr>
-<tr><td>2</td><td>DATA_OUT_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Output Data registers (0) or<br>clear those registers with pseudo-random data (1).</td></tr>
-<tr><td>1</td><td>KEY_IV_DATA_IN_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Initial Key, internal Full<br>Key and Decryption Key registers, IV registers and Input<br>Data registers (0) or clear all those registers with<br>pseudo-random data (1).</td></tr>
-<tr><td>0</td><td>START</td><td>W</td><td>0x0</td><td>Keep AES unit paused (0) or trigger the<br>encryption/decryption of one data block (1).  This trigger<br>is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE<br>(see Control Register).</td></tr>
+<tr><td>3</td><td>PRNG_RESEED</td><td>W</td><td>0x1</td><td>Keep continuing with the current states of the internal pseudo-random number generators used for register clearing and masking (0) or perform a reseed of the internal states from the connected entropy source (1).<br>If the KEY_TOUCH_FORCES_RESEED bit in the Auxiliary Control Register is set to one, this trigger will automatically get set after providing a new initial key.</td></tr>
+<tr><td>2</td><td>DATA_OUT_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Output Data registers (0) or clear those registers with pseudo-random data (1).</td></tr>
+<tr><td>1</td><td>KEY_IV_DATA_IN_CLEAR</td><td>W</td><td>0x1</td><td>Keep current values in Initial Key, internal Full Key and Decryption Key registers, IV registers and Input Data registers (0) or clear all those registers with pseudo-random data (1).</td></tr>
+<tr><td>0</td><td>START</td><td>W</td><td>0x0</td><td>Keep AES unit paused (0) or trigger the encryption/decryption of one data block (1).<br>This trigger is cleared to `0` if MANUAL_OPERATION=0 or if MODE=AES_NONE (see Control Register).</td></tr>
 </table>
 <h3 id="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the AES unit<br>(0).  A fatal fault has occurred and the AES unit needs to<br>be reset (1).  Examples for fatal faults include i) storage<br>errors in the Control Register, ii) if any internal FSM<br>enters an invalid state, iii) if any sparsely encoded signal<br>takes on an invalid value, iv) errors in the internal round<br>counter, v) escalations triggered by the life cycle<br>controller, and vi) fatal integrity failures on the TL-UL bus.</td></tr>
-<tr><td>5</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has<br>occurred (1) in the shadowed Control Register.  AES<br>operation needs to be restarted by re-writing the Control<br>Register.</td></tr>
-<tr><td>4</td><td>INPUT_READY</td><td>R</td><td>0x0</td><td>The AES unit is ready (1) or not ready (0) to<br>receive new data input via the DATA_IN registers.  If the<br>present values in the DATA_IN registers have not yet been<br>loaded into the module this flag is `0` (not ready).</td></tr>
+<tr><td>6</td><td>ALERT_FATAL_FAULT</td><td>R</td><td>0x0</td><td>No fatal fault has occurred inside the AES unit (0).<br>A fatal fault has occurred and the AES unit needs to be reset (1).<br>Examples for fatal faults include<br>i) storage errors in the Control Register,<br>ii) if any internal FSM enters an invalid state,<br>iii) if any sparsely encoded signal takes on an invalid value,<br>iv) errors in the internal round counter,<br>v) escalations triggered by the life cycle controller, and<br>vi) fatal integrity failures on the TL-UL bus.</td></tr>
+<tr><td>5</td><td>ALERT_RECOV_CTRL_UPDATE_ERR</td><td>R</td><td>0x0</td><td>An update error has not occurred (0) or has occurred (1) in the shadowed Control Register.<br>AES operation needs to be restarted by re-writing the Control Register.</td></tr>
+<tr><td>4</td><td>INPUT_READY</td><td>R</td><td>0x0</td><td>The AES unit is ready (1) or not ready (0) to receive new data input via the DATA_IN registers.<br>If the present values in the DATA_IN registers have not yet been loaded into the<br>module this flag is `0` (not ready).</td></tr>
 <tr><td>3</td><td>OUTPUT_VALID</td><td>R</td><td>0x0</td><td>The AES unit has no valid output (0) or has valid output data (1).</td></tr>
-<tr><td>2</td><td>OUTPUT_LOST</td><td>R</td><td>0x0</td><td>All previous output data has been fully read by<br>the processor (0) or at least one previous output data block<br>has been lost (1).  It has been overwritten by the AES unit<br>before the processor could fully read it.  Once set to `1`,<br>this flag remains set until AES operation is restarted by<br>re-writing the Control Register.  The primary use of this<br>flag is for design verification.  This flag is not<br>meaningful if MANUAL_OPERATION=0 (see Control Register).</td></tr>
-<tr><td>1</td><td>STALL</td><td>R</td><td>0x0</td><td>The AES unit is not stalled (0) or stalled (1)<br>because there is previous output data that must be read by<br>the processor before the AES unit can overwrite this data.<br>This flag is not meaningful if MANUAL_OPERATION=1 (see<br>Control Register).</td></tr>
-<tr><td>0</td><td>IDLE</td><td>R</td><td>0x0</td><td>The AES unit is idle (1) or busy (0).  This flag<br>is `0` if one of the following operations is currently<br>running: i) encryption/decryption, ii) register clearing or<br>iii) PRNG reseeding.  This flag is also `0` if an<br>encryption/decryption is running but the AES unit is<br>stalled.</td></tr>
+<tr><td>2</td><td>OUTPUT_LOST</td><td>R</td><td>0x0</td><td>All previous output data has been fully read by the processor (0) or at least one previous output data block has been lost (1).<br>It has been overwritten by the AES unit before the processor could fully read it.<br>Once set to `1`, this flag remains set until AES operation is restarted by re-writing the Control Register.<br>The primary use of this flag is for design verification.<br>This flag is not meaningful if MANUAL_OPERATION=0 (see Control Register).</td></tr>
+<tr><td>1</td><td>STALL</td><td>R</td><td>0x0</td><td>The AES unit is not stalled (0) or stalled (1) because there is previous<br>output data that must be read by the processor before the AES unit can<br>overwrite this data.<br>This flag is not meaningful if MANUAL_OPERATION=1 (see Control Register).</td></tr>
+<tr><td>0</td><td>IDLE</td><td>R</td><td>0x0</td><td>The AES unit is idle (1) or busy (0).<br>This flag is `0` if one of the following operations is currently running: i) encryption/decryption, ii) register clearing or iii) PRNG reseeding.<br>This flag is also `0` if an encryption/decryption is running but the AES unit is stalled.</td></tr>
 </table>
 <h3 id="CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10:6</td><td>NUM_VALID_BYTES</td><td>RW</td><td>0x10</td><td>Number of valid bytes of the current input block.<br>Only the last block in the GCM_AAD and GCM_TEXT phases are<br>expected to have not all bytes marked as valid.  For all<br>other blocks, the number of valid bytes should be set to 16.<br>Invalid input values, i.e., the value 5&#x27;b0_0000, and all<br>other values different from 5&#x27;b1_0000 in case GCM is not<br>supported (because disabled at compile time) are mapped to<br>5&#x27;b1_0000.</td></tr>
-<tr><td>5:0</td><td>PHASE</td><td>RW</td><td>0x1</td><td>6-bit one-hot field to select the phase of the<br>Galois/Counter Mode (GCM) of operation.  Invalid input<br>values, i.e., values with multiple bits set and value<br>6&#x27;b00_0000, are mapped to GCM_INIT (6&#x27;b00_0001).  In case<br>support for GCM has been disabled at compile time, this<br>field is not writable and always reads as GCM_INIT<br>(6&#x27;b00_0001).</td></tr>
+<tr><td>10:6</td><td>NUM_VALID_BYTES</td><td>RW</td><td>0x10</td><td>Number of valid bytes of the current input block.<br>Only the last block in the GCM_AAD and GCM_TEXT phases are expected to have not all bytes marked as valid.<br>For all other blocks, the number of valid bytes should be set to 16.<br>Invalid input values, i.e., the value 5&#x27;b0_0000, and all other values different from 5&#x27;b1_0000 in case GCM is not supported (because disabled at compile time) are mapped to 5&#x27;b1_0000.</td></tr>
+<tr><td>5:0</td><td>PHASE</td><td>RW</td><td>0x1</td><td>6-bit one-hot field to select the phase of the Galois/Counter Mode (GCM) of operation.<br>Invalid input values, i.e., values with multiple bits set and value 6&#x27;b00_0000, are mapped to GCM_INIT (6&#x27;b00_0001).<br>In case support for GCM has been disabled at compile time, this field is not writable and always reads as GCM_INIT (6&#x27;b00_0001).</td></tr>
 </table>
 </div>

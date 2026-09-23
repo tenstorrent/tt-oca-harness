@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
 
-# -- lifecycle-state raw encodings (efuse_pkg::lc_state_raw_e) -----------------
+# -- lifecycle-state raw encodings (lifecycle_controller.adoc) -----------------
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
 LC_RMA_SIP_0 = 0x2
@@ -61,7 +61,7 @@ LCC_FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 LCC_DEMOTE_1 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_1")
 LCC_DEMOTE_2 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")
 
-# -- feat_ctrl bit layout (sep_efuse_pkg, Disable Vector Format) --------------
+# -- feat_ctrl bit layout (lifecycle_controller.adoc Disable Vector Format) --
 # Feature control is per GROUP, and demotion acts on one debug group at a time --
 # which is why DBG_1 and DBG_2 need separate masks rather than one Debug mask.
 #   [23:0]  DBG_1    bit 0 sep_debug, bit 1 chiplet_dbg, bit 2 sep_fuse_dbg,
@@ -125,8 +125,8 @@ def lc_state_next(
     Everything else follows from those three, including the destinations the
     chapter never names: from PROD_END every reachable set lands outside the
     named set, which is exactly the chapter's "the only permitted transition is
-    to INVALID". Do not re-add a destination table -- it would be a second,
-    weaker statement of the same rule.
+    to INVALID". A destination table would be a second, weaker statement of the
+    same rule.
 
     ``sip_match`` / ``chiplet_match`` are the token-comparator verdicts
     (``TOKEN_MATCH_CODE`` presented, not merely a token written).
@@ -154,7 +154,7 @@ def is_valid_lc_transition(prev: int, cur: int) -> bool:
       * Nothing leaves INVALID.
 
     A same-state step is always allowed (a resense of an unchanged image, or a
-    bit-0 set inside RMA_SIP / RMA_CHIPLET). This deliberately does NOT freeze
+    bit-0 set inside RMA_SIP / RMA_CHIPLET). This does not freeze
     PROD_END or RMA_CHIPLET: the chapter permits PROD_END -> INVALID, and bit 0
     is a don't-care within an RMA state.
     """
@@ -381,9 +381,10 @@ def selftest() -> None:
 # ---------------------------------------------------------------------------
 # dbg_disable
 # ---------------------------------------------------------------------------
-# Field order of sep_lifecycle_ctrl_pkg::dbg_disable_t. A packed struct puts the
-# first-declared field in the most significant bit, so index 0 here is the MSB
-# of the flattened vector the testbench exports.
+# Named dbg_disable bits. Each is a DUT-output port on tb_top; checkers read
+# those ports by name. The DTP ladder in lifecycle_controller.adoc states the
+# three cases, not a packing order. Same-case bits still share a golden, but
+# a swapped pair of ports fails because the sample no longer walks a vector.
 DBG_DISABLE_FIELDS = (
     "stap_io",
     "stap_smc",
@@ -399,10 +400,10 @@ DBG_DISABLE_FIELDS = (
 )
 DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 
-# Every packed dbg_disable bit is claimed. The DTP path table and the RTL
-# agree on the three nested cases: Case 1 SIP_DBG, Case 2 plus CHIPLET_DBG,
-# Case 3 plus SEP_DBG. The DFT-inserted fuse-path disables are separate
-# DUT ports; ``fuse_dft_disable_expected`` owns those.
+# Every packed dbg_disable bit is claimed. The lifecycle chapter's DTP path
+# table states the three nested cases: Case 1 SIP_DBG, Case 2 plus
+# CHIPLET_DBG, Case 3 plus SEP_DBG. The DFT-inserted fuse-path disables are
+# separate DUT ports; ``fuse_dft_disable_expected`` owns those.
 DBG_DISABLE_UNCLAIMED: tuple[str, ...] = ()
 
 
@@ -470,6 +471,11 @@ def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
         "dbg_disable golden does not account for every field in the struct"
     )
     return exp
+
+
+def dbg_disable_sample(dut) -> dict[str, int]:
+    """Read each dbg_disable bit from its named DUT-output port."""
+    return {name: int(getattr(dut, f"dbg_disable_{name}_o").value) for name in DBG_DISABLE_FIELDS}
 
 
 def dbg_disable_unpack(raw: int, width: int) -> dict[str, int]:

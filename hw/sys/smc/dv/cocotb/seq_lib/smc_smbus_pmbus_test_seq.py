@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P2 Phase A #1: SMBus / PMBus protocol extension over the I2C VIP.
+"""P2-A / P2-11: SMBus / PMBus protocol extension over the I2C VIP.
 
 Proves that `SmcI2cMasterVip.smbus_*` and `pmbus_*` helpers drive real
 SMBus / PMBus semantics through the split-port polarity + wired-AND
@@ -59,7 +59,7 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
         await self.prove_dut_i2c0_pins()
         await self.wait_i2c0_lsio_ready("I2C0_PMBUS_AFTER_PIN_PROOF")
 
-        # PMBus Linear11 encode/decode self-check (no bus traffic yet).
+        # PMBus Linear11 encode/decode self-check (pure math, no bus traffic).
         for v in _PMBUS_TEST_VALUES:
             enc = SmcI2cMasterVip.pmbus_encode_linear11(v)
             dec = SmcI2cMasterVip.pmbus_decode_linear11(enc)
@@ -75,7 +75,7 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
                     f"PMBus Linear11 round-trip error {relative * 100:.1f}% for {v}"
                 )
 
-        # PMBus Linear16 encode/decode (fixed exponent) — P2-11 W3 tail.
+        # PMBus Linear16 encode/decode (fixed exponent).
         encode16 = getattr(SmcI2cMasterVip, "pmbus_encode_linear16", None)
         decode16 = getattr(SmcI2cMasterVip, "pmbus_decode_linear16", None)
         if encode16 is None or decode16 is None:
@@ -105,7 +105,6 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
         # SMBus 2.0 §5.5 PEC is CRC-8 with polynomial x^8+x^2+x+1 (0x07),
         # init 0, over the frame including the address byte:
         #   frame = [(0x50 << 1) | 0, 0x10, 0xA5] = [0xA0, 0x10, 0xA5] -> 0x6D
-        # (Verified by hand for this frame.)
         expected_pec = SmcI2cMasterVip.smbus_pec(_EEPROM_ADDR, 0, _SMBUS_PAYLOAD)
         assert expected_pec == _SMBUS_PEC_REFERENCE, (
             f"SMBus PEC helper returned 0x{expected_pec:02X} for frame "

@@ -38,12 +38,15 @@ work_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build"
 # closure.
 common_bender_targets = []
 bender_targets = ["ocah_axi_vip_harness"]
-# The shared interface and the struct bridge compile into the cocotb shape (the
-# default-geometry interface instances and the struct-port bundle in tb_top);
-# the SV-UVM overlay takes them from the VIP manifest.
+incdirs = ["hw/common/assert"]
+# The shared interface, the struct bridge, and the protocol SVA compile into
+# the cocotb shape (the default-geometry interface instances, the struct-port
+# bundle, and the checker instances in tb_top); the SV-UVM overlay takes them
+# from the VIP manifest.
 sources = [
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
 ]
 
 [frameworks.cocotb]
@@ -63,6 +66,24 @@ args = []
 [targets.default]
 description = "AXI VIP wire harness (no DUT RTL)"
 build_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+# --assert evaluates the two-state protocol SVA bound in dv/tb/tb_top.sv; a
+# failed rule prints %Error and fails the run.
+flags = ["--assert"]
+
+[coverage.verilator]
+# Line and SVL user coverage on the SV collateral (interface, struct bridge,
+# protocol SVA); toggle stays off. --output-groups 0 compiles the generated
+# model one file per translation unit. The scope file drops the harness body
+# and the pulp packages at compile time.
+build_args = [
+  "--coverage-line",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/common/dv/vip/ocah_axi_vip/dv/cov/config/verilator/ocah_axi_vip_cov_scope.vlt",
+]
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Same scenarios as the cocotb selftests, driven full-stack through the VIP's own

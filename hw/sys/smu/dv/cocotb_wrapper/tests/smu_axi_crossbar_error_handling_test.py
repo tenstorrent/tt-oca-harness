@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_axi_crossbar_error_handling_test — SMU_ALL_008 Option-B PWRGOOD-only.
+"""smu_axi_crossbar_error_handling_test — SMU_ALL_008 PWRGOOD-only.
 
 DV-CARD:          SMU_ALL_008   ANCHOR: smu_axi_crossbar_error_handling_test
 """
@@ -16,13 +16,13 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_axi_crossbar_error_handling_test(smu_base_test):
-    """SMU_ALL_008: PWRGOOD leave-TLR only (FAB/DECODE removed)."""
+    """SMU_ALL_008: PWRGOOD leave-TLR only; FAB-IN / DECODE are out of scope."""
 
     use_shared_env = True
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_axi_crossbar_error_handling_test SMU_ALL_008 r18 SEP=0 (PWRGOOD-only)"
+            "DUT_TAG=WRAPPER smu_axi_crossbar_error_handling_test SMU_ALL_008 (PWRGOOD-only)"
         )
         seq = smu_axi_crossbar_error_handling_test_seq(self)
         await seq.run()

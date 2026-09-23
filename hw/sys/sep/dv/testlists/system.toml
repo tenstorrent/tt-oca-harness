@@ -54,7 +54,7 @@ args = ["+skip_fuse_sense"]
 # alias-remap / AP-STEE output-remap / inbound+outbound filter config banks on the CPU-LSU
 # master: field R/W + 64-bit upper word + FILTER write-once-set lock (FILTER_CONFIG locked[63];
 # alias-remap valid[63] is plain R/W, not woset) + RO data_bus_width=3 + non-vacuity anchor.
-# CSR layer only (functional translation / outbound enforcement infra-gated). no_cpu; +skip_fuse_sense.
+# CSR layer only; the live translation and outbound drop are on sep_fabric_output_remap_datapath_proxy_test. no_cpu; +skip_fuse_sense.
 name = "sep_fabric_remap_filter_csr_bank_test"
 module = "system.sep_fabric_remap_filter_csr_bank_test"
 seed = 1
@@ -92,15 +92,29 @@ args = ["+skip_fuse_sense"]
 # depth model, WIRQT write-threshold IRQ + IRQP gate + W1C, read-empty (0xFEEDDEAD+SLVERR+
 # ERROR_FLAGS.read_error read-clear + eirq W1C), write-full (SLVERR+write_error), CTRL flush.
 # TX-only. Round-trip readback + read-threshold need a peer-side WRITE to the INBOUND
-# aperture (inbound_mailbox_0 @ 0x10A0_0800, port1); a clean VCS repro proved that
-# external smn_inbound can fill it and CPU-LSU can pop the value through outbound_mailbox_0.
-# Keep this rep scoped to the reference suite TX mailbox-data intent; put peer-path closure in a
-# separate fabric/mailbox testcase if it becomes permanent.
-# Distinct from #8 (->PIC->CPU delivery). no_cpu; +skip_fuse_sense (local mailbox, no OTP dep).
+# aperture (inbound_mailbox_0 @ 0x10A0_0800, port1), which external smn_inbound can fill
+# and CPU-LSU can pop through outbound_mailbox_0; that peer path is outside this rep.
+# Distinct from sep_mailbox_plic_test (->PIC->CPU delivery). no_cpu; +skip_fuse_sense
+# (local mailbox, no OTP dep).
 name = "sep_axil_mailbox_iface_rand_test"
 module = "system.sep_axil_mailbox_iface_rand_test"
 seed = 1
 reseed = 3
+timeout_sec = 1800
+tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The peer half of the mailbox that the TX rep above cannot reach. The external
+# SMN master writes the inbound aperture to fill the receive FIFO, which closes
+# the data round-trip readback and the read threshold (RIRQT), and grades the
+# fabric.adoc contract that a 4-byte READ_DATA at either half pops one whole
+# entry -- so two reads consume two entries rather than reassembling one.
+name = "sep_mailbox_peer_rx_rirqt_test"
+module = "system.sep_mailbox_peer_rx_rirqt_test"
+seed = 1
 timeout_sec = 1800
 tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -113,9 +127,23 @@ args = ["+skip_fuse_sense"]
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the
 # entropy) -- then pulse one engine's SW_RESET_N (0x1080_3000, active-low) and prove the
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
-# clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
+# clears; reverse the roles. Once URND is being acknowledged, a KMAC reset is
+# stepped across that acknowledge period and URND edn_ack stays low on every
+# gated-reset edge. The same walk is repeated from the JTAG KMAC override,
+# with SW_RESET_N still showing KMAC released. CHK-EDN-HOLD then arms on a URND
+# beat that is staged but not yet acknowledged and requires edn_bus/edn_fips to
+# be unchanged across a KMAC reset edge, and CHK-EDN-HOLD-KEEP requires that
+# same word to be the one URND is finally acknowledged with. THESE TWO FAIL
+# AGAINST THE CURRENT RTL BY DESIGN: the adapter clear is shared, so resetting
+# one engine discards a sibling's in-flight entropy word and breaks the
+# prim_sync_reqack_data DataSrc2Dst=0 hold contract. They are to be closed by
+# making the clear per-endpoint, not by weakening the check. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
 # address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
-# DIGEST_0 is OKAY at reset. Drain-before-reset is not claimed. no_cpu; +skip_fuse_sense
+# DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
+# CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),
+# CHK-HOST-DRAIN (reads accepted before the request resolve OKAY) and
+# CHK-DRAIN-ARRIVAL (a read arriving mid-drain also resolves). The other three
+# accelerator domains are not claimed. no_cpu; +skip_fuse_sense
 # (entropy/crypto independent of OTP lifecycle).
 name = "sep_crypto_per_ip_reset_isolation_test"
 module = "system.sep_crypto_per_ip_reset_isolation_test"
@@ -223,6 +251,20 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Misaligned in-extent register access. sep_cpu_ctrl.rdl and
+# doc/interrupts.adoc require SLVERR and the owning block's
+# PERIPH_BUS_ERR_STATUS bit. The fabric returns DECERR and the bit stays 0.
+# The VPLAN card owns the checker contract.
+name = "sep_periph_bus_err_misaligned_test"
+module = "system.sep_periph_bus_err_misaligned_test"
+seed = 1
+timeout_sec = 600
+tags = ["interrupt", "aggregator", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # LCC sep_debug -> inbound-filter gating (security boundary, the reference suite
 # sep_lcc_uvm_inbound_filter_gating_test). A custom OTP image with
 # LC_STATE=PROD is REAL-sensed (so NO +skip_fuse_sense -- the LCC feat_ctrl decode
@@ -240,7 +282,7 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # reset_ctrl CSR + WDT sanity, combined (the reference suite\'s sep_reset_ctrl_csr_test +
-# wdt_sanity_test): SW_RESET_N=0x3E plus the per-IP and shared TRNG reset-wire
+# wdt_sanity_test): SW_RESET_N=0x7E plus the per-IP and shared TRNG reset-wire
 # clears, bad-address D-bus NMI x2, WDT
 # bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.
@@ -344,6 +386,20 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI transaction IDs on the response path. Eight scratch words are primed
+# with eight distinct values, then read with eight reads outstanding at once,
+# one per ID; each must return its own word. Directed, not randomized: the
+# proof is a value compare, and a random ID on either side would remove it.
+name = "sep_axi_id_routing_test"
+module = "system.sep_axi_id_routing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "id", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

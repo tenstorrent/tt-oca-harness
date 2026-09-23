@@ -5,9 +5,11 @@
 Proves SMU glue on real TB ports (same class as clock-stop remap):
 
   1. xtrig_ctm_dst_req[7:0] -> dtp_xtrig_ctm_dst_req[9:2]; SMC[1:0] stay 0
-  2. xtrig_ctm_dst_ack is held at 0 across a window on pulse-sync lanes and
-     acknowledges lane 7 within that window, whose nonzero mode bit exercises
-     the configured-mode packing
+  2. xtrig_ctm_dst_ack[7] follows dst_req[7] within a settle window and holds:
+     lane 7 is the one lane the TB configures for req/ack handshaking
+     (XTRIG_INT_CT_MODE = 8'h80). The integrator guide says a mode-0 lane's
+     ack is "unused" and pins no level for it, so lanes 0-6 are recorded, not
+     compared
   3. xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
   4. TB xtrig_ctm_src_req stays idle (0) while only ack is driven (no DTP peer)
 """
@@ -23,21 +25,19 @@ from smu_base_test import smu_base_test
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
 SRC_ACK_PATS = (0x01, 0x80, 0x3C)
 
-# Lane 7 is the only lane the TB configures point-to-point (tb_top.sv sets
-# XTRIG_INT_CT_MODE = 8'h80); the wire-OR lanes tie ctm_dst_ack_o to 0 in the
-# RTL, so only lane 7 has an ack that moves at all.
+# Lane 7 is the only lane the TB configures for req/ack handshaking (both TB
+# tops set XTRIG_INT_CT_MODE = 8'h80). The integrator guide (SMU cross-trigger
+# port table) says that when a mode bit is 0 the lane is pulse-synchronised and
+# its ack is unused; it pins no level for an unused ack, so only lane 7's ack
+# is compared and lanes 0-6 are logged as observed.
 #
-# That ack is not combinational the way the req remap is: it crosses
-# cross_trigger_port's prim_flop_2sync and then the handshake FSM's own
-# ct_ack_out_q, three cycles measured, in *both* directions -- rising when
-# lane 7's req asserts and falling when it deasserts. Sampling once at a
-# two-cycle settle reads the pre-transition value, which is what made this
-# check pass on the wire-OR lanes and fail on lane 7.
-#
-# So the property is a settle-and-hold: within ACK_SETTLE cycles the ack must
-# reach (pat & 0x80), and it must stay there for the rest of the window.
+# The ack is a synchronised handshake, not a combinational remap, so the
+# property is settle-and-hold: within ACK_SETTLE cycles ack[7] must reach
+# req[7] and must stay there for the rest of the window. ACK_SETTLE is a wait
+# bound, not an expectation.
 ACK_SETTLE = 4
 ACK_WINDOW = 12
+HANDSHAKE_LANE = 0x80
 
 
 def _u8(signal, name: str) -> int:
@@ -94,24 +94,25 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
             )
             sb.expect_eq(f"dst_req pat={pat:#x} SMC[1:0] idle", dtp & 0x3, 0)
 
-            want_ack = pat & 0x80
+            want_ack7 = pat & HANDSHAKE_LANE
             trace = []
             for _ in range(ACK_WINDOW):
                 trace.append(_u8(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"))
                 await RisingEdge(dut.clk_smu_i)
-            held = trace[ACK_SETTLE:]
+            held = [v & HANDSHAKE_LANE for v in trace[ACK_SETTLE:]]
             # Report the first offender rather than a bare mismatch, so a
             # regression says which cycle broke the hold.
-            bad = next((v for v in held if v != want_ack), want_ack)
+            bad = next((v for v in held if v != want_ack7), want_ack7)
             sb.expect_eq(
-                f"dst_req pat={pat:#x} ack settles to {want_ack:#04x} within "
+                f"dst_req pat={pat:#x} ack[7] settles to {want_ack7 >> 7} within "
                 f"{ACK_SETTLE} cycles and holds",
                 bad,
-                want_ack,
+                want_ack7,
                 evidence="XT_CTM_REMAP",
             )
             self.logger.info(
-                "dst_req pat=%#x: ack trace %s",
+                "dst_req pat=%#x: ack trace %s (lanes 0-6 observed only: the guide leaves a "
+                "pulse-synchronised lane's ack unused and pins no level for it)",
                 pat,
                 [f"{v:#04x}" for v in trace],
             )

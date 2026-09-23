@@ -1,9 +1,61 @@
-/* Image zoom cursor hint */
-.doc img {
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
+.doc img.image-zoomable {
   cursor: zoom-in;
-  transition: transform 0.2s ease;
 }
 
-.doc img:hover {
+.doc img.image-zoomable:hover {
   opacity: 0.95;
+}
+
+.ocah-image-viewer.viewer-backdrop {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.ocah-image-viewer .viewer-toolbar > ul > li {
+  width: auto;
+  min-width: 40px;
+  height: 40px;
+  margin: 0 4px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: #303840;
+  color: #fff;
+  font: 600 16px/40px sans-serif;
+}
+
+.ocah-image-viewer .viewer-toolbar > ul > li::before {
+  display: none;
+}
+
+.ocah-image-viewer .viewer-footer {
+  padding-bottom: 16px;
+}
+
+.ocah-image-viewer .viewer-button {
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background: #303840;
+}
+
+.ocah-image-viewer .viewer-button::before {
+  top: 10px;
+  left: 10px;
+}
+
+.ocah-image-viewer [role="button"]:focus-visible,
+.doc img.image-zoomable:focus-visible {
+  outline: 3px solid #1769aa;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocah-image-viewer,
+  .ocah-image-viewer * {
+    transition-duration: 0.01ms !important;
+  }
 }

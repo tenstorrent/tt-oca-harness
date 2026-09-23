@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef KM_MEMORY_RDL
+`define KM_MEMORY_RDL
+
+mem km_rom {
+    name = "Key Manager ROM";
+    desc = "Key Manager boot ROM";
+    mementries = 4096;
+    memwidth = 32;
+    sw = r;
+};
+
+mem km_sram {
+    name = "Key Manager SRAM";
+    desc = "Key Manager data and executable SRAM";
+    mementries = 8192;
+    memwidth = 32;
+    sw = rw;
+};
+
+`endif

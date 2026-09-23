@@ -11,11 +11,13 @@
 //
 // This module is a minimal always-ready AXI subordinate (so the firmware's
 // stores/loads never stall) plus a write-channel monitor that mirrors the reference suite
-// internal env decode (sep_wrap_uvm_top.sv): it assembles console characters
+// internal env decode: it assembles console characters
 // (byte-strobe stores) and latches fw_done/fw_pass on the magic sequence. The
 // decoded signals are surfaced to cocotb through tb_top.
 
 `timescale 1ps / 1fs
+
+`include "sep_reg.svh"
 
 module sep_outbound_mbx
   import sep_pkg::*;
@@ -34,7 +36,7 @@ module sep_outbound_mbx
   localparam logic [31:0] MAGIC0 = 32'hA5A5_5A5A;
   localparam logic [31:0] MAGIC_PASS = 32'hCAFE_BABE;
   localparam logic [31:0] MAGIC_FAIL = 32'hDEAD_BEEF;
-  localparam logic [31:0] STDOUT_LO = 32'h8000_0000;
+  localparam logic [31:0] STDOUT_LO = SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT[31:0];
 
   localparam int unsigned AW = $bits(req_i.aw.addr);
   localparam int unsigned IDW = $bits(req_i.aw.id);

@@ -16,6 +16,7 @@ SCRATCH_COLD_2 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BA
 SCRATCH_PATTERN = 0x1A7A_0002
 # Generated reset of the scratch data field, the value a taken reset restores.
 SCRATCH_RESET = misc_wrap_reset("SCRATCH__SCRATCH__DATA_reset")
+VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 
 # Same bounds smc_flr_sanity_test_seq uses for the cool-reset handshake.
 # smc_reset_ctrl de-glitches rst_cool_ni over 32 clk_ref_i samples
@@ -26,7 +27,7 @@ COOL_RECOVER_BOUND_REF = 4000
 
 
 class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
-    """Use cool-reset recovery around safe CSRs until public JTAG VIP exists."""
+    """Cool-reset recovery around safe CSRs; the CPU JTAG TAP proof runs in the test module."""
 
     def __init__(self, name: str = "smc_jtag_reset_proxy_test_seq") -> None:
         super().__init__(name)
@@ -83,7 +84,9 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         return item
 
     async def body(self) -> None:
-        await self._read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0)
+        await self._read(
+            "CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=VERSION_LO_RESET
+        )
         await self._write("SCRATCH_COLD_2", SCRATCH_COLD_2, SCRATCH_PATTERN)
         await self._read("SCRATCH_COLD_2", SCRATCH_COLD_2, expected=SCRATCH_PATTERN)
 
@@ -117,17 +120,13 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         # pipe; wait on that handshake before touching CSRs again.
         await self.wait_fuse_sense_done()
 
-        # The scratch pattern written before the reset must be gone: a taken
-        # cool reset restores the generated reset value. This is what makes the
-        # reset load-bearing rather than incidental -- the pre-reset write and
-        # this read straddle it, so a reset that never happened leaves
-        # SCRATCH_PATTERN here and fails.
-        #
-        # Which way round this goes is not assumed: smc_multi_reset_csr
-        # _persistence_test_seq writes a pattern, cools, and expects the
-        # generated reset back, under CHK-COOL-RESET-CLEARS-WARM-SCRATCH.
+        # A taken cool reset restores the generated reset value, so the pattern
+        # written before the reset must be gone: the pre-reset write and this
+        # read straddle the reset, and a reset that never happened leaves
+        # SCRATCH_PATTERN here and fails. smc_multi_reset_csr_persistence_test_seq
+        # checks the same direction under CHK-COOL-RESET-CLEARS-WARM-SCRATCH.
         await self._read(
-            "CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0
+            "CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO, expected=VERSION_LO_RESET
         )
         await self._read("SCRATCH_COLD_2_CLEARED", SCRATCH_COLD_2, expected=SCRATCH_RESET)
         # The register is still writable after the reset. Writing the reset

@@ -17,6 +17,16 @@ from smc_base_test import smc_base_test
 class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
     """UART0 loopback FIFO trigger levels + RX/TX FIFO reset."""
 
+    required_evidence = (
+        "CHK-UART-FIFO-RST-RX",
+        "CHK-UART-FIFO-RST-TX",
+        "CHK-UART-FIFO-TRIG-1B",
+        "CHK-UART-FIFO-TRIG-32B",
+        "CHK-UART-FIFO-TRIG-4B",
+        "CHK-UART-FIFO-TRIG-ABOVE-DEPTH",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -52,16 +62,16 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
-            # Conservative stimulus floor: 127-143 accesses observed across the
-            # retained regression runs (FIFO trigger polls vary with timing), so
-            # the floor is set below the minimum observed.
+            # Stimulus floor: it sits below the run-to-run minimum because the FIFO trigger polls
+            # are timing-dependent.
             min_csr_accesses=100,
             csr_accesses=measured_csr,
             proxy=False,
             details=(
                 f"FIFO trigger-level ids {seq.trigger_ids}; threshold 32 stayed "
                 f"inactive at depth 31 and fired at 32, while thresholds 64 "
-                f"through 4096 stayed inactive for an empty 32-entry FIFO; "
+                f"through 4096 stayed inactive on a full 32-entry FIFO that "
+                f"fired at the 32-character encoding before and after; "
                 f"RX/TX FIFO reset before/after LSR contrast"
             ),
         )

@@ -22,6 +22,15 @@ _CLEARED = (_SCRATCH_RESET, _SCRATCH_RESET)
 class smc_cool_reset_x_cold_reset_test(smc_base_test):
     """FLR×cold interaction; not rst_cool_ni alias or BMC Force cool."""
 
+    required_evidence = (
+        "CHK-FLR-COLD-ISO-LIVE",
+        "CHK-FLR-COLD-POS-COOL",
+        "CHK-FLR-COLD-SCRATCH",
+        "CHK-FLR-COLD-WINS",
+        "CHK-FLR-COOL-SCRATCH-CLEAR",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

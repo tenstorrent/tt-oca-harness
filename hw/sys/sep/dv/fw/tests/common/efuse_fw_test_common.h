@@ -69,8 +69,8 @@ static inline void efuse_clear_req_error(void) {
 
 /*
  * efuse_config_program_clock() is implemented by adopter overlays that need a
- * macro programming clock. This open helper intentionally only provides the
- * OpenTitan EFUSE_INTERFACE_CTRL surface.
+ * macro programming clock; this helper provides only the OpenTitan
+ * EFUSE_INTERFACE_CTRL surface.
  */
 
 static inline int efuse_program_bit(uint32_t bit_addr) {

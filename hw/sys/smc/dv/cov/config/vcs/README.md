@@ -9,7 +9,7 @@ things, and neither can express the other's form:
 | File | Flow | Mechanism |
 | --- | --- | --- |
 | `../verilator/smc_cov_scope.vlt` | public CI (graded) | `coverage_off -file`, globs |
-| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, instance trees |
+| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` |
 
 Both are applied at **compile** time, following what SEP measured
 (`hw/sys/sep/dv/cov/config/vcs/README.md`): a report-time filter prunes the
@@ -17,49 +17,49 @@ report pages and still grades the whole database, so scope that has to hold
 must keep the code out of the database. Edit either file then `--rebuild` —
 neither is fingerprinted.
 
-**The two files must be kept in step by hand.** They do not express the same
-set, and cannot:
-
-- Verilator's `coverage_off` takes `-file` only. There is no `-module` form;
-  `coverage_off -module "prim_rom"` is a syntax error. Globbing source paths
-  makes dropping all of `vendor/**` a one-liner.
-- VCS scopes by hierarchy. Vendored pulp `axi` / `common_cells` are structural
-  glue instantiated at 20 and 35 distinct places respectively, so no `-tree`
-  reaches them without dropping real SMC RTL, and naming all 160 vendored
-  modules with `-module` would be unmaintainable. The VCS file therefore names
-  the two vendored blocks that *do* sit under one instance each — i3c-core and
-  tt-hw-debug — and leaves pulp glue in.
+**The two files express one set.** Verilator's `coverage_off` takes `-file`
+only, so the Verilator file drops trees by source path with globs. VCS scopes
+by design unit or instance, and the trees SMC does not own -- vendored RTL,
+`hw/ip`, `hw/common`, the chipyard-generated CPU cluster, the bench's own
+models -- are instantiated at hundreds of places inside SMC's own modules, so
+no `-tree` reaches them without dropping real SMC RTL. `gen_smc_cov_scope.py`
+therefore reads the build filelists, takes every module, interface and
+program compiled from those trees, and writes one `-module` line per unit;
+the file is regenerated (`--check` says when it is stale) rather than kept by
+hand.
 
 ## What the numbers are
 
-Say which one you are quoting.
-
-- **Verilator**: the SMC DUT **minus the CPU cluster, the I3C core, the
-  lowRISC prims, and TB code** — pulp glue and tt-hw-debug still counted, see
-  the known gap below. 20306 points.
-- **VCS**: the SMC DUT **minus the CPU cluster, the I3C core, the debug-bus
-  block, and TB code** — pulp glue still counted. 17629 points.
-
-Neither is "SMC coverage". The two exclude overlapping but different sets, so
-they are not comparable to each other either.
+Both grade what SMC owns: `hw/sys/smc/rtl/**` (less the chipyard-generated
+cluster), `hw/sys/smc/regs/**`, the two `hw/top` integration shells and the
+`cov/sv` points. They still differ in what a point is -- Verilator's
+expression family against VCS's condition, FSM and toggle -- and Verilator
+5.050 leaves some vendored files instrumented that VCS drops (the known gap
+below), so quote the simulator with the number.
 
 ## What each file excludes
 
 ### `smc_cov_scope.hier` (VCS)
 
-    -tree smc_uvm_top 1                     TB top's own body, children kept
-    -tree ...u_smc_cpu_wrapper.gen_4core_cpu  chipyard-generated CPU cluster
-    -tree ...u_smc_peripherals.u_i3ccore_wrapper  vendored i3c-core
-    -tree ...u_internal_regs.u_smc_dfd_wrap   vendored tt-hw-debug trace/mmr
+    -tree smc_uvm_top 1        TB top's own body, children kept
+    -module <unit>             one line per design unit compiled from
+                               vendor/, hw/ip/, hw/common/, the chipyard-
+                               generated cluster, hw/sys/smc/dv/tb and
+                               hw/sys/smc/dv/models
 
-Each vendored tree is 100% contained by that one instance, checked against the
-merged database rather than assumed.
+The `-module` lines are generated:
+
+    python3 tools/dv/run_dv.py --dut smc --items smoke      # any build
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_scope.py
+
+VCS warns `VCM-HFUFF` once per listed unit the current elaboration did not
+instantiate; that is the list being a superset of one build, not an error.
 
 ### `../verilator/smc_cov_scope.vlt`
 
 Same intent expressed over source paths. These are the patterns the file
 carries, verbatim — note the absence of a `/` after the leading `*`, for the
-reason measured under "Verilator glob matching" below:
+reason under "Verilator glob matching" below:
 
     coverage_off -file "*hw/sys/smc/dv/tb/tb_top.sv"
     coverage_off -file "*hw/sys/smc/dv/tb/smc_tb_if.sv"
@@ -68,72 +68,38 @@ reason measured under "Verilator glob matching" below:
     coverage_off -file "*chipyard_generated_files/*"
     coverage_off -file "*vendor/*"
 
-`hw/sys/smc/dv/cov/sv/*` is deliberately **not** excluded — those files carry
+`hw/sys/smc/dv/cov/sv/*` is **not** excluded — those files carry
 the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Why these exclusions
 
-Measured on weekly CI run 33982997638 (2026-09-05), 39602 points, 17531 unhit:
-
-| Bucket | Points | % of denominator | Hit % |
-| --- | ---: | ---: | ---: |
-| `vendor/**` | 19437 | 49% | 55.7 |
-| chipyard-generated CPU cluster | 10774 | 27% | 48.7 |
-| `hw/ip/**` | 6941 | 18% | 58.9 |
-| `hw/sys/smc/**` | 1657 | 4% | 78.9 |
-| `hw/common/**` | 708 | 2% | 76.8 |
-
-Third-party RTL plus the generated CPU cluster are 76% of the unscoped
-denominator. This is the same argument SEP used to drop `sep_cpu`: a large,
-barely-exercised third-party denominator makes the headline a statement about
-someone else's code. `hw/ip/**` stays in — it is Tenstorrent IP that SMC
-integrates, and integration coverage of those blocks is part of what SMC-level
-DV is for, even though IP-level DV owns their internals.
-
-## Effect, projected from the CI database
-
-Recomputed by replaying each scope over that run's `cov/merged.dat`:
-
-| Scope | Points | Total | line | branch |
-| --- | ---: | ---: | ---: | ---: |
-| none (today's headline) | 39602 | 55.73% | 61.90 | 53.63 |
-| Verilator scope, as it actually behaves | 20306 | 61.73% | 66.59 | 59.50 |
-| Verilator scope, if the gap below closed | 9227 | 63.83% | 65.88 | 62.77 |
-| VCS scope | 17629 | 64.85% | 73.00 | 61.22 |
+Third-party RTL and the chipyard-generated CPU cluster dominate the unscoped
+denominator and are barely exercised by SMC-level tests, so an unscoped
+headline is a statement about someone else's code — the same reason SEP drops
+`sep_cpu`. `hw/ip/**` and `hw/common/**` are dropped for the same reason the SMU
+and DTP scopes drop them: each block there carries its own DV package and its
+own coverage, and grading its internals again here attributes its holes to SMC
+and hides SMC's own integration inside a denominator an order of magnitude
+larger. What SMC grades is what it owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`
+and the `cov/sv` points. Whether an integrated block is *reached* from the SMC
+boundary is a functional-coverage question and is answered by the `user` points,
+not by that block's line count.
 
 ## Known gap in the Verilator scope
 
 `coverage_off -file "*vendor/*"` drops chipsalliance/i3c-core and
 lowRISC/opentitan but **not** `vendor/pulp-platform/**` or
-`vendor/tenstorrent/tt-hw-debug/**`. Measured by counting `__vlCoverInsert`
-sites in the generated model across four builds:
+`vendor/tenstorrent/tt-hw-debug/**`. No file pattern reaches those two trees
+(`*pulp-platform/*` and `*tt-hw-debug/*` are inert), so they stay in the
+denominator. Patterns that do nothing are not carried in the scope file:
+config that looks like scope and does nothing is worse than a documented gap.
 
-| Build | vendor sites | pulp-platform | tt-hw-debug |
-| --- | ---: | ---: | ---: |
-| no scope file | 873578 | 27942 | 13030 |
-| `*/vendor/*` | 40972 | 27942 | 13030 |
-| `*vendor/*` | 40972 | 27942 | 13030 |
-| `*vendor/*` + `*pulp-platform/*` + `*tt-hw-debug/*` | 40972 | 27942 | 13030 |
+The SYS_OUT responder is the shared VIP slave agent, class code with no RTL to
+score; only its interface instance and struct bridge sit in the TB body. VCS
+has no equivalent gap: `-module` names every unit regardless of where its
+source file ends.
 
-95.3% of the vendored sites drop out; those two trees do not move for any
-pattern. They are the structural glue Verilator inlines into its parents,
-which is the working theory — not a confirmed cause. The ineffective patterns
-were removed rather than left in place: config that looks like scope and does
-nothing is worse than a documented gap.
-
-Consequences: the scoped denominator is 20306 rather than 9227. The SYS_OUT
-responder is the shared VIP slave agent, class code with no RTL to score; only
-its interface instance and struct bridge sit in the TB body. The VCS `.hier`
-file has no equivalent gap for the blocks it names by instance.
-
-These are projections of the scope alone, not predictions of the next run.
-That database was collected without `--coverage-expr` and without the
-`cov/sv/` cover points, both of which are now in the build: the next weekly
-run adds an `expression` family and a `user` family, so its denominator and
-its headline will both move. Re-derive the numbers from the first run that
-carries them rather than quoting this table as the new baseline.
-
-## Verilator glob matching, measured
+## Verilator glob matching
 
 `coverage_off -file` matches the path as Verilator **opened** the file, not the
 absolute path it records in the generated code. The filelist is absolute, but
@@ -147,29 +113,24 @@ both forms:
 | `*vendor*` | matched | matched |
 
 A leading `*/` therefore scopes only half the tree and says nothing about it.
-The first version of `smc_cov_scope.vlt` used `*/vendor/*` and left
-pulp-platform/axi and tt-hw-debug fully instrumented while the rest of
-`vendor/` dropped out; the build succeeded and nothing warned. Verify a scope
+The relatively-opened half then stays fully instrumented while the build
+succeeds and nothing warns. Verify a scope
 change by counting `__vlCoverInsert` sites per source bucket in the generated
 model, not by the build passing.
 
-## Status
+## VCS bring-up checklist
 
-- The Verilator scope is wired into `[coverage.verilator].build_args` and the
-  instrumented model builds with it.
-- **The VCS path has never been run.** No VCS binary is available in the
-  development environment this was written in, so `[coverage.vcs]` and this
-  `.hier` file are the SEP pattern transplanted, not a measured result. On its
-  first use, check: the compile accepts `-lca -cm_common_hier`; the five
-  `-tree` paths still resolve (instance names move when RTL is refactored, and
-  VCS accepts a stale scope file silently); and `u_dut` matches `smc_uvm_top`
-  in every column, which is what tells you assertions were scoped too.
+On a VCS run check that: the compile accepts `-lca -cm_common_hier`; 
+`gen_smc_cov_scope.py --check` passes (a unit added to a vendored tree since
+the file was generated would otherwise be graded, and VCS accepts a stale
+scope file silently); and `u_dut` matches
+`smc_uvm_top` in every column, which is what shows assertions were scoped too.
 
-## Carried over from SEP, so it is not rediscovered
+## VCS scope behaviour
 
-- **An include-list does not restrict instrumentation.** `+tree` left SEP's
-  design database essentially unscoped; only `-tree` took effect, and VCS
-  accepted the file silently either way. Name what to drop.
+- **An include-list does not restrict instrumentation.** `+tree` leaves the
+  design database unscoped; only `-tree` takes effect, and VCS accepts the
+  file silently either way. Name what to drop.
 - **`-cm_hier` alone does not scope assertions.** It governs line, condition,
   FSM, toggle and branch only; without `-cm_common_hier` the excluded
   hierarchy is gone from the code metrics but still graded for assertions.

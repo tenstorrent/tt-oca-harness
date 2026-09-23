@@ -3,17 +3,16 @@
 """Standalone HMAC SHA-variant breadth, RAND-REP (HMAC SHA-variant breadth).
 
 Drives the OpenTitan HMAC engine directly over the CPU-LSU AXI master (no_cpu, no
-firmware) across the full standalone SW-key matrix that the Phase-1 KM->HMAC
+firmware) across the full standalone SW-key matrix that the KM->HMAC
 sideload KAT (`sep_km_hmac_sideload_kat_test`, SHA-256 keyed via keymgr_key_i)
 does not reach:
 
     {SHA-256, SHA-384, SHA-512} x {keyed HMAC, plain SHA} x legal key-length.
 
-reference parity: this is a GAP (basic) rep -- the reference SEP tb has no SHA-384/512 HMAC
-or key-length coverage (OCAH HMAC tests cover SHA-256 only). So the
-independent stdlib golden (env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 +
-plain SHA FIPS-180 self-tested) IS the reference and this rep is STRONGER than the
-directed reference suite set it merges. DISTINCT from
+Reference parity: the reference SEP tb has no SHA-384/512 HMAC or key-length
+coverage (OCAH HMAC tests cover SHA-256 only), so the independent stdlib golden
+(env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 + plain SHA FIPS-180
+self-tested) IS the reference. DISTINCT from
 `sep_km_hmac_sideload_kat_test` (SHA-256 via SIDELOAD) and the CPU
 crypto smoke (SHA-256): HMAC SHA-variant breadth is standalone SW-key across variants.
 
@@ -22,9 +21,9 @@ of truth for BOTH the DUT programming (CFG + key) AND the golden. The required
 discrete cells are WALKED DETERMINISTICALLY in one invocation (every legal
 {sha_bits x mode x key_bits} cell), so a single seed never skips a required cell;
 the seed only randomizes the legal continuous knobs (key + message content/
-length). The SHA-256 x Key_1024 keyed cell is illegal
-(`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv` key-length check)
-and excluded.
+length). The SHA-256 x Key_1024 keyed cell is illegal -- hmac.adoc states the key length
+cannot exceed the block size, 512-bit for SHA-2 256 -- and is excluded by the
+block-size rule the sequence derives, not by a hand-listed pair.
 
 Checkers:
   CHK-CONV     SW-key register convention pinned on SHA-256 keyed-256 from the IP
@@ -53,9 +52,10 @@ from seq_lib.sep_hmac_seq import (
 )
 
 # Derived, not hand-kept: the full digest-size x key-length product minus the
-# combinations hmac.sv rejects as invalid_config. HMAC_ILLEGAL_KEYED in the
-# sequence is the single source of truth for legality, so a change there moves
-# both the stimulus and this matrix together.
+# combinations the register specification blocks. HMAC_ILLEGAL_KEYED in the
+# sequence derives those from hmac.adoc's block-size rule and is the single
+# source of truth for legality, so a change there moves both the stimulus and
+# this matrix together.
 KEYED_MATRIX = {
     sha_bits: [k for k in HMAC_KEY_LENGTH if (sha_bits, k) not in HMAC_ILLEGAL_KEYED]
     for sha_bits in HMAC_DIGEST_SIZE
@@ -117,8 +117,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         )
         for sha_bits, key_bits in EXCLUDED_KEYED:
             self.logger.info(
-                "SKIP-ILLEGAL-KEYED: SHA-%d with a %d-bit key is rejected by the "
-                "engine as invalid_config (hmac.sv), so it is not a keyed cell. "
+                "SKIP-ILLEGAL-KEYED: SHA-%d with a %d-bit key exceeds the SHA-2 "
+                "block size, which hmac.adoc says blocks the start and signals an "
+                "error, so it is not a keyed cell. "
                 "Declared, not driven: no negative cell provokes ERR_CODE here",
                 sha_bits,
                 key_bits,
@@ -143,10 +144,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
     # secret_key_i[1023:768] for a 256-bit key. Writing KEY_0..KEY_7 in order therefore
     # lays the key down MSB-first and needs NO word reversal.
     #
-    # The RTL agrees -- hmac.sv assigns the key registers in reverse index order -- but
-    # the RTL is deliberately NOT the citation here. An expectation transcribed from the
-    # thing it measures cannot disagree with it, which is the rule the lifecycle golden
-    # note states, and it applies to a register convention just as much as to a decode.
+    # The RTL agrees (hmac.sv assigns the key registers in reverse index order), but
+    # the specification is the citation: an expectation transcribed from the thing it
+    # measures cannot disagree with it.
     #
     # Do not confuse this with the SIDELOAD path, where
     # vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv packs
@@ -233,13 +233,8 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
             f"  golden={[hex(w) for w in golden]}"
         )
 
-        # No golden-vs-golden guards here. With the DUT result already pinned
-        # bit-exact against the golden above, any further comparison between that
-        # result and another golden-model output reduces to a property of the model
-        # alone -- it holds with the simulator switched off. Model sanity belongs in
-        # the golden's import-time KAT block, not in a per-cell DUT check.
-
-        await self.hmac.check_status_clean(mode)  # CHK-ERR
+        await self.hmac.check_status_clean(mode)
+        self.logger.info("CHK-ERR PASS %s: ERR_CODE == 0 and INTR_STATE.hmac_err == 0", mode)
         self.logger.info(
             "CHK-CELL PASS %s: DIGEST==golden, RW1C done, ERR clean, non-vacuous (msg=%d words)",
             mode,

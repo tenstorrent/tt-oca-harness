@@ -7,7 +7,7 @@
  * @brief Focused CRC software-versus-PCPI cycle benchmark
  *
  * Measures three fixed-count workloads using the same deterministic input stream
- * and loop structure for both the pre-acceleration software baseline and the
+ * and loop structure for both the software baseline and the
  * PCPI-accelerated path:
  *   1. CRC-32C word updates
  *   2. CRC-32C byte updates

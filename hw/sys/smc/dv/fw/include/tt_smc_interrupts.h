@@ -12,7 +12,9 @@ extern "C" {
 
 // SMC CPU interrupt map (4-core config: NUM_EXT_INTERRUPTS=256, NUM_CPU_INTERRUPTS=328)
 //
-// cpu_interrupts_o layout (hw/smc/smc_base.sv):
+// cpu_interrupts_o layout, transcribed from the SMC interrupt-vector map in
+// hw/sys/smc/doc/interrupts.adoc ("SMC CPU Interrupt Vector Map"), which is the
+// specification of record for this table; keep the two in step:
 //   [255:0]   ext_interrupts_i            -> PLIC IDs   1-256
 //   [287:256] peripheral_interrupts_i     -> PLIC IDs 257-288
 //   [319:288] mailbox_interrupts[31:0]    -> PLIC IDs 289-320
@@ -20,7 +22,8 @@ extern "C" {
 //   [321]     cla_interrupt               -> PLIC ID  322
 //   [327:322] (unused)
 //
-// PLIC ID = cpu_interrupts_o bit index + 1 (RISC-V PLIC source 0 is reserved)
+// PLIC ID = cpu_interrupts_o bit index + 1 (RISC-V PLIC source 0 is reserved),
+// as the same chapter states.
 
 // SEP mailbox: peripheral_interrupts[7:0] = cpu_interrupts_o[263:256] -> PLIC IDs 257-264
 #define SEP_MAILBOX_0_INTERRUPT_ID (257)

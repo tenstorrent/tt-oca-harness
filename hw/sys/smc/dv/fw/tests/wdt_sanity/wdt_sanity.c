@@ -94,9 +94,8 @@ int main(void) {
 
         write_reg(SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_BASE_ADDR,
                   0x400); // set 2nd stage wdt timeout counter
-        write_reg(SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0xC0FFEE); // replace
-        write_reg(SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(7),
-                  0xC0FFEE); // replace
+        write_reg(SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0xC0FFEE);
+        write_reg(SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_BASE_ADDR(7), 0xC0FFEE);
 
         // get the all watchdog devices
         wdog = metal_watchdog_get_device(0);
@@ -107,9 +106,8 @@ int main(void) {
         // get interrupt id for wdog
         wdog_interrupt_id = metal_watchdog_get_interrupt_id(wdog);
 
-        // metal returns 0 when the device lookup misses. Without this the PLIC
-        // calls below silently no-op and the failure surfaces as an unexplained
-        // wait timeout instead of a named cause.
+        // metal returns 0 when the device lookup misses; a 0 id makes the PLIC calls
+        // below no-op.
         if (wdog_interrupt_id <= 0) {
             fail_wdt(WDT_ERR_BAD_IRQ_ID, "watchdog PLIC interrupt id unresolved");
         }
@@ -145,8 +143,7 @@ int main(void) {
         // init the plic and register interrupt handler
         metal_interrupt_init(plic_controller);
         // Both PLIC calls return -1 when the id is out of range for this PLIC
-        // (RISCV_NDEV). Checking the return is numbering-agnostic; the doc and
-        // the metal machine header disagree by one on the WDT source indices.
+        // (RISCV_NDEV); checking the return does not depend on the WDT source numbering.
         if (metal_interrupt_register_handler(plic_controller, wdog_interrupt_id,
                                              wdt_interrupt_handler, wdog) != 0) {
             fail_wdt(WDT_ERR_PLIC_REGISTER, "PLIC register_handler rejected the WDT id");

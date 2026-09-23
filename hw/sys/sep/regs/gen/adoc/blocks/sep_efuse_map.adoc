@@ -1,64 +1,63 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-sep_efuse_map]
+== Address Map: sep_efuse_map
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | LOCKS | RW a| -
-| 0x8 | LOCKS_SPARE | RW a| -
-| 0xC | LC_STATE | R a| -
-| 0x10 | SBOOT_DIS | R a| -
-| 0x14 | TRANSIENT_RMA_EN | R a| -
-| 0x18 | SIP_DIS | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
-| 0x20 | SYS_DIS | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
-| 0x28 | RMA_SIP_TOKEN_DIGEST | R a| -
-| 0x48 | RMA_CHIPLET_TOKEN_DIGEST | R a| -
-| 0x68 | CLASS_KEY | R a| -
-| 0x88 | CHIPLET_PUBK_REVOKE | R a| -
-| 0x8C | BL1_VERSION | R a| -
-| 0xAC | BL2_VERSION | R a| -
-| 0xCC | CHIPLET_UID | R a| -
-| 0xEC | SIP_PUBK_HASH0 | R a| -
-| 0x10C | SIP_UID | R a| -
-| 0x12C | SYS_PUBK_HASH | R a| -
-| 0x14C | SYS_UID | R a| -
-| 0x16C | STATUS_RPT | R a| -
-| 0x170 | ROM_CTL | R a| -
-| 0x174 | SEP_SPI_CTRL_FIELD_EN | R a| -
-| 0x178 | SPI_DISCOVERY_CTRL | R a| -
-| 0x17C | SPI_PHY_DQ_TIMING | R a| -
-| 0x180 | SPI_PHY_DQS_TIMING | R a| -
-| 0x184 | SPI_PHY_GATE_LPBK | R a| -
-| 0x188 | SPI_PHY_DLL_SLAVE | R a| -
-| 0x18C | SPI_PHY_DLL_MASTER | R a| -
-| 0x190 | SPI_PHY_MISC | R a| -
-| 0x194 | SPI_RB_VALID_TIME | R a| -
-| 0x198 | CHIPLET_PUBK_HASH0 | R a| -
-| 0x1B8 | CHIPLET_PUBK_HASH1 | R a| -
-| 0x1D8 | REQUIRED_SIGNERS | RW a| -
-| 0x1DC | REQUIRED_ALGS | RW a| -
-| 0x1E0 | CHIPLET_PUBK_PQC_HASH0 | R a| -
-| 0x200 | CHIPLET_PUBK_PQC_HASH1 | R a| -
-| 0x220 | SIP_PUBK_PQC_HASH0 | R a| -
-| 0x240 | SYS_PUBK_PQC_HASH | R a| -
-| 0x260 | SIP_PUBK_HASH1 | R a| -
-| 0x280 | SIP_PUBK_PQC_HASH1 | R a| -
-| 0x2A0 | SEP_CHIPLET_ID | R a| -
-| 0x2C0 | SEP_SIP_ID | R a| -
-| 0x2E0 | SEP_SYS_ID | R a| -
-| 0x300 | spare0 | R a| -
-| 0x320 | spare1 | R a| -
-| 0x340 | spare2 | R a| -
-| 0x360 | spare3 | R a| -
-| 0x380 | spare4 | R a| -
-| 0x3A0 | spare5 | R a| -
-| 0x3C0 | spare6 | R a| -
-| 0x3E0 | spare7 | R a| -
+| 0x0 | <<reg-{regmap-instance}-sep_efuse_map-LOCKS,LOCKS>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-sep_efuse_map-LOCKS_SPARE,LOCKS_SPARE>> | RW a| -
+| 0xC | <<reg-{regmap-instance}-sep_efuse_map-LC_STATE,LC_STATE>> | R a| -
+| 0x10 | <<reg-{regmap-instance}-sep_efuse_map-SBOOT_DIS,SBOOT_DIS>> | R a| -
+| 0x14 | <<reg-{regmap-instance}-sep_efuse_map-TRANSIENT_RMA_EN,TRANSIENT_RMA_EN>> | R a| -
+| 0x18 | <<reg-{regmap-instance}-sep_efuse_map-SIP_DIS,SIP_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+| 0x20 | <<reg-{regmap-instance}-sep_efuse_map-SYS_DIS,SYS_DIS>> | RW a| An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.
+| 0x28 | <<reg-{regmap-instance}-sep_efuse_map-RMA_SIP_TOKEN_DIGEST,RMA_SIP_TOKEN_DIGEST>> | R a| -
+| 0x48 | <<reg-{regmap-instance}-sep_efuse_map-RMA_CHIPLET_TOKEN_DIGEST,RMA_CHIPLET_TOKEN_DIGEST>> | R a| -
+| 0x68 | <<reg-{regmap-instance}-sep_efuse_map-CLASS_KEY,CLASS_KEY>> | R a| -
+| 0x88 | <<reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_REVOKE,CHIPLET_PUBK_REVOKE>> | R a| -
+| 0x8C | <<reg-{regmap-instance}-sep_efuse_map-BL1_VERSION,BL1_VERSION>> | R a| -
+| 0xAC | <<reg-{regmap-instance}-sep_efuse_map-BL2_VERSION,BL2_VERSION>> | R a| -
+| 0xCC | <<reg-{regmap-instance}-sep_efuse_map-CHIPLET_UID,CHIPLET_UID>> | R a| -
+| 0xEC | <<reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_HASH0,SIP_PUBK_HASH0>> | R a| -
+| 0x10C | <<reg-{regmap-instance}-sep_efuse_map-SIP_UID,SIP_UID>> | R a| -
+| 0x12C | <<reg-{regmap-instance}-sep_efuse_map-SYS_PUBK_HASH,SYS_PUBK_HASH>> | R a| -
+| 0x14C | <<reg-{regmap-instance}-sep_efuse_map-SYS_UID,SYS_UID>> | R a| -
+| 0x16C | <<reg-{regmap-instance}-sep_efuse_map-STATUS_RPT,STATUS_RPT>> | R a| -
+| 0x170 | <<reg-{regmap-instance}-sep_efuse_map-ROM_CTL,ROM_CTL>> | R a| -
+| 0x174 | <<reg-{regmap-instance}-sep_efuse_map-SYSCLK_FREQ_MHZ,SYSCLK_FREQ_MHZ>> | R a| -
+| 0x178 | <<reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_HASH0,CHIPLET_PUBK_HASH0>> | R a| -
+| 0x198 | <<reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_HASH1,CHIPLET_PUBK_HASH1>> | R a| -
+| 0x1B8 | <<reg-{regmap-instance}-sep_efuse_map-REQUIRED_SIGNERS,REQUIRED_SIGNERS>> | RW a| -
+| 0x1BC | <<reg-{regmap-instance}-sep_efuse_map-REQUIRED_ALGS,REQUIRED_ALGS>> | RW a| -
+| 0x1C0 | <<reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_PQC_HASH0,CHIPLET_PUBK_PQC_HASH0>> | R a| -
+| 0x1E0 | <<reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_PQC_HASH1,CHIPLET_PUBK_PQC_HASH1>> | R a| -
+| 0x200 | <<reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_PQC_HASH0,SIP_PUBK_PQC_HASH0>> | R a| -
+| 0x220 | <<reg-{regmap-instance}-sep_efuse_map-SYS_PUBK_PQC_HASH,SYS_PUBK_PQC_HASH>> | R a| -
+| 0x240 | <<reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_HASH1,SIP_PUBK_HASH1>> | R a| -
+| 0x260 | <<reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_PQC_HASH1,SIP_PUBK_PQC_HASH1>> | R a| -
+| 0x280 | <<reg-{regmap-instance}-sep_efuse_map-SEP_CHIPLET_ID,SEP_CHIPLET_ID>> | R a| -
+| 0x2A0 | <<reg-{regmap-instance}-sep_efuse_map-SEP_SIP_ID,SEP_SIP_ID>> | R a| -
+| 0x2C0 | <<reg-{regmap-instance}-sep_efuse_map-SEP_SYS_ID,SEP_SYS_ID>> | R a| -
+| 0x2E0 | <<reg-{regmap-instance}-sep_efuse_map-spare0,spare0>> | R a| -
+| 0x300 | <<reg-{regmap-instance}-sep_efuse_map-spare1,spare1>> | R a| -
+| 0x320 | <<reg-{regmap-instance}-sep_efuse_map-spare2,spare2>> | R a| -
+| 0x340 | <<reg-{regmap-instance}-sep_efuse_map-spare3,spare3>> | R a| -
+| 0x360 | <<reg-{regmap-instance}-sep_efuse_map-spare4,spare4>> | R a| -
+| 0x380 | <<reg-{regmap-instance}-sep_efuse_map-spare5,spare5>> | R a| -
+| 0x3A0 | <<reg-{regmap-instance}-sep_efuse_map-spare6,spare6>> | R a| -
+| 0x3C0 | <<reg-{regmap-instance}-sep_efuse_map-spare7,spare7>> | R a| -
+| 0x3E0 | <<reg-{regmap-instance}-sep_efuse_map-spare8,spare8>> | R a| -
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-LOCKS]
+=== LOCKS
+
 [cols="1,3,1,1,6", options="header"]
-.LOCKS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63 | `SEP_SYS_ID_READ_LOCK` | RW | 0x0 a| sep_sys_id_read_lock (slot 31): when set, SEP_SYS_ID is not read-able.
@@ -87,8 +86,8 @@
 | 40 | `CHIPLET_PUBK_HASH1_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 | 39 | `CHIPLET_PUBK_HASH0_READ_LOCK` | RW | 0x0 a| chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 | 38 | `CHIPLET_PUBK_HASH0_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 37 | `SPI_CONFIG_EN_READ_LOCK` | RW | 0x0 a| spi_config_en_read_lock, when set, the SPI_CONFIG group is not read-able (neither the eFuse nor the shadow register)
-| 36 | `SPI_CONFIG_EN_WRITE_LOCK` | RW | 0x0 a| spi_config_en_write_lock, when set, the SPI_CONFIG group is not write-able (neither the eFuse nor the shadow register)
+| 37 | `SYSCLK_FREQ_MHZ_READ_LOCK` | RW | 0x0 a| sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 36 | `SYSCLK_FREQ_MHZ_WRITE_LOCK` | RW | 0x0 a| sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 | 35 | `ROM_CTL_READ_LOCK` | RW | 0x0 a| rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 | 34 | `ROM_CTL_WRITE_LOCK` | RW | 0x0 a| rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 | 33 | `STATUS_RPT_READ_LOCK` | RW | 0x0 a| status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
@@ -127,11 +126,15 @@
 | 0 | `LC_STATE_WRITE_LOCK` | RW | 0x0 a| lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-LOCKS_SPARE]
+=== LOCKS_SPARE
+
 [cols="1,3,1,1,6", options="header"]
-.LOCKS_SPARE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `SPARE_LOCK_RSVD` | RW | 0x0 a| Unassigned lock slots 40-47. Reserved for future field lock assignments.
+| 31:18 | `SPARE_LOCK_RSVD` | RW | 0x0 a| Unassigned lock slots 41-47. Reserved for future field lock assignments.
+| 17 | `SPARE8_READ_LOCK` | RW | 0x0 a| spare8_read_lock (slot 40): when set, spare8 is not read-able.
+| 16 | `SPARE8_WRITE_LOCK` | RW | 0x0 a| spare8_write_lock (slot 40): when set, spare8 is not write-able.
 | 15 | `SPARE7_READ_LOCK` | RW | 0x0 a| spare7_read_lock (slot 39): when set, spare7 is not read-able.
 | 14 | `SPARE7_WRITE_LOCK` | RW | 0x0 a| spare7_write_lock (slot 39): when set, spare7 is not write-able.
 | 13 | `SPARE6_READ_LOCK` | RW | 0x0 a| spare6_read_lock (slot 38): when set, spare6 is not read-able.
@@ -150,32 +153,40 @@
 | 0 | `SPARE0_WRITE_LOCK` | RW | 0x0 a| spare0_write_lock (slot 32): when set, spare0 is not write-able.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-LC_STATE]
+=== LC_STATE
+
 [cols="1,3,1,1,6", options="header"]
-.LC_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `rsvd` | R | 0x0 a| Unused
 | 7:0 | `lc_state` | R | 0xF0 a| Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SBOOT_DIS]
+=== SBOOT_DIS
+
 [cols="1,3,1,1,6", options="header"]
-.SBOOT_DIS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Unused
 | 0 | `disable_secure_boot` | R | 0x0 a| Chicken bit to disable secure boot in SEP ROM.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-TRANSIENT_RMA_EN]
+=== TRANSIENT_RMA_EN
+
 [cols="1,3,1,1,6", options="header"]
-.TRANSIENT_RMA_EN Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Unused
 | 0 | `transient_rma_en` | R | 0x0 a| When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SIP_DIS]
+=== SIP_DIS
+
 [cols="1,3,1,1,6", options="header"]
-.SIP_DIS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:48 | `func_reserved` | RW | 0x0 a| Reserved for adopter-defined functional feature gating (bits 63:48).
@@ -188,8 +199,10 @@
 | 0 | `sep_debug` | RW | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SYS_DIS]
+=== SYS_DIS
+
 [cols="1,3,1,1,6", options="header"]
-.SYS_DIS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:48 | `func_reserved` | RW | 0x0 a| Reserved for adopter-defined functional feature gating (bits 63:48).
@@ -202,93 +215,119 @@
 | 0 | `sep_debug` | RW | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-RMA_SIP_TOKEN_DIGEST]
+=== RMA_SIP_TOKEN_DIGEST
+
 [cols="1,3,1,1,6", options="header"]
-.RMA_SIP_TOKEN_DIGEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `token_digest` | R | 0x0 a| Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-RMA_CHIPLET_TOKEN_DIGEST]
+=== RMA_CHIPLET_TOKEN_DIGEST
+
 [cols="1,3,1,1,6", options="header"]
-.RMA_CHIPLET_TOKEN_DIGEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `token_digest` | R | 0x0 a| Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-CLASS_KEY]
+=== CLASS_KEY
+
 [cols="1,3,1,1,6", options="header"]
-.CLASS_KEY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key` | R | 0x0 a| Class key that could be used for FW encryption/decryption
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_REVOKE]
+=== CHIPLET_PUBK_REVOKE
+
 [cols="1,3,1,1,6", options="header"]
-.CHIPLET_PUBK_REVOKE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `select` | R | 0x0 a| Global public-key revocation vector covering every boot-verification key of every owner (classical and PQC). SEP ROM embeds a set of public-key hash digests and accesses additional fused key hashes; each key entry maps to one bit here. Once set, SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1; [20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH / SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26] reserved. Before the chiplet owner transfers a part to the customer, the development-key bits shall be set (revoked).
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-BL1_VERSION]
+=== BL1_VERSION
+
 [cols="1,3,1,1,6", options="header"]
-.BL1_VERSION Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `version` | R | 0x0 a| Minimum BL1 version that can be loaded by SEPROM
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-BL2_VERSION]
+=== BL2_VERSION
+
 [cols="1,3,1,1,6", options="header"]
-.BL2_VERSION Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `version` | R | 0x0 a| Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-CHIPLET_UID]
+=== CHIPLET_UID
+
 [cols="1,3,1,1,6", options="header"]
-.CHIPLET_UID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `uid` | R | 0x0 a| Silicon creator's secret device unique ID (also referred to as UDS - Unique Device Secret). The chiplet creator is responsible for CHIPLET_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_HASH0]
+=== SIP_PUBK_HASH0
+
 [cols="1,3,1,1,6", options="header"]
-.SIP_PUBK_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of SiP owner's root public key for secure boot. The chiplet creator's actual root public key is embedded in the SEPROM; this digest is used to validate that public key.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SIP_UID]
+=== SIP_UID
+
 [cols="1,3,1,1,6", options="header"]
-.SIP_UID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `uid` | R | 0x0 a| SiP owner's secret device unique ID. The SiP owner is responsible for SIP_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SYS_PUBK_HASH]
+=== SYS_PUBK_HASH
+
 [cols="1,3,1,1,6", options="header"]
-.SYS_PUBK_HASH Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of system owner's root public key for secure boot.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SYS_UID]
+=== SYS_UID
+
 [cols="1,3,1,1,6", options="header"]
-.SYS_UID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `uid` | R | 0x0 a| System owner's secret device unique ID. The system owner is responsible for SYS_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-STATUS_RPT]
+=== STATUS_RPT
+
 [cols="1,3,1,1,6", options="header"]
-.STATUS_RPT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `reserved` | R | 0x0 a| reserved
 | 1:0 | `rpt` | R | 0x0 a| BOOTROM report status based on the bit. 2'b00-> bootrom report status based on GPIO; 2'b01->bootrom report status;otherwise, bootrom does not report status
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-ROM_CTL]
+=== ROM_CTL
+
 [cols="1,3,1,1,6", options="header"]
-.ROM_CTL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `reserved` | R | 0x0 a| reserved
@@ -296,95 +335,48 @@
 | 0 | `rom_endianness_ctrl` | R | 0x0 a| controls the endianness of the rom data out. 0->little endian; 1->big endian
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.SEP_SPI_CTRL_FIELD_EN Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:19 | `spi_control_field_en_rsvd` | R | 0x0 a| Reserved 13 bits
-| 18:8 | `smu_pll_sysclk` | R | 0x0 a| 11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0
-| 7:0 | `spi_control_field_en` | R | 0x0 a| 8 bit which indicates the following 8 spi config regs are enabled or not. SPI_CONFIG_EN[7:0] corresponds to SPI config words 1-8. When bit N is set, configuration register N+1 is valid in fuses and will be written into the specified SPI configuration register during SPI controller initialization. 1->enabled; 0->disabled
-|===
+[#reg-{regmap-instance}-sep_efuse_map-SYSCLK_FREQ_MHZ]
+=== SYSCLK_FREQ_MHZ
 
 [cols="1,3,1,1,6", options="header"]
-.SPI_DISCOVERY_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `discovery` | R | 0x0 a| spi discovery control reg
+| 31:11 | `rsvd` | R | 0x0 a| Reserved
+| 10:0 | `sysclk_freq_mhz` | R | 0x0 a| Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DQ_TIMING Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dq_timing` | R | 0x0 a| spi phy dq timing reg
-|===
+[#reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_HASH0]
+=== CHIPLET_PUBK_HASH0
 
 [cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DQS_TIMING Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dqs_timing` | R | 0x0 a| spi phy dqs timing reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_GATE_LPBK Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `gate_lpbk` | R | 0x0 a| spi phy gate lpbk ctrl reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DLL_SLAVE Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dll_slave` | R | 0x0 a| spi phy dll slv ctrl reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DLL_MASTER Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dll_master` | R | 0x0 a| spi phy dll mst ctrl reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_MISC Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `misc` | R | 0x0 a| spi init phy misc
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_RB_VALID_TIME Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `rb_valid_time` | R | 0x0 a| spi init rb valid time
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.CHIPLET_PUBK_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_HASH1]
+=== CHIPLET_PUBK_HASH1
+
 [cols="1,3,1,1,6", options="header"]
-.CHIPLET_PUBK_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-REQUIRED_SIGNERS]
+=== REQUIRED_SIGNERS
+
 [cols="1,3,1,1,6", options="header"]
-.REQUIRED_SIGNERS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `reserved` | R | 0x0 a| Reserved
 | 1:0 | `required_signers` | RW | 0x0 a| Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-REQUIRED_ALGS]
+=== REQUIRED_ALGS
+
 [cols="1,3,1,1,6", options="header"]
-.REQUIRED_ALGS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `reserved` | R | 0x0 a| Reserved
@@ -393,121 +385,164 @@
 | 3:0 | `chiplet_algs` | RW | 0x0 a| Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_PQC_HASH0]
+=== CHIPLET_PUBK_PQC_HASH0
+
 [cols="1,3,1,1,6", options="header"]
-.CHIPLET_PUBK_PQC_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-CHIPLET_PUBK_PQC_HASH1]
+=== CHIPLET_PUBK_PQC_HASH1
+
 [cols="1,3,1,1,6", options="header"]
-.CHIPLET_PUBK_PQC_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_PQC_HASH0]
+=== SIP_PUBK_PQC_HASH0
+
 [cols="1,3,1,1,6", options="header"]
-.SIP_PUBK_PQC_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SYS_PUBK_PQC_HASH]
+=== SYS_PUBK_PQC_HASH
+
 [cols="1,3,1,1,6", options="header"]
-.SYS_PUBK_PQC_HASH Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_HASH1]
+=== SIP_PUBK_HASH1
+
 [cols="1,3,1,1,6", options="header"]
-.SIP_PUBK_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of SiP owner's root public key for secure boot. The chiplet creator's actual root public key is embedded in the SEPROM; this digest is used to validate that public key.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SIP_PUBK_PQC_HASH1]
+=== SIP_PUBK_PQC_HASH1
+
 [cols="1,3,1,1,6", options="header"]
-.SIP_PUBK_PQC_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SEP_CHIPLET_ID]
+=== SEP_CHIPLET_ID
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_CHIPLET_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `id` | R | 0x0 a| Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SEP_SIP_ID]
+=== SEP_SIP_ID
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_SIP_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `id` | R | 0x0 a| Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 |===
 
+[#reg-{regmap-instance}-sep_efuse_map-SEP_SYS_ID]
+=== SEP_SYS_ID
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_SYS_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `id` | R | 0x0 a| Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.spare0 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
-|===
+[#reg-{regmap-instance}-sep_efuse_map-spare0]
+=== spare0
 
 [cols="1,3,1,1,6", options="header"]
-.spare1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.spare2 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
-|===
+[#reg-{regmap-instance}-sep_efuse_map-spare1]
+=== spare1
 
 [cols="1,3,1,1,6", options="header"]
-.spare3 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.spare4 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
-|===
+[#reg-{regmap-instance}-sep_efuse_map-spare2]
+=== spare2
 
 [cols="1,3,1,1,6", options="header"]
-.spare5 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
-[cols="1,3,1,1,6", options="header"]
-.spare6 Register
-|===
-| Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
-|===
+[#reg-{regmap-instance}-sep_efuse_map-spare3]
+=== spare3
 
 [cols="1,3,1,1,6", options="header"]
-.spare7 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
+|===
+
+[#reg-{regmap-instance}-sep_efuse_map-spare4]
+=== spare4
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
+|===
+
+[#reg-{regmap-instance}-sep_efuse_map-spare5]
+=== spare5
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
+|===
+
+[#reg-{regmap-instance}-sep_efuse_map-spare6]
+=== spare6
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
+|===
+
+[#reg-{regmap-instance}-sep_efuse_map-spare7]
+=== spare7
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
+|===
+
+[#reg-{regmap-instance}-sep_efuse_map-spare8]
+=== spare8
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===

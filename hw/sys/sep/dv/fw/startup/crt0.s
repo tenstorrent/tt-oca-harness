@@ -100,7 +100,7 @@ _start:
     # tp must point at the TLS block before any libc call: a picolibc built
     # with thread-local storage enabled reaches state such as the rand() seed
     # through tp, and would fault on a store to address 0 otherwise. The block
-    # is empty when the toolchain emits no TLS, so this is safe either way.
+    # is empty when the toolchain emits no TLS.
     #--------------------------------------------------------------------------
     .option push
     .option norelax
@@ -199,9 +199,8 @@ _finish:
 #==============================================================================
 .align 4
 _trap:
-    # Debug: save mcause/mepc/mtval to fixed DTCM addresses for waveform inspection
-    # Also print hex values to UART character-by-character
-    # NOTE: must use sb (store byte) so STDOUT monitor captures as characters
+    # Print mcause/mepc/mtval as hex, one character per sb: the STDOUT monitor
+    # decodes byte stores as characters.
     li      t0, STDOUT
 
     # Print "TRAP mc="
@@ -318,9 +317,7 @@ _dummy_int_handler:
     andi    t0, t0, 0xFF            # t0 = claimid (0-255)
 
     # Disable this interrupt source at PIC to prevent infinite re-entry.
-    # Source 0 is the tied no-interrupt source and has no MEIE word.
-    # OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0) is already source 1, so source N
-    # is at +(N-1)*4 — the same formula pic_disable_source uses.
+    # Source 0 is the tied no-interrupt source, so its MEIE word is reserved.
     # Witness for firmware quiet-window checks: an unregistered source that
     # reaches this handler must fail the test that looks at the count.
     la      t1, sep_dummy_int_count
@@ -329,8 +326,7 @@ _dummy_int_handler:
     sw      t2, 0(t1)
 
     beqz    t0, .L_dummy_int_done
-    addi    t2, t0, -1              # t2 = claimid - 1
-    slli    t2, t2, 2               # t2 = (claimid - 1) * 4
+    slli    t2, t0, 2               # t2 = claimid * 4
     li      t1, OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0)
     add     t1, t1, t2              # t1 = MEIE for this claim
     sw      zero, 0(t1)             # Disable interrupt source
@@ -363,14 +359,14 @@ _exit:
 #
 # This trampoline:
 #   1. Saves all caller-saved registers (ra, t0-t6, a0-a7) on the stack
-#   2. Calls the C handler via jalr (proper CALL, not jump)
+#   2. Calls the C handler via jalr, which sets ra to the return point
 #   3. Restores registers after handler returns
 #   4. Executes mret to return to the exact interrupted instruction
 #
 # This ensures the C NMI handler:
 #   - Can be a leaf or non-leaf function
 #   - Does not corrupt interrupted code's registers
-#   - Returns properly to the interrupted instruction (not to some ra value)
+#   - Returns to the interrupted instruction via mepc
 #
 # Default behavior: jump to _default_nmi_handler which fails the test.
 #==============================================================================
@@ -401,7 +397,7 @@ _nmi_handler:
     # Load handler pointer and CALL it (jalr sets ra = return address here)
     la      t0, _nmi_handler_ptr
     lw      t0, 0(t0)
-    jalr    ra, 0(t0)           # proper CALL: ra = next instruction below
+    jalr    ra, 0(t0)           # ra = the restore sequence below
 
     # Restore all saved registers
     lw      ra,  0(sp)

@@ -22,6 +22,11 @@ _BOUND = 20_000
 class sep_efuse_digest_latch_fault_test(sep_base_test):
     """Frontdoor hashes capture normally and freeze under injected test_en."""
 
+    # The whole contract is one record, so name it: a refactor that stops
+    # reaching the freeze leg would otherwise still exit clean.
+    required_evidence = ("CHK-DIGEST-LATCH",)
+    min_evidence = 1
+
     async def _present_and_watch(
         self,
         token: int,
@@ -73,6 +78,10 @@ class sep_efuse_digest_latch_fault_test(sep_base_test):
         captured_digest = int(dut.token_digest_sticky_o.value)
         captured_valid = int(dut.token_digest_valid_o.value)
         assert captured_valid == 1
+        assert captured_digest == cfg.sip_digest, (
+            f"CHK-DIGEST-LATCH FAIL: sticky digest 0x{captured_digest:064x} "
+            f"!= independent SHA-256 of the presented token 0x{cfg.sip_digest:064x}"
+        )
 
         for _ in range(2):
             await RisingEdge(dut.clk_i)
@@ -99,7 +108,7 @@ class sep_efuse_digest_latch_fault_test(sep_base_test):
         await NextTimeStep()
         dut.token_digest_test_en_inject_i.value = 0
         await RisingEdge(dut.clk_i)
-        cocotb.log.info(
+        self.logger.info(
             "CHK-DIGEST-LATCH PASS: frontdoor capture activated; idle held; "
             "frontdoor start/hash-done events occurred while test_en held both latch gates closed"
         )

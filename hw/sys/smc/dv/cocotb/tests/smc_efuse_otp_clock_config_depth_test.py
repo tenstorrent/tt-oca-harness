@@ -17,6 +17,13 @@ from smc_base_test import smc_base_test
 class smc_efuse_otp_clock_config_depth_test(smc_base_test):
     """Run eFuse OTP clock/timing register programming depth checks."""
 
+    required_evidence = (
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-IDLE",
+        "CHK-EFUSE-CLOCK-GATE-DEPTH",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -3,18 +3,17 @@
 
 // smc_uart_log_engine_multi_entry_rr_test
 //
-// Best-effort round-robin arbitration test. Pre-loads 3 distinct slots (0, 5,
-// 11) with tagged byte patterns. Triggers all three entries back-to-back and
-// reads the resulting UART byte stream via system loopback. Verifies:
+// Round-robin arbitration test. Pre-loads every slot listed in ACTIVE with
+// tagged byte patterns, triggers all of them back-to-back and reads the
+// resulting UART byte stream via system loopback. Verifies:
 //   * Each byte tags back to a known slot (set membership)
 //   * Total byte count matches sum of triggered lengths
-//   * All three LOG_CTRL[i] eventually hwclr to 0
+//   * Every active LOG_CTRL[i] eventually hwclrs to 0
 //   * INTR_STATUS = 0
 //
-// The exact byte interleaving granularity is design-defined and currently a
-// gap (Q-004 / UART_LOG_ENGINE-DS-004). This test does NOT pin a specific
-// interleave pattern — set membership + total count + completion is all we
-// can assert.
+// The byte interleaving granularity across concurrently triggered entries is
+// not specified, so this test does not pin an interleave pattern: it asserts
+// set membership, total count and completion.
 
 #include <stdint.h>
 
@@ -69,12 +68,9 @@
 #define NUM_ENTRIES 16u
 #define SLOT_SIZE (LOG_REGION_SIZE / NUM_ENTRIES)
 
-// v008: expand to ALL 16 slots (was {0,5,11}). Closes the coverage hole
-// where LOG_CTRL[4..15] hwclr/hwif paths and arbiter_tree req_i[4..15] bits
-// never toggled — see COVERAGE_REPORT_v7.md "what's still not covered".
-// Per-slot byte pattern (i<<4)|j now spans 0x00..0xFF (all 256 byte
-// values), so AXI-Lite r.data[*] bits all toggle through the fetch path
-// instead of the prior {0xA0..0xAF, 0x50..0x5F, 0xB0..0xBF} subset.
+// All 16 slots are active so every LOG_CTRL[i] hwclr/hwif path and every
+// arbiter_tree req_i bit toggles. The per-slot byte pattern (i<<4)|j spans
+// 0x00..0xFF, so every AXI-Lite r.data bit toggles through the fetch path.
 #define NUM_ACTIVE 16u
 static const uint32_t ACTIVE[NUM_ACTIVE] = {0u, 1u, 2u,  3u,  4u,  5u,  6u,  7u,
                                             8u, 9u, 10u, 11u, 12u, 13u, 14u, 15u};
@@ -97,7 +93,7 @@ int main(void) {
     info_msg_s(0, "smc_uart_log_engine_multi_entry_rr_test start");
 
     //--------------------------------------------------------------------------
-    // Pre-load only the 3 active slots; leave others as-is
+    // Pre-load the active slots
     //--------------------------------------------------------------------------
     volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
     for (uint32_t k = 0; k < NUM_ACTIVE; k++) {
@@ -128,7 +124,7 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
 
     //--------------------------------------------------------------------------
-    // Trigger all 3 entries back-to-back
+    // Trigger all active entries back-to-back
     //--------------------------------------------------------------------------
     for (uint32_t k = 0; k < NUM_ACTIVE; k++) {
         uint32_t i = ACTIVE[k];
@@ -192,7 +188,7 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // All 3 LOG_CTRL[i] should hwclr to 0
+    // Every active LOG_CTRL[i] must hwclr to 0
     //--------------------------------------------------------------------------
     for (uint32_t k = 0; k < NUM_ACTIVE; k++) {
         uint32_t i = ACTIVE[k];

@@ -60,7 +60,6 @@ static void validate_smc_status_buffer(test_context_t *ctx, int exp_write_errors
 
         // Check if this is an SMC ROM error about unknown OCCP command
         if (fw_id == 0x2 && msg_type == 0x2) { // SMC BL0, Error type
-            // Check command failed errors first (more specific range)
             if (msg_value == 0x120) { // SMC_OCCP_ERROR_READ_OVERFLOW
                 simputs("  Found error SMC_OCCP_ERROR_READ_OVERFLOW\n");
                 total_read_errors++;

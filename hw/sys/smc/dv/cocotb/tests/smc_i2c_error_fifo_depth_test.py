@@ -26,6 +26,16 @@ from smc_base_test import smc_base_test
 class smc_i2c_error_fifo_depth_test(smc_base_test):
     """Run I2C CSR decode plus SCL/SDA pin override depth checks."""
 
+    required_evidence = (
+        "CHK-I2C0-HOST-REPEATED-START",
+        "CHK-I2C0-HOST-WRITE",
+        "CHK-I2C0-OVRD-PAD",
+        "CHK-I2C0-SMBUS-ARA",
+        "CHK-I2C0-SMBUS-PEC",
+        "CHK-I2C0-U4-2-SMBUS",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -34,10 +44,8 @@ class smc_i2c_error_fifo_depth_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 59 accesses observed in the retained
-            # regression run; the I2C STATUS/FIFO polls are a timing-dependent
-            # remainder, so the floor is set below the observed count. Literal
-            # here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the I2C STATUS/FIFO polls are timing-dependent.
             min_csr_accesses=45,
             # The scoreboard's own per-bus tally, stamped by the driver that
             # completed each access, rather than `seq.accesses`, which the

@@ -4,9 +4,9 @@
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test
 
-Card OWNS (narrowed Option B):
+Card OWNS:
   DTP-BOOT-STALL.S1/S2, DTP-IC-RESET.S1/S3, DTP-CLKSTOP-AGG.S1/S2/S3
-DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are out of scope (re-homed to 008).
+DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are owned by SMU_ALL_008.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ class smu_clock_stop_coordination_test(smu_base_test):
     async def run_scenario(self) -> None:
         self.logger.info(
             "DUT_TAG=WRAPPER smu_clock_stop_coordination_test SMU_ALL_006 under "
-            "--dut smu_block SEP=0 (BOOT-STALL/IC-RESET/CLKSTOP-AGG only)"
+            "--dut smu (BOOT-STALL/IC-RESET/CLKSTOP-AGG only)"
         )
         seq = smu_clock_stop_coordination_test_seq(self)
         await seq.run()
