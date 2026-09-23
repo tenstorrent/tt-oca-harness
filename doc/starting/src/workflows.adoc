@@ -391,7 +391,7 @@ make ocah-synth-pdks
 
 This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
 used for synthesis may be selected with `TECH`. `BLOCK` is a `flow.mk` top
-(`dtp`, `sep`, `smc`, `smu`, `aou`), not an IP name. Discovery and `TECH=` are
+(`dtp`, `sep`, `smc`, `smu`, `aou`), not an IP name. Details on discovery and `TECH=` are
 in https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/README.md[`flows/synth/yosys/README.md`].
 
 [WARNING]
