@@ -137,18 +137,17 @@ endfunction
 // Device identification of the public DTP elaboration: the jtag_ptap IDCODE
 // parameters default to manufacturer 0, part 0, revision 0, leaving only the
 // IEEE 1149.1 marker bit.
-localparam bit [31:0] DtpDefaultIdcode = 32'h0000_0001;
-
-// The DTP configuration the bench instantiates (dtp_tap_device.py parity):
-// one extra STAP, one IC_RESET slice per SMC, SEP, and external port, and
-// DTP major version 0. JTAG_CAPS publishes these values ("JTAG Capabilities"
-// table, PTAP document) and the capability scenario compares them with the
-// DUT; the cross-trigger counts are in the cross-trigger section below.
-localparam int unsigned DtpNumExtraStaps = 1;
-localparam int unsigned DtpNumSmcIcReset = 1;
-localparam int unsigned DtpNumSepIcReset = 1;
-localparam int unsigned DtpNumExtIcReset = 1;
-localparam int unsigned DtpOchVer = 0;
+// The bench configuration tb_top elaborates the DUT from (dtp_dv_cfg_pkg;
+// dtp_dv_cfg.py parity): the identification IDCODE publishes, and the STAP
+// count, IC_RESET slice widths, and version JTAG_CAPS publishes ("JTAG
+// Capabilities" table, PTAP document); the cross-trigger counts are in the
+// cross-trigger section below.
+localparam bit [31:0] DtpDefaultIdcode = dtp_dv_cfg_pkg::Idcode;
+localparam int unsigned DtpNumExtraStaps = dtp_dv_cfg_pkg::NumExtraStaps;
+localparam int unsigned DtpNumSmcIcReset = dtp_dv_cfg_pkg::NumSmcIcReset;
+localparam int unsigned DtpNumSepIcReset = dtp_dv_cfg_pkg::NumSepIcReset;
+localparam int unsigned DtpNumExtIcReset = dtp_dv_cfg_pkg::NumExtIcReset;
+localparam int unsigned DtpOchVer = int'(dtp_dv_cfg_pkg::OchVer);
 
 // Capture-IR loads the instruction shift register with 01 in its two LSBs
 // (IEEE 1149.1 7.1.1) and zeros above (jtag_inst_reg), so an IR scan that
@@ -190,17 +189,6 @@ typedef enum int unsigned {
   DTP_J2A_BUSY_OR_FULL = 3
 } dtp_j2a_status_e;
 
-// Bridge AXI FSM state as dtp_tb_if samples it from jtag2axi.sv (axi_state_e).
-typedef enum logic [2:0] {
-  DTP_J2A_FSM_IDLE          = 0,
-  DTP_J2A_FSM_SEND_ADDR_W   = 1,
-  DTP_J2A_FSM_SEND_DATA_W   = 2,
-  DTP_J2A_FSM_WAIT_BRESP    = 3,
-  DTP_J2A_FSM_SEND_ADDR_R   = 4,
-  DTP_J2A_FSM_WAIT_RDATA    = 5,
-  DTP_J2A_FSM_UPDATE_STATUS = 6
-} dtp_j2a_fsm_state_e;
-
 typedef struct {
   string                                name;
   ocah_axi_protocol_e protocol;
@@ -232,8 +220,9 @@ localparam int unsigned DtpJ2aSeriesLaunchCycles = 5;
 // TCK cycles from the AXI-side response handshake to the first scan whose
 // Capture-DR shows it: the B/R beat crosses the bridge's axi_cdc_clearable
 // (three synchronizer stages on the gray pointer, then the FIFO pop), the
-// FSM steps WAIT_BRESP / WAIT_RDATA -> UPDATE_STATUS -> status register,
-// and the first crossing edge adds up to one TCK of phase; measured from
+// bridge steps from its response wait through its status update into the
+// status register, and the first crossing edge adds up to one TCK of phase;
+// measured from
 // the scan's start. A status capture whose scan starts inside this window
 // after a completion is not checkable.
 localparam int unsigned DtpJ2aStatusSettleTck = 8;
@@ -742,16 +731,13 @@ endfunction
 // compares both counts with the values the DUT publishes.
 // ---------------------------------------------------------------------------
 
-// Sixteen external cross-trigger ports, "CTP[0-15]"
-// (hw/ip/cross_trigger/cross_trigger_network/doc/memmap.adoc), and the ten
-// internal cross triggers of the default configuration ("NUM_INT_CT ... 10",
-// hw/ip/cross_trigger/cross_trigger_network/doc/index.adoc).
-localparam int unsigned DtpXtrigNumCtp = 16;
-localparam int unsigned DtpXtrigNumIntCt = 10;
+// The external and internal cross-trigger port counts and the CLA clock-stop
+// request lanes of the bench configuration (dtp_dv_cfg_pkg, which takes the
+// port counts from the generated network address map).
+localparam int unsigned DtpXtrigNumCtp = dtp_dv_cfg_pkg::NumCtp;
+localparam int unsigned DtpXtrigNumIntCt = dtp_dv_cfg_pkg::NumIntCt;
 localparam int unsigned DtpXtrigNumCtmPorts = DtpXtrigNumCtp + DtpXtrigNumIntCt;
-// CLA clock-stop request lanes, "NUM_CLK_STOP_REQ (default=9)"
-// (hw/ip/cross_trigger/cross_trigger_network/doc/architecture.adoc).
-localparam int unsigned DtpNumClkStopReq = 9;
+localparam int unsigned DtpNumClkStopReq = dtp_dv_cfg_pkg::NumClkStopReq;
 
 localparam bit [63:0] DtpXtrigCtmBase = 64'h0;
 localparam int unsigned DtpXtrigCtmStride =

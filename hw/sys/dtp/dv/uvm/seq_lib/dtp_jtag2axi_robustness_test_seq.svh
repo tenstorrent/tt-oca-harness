@@ -296,18 +296,17 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     return ok;
   endfunction
 
-  // The READY stall seen from the DUT: the bridge FSM has left IDLE onto the
-  // stalled path (CHK-J2A-STALL-FSM) and the first status poll reads
-  // BUSY_OR_FULL (CHK-J2A-STALL-BUSY). Both need the stall to outlast the
-  // poll, so callers size it with stall_beyond_polls().
+  // The READY stall seen from the DUT: the bridge's state machine has left
+  // idle onto the stalled path (CHK-J2A-STALL-FSM) and the first status poll
+  // reads BUSY_OR_FULL (CHK-J2A-STALL-BUSY). Both need the stall to outlast
+  // the poll, so callers size it with stall_beyond_polls().
   protected task observe_stall(dtp_j2a_target_t t, bit is_read, string context_s);
-    dtp_j2a_fsm_state_e state;
+    bit idle;
     dtp_j2a_status_e first;
     bit [63:0] rdata;
     bit on_path;
-    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, state);
-    on_path = is_read ? (state inside {DTP_J2A_FSM_SEND_ADDR_R, DTP_J2A_FSM_WAIT_RDATA}) :
-        (state inside {DTP_J2A_FSM_SEND_ADDR_W, DTP_J2A_FSM_SEND_DATA_W, DTP_J2A_FSM_WAIT_BRESP});
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    on_path = bridge_fsm_on_path(t, is_read);
     void'(record_abort_check(
         DtpJ2aStallFsmCheckId,
         {
@@ -316,7 +315,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         64'(on_path),
         64'd1,
         $sformatf(
-            "fsm=%s under the %s READY stall", state.name(), is_read ? "read" : "write")
+            "idle=%0d under the %s READY stall", idle, is_read ? "read" : "write")
     ));
     single_status_once(t, first, rdata);
     void'(record_abort_check(
@@ -340,14 +339,14 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     bit [63:0] addr = robust_addr(t, addr_idx);
     bit [63:0] data = rand_data(t) & data_mask(size);
     bit [63:0] prior_word = read_target_mem_int(t, addr, size);
-    dtp_j2a_fsm_state_e state;
+    bit idle;
     dtp_j2a_status_e st;
     bit [63:0] rdata;
     bit mid_flight;
     configure_target_backpressure(t, '{channel}, AbortHoldCycles);
     issue_single(t, DTP_J2A_OP_WRITE, addr, data, full_wstrb(size), size, 1'b0);
-    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, state);
-    mid_flight = (state != DTP_J2A_FSM_IDLE) && bridge_op_pending(t);
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    mid_flight = !idle && bridge_op_pending(t);
     void'(record_abort_check(
         DtpJ2aAbortMidFlightCheckId,
         {
@@ -356,21 +355,20 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         64'(mid_flight),
         64'd1,
         $sformatf(
-            "fsm=%s", state.name())
+            "idle=%0d write_path=%0d", idle, bridge_fsm_on_path(t, 1'b0))
     ));
     clear_cdc_clear_seen();
     pulse_system_reset(reset_cycles);
     clear_target_backpressure(t);
-    wait_bridge_fsm(t, 1'b1, AbortSettleTck, state);
+    wait_bridge_fsm(t, 1'b1, AbortSettleTck, idle);
     void'(record_abort_check(
         DtpJ2aAbortFsmCheckId,
         {
           context_s, ".fsm_idle"
         },
-        64'(state),
-        64'(DTP_J2A_FSM_IDLE),
-        $sformatf(
-            "fsm=%s after the mid-flight reset", state.name())
+        64'(idle),
+        64'd1,
+        "after the mid-flight reset"
     ));
     void'(record_abort_check(
         DtpJ2aCdcClearCheckId,

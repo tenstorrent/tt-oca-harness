@@ -12,7 +12,6 @@ from env.dtp_types import (
     CDC_CLEAR_CHECK_ID,
     STALL_BUSY_CHECK_ID,
     STALL_FSM_CHECK_ID,
-    DtpJtag2AxiFsmState,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
     unpack_single_op,
@@ -26,21 +25,16 @@ ROBUST_BASE = 0x3800
 # Reset-abort stimulus: the READY stall outlasts everything and is released
 # after the reset, so the write sits on the bus throughout the reset pulse.
 ABORT_HOLD_CYCLES = 100_000
-# TCK cycles for the bridge FSM to leave IDLE after the SINGLE_OP Update-DR,
-# and to return to IDLE after the reset. The FSM and the CDC's TCK side
-# advance only while TCK runs, so the waits step the TAP in Run-Test/Idle.
+# TCK cycles for the bridge's state machine to leave idle after the SINGLE_OP
+# Update-DR, and to return to idle after the reset. The state machine and the
+# CDC's TCK side advance only while TCK runs, so the waits step the TAP in
+# Run-Test/Idle.
 ABORT_MIDFLIGHT_TCK = 64
 ABORT_SETTLE_TCK = 128
 ABORT_RECOVERY_POLLS = 8
 # TCK cycles after a reset pulse for the CDC controller to run its TCK-side
 # isolate-and-clear on an idle bridge.
 ABORT_CDC_CLEAR_TCK = 32
-WRITE_FSM_PATH = (
-    DtpJtag2AxiFsmState.SEND_ADDR_W,
-    DtpJtag2AxiFsmState.SEND_DATA_W,
-    DtpJtag2AxiFsmState.WAIT_BRESP,
-)
-READ_FSM_PATH = (DtpJtag2AxiFsmState.SEND_ADDR_R, DtpJtag2AxiFsmState.WAIT_RDATA)
 
 
 class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
@@ -81,21 +75,19 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def _observe_stall(self, target: str, *, read: bool, context: str) -> None:
         """The READY stall seen from the DUT.
 
-        The bridge FSM has left IDLE onto the stalled path (CHK-J2A-STALL-FSM)
-        and the first status poll reads BUSY_OR_FULL (CHK-J2A-STALL-BUSY).
-        Both need the stall to outlast the poll, so callers size it with
-        ``_stall_beyond_scan_tail``.
+        The bridge's state machine has left idle onto the stalled path
+        (CHK-J2A-STALL-FSM) and the first status poll reads BUSY_OR_FULL
+        (CHK-J2A-STALL-BUSY). Both need the stall to outlast the poll, so
+        callers size it with ``_stall_beyond_scan_tail``.
         """
         cfg = self.target_cfg(target)
-        state = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
-        path = READ_FSM_PATH if read else WRITE_FSM_PATH
+        idle = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
         self._record_abort_check(
             STALL_FSM_CHECK_ID,
             f"{context}.stall_fsm",
-            int(state in path),
+            self.cfg.tb_if.bridge_fsm_on_path(target, read=read),
             1,
-            f"fsm={DtpJtag2AxiFsmState(state).name} under the "
-            f"{'read' if read else 'write'} READY stall",
+            f"idle={idle} under the {'read' if read else 'write'} READY stall",
         )
         first, _ = unpack_single_op(await self.read_tdr(cfg.single_op_reg), target=cfg)
         self._record_abort_check(
@@ -248,14 +240,15 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         return int(observed) == int(expected)
 
     async def _wait_bridge_fsm(self, target: str, *, idle: bool, tck_cycles: int) -> int:
-        """Step TCK in Run-Test/Idle until the bridge FSM leaves or reaches IDLE, bounded."""
-        state = int(self.cfg.tb_if.bridge_fsm_state(target))
+        """Step TCK in Run-Test/Idle until the bridge's state machine leaves or reaches
+        idle, bounded; returns the idle flag last sampled."""
+        is_idle = self.cfg.tb_if.bridge_fsm_idle(target)
         for _ in range(tck_cycles):
-            if (state == DtpJtag2AxiFsmState.IDLE) == idle:
+            if bool(is_idle) == idle:
                 break
             await self.tms_step(0)
-            state = int(self.cfg.tb_if.bridge_fsm_state(target))
-        return state
+            is_idle = self.cfg.tb_if.bridge_fsm_idle(target)
+        return int(is_idle)
 
     async def _poll_status_bounded(self, target: str, polls: int) -> int:
         status = int(DtpJtag2AxiStatus.BUSY_OR_FULL)
@@ -298,14 +291,14 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             wstrb=self.target_full_wstrb(target, size),
             size=size,
         )
-        state = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
-        mid_flight = state != DtpJtag2AxiFsmState.IDLE and tb_if.bridge_op_pending(target) == 1
+        idle = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
+        mid_flight = not idle and tb_if.bridge_op_pending(target) == 1
         self._record_abort_check(
             ABORT_MIDFLIGHT_CHECK_ID,
             f"{context}.mid_flight",
             int(mid_flight),
             1,
-            f"fsm={DtpJtag2AxiFsmState(state).name}",
+            f"idle={idle} write_path={tb_if.bridge_fsm_on_path(target, read=False)}",
         )
         tb_if.set_cdc_clear_seen_clear(1)
         await self.wait_sys_cycles(1)
@@ -323,16 +316,16 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def _judge_abort_aftermath(
         self, target: str, addr: int, before: int, *, context: str
     ) -> bool:
-        """Record the FSM, CDC-clear, escape, and recovery judgements after the reset."""
+        """Record the idle, CDC-clear, escape, and recovery judgements after the reset."""
         tb_if = self.cfg.tb_if
         size = self.target_cfg(target).default_size
-        state = await self._wait_bridge_fsm(target, idle=True, tck_cycles=ABORT_SETTLE_TCK)
+        idle = await self._wait_bridge_fsm(target, idle=True, tck_cycles=ABORT_SETTLE_TCK)
         self._record_abort_check(
             ABORT_FSM_CHECK_ID,
             f"{context}.fsm_idle",
-            state,
-            DtpJtag2AxiFsmState.IDLE,
-            f"fsm={DtpJtag2AxiFsmState(state).name} after the mid-flight reset",
+            idle,
+            1,
+            "after the mid-flight reset",
         )
         self._record_abort_check(
             CDC_CLEAR_CHECK_ID, f"{context}.cdc_clear", tb_if.cdc_clear_seen(target), 1

@@ -16,6 +16,28 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .dtp_dv_cfg import (
+    DTP_BSR_ENABLE,
+    DTP_CLAMP_ENABLE,
+    DTP_DEFAULT_IDCODE,
+    DTP_EXTEST_PULSE_ENABLE,
+    DTP_EXTEST_TRAIN_ENABLE,
+    DTP_HIGHZ_ENABLE,
+    DTP_IC_RESET_INSTR_ENABLE,
+    DTP_INTEST_ENABLE,
+    DTP_NUM_EXT_IC_RESET,
+    DTP_NUM_EXTRA_STAPS,
+    DTP_NUM_SEP_IC_RESET,
+    DTP_NUM_SMC_IC_RESET,
+    DTP_NUM_XTRIG_CTP,
+    DTP_NUM_XTRIG_INT_CT,
+    DTP_OCH_VER,
+    DTP_RUNBIST_ENABLE,
+    DTP_SEP_DBG_ENABLE,
+    DTP_SMC_DBG_ENABLE,
+    DTP_STAP_IO_ENABLE,
+    DTP_TMP_ENABLE,
+)
 from .dtp_types import DTP_IR_WIDTH, JTAG2AXI_TARGETS, DtpJtag2AxiTargetCfg, DtpJtagInstr
 
 __all__ = [
@@ -30,7 +52,6 @@ __all__ = [
     "DTP_JTAG2AXI_RD_PL_DEPTH",
     "DTP_JTAG2AXI_WR_PL_DEPTH",
     "DTP_JTAG_CAPS_LEN",
-    "DTP_NUM_CLK_STOP_REQ",
     "DTP_TMP_STATUS_LEN",
     "DtpTapDevice",
     "DtpTapRegister",
@@ -39,16 +60,14 @@ __all__ = [
     "unpack_jtag2axi_caps",
 ]
 
-DTP_DEFAULT_IDCODE = 0x0000_0001
 # Register sizes of the interface-unit instruction table.
 DTP_BYPASS_LEN = 1
 DTP_TMP_STATUS_LEN = 2
 DTP_DEBUG_CONTROL_LEN = 5
 DTP_TAP_3DCR_LEN = 2
 # IC_RESET: reset_hold plus one {reset_enable, reset_control} pair per port
-# ("IC_RESET Support" table); the standalone DTP has one SMC, one SEP, and one
-# external port.
-DTP_IC_RESET_PORTS = 3
+# ("IC_RESET Support" table) over the bench configuration's slices.
+DTP_IC_RESET_PORTS = DTP_NUM_SMC_IC_RESET + DTP_NUM_SEP_IC_RESET + DTP_NUM_EXT_IC_RESET
 DTP_IC_RESET_LEN = (2 * DTP_IC_RESET_PORTS) + 1
 # JTAG_CAPS[59:0] ("JTAG Capabilities" table) and *_JTAG2AXI_CAPS[13:0]
 # ("*_JTAG2AXI_CAPS" table).
@@ -57,16 +76,6 @@ DTP_JTAG2AXI_CAPS_LEN = 14
 # SELECT_IJTAG: one bit per SIB of the DTP iJTAG network
 # (dtp_scan_ref_model.IJTAG_SIB_ORDER).
 DTP_SELECT_IJTAG_MIN_LEN = 3
-# Elaboration parameters of the standalone DTP that JTAG_CAPS publishes (the
-# `dtp` module parameter defaults).
-DTP_NUM_XTRIG_CTP = 16
-DTP_NUM_XTRIG_INT_CT = 10
-DTP_NUM_CLK_STOP_REQ = 9
-DTP_NUM_EXTRA_STAPS = 1
-DTP_NUM_SMC_IC_RESET = 1
-DTP_NUM_SEP_IC_RESET = 1
-DTP_NUM_EXT_IC_RESET = 1
-DTP_OCH_VER = 0
 # Read and write pipeline depth every JTAG2AXI bridge publishes in the
 # rd_pl_depth and wr_pl_depth fields of its *_JTAG2AXI_CAPS TDR; the CAPS
 # scenarios compare them.
@@ -83,26 +92,26 @@ def _data_width_to_size_encoding(width_bits: int) -> int:
 
 
 def pack_jtag_caps() -> int:
-    """Pack the standalone DTP's JTAG_CAPS value ("JTAG Capabilities" table)."""
+    """Pack the bench configuration's JTAG_CAPS value ("JTAG Capabilities" table)."""
     return (
         (DTP_NUM_XTRIG_INT_CT << 54)
         | (DTP_NUM_XTRIG_CTP << 48)
         | (DTP_NUM_EXTRA_STAPS << 44)
-        | (1 << 43)  # stap_io_en
-        | (1 << 42)  # sep_dbg_en
-        | (1 << 41)  # smc_dbg_en
+        | (DTP_STAP_IO_ENABLE << 43)
+        | (DTP_SEP_DBG_ENABLE << 42)
+        | (DTP_SMC_DBG_ENABLE << 41)
         | (DTP_NUM_SMC_IC_RESET << 33)
         | (DTP_NUM_SEP_IC_RESET << 25)
         | (DTP_NUM_EXT_IC_RESET << 17)
-        | (1 << 16)  # ic_rst_inst_en
-        | (1 << 15)  # tmp_inst_en
-        | (1 << 14)  # runbist_inst_en
-        | (1 << 13)  # highz_inst_en
-        | (1 << 12)  # clamp_inst_en
-        | (1 << 11)  # intest_inst_en
-        | (1 << 10)  # extest_pulse_en
-        | (1 << 9)  # extest_train_en
-        | (1 << 8)  # bsr_inst_en
+        | (DTP_IC_RESET_INSTR_ENABLE << 16)
+        | (DTP_TMP_ENABLE << 15)
+        | (DTP_RUNBIST_ENABLE << 14)
+        | (DTP_HIGHZ_ENABLE << 13)
+        | (DTP_CLAMP_ENABLE << 12)
+        | (DTP_INTEST_ENABLE << 11)
+        | (DTP_EXTEST_PULSE_ENABLE << 10)
+        | (DTP_EXTEST_TRAIN_ENABLE << 9)
+        | (DTP_BSR_ENABLE << 8)
         | DTP_OCH_VER
     )
 

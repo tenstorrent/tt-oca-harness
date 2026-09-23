@@ -97,10 +97,12 @@ the same VIP interfaces `tb_top.sv` instantiates.
 [[dtp-vplan-scope]]
 === Verification Scope
 
-This plan claims DTP behaviour at the DTP boundary, with the DUT elaborated at the
-`dtp` module's parameter defaults (the configuration the JTAG_CAPS scenario compares
-with the DUT: sixteen CTPs, ten internal cross triggers, one extra STAP, one IC_RESET
-slice per port). The behaviours below exist only where DTP is integrated and are the
+This plan claims DTP behaviour at the DTP boundary, with the DUT elaborated from the
+bench configuration table, `tb/dtp_dv_cfg_pkg.sv` mirrored by
+`cocotb/env/dtp_dv_cfg.py`: sixteen CTPs, ten internal cross triggers in pulse mode,
+nine clock-stop requests, one extra STAP, one IC_RESET slice per port, every
+instruction enabled. The JTAG_CAPS and IDCODE scenarios compare what the DUT publishes
+with that table. The behaviours below exist only where DTP is integrated and are the
 integration level's plan, not this one; a green DTP regression says nothing about
 them.
 
@@ -4479,7 +4481,7 @@ a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no 
 a. Program the bridge address and data via the primary TAP and launch the write op.
 b. Configure the `ocah_axi_vip` subordinate to skew the channels: accept AW (ready high) while holding W ready low for an extended interval.
 . While W ready is low, confirm AW/W valid and payload remain stable and do not deassert.
-. While W ready is held (a stall sized to outlast the first status poll), observe the stall from the bridge's side: its AXI FSM sits on the write path (`CHK-J2A-STALL-FSM`, through the `dtp_tb_if` FSM mirror) and the first SINGLE_OP status capture reads Busy (`CHK-J2A-STALL-BUSY`).
+. While W ready is held (a stall sized to outlast the first status poll), observe the stall from the bridge's side: its AXI state machine sits on the write path (`CHK-J2A-STALL-FSM`, through the `dtp_tb_if` state flags) and the first SINGLE_OP status capture reads Busy (`CHK-J2A-STALL-BUSY`).
 . Release the W-channel backpressure and let the write drain.
 . Verify the write completes with an OKAY response and read back the written location to confirm the value landed.
 
@@ -4508,7 +4510,7 @@ b. Configure the `ocah_axi_vip` subordinate to skew the channels: accept AW (rea
 
 * Long subordinate ready stalls on AW, W, AR, and R channels exercised one channel at a time and combined
 * Real success hits on the AXI-Lite `aw_valid_stable` / `w_valid_stable` / `ar_valid_stable` and corresponding payload `+*_stable+` assertions
-* Reachable JTAG2AXI FSM dwell in `AXI_SEND_ADDR_W` / `AXI_WAIT_BRESP` (write) and the read-issue / wait states under prolonged stall
+* Reachable JTAG2AXI state-machine dwell on the write path (address, data, response wait) and on the read path (address issue, data wait) under prolonged stall
 * No premature timeout, abort, or status corruption while a legal stall is in progress
 
 *Test Procedure*:
@@ -4548,10 +4550,10 @@ b. Release the stall and confirm the returned data matches the reference model.
 *Test Coverage*:
 
 * A system reset (`rst_n_i`, the bridges' AXI-side reset) asserted while a SINGLE_OP write is held on the W channel of each bridge by a responder READY stall that is released only after the reset
-* The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI FSM outside `AXI_IDLE` with the single-op pending flag set (the CDC accepts AW and W at once, so the FSM waits in `AXI_WAIT_BRESP` while the responder holds the channel)
-* Containment: the FSM back in `AXI_IDLE` within a bound after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
+* The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI state machine on the write path, outside idle, with the single-op pending flag set (the CDC accepts AW and W at once, so the bridge waits for the write response while the responder holds the channel)
+* Containment: the state machine back to idle within a bound after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
 * Recovery: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight polls and a legal write completing afterwards
-* A bridge that stays in `AXI_WAIT_BRESP` with status `BUSY_OR_FULL` after the reset fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`
+* A bridge that stays outside idle, waiting for the write response with status `BUSY_OR_FULL` after the reset, fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`
 
 *Test Procedure*:
 
@@ -4589,11 +4591,11 @@ b. Release the stall and confirm the returned data matches the reference model.
 *Test Coverage*:
 
 * A system reset (`rst_n_i`, the bridges' AXI-side reset) asserted while a SINGLE_OP write is held on the AW channel of each bridge by a responder READY stall that is released only after the reset
-* The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI FSM outside `AXI_IDLE` with the single-op pending flag set (the CDC accepts AW and W at once, so the FSM waits in `AXI_WAIT_BRESP` while the responder holds the channel)
-* Containment: the FSM back in `AXI_IDLE` within a bound after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
+* The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI state machine on the write path, outside idle, with the single-op pending flag set (the CDC accepts AW and W at once, so the bridge waits for the write response while the responder holds the channel)
+* Containment: the state machine back to idle within a bound after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
 * Recovery: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight polls and a legal write completing afterwards
 * The single-cycle pulse exercises the `axi_cdc_clearable` reset controllers' isolate-and-clear on the TCK side; the sticky clear-seen flag in `dtp_tb_if` is the observation
-* A bridge that stays in `AXI_WAIT_BRESP` with status `BUSY_OR_FULL` after the reset fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`
+* A bridge that stays outside idle, waiting for the write response with status `BUSY_OR_FULL` after the reset, fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`
 
 *Test Procedure*:
 
@@ -6982,7 +6984,7 @@ Each row names the level that owns the behaviour the bench cannot reach
 |iJTAG scan chains end in the bench's 4-, 5-, and 6-bit instrument stubs in `tb_top` |iJTAG scenarios validate the DTP-side SIB plumbing, chain length, and stub capture/update, not an external instrument network (integration level)
 |The downstream STAP TAPs are behavioral `ocah_jtag_vip` devices (5-bit IR, IDCODE, one writable TDR) attached only by the STAP-selection scenarios |Other scan scenarios see the STAP host ports as wire loopbacks; the real SMC and SEP debug TAPs are integration level
 |The JTAG2AXI bridge ports end in bench responders that map every address |Fabric address decode and the default subordinate are SMC-level; the decode scenarios prove responder-injected DECERR handling on every bridge
-|The DUT is elaborated at the `dtp` parameter defaults, and the DFT ports are driven inactive |Entries are closed for that configuration; the SMU's parameterization and DFT-mode behaviour are integration level
+|The DUT is elaborated from the bench configuration table, and the DFT ports are driven inactive |Entries are closed for that configuration; the SMU's parameterization and DFT-mode behaviour are integration level
 |The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus; the `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
 |SV covergroups are not supported by Verilator |Functional coverage is collected by the `cov/sv/` cover-property modules under Verilator and by covergroups on commercial simulators (see `DTP_FCOV.adoc`)
 |===
