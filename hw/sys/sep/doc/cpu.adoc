@@ -46,12 +46,15 @@ for FUSA compliance
 ** Configurable, constant delay between the two cores
 * Closely coupled instruction and data memory
 ** Parity and ECC (32+7)
-* RISC-V PMP (Physical Memory Protection) - Privileged Architecture
-standard
-** 32-bit address space divided into 16 regions of 256 MB fixed size
-** Each region has execute, write and read permissions controlled by the
-Region Access Control Register (mrac)
-** Precisely trapped exception on usage violation
+* RISC-V PMP (Physical Memory Protection)
+** `pmpcfg` and `pmpaddr` CSRs define address ranges and their read, write,
+and execute permissions
+** Access violations raise precise exceptions
+* Memory attributes controlled separately by the Region Access Control
+Register (`mrac`)
+** Sixteen fixed 256 MiB regions cover the 32-bit address space
+** Each region has cacheability and side-effect attributes; these do not
+grant or deny read, write, or execute access
 * PIC (Programmable Interrupt Controller) is integrated supporting up to
 255 external interrupts; see
 ifdef::backend-html5[]
@@ -61,8 +64,8 @@ ifdef::backend-pdf[]
 <<sep-cpu-interrupt-vector-map>>
 endif::backend-pdf[]
 for the complete source-by-source mapping
-* Two independent or linked internal timers with standard RV _mip_
-interrupts
+* Two independent or linked internal timers with VeeR-specific
+`mip.MITIP0` and `mip.MITIP1` interrupts
 * Debug unit with JTAG interface and internal AXI4 Debug Master
 * Hardware Secure Boot Unlock
 
@@ -113,8 +116,8 @@ first code running on the SEP host upon power on. It has the following
 features:
 
 * 64 kB capacity
-* SECDED error correction - single-error correction, double-error detection
-** 32-bit data + 7-bit ECC tag
+* 64-bit data path without ECC or an integrity-error sideband in the open
+generic ROM integration
 
 See {sep-rom-reference} for the hardware and firmware-image layout.
 

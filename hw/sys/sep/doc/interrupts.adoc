@@ -291,8 +291,15 @@ configuration register.
 
 The `timer_int` and `soft_int` pins of the VeeR EL2 core are tied to zero at
 the SMU integration boundary. There is no external CLINT-style delivery path.
-The VeeR core contains independent internal timers that generate standard RISC-V
-`mip.MTIP` and `mip.MSIP` interrupts without requiring an external signal.
+The external pins drive `mip.MTIP` and `mip.MSIP`, respectively, so these
+pending bits remain inactive in this integration.
+
+The two internal timers instead report `mip.MITIP0` (bit 29) and
+`mip.MITIP1` (bit 28). Enable them through `mie.MITIE0` and `mie.MITIE1`
+at the corresponding bit positions, together with `mstatus.MIE`. Their
+interrupt cause codes are `0x1D` and `0x1C`, respectively (with the interrupt
+bit set in `mcause`). Enabling `mie.MTIE` or `mie.MSIE` does not enable the
+internal timers.
 
 [[sep-memory-error-reporting]]
 === Memory ECC Errors
