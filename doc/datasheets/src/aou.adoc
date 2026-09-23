@@ -39,6 +39,7 @@ HIGHLIGHTS
 
 * Carries AXI system-management and application traffic between chiplets
 * Supports 256-, 512-, or 1024-bit AXI data per resource plane
+* Adapts bus width so chiplets with different AXI data widths interoperate
 * Provides one to four independently flow-controlled resource planes
 * Handles UCIe FDI wake, clock, and state handshakes after activation
 * Provides Advanced Peripheral Bus (APB) control, status, error reporting, and
@@ -50,10 +51,10 @@ HIGHLIGHTS
 SYSTEM ROLE
 
 AoU sits between the OCAH AXI fabric and an adopter-supplied Universal Chiplet
-Interconnect Express (UCIe) PHY. It converts AXI transactions to and from the
-AoU packet protocol carried over the Flit-aware die-to-die interface (FDI).
-OCAH supplies the protocol engine and bringup controller; the adopter supplies
-the PHY and physical-link integration.
+Interconnect Express (UCIe) controller and PHY. It converts AXI transactions to
+and from the AoU packet protocol carried over the controller's Flit-aware
+die-to-die interface (FDI). OCAH supplies the protocol engine and bringup
+controller; the adopter supplies the UCIe controller, PHY, and physical link.
 
 a|
 // datasheet-section: overview
@@ -63,20 +64,22 @@ OVERVIEW
 The AXI-over-UCIe Bridge (AoU) is OCAH's die-to-die transport component. Each
 of its one to four resource planes (RPs) presents a local AXI4 subordinate and a
 peer-facing AXI4 manager. After software requests activation, the controller
-performs the UCIe 3.0 FDI handshakes and the engine exchanges AoU packets.
+performs the UCIe FDI handshakes and the engine exchanges AoU packets. Each
+plane adapts between its local AXI data width and the peer's, so chiplets with
+different bus widths interoperate.
 
 The AoU RTL, developed jointly by Tenstorrent and BOS Semiconductors, provides
-the protocol engine and optional FDI bring-up controller for integration with
-a UCIe PHY. The PHY is not a deliverable of this beta release; the integrator
-supplies and qualifies the PHY and physical link.
+the protocol engine and optional FDI bring-up controller. AoU attaches to a
+UCIe controller's FDI, not to a bare PHY; neither is a deliverable of this beta
+release, and the integrator supplies and qualifies both.
 
 // datasheet-section: system-context
 [.datasheet-section]
 SYSTEM CONTEXT
 
 AoU occupies the always-on domain alongside the System Management Unit (SMU)
-and System Management Network (SMN). The adopter owns the PHY and physical
-link; the peer need only be OCA-compliant.
+and System Management Network (SMN). The adopter owns the UCIe controller,
+PHY, and physical link; the peer need only be OCA-compliant.
 
 image::../assets/aou-block-diagram.svg[AoU system context,pdfwidth=4.75in,align=center]
 
@@ -115,17 +118,19 @@ CAPABILITIES
 *Protocol bridge*
 
 * Converts AXI4 read and write transactions to AoU packet protocol and
-  back; supports INCR and FIXED burst types, split transactions, and
-  write-response early-return mode
-* Per-plane AXI aggregator combines narrow bursts into wider FDI flits to
-  improve link utilization (runtime-configurable per plane)
+  back; supports INCR bursts (FIXED is not supported), split transactions,
+  and write-response early-return mode
+* Per-plane upsizer and downsizer adapt the local AXI data width to the
+  peer's, so attached chiplets need not share a bus width
+* Per-plane AXI aggregator packs narrow beats into full-width local AXI
+  beats to improve local bus utilization (runtime-configurable)
 * Request and response credit streams managed independently during link
   deactivation, enabling in-flight responses to complete before
   reactivation
 
 *Link management*
 
-* Integrated UCIe 3.0 FDI bringup controller handles wake, clock, state, and
+* Integrated UCIe FDI bringup controller handles wake, clock, state, and
   receive-active handshake sequences after software requests activation
 * Software-initiated link activation and deactivation via APB registers;
   status bits report FSM state and transaction completion
@@ -151,7 +156,7 @@ INTERFACES AND CONFIGURATION
 !Clocks and resets !Core and APB clock/reset domains
 !AXI subordinate (per RP) !AXI4 subordinate accepting traffic from the local fabric
 !AXI manager (per RP) !AXI4 master issuing transactions toward peer chiplet
-!FDI data plane !PHY0 always present; PHY1 present when built with `+define+TWO_PHY`
+!FDI data plane !To the UCIe controller; PHY0 always present, PHY1 with `+define+TWO_PHY`
 !APB CSR !32-bit APB subordinate for link control, status, and error registers
 !Build-time !`RP_COUNT` (1-4), `FDI_CONFIG`, per-plane `AXI_DATA_WD`, FIFO depths, outstanding counts
 !===
@@ -168,8 +173,8 @@ a|
 [.datasheet-section]
 INTEGRATION DEPENDENCIES
 
-* Supply and qualify the UCIe PHY and physical link; keep its power domain
-  stable before initiating FDI bringup.
+* Supply and qualify the UCIe controller, PHY, and physical link; AoU cannot
+  drive a bare PHY. Keep their power domain stable before FDI bringup.
 * Match `FDI_CONFIG` to `+define+TWO_PHY`; RTL does not check this combination.
 * Connect the AXI ports and Advanced Peripheral Bus (APB) CSR subordinate to
   the product fabrics, and define address decoding and peer routing.

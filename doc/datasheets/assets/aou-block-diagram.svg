@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="380" viewBox="0 0 760 380" role="img" aria-labelledby="title description">
   <title id="title">AoU system context</title>
-  <desc id="description">Within the local chiplet, application and management AXI4 traffic connect to the AoU bridge. An integrator-selected APB manager controls its registers. The bridge connects over FDI to an integrator-supplied UCIe PHY, then over a die-to-die link to a peer OCA chiplet.</desc>
+  <desc id="description">Within the local chiplet, application and management AXI4 traffic connect to the AoU bridge. An integrator-selected APB manager controls its registers. The bridge connects over FDI to an integrator-supplied UCIe controller and PHY, then over a die-to-die link to a peer OCA chiplet.</desc>
   <defs>
     <marker id="end" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
       <path d="M0 0 L6 3 L0 6 Z" fill="#484848"/>
@@ -35,14 +35,16 @@
     <text x="336" y="208" font-size="18">controller</text>
 
     <rect x="484" y="106" width="108" height="129" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="2"/>
-    <text x="538" y="141" font-size="19" font-weight="bold">UCIe PHY</text>
-    <text x="538" y="180" font-size="17">Integrator</text>
-    <text x="538" y="204" font-size="17">supplied</text>
+    <text x="538" y="134" font-size="16" font-weight="bold">UCIe</text>
+    <text x="538" y="156" font-size="16" font-weight="bold">controller</text>
+    <text x="538" y="178" font-size="16" font-weight="bold">+ PHY</text>
+    <text x="538" y="203" font-size="16">Integrator</text>
+    <text x="538" y="223" font-size="16">supplied</text>
 
     <rect x="636" y="106" width="116" height="129" rx="6" fill="#f3f3f1" stroke="#77736b" stroke-width="1.5"/>
     <text x="694" y="135" font-size="19" font-weight="bold">Peer OCA</text>
     <text x="694" y="159" font-size="19" font-weight="bold">chiplet</text>
-    <text x="694" y="188" font-size="17">PHY + AoU</text>
+    <text x="694" y="188" font-size="17">UCIe + AoU</text>
     <text x="694" y="212" font-size="17">endpoint</text>
 
     <g fill="none" stroke="#484848" stroke-width="2">
@@ -64,6 +66,6 @@
     <text x="258" y="284" font-size="18">APB CSR</text>
     <text x="258" y="320" font-size="17">Control / status</text>
 
-    <text x="380" y="369" font-size="17">Integrator supplies the PHY and physical link.</text>
+    <text x="380" y="369" font-size="17">Integrator supplies the UCIe controller, PHY and physical link.</text>
   </g>
 </svg>
