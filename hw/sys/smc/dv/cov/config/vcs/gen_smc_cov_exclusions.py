@@ -60,6 +60,14 @@ and `kill_i` a constant zero (P7 NO-ERROR-CAP). The legalizer's
 software-writable RDL field the frontend carries into the backend options, so
 that branch stays graded.
 
+The CLA holds a second write-enable fact, the converse of P3: its MMR write
+structures carry a zero default and never name their reserved fields' enables,
+so `MMR_CDbgEapStatus_F_Rsvd3116_WrEn`, `MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn`
+and `MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn` hold zero and the then arm of the
+ternary each selects is unreachable (P8 WREN-TIED-ZERO). The reserved enables
+of `MuxSelHi`, `MuxSelLo`, `LfsrMask` and `ClaTimestampOffset` have no CLA
+output port to read the fact from and stay graded.
+
 A third fact is not a register block's: a CRC or parity network is an XOR
 reduction, and condition coverage enumerates 2^n input combinations of it.
 The X1 XOR-NETWORK class names those expressions.
@@ -270,6 +278,20 @@ P2 = (
     "filter with filter_skip_i tied to zero, so the skip arm of the filter decision never "
     "runs and no access can produce a condition over it."
 )
+P8 = (
+    "SMC-P8-WREN-TIED-ZERO: the CLA assigns its MMR write structure a zero default and never "
+    "names these reserved fields' write enables, so each holds zero; the enable's true arm and "
+    "the then arm of the write-data ternary it selects have no stimulus. This is the converse "
+    "of P3, where a constant one leaves the else arm unreachable instead."
+)
+# The reserved-field enables of the three CLA write structures that the source
+# defaults to zero and never assigns. The MuxSel, LfsrMask and TimestampOffset
+# reserved enables have no CLA output port and stay graded.
+WREN_ZERO = (
+    r"MMR_CDbgEapStatus_F_Rsvd3116_WrEn"
+    r"|MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn"
+    r"|MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn"
+)
 P6 = (
     "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so "
     "the lifecycle-state arms of the shadow registers and the guard are never entered and the "
@@ -316,6 +338,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "axi_filter_wrap": [(P2, re.compile(r"filter_skip_i"), None, None)],
     "cla_mmr": [
         (P3, re.compile(WREN_TIED, re.I), None, None),
+        (P8, re.compile(WREN_ZERO), re.compile(r"^1$"), None),
         (P5, re.compile(r"instr_type"), None, None),
     ],
     "mmrs": [(P1, re.compile(r"ntr_sink|NTR_SINK|\bTrramstart(low|high)_Warl"), None, None)],
@@ -347,7 +370,10 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
 # Branch arms a feature fact also names: the else arm of a write-data ternary whose
 # enable is a tied constant.
 FEATURE_BRANCH_FACTS: "dict[str, list[tuple[str, object, str]]]" = {
-    "cla_mmr": [(P3, re.compile(WREN_TIED, re.I), "0")],
+    "cla_mmr": [
+        (P3, re.compile(WREN_TIED, re.I), "0"),
+        (P8, re.compile(WREN_ZERO), "1"),
+    ],
     "idma_legalizer_rw_axi": [(P7, re.compile(r"^kill_i$"), "1")],
 }
 
@@ -364,12 +390,27 @@ def retain(fields: str) -> "re.Pattern[str]":
     return re.compile(r"^\(\(field_storage\.(?:" + fields + r")\.value & \(\(~decoded_wr_biten\[")
 
 
+# The singlepulse fields of the I2C map, named one at a time: seven siblings of
+# INTR_TEST are plain rw fields that keep their value between writes, and
+# SMBUS_CTRL carries a second field spelled SMBALERT that is one of them.
+I2C_SINGLEPULSE = (
+    r"INTR_TEST\.(RX_OVERFLOW|SCL_INTERFERENCE|SDA_INTERFERENCE|SDA_UNSTABLE"
+    r"|STRETCH_TIMEOUT|CMD_COMPLETE|UNEXP_STOP|HOST_TIMEOUT|SMBALERT"
+    r"|(CONTROLLER|TARGET)_(TX|RX)_FIFO_ERROR)"
+    r"|FIFO_CTRL\.(RXRST|FMTRST|ACQRST|TXRST)"
+    r"|TARGET_ACK_CTRL\.NACK"
+)
+
+
 # module -> [(class, expression pattern, term-vector pattern or None)]. These
 # are facts about one block, checked against its own source, not about a
 # family. The vector pattern pins which row of a multi-term expression the
 # fact covers, so a sibling row that an access can reach stays graded.
 EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
-    "uart_16550_main_wo_reg": [(A3, re.compile(r"arvalid|ar_accept|prev_was_rd"), None)],
+    "uart_16550_main_wo_reg": [
+        (A3, re.compile(r"arvalid|ar_accept|prev_was_rd"), None),
+        (A6, retain(r"FCR\.(RCVR|XMIT)_FIFO_RESET"), RETAIN),
+    ],
     "idma_reg64_2d_reg_top": [
         (A4, re.compile(r"addr_hit\[\d+\]\s*&\s*reg_re"), re.compile(r"^110$")),
         (A5, re.compile(r"devmode_i"), re.compile(r"^1")),
@@ -377,8 +418,12 @@ EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
     "avsbus_controller_reg": [
         (A6, retain(r"AVS_INTERRUPT_CLEAR\.\w+|AVS_CFG_1\.FORCE_SLAVE_RESYNC_OPERATION"), RETAIN),
     ],
-    "telemetry_receiver_reg": [(A6, retain(r"CTRL\.(BUFFER_POP|TELEMETRY_RX_FLUSH)"), RETAIN)],
+    "telemetry_receiver_reg": [
+        (A6, retain(r"CTRL\.(BUFFER_POP|TELEMETRY_RX_FLUSH)|INTR_TEST\.MISSING_LAST"), RETAIN),
+    ],
     "system_timer_octs_reg": [(A6, retain(r"TIMER_START\.START"), RETAIN)],
+    "i2c_reg": [(A6, retain(I2C_SINGLEPULSE), RETAIN)],
+    "log_engine_reg": [(A6, retain(r"INTR_TEST\.LOG_(FETCH|WRITE)_ERR"), RETAIN)],
     "efuse_interface_ctrl_reg": [
         (
             A6,
@@ -395,10 +440,18 @@ EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
 
 
 def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
-    """(module, expression) -> set of term vectors the report marks Not Covered."""
+    """(module, expression) -> set of term vectors the report marks Not Covered.
+
+    Below each EXPRESSION the report scores its operands again under their own
+    SUB-EXPRESSION headings. Those rows are the operand's, not the expression's,
+    and a vector uncovered for an operand is often covered for the expression
+    that contains it, so `expr` is None across a SUB-EXPRESSION table and its
+    rows are dropped. An empty `expr` is a different state: it is the long XOR
+    network urg prints as a numbered term list instead of an expression.
+    """
     rows: dict[tuple[str, str], set[str]] = {}
     module = ""
-    expr = ""
+    expr: str | None = ""
     terms: list[str] = []
     in_cond = False
     for line in modinfo.read_text(errors="replace").splitlines():
@@ -406,8 +459,14 @@ def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
         if m:
             in_cond = m.group(1) == "Cond"
             module = m.group(2).split("(")[0]
+            expr = ""
+            terms = []
             continue
         if not in_cond:
+            continue
+        if re.match(r"^\s*SUB-EXPRESSION", line):
+            expr = None
+            terms = []
             continue
         m = re.match(r"^\s*EXPRESSION\s*(.*)$", line)
         if m:
@@ -416,7 +475,7 @@ def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
             continue
         # A long XOR network is listed one term per row under "Number  Term".
         m = re.match(r"^\s*\d+\s+(\S+)\s*(\^?)\s*$", line)
-        if m and not expr:
+        if m and expr == "":
             terms.append(m.group(1).rstrip(")"))
             if not m.group(2):
                 expr = "(" + " ^ ".join(terms) + ")"
@@ -764,7 +823,7 @@ def render_feature(
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (P1, P2, P3, P4, P5, P6, P7):
+        for reason in (P1, P2, P3, P4, P5, P6, P7, P8):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

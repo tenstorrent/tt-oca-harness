@@ -107,7 +107,10 @@ report marks uncovered, so a reachable point is never hidden by a pattern;
 F1 and F3 take a whole state variable that is not a reachable control FSM, F4
 a state whose decode arm a parameter leaves unelaborated, F5 the uncovered
 edges that exist only as a state register's reset assignment, and F6 those a
-state register's enable-edge load cannot reach:
+state register's enable-edge load cannot reach. A vector is read from the
+report's EXPRESSION table only: below it the report scores each operand again
+under its own SUB-EXPRESSION heading, and a vector uncovered for an operand is
+often covered for the expression containing it, so those rows are dropped:
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions cond+branch+fsm -report <dir>
     python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
@@ -132,6 +135,7 @@ state register's enable-edge load cannot reach:
 | `smc_disabled_feature_exclusions.el` | P3 WREN-TIED | the CLA assigns twenty of its MMR hardware write-enables a constant one (`cla_counter.sv`, `core_logic_analyzer.sv`), so the enable never reads zero and the write-data ternary never takes its else arm |
 | `smc_disabled_feature_exclusions.el` | P4 SINGLE-SOURCE | with one trace source the two-source term of `TrRamPendPkt*WrEn` is always false and the per-way pending count, which only increments from those enables, stays at zero (`trace_sink.sv` pending logic); a row that needs a `TrRamPend*` signal or a south-port valid asserted follows, while a row holding those at their constant value and turning on another term stays graded, ordinary trace traffic reaching it |
 | `smc_disabled_feature_exclusions.el` | P5 INSTR-TYPE-CONST | `reg_wr_instr_type` has no driver outside the MMR files, so the other instruction-type encoding is never presented |
+| `smc_disabled_feature_exclusions.el` | P8 WREN-TIED-ZERO | the CLA gives its MMR write structures a zero default and never names the reserved fields' write enables, so `MMR_CDbgEapStatus_F_Rsvd3116_WrEn`, `MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn` and `MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn` hold zero and the then arm of the ternary each selects is unreachable; this is the converse of P3. The reserved enables of `MuxSelHi`, `MuxSelLo`, `LfsrMask` and `ClaTimestampOffset` have no CLA output port to read the fact from and stay graded |
 | `smc_disabled_feature_exclusions.el` | P6 LC-STATE-OFF | `smc_efuse_wrapper` instantiates the eFuse with `HAS_LC_STATE = 0`, so the lifecycle-state arms of `efuse_shadow_regs` and `efuse_guard` are never entered and the RMA token comparisons they hold have no access that reaches them; the fuse-sense, security-disable and image-lock terms outside those arms stay graded |
 | `smc_disabled_feature_exclusions.el` | P7 NO-ERROR-CAP | `idma_backend_wrapper` elaborates the backend with `ErrorCap = NO_ERROR_HANDLING`, whose bypass gives the legalizer's `flush_i` and `kill_i` a constant zero, so a term needing either asserted is false for the life of the design; the `r_ready_i`/`w_ready_i` backpressure rows and the software-writable `opt_tf_q.decouple_rw` branch stay graded |
 

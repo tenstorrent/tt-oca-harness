@@ -20,6 +20,7 @@ Condition 35 "1476893936" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? Blo
 CHECKSUM: "3897059503 4287847881"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB path only ever issues one instruction type and the other encoding is never presented."
+ANNOTATION: "SMC-P8-WREN-TIED-ZERO: the CLA assigns its MMR write structure a zero default and never names these reserved fields' write enables, so each holds zero; the enable's true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
 MODULE: cla_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
@@ -47,6 +48,7 @@ Condition 87 "3658170758" "(MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn ? MMR_CDb
 Condition 97 "4165929497" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER3CFG)) | ClaMmrCdbgclacounter3CfgWr.CounterWrEn) 1 -1" (1 "00")
 Condition 97 "4165929497" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER3CFG)) | ClaMmrCdbgclacounter3CfgWr.CounterWrEn) 1 -1" (3 "10")
 Condition 100 "3042411373" "(MMR_CDbgClaCounter3Cfg_F_Counter_WrEn ? MMR_CDbgClaCounter3Cfg_F_Counter_Data : MMR_CDbgClaCounter3Cfg_F_Counter_Data_prev) 1 -1" (1 "0")
+Condition 585 "231962567" "(MMR_CDbgEapStatus_F_Rsvd3116_WrEn ? MMR_CDbgEapStatus_F_Rsvd3116_Data : MMR_CDbgEapStatus_F_Rsvd3116_Data_prev) 1 -1" (2 "1")
 Condition 586 "456046538" "(MMR_CDbgEapStatus_F_Node3Eap3_WrEn ? MMR_CDbgEapStatus_F_Node3Eap3_Data : MMR_CDbgEapStatus_F_Node3Eap3_Data_prev) 1 -1" (1 "0")
 Condition 587 "1172224512" "(MMR_CDbgEapStatus_F_Node3Eap2_WrEn ? MMR_CDbgEapStatus_F_Node3Eap2_Data : MMR_CDbgEapStatus_F_Node3Eap2_Data_prev) 1 -1" (1 "0")
 Condition 588 "3978991543" "(MMR_CDbgEapStatus_F_Node3Eap1_WrEn ? MMR_CDbgEapStatus_F_Node3Eap1_Data : MMR_CDbgEapStatus_F_Node3Eap1_Data_prev) 1 -1" (1 "0")
@@ -78,6 +80,7 @@ Branch 16 "1427883903" "MMR_CDbgClaCounter2Cfg_F_UpperCounter_WrEn" (1) "MMR_CDb
 Branch 20 "3603330949" "MMR_CDbgClaCounter2Cfg_F_Counter_WrEn" (1) "MMR_CDbgClaCounter2Cfg_F_Counter_WrEn 0"
 Branch 23 "3590356377" "MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn 0"
 Branch 27 "4037918258" "MMR_CDbgClaCounter3Cfg_F_Counter_WrEn" (1) "MMR_CDbgClaCounter3Cfg_F_Counter_WrEn 0"
+Branch 188 "2350780944" "MMR_CDbgEapStatus_F_Rsvd3116_WrEn" (0) "MMR_CDbgEapStatus_F_Rsvd3116_WrEn 1"
 Branch 189 "1455523146" "MMR_CDbgEapStatus_F_Node3Eap3_WrEn" (1) "MMR_CDbgEapStatus_F_Node3Eap3_WrEn 0"
 Branch 190 "2785802625" "MMR_CDbgEapStatus_F_Node3Eap2_WrEn" (1) "MMR_CDbgEapStatus_F_Node3Eap2_WrEn 0"
 Branch 191 "3012845931" "MMR_CDbgEapStatus_F_Node3Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node3Eap1_WrEn 0"
@@ -94,8 +97,10 @@ Branch 201 "590372528" "MMR_CDbgEapStatus_F_Node0Eap3_WrEn" (1) "MMR_CDbgEapStat
 Branch 202 "3556385403" "MMR_CDbgEapStatus_F_Node0Eap2_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap2_WrEn 0"
 Branch 203 "3328555665" "MMR_CDbgEapStatus_F_Node0Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap1_WrEn 0"
 Branch 204 "917489242" "MMR_CDbgEapStatus_F_Node0Eap0_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap0_WrEn 0"
+Branch 208 "3594453587" "MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn" (0) "MMR_CDbgClaCtrlStatus_F_Rsvd6216_WrEn 1"
 Branch 214 "683882288" "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn" (1) "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn 0"
 Branch 455 "2128509458" "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn" (1) "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn 0"
+Branch 461 "2379000886" "MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn" (0) "MMR_CDbgClaTimestampConfig_F_Rsvd1_WrEn 1"
 Branch 466 "3498676337" "MMR_CDbgClaTimestampConfig_F_Resync_WrEn" (1) "MMR_CDbgClaTimestampConfig_F_Resync_WrEn 0"
 
 CHECKSUM: "671687310 1858521928"
@@ -244,7 +249,6 @@ Condition 75 "923988676" "(((~trntrRamActiveEnable_ANY)) & trntrRamActiveEnable_
 Condition 75 "923988676" "(((~trntrRamActiveEnable_ANY)) & trntrRamActiveEnable_ANY_d1) 1 -1" (3 "11")
 Condition 83 "400257705" "(trntrRamEnableStart_ANY_d1 | Eff_InsnTraceWrEnPerCore_TS0[0]) 1 -1" (2 "01")
 Condition 83 "400257705" "(trntrRamEnableStart_ANY_d1 | Eff_InsnTraceWrEnPerCore_TS0[0]) 1 -1" (3 "10")
-Condition 84 "2930191227" "(trntrRamEnableStart_ANY_d1 ? (trntrRamMode_ANY ? trntrRamSMEMStartLow_ANY : trntrRamStartLow_ANY) : trntrcorefullRamWpLow_ANY[0]) 1 -1" (1 "0")
 Condition 84 "2930191227" "(trntrRamEnableStart_ANY_d1 ? (trntrRamMode_ANY ? trntrRamSMEMStartLow_ANY : trntrRamStartLow_ANY) : trntrcorefullRamWpLow_ANY[0]) 1 -1" (2 "1")
 Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (1 "011")
 Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (2 "101")
@@ -288,7 +292,6 @@ Condition 172 "1140082796" "(((~TrRamPendPktSouthWrEn_TS0)) & ((|Eff_TR_TS_South
 Condition 172 "1140082796" "(((~TrRamPendPktSouthWrEn_TS0)) & ((|Eff_TR_TS_South_Vld_stg))) 1 -1" (3 "11")
 Condition 207 "1031576379" "((TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) ? TrRamPendWrEn_Select_ANY[1] : TrRamPendWrEn_Select_ANY[0]) 1 -1" (2 "1")
 Condition 209 "1914242843" "(trdstRamWrEn_TS0_stg | trntrRamWrEn_TS0_stg) 1 -1" (2 "01")
-Condition 216 "3182033250" "(TraceMemRdEn_ANY ? TraceMemRdAddr_TS1 : (trRamDataRdEn_ANY ? trntrRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH] : trdstRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH])) 1 -1" (2 "1")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (1 "01")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (2 "10")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (3 "11")
