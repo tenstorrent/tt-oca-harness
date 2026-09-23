@@ -21,9 +21,9 @@ sequence takes the format as a parameter and each mode gets its own leaf.
 Three things have to be true at once for the XOR and VLT compressors behind
 ``debug_sig_trace_gen`` to do any work, and each has an RDL handle:
 
-* **The mode.** ``dfd_dst.rdl`` ``Trdstformat``: "bit[0]: XOR Enable, bit[1]:
-  VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR
-  Compresion), 2'b0 (No Compression)".
+* **The mode.** ``dfd_dst.rdl`` gives ``Trdstformat`` bit 0 as the XOR enable
+  and bit 1 as the VLT enable, and names 3 (XOR plus VLT), 1 (XOR) and 0 (no
+  compression) as the supported values.
 * **A payload that changes between samples.** A compressor fed a bus that
   holds still emits nothing. ``DEBUG_BUS_MUX.Muxselseg0..7`` chooses which
   debug-bus segment each output lane carries -- "If all bits are 0, Lane0 =
