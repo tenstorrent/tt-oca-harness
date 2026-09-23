@@ -345,8 +345,8 @@ i.e. it is an exact copy of the _RESET_N_ signal.
 [width="100%",cols="3,1,6",options="header"]
 |===
 |*Bit* |*Reset* |*Description*
-|Bypass Escape |1 |Whenever this bit is set, the TMP controller will transition to the _PERSISTENCE_OFF_ state when the TAP controller enters the _UPDATE_IR_ state after the _BYPASS_ instruction has been selected.
-|TMP Status |0 |This bit is set when the TMP controller is in the Persistence-On state.
+|Bypass Escape (bit 0) |0 |Whenever this bit is set, the TMP controller will transition to the _PERSISTENCE_OFF_ state when the TAP controller enters the _UPDATE_IR_ state after the _BYPASS_ instruction has been selected.
+|TMP Status (bit 1) |0 on capture |Capture-DR samples whether the TMP controller is in the Persistence-On state. The update register resets to `2'b10`; its bit 1 is replaced by the controller state on capture and does not enable persistence.
 |===
 
 === 3DIC Support
@@ -464,16 +464,21 @@ shifted in for each transaction, this instruction is most useful for sparse
 accesses. This instruction uses semantics very similar to the RISC-V DTM DMI
 instruction.
 
+Let `D` be the AXI data width in bits, `A` the address width, and `S` the
+scan size-field width: 1 bit for `D <= 16`, 2 bits for `D <= 64`, and 3 bits
+otherwise. The single-operation TDR has `2 + S + D/8 + D + A` bits.
+For `D=64` and `A=51`, it has 127 bits.
+
 .AXI Single OP Instruction layout with size==3 and addr_size==51.
 image::jtag2axi_single_op.svg[AXI Single OP Instruction layout with size==3 and addr_size==51,scaledwidth=90.0%]
 
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
 |Bits |Field |Access |Reset |Description
-|(...) +: addr_size |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.
-|(...) +: 8*(2**data_size) |data |RW |0 |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.
-|5 +: (2**data_size) |wstrb |RW |0 |The byte strobes for a write transaction. This value is driven on WSTRB[7:0] when the transaction is a write. On a Capture-DR, this field holds the previous value.
-|(...) +: $bits(size) |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|(2+S+D/8+D) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.
+|(2+S+D/8) +: D |data |RW |0 |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.
+|(2+S) +: (D/8) |wstrb |RW |0 |The byte strobes for a write transaction. This value is driven on WSTRB[7:0] when the transaction is a write. On a Capture-DR, this field holds the previous value.
+|2 +: S |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
 |1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
 |===
 
@@ -489,16 +494,20 @@ is used when an external debugger wants to either:
 Using the series instructions instead of the AXI_SINGLE_OP instruction is much
 more time efficient for these use cases.
 
-.AXI Series Control Instruction layout with addr_size==51.
+The pipeline-depth field width `P` is 1 when `FIFO_DEPTH=0`, otherwise
+`$clog2(FIFO_DEPTH+1)`. The control TDR has `2 + S + P + A + 1` bits.
+For `D=64`, `A=51`, and `FIFO_DEPTH=3`, the length is 58 bits.
+
+.AXI Series Control Instruction layout with 64-bit data, 51-bit address and FIFO_DEPTH=3.
 image::jtag2axi_series_ctrl.svg[AXI Series Control Instruction layout with addr_size==51,scaledwidth=90.0%]
 
 [width="100%",cols="2,2,1,1,6",options="header"]
 |===
 |Bits |Field |Access |Reset |Description
-|(...) +: 1 |reset |RW |0 |Reset the pending error flags reported in op.
-|(...) +: addr_size |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued.
-|(...) +: 2 |pl_depth |RW |0 |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and (wr/rd)_pl_depth field read from the JTAG_CAPS register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction
-|(...) +: $bits(size) |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|(2+S+P+A) |reset |RW |0 |Reset the pending error flags reported in op.
+|(2+S+P) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued.
+|(2+S) +: P |pl_depth |RW |0 |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and (wr/rd)_pl_depth field read from the JTAG_CAPS register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction
+|2 +: S |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
 |1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved When the debugger reads this field, it means the following: 0: All previous operations completed successfully and returned an OKAY status. 1: At least one previous operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
 |===
 
