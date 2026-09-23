@@ -9,26 +9,26 @@
 
 interface dtp_xtrig_if;
 
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_ack = '0;
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_req = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din  = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din  = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din = '0;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_src_ack = '0;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_dst_req = '0;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_out_din = '0;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_in_din  = '0;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_in_din  = '0;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_out_din = '0;
 
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_ack;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din_en;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_src_req;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_dst_ack;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_out_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_out_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_out_din_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_in_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_in_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_req_in_din_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_in_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_in_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_in_din_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_out_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_out_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0]    xtrig_ctp_ack_out_din_en;
 
 endinterface : dtp_xtrig_if

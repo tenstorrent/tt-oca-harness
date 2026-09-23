@@ -21,16 +21,6 @@ module sep_tcm_wrapper
   //////////
 
   if (pt.DCCM_ENABLE == 1) begin : gen_dccm
-    `define EL2_LOCAL_DCCM_RAM_TEST_PORTS .TEST1   (1'b0), \
-                                          .RME     (1'b0), \
-                                          .RM      (4'b0), \
-                                          .LS      (1'b0), \
-                                          .DS      (1'b0), \
-                                          .SD      (1'b0), \
-                                          .TEST_RNM(1'b0), \
-                                          .BC1     (1'b0), \
-                                          .BC2     (1'b0),
-
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_FDATA_WIDTH-1:0] dccm_wr_fdata_bank;
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_FDATA_WIDTH-1:0] dccm_bank_fdout;
     localparam int unsigned DCCM_INDEX_DEPTH = pt.DCCM_SIZE * 1024 / (pt.DCCM_BYTE_WIDTH * pt.DCCM_NUM_BANKS); // Depth of memory bank
@@ -52,8 +42,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         16384: begin : gen_dccm_ram
@@ -67,8 +64,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         8192: begin : gen_dccm_ram
@@ -82,8 +86,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         4096: begin : gen_dccm_ram
@@ -97,8 +108,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         3072: begin : gen_dccm_ram
@@ -112,8 +130,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         2048: begin : gen_dccm_ram
@@ -127,8 +152,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         1024: begin : gen_dccm_ram
@@ -142,8 +174,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         512: begin : gen_dccm_ram
@@ -157,8 +196,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         256: begin : gen_dccm_ram
@@ -172,8 +218,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         128: begin : gen_dccm_ram
@@ -187,8 +240,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         default: begin : gen_invalid_ram
