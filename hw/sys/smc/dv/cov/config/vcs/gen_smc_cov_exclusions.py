@@ -77,9 +77,6 @@ Three FSM facts follow from the source rather than from any access. urg's FSM
 score counts transitions, and the extractor lists every assignment to the
 state variable as a transition:
 
-* F1 LOOPVAR: `telemetry_receiver.block_index` is the loop variable of the
-  message decoder, extracted as an FSM because it is a state-shaped register;
-  its settled value is fixed by `NUM_BLOCKS_PER_PACKET`.
 * F2 DEFAULT: `avsbus_controller.cur_state` has `next_state = AVS_IDLE` as the
   always_comb default, which the extractor reads as an edge from every state
   to AVS_IDLE; every case arm assigns next_state, so the default never fires.
@@ -174,15 +171,11 @@ X1 = (
     "function is one value per input vector and is proven by the data the block "
     "produces, which the tests compare."
 )
-F1 = (
-    "SMC-FSM-F1-LOOPVAR: block_index is the loop variable of the message decoder, a "
-    "state-shaped register the extractor reports as an FSM; its settled value is fixed "
-    "by NUM_BLOCKS_PER_PACKET and no ATB stimulus moves it."
-)
 F2 = (
-    "SMC-FSM-F2-DEFAULT: next_state = AVS_IDLE is the always_comb default of the protocol "
-    "FSM, which the extractor lists as a transition from every state; every case arm "
-    "assigns next_state, so no state reaches AVS_IDLE through the default."
+    "SMC-FSM-F2-DEFAULT: next_state = AVS_IDLE is the always_comb default of the protocol FSM, "
+    "which the extractor lists as a transition from every state; every state has a case arm and "
+    "every arm assigns next_state, so the default never fires. The three states whose own arm "
+    "assigns AVS_IDLE reach it in the ordinary sequence and stay graded."
 )
 F3 = (
     "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so the "
@@ -214,13 +207,21 @@ F6 = (
     "graded."
 )
 
-# (module, fsm) -> list of (class, selector). Selector None takes every point of
-# the FSM; ("to", S) the uncovered transitions into S; ("state", S) the state S
-# and the uncovered transitions that touch it; ("edges", (...)) exactly those
-# uncovered transitions.
+# The states whose own case arm of avsbus_controller assigns AVS_IDLE, so that an
+# edge from them is the sequence rather than the always_comb default.
+AVS_IDLE_ARMS = ("AVS_IDLE", "AVS_SLAVE_RESYNC", "AVS_END_LAST_SUBFRAME")
+
+# (module, fsm) -> list of (class, selector). ("to", S) takes the transitions
+# into S; ("to_default", (S, arms)) those into S from a state that is not in
+# arms, for where only some of the source's states reach S through a case arm;
+# ("state", S) the state S and the transitions that touch it; ("edges", (...))
+# exactly those transitions. A selector of None takes every point of the FSM and
+# is used by no fact: a fact that cannot name its points is too wide to state.
 FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" = {
-    ("telemetry_receiver", "block_index"): [(F1, None)],
-    ("avsbus_controller", "cur_state"): [(F2, ("to", "AVS_IDLE")), (F5, ("to", "AVS_RESET"))],
+    ("avsbus_controller", "cur_state"): [
+        (F2, ("to_default", ("AVS_IDLE", AVS_IDLE_ARMS))),
+        (F5, ("to", "AVS_RESET")),
+    ],
     ("trace_axi_master", "state"): [
         (F3, ("state", "AW_HANDSHAKE")),
         (F3, ("state", "W_HANDSHAKE")),
@@ -236,9 +237,11 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
 
 
 A3 = (
-    "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on "
-    "the write channel only -- its read-channel select has no branch for that map -- so "
-    "this block's AR channel is never driven and no access can produce a condition over it."
+    "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the "
+    "write channel only -- its read-channel select has no branch for that map -- so this "
+    "block's arvalid is never asserted and a row that needs it high cannot occur. A row over "
+    "ar_accept alone stays graded: the block ORs it with aw_accept, which the write channel "
+    "does assert."
 )
 A4 = (
     "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually "
@@ -350,13 +353,16 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         (P4, re.compile(r"TrRamPendPkt(North|South)WrEn_TS0"), None, None),
         (P4, re.compile(r"TrRamSouth|TR_TS_South|South_Vld"), None, None),
     ],
-    "axi_filter_wrap": [(P2, re.compile(r"filter_skip_i"), None, None)],
+    "axi_filter_wrap": [(P2, re.compile(r"^\(filter_skip_i \?"), re.compile(r"^1$"), None)],
     "cla_mmr": [
         (P3, re.compile(WREN_TIED, re.I), None, None),
         (P8, re.compile(WREN_ZERO), re.compile(r"^1$"), None),
-        (P5, re.compile(r"instr_type"), None, None),
+        (P5, re.compile(r"^\(instr_type == 2'b\d+\)$"), re.compile(r"^1$"), None),
     ],
-    "mmrs": [(P1, re.compile(r"ntr_sink|NTR_SINK|\bTrramstart(low|high)_Warl"), None, None)],
+    "mmrs": [
+        (P1, re.compile(r"NTR_SINK_\w+_REG_ADDR|MmrCs\[NTR_SINK_BLK_IDX\]"), None, None),
+        (P1, re.compile(r"Trntrissrammode|Trramstart(low|high)_Warl"), None, None),
+    ],
     "efuse_shadow_regs": [
         (
             P6,
@@ -423,7 +429,8 @@ I2C_SINGLEPULSE = (
 # fact covers, so a sibling row that an access can reach stays graded.
 EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
     "uart_16550_main_wo_reg": [
-        (A3, re.compile(r"arvalid|ar_accept|prev_was_rd"), None),
+        (A3, re.compile(r"^\(\(\(!\w*arvalid\)\)"), re.compile(r"^0")),
+        (A3, re.compile(r"^\(\w*arvalid &&"), re.compile(r"^1")),
         (A6, retain(r"FCR\.(RCVR|XMIT)_FIFO_RESET"), RETAIN),
     ],
     "idma_reg64_2d_reg_top": [
@@ -809,12 +816,13 @@ def render_fsm(
         "// ExclMode: default",
         "//",
         "// Generated by gen_smc_cov_exclusions.py from urg's FSM template and the",
-        "// merged report; regenerate rather than edit. F1 and F3 take every point of",
-        "// a state variable that is not a reachable control FSM; F2 takes only the",
-        "// uncovered edges the always_comb default contributes; F4 takes a state whose",
-        "// decode arm a parameter leaves unelaborated, and F5 the uncovered edges that",
-        "// exist only as a state register's reset assignment. The generator's docstring",
-        "// and the ANNOTATION before each block state the facts.",
+        "// merged report; regenerate rather than edit. F2 takes the edges into the",
+        "// always_comb default's state that no case arm of the source produces, F3 the",
+        "// states a tied-off response never lets the master enter, F4 a state whose",
+        "// decode arm a parameter leaves unelaborated, F5 the edges that exist only as",
+        "// a state register's reset assignment, and F6 the edge an enable-edge load",
+        "// cannot supply. The generator's docstring and the ANNOTATION before each",
+        "// block state the facts.",
         "//==================================================",
     ]
     count = 0
@@ -846,6 +854,12 @@ def render_fsm(
                         block.append((reason, entry))
                         break
                     continue
+                if mode == "to_default":
+                    state, arms = target
+                    if dst == state and src not in arms:
+                        block.append((reason, entry))
+                        break
+                    continue
                 if (
                     (mode == "to" and dst == target)
                     or (mode == "state" and target in (src, dst))
@@ -856,7 +870,7 @@ def render_fsm(
         if not any(r for r, _ in block):
             continue
         out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (F1, F2, F3, F4, F5, F6):
+        for reason in (F2, F3, F4, F5, F6):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

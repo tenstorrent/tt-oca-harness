@@ -309,14 +309,12 @@ Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "2964910200 3918030293"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- so this block's AR channel is never driven and no access can produce a condition over it."
+ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- so this block's arvalid is never asserted and a row that needs it high cannot occur. A row over ar_accept alone stays graded: the block ORs it with aw_accept, which the write channel does assert."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
 MODULE: uart_16550_main_wo_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (3 "11")
-Condition 4 "60604864" "((axil_ar_accept || axil_aw_accept) && ((!axil_resp_acked))) 1 -1" (2 "10")
-Condition 6 "2931631979" "(( ! (axil_ar_accept || axil_aw_accept) ) && axil_resp_acked) 1 -1" (1 "01")
 Condition 9 "1967922282" "(((!axil_arvalid)) || axil_ar_accept) 1 -1" (1 "00")
 Condition 9 "1967922282" "(((!axil_arvalid)) || axil_ar_accept) 1 -1" (2 "01")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")

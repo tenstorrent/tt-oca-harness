@@ -186,14 +186,6 @@ Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
 CHECKSUM: "3001181867 1671278051"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the conditions over its trntr signals have no stimulus that can reach them."
 MODULE: mmrs
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (1 "011111")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (2 "101111")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (3 "110111")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (4 "111011")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (5 "111101")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (6 "111110")
-Condition 1 "1850206575" "(((&i_cla_clk_dis)) & ((&i_dst_clk_dis)) & ((&i_ntr_clk_dis)) & i_dst_sink_clk_dis & i_ntr_sink_clk_dis & i_funnel_clk_dis) 1 -1" (7 "111111")
-Condition 14 "173698312" "(i_critical_signal_hold | ntr_sink_gated_reset_n) 1 -1" (3 "10")
 Condition 19 "3808774952" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMSTARTLOW_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
 Condition 21 "814690507" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMLIMITLOW_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
 Condition 23 "248877334" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMSTARTHIGH_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
