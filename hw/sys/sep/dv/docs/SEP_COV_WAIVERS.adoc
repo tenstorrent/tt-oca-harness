@@ -712,6 +712,88 @@ driven by `sep_cov_axi_dw_upsizer_dma_test`. Waiving this does not touch the
 other `axi_dw_upsizer`-typed converters in SEP, which have real AXI masters in
 front of them.
 
+== Converter FSM: the two ties that make most of it unreachable
+
+`axi_dw_downsizer` carries 316 uncovered FSM transitions in run
+`20260922_172031__vcs__all`, 29% of every uncovered FSM transition in the
+design and the largest single block of it. Most of that is unreachable by
+construction, for two separate reasons, and the rest is a stimulus gap that
+stays in the score. Nine instances carry the metric: eight inside `sep_crypto`
+and `u_sep_dma_wrap.u_axi_dw_downsizer_reg` outside it.
+
+=== SEP-CRYPTO-SINGLE-BEAT: no burst reaches a crypto aperture
+
+*Tie.* `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:111-112` computes
+`aw_is_burst = |aw.len` and `ar_is_burst = |ar.len`, and `:175` / `:205` route
+any such request to `SepCryptoAxiErrSlv` BEFORE the address decode runs. No
+beat of a burst reaches any accelerator, whatever its address. This is the
+architecture, not an accident: `hw/sys/sep/doc/crypto.adoc:117-123` ("Single-Beat
+Access Only") states it as a software contract, and
+`hw/sys/sep/doc/fabric.adoc:29` states the general rule that AXI4-Lite slave
+bridges convert bursts to single transactions.
+
+*Measured, not assumed.* A probe drove the AES aperture from the SMN inbound
+master with the inbound filter opened and `allow_burst=1`: single 4-byte and
+8-byte beats returned OKAY with real data, while 2-beat and 4-beat reads at
+both sizes returned DECERR on every beat with error-slave fill. The same shapes
+were refused identically from the CPU-LSU master.
+
+*What this waives.* The `R_SPLIT_INCR_DOWNSIZE` arm only builds a request when
+the converted length `(len+1) * conv_ratio - align_adj - 1` exceeds 255
+(`vendor/pulp-platform/axi/upstream/src/axi_dw_downsizer.sv:426`, taking the
+split branch at `:430`), which on this bus needs `ARLEN >= 128`. `len` is
+pinned to zero at all eight crypto instances, so that arm and its return to
+`R_IDLE` cannot be entered.
+
+*NOT waived, deliberately.* Three things stay in the denominator:
+
+* `u_sep_dma_wrap.u_axi_dw_downsizer_reg`. It sits outside `sep_crypto`, so
+  `:205` does not reach it. Its own argument would be the 336-byte extent of
+  `SECURE_DMA_REG_MAP`, which cannot hold the 1032 bytes a split needs -- a
+  weaker and different claim, and not made here.
+* `R_IDLE -> R_INCR_DOWNSIZE` and `R_IDLE -> R_PASSTHROUGH`, with their returns.
+  A SINGLE beat enters both: at `ARSIZE=3` the ratio is 2 and the converted
+  length is `1*2-0-1 = 1`, well inside the limit, so the converting arm runs on
+  an ordinary 64-bit access. These are dark because the suite drives 32-bit
+  single beats everywhere, which is a stimulus gap and a test's job.
+* The `BURST_WRAP` / `BURST_FIXED` arcs. The burst TYPE is independent of
+  `len`, and the crypto demux filters on `len` alone, so a single-beat WRAP or
+  FIXED reaches the converter. Reachability confirmed by reading, not driven
+  yet.
+
+=== SEP-ATOP-UPSTREAM-TIED: no atomic reaches SEP
+
+*Tie, and it is one level up.* SEP is delivered inside SMU rather than
+standalone, so its inbound port is only ever driven by `smu_axi_xbar`,
+instantiated with `.ATOPs (1'b0)` at `hw/sys/smu/rtl/smu_axi_xbar.sv:131`.
+`aw.atop` is therefore zero by construction in every real integration. That is
+exactly what SEP's own `NoAtopAllowed` assumption states
+(`axi_demux_simple.sv:570`, passed from `axi_filter_wrap.sv:242`), and the
+assumption is satisfied upstream rather than merely assumed. SEP's own
+`ATOPs(1'b0)` sites -- `sep_local_axi_xbar.sv:266`,
+`sep_crypto_axi_interconnect.sv:275`, `sep_crypto.sv:560`, `sep_cpu.sv:596` --
+are the places where the filter does not elaborate at all; the instances that
+DO elaborate sit inside `axi_to_axi_lite` and inside `axi_err_slv` within the
+width converters, and those are what this chain covers.
+
+Citing an SMU file is deliberate: the waiver describes the system being
+measured, not this repository in isolation.
+
+*Provenance.* This supersedes the earlier reading recorded under F-FAB-2 below,
+which treated the absorb path as reachable because nothing in SEP ties
+`aw.atop`. That was correct about SEP alone and wrong about the delivered
+system. The disposition was settled when the specification question was closed
+with "SEP ships as part of SMU, not standalone", and the same branch resolved
+the corresponding SMU question as an explicit out-of-scope waiver.
+
+*What this waives.* The `R_INJECT_AW` arm of every `axi_dw_downsizer`, entered
+only by `aw.atop[ATOP_R_RESP]` (`axi_dw_downsizer.sv:852`), and the FSM of the
+31 `axi_atop_filter` instances that elaborate.
+
+*NOT waived.* Nothing else changes: the filter instances that never elaborate
+carry no coverage objects, and the absorb path's line coverage is a separate
+claim from its FSM arcs.
+
 == DMA: which logic is waivable, read against a second bench's exclusion set
 
 A different bench carries a designer-reviewed DMA exclusion set, 575 items over

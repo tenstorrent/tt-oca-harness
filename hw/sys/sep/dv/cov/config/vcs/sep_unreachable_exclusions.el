@@ -18,14 +18,36 @@
 // (build/runs/20260919_225443__vcs__all/cov/merged.vdb) and are never written by
 // hand: a wrong checksum makes urg silently drop the exclusion.
 //
+// ATOP absorb paths ARE waivable here, and the tie is one level up. SEP is
+// delivered inside SMU rather than standalone, so its inbound port is only ever
+// driven by smu_axi_xbar, instantiated with .ATOPs (1'b0) at
+// hw/sys/smu/rtl/smu_axi_xbar.sv:131. aw.atop is therefore zero by construction
+// in every real integration, which is what SEP's own NoAtopAllowed assumption
+// (axi_demux_simple.sv:570, passed from axi_filter_wrap.sv:242) states. SEP's
+// own ATOPs(1'b0) sites -- sep_local_axi_xbar.sv:266,
+// sep_crypto_axi_interconnect.sv:275, sep_crypto.sv:560, sep_cpu.sv:596 -- are
+// the places the filter does NOT elaborate; the instances that DO elaborate sit
+// inside axi_to_axi_lite and inside axi_err_slv within the width converters,
+// and those are the ones this chain covers. Citing an SMU file is deliberate:
+// the waiver describes the system being measured, not this repository alone.
+//
+// No burst reaches a crypto aperture. sep_crypto_axi_interconnect.sv:111-112
+// computes aw_is_burst / ar_is_burst as |AxLEN, and :175 / :205 route any such
+// request to the crypto error slave BEFORE the address decode, so no beat of a
+// burst reaches an accelerator whatever its address. crypto.adoc:117-123
+// ("Single-Beat Access Only") states the same as a software contract, and
+// fabric.adoc:29 states the general AXI4-Lite bridge rule. This pins AxLEN to
+// zero at the eight axi_dw_downsizer instances inside sep_crypto, which makes
+// their R_SPLIT_INCR_DOWNSIZE arm unenterable -- it needs a converted length
+// above 255 (axi_dw_downsizer.sv:426/:430), so ARLEN >= 128.
+//
+// NOT covered by that tie, and staying in the denominator:
+//   * u_sep_dma_wrap.u_axi_dw_downsizer_reg, which is outside sep_crypto.
+//   * R_INCR_DOWNSIZE and R_PASSTHROUGH with their returns. A SINGLE 64-bit
+//     beat enters the converting arm (ratio 2, converted length 1), so these
+//     are a stimulus gap that a 64-bit access test closes, not dead logic.
+//
 // Deliberately NOT in this file, although an earlier draft proposed them:
-//   * axi_atop_filter and axi_isolate_inner. The cited ATOPs(1'b0) sites
-//     (sep_local_axi_xbar.sv:266, sep_crypto_axi_interconnect.sv:275,
-//     sep_crypto.sv:560, sep_cpu.sv:596) are exactly the places where the
-//     filter does NOT elaborate. The 31 filters that do elaborate sit inside
-//     axi_to_axi_lite and inside axi_err_slv within the width converters, and
-//     the inbound SoC port smn_inbound_axi_req_i (sep.sv:98) is a full AXI
-//     master whose aw.atop nothing ties, so the absorb path stays reachable.
 //   * secure_dma DmaClearIntrSrc / DmaWaitIntrSrcResponse. That sequence is
 //     driven by reg2hw.clear_intr_src, a software register, so it is a
 //     stimulus gap.
