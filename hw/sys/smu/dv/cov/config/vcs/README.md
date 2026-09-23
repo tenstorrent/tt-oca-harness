@@ -71,7 +71,7 @@ whether the committed file is stale.
 | `DFT` | `test_en_i`, `scan_rst_ni` | held at their functional value in simulation |
 | `RTL-CONSTANT` | `lcc_demote_state_*_o`, `lsio_interface_select_o` | driven from a constant inside the SMU |
 | `UNION-ALIAS` | `smc_shadow_regs_o.locks.*`, `smc_shadow_regs_o.fields.*` | `efuse_map_t` is a packed union; urg lists the same 8192 flops under three views, and `values` carries every bit once |
-| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_global_base_o`, `sep_region_size_o`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
+| `SEP-OWNED` | `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_global_base_o`, `sep_region_size_o`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
 | `PARTIAL` | `timer_count_o[63:20]` | bit k first rises after 2^k reference clocks |
 
 Everything else on the port list is graded per field, both directions, and a

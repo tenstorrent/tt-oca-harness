@@ -82,12 +82,12 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
     (
         "SEP-OWNED",
         re.compile(
-            r"^(sep_io_spi_req_o|sep_cpu_trace_o|sep_lockstep_ctrl_i|sep_lockstep_status_o|"
+            r"^(sep_cpu_trace_o|sep_lockstep_ctrl_i|sep_lockstep_status_o|"
             r"sep_global_base_o|sep_region_size_o|sep_ext_interrupts_i|"
             r"entropy_rosc_sample_clk_i|lc_sigint_err_o)(\.|\[|$)"
         ),
-        "SEP passthroughs with no wrapper-level observable on this bench: the SEP SPI host "
-        "and CPU trace need SEP firmware, the lockstep pair is inert without "
+        "SEP passthroughs with no wrapper-level observable on this bench: the SEP CPU "
+        "trace needs SEP firmware, the lockstep pair is inert without "
         "RV_LOCKSTEP_ENABLE, the SEP aperture CSRs sit behind the reset aperture, the SEP "
         "external interrupts and entropy sample clock terminate inside the SEP, and the "
         "lifecycle signal-integrity error needs a fault injected inside it. The SEP bench "

@@ -313,9 +313,6 @@ module smu #(
   // Ring-oscillator sample clock for SEP entropy_source (async to clk_i)
   input  logic                               entropy_rosc_sample_clk_i,
 
-  // SEP OpenTitan SPI request
-  output sep_io_pkg::sep_io_spi_req_t        sep_io_spi_req_o,
-
   output km_intf_pkg::km_rom_mem_req_t   sep_km_rom_mem_req_o,
   input  km_intf_pkg::km_rom_mem_rsp_t   sep_km_rom_mem_rsp_i,
   output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,
@@ -1099,27 +1096,27 @@ module smu #(
     // differential encoding error reported by either the SEP or SMC efuse interface
     assign lc_sigint_err_o = sep_lc_sigint_err | efuse_lc_sigint_err;
 
-    // Export the OT SPI request to the wrapper-level SPI mux (u_sep_ip_integration).
-    assign sep_io_spi_req_o = sep_io_spi_req;
-
     // ==================================================================
     // SEP SPI signal assignments (connect struct to intermediate signals)
     // ==================================================================
-    assign sep_spi_enable       = 1'b1;
-    assign sep_spi_clk          = sep_io_spi_req.sck;
-    assign sep_spi_txd          = {4'b0, sep_io_spi_req.sd};
-    assign sep_spi_cs_n         = sep_io_spi_req.cs_n;
-    assign sep_spi_cs_oe_n      = ~sep_io_spi_req.cs_oe;
-    assign sep_spi_cs_ie_n      = sep_io_spi_req.cs_oe;
-    assign sep_spi_clk_ie_n     = sep_io_spi_req.sck_oe;
-    assign sep_spi_clk_oe_n     = ~sep_io_spi_req.sck_oe;
-    assign sep_spi_dqs_ie_n     = 1'b1;
-    assign sep_spi_dqs_oe_n     = 1'b1;
-    assign sep_spi_dq_ie_n      = {4'hF, sep_io_spi_req.sd_oe};
-    assign sep_spi_dq_oe_n      = {4'hF, ~sep_io_spi_req.sd_oe};
-    assign sep_spi_mem_rebar_oepad = 1'b0;
-    assign sep_spi_mem_rebar_opad  = 1'b0;
-    assign sep_spi_mem_rebar_iepad = 1'b0;
+    sep_io_pkg::sep_io_spi_pads_t sep_spi_pads;
+    assign sep_spi_pads = sep_io_pkg::ot_spi_pad_map(sep_io_spi_req);
+
+    assign sep_spi_enable       = sep_spi_pads.enable;
+    assign sep_spi_clk          = sep_spi_pads.clk;
+    assign sep_spi_txd          = sep_spi_pads.txd;
+    assign sep_spi_cs_n         = sep_spi_pads.cs_n;
+    assign sep_spi_cs_oe_n      = sep_spi_pads.cs_oe_n;
+    assign sep_spi_cs_ie_n      = sep_spi_pads.cs_ie_n;
+    assign sep_spi_clk_ie_n     = sep_spi_pads.clk_ie_n;
+    assign sep_spi_clk_oe_n     = sep_spi_pads.clk_oe_n;
+    assign sep_spi_dqs_ie_n     = sep_spi_pads.dqs_ie_n;
+    assign sep_spi_dqs_oe_n     = sep_spi_pads.dqs_oe_n;
+    assign sep_spi_dq_ie_n      = sep_spi_pads.dq_ie_n;
+    assign sep_spi_dq_oe_n      = sep_spi_pads.dq_oe_n;
+    assign sep_spi_mem_rebar_oepad = sep_spi_pads.mem_rebar_oepad;
+    assign sep_spi_mem_rebar_opad  = sep_spi_pads.mem_rebar_opad;
+    assign sep_spi_mem_rebar_iepad = sep_spi_pads.mem_rebar_iepad;
 
     // SEP SPI response (RX data from SMC to SEP)
     assign sep_io_spi_rsp.sd = sep_spi_rxd[3:0];
