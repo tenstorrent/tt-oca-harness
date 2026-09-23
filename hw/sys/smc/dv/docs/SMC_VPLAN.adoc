@@ -358,6 +358,7 @@ feature rows.
 |`smc_dfd_trace_sink_window_test` |The trace stream blocked at the funnel, released, and taken into two sink window sizes.
 |`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of each of node 0's event-action pairs.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
+|`smc_dfd_sink_mmr_sweep_test` |Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
 |`smc_dfd_sanity_test` |Run diagnostic CSR reads as the public DFD bounded checker.
 |`smc_dfx_status_abort_test` |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
 |`smc_ijtag_basic_test` |Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario.
@@ -4513,6 +4514,40 @@ Drive `smc_dfd_trace_sink_readout_test_seq`. Each checker below is a named compa
 
 
 *Pass Criteria*: `CHK-DST-SINK-BASELINE`, `CHK-DST-SINK-DEACTIVATE`, `CHK-DST-SINK-MODE`, `CHK-DST-SINK-READOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-218-smc_dfd_sink_mmr_sweep_test]]
+===== 218 `smc_dfd_sink_mmr_sweep_test`
+
+*Source Module*: `smc_dfd_sink_mmr_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
+
+*Test Coverage*:
+
+* All 24 registers of the `dst` (6), `dst_sink` (13) and `funnel` (5) sub-blocks of the SMC_CLA aperture, which the trace leaves otherwise write only at the handful of addresses they configure. Each is read at its RDL reset, written with every bit its fields declare, read back, restored and read back again.
+* The 11 registers with a field the contract pins -- `sw = rw` and not also hardware-driven -- are held to giving the written value back. The sink and funnel control and pointer registers are `sw = rw; hw = rw`, so the RDL pins no readback value for them; they are written because the decode is what is exercised, and held to the one thing the contract does state.
+* The 8 registers carrying a read-only, non-volatile bit have it checked against its RDL reset on all three reads, so a write that spills out of its own fields fails.
+* No trace runs and no CLA is armed, so the enables written into `Trdstcontrol`, `Trdstramcontrol` and `Trfunnelcontrol` have nothing to act on. Those registers and the window and pointer registers are swept last and every register is restored.
+
+*Test Procedure*:
+
+Drive `smc_dfd_sink_mmr_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DFD-SINK-MMR-DECODE` |Every one of the 24 registers read its RDL reset, gave back the written value in every bit the contract pins, and drove 0 in every bit no field occupies, before and after the write and after the restore; a wrong readback or a driven undeclared bit fails it
+|`CHK-DFD-SINK-MMR-READONLY` |Every read of a register carrying a read-only, non-volatile bit held that bit at its RDL reset across the write of every declared bit, so no write reached a field software does not own; a changed read-only bit fails it
+|===
+
+
+*Pass Criteria*: `CHK-DFD-SINK-MMR-DECODE`, `CHK-DFD-SINK-MMR-READONLY` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== EFUSE
