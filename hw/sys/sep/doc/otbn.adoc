@@ -64,8 +64,10 @@ served over native-protocol EDN by the shared
 `drbg_axis_edn_adapter` instance `u_axis_edn_crypto_s3c_scan` in `sep_crypto`,
 which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink
 domain into per-client EDN responses. The adapter forwards the per-beat FIPS
-provenance through a generic AXI-Stream `tuser` sideband so OTBN RND observes
-compliant entropy and does not assert `rnd_fips_chk_fail`. The OTP scramble key
+tag through a generic AXI-Stream `tuser` sideband. The CSRNG seed tag and
+external entropy mux tag are tied high by the integration's provisional
+policy. A high tag prevents a FIPS-tag failure for that response but does not
+prove that the entropy is FIPS compliant. The OTP scramble key
 handshake is tied to fixed values. Life-cycle escalation and RMA request
 signals are tied to their inactive state. OTBN occupies alert indices `[2:1]`
 ifdef::backend-html5[]

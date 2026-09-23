@@ -83,8 +83,12 @@ endif::backend-pdf[]
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so
 that FIPS-aware consumers such as OTBN RND — which latches the bit and
-raises `rnd_fips_chk_fail` on a non-FIPS ack — observe the correct
-provenance of the bits they are receiving.
+raises `rnd_fips_chk_fail` on a non-FIPS ack — receive that tag.
+The CSRNG seed FIPS tag is provisionally tied to `1`, and the external
+entropy mux also sets `tuser = 1` unconditionally. These values express an
+integration assumption; they do not measure entropy quality or establish
+FIPS compliance. The entropy source and its qualification must support that
+assumption independently.
 
 The internal entropy complex uses one software-reset request,
 `SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N`. It resets ESRC, CSRNG, EDN, and the
