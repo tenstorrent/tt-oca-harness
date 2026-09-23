@@ -25,20 +25,78 @@ Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
 Condition 15 "3029970163" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER0CFG)) | ClaMmrCdbgclacounter0CfgWr.UpperCounterWrEn) 1 -1" (1 "00")
 Condition 15 "3029970163" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER0CFG)) | ClaMmrCdbgclacounter0CfgWr.UpperCounterWrEn) 1 -1" (3 "10")
+Condition 18 "1921096815" "(MMR_CDbgClaCounter0Cfg_F_UpperCounter_WrEn ? MMR_CDbgClaCounter0Cfg_F_UpperCounter_Data : MMR_CDbgClaCounter0Cfg_F_UpperCounter_Data_prev) 1 -1" (1 "0")
 Condition 28 "646904933" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER0CFG)) | ClaMmrCdbgclacounter0CfgWr.CounterWrEn) 1 -1" (1 "00")
 Condition 28 "646904933" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER0CFG)) | ClaMmrCdbgclacounter0CfgWr.CounterWrEn) 1 -1" (3 "10")
+Condition 31 "4161930117" "(MMR_CDbgClaCounter0Cfg_F_Counter_WrEn ? MMR_CDbgClaCounter0Cfg_F_Counter_Data : MMR_CDbgClaCounter0Cfg_F_Counter_Data_prev) 1 -1" (1 "0")
 Condition 38 "3660230445" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER1CFG)) | ClaMmrCdbgclacounter1CfgWr.UpperCounterWrEn) 1 -1" (1 "00")
 Condition 38 "3660230445" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER1CFG)) | ClaMmrCdbgclacounter1CfgWr.UpperCounterWrEn) 1 -1" (3 "10")
+Condition 41 "3234917433" "(MMR_CDbgClaCounter1Cfg_F_UpperCounter_WrEn ? MMR_CDbgClaCounter1Cfg_F_UpperCounter_Data : MMR_CDbgClaCounter1Cfg_F_UpperCounter_Data_prev) 1 -1" (1 "0")
 Condition 51 "3253247302" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER1CFG)) | ClaMmrCdbgclacounter1CfgWr.CounterWrEn) 1 -1" (1 "00")
 Condition 51 "3253247302" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER1CFG)) | ClaMmrCdbgclacounter1CfgWr.CounterWrEn) 1 -1" (3 "10")
+Condition 54 "3130864123" "(MMR_CDbgClaCounter1Cfg_F_Counter_WrEn ? MMR_CDbgClaCounter1Cfg_F_Counter_Data : MMR_CDbgClaCounter1Cfg_F_Counter_Data_prev) 1 -1" (1 "0")
 Condition 61 "1791908780" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER2CFG)) | ClaMmrCdbgclacounter2CfgWr.UpperCounterWrEn) 1 -1" (1 "00")
 Condition 61 "1791908780" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER2CFG)) | ClaMmrCdbgclacounter2CfgWr.UpperCounterWrEn) 1 -1" (3 "10")
+Condition 64 "1750741456" "(MMR_CDbgClaCounter2Cfg_F_UpperCounter_WrEn ? MMR_CDbgClaCounter2Cfg_F_UpperCounter_Data : MMR_CDbgClaCounter2Cfg_F_UpperCounter_Data_prev) 1 -1" (1 "0")
 Condition 74 "522808122" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER2CFG)) | ClaMmrCdbgclacounter2CfgWr.CounterWrEn) 1 -1" (1 "00")
 Condition 74 "522808122" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER2CFG)) | ClaMmrCdbgclacounter2CfgWr.CounterWrEn) 1 -1" (3 "10")
+Condition 77 "4158173459" "(MMR_CDbgClaCounter2Cfg_F_Counter_WrEn ? MMR_CDbgClaCounter2Cfg_F_Counter_Data : MMR_CDbgClaCounter2Cfg_F_Counter_Data_prev) 1 -1" (1 "0")
 Condition 84 "75323506" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER3CFG)) | ClaMmrCdbgclacounter3CfgWr.UpperCounterWrEn) 1 -1" (1 "00")
 Condition 84 "75323506" "((reg_write & reg_wr_strb[1] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER3CFG)) | ClaMmrCdbgclacounter3CfgWr.UpperCounterWrEn) 1 -1" (3 "10")
+Condition 87 "3658170758" "(MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn ? MMR_CDbgClaCounter3Cfg_F_UpperCounter_Data : MMR_CDbgClaCounter3Cfg_F_UpperCounter_Data_prev) 1 -1" (1 "0")
 Condition 97 "4165929497" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER3CFG)) | ClaMmrCdbgclacounter3CfgWr.CounterWrEn) 1 -1" (1 "00")
 Condition 97 "4165929497" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLACOUNTER3CFG)) | ClaMmrCdbgclacounter3CfgWr.CounterWrEn) 1 -1" (3 "10")
+Condition 100 "3042411373" "(MMR_CDbgClaCounter3Cfg_F_Counter_WrEn ? MMR_CDbgClaCounter3Cfg_F_Counter_Data : MMR_CDbgClaCounter3Cfg_F_Counter_Data_prev) 1 -1" (1 "0")
+Condition 586 "456046538" "(MMR_CDbgEapStatus_F_Node3Eap3_WrEn ? MMR_CDbgEapStatus_F_Node3Eap3_Data : MMR_CDbgEapStatus_F_Node3Eap3_Data_prev) 1 -1" (1 "0")
+Condition 587 "1172224512" "(MMR_CDbgEapStatus_F_Node3Eap2_WrEn ? MMR_CDbgEapStatus_F_Node3Eap2_Data : MMR_CDbgEapStatus_F_Node3Eap2_Data_prev) 1 -1" (1 "0")
+Condition 588 "3978991543" "(MMR_CDbgEapStatus_F_Node3Eap1_WrEn ? MMR_CDbgEapStatus_F_Node3Eap1_Data : MMR_CDbgEapStatus_F_Node3Eap1_Data_prev) 1 -1" (1 "0")
+Condition 589 "3017448061" "(MMR_CDbgEapStatus_F_Node3Eap0_WrEn ? MMR_CDbgEapStatus_F_Node3Eap0_Data : MMR_CDbgEapStatus_F_Node3Eap0_Data_prev) 1 -1" (1 "0")
+Condition 590 "1280800697" "(MMR_CDbgEapStatus_F_Node2Eap3_WrEn ? MMR_CDbgEapStatus_F_Node2Eap3_Data : MMR_CDbgEapStatus_F_Node2Eap3_Data_prev) 1 -1" (1 "0")
+Condition 591 "312965747" "(MMR_CDbgEapStatus_F_Node2Eap2_WrEn ? MMR_CDbgEapStatus_F_Node2Eap2_Data : MMR_CDbgEapStatus_F_Node2Eap2_Data_prev) 1 -1" (1 "0")
+Condition 592 "3126024132" "(MMR_CDbgEapStatus_F_Node2Eap1_WrEn ? MMR_CDbgEapStatus_F_Node2Eap1_Data : MMR_CDbgEapStatus_F_Node2Eap1_Data_prev) 1 -1" (1 "0")
+Condition 593 "3835910670" "(MMR_CDbgEapStatus_F_Node2Eap0_WrEn ? MMR_CDbgEapStatus_F_Node2Eap0_Data : MMR_CDbgEapStatus_F_Node2Eap0_Data_prev) 1 -1" (1 "0")
+Condition 594 "1131335346" "(MMR_CDbgEapStatus_F_Node1Eap3_WrEn ? MMR_CDbgEapStatus_F_Node1Eap3_Data : MMR_CDbgEapStatus_F_Node1Eap3_Data_prev) 1 -1" (1 "0")
+Condition 595 "496943992" "(MMR_CDbgEapStatus_F_Node1Eap2_WrEn ? MMR_CDbgEapStatus_F_Node1Eap2_Data : MMR_CDbgEapStatus_F_Node1Eap2_Data_prev) 1 -1" (1 "0")
+Condition 596 "3043684047" "(MMR_CDbgEapStatus_F_Node1Eap1_WrEn ? MMR_CDbgEapStatus_F_Node1Eap1_Data : MMR_CDbgEapStatus_F_Node1Eap1_Data_prev) 1 -1" (1 "0")
+Condition 597 "3952796421" "(MMR_CDbgEapStatus_F_Node1Eap0_WrEn ? MMR_CDbgEapStatus_F_Node1Eap0_Data : MMR_CDbgEapStatus_F_Node1Eap0_Data_prev) 1 -1" (1 "0")
+Condition 598 "337055425" "(MMR_CDbgEapStatus_F_Node0Eap3_WrEn ? MMR_CDbgEapStatus_F_Node0Eap3_Data : MMR_CDbgEapStatus_F_Node0Eap3_Data_prev) 1 -1" (1 "0")
+Condition 599 "1256653579" "(MMR_CDbgEapStatus_F_Node0Eap2_WrEn ? MMR_CDbgEapStatus_F_Node0Eap2_Data : MMR_CDbgEapStatus_F_Node0Eap2_Data_prev) 1 -1" (1 "0")
+Condition 600 "3792907964" "(MMR_CDbgEapStatus_F_Node0Eap1_WrEn ? MMR_CDbgEapStatus_F_Node0Eap1_Data : MMR_CDbgEapStatus_F_Node0Eap1_Data_prev) 1 -1" (1 "0")
+Condition 601 "3169002358" "(MMR_CDbgEapStatus_F_Node0Eap0_WrEn ? MMR_CDbgEapStatus_F_Node0Eap0_Data : MMR_CDbgEapStatus_F_Node0Eap0_Data_prev) 1 -1" (1 "0")
+Condition 626 "4093029083" "(MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn ? MMR_CDbgClaCtrlStatus_F_CurrentNode_Data : MMR_CDbgClaCtrlStatus_F_CurrentNode_Data_prev) 1 -1" (1 "0")
+Condition 1220 "2195976364" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampLowerWrEn) 1 -1" (1 "00")
+Condition 1220 "2195976364" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampLowerWrEn) 1 -1" (3 "10")
+Condition 1223 "3077930320" "(MMR_CDbgClaTimestamp_F_TimestampLower_WrEn ? MMR_CDbgClaTimestamp_F_TimestampLower_Data : MMR_CDbgClaTimestamp_F_TimestampLower_Data_prev) 1 -1" (1 "0")
+Condition 1249 "4047399831" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.ResyncWrEn) 1 -1" (1 "00")
+Condition 1249 "4047399831" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.ResyncWrEn) 1 -1" (3 "10")
+Condition 1252 "4181707586" "(MMR_CDbgClaTimestampConfig_F_Resync_WrEn ? MMR_CDbgClaTimestampConfig_F_Resync_Data : MMR_CDbgClaTimestampConfig_F_Resync_Data_prev) 1 -1" (1 "0")
+Branch 2 "341151317" "MMR_CDbgClaCounter0Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter0Cfg_F_UpperCounter_WrEn 0"
+Branch 6 "2489696128" "MMR_CDbgClaCounter0Cfg_F_Counter_WrEn" (1) "MMR_CDbgClaCounter0Cfg_F_Counter_WrEn 0"
+Branch 9 "2538484915" "MMR_CDbgClaCounter1Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter1Cfg_F_UpperCounter_WrEn 0"
+Branch 13 "2987292215" "MMR_CDbgClaCounter1Cfg_F_Counter_WrEn" (1) "MMR_CDbgClaCounter1Cfg_F_Counter_WrEn 0"
+Branch 16 "1427883903" "MMR_CDbgClaCounter2Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter2Cfg_F_UpperCounter_WrEn 0"
+Branch 20 "3603330949" "MMR_CDbgClaCounter2Cfg_F_Counter_WrEn" (1) "MMR_CDbgClaCounter2Cfg_F_Counter_WrEn 0"
+Branch 23 "3590356377" "MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter3Cfg_F_UpperCounter_WrEn 0"
+Branch 27 "4037918258" "MMR_CDbgClaCounter3Cfg_F_Counter_WrEn" (1) "MMR_CDbgClaCounter3Cfg_F_Counter_WrEn 0"
+Branch 189 "1455523146" "MMR_CDbgEapStatus_F_Node3Eap3_WrEn" (1) "MMR_CDbgEapStatus_F_Node3Eap3_WrEn 0"
+Branch 190 "2785802625" "MMR_CDbgEapStatus_F_Node3Eap2_WrEn" (1) "MMR_CDbgEapStatus_F_Node3Eap2_WrEn 0"
+Branch 191 "3012845931" "MMR_CDbgEapStatus_F_Node3Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node3Eap1_WrEn 0"
+Branch 192 "1130241440" "MMR_CDbgEapStatus_F_Node3Eap0_WrEn" (1) "MMR_CDbgEapStatus_F_Node3Eap0_WrEn 0"
+Branch 193 "1563155840" "MMR_CDbgEapStatus_F_Node2Eap3_WrEn" (1) "MMR_CDbgEapStatus_F_Node2Eap3_WrEn 0"
+Branch 194 "2917245259" "MMR_CDbgEapStatus_F_Node2Eap2_WrEn" (1) "MMR_CDbgEapStatus_F_Node2Eap2_WrEn 0"
+Branch 195 "3095280033" "MMR_CDbgEapStatus_F_Node2Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node2Eap1_WrEn 0"
+Branch 196 "1219773802" "MMR_CDbgEapStatus_F_Node2Eap0_WrEn" (1) "MMR_CDbgEapStatus_F_Node2Eap0_WrEn 0"
+Branch 197 "685377146" "MMR_CDbgEapStatus_F_Node1Eap3_WrEn" (1) "MMR_CDbgEapStatus_F_Node1Eap3_WrEn 0"
+Branch 198 "3624958641" "MMR_CDbgEapStatus_F_Node1Eap2_WrEn" (1) "MMR_CDbgEapStatus_F_Node1Eap2_WrEn 0"
+Branch 199 "3448758875" "MMR_CDbgEapStatus_F_Node1Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node1Eap1_WrEn 0"
+Branch 200 "1027972752" "MMR_CDbgEapStatus_F_Node1Eap0_WrEn" (1) "MMR_CDbgEapStatus_F_Node1Eap0_WrEn 0"
+Branch 201 "590372528" "MMR_CDbgEapStatus_F_Node0Eap3_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap3_WrEn 0"
+Branch 202 "3556385403" "MMR_CDbgEapStatus_F_Node0Eap2_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap2_WrEn 0"
+Branch 203 "3328555665" "MMR_CDbgEapStatus_F_Node0Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap1_WrEn 0"
+Branch 204 "917489242" "MMR_CDbgEapStatus_F_Node0Eap0_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap0_WrEn 0"
+Branch 214 "683882288" "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn" (1) "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn 0"
+Branch 455 "2128509458" "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn" (1) "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn 0"
+Branch 466 "3498676337" "MMR_CDbgClaTimestampConfig_F_Resync_WrEn" (1) "MMR_CDbgClaTimestampConfig_F_Resync_WrEn 0"
 
 CHECKSUM: "3001181867 1671278051"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the conditions over its trntr signals have no stimulus that can reach them."

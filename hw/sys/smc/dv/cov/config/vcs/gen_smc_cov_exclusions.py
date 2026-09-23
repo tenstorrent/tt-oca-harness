@@ -225,10 +225,15 @@ P5 = (
     "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB "
     "path only ever issues one instruction type and the other encoding is never presented."
 )
+# The same twenty enables under the two spellings urg reports: the source-side
+# struct field in a condition, and the MMR block's flattened net in a branch.
 WREN_TIED = (
     "ClactrlstatusWr.CurrentNodeWrEn|ClatimestampWr.TimestampLowerWrEn|"
     "ClatimestampconfigWr.ResyncWrEn|EapstatusWr.Node[0-3]Eap[0-3]WrEn|"
-    "ClaMmrCdbgclacounter[0-3]CfgWr.(Upper)?CounterWrEn|TrdstcontrolWr.TrdstemptyWrEn"
+    "ClaMmrCdbgclacounter[0-3]CfgWr.(Upper)?CounterWrEn|TrdstcontrolWr.TrdstemptyWrEn|"
+    "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn|MMR_CDbgClaTimestamp_F_TimestampLower_WrEn|"
+    "MMR_CDbgClaTimestampConfig_F_Resync_WrEn|MMR_CDbgEapStatus_F_Node[0-3]Eap[0-3]_WrEn|"
+    "MMR_CDbgClaCounter[0-3]Cfg_F_(Upper)?Counter_WrEn"
 )
 P2 = (
     "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI "
@@ -246,7 +251,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object]]]" = {
     ],
     "axi_filter_wrap": [(P2, re.compile(r"filter_skip_i"))],
     "cla_mmr": [
-        (P3, re.compile(WREN_TIED)),
+        (P3, re.compile(WREN_TIED, re.I)),
         (P5, re.compile(r"instr_type")),
     ],
     "mmrs": [(P1, re.compile(r"ntr_sink|NTR_SINK|\bTrramstart(low|high)_Warl"))],
@@ -254,7 +259,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object]]]" = {
 # Branch arms a feature fact also names: the else arm of a write-data ternary whose
 # enable is a tied constant.
 FEATURE_BRANCH_FACTS: "dict[str, list[tuple[str, object, str]]]" = {
-    "cla_mmr": [(P3, re.compile(WREN_TIED), "0")],
+    "cla_mmr": [(P3, re.compile(WREN_TIED, re.I), "0")],
 }
 
 # module -> [(class, expression pattern, term-vector pattern or None)]. These
