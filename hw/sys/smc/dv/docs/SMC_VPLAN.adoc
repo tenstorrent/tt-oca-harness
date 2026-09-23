@@ -480,6 +480,7 @@ feature rows.
 |===
 |Testcase |Objective
 |`smc_uart_baud_word_parity_format_test` |UART0 divisor x frame-format sweep decoded on the TX pad and driven on the RX pad, with the parity and framing detectors shown to assert.
+|`smc_uart_char_loopback_test` |Characters through every UART own loopback: THR to RBR, the write-only FCR read back through IIR, the interrupt identification, and the MSR levels and deltas the MCR outputs drive.
 |`smc_uart_error_conditions_test` |UART parity / overrun / break line-status proofs.
 |`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
@@ -8056,6 +8057,43 @@ Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compar
 |===
 
 *Pass Criteria*: `CHK-PERIPH-LOG-ENGINE-SWEEP`, `CHK-PERIPH-REGBLOCK-COMPARES`, `CHK-PERIPH-REGBLOCK-SINGLE-SWEEP`, `CHK-PERIPH-TELEMETRY-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-207-smc_uart_char_loopback_test]]
+===== 207 `smc_uart_char_loopback_test`
+
+*Source Module*: `smc_uart_char_loopback_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); each wrapper's own UART in `MCR.LOOP`
+
+*Objective*: Send characters through every UART's own loopback and check the registers they move.
+
+*Test Coverage*:
+
+* `smc_uart_log_engine_field_sweep_test` writes the UART's software-owned registers and the log-engine leaves read LSR and RBR while the engine feeds the transmitter, but nothing drives the UART's own transmit holding register and nothing writes the addresses the read-only registers occupy. The write side of RBR, IIR, LSR and MSR and the external-register handshake behind RBR have therefore never been exercised.
+* FCR is write-only, so its enable is checked where its effect shows: `uart_16550_main.rdl` gives `IIR.FIFOS_ENABLED` the value `0x3` with the FIFOs on and `0x0` with them off, and the leaf drives FCR both ways and requires IIR to follow. `FCR.RCVR_FIFO_RESET` is `singlepulse`, and its effect is `LSR.DR` going away with a character still unread.
+* Six distinct bytes are written into THR and compared against what comes back out of RBR on each wrapper, with the transmitter required empty before the first and the receiver quiet after the last. That is also the only access that reaches the external-register interface RBR sits behind.
+* With `IER.ERBFI` set and a character waiting, IIR has to report an interrupt pending -- `INTERRUPT_PENDING` is active low -- with the Received Data Ready id `0x2` the RDL names, and no interrupt pending once RBR is drained.
+* `hw/ip/uart/uart_16550/doc/programming.adoc` fixes the loopback modem mapping: with `MCR.LOOP` set, CTS follows RTS, DSR follows DTR, RI follows OUT1 and DCD follows OUT2. Raising the four outputs must raise exactly those four MSR levels and dropping them must clear them. The sticky deltas separate on the same two legs: DCTS, DDSR and DDCD set on either edge, while TERI sets only on the trailing edge of RI, so the rising leg must leave TERI clear and the falling leg must set it.
+* LSR and MSR have no write side, so a write at either address must leave them reading what they read before.
+
+*Test Procedure*:
+
+Drive `smc_uart_char_loopback_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-CHAR-LOOPBACK` |Every byte written into the transmit holding register of every UART came back out of the receiver of the same UART unchanged, with the transmitter reported empty before the first and the receiver quiet after the last, and no overrun, parity, framing or break error on any LSR read
+|`CHK-UART-FCR-EFFECT` |The write-only FCR was driven both ways and IIR reported the matching `FIFOS_ENABLED` encoding each time, and a write of the singlepulse receive-FIFO reset with a character waiting made LSR stop reporting received data
+|`CHK-UART-IIR-RX-READY` |IIR reported an interrupt pending with the Received Data Ready id while a character waited and the received-data interrupt was enabled, and none pending once RBR was drained
+|`CHK-UART-MSR-LOOPBACK` |Raising all four MCR outputs raised exactly the four MSR levels the programming guide maps them to with DCTS, DDSR and DDCD set and TERI clear; dropping them cleared the levels and set all four deltas including TERI; and a write at the LSR and MSR addresses left both reading what they read before
+|===
+
+*Pass Criteria*: `CHK-UART-CHAR-LOOPBACK`, `CHK-UART-FCR-EFFECT`, `CHK-UART-IIR-RX-READY`, `CHK-UART-MSR-LOOPBACK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

@@ -130,3 +130,11 @@ seed = 1
 timeout_sec = 3600
 tags = ["ci", "uart"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_char_loopback_test"
+module = "smc_uart_char_loopback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
