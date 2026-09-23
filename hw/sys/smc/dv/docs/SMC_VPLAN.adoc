@@ -8181,6 +8181,47 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 '''''
 
 
+[[sec-231-smc_avsbus_clock_divider_test]]
+===== 231 `smc_avsbus_clock_divider_test`
+
+*Source Module*: `smc_avsbus_clock_divider_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_avs_clk_from_dut`, the AVS clock at the pad
+
+*Objective*: A written AVSBus clock divider setting must reach the clock the block drives.
+
+*Test Coverage*:
+
+* `AVS_CFG_1.AVS_CLOCK_SELECT` resets to a divided source, so the divider is already in the AVS clock path. Every other leaf leaves `CLK_DIVIDER_VALUE` and `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR` at their reset, and the divider only reloads when a written setting differs from the one it holds, so nothing shows that a written setting reaches the clock at all.
+* The divisor and the numerator are compared separately, so each is changed on its own: two divisors, each double the last, then a numerator change at a held divisor.
+* The minimum the RDL states for the divisor. Both fields reset to 0, which is below it, and the RDL explains the reset as a value chosen to match the divider's own reset copy so that no reload happens. Writing 0 deliberately is therefore not the same as leaving it: the divider takes the minimum of 2. The leaf measures that, and restores the clock by writing the hardware defaults the RDL names rather than the register's reset value.
+* Expected periods come from the reset measurement scaled by the programmed divisors, and the expected high fraction from the numerator over 256 as the RDL defines it; no rate is taken from the design.
+
+*Test Procedure*:
+
+[arabic]
+. Require `AVS_CLOCK_SELECT` to be a divided source and `STOP_AVS_CLOCK_ON_IDLE` to be clear, then measure the period and high fraction at the reset setting.
+. Write each divisor with the premux clocks gated around the change, as the register documentation prescribes, and measure again.
+. Change only the numerator and measure the high fraction and the period.
+. Write a divisor of 0 and measure the minimum the divider assumes.
+. Write the hardware defaults back and measure the reset rate again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-CLKDIV-PERIOD` |Each written divisor scaled the measured AVS clock period against the reset measurement
+|`CHK-AVS-CLKDIV-DUTY` |A numerator change on its own moved the high fraction to what the numerator asks for, at an unchanged period
+|`CHK-AVS-CLKDIV-MINIMUM` |A written divisor of 0 was taken as the minimum of 2, not as the reset behaviour
+|`CHK-AVS-CLKDIV-RESTORE` |The hardware-default divisor and numerator returned the clock to its reset period and high fraction
+|===
+
+*Pass Criteria*: all four checkers hold after their compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 

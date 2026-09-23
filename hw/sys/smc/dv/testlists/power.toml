@@ -20,6 +20,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_avsbus_clock_divider_test"
+module = "smc_avsbus_clock_divider_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_avsbus_frame_transaction_test"
 module = "smc_avsbus_frame_transaction_test"
 seed = 1
