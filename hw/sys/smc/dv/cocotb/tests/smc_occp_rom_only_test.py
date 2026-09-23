@@ -1,30 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared driver for the rom-only OCCP family: controller firmware drives, target ROM answers.
+"""Shared driver for the rom-only OCCP tests: controller firmware drives, target ROM answers.
 
-    u_dut  the OCCP *target*     -- the real production boot ROM
-    u_bfm  the OCCP *controller* -- one rom-mode image from fw/tests, named by +bfm_rom_hex
-
-Tests in this family differ only in the controller image and the plusargs, so they share
-this module and are separated by their testlist entry (`name` may differ from `module`).
-This is the OSS equivalent of the reference environment's `smc_rom_only_test` driver.
-
-Nothing is transferred and nothing JUMPs, which is what separates this family from
-smc_occp_dual_unsecure_boot_test. A retired-PC range check and a staged-payload readback
-therefore do not apply here: they would assert against state that does not exist.
-
-Gating follows the reference `monitor_test()`: poll both instances' scratch 0, fail on
-TEST_FAIL from either, pass on TEST_PASS from either. Which side reports depends on the
-image -- occp_sanity only OCCP-writes the target's scratch 0, while occp_random_test and
-most others also call test_pass()/test_fail() on themselves. The firmware consoles, the
-I3C bus counters and the POST code are diagnostic and gate nothing, as in the reference.
-
-Plusargs:
-    +rom_bin64=<image>        target production ROM               (required)
-    +bfm_rom_hex=<image>      controller rom-mode image           (required)
-    +occp_case=<name>         label for log and assertion text    (default: image stem)
-    +rom_test_timeout=<ns>    completion bound in ns              (default: DEFAULT_POLL_ITERS)
-    +lc_state=<n>             target lifecycle value              (default: TEST_DEV)
+Testlist entries differ only in the controller image and plusargs; nothing is transferred or
+jumped. TEST_FAIL in either instance's scratch 0 fails the run; TEST_PASS in either passes it.
 """
 
 from __future__ import annotations
@@ -55,12 +34,7 @@ from smc_occp_dual_defs import (
     required_plusarg,
 )
 
-# One poll interval, in clk_smc_i cycles. 2000 cycles at SMC_CLK_PERIOD_NS is 10 us of
-# sim time, which is the granularity +rom_test_timeout is rounded up to.
 POLL_CYCLES = 2000
-# Bound applied when a test names no +rom_test_timeout: 40 ms of sim time. The shortest
-# member of this family (occp_sanity: GET_VERSION plus one 4-byte WRITE) passes at
-# roughly 0.94 ms, so this is headroom for a stalled exchange rather than a target.
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
 REQUIRED_EVIDENCE = ("CHK-OCCP-ROM-ONLY",)
@@ -71,7 +45,6 @@ def _poll_interval_ns() -> int:
 
 
 def _poll_iterations() -> tuple[int, str]:
-    """Poll count for this run, and the text explaining where it came from."""
     budget = cocotb.plusargs.get("rom_test_timeout")
     if budget is None:
         return DEFAULT_POLL_ITERS, f"default bound {DEFAULT_POLL_ITERS} polls"
@@ -84,7 +57,6 @@ def _poll_iterations() -> tuple[int, str]:
 
 
 def _case_name() -> str:
-    """Label for this run. Falls back to the controller image stem when unnamed."""
     named = cocotb.plusargs.get("occp_case")
     if named is not None:
         return str(named)
@@ -111,9 +83,7 @@ async def smc_occp_rom_only_test(harness: SmcDualHarness) -> None:
         poll_source,
     )
 
-    # Both cores held at boot_stall from t=0 so their reset vectors can be set before
-    # either one fetches. +lc_state selects the target's lifecycle, which has to be in
-    # place before cold reset because the wrapper samples it into CHIP_CONFIG.LC_STATE.
+    # The target samples its lifecycle at cold reset, so it must be passed to bring_up().
     lc_named = cocotb.plusargs.get("lc_state")
     await harness.bring_up(
         hold_dut_boot=True,
@@ -121,9 +91,6 @@ async def smc_occp_rom_only_test(harness: SmcDualHarness) -> None:
         dut_lc_state=None if lc_named is None else int(str(lc_named), 0),
     )
 
-    # Decode both firmware virtual consoles. The controller's simputs() trace is the only
-    # window into the OCCP exchange -- without it a stalled transfer is an unexplained
-    # timeout. Printed, not gated on.
     bfm_console = VirtConsole(dut.bfm_scratch2, "ctrl-fw")
     dut_console = VirtConsole(dut.dut_scratch2, "target-fw")
     cocotb.start_soon(bfm_console.run())
@@ -132,10 +99,6 @@ async def smc_occp_rom_only_test(harness: SmcDualHarness) -> None:
     dut_csr = DualCsr("s_axi", dut.dut_rst_primary_smc_clk_no)
     bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
 
-    # Target first: the controller's initialize_interface() spins on the target-ready pad
-    # forever, so releasing the target is what lets the controller past its own bring-up.
-    # No staging window is needed -- nothing has to be written into the controller's SRAM
-    # before it runs.
     await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM)
     await harness.release_cpu(bfm_csr, "bfm", CPU_RESET_VECTOR_ROM)
 
@@ -211,8 +174,6 @@ async def smc_occp_rom_only_test(harness: SmcDualHarness) -> None:
     harness.dump_cpu_trace(logging.INFO)
     post = await dut_csr.read("TARGET_POST_CODE_FINAL", SCRATCH_POST_CODE)
 
-    # Diagnostics, not gates. Recorded so a pass carries the same evidence the reference
-    # environment logs, and so the run is auditable after the fact.
     activity = bus_activity(dut)
     moved = [
         f"I3C{ch} (+{falls - base_falls} scl_falls, +{starts - base_starts} starts)"

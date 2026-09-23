@@ -51,7 +51,6 @@ static inline uint32_t hr(uint8_t id, uint64_t abs0) {
 
 /* instance-0 absolute register addresses (window base + I3CCSR offset) */
 #define I3C0_CSR_BASE OCA_I3C_WRAP_0_REG_MAP_BASE_ADDR
-#define R_WRAP_BASE (I3C0_CSR_BASE + 0x000u)   /* wrapper reset/enable lives at +0x0 */
 #define R_HC_CONTROL (I3C0_CSR_BASE + 0x004u)  /* I3CBase HC_CONTROL */
 #define R_STBY_CR (I3C0_CSR_BASE + 0x184u)     /* I3C_EC StdbyCtrlMode STBY_CR_CONTROL */
 #define R_PIO_CONTROL (I3C0_CSR_BASE + 0x0B0u) /* PIOControl PIO_CONTROL */
@@ -232,13 +231,9 @@ static I3C_Status wait_command(I3C_Driver *drv, uint8_t command_id, uint32_t tim
     return hci_wait_response(drv->ctx.controller_id, NULL);
 }
 
-/*--------------------------------------------------------------------------
- *  Release reset / enable.  (== Cadence i3c_release_reset)
- *  Mirrors i3c_api_smc.py initialize() step 0: wrap_base+0x0 =
- *  i3c_reset_n | reg_reset_n | i3c_enable.
- *------------------------------------------------------------------------*/
+/* The wrapper has no reset or enable register: rst_ni follows the SMC primary reset. */
 void i3c_release_reset(uint8_t i3c_controller) {
-    hw(i3c_controller, R_WRAP_BASE, (1u << 0) | (1u << 1) | (1u << 8));
+    (void)i3c_controller;
 }
 
 /*--------------------------------------------------------------------------
@@ -738,80 +733,24 @@ static I3C_Status hci_setdasa(I3C_Driver *drv, uint8_t static_addr, uint8_t dyna
     return hci_wait_response(id, NULL);
 }
 
-/*--------------------------------------------------------------------------
- *  Generic CCC (SETGRPA et al). For an address-assign/CCC with one operand
- *  byte, push the operand to TX then issue an AddrAssign descriptor.
- *  (API parity: issue_setgrpa.)
- *------------------------------------------------------------------------*/
+/* The ROM is an OCCP target: controller-side DAA and CCCs are not supported. */
 static I3C_Status I3C_IssueSETGRPA(I3C_Driver *drv, uint8_t da, uint8_t group_addr) {
-    if (!drv->ctx.initialized) {
-        return I3C_ERR_HW;
-    }
-    uint8_t id = drv->ctx.controller_id;
-    /* one-byte operand (group address) as immediate CCC payload */
-    uint32_t cmd_lo =
-        ATTR_IMMEDIATE | CMD_CCC(CCC_SETGRPA) | CMD_DEVIDX(0u) | CMD_DTT(1u) | CMD_WROC | CMD_TOC;
-    uint32_t cmd_hi = (uint32_t)(group_addr << 1); /* operand byte 0 */
-    (void)da;                                      /* address comes from the DAT entry */
-    hw(id, R_CMD_PORT, cmd_lo);
-    hw(id, R_CMD_PORT, cmd_hi);
-    return hci_wait_response(id, NULL);
+    (void)drv;
+    (void)da;
+    (void)group_addr;
+    return I3C_ERR_HW;
 }
 
-/*--------------------------------------------------------------------------
- *  ENTDAA + DCT discovery.
- *  NOTE: no cocotb gold reference exists for the ENTDAA path on this core
- *  (the passing tests use SETDASA). Implemented to the MIPI HCI model; MUST be
- *  bench-verified before relied upon.
- *------------------------------------------------------------------------*/
 static I3C_Status I3C_IssueENTDAA(I3C_Driver *drv) {
-    if (!drv->ctx.initialized) {
-        return I3C_ERR_HW;
-    }
-    uint8_t id = drv->ctx.controller_id;
-    /* AddrAssign descriptor carrying the ENTDAA CCC; dev count in cmd_hi.
-     * (HCI: the core runs DAA and writes assigned devices into the DCT.) */
-    uint32_t cmd_lo = ATTR_ADDR_ASSIGN | CMD_CCC(0x07u) | CMD_DEVIDX(0u) | CMD_WROC | CMD_TOC;
-    hw(id, R_CMD_PORT, cmd_lo);
-    hw(id, R_CMD_PORT, (uint32_t)I3C_MAX_DEVICES << 16); /* dev count hint */
-    return hci_wait_response(id, NULL);
+    (void)drv;
+    return I3C_ERR_HW;
 }
 
 static I3C_Status I3C_ProcessDevices(I3C_Driver *drv, I3C_DeviceInfo *devices, size_t max_devices) {
-    if (!drv->ctx.initialized) {
-        return I3C_ERR_HW;
-    }
-    uint8_t id = drv->ctx.controller_id;
-    drv->ctx.num_devices = 0;
-    /* DCT entry = 4 words: [PID_HI][PID_LO][BCR/DCR][dynamic_addr] (MIPI HCI).
-     * Walk until a zero dynamic-address entry. VERIFY layout on bench. */
-    for (uint8_t i = 0; i < I3C_MAX_DEVICES; i++) {
-        uint64_t e = I3C_A(id, R_DCT_BASE) + (uint64_t)i * 16u;
-        uint32_t w3 = read_reg(e + 12u);
-        uint8_t dyn = (uint8_t)((w3 >> 16) & 0x7Fu);
-        if (dyn == 0u) {
-            continue;
-        }
-        uint32_t w0 = read_reg(e + 0u);
-        uint32_t w1 = read_reg(e + 4u);
-        uint32_t w2 = read_reg(e + 8u);
-        I3C_DeviceInfo *info = &drv->ctx.discovered_devices[drv->ctx.num_devices];
-        info->controller_id = id;
-        info->dynamic_addr = dyn;
-        info->pid = ((uint64_t)w0 << 16) | (uint64_t)(w1 & 0xFFFFu);
-        info->bcr = (uint8_t)((w2 >> 8) & 0xFFu);
-        info->dcr = (uint8_t)(w2 & 0xFFu);
-        info->active = true;
-        if (devices && drv->ctx.num_devices < max_devices) {
-            devices[drv->ctx.num_devices] = *info;
-        }
-        drv->ctx.num_devices++;
-    }
-    if (drv->ctx.num_devices == 0) {
-        simputs("No devices found\n");
-        return I3C_ERR_NO_DEVICES;
-    }
-    return I3C_OK;
+    (void)drv;
+    (void)devices;
+    (void)max_devices;
+    return I3C_ERR_HW;
 }
 
 /*--------------------------------------------------------------------------

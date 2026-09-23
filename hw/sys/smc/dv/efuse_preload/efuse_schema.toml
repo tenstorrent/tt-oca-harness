@@ -1,32 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# SMC eFuse map layout, for generate_efuse_preload.py.
-#
-# THIS FILE IS DERIVED, NOT AUTHORED. Every block below transcribes
-# hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl, which is the single
-# source of truth for the layout. The RDL address map is:
-#
-#     LOCKS                   @ 0x000    64 b
-#     JTAG_PUBLIC_IDENTITY    @ 0x008   256 b
-#     I2C_I3C_ID[9]           @ 0x028    64 b each
-#     SMC_CONFIG              @ 0x070    64 b
-#     OCCP_TRANSPORT_TIMEOUT  @ 0x078    64 b
-#     SPARE[28]               @ 0x080   256 b each  -> ends at 0x400 = 1024 B
-#
-#     total = 8192 b = 1 KB = smc_efuse_pkg::SHADOW_REG_BITS
-#
-# The generator lays blocks out in the order they appear here, so this order
-# must match the RDL address map above. If the RDL changes, this file has to
-# change with it; nothing checks the two against each other.
-#
-# I2C_I3C_ID and SPARE are arrays in the RDL. They are flattened here into
-# one block each of the full array width, because the generator works on
-# contiguous bit ranges rather than register instances:
-#     I2C_I3C_ID  9 x  64 =   576 b
-#     SPARE      28 x 256 =  7168 b
-# A configuration addresses an individual SPARE word by shifting inside
-# that 7168-bit value.
+# SMC eFuse map layout for generate_efuse_preload.py, copied from smc_efuse_map.rdl.
+# The generator lays blocks out in file order, so the order must match the RDL
+# address map; nothing checks this file against the RDL.
 
 [LOCKS]
 regwidth = 64

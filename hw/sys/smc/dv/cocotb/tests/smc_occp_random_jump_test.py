@@ -1,28 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The target ROM must JUMP to an address it was given at run time, not a fixed one.
+"""The target ROM must JUMP to an address given at run time, not a fixed one.
 
-    u_dut  the OCCP *target*     -- production boot ROM, and the payload's host
-    u_bfm  the OCCP *controller* -- the occp_jump DV image
-
-The testbench places a payload at a freshly drawn address inside the target's OCCP window
-and publishes where it went. The controller does not learn that address from the
-testbench: occp_jump/main.c reads the target's scratch 4 and 5 *over OCCP*
-(occp_send_read_command against slave_addr), then issues JUMP at base + entry_offset. So
-both the payload and the two scratch words belong to the target.
-
-Publication order matters and is the firmware's contract, not a convenience: main.c spins
-on scratch 4 being non-zero, so the entry offset in scratch 5 has to be in place first.
-
-The address is redrawn every run. A ROM that had a fixed jump target baked in would pass
-a single-address test and fail here.
-
-Plusargs:
-    +rom_bin64=<image>          target production ROM              (required)
-    +bfm_rom_hex=<image>        controller rom-mode image          (required)
-    +occp_payload_bin=<image>   payload staged into the target     (required)
-    +occp_payload_sym=<map>     payload symbol map, for the entry  (required)
-    +rom_test_timeout=<ns>      completion bound in ns             (default: DEFAULT_POLL_ITERS)
+Each run stages a payload at a random address in the target's OCCP window and publishes it in
+the target's scratch 4 and 5; the controller image reads both over OCCP and then issues JUMP.
 """
 
 from __future__ import annotations
@@ -94,7 +75,6 @@ async def smc_occp_random_jump_test(harness: SmcDualHarness) -> None:
     assert payload_bytes, f"{payload_bin} is empty; there would be nothing to jump into"
     entry_offset = payload_entry_offset(payload_sym)
 
-    # 8-byte aligned, and far enough below the window top that the whole image fits.
     highest = OCCP_SRAM_UPPER - len(payload_bytes)
     assert highest > OCCP_SRAM_BASE, (
         f"payload of {len(payload_bytes)} bytes does not fit in the OCCP window "
@@ -125,8 +105,7 @@ async def smc_occp_random_jump_test(harness: SmcDualHarness) -> None:
     dut_csr = DualCsr("s_axi", dut.dut_rst_primary_smc_clk_no)
     bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
 
-    # Hold the controller in wait_for_target_up_gpio() so the payload and the scratch
-    # protocol land before it starts polling.
+    # Hold the controller at its target-ready wait until the payload and jump target are staged.
     harness.set_gpio_override("bfm", CTRL_TARGET_READY_PAD, 0)
 
     await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM)
@@ -141,8 +120,7 @@ async def smc_occp_random_jump_test(harness: SmcDualHarness) -> None:
             f"expected {payload_bytes[first_bad]:#04x}. The ROM would jump into a bad image."
         )
 
-    # Entry offset first: main.c gates on scratch 4 being non-zero and reads scratch 5
-    # only after, so publishing the base first would race.
+    # Offset before base: the controller waits for scratch 4 non-zero, then reads scratch 5.
     await dut_csr.write("JUMP_ENTRY_OFFSET", SCRATCH_JUMP_ENTRY_OFFSET, entry_offset, length=8)
     await dut_csr.write("JUMP_BASE", SCRATCH_JUMP_BASE, payload_addr, length=8)
     cocotb.log.info(

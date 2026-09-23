@@ -2,38 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Secure boot: the controller transfers a payload, the ROM validates it and stands aside.
 
-    u_dut  the OCCP *target*     -- production boot ROM, on a SECURE lifecycle
-    u_bfm  the OCCP *controller* -- the occp_secure_boot_test DV image
-
-This is the unsecure boot flow's counterpart, and the difference is who runs the payload.
-There, the controller JUMPs the target into the transferred image. Here the target is on a
-secure lifecycle, so the ROM refuses to jump and instead publishes a manifest for SEP:
-
-    target scratch 9   bit 1, SMC_SEP_STATUS_MANIFEST_READY
-    target scratch 8   the manifest address, as an offset from SMC_SRAM_BASE
-
-There is no SEP in this bench, so the testbench takes SEP's part: it reads the manifest
-back and writes it again -- pushing it out of cache into SRAM, where a fetching core will
-see it -- then points the target's cores at the manifest and pulses their reset. Only then
-should the payload run.
-
-The staging protocol is the controller firmware's, from occp_secure_boot_test/main.c:
-
-    controller scratch 4   entry offset of main() inside the payload
-    controller scratch 5   where the payload sits in the CONTROLLER's SRAM
-    controller scratch 6   payload size
-    controller scratch 7   where to transfer it in the TARGET's SRAM
-
-Scratch 4 carries the entry offset here, not scratch 8 as the unsecure flow uses, because
-the ROM drives scratch 8 in the opposite direction in this flow.
-
-Plusargs:
-    +rom_bin64=<image>          target production ROM              (required)
-    +bfm_rom_hex=<image>        controller rom-mode image          (required)
-    +occp_payload_bin=<image>   payload transferred to the target  (required)
-    +occp_payload_sym=<map>     payload symbol map, for the entry  (required)
-    +lc_state=<n>               secure lifecycle value             (default: 1)
-    +rom_test_timeout=<ns>      completion bound in ns             (default: DEFAULT_POLL_ITERS)
+On a secure lifecycle the ROM publishes a manifest instead of jumping. The testbench plays SEP:
+it flushes the image to SRAM and restarts the target's cores at the manifest entry point.
 """
 
 from __future__ import annotations
@@ -87,7 +57,6 @@ DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
 REQUIRED_EVIDENCE = ("CHK-OCCP-SECURE-BOOT",)
 
-# Stand-in for SEP taking its time over the manifest, as the reference randomises.
 SEP_PROCESSING_MIN_CYCLES = 1_000
 SEP_PROCESSING_MAX_CYCLES = 20_000
 
@@ -136,8 +105,6 @@ async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
     payload_size = len(payload_bytes)
     entry_offset = payload_entry_offset(payload_sym)
 
-    # Staging inside the controller has to clear its own image; the target address only
-    # has to be inside the OCCP window. Both 8-byte aligned.
     staging_addr = rng.randrange(BFM_STAGING_FLOOR, OCCP_SRAM_UPPER - payload_size) & ~0x7
     target_addr = rng.randrange(OCCP_SRAM_BASE, OCCP_SRAM_UPPER - payload_size) & ~0x7
 
@@ -165,8 +132,7 @@ async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
     dut_csr = DualCsr("s_axi", dut.dut_rst_primary_smc_clk_no)
     bfm_csr = DualCsr("bfm_axi", dut.bfm_rst_primary_smc_clk_no)
 
-    # The controller spins on the target-ready pad inside initialize_interface(), which is
-    # the window in which its SRAM can be written with all four of its cores running.
+    # Hold the controller at its target-ready wait so its SRAM and scratch can be staged.
     harness.set_gpio_override("bfm", CTRL_TARGET_READY_PAD, 0)
 
     await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM)
@@ -192,8 +158,6 @@ async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
 
     baseline_activity = bus_activity(dut)
 
-    # Manifest-ready is the ROM's answer to VALIDATE_BOOT. Watch for an early failure from
-    # either side while waiting, so a refused transfer is reported as itself.
     ready_mask = 1 << SEP_STATUS_MANIFEST_READY_BIT
     scratch_9 = 0
     for iteration in range(poll_iters):
@@ -245,8 +209,7 @@ async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
             f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
-    # occp_secure_boot_test/main.c sends target_addr + entry_offset as the manifest, so the
-    # ROM must echo the payload's entry point, not the image base.
+    # The controller sends the payload's entry point, not its base, as the manifest address.
     expected_manifest = target_addr + entry_offset
     manifest_offset = await dut_csr.read("TARGET_MANIFEST", SCRATCH_MANIFEST_ADDR)
     manifest_addr = manifest_offset + SMC_SRAM_BASE
@@ -260,9 +223,7 @@ async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
         "manifest published: scratch 8 offset %#010x -> %#010x", manifest_offset, manifest_addr
     )
 
-    # Stand in for SEP. Reading the image back and writing it again pushes it out of the
-    # cache into SRAM, which is what the cores will fetch from after the reset below. The
-    # whole image is flushed, from its base rather than from the entry point.
+    # Act as SEP: write the image back so the restarted cores fetch it from SRAM, not cache.
     manifest_data = await dut_csr.read_bytes("MANIFEST_READ", target_addr, payload_size)
     if manifest_data != payload_bytes:
         first_bad = next(i for i, (a, b) in enumerate(zip(manifest_data, payload_bytes)) if a != b)
@@ -277,13 +238,7 @@ async def smc_occp_secure_boot_test(harness: SmcDualHarness) -> None:
         dut.clk_smc_i, rng.randint(SEP_PROCESSING_MIN_CYCLES, SEP_PROCESSING_MAX_CYCLES)
     )
 
-    # Point the target's cores at the manifest entry and pulse their reset, which is the
-    # step SEP would perform on real silicon. The manifest address is already the entry
-    # point, so it is the reset vector as-is.
-    #
-    # Not release_cpu(): that relies on boot_stall dropping to reset the tiles, and
-    # boot_stall is already low here. The frontend latches RESET_VECTOR only on tile reset,
-    # so without an explicit pulse the cores keep running the ROM at the old vector.
+    # RESET_VECTOR is latched only on tile reset and boot_stall is already low, so pulse reset.
     boot_vector = manifest_addr
     cocotb.log.info("restarting the target's cores at %#010x", boot_vector)
     for idx, addr in enumerate(CPU_CTRL_RESET_VECTOR):

@@ -2,56 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP SMC Status Ring Buffer Overflow Test
- *
- * Grades the SMC status ring buffer against the boot-ROM documentation by comparing values
- * read back from the DUT with expectations taken from that document. Every sub-check below
- * is a comparison of an observed DUT value against an expected one: change what the ROM
- * does and the verdict changes.
- *
- * AUTHORITATIVE SOURCE
- *   hw/sys/smc/bootrom/prod/doc/status-coordination.adoc (revision 79b3f4883)
- *     - "Scratch register 9", bit 2: "Status buffer ready - Scratch register 11 contains the
- *       SEP ring-buffer offset."
- *     - "The published SRAM addresses are offsets from 0xC0060000. The normal values in
- *       registers 13 and 14 describe 0xC0066400 through 0xC015AFFF."
- *     - "Ring buffers": "The ROM initializes separate SMC and SEP ring buffers at the end of
- *       SRAM. Each holds 512 32-bit entries plus head, tail, and num_entries fields. A write
- *       to a full buffer advances the tail and overwrites the oldest entry. A read returns
- *       the oldest unread entry and advances the tail."
- *     - "Status message": [31:24] message type (0x01 status, 0x08 warning, 0x0F error),
- *       [23:16] firmware ID (0x03 = SMC BL0), [15:0] value.
- *   Struct layout and the 512-entry constant come from the header that both the ROM and this
- *   test compile against: smc_ring_buffer.h (smc_ring_buffer_t, SMC_RING_BUFFER_SIZE).
- *
- * No message-type-aware reservation policy is graded: no authoritative source states one,
- *   status-coordination.adoc states overwrite-oldest (quoted above), and the ROM implements
- *   what the document states. A reservation policy, if wanted, is a specification change
- *   request, not a test finding.
- *
- * CHECKS
- *   C1 The ROM publishes the ring-buffer location: scratch 9 bit 2 is set and the scratch 11
- *      offset places both buffers past the SEP-safe SRAM window and inside SRAM.
- *   C2 Geometry: num_entries == SMC_RING_BUFFER_SIZE and head/tail are inside [0, size).
- *   C3 A read returns the oldest unread entry and advances the tail by exactly one; when the
- *      buffer has been drained head == tail and a further read returns 0.
- *   C4 One denied OCCP READ produces exactly one entry, encoded as ERROR / SMC BL0 /
- *      READ_ACCESS_DENIED, written at the old head, with the tail untouched (buffer not full).
- *   C5 Overflow: with the buffer full, one more ROM status write advances BOTH head and tail
- *      by one, leaves the occupancy at SMC_RING_BUFFER_SIZE - 1, overwrites the entry the head
- *      pointed at, and makes the previously oldest entry unreachable.
- *
- * STIMULUS
- *   Entries are produced by the ROM, never injected: an OCCP READ of 0xC0060000 lands in the
- *   ROM-owned region that smc_occp_check_addr_access_allowed() refuses in both secure and
- *   unsecure mode, and the ROM reports it once as READ_ACCESS_DENIED.
- *   The full-buffer condition of C5 is set up by writing the buffer's head/tail control fields
- *   over OCCP - occupancy only. The entry that C5 grades is still written by the ROM through
- *   its own smc_ring_buffer_write() path, and every value C5 compares is read back from the
- *   DUT. Filling the buffer the slow way would need 511 ROM-reported errors, which does not
- *   fit this test's simulation budget.
- *
- * TEST TYPE: Firmware test (master BFM drives the DUT over OCCP; DUT runs the production ROM).
+ * Checks the SMC status ring buffer: published location, geometry, drain, one ROM-reported
+ * error entry, and overwrite-oldest on a write to a full buffer. Needs status reporting
+ * enabled (+FORCE_STATUS_REPORTING); every entry graded is written by the ROM itself.
  */
 
 #include "occp_test_common.h"
@@ -62,9 +15,6 @@
 #include <stddef.h>
 #include <string.h>
 
-/* The DV-side status-message symbols and the ROM header must describe the same encoding;
- * status-coordination.adoc "Status message" is the source of both. Decoding is done in one
- * place only (occp_status_matches_expected plus the OCCP_STATUS_EXTRACT_* accessors). */
 _Static_assert((int)OCCP_STATUS_MSG_STATUS == SMC_STATUS_TYPE_STATUS,
                "status message type disagrees with smc_status.h");
 _Static_assert((int)OCCP_STATUS_MSG_WARNING == SMC_STATUS_TYPE_WARNING,
@@ -74,25 +24,19 @@ _Static_assert((int)OCCP_STATUS_MSG_ERROR == SMC_STATUS_TYPE_ERROR,
 _Static_assert((int)OCCP_FW_ID_SMC_BL0 == SMC_STATUS_FW_ID_SMC_BL0,
                "SMC BL0 firmware ID disagrees with smc_status.h");
 
-/* status-coordination.adoc: "The published SRAM addresses are offsets from 0xC0060000." */
 #define RB_SRAM_OFFSET_BASE SMC_SRAM_BASE_ADDR
 
-/* status-coordination.adoc, "Scratch register 9": bit 2 = status buffer ready. */
 #define RB_SCRATCH9_STATUS_BUFFER_READY (1U << 2)
 
-/* status-coordination.adoc: registers 13/14 describe 0xC0066400 through 0xC015AFFF, so both
- * ring buffers must live above that window and below the end of SRAM. */
+/* End of the SRAM window published to SEP; both ring buffers must sit above it. */
 #define RB_SAFE_SRAM_END_ADDR 0xC015B000ULL
 
-/* Denied in both secure and unsecure mode: inside the ROM-owned data/bss/stack region. */
+/* Denied in both secure and non-secure mode: the ROM owns this SRAM region. */
 #define RB_DENIED_READ_ADDR SMC_SRAM_BASE_ADDR
 
-/* Sentinels seeded into buffer slots for the overflow check. Chosen so they cannot be
- * mistaken for a ROM status message (message type 0xA5 is not a defined type). */
 #define RB_SENTINEL_OLDEST 0xA5A50001U
 #define RB_SENTINEL_NEXT 0xA5A50002U
 
-/* Buffer field addresses, from the struct the ROM itself uses. */
 #define RB_HEAD_ADDR(base) ((base) + (uint64_t)offsetof(smc_ring_buffer_t, head))
 #define RB_TAIL_ADDR(base) ((base) + (uint64_t)offsetof(smc_ring_buffer_t, tail))
 #define RB_NUM_ENTRIES_ADDR(base) ((base) + (uint64_t)offsetof(smc_ring_buffer_t, num_entries))
@@ -101,7 +45,7 @@ _Static_assert((int)OCCP_FW_ID_SMC_BL0 == SMC_STATUS_FW_ID_SMC_BL0,
 
 typedef struct {
     test_context_t *occp;
-    uint64_t rb_addr; /* SMC status ring buffer base, derived from scratch 11 */
+    uint64_t rb_addr;
     int checks_total;
     int checks_passed;
     bool overall_result;
@@ -141,8 +85,6 @@ static bool expect_eq32(const char *what, uint32_t actual, uint32_t expected) {
     return true;
 }
 
-/* Single-word accessors to the DUT over OCCP. Both fail the test on any transport or
- * protocol error - no observed failure is discarded. */
 static bool rb_read_word(rb_test_context_t *t, uint64_t addr, uint32_t *out) {
     uint8_t buf[sizeof(uint32_t)];
 
@@ -174,8 +116,6 @@ static uint32_t rb_occupancy(uint32_t head, uint32_t tail) {
     return (head + SMC_RING_BUFFER_SIZE - tail) % SMC_RING_BUFFER_SIZE;
 }
 
-/* Pop one entry through the OCCP GET_SMC_STATUS command (status ID 0x8001), which the ROM
- * services with smc_status_read(). Returns false if the command itself failed. */
 static bool rb_pop_entry(rb_test_context_t *t, uint32_t *entry) {
     int result = occp_send_get_smc_status_command(t->occp, t->occp->slave_addr, entry);
     increment_cmd_count(t->occp);
@@ -186,13 +126,11 @@ static bool rb_pop_entry(rb_test_context_t *t, uint32_t *entry) {
     return true;
 }
 
-/* Make the ROM write exactly one entry. The denied READ must come back with the exact error
- * the ROM owes for an out-of-range address: exp_response_code makes the shared command helper
- * fail if the ROM answers with anything else, OCCP_SUCCESS included. */
 static bool rb_trigger_one_rom_entry(rb_test_context_t *t) {
     uint8_t discard[sizeof(uint32_t)];
 
     memset(discard, 0xAA, sizeof(discard));
+    /* With exp_response_code set, OCCP_SUCCESS means the ROM returned exactly that error. */
     t->occp->exp_response_code = OCCP_INVALID_ADDRESS;
     int result = occp_send_read_command(t->occp, t->occp->slave_addr, RB_DENIED_READ_ADDR, discard,
                                         sizeof(discard));
@@ -203,9 +141,8 @@ static bool rb_trigger_one_rom_entry(rb_test_context_t *t) {
         return false;
     }
 
-    /* The ROM flushes the interface FIFO when it sends an error response; re-latch with a
-     * command that reports nothing before measuring the buffer. */
     uint32_t version = 0;
+    /* A valid command clears the ROM's consecutive-error count; five errors unlatch it. */
     result = occp_send_get_version_command(t->occp, t->occp->slave_addr, &version);
     increment_cmd_count(t->occp);
     if (result != OCCP_SUCCESS) {
@@ -215,7 +152,6 @@ static bool rb_trigger_one_rom_entry(rb_test_context_t *t) {
     return true;
 }
 
-/* The one decode of a status message in this file. */
 static bool rb_entry_is_read_access_denied(uint32_t entry) {
     simputshex32("  entry message type: 0x", OCCP_STATUS_EXTRACT_MSG_TYPE(entry));
     simputshex32("  entry firmware ID:  0x", OCCP_STATUS_EXTRACT_FW_ID(entry));
@@ -224,7 +160,6 @@ static bool rb_entry_is_read_access_denied(uint32_t entry) {
                                         (uint16_t)OCCP_SPEC_ERROR_READ_ACCESS_DENIED, false);
 }
 
-/* C1: the ROM publishes where the buffers are. */
 static bool check_buffer_published(rb_test_context_t *t) {
     simputs("\n=== C1: ROM publishes the SMC ring-buffer location ===\n");
     bool ok = true;
@@ -271,7 +206,6 @@ static bool check_buffer_published(rb_test_context_t *t) {
     return ok;
 }
 
-/* C2: geometry matches the specification. */
 static bool check_buffer_geometry(rb_test_context_t *t) {
     simputs("\n=== C2: SMC ring-buffer geometry ===\n");
     bool ok = true;
@@ -300,8 +234,6 @@ static bool check_buffer_geometry(rb_test_context_t *t) {
     return ok;
 }
 
-/* C3: a read returns the oldest unread entry and advances the tail; an empty buffer has
- * head == tail and answers 0. */
 static bool check_drain_semantics(rb_test_context_t *t) {
     simputs("\n=== C3: read advances the tail, drained buffer reports empty ===\n");
     bool ok = true;
@@ -349,8 +281,6 @@ static bool check_drain_semantics(rb_test_context_t *t) {
         return false;
     }
 
-    /* "A read returns the oldest unread entry and advances the tail": one tail step per
-     * non-empty read, and no read may move the head. */
     ok &=
         expect_eq32("tail after drain", tail_after, (tail_before + popped) % SMC_RING_BUFFER_SIZE);
     ok &= expect_eq32("head unchanged by reads", head_after, head_before);
@@ -361,7 +291,6 @@ static bool check_drain_semantics(rb_test_context_t *t) {
     return ok;
 }
 
-/* C4: one ROM-reported error becomes exactly one correctly encoded entry at the old head. */
 static bool check_single_report(rb_test_context_t *t) {
     simputs("\n=== C4: one denied READ produces exactly one ERROR entry ===\n");
     bool ok = true;
@@ -399,7 +328,6 @@ static bool check_single_report(rb_test_context_t *t) {
         ok = false;
     }
 
-    /* Leave the buffer empty for C5. */
     uint32_t drained = 0;
     if (!rb_pop_entry(t, &drained)) {
         record_check(t, false, "C4 single ROM error entry");
@@ -411,14 +339,13 @@ static bool check_single_report(rb_test_context_t *t) {
     return ok;
 }
 
-/* C5: the overflow property itself. */
 static bool check_overflow_behaviour(rb_test_context_t *t) {
     simputs("\n=== C5: a write to a full buffer advances the tail and overwrites the oldest ===\n");
     bool ok = true;
     const uint32_t seed_tail = 0;
     const uint32_t seed_head = SMC_RING_BUFFER_SIZE - 1; /* (head + 1) % size == tail => full */
 
-    /* Seed the entries first, then the indices, so the buffer is only ever briefly full. */
+    /* Seed the full state over OCCP: 511 ROM-reported errors would exceed the sim budget. */
     if (!rb_write_word(t, RB_ENTRY_ADDR(t->rb_addr, 0), RB_SENTINEL_OLDEST) ||
         !rb_write_word(t, RB_ENTRY_ADDR(t->rb_addr, 1), RB_SENTINEL_NEXT) ||
         !rb_write_word(t, RB_ENTRY_ADDR(t->rb_addr, seed_head), 0) ||
@@ -428,7 +355,6 @@ static bool check_overflow_behaviour(rb_test_context_t *t) {
         return false;
     }
 
-    /* Read the seeded state back from the DUT: everything C5 grades is relative to it. */
     uint32_t head_before = 0;
     uint32_t tail_before = 0;
     uint32_t slot_oldest = 0;
@@ -483,8 +409,6 @@ static bool check_overflow_behaviour(rb_test_context_t *t) {
         ok = false;
     }
 
-    /* The entry the tail pointed at before the overflow has been dropped: the next read must
-     * return the entry after it, never the one that was overwritten past. */
     uint32_t popped = 0;
     if (!rb_pop_entry(t, &popped)) {
         record_check(t, false, "C5 overflow overwrites the oldest entry");
@@ -508,7 +432,6 @@ static bool check_overflow_behaviour(rb_test_context_t *t) {
     return ok;
 }
 
-/* Put the buffer back into the empty state the ROM left it in. */
 static void restore_buffer_empty(rb_test_context_t *t) {
     if (t->rb_addr == 0) {
         return;
@@ -522,9 +445,6 @@ static void restore_buffer_empty(rb_test_context_t *t) {
 static void run_overflow_test_suite(rb_test_context_t *t) {
     simputs("=== SMC Status Ring Buffer Overflow Test ===\n");
 
-    /* The ROM only fills the buffer when status reporting is enabled; the run configuration
-     * must supply +FORCE_STATUS_REPORTING. Without it this testcase proves nothing, and
-     * saying so is not the same as passing. */
     if (t->occp->status_reporting_disabled) {
         simputs("FAIL: STATUS_RPT_DISABLE strap is active. This testcase needs SMC status\n");
         simputs("      reporting; the run must set +FORCE_STATUS_REPORTING.\n");
@@ -593,7 +513,6 @@ int main(void) {
 
     run_overflow_test_suite(&test_ctx);
 
-    /* Failures recorded by the shared command helpers count too. */
     if (!occp_ctx.overall_result) {
         simputs("FAIL: a shared OCCP helper reported a failure\n");
         test_ctx.overall_result = false;

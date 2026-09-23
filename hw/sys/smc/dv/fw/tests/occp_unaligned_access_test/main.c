@@ -2,11 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Unaligned Access Negative Tests
- *
- * Verify that non 4-byte aligned addresses for READ, WRITE, VALIDATE_BOOT,
- * and JUMP commands are rejected and that OCCP last error reports
- * OCCP_INVALID_ADDRESS.
+ * Checks that the ROM rejects READ, WRITE, VALIDATE_BOOT and JUMP at non-4-byte-aligned
+ * addresses with OCCP_INVALID_ADDRESS and logs one status record per rejection. JUMP runs
+ * only in unsecure mode.
  */
 
 #include "occp_test_common.h"
@@ -128,7 +126,7 @@ static void test_unaligned_read(test_context_t *ctx) {
 static void test_unaligned_jump(test_context_t *ctx) {
     uint64_t upper = ctx->test_upper_addr_bound;
     for (unsigned i = 0; i < 4; i++) {
-        uint16_t len = 8; /* minimum body size margin for range calc */
+        uint16_t len = 8;
         uint64_t range = (upper - ctx->test_base_addr);
         uint64_t max_start = (range > len) ? (range - len) : 0;
         uint64_t offset = (max_start > 0) ? (get_random_int() % (max_start + 1ULL)) : 0;
@@ -154,7 +152,7 @@ static void test_unaligned_jump(test_context_t *ctx) {
 static void test_unaligned_validate_boot(test_context_t *ctx) {
     uint64_t upper = ctx->test_upper_addr_bound;
     for (unsigned i = 0; i < 4; i++) {
-        uint16_t len = 8; /* header body size margin for range calc */
+        uint16_t len = 8;
         uint64_t range = (upper - ctx->test_base_addr);
         uint64_t max_start = (range > len) ? (range - len) : 0;
         uint64_t offset = (max_start > 0) ? (get_random_int() % (max_start + 1ULL)) : 0;
@@ -206,10 +204,8 @@ int main(void) {
     ctx.cmd_count = 0;
     ctx.exp_occp_last_error = 0;
 
-    /* Run some valid commands before invalid unaligned tests */
     simputs("=== Valid OCCP commands before unaligned tests ===\n");
     execute_random_commands(&ctx, 1);
-    // re-latch to recover
     uint32_t status_data = 0;
     int retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -218,7 +214,7 @@ int main(void) {
     }
     increment_cmd_count(&ctx);
     test_unaligned_write(&ctx);
-    // relatch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -226,7 +222,6 @@ int main(void) {
     }
     increment_cmd_count(&ctx);
     test_unaligned_read(&ctx);
-    // relatch to recover
     retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -234,7 +229,6 @@ int main(void) {
     }
     increment_cmd_count(&ctx);
     test_unaligned_validate_boot(&ctx);
-    // relatch to recover
     retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -242,17 +236,14 @@ int main(void) {
     }
     increment_cmd_count(&ctx);
     if (!is_secure_mode()) test_unaligned_jump(&ctx);
-    // re-latch to recover
     retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
         ctx.overall_result = false;
     }
     increment_cmd_count(&ctx);
-    /* Validate the SMC status buffer counts before cooldown */
     read_and_validate_smc_status_buffer(&ctx);
 
-    /* Run some valid commands after invalid unaligned tests */
     simputs("=== Valid OCCP commands after unaligned tests ===\n");
     execute_random_commands(&ctx, 1);
 

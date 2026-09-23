@@ -2,27 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """VALIDATE_AND_BOOT must hand the manifest address on to SEP, then stop.
 
-    u_dut  the OCCP *target*     -- production boot ROM
-    u_bfm  the OCCP *controller* -- the occp_validate_boot_test DV image
-
-The controller draws a manifest address, records it in its own scratch 8, and sends it to
-the target in a VALIDATE_AND_BOOT command. The ROM's side of that contract is to publish
-the address for SEP and then hand the part over:
-
-    target scratch 8   the manifest address, as an offset from SMC_SRAM_BASE
-    target scratch 9   bit 1, SMC_SEP_STATUS_MANIFEST_READY
-    the ROM halts      it has finished; SEP boots the manifest, the ROM does not
-
-All three are checked. The address comparison is what makes this more than a handshake
-test: the ROM has to echo the address it was actually given, and the controller's own
-scratch 8 is the independent record of what that was. The halt matters for the same reason
-as in the DFT tests -- a ROM that published the manifest and then carried on booting would
-pass a scratch-only check while being the defect worth finding.
-
-Plusargs:
-    +rom_bin64=<image>        target production ROM               (required)
-    +bfm_rom_hex=<image>      controller rom-mode image           (required)
-    +rom_test_timeout=<ns>    completion bound in ns              (default: DEFAULT_POLL_ITERS)
+The ROM must echo the address the controller recorded in its own scratch 8, set the
+manifest-ready bit, and halt: a ROM that kept booting would pass a scratch-only check.
 """
 
 from __future__ import annotations
@@ -78,7 +59,6 @@ def _poll_iterations() -> tuple[int, str]:
 
 
 async def _expect_halted(dut, harness) -> set[int]:
-    """Require the target's retired PC to stay inside a one- or two-PC loop."""
     await ClockCycles(dut.clk_smc_i, HALT_SETTLE_CYCLES)
 
     allowed: set[int] = {int(dut.dut_wb_pc0.value)}
@@ -181,7 +161,7 @@ async def smc_occp_validate_boot_test(harness: SmcDualHarness) -> None:
             f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
-    # Manifest-ready bit, then the address it refers to.
+    # Scratch 8 is valid only once the manifest-ready bit is set.
     ready_mask = 1 << SEP_STATUS_MANIFEST_READY_BIT
     scratch_9 = 0
     for _ in range(poll_iters):
