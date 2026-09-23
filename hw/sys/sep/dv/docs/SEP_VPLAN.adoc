@@ -355,6 +355,10 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |ML-DSA-87 signing and verification through the same aperture: a deterministic external-mu signature compared word-for-word against the ACVP sigGen vector, and the sigVer pair that must verify and must not, with `MLDSA_VERIFY_RES` compared against each signature's c~.
+|`sep_abr_pipelined_read_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|ABR is the one crypto block reached over AHB, through `axi4_to_ahb`, and that bridge pipelines reads through a single shared data buffer. An SoC master may hold several single-beat reads outstanding with distinct `ARID`s, and each must be answered with its own register's value. Every read in the sweep targets the SAME read-only register, so every response must carry the identical value and no reordering or per-id confusion can explain a difference. FAILS today: from the third read in flight some responses carry zero with an OKAY response -- issue #2253.
 |`sep_abr_mlkem_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -449,7 +453,7 @@ never when it was written.
 |`sep_crypto_csr_wide_access_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|The SEP fabric is 64-bit and every crypto register block is 32-bit, so a 64-bit CSR access is not forwarded: the aperture's `axi_dw_converter` must split it into two 32-bit beats and reassemble the read data in order. The rest of the suite issues 32-bit beats, which take the converter's passthrough arm, so the downsize arm carries no evidence from any other leaf. The two arms are compared against each other -- the 64-bit read against the two 32-bit reads of the same words -- so a converter that zeroed a half, duplicated a word or swapped the halves fails as a mismatch. No burst is involved: `sep_crypto_axi_interconnect.sv:111-112` routes any `AxLEN != 0` to the crypto error slave, which `hw/sys/sep/doc/crypto.adoc` states to software as a single-beat rule.
+|The SEP fabric is 64-bit and every crypto register block is 32-bit, so a 64-bit CSR access is not forwarded: the aperture's `axi_dw_converter` must split it into two 32-bit beats and reassemble the read data in order. The rest of the suite issues 32-bit beats, which take the converter's passthrough arm, so the downsize arm carries no evidence from any other leaf. The two arms are compared against each other -- the 64-bit read against the two 32-bit reads of the same words -- so a converter that zeroed a half, duplicated a word or swapped the halves fails as a mismatch. The same reads are then held concurrently with distinct `ARID`s, at distinct addresses and at every aperture: serial reads are answered by an otherwise idle converter, and only concurrency can show one read being answered with another's data. The depth is DV-owned, not the converter's slot count. No burst is involved: `sep_crypto_axi_interconnect.sv:111-112` routes any `AxLEN != 0` to the crypto error slave, which `hw/sys/sep/doc/crypto.adoc` states to software as a single-beat rule.
 |`sep_axi_map_refuse_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -5507,6 +5511,52 @@ reported as such rather than counted as a pass.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
+[[sep_abr_pipelined_read_test]]
+===== `sep_abr_pipelined_read_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_pipelined_read_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Testlist*: `crypto.toml`, also in `all.toml`. NOT in a class group: it grades a contract the RTL fails today, so a group that must go green does not carry it.
+
+*Status*: FAILING by design while issue #2253 stands. It is the reproducer for that issue and passes when the RTL is fixed. It is not an `expect_fail`: the gap is a real defect, and masking it would make the leaf green over a broken contract.
+
+*Objective*: ABR is the only crypto block reached over AHB rather than AXI, through `axi4_to_ahb` in `sep_crypto_abr_wrapper.sv:93`. That bridge carries pipelined reads through a single shared data buffer and a streaming FSM state. A master on the SoC-facing inbound port may legitimately hold several single-beat reads outstanding with distinct `ARID`s -- AXI places no restriction on that (IHI 0022 A5.3), and no SEP document places one on this aperture -- and each must be answered with its own register's value. The KAT leaves read one word at a time and wait, so the streaming path carries no evidence from any other leaf.
+
+*Test Coverage*: The ABR register aperture, read from the SMN inbound master at 1, 2, 3, 4 and 8 reads in flight.
+
+*Why the inbound master*: driven from `m_axi`, the SoC-facing port (`sep.sv:98`, `ext_axi_req_i` at `:415`), because that is a real master. The CPU-LSU splice is deliberately NOT used: `s_axi` exists only to present what the VeeR LSU would present, and the LSU serialises MMIO loads -- a firmware run of the same reads keeps one transaction in flight and never enters the bridge's streaming state. Pipelining on that port would be stimulus the port cannot carry in the real design, and would prove nothing.
+
+*Test Procedure*:
+
+[arabic]
+. Open inbound filter entry 0 for the ABR page. The filter denies by default; the rule is programmed from the CPU-LSU side, as every inbound test reaches these CSRs.
+. Read `MLDSA_VERSION1` once on its own through the sequencer, establishing the value the aperture holds and that it is readable at all.
+. For each depth in 1, 2, 3, 4, 8: issue that many single-beat reads of THAT SAME address with distinct `ARID`s, presenting every `AR` before consuming any `R`, then collect each response.
+. Require every response at every depth to equal the control value and to carry an OKAY response.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ABR-CONTROL
+|The control read answers OKAY and returns the generated golden for `MLDSA_VERSION1`. It is the comparand for the whole sweep, so a control that answered zero, or errored, would let every pipelined read compare equal to it and this leaf would be green over a dead aperture. Address and expected word both come from the generated map, never a literal.
+|CHK-ABR-PIPELINED-READ
+|Every read, at every depth, returns the value the register returns when read alone, with an OKAY response. `MLDSA_VERSION1` is read-only with unconditional combinational readback, so it holds one value and any other response is wrong. An error response is recorded separately from silently wrong data. A timeout counts as a failure, not a skip.
+|===
+
+*Why the comparison cannot be explained away*: every read targets one address with one expected value, so reordering, id-to-event mis-association or per-id state reuse in the VIP could only redistribute correct values among the responses -- none of them can turn the register's value into zero. Single-beat only (`ARLEN = 0`): the crypto demux routes any `AxLEN != 0` to its error slave (`sep_crypto_axi_interconnect.sv:111-112`), which `hw/sys/sep/doc/crypto.adoc` states to software, so no burst is involved or possible.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
 [[sep_crypto_csr_wide_access_test]]
 ===== `sep_crypto_csr_wide_access_test`
 
@@ -5522,7 +5572,9 @@ reported as such rather than counted as a pass.
 
 *Objective*: Proves that a 64-bit read of a crypto CSR is re-beated by the aperture's width converter without changing the data. The fabric is 64-bit and the register block is 32-bit, so `AxSIZE=3` cannot be forwarded: the converter takes its downsize arm, issues two 32-bit beats and reassembles them. Every other leaf in the suite issues 32-bit beats and takes the passthrough arm instead, so no existing evidence covers the downsize arm at any of these apertures.
 
-*Test Coverage*: Five crypto apertures behind an `axi_dw_converter` -- AES, HMAC, KMAC, OTBN and entropy source -- each presented one 64-bit read and its two 32-bit equivalents.
+*Test Coverage*: Five crypto apertures behind an `axi_dw_converter` -- AES, HMAC, KMAC, OTBN and entropy source -- each presented one 64-bit read and its two 32-bit equivalents, then several 64-bit reads held in flight at once.
+
+*Outstanding reads*: a read issued after the previous one retired is answered by an otherwise idle converter, so serial traffic exercises one path however much of it there is. Concurrency is the only shape under which a converted read can be answered with a DIFFERENT read's data, and that is the failure this phase grades. The ids are distinct because a converter may legitimately order same-id reads behind one another, which would serialise the traffic and undo the concurrency. AXI permits the shape: several outstanding reads with different ids, each answered with its own data (IHI 0022 A5.3). The depth is DV-owned (`CRYPTO_CONCURRENT_READS` in `env/sep_spec_tables.py`) and is deliberately NOT the converter's `AxiMaxReads`: the graded claim is data integrity under concurrency, which holds at any depth, and scoring "every read slot was occupied" against the RTL's own slot count would be the DUT agreeing with itself.
 
 *Test Procedure*:
 
@@ -5531,6 +5583,8 @@ reported as such rather than counted as a pass.
 . Read the same two words again, single-beat, and require both passes to agree. A word that changes between them is live state rather than a comparand, and its aperture is reported instead of compared.
 . Read the same 8 bytes as ONE 64-bit beat.
 . Compare the 64-bit value against the two 32-bit values concatenated.
+. At the entropy source, issue `CRYPTO_CONCURRENT_READS` 64-bit reads at that many DISTINCT addresses with distinct `ARID`s, presenting every `AR` before consuming any `R`, and require each to return its own golden with an OKAY response.
+. At every aperture, issue the same number of 64-bit reads of the one address already proved readable, distinct `ARID`s, all in flight at once, and require each to return the golden.
 
 *Checkers*:
 
@@ -5540,7 +5594,11 @@ reported as such rather than counted as a pass.
 |CHK-WIDE-SPLIT
 |The 64-bit read equals the two 32-bit reads of the same words, at every aperture. The golden is the DUT's own passthrough arm, so this is converter-against-converter and never a recomputation.
 |CHK-WIDE-NONVAC
-|Every aperture in the table was presented, and at least three compared a NON-ZERO value. A pair that reads zero compares 0 against 0, which a converter returning nothing would also satisfy, so the floor is what makes the other checker mean something.
+|Every aperture in the table was presented, and at least three compared a NON-ZERO value. A pair that reads zero compares 0 against 0, which a converter returning nothing would also satisfy, so the floor is what makes the other checker mean something. Also requires that the slot spread ran at every aperture.
+|CHK-WIDE-OUTSTANDING
+|Concurrent 64-bit reads at the entropy source, distinct ids AND distinct addresses, each returning its own data and an OKAY response. The goldens must hold at least two distinct values, else a read answered with another read's data would compare equal and go unseen.
+|CHK-WIDE-SLOTS
+|Concurrent 64-bit reads at every aperture, distinct ids, each returning the golden. The same integrity claim as CHK-WIDE-OUTSTANDING, carried to every converted aperture rather than only the entropy source, so an aperture answering a concurrent read with zeros or stale data fails. A read answered with another read's data is not visible here because every id reads the same word; CHK-WIDE-OUTSTANDING owns that case with distinct addresses.
 |===
 *Evidence*: the register pairs are chosen for a non-zero reset in the generated map -- `HMAC_CFG` 0x4100, `KMAC_CFG_SHADOWED` 0x1000, `OTBN_STATUS` 0x4, `ENTROPY_SOURCE_COMPONENT_ID` 0x1000001 -- so the compared halves differ and a zeroed, duplicated or half-swapped result fails. Addresses come from the generated register header by symbol, never a literal.
 
