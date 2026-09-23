@@ -137,7 +137,7 @@ module i2c_wrap #(
     .SpillB          (1'b0),
     .SpillAr         (1'b1),
     .SpillR          (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (1'b0),
@@ -158,7 +158,7 @@ module i2c_wrap #(
     .RESP_WIDTH     (i2c_wrap_pkg::REG_DATA_WIDTH),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
-  ) prim_axi_lite_err_slv (
+  ) u_prim_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
@@ -185,7 +185,7 @@ module i2c_wrap #(
       .TARGET_TX_FIFO_DEPTH     (TARGET_TX_FIFO_DEPTH),
       .TARGET_RX_FIFO_DEPTH     (TARGET_RX_FIFO_DEPTH),
       .INPUT_DELAY_CYCLES       (INPUT_DELAY_CYCLES)
-    ) i2c (
+    ) u_i2c (
       // Global Interface
       .clk_i,
       .rst_ni,
@@ -229,7 +229,7 @@ module i2c_wrap #(
 
   i2c_ctrl_reg_pkg::i2c_ctrl__out_t reg_out;
 
-  i2c_ctrl_reg i2c_ctrl_reg (
+  i2c_ctrl_reg u_i2c_ctrl_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 

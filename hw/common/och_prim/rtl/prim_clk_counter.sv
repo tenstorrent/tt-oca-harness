@@ -26,7 +26,7 @@ module prim_clk_counter #(
 
   prim_sync_reset #(
     .WIDTH(4)
-  ) sync_reset_n (
+  ) u_sync_reset_n (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_mode_i(test_mode_i),
@@ -58,7 +58,7 @@ module prim_clk_counter #(
     end
   end
 
-  cdc_4phase sync_cnt_en (
+  cdc_4phase u_sync_cnt_en (
     .src_rst_ni  (refclk_rst_ni),
     .src_clk_i   (refclk_i),
     .src_data_i  (cnt_en_d),
@@ -81,7 +81,7 @@ module prim_clk_counter #(
   end
   assign cnt_start_synced = ~cnt_en_synced_d & cnt_en_synced;
 
-  prim_sync3_pulse sync_refclk_cnt_done (
+  prim_sync3_pulse u_sync_refclk_cnt_done (
     .src_pulse_i(refclk_cnt_done_i),
     .src_clk_i(refclk_i),
     .src_rst_ni(refclk_rst_ni),

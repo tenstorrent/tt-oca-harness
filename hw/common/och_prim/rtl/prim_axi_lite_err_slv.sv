@@ -75,7 +75,7 @@ module prim_axi_lite_err_slv #(
     .resp_lite_t     (axil_resp_t),
     .axi_req_t       (axi_req_t),
     .axi_resp_t      (axi_resp_t)
-  ) axi_lite_to_axi (
+  ) u_axi_lite_to_axi (
     .slv_req_lite_i  (axil_req_i),
     .slv_resp_lite_o (axil_resp_o),
     .slv_aw_cache_i  (axi_pkg::cache_t'(0)),
@@ -93,7 +93,7 @@ module prim_axi_lite_err_slv #(
     .RespData   (RESP_DATA),
     .ATOPs      (1'b0),
     .MaxTrans   (MAX_TRANS)
-  ) axi_err_slv (
+  ) u_axi_err_slv (
     .clk_i,
     .rst_ni,
     .test_i     (1'b0),

@@ -84,7 +84,7 @@ module gpio_filter
     .SpillB      (1'b0),
     .SpillAr     (1'b0),
     .SpillR      (1'b0)
-  ) axil_filter (
+  ) u_axil_filter (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
@@ -106,7 +106,7 @@ module gpio_filter
     .RESP_WIDTH(gpio_pkg::DATA_WIDTH),
     .RESP_DATA(32'hBADCAB1E),
     .MAX_TRANS(1)
-  ) filter_err_slv (
+  ) u_filter_err_slv (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .axil_req_i(axil_reqs_filtered[0]),
