@@ -354,7 +354,7 @@ all other reserved.
 | 3 | `TX_FIFO_RST` | RW | 0x0 a| Clear TX FIFO from software. Valid only in PIO mode.
 | 2 | `RESP_QUEUE_RST` | RW | 0x0 a| Clear response queue from software. Valid only in PIO mode.
 | 1 | `CMD_QUEUE_RST` | RW | 0x0 a| Clear command queue from software. Valid only in PIO mode.
-| 0 | `SOFT_RST` | RW | 0x0 a| Reset controller from software.
+| 0 | `SOFT_RST` | RW | 0x0 a| Reset controller from software. Not supported currently
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-0-I3CBase-PRESENT_STATE]

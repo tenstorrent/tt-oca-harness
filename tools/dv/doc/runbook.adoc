@@ -25,7 +25,7 @@ target below is one the workflows enforce.
 |Service |Trigger and schedule |Budget |What the result means
 
 |Pull-request gate: `verilator-smoke (<dut>)` for `dtp`, `sep`, `smu`,
-`smu_block`, and `smc`
+and `smc`
 |`sim.yml` on every pull request, every push to `main`, and
 `workflow_dispatch`. A new push to a pull request cancels the smoke run it
 supersedes; a push to `main` never cancels a run in progress.
@@ -73,7 +73,7 @@ serialized and never cancel one another.
 Every row runs on the GitHub-hosted `ubuntu-latest` image unless the
 repository variable `DV_LARGE_RUNNER` names a larger GitHub-hosted label,
 which promotes the `sep` rows of every tier and the weekly rows of `dtp`,
-`smu`, `smu_block`, and `smc`; the labelled SMC row and the three
+`smu`, and `smc`; the labelled SMC row and the three
 `cross_trigger` rows stay on the standard runner (the runner page's CI
 section states the mechanism and its failure mode: a label with no matching
 runner queues until GitHub gives the job up). The SEP model is the row the
@@ -130,10 +130,10 @@ series
 |GitHub's log retention for the repository
 |===
 
-Two consequences follow. A published record's native links (`log`,
-`junit_xml`, `result_json`, coverage details) resolve only while the weekly
-artifact exists, so a record older than 30 days stands on its normalized
-content alone. And the branch is the only store that outlives the artifacts,
+Two consequences follow. A published record's native links
+(`artifacts.log`, `artifacts.result_json`, `artifacts.regression_json`, and
+the coverage `source_` paths) resolve only while the weekly artifact exists,
+so a record older than 30 days stands on its normalized content alone. And the branch is the only store that outlives the artifacts,
 which is why trend continuity lives there and why the `dashboard` workflow
 is the only writer of `latest/` and `data/`.
 
@@ -161,6 +161,32 @@ The dashboard publishes a cancelled weekly DUT as recorded: `FAIL` or
 `UNKNOWN`, with `tests.completed` `false` and its finished leaves counted.
 A DUT whose job never produced a `result.json`, because it was cancelled
 before the runner started or never uploaded, fails the whole publication.
+
+=== What a cancelled cluster run leaves behind
+
+A run on a cluster executor cancels its own jobs by id when it is
+interrupted and waits up to the executor's cancel grace for the scheduler
+to confirm each stop; a second signal ends the wait. The interrupted
+summary then names what is still unaccounted for:
+
+[source,bash]
+----
+jq '.interruption | {signal, cancellation}' <run>/result.json
+jq '.progress.interrupted[] | {item, seed, jobs: [.jobs[] | .job_id]}' <run>/result.json
+jq '.jobs[] | {task_id, native_job_id, last_state, cancel_reply}' \
+  <run>/stages/regress/jobs/cancel-unconfirmed.json
+----
+
+Expected: no `cancellation` object. One is recorded only when a stop went
+unconfirmed, with `confirmed` below `requested`; each `unconfirmed` job id
+is one the scheduler did not know or had not stopped when the wait ended.
+Query it by id with the scheduler's own command
+(`bjobs <id>`, `squeue -j <id>`), and cancel it by id if it is still live.
+Never cancel by user or job-name pattern: job names repeat across runs
+that share a run directory name, and other runs share the account. If the
+coordinator died without its handler, the last `UNKNOWN` checkpoint's
+`progress.active` leaves carry the same `jobs` lists, and those ids are the
+only record of what may still be running.
 
 === Cancelling a run
 
@@ -400,7 +426,7 @@ python3 tools/dv/run_dv.py --dut dtp --items all --tool verilator \
   --sim-jobs 1 --run-dir build/ci/runs/dtp/verilator/rehearsal &
 pid=$!
 sleep 45; kill -TERM "$pid"; wait "$pid"; echo "exit $?"
-jq '{status, interruption, progress: (.progress | {state, completed: (.completed|length), interrupted: (.interrupted|length), missing: (.missing|length)}), tests: {completed: .tests.completed, pass_rate: .tests.pass_rate}}' \
+jq '{status, interruption, progress: (.progress | {state, completed_count, interrupted_count, missing_count}), tests: {completed: .tests.completed, pass_rate: .tests.pass_rate}}' \
   build/ci/runs/dtp/verilator/rehearsal/result.json
 cat build/ci/runs/dtp/verilator/rehearsal/results/results.xml
 ----

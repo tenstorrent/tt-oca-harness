@@ -14,9 +14,10 @@ for every executor, so scheduler state never decides a DV verdict: a leaf's own 
 from __future__ import annotations
 
 import re
+import threading
 import time
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -167,9 +168,17 @@ def task_identifier(stage: str, leaf_id: int, attempt: int, *, debug_only: bool 
     return f"{stage}-{leaf_id:06d}-a{attempt}" + ("-debug" if debug_only else "")
 
 
+BUILD_ROLE = "build"
+LEAF_ROLE = "leaf"
+
+
 @dataclass(frozen=True)
 class LeafTask:
-    """One attempt of one leaf: the unit an executor runs."""
+    """One attempt of one leaf, or one target build: the unit an executor runs.
+
+    A build task carries ``role = "build"``, an empty ``item`` and the target it builds; the
+    worker runs its stage with no item and never treats the target as already built.
+    """
 
     task_id: str
     leaf_id: int
@@ -181,6 +190,7 @@ class LeafTask:
     leaf_dir: Path
     target: str | None = None
     nest: bool = False
+    role: str = LEAF_ROLE
     # A wave-debug rerun of a failed final attempt; its status never grades the leaf.
     debug_only: bool = False
     timeout_sec: int | None = None
@@ -196,6 +206,10 @@ class LeafTask:
     @property
     def result_json(self) -> Path:
         return self.leaf_dir / "result.json"
+
+    @property
+    def is_build(self) -> bool:
+        return self.role == BUILD_ROLE
 
 
 @dataclass
@@ -263,12 +277,24 @@ def error_result(task: LeafTask, reason: str, *, started_at: str | None = None) 
     )
 
 
-def result_from_fragment(payload: Mapping[str, Any], *, stage: str, item: str) -> StageResult:
-    """A leaf ``result.json`` read back as the :class:`StageResult` that wrote it."""
-    metadata = payload.get("metadata")
+def result_from_fragment(
+    payload: Mapping[str, Any], *, stage: str, item: str | None
+) -> StageResult:
+    """A leaf ``result.json`` read back as the :class:`StageResult` that wrote it.
+
+    A build's fragment names no item, and its result carries none either. The fragment
+    records the build that produced the leaf once, under ``target_build``; the result keeps
+    it in its metadata, where the coordinator reads it.
+    """
+    recorded_metadata = payload.get("metadata")
+    metadata = dict(recorded_metadata) if isinstance(recorded_metadata, dict) else None
+    target_build = payload.get("target_build")
+    if isinstance(target_build, dict):
+        metadata = {**(metadata or {}), "target_build": dict(target_build)}
+    recorded = payload.get("item", item)
     return StageResult(
         stage=stage,
-        item=str(payload.get("item", item)),
+        item=str(recorded) if recorded else None,
         status=str(payload.get("status", "UNKNOWN")),
         return_code=int(payload.get("return_code", 1)),
         duration_sec=float(payload.get("duration_sec", 0.0)),
@@ -279,7 +305,7 @@ def result_from_fragment(payload: Mapping[str, Any], *, stage: str, item: str) -
         failure_buckets=list(payload.get("failure_buckets") or []),
         reason=str(payload.get("reason", "")),
         parser=payload.get("parser"),
-        metadata=dict(metadata) if isinstance(metadata, dict) else None,
+        metadata=metadata,
         target=payload.get("target"),
         formal=payload.get("formal"),
     )
@@ -304,6 +330,24 @@ class Executor(ABC):
     @abstractmethod
     def submit(self, task: LeafTask) -> JobHandle: ...
 
+    def submit_many(
+        self,
+        tasks: Sequence[LeafTask],
+        on_submitted: Callable[[Sequence[JobHandle]], None] | None = None,
+    ) -> list[JobHandle]:
+        """One handle per task, in order; a driver with job arrays submits them together.
+
+        ``on_submitted`` sees every handle as soon as its submission command has returned, so
+        a caller interrupted part-way through a batch knows which jobs it owns.
+        """
+        handles: list[JobHandle] = []
+        for task in tasks:
+            handle = self.submit(task)
+            handles.append(handle)
+            if on_submitted is not None:
+                on_submitted([handle])
+        return handles
+
     @abstractmethod
     def poll(self, handles: Sequence[JobHandle]) -> dict[str, JobObservation]:
         """Observations keyed by ``task_id`` for every handle asked about."""
@@ -314,8 +358,17 @@ class Executor(ABC):
             time.sleep(timeout_sec)
 
     @abstractmethod
-    def cancel(self, handles: Sequence[JobHandle], *, grace_sec: float) -> dict[str, bool]:
-        """Ask the backend to stop every handle; True per ``task_id`` once the stop is confirmed."""
+    def cancel(
+        self,
+        handles: Sequence[JobHandle],
+        *,
+        grace_sec: float,
+        stop: threading.Event | None = None,
+    ) -> dict[str, bool]:
+        """Ask the backend to stop every handle; True per ``task_id`` once the stop is confirmed.
+
+        The confirmation wait lasts at most ``grace_sec``; ``stop``, once set, ends it sooner.
+        """
 
     @abstractmethod
     def collect(self, handle: JobHandle) -> ExecutionResult:
@@ -326,6 +379,8 @@ class Executor(ABC):
 
 
 __all__ = [
+    "BUILD_ROLE",
+    "LEAF_ROLE",
     "ArgvTemplate",
     "ExecutionResult",
     "Executor",

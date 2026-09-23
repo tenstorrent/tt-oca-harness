@@ -53,17 +53,17 @@
 <h3 id="NDMRESET_REQUEST">NDMRESET_REQUEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>NDM Request from Cluster [0:NDMRESET_CLUSTER_COUNT]. Read-only field that reflects incoming NDM reset requests.<br>Connected from ndmreset_request_i input port. Also connected to SMC interrupts. Supports up to 32 CPU Clusters</td></tr>
+<tr><td>31:0</td><td>ndmreset_request</td><td>R</td><td>0x0</td><td>Bit i is the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count follow the request input.<br>Bits at and above that count read as 0. The field holds up to 32 clusters.</td></tr>
 </table>
 <h3 id="NDMRESET_PROCESS">NDMRESET_PROCESS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>NDM Response Firmware writes to this field to respond to NDM reset requests.<br>Connected to ndmreset_process_o output port. Supports up to 32 CPU Clusters</td></tr>
+<tr><td>31:0</td><td>ndmreset_process</td><td>RW</td><td>0x0</td><td>Bit i is the firmware response to the NDM reset request from external CPU cluster i.<br>Bits below ndmreset_cluster_count are driven on the process output.<br>Bits at and above that count are stored and are not driven. The field holds up to 32 clusters.</td></tr>
 </table>
 <h3 id="NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:0</td><td>ndmreset_cluster_count</td><td>R</td><td>0x0</td><td>Number of NDM Clusters supported. Can be read to mask the ndmreset_request register</td></tr>
+<tr><td>7:0</td><td>ndmreset_cluster_count</td><td>R</td><td>0x0</td><td>Number of external CPU clusters connected on the low bits of NDMRESET_REQUEST and NDMRESET_PROCESS.<br>Software masks those registers with this value. The maximum is 32.</td></tr>
 </table>
 </div>

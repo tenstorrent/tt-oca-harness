@@ -154,6 +154,7 @@ example, the scratch block provides general-purpose registers, and the
 chip-config and NDM-reset blocks hold system-level configuration and
 reset control.
 
+[[smc-ndm-reset-block]]
 === Chip Config, Scratch, NDM Reset, and Misc Wrap
 
 ifdef::backend-html5[]

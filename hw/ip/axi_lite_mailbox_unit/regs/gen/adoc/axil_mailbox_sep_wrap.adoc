@@ -36,7 +36,7 @@
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | 0x0 a| Read data from mailbox fifo
+| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-STATUS]
@@ -49,7 +49,7 @@
 | 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
 | 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
 | 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
-| 0 | `empty` | R | 0x0 a| 0: Data is available to read, 1: Data is not available to read
+| 0 | `empty` | R | 0x1 a| 0: Data is available to read, 1: Data is not available to read
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-ERROR_FLAGS]

@@ -127,7 +127,11 @@ def lc_raw_from_shadow_preload(path: str) -> int:
     lc_off = c_header_u32(
         _SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR"
     ) - c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
-    words = [int(line, 16) for line in Path(path).read_text().split() if line.strip()]
+    words = [
+        int(line.split("//", 1)[0], 16)
+        for line in Path(path).read_text().splitlines()
+        if line.split("//", 1)[0].strip()
+    ]
     word = words[lc_off // 4] & 0xFF
     raw = word & 0xF
     assert word == lc_state_word(raw), (

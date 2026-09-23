@@ -83,9 +83,9 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
     LC_PROD_END,
 )
 
-# Field schema: (name, byte_offset, n_words, kind). Offsets/widths from
-# sep_efuse_map_reg.svh; contiguous and summing to 256 words. kind drives
-# randomization + the expected-shadow transform:
+# Field schema: (name, byte_offset, n_words, kind). Offsets/widths come from the
+# generated `sep_reg` map imported above; contiguous and summing to 256 words.
+# kind drives randomization + the expected-shadow transform:
 #   "lc"       — LC_STATE: word holds raw code, shadow reads {~raw, raw}.
 #   "locks"    — LOCKS table: left unlocked by default so all fields read back.
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.

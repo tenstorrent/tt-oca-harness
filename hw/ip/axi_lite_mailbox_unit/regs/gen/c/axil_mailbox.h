@@ -29,7 +29,6 @@ typedef union {
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bm 0xffffffffffffffff
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bp 0
 #define AXIL_MAILBOX__READ_DATA__READ_DATA_bw 64
-#define AXIL_MAILBOX__READ_DATA__READ_DATA_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t read_data :64;
@@ -41,7 +40,7 @@ typedef union {
 #define AXIL_MAILBOX__STATUS__EMPTY_bm 0x1
 #define AXIL_MAILBOX__STATUS__EMPTY_bp 0
 #define AXIL_MAILBOX__STATUS__EMPTY_bw 1
-#define AXIL_MAILBOX__STATUS__EMPTY_reset 0x0
+#define AXIL_MAILBOX__STATUS__EMPTY_reset 0x1
 #define AXIL_MAILBOX__STATUS__FULL_bm 0x2
 #define AXIL_MAILBOX__STATUS__FULL_bp 1
 #define AXIL_MAILBOX__STATUS__FULL_bw 1

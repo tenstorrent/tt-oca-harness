@@ -36,13 +36,16 @@ ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1)
 # -- is self-consistent and does not emit uncommitted <blk>_reg[_pkg].sv.
 # oca_i3c_wrap describes the same map as the SMC top sees it (HCI fields
 # expanded), while its register RTL comes from the vendored i3c-core.
+# The axil_mailbox maps describe the register interface implemented by the
+# vendored PULP mailbox RTL.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer dfd smc_cla dma_ctrl \
-  pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager
+  pll_wrap pvt_wrap oca_i3c_wrap cross_trigger_network key_manager \
+  axil_mailbox axil_mailbox_sep_wrap axil_mailbox_smc_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)

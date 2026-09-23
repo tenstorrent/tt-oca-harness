@@ -10,6 +10,7 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 import tempfile
@@ -23,7 +24,11 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import cli, site  # noqa: E402
+from runlib import (  # noqa: E402
+    cli,
+    site,
+    stages,  # noqa: E402
+)
 from runlib import executors as executors_pkg  # noqa: E402
 from runlib.config import (  # noqa: E402
     CLUSTER_DRIVERS,
@@ -39,6 +44,7 @@ from runlib.executors import (  # noqa: E402
     NOT_IMPLEMENTED,
     build_executor,
     dispatch_blocker,
+    executor_builds,
     executor_limits,
 )
 from runlib.executors.base import (  # noqa: E402
@@ -372,6 +378,29 @@ class LocalExecutorTest(unittest.TestCase):
         executor.close(wait=False)
 
 
+class StageCancellationTest(unittest.TestCase):
+    def test_a_group_this_process_cannot_signal_does_not_raise(self) -> None:
+        class LiveGroup:
+            pid = os.getpid()
+
+            @staticmethod
+            def poll() -> None:
+                return None
+
+        proc = LiveGroup()
+        with stages._ACTIVE_SUBPROCESS_LOCK:
+            stages._ACTIVE_SUBPROCESSES.add(proc)
+        self.addCleanup(stages._ACTIVE_SUBPROCESSES.discard, proc)
+        self.addCleanup(stages.reset_stage_cancellation)
+        denied = PermissionError(1, "Operation not permitted")
+        with (
+            mock.patch("runlib.stages.os.killpg", side_effect=denied) as killpg,
+            mock.patch("runlib.stages.time.sleep"),
+        ):
+            stages.request_stage_cancellation()
+        self.assertEqual(killpg.call_count, 2)
+
+
 class RegistrySchemaTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(tempfile.mkdtemp()).resolve()
@@ -434,8 +463,26 @@ class RegistrySchemaTest(unittest.TestCase):
         )
         self.assertEqual(
             render_argv(executors["slurm"]["query_argv"], {"job_ids_csv": "11,12"}),
-            ["squeue", "--noheader", "--states=all", "--format=%i|%T|%r", "--jobs=11,12"],
+            [
+                "squeue",
+                "--noheader",
+                "--array",
+                "--states=all",
+                "--format=%i|%T|%r",
+                "--jobs=11,12",
+            ],
         )
+        self.assertNotIn("--array=1-3", slurm)
+        arrayed = render_argv(executors["slurm"]["submit_argv"], {**values, "array_range": "1-3"})
+        self.assertIn("--array=1-3", arrayed)
+        self.assertIn("jobindex", " ".join(executors["lsf"]["query_argv"]))
+        self.assertIn("JobID,", " ".join(executors["slurm"]["history_argv"]))
+        for name in ("lsf", "slurm"):
+            self.assertTrue(executors[name]["arrays"])
+            self.assertEqual(executor_limits(executors[name])["array_chunk_size"], 100)
+            self.assertEqual(executor_builds(executors[name]), "scheduler")
+        self.assertEqual(executor_builds(executors["local"]), "local")
+        self.assertEqual(executor_builds({**executors["lsf"], "builds": "local"}), "local")
 
     def test_unknown_schema_version(self) -> None:
         self.write_registry(LOCAL_TABLE.replace("schema_version = 2", "schema_version = 3"))
@@ -470,6 +517,13 @@ class RegistrySchemaTest(unittest.TestCase):
 
     def test_schema_2_rejections(self) -> None:
         self.check_rejected(lambda t: t.update(driver="pbs"), "driver")
+        self.check_rejected(lambda t: t.update(arrays="yes"), "arrays")
+        self.check_rejected(lambda t: t.update(limits={"array_chunk_size": 0}), "array_chunk_size")
+        self.check_rejected(lambda t: t.update(builds="farm"), "builds")
+        self.check_rejected(lambda t: t.update(build_defaults={"cores": 0}), "build_defaults")
+        self.check_rejected(
+            lambda t: t.update(build_submit_argv=["bsub", "{nope}"]), "build_submit_argv"
+        )
         self.check_rejected(lambda t: t.update(binaries=[]), "binaries")
         self.check_rejected(lambda t: t.update(wait_mode="inline"), "wait_mode")
         self.check_rejected(lambda t: t.pop("submit_argv"), "submit_argv")

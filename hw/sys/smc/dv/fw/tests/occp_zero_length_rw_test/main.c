@@ -4,24 +4,10 @@
 /*
  * OCCP Invalid Message Length (Zero-Length Body) Test
  *
- * Sends READ and WRITE commands while forcing the request's internal transfer
- * length (WLen/RLen) to 0 using the test context length injection.
- *
- * Expected outcome and its authority: the target must return an error response
- * carrying code 0x03 `Invalid_header`. occp-protocol.adoc:310-313 defines 0x03
- * as "A command body length or encoded transfer size is invalid", and the ROM
- * implements exactly that for a zero encoded length -- WRITE at
- * bootrom/prod/lib/src/occp.c:1181-1186, READ at occp.c:1324-1330. Both also
- * file an SMC_OCCP_ERROR_{WRITE,READ}_OVERFLOW status record; the error
- * response and the status record are emitted together, not as alternatives.
- *
- * ctx->exp_response_code pins that code, so occp_get_response_header
- * (occp_commands.c:331-334) fails the command on any other error code and
- * (occp_commands.c:354-357) fails it if no error comes back at all.
- *
- * The sibling smc_occp_zero_length_transfer_test reaches the same target state
- * without the injection, by passing byte_length = 0, and asserts this same
- * outcome.
+ * Sends READ and WRITE commands while forcing the OCCP header length field to 0
+ * using the test context length injection. Expects the target to return an
+ * error response with code INVALID_MESSAGE_LENGTH. The command helpers treat
+ * that as success under injection, mirroring the unsupported status ID test style.
  */
 
 #include "occp_test_common.h"

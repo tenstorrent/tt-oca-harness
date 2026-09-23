@@ -393,13 +393,28 @@ bwrap_run() {
   for extra in ${OCAH_BWRAP_EXTRA_BINDS:-}; do
     [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
   done
+  # Firmware recipes invoke `uv` by name (hw/common/dv/fw/preamble.mk). A
+  # nix-built rootfs has that binary on /usr/bin; a toolchain rootfs that does
+  # not still has to see the host binary. /usr is read-only, so the file is
+  # mounted under the /run tmpfs, which PATH then searches first.
+  local host_uv="" sandbox_path="/usr/local/bin:/usr/bin:/bin"
+  if [[ ! -x "$TOOLCHAIN_ROOTFS/usr/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/usr/local/bin/uv" ]]; then
+    host_uv="$(command -v uv 2>/dev/null || true)"
+    if [[ -n "$host_uv" ]]; then
+      host_uv="$(readlink -f "$host_uv")"
+      binds+=(--tmpfs /run/ocah --ro-bind "$host_uv" /run/ocah/uv)
+      sandbox_path="/run/ocah:${sandbox_path}"
+    else
+      echo "docker-run: warning: uv is not in the toolchain rootfs or on PATH" >&2
+    fi
+  fi
   # HOME may sit outside the bound trees; give it a writable stand-in.
   # PYTHONHOME/PYTHONPATH are dropped for the same reason PATH is replaced: the
   # sandbox runs its own interpreter, and a caller's values point at host trees
   # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
   # can import 'encodings', which the firmware post-process steps run into.
   bwrap "${binds[@]}" --chdir "$workdir" \
-    --setenv PATH /usr/local/bin:/usr/bin:/bin \
+    --setenv PATH "$sandbox_path" \
     --setenv HOME /tmp \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \

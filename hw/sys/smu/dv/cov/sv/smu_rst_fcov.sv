@@ -6,10 +6,9 @@
 // SMU-CLK-DOMAINS.S4 scenarios of the feature list. The point names are the
 // scenarios' required_cells.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top.
-// Every port is a signal both benches expose at their top level; a bench
-// without a signal ties the port off, and the cell map records the bench
-// the point can fire in.
+// One passive, signal-driven module. Every port is a signal the bench
+// exposes at its top level; a port the bench has no signal for is tied
+// off, and the cell map records which points can fire.
 //
 // DISABLE CONVENTION, as in smu_boot_fcov: the gate is powergood, not reset,
 // so the reset sequence itself stays observable.
@@ -32,7 +31,7 @@
 module smu_rst_fcov #(
   // 0 on an elaboration without SEP. The SEP and crossbar block resets and
   // the SEP fuse-sense pin come out of smu.sv's gen_sep branch; gen_no_sep
-  // ties sep_fuse_sense_done_o to 0 and both benches tie the two block
+  // ties sep_fuse_sense_done_o to 0 and the bench ties the two block
   // resets off, so the points that read them are dropped rather than
   // carried unhittable.
   parameter bit SepPresent = 1'b1
@@ -52,8 +51,7 @@ module smu_rst_fcov #(
   input wire rst_primary_smc_clk_ni,
   input wire rst_primary_periph_clk_ni,
 
-  // Per-block resets in the primary domain, as the blocks see them. The
-  // block bench exposes only the SMC one and ties the rest off.
+  // Per-block resets in the primary domain, as the blocks see them.
   input wire smc_rst_ni,
   input wire dtp_rst_ni,
   input wire sep_rst_ni,

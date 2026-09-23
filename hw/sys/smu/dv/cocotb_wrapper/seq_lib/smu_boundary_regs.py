@@ -25,6 +25,7 @@ _DFX_CTRL_STATUS_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
 )
 _NDM_RESET_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "ndm_reset.h"
+_CPU_CTRL_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 _TELEMETRY_RECEIVER_H = (
     _REPO_ROOT / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
 )
@@ -62,6 +63,28 @@ _INDEXED2_RE = re.compile(
 )
 
 
+# One outbound mailbox instance: #define SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_<n>_BASE_ADDR
+_MBX_INSTANCE_RE = re.compile(
+    r"^\s*#define\s+SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_(\d+)_BASE_ADDR\s"
+)
+
+
+@lru_cache(maxsize=1)
+def smc_outbound_mailbox_count() -> int:
+    """Number of outbound mailbox instances ``smc_addr.h`` enumerates."""
+    found = set()
+    for line in _SMC_ADDR_H.read_text(encoding="utf-8").splitlines():
+        m = _MBX_INSTANCE_RE.match(line)
+        if m:
+            found.add(int(m.group(1)))
+    if sorted(found) != list(range(len(found))) or not found:
+        raise RuntimeError(
+            f"outbound mailbox instances are not a contiguous 0..N-1 set in {_SMC_ADDR_H}: "
+            f"{sorted(found)}"
+        )
+    return len(found)
+
+
 def smc_base_config_u32(symbol: str) -> int:
     """Return an ``SMC_BASE_CONFIG__*`` integer ``#define``."""
     return c_header_u32(_SMC_BASE_CONFIG_H, symbol)
@@ -75,6 +98,11 @@ def dfx_ctrl_status_u32(symbol: str) -> int:
 def ndm_reset_u32(symbol: str) -> int:
     """Return an ``NDM_RESET__*`` integer ``#define``."""
     return c_header_u32(_NDM_RESET_H, symbol)
+
+
+def cpu_ctrl_u32(symbol: str) -> int:
+    """Return a ``CPU_CTRL__*`` integer ``#define``."""
+    return c_header_u32(_CPU_CTRL_H, symbol)
 
 
 def telemetry_receiver_u32(symbol: str) -> int:

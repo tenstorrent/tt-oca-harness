@@ -61,11 +61,38 @@ ocah_require_host_tool = @command -v "$(1)" >/dev/null 2>&1 || { \
 
 # Native bender flist wrapper; bender always runs on the host, auto-discovering
 # Bender.yml from whichever directory it's invoked in.
+# $(1) = defines and output-mode flags
+# $(2) = block-specific bender targets (FLOW_BENDER_TARGETS)
+ocah_bender_flist = $(OCAH_BENDER) script flist-plus $(1) \
+	$(OCAH_FLOW_COMMON_BENDER_TARGETS) $(2)
+
 # $(1) = block-specific bender targets (FLOW_BENDER_TARGETS)
 # $(2) = output .f path (relative to the recipe's own CWD)
-ocah_eda_flist = $(OCAH_BENDER) script flist-plus $(OCAH_FLOW_COMMON_DEFINES) \
-	$(OCAH_FLOW_COMMON_BENDER_TARGETS) $(1) > $(2) && \
+ocah_eda_flist = $(call ocah_bender_flist,$(OCAH_FLOW_COMMON_DEFINES),$(1)) > $(2) && \
 	$(call ocah_flist_insert_vendor_defines,$(2))
+
+ifdef FLOW_DESIGN
+
+FLOW_INTEGRATION_NAME ?= $(FLOW_DESIGN)
+OCAH_INTEGRATION_FILELIST_DIR ?= $(OCAH_ROOT)/integration/filelists
+OCAH_INTEGRATION_SIM_FLIST := $(OCAH_INTEGRATION_FILELIST_DIR)/$(FLOW_INTEGRATION_NAME).sim.f
+OCAH_INTEGRATION_SYNTH_FLIST := $(OCAH_INTEGRATION_FILELIST_DIR)/$(FLOW_INTEGRATION_NAME).synth.f
+
+## Generate portable simulation and synthesis filelists for integrators.
+.PHONY: ocah-integration-filelists
+ocah-integration-filelists:
+	@mkdir -p "$(OCAH_INTEGRATION_FILELIST_DIR)"
+ifneq ($(FLOW_INTEGRATION_SIM_FROM_DV),1)
+	@$(call ocah_bender_flist,-D SIMULATION=1,$(FLOW_BENDER_TARGETS)) \
+		> "$(OCAH_INTEGRATION_SIM_FLIST)"
+	@$(call ocah_flist_insert_vendor_defines,$(OCAH_INTEGRATION_SIM_FLIST))
+	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_SIM_FLIST)"
+endif
+	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth,$(FLOW_BENDER_TARGETS)) \
+		> "$(OCAH_INTEGRATION_SYNTH_FLIST)"
+	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_SYNTH_FLIST)"
+
+endif
 
 # Fan a goal out to selected blocks as an isolated sub-make (BLOCK=<block>
 # picks one, else all discovered blocks). Not named TARGET= to avoid
@@ -76,6 +103,11 @@ ocah_flow_run = @$(foreach b,$(if $(strip $(BLOCK)),$(strip $(BLOCK)),$(OCAH_FLO
 	  [ -n "$$dir" ] || { echo "error: unknown flow target '$(b)' (known: $(OCAH_FLOW_TARGETS))" >&2; exit 1; }; \
 	  echo "==> $(b): $(1)"; \
 	  $(MAKE) -C "$$dir" -f flow.mk OCAH_ROOT="$(OCAH_ROOT)" $(2) $(1); } &&) true
+
+## Generate integration filelists for all BLOCK-selected flow descriptors.
+.PHONY: ocah-integration-filelists-all
+ocah-integration-filelists-all:
+	$(call ocah_flow_run,ocah-integration-filelists)
 
 OCAH_UV_RUN := $(UV) --directory "$(OCAH_ROOT)" run --locked
 

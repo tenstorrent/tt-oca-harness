@@ -5,8 +5,8 @@
 // the SMU-LC-STATE, SMU-LC-DEMOTE and SMU-NOSEP scenarios of the feature
 // list.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top.
-// Every port is a signal both benches expose at their top level.
+// One passive, signal-driven module. Every port is a signal the bench
+// exposes at its top level.
 //
 // The lifecycle outputs are static once the fuses are read, so a level on
 // them proves nothing by itself. Every point here samples at the primary

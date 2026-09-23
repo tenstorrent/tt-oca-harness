@@ -21,7 +21,6 @@ from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 from seq_lib.smu_tb_pins import smu_scope
 
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
-# On SEP=0 there is no lifecycle controller; the J2A gate opens after TCK sync.
 
 
 def dtp_ir_opcode(name: str) -> int:
@@ -188,24 +187,38 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
-# doc/integrator/src/smu.adoc "IC_RESET TDR Structure" fixes the SEP slice at
-# 8 ports when SEP=1 (else 0) and lists them TDI to TDO: abr, trng, sep_reset,
-# kmac, hmac, aes, otbn, km. The implementation carries them as the fields of
-# sep_pkg::jtag_sep_reset_ctrl_val_t and jtag_ptap sizes the slice as
-# $bits(ic_reset_sep_t)/2, so a field added there without a document change
-# moves every SMC port index up by one and this count with it.
-SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = 8
+# doc/integrator/src/smu.adoc "IC_RESET TDR Structure": the SEP slice is
+# 8 ports at SEP=1 and 0 otherwise. The named tuple is the stimulus list
+# (scan order from TDI), not the source of that width: a port added only
+# to the tuple must fail this check rather than silently move every SMC
+# index and the golden length together.
+SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1 = 8
+SMU_IC_RESET_SEP_PORTS = (
+    "abr_jtag_rst_n",
+    "trng_jtag_rst_n",
+    "sep_reset_n",
+    "kmac_jtag_rst_n",
+    "hmac_jtag_rst_n",
+    "aes_jtag_rst_n",
+    "otbn_jtag_rst_n",
+    "km_jtag_rst_n",
+)
+if len(SMU_IC_RESET_SEP_PORTS) != SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1:
+    raise RuntimeError(
+        "SMU_IC_RESET_SEP_PORTS must list the Integrator Guide SEP slice "
+        f"({SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1} ports at SEP=1)"
+    )
+SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1
 
 
 def _smu_ic_reset_sep_ports() -> int:
     """SEP IC_RESET slice width for the DUT this run elaborated.
 
-    smu.sv ties IC_RESET_SEP_ENABLE to its SEP parameter. The production
-    wrapper (tb_wrapper_top.sv, top module smu_wrapper_uvm_top) elaborates
-    SEP=1 and carries the full SEP slice; the bare block bench (tb_top.sv,
-    smu_uvm_top) instantiates smu #(.SEP(0)) and has no SEP slice. Resolved
-    from the cocotb top handle so one helper serves both DUTs; outside a
-    simulation it falls back to the SEP=0 shape.
+    doc/integrator/src/smu.adoc "IC_RESET TDR Structure" enables the SEP
+    slice only at SEP=1. The wrapper (tb_wrapper_top.sv, top module
+    smu_wrapper_uvm_top) elaborates SEP=1 and carries the full SEP slice.
+    Resolved from the cocotb top handle; outside a simulation, or under any
+    other top, it falls back to the SEP=0 shape.
     """
     try:
         name = str(getattr(cocotb.top, "_name", "") or "")

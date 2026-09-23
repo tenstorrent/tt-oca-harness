@@ -388,10 +388,11 @@ the DTP policy file; the runner's schema and grading behavior are in
   of the same points. URG hands the runner family totals and no per-point
   list, so `cov/config/vcs/coverage_policy.toml` carries `[[thresholds]]`
   only and a VCS hole closes through a scenario, a design or model change,
-  or an entry in a URG exclusion list that `[coverage.vcs].exclude_files`
-  names; the runner passes that list to `urg -elfile`, records its checksum,
-  and reports the figures with and without it as `effective_metrics` and
-  `raw_metrics`. Covergroup bins take no exclusion.
+  or an entry in the URG exclusion list that the `pass:[[[native_files]]]`
+  entry of that policy names (<<dtp-fcov-unreachability-list>>); the runner
+  passes that list to `urg -elfile`, records its checksum, and reports the
+  figures with and without it as `effective_metrics` and `raw_metrics`.
+  Covergroup bins take no exclusion.
 * A metric is applicable on the path that collects it, and a point that
   both paths collect is one point: a hole on either path needs one
   disposition, and a waiver written for one path names the same
@@ -465,6 +466,39 @@ code-coverage families and 100 percent for assertion and functional
 coverage. The hosted weekly publishes the figures without a threshold, so
 the gate runs on the qualification regression and on every `--waive`
 re-grade of its run tree.
+
+[[dtp-fcov-unreachability-list]]
+==== Unreachability exclusion list
+
+`cov/config/vcs/dtp_unreachable.el` is the URG exclusion list of the
+code-coverage points that a formal unreachability analysis proves no stimulus
+reaches in the bench's environment: the DTP at its parameter defaults, the
+DFT ports at their functional values, the boundary-scan and extended STAP
+chains looped back, and every other input free, the resets included. The
+analysis starts from the merged database of the qualification regression
+(<<dtp-fcov-evidence-paths>>), so it targets the points that regression left
+uncovered, and it runs in the checkout that produced that database, because
+the formal model and the seed must describe one RTL. The analysis is the
+`dtp_cov_vcf` item of the runner's formal mode in the companion's DTP formal
+configuration; a reader without the companion runs their own unreachability
+tool over the same database with the same environment and writes the same
+URG exclusion format.
+
+The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
+that names the list pins the file's SHA-256, and a comment beside it records
+the commit the analysis ran at, the date and the reviewer. The runner refuses
+the policy when the file and the pinned digest differ, so a regenerated list
+takes a new review. URG applies no entry whose module or instance checksum
+differs from the design it reports on, so an RTL change under an excluded
+scope drops that scope's exclusions on its own.
+
+Regeneration rule: the list is regenerated from the candidate's qualification
+regression before every candidate, and re-checked after any change to the
+DTP RTL file set with the analysis's check mode over the accepted list, which
+fails when an excluded point has become reachable. A regenerated list takes
+design review before its entry changes: the review reads the list against the
+hole inventory of the closure issues and accepts no entry the inventory
+classes as reachable by stimulus.
 
 === VPLAN to FCOV Traceability
 

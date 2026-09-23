@@ -9,9 +9,7 @@
 
 module smu_wrapper_uvm_top (
   input  wire logic clk_smu_i,
-  // Primary JTAG TAP, driven from cocotb exactly as the bare `--dut smu_block`
-  // harness drives it (tb/tb_top.sv), so OcahJtagMasterDriver works against
-  // either DUT; the base test's TAP reset walk runs in every wrapper test.
+  // Primary JTAG TAP, driven from cocotb through the pad-level TCK/TMS/TDI/TDO.
   input  wire logic jtag_tck,
   input  wire logic jtag_tms,
   input  wire logic jtag_trst,   // active-low
@@ -295,8 +293,8 @@ module smu_wrapper_uvm_top (
   // SMU_ALL_001 compose / clk-domain / lifecycle observe surface
   output logic [7:0]  lc_state_o,
   // Hierarchical SEP lifecycle source (for lc_state=from_sep identity). This
-  // bench elaborates SEP, so the tap is live; the SEP=0 composition is proved
-  // on --dut smu_block, whose testlists/block.toml `nosep` group holds those leaves.
+  // bench elaborates SEP, so the tap is live. No target of this package
+  // elaborates SEP=0.
   output logic [7:0]  obs_sep_lc_state_o,
   // Compile-time present flags, diagnostic only: SMU_ALL_001 proves presence
   // from the hierarchical clk/rst identity observes below.
@@ -346,14 +344,32 @@ module smu_wrapper_uvm_top (
   output logic             tb_telemetry_atready,
   output logic             tb_telemetry_afvalid,
   // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
-  input  wire  logic [31:0] tb_smc_ext_interrupts,
+  input  wire  logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] tb_smc_ext_interrupts,
   input  wire  logic [3:0]  tb_smc_ndmreset_request,
   input  wire  logic        tb_cfg_flr_pf_active,
   input  wire  logic        tb_mem_repair_abort,
   input  wire  logic        tb_mbist_abort,
+  // Active-high holds on the boundary straps the wrapper otherwise sees
+  // asserted: each drives the DUT input low while it is 1, so an undriven
+  // pin leaves the strap at its boot value.
+  input  wire  logic        tb_mem_repair_hold,
+  input  wire  logic        tb_mbist_hold,
+  input  wire  logic [31:0] tb_ss_reset_incomplete,
+  input  wire  logic        tb_chiplet_secondary,
+  input  wire  logic        tb_cool_reset_pin,
   output logic [3:0]        tb_smc_ndmreset_process,
   output logic [31:0]       tb_isolate_req,
   output logic [31:0]       tb_ss_config,
+  // One 32-bit word per `reset_ctrl_t` field of `ss_reset_ctrl_o`. Lane i of
+  // each word is subsystem i's field, so a word lines up with the reset-unit
+  // register that owns the field.
+  output logic [31:0]       tb_ss_cold_reset_n,
+  output logic [31:0]       tb_ss_warm_reset_n,
+  output logic [31:0]       tb_ss_config_state_hold,
+  output logic [31:0]       tb_ss_sram_hold,
+  output logic [31:0]       tb_ss_critical_signal_hold,
+  output logic [31:0]       tb_ss_debug_hold,
+  output logic [31:0]       tb_ss_force_to_ref_clk_n,
   output logic              tb_sync_irq,
   output logic              tb_skip_mem_repair,
   output logic              tb_smc_cluster_ded,
@@ -365,6 +381,9 @@ module smu_wrapper_uvm_top (
   // boot-stall strap drive on pin 57 below.
   input  wire  logic tb_gpio0_drive_en,
   input  wire  logic tb_gpio0_drive_val,
+  // Per-pad drive for the whole GPIO bus, on the same weak terms as pin 0.
+  input  wire  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_drive_en,
+  input  wire  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_gpio_drive_val,
   // SEP secure test-mode request strap. The SEP eFuse wrapper samples it on
   // the rising edge of its fuse-sense-done, so a leaf drives it across a cold
   // reset rather than at an arbitrary time.
@@ -672,8 +691,8 @@ module smu_wrapper_uvm_top (
   logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_w;
 
   always_comb begin
-    smc_ext_interrupts_w         = '0;
-    smc_ext_interrupts_w[31:0]   = tb_smc_ext_interrupts;
+    smc_ext_interrupts_w = '0;
+    smc_ext_interrupts_w[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] = tb_smc_ext_interrupts;
   end
 
   assign tb_smc_ndmreset_process   = ndmreset_process_w;
@@ -686,6 +705,18 @@ module smu_wrapper_uvm_top (
   assign tb_smc_wdt_second_timeout = wdt_second_timeout_w;
   assign tb_gpio_interrupt         = gpio_interrupt_w;
   assign tb_uart_interrupt         = uart_interrupt_w;
+
+  always_comb begin
+    for (int ss = 0; ss < 32; ss++) begin
+      tb_ss_cold_reset_n[ss]         = ss_reset_ctrl_w[ss].cold_reset_n;
+      tb_ss_warm_reset_n[ss]         = ss_reset_ctrl_w[ss].warm_reset_n;
+      tb_ss_config_state_hold[ss]    = ss_reset_ctrl_w[ss].config_state_hold;
+      tb_ss_sram_hold[ss]            = ss_reset_ctrl_w[ss].sram_hold;
+      tb_ss_critical_signal_hold[ss] = ss_reset_ctrl_w[ss].critical_signal_hold;
+      tb_ss_debug_hold[ss]           = ss_reset_ctrl_w[ss].debug_hold;
+      tb_ss_force_to_ref_clk_n[ss]   = ss_reset_ctrl_w[ss].force_to_ref_clk_n;
+    end
+  end
 
   assign tb_xtrig_ctp_req_out_dout    = ctp_req_out_dout_w;
   assign tb_xtrig_ctp_req_out_dout_en = ctp_req_out_dout_en_w;
@@ -1232,11 +1263,29 @@ module smu_wrapper_uvm_top (
   // see the same idle bus. A pull-up would stall boot: pad 57 is the
   // active-high boot-stall input (smc_padring: boot_stall_o =
   // lsio_pad2core_data[57]).
-  for (genvar gi = 0; gi < smc_pkg::NUM_GPIO_WRAPS; gi++) begin : gen_gpio_pad_pull
-    pulldown u_pad_pulldown (gpio_pad_io[gi]);
+  for (
+      genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++
+  ) begin : gen_gpio_pad_pull
+    pulldown u_pad_pulldown (gpio_pad_io[gpio_idx]);
   end
-  assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
-  assign gpio_pad_io[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : 1'bz;
+
+  // One testbench driver per pad: the pin-0 and boot-stall straps merge into
+  // the per-pad vectors so no pad carries two continuous assignments.
+  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_drive_en;
+  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_drive_val;
+
+  always_comb begin
+    gpio_pad_drive_en      = tb_gpio_drive_en;
+    gpio_pad_drive_val     = tb_gpio_drive_val;
+    gpio_pad_drive_en[0]   = tb_gpio_drive_en[0] | tb_gpio0_drive_en;
+    gpio_pad_drive_val[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : tb_gpio_drive_val[0];
+    gpio_pad_drive_en[57]  = tb_gpio_drive_en[57] | gpio_boot_stall_drive_i;
+    gpio_pad_drive_val[57] = gpio_boot_stall_drive_i ? 1'b1 : tb_gpio_drive_val[57];
+  end
+
+  for (genvar gpio_i = 0; gpio_i < int'(smc_pkg::NUM_GPIO_WRAPS); gpio_i++) begin : gen_gpio_drive
+    assign gpio_pad_io[gpio_i] = gpio_pad_drive_en[gpio_i] ? gpio_pad_drive_val[gpio_i] : 1'bz;
+  end
 
   // smu.sv does not forward the peripheral-domain primary reset to its own
   // boundary, so read it off the SMC the way tb_top.sv does.
@@ -1521,7 +1570,7 @@ module smu_wrapper_uvm_top (
     .smc_shadow_regs_o (smc_shadow_regs),
     .lsio_interface_select_o (),
     .gpio_pad_io (gpio_pad_io),
-    .rst_cool_n_from_pin_i (1'b1),
+    .rst_cool_n_from_pin_i (~tb_cool_reset_pin),
 
     .clk_telemetry_i (clk_ref_i),
     .rst_telemetry_ni (rst_cold_ni),
@@ -1554,26 +1603,26 @@ module smu_wrapper_uvm_top (
 
     .cfg_flr_pf_active_i (tb_cfg_flr_pf_active),
     .isolate_req_o (isolate_req_w),
-    .ss_reset_complete_i ('1),
+    .ss_reset_complete_i (~tb_ss_reset_incomplete),
     .ss_config_o (ss_config_w),
     .ss_reset_ctrl_o (ss_reset_ctrl_w),
     .sync_irq_o (sync_irq_w),
 
     .smc_disable_sram_auto_init_i (smc_disable_sram_auto_init),
     .smc_init_mem_done_o,
-    .chiplet_is_primary_i (1'b1),
+    .chiplet_is_primary_i (~tb_chiplet_secondary),
     .timer_count_o (tb_timer_count),
 
     .test_en_i (1'b0),
     .scan_rst_ni (1'b1),
 
-    // Without an external BISR/MBIST agent the boot sequencer waits forever
-    // if these stay low (CPU never fetches ROM).
-    .mem_repair_done_i (1'b1),
-    .mem_repair_success_i (1'b1),
+    // No external BISR/MBIST agent on this bench: the done and pass straps
+    // read asserted unless a leaf holds them down.
+    .mem_repair_done_i (~tb_mem_repair_hold),
+    .mem_repair_success_i (~tb_mem_repair_hold),
     .mem_repair_abort_i (tb_mem_repair_abort),
-    .mbist_done_i (1'b1),
-    .mbist_pass_i (1'b1),
+    .mbist_done_i (~tb_mbist_hold),
+    .mbist_pass_i (~tb_mbist_hold),
     .mbist_abort_i (tb_mbist_abort),
 
     .sep_cpu_trace_o (sep_cpu_trace),

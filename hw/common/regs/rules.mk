@@ -22,7 +22,7 @@ OCAH_SVPKG_TEMPLATE ?= $(OCAH_ROOT)/hw/common/regs/templates/svpkg.mako
 # whole directory made every block's recipe read-modify-write the others' files,
 # which truncated them non-deterministically under the flow's default -j. The
 # stamper accepts many paths and no-ops on ones that do not exist.
-ocah_reg_stamp_after = $(if $(filter 1,$(OCAH_REG_DEFER_STAMP)),, && python3 "$(OCAH_ROOT)/tools/regs/stamp_spdx.py" $(1))
+ocah_reg_stamp_after = $(if $(filter 1,$(OCAH_REG_DEFER_STAMP)),, && $(OCAH_REG_PYTHON) "$(OCAH_ROOT)/tools/regs/stamp_spdx.py" $(1))
 
 # Canned peakrdl exporter command lines. $(1) = block id (for -I); later args are
 # input, output, name/bitfields, log.
