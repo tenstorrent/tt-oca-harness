@@ -434,6 +434,7 @@ feature rows.
 |`smc_i2c_p0_timeout_test` |Stretch-timeout observation (empty target TX during host READ).
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
 |`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
+|`smc_i2c_target_multi_instance_stretch_test` |I2C1 and I2C2 as targets: the transmit path, an unmatched address, and both the transmit-FIFO and acquisition-FIFO stretches.
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
 |`smc_smbus_alert_ara_test` |U4-2: DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
 |`smc_smbus_alert_suspend_test` |I2C0 target SMBALERT + I2C1 ARA/IRQ + SMBSUS sideband.
@@ -7878,6 +7879,50 @@ Drive `smc_i2c_target_acq_stretch_test_seq`. Each checker below is a named compa
 |===
 
 *Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-224-smc_i2c_target_multi_instance_stretch_test]]
+===== 224 `smc_i2c_target_multi_instance_stretch_test`
+
+*Source Module*: `smc_i2c_target_multi_instance_stretch_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); one DUT I2C instance as the controller and another as the target, on the shared open-drain bus
+
+*Objective*: I2C1 and I2C2 as targets: the transmit path, an unmatched address, and both the transmit-FIFO and acquisition-FIFO stretches.
+
+*Test Coverage*:
+
+* `+smc_i2c_shared_bus` puts all three instances on one open-drain bus, so the enabled controller reaches either target by address. Both ends of every check are DUT instances.
+* I2C0 is the controller throughout, which leaves the target-side paths to I2C1 and I2C2 -- the instances that have never seen them. I2C2 in particular has only ever been written to as a target.
+* Each target gets an address of its own and sources a byte of its own, so a readback cannot be satisfied by the other target answering.
+* The transmit leg runs with `CTRL.TX_STRETCH_CTRL_EN` set and the transmit FIFO empty, so the target has to hold the bus and raise `TARGET_EVENTS.TX_PENDING` before software supplies the byte.
+* The acquisition-stretch hold is measured through the controller rather than on the bus: both ends are DUT instances, so a low SCL net does not say which is holding it. `smc_i2c_target_acq_stretch_test` is the bench-controller variant on I2C0, where only the target can be pulling SCL low.
+* The acquisition FIFO depth is read from `TARGET_FIFO_STATUS.ACQLVL` rather than assumed, and the last payload byte carries the STOP so the transaction cannot end while the FIFO is still full.
+* Address-phase stretch (`StretchAddr`, `StretchAddrAck`, `StretchAddrAckSetup`) stays out: it needs the acquisition FIFO still full when a later transaction starts, and `nack_addr_after_timeout` besides, which no register this bench programs reaches.
+
+*Test Procedure*:
+
+Drive `smc_i2c_target_multi_instance_stretch_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C1-TGT-TX-STRETCH` |On a read with `CTRL.TX_STRETCH_CTRL_EN` set and its transmit FIFO empty, I2C1 raised `TARGET_EVENTS.TX_PENDING` and held the transfer until software wrote TXDATA
+|`CHK-I2C1-TGT-READ` |I2C1 sourced the byte written to its TXDATA and the controller read exactly that byte back, then returned idle with its format FIFO drained
+|`CHK-I2C2-TGT-TX-STRETCH` |The same transmit-FIFO hold on I2C2
+|`CHK-I2C2-TGT-READ` |The same sourced-byte readback on I2C2, which is its first target-side transmit
+|`CHK-I2C2-TGT-ADDR-MISMATCH` |An address no enabled target matches left I2C2's acquisition FIFO empty and the controller reporting `CONTROLLER_EVENTS.NACK`; the transmit leg on the same instance is the matching-address control
+|`CHK-I2C1-TGT-ACQ-STRETCH` |With nothing draining ACQDATA, I2C1 set `STATUS.ACQFULL` with a non-zero `TARGET_FIFO_STATUS.ACQLVL`, and on every poll taken while it stayed set the controller was still busy with queued format entries
+|`CHK-I2C1-TGT-ACQ-DRAIN` |Reading ACQDATA released the controller, which then completed the write; I2C1 acquired every payload byte in order and `STATUS.ACQFULL` is clear
+|`CHK-I2C2-TGT-ACQ-STRETCH` |The same acquisition-FIFO hold on I2C2
+|`CHK-I2C2-TGT-ACQ-DRAIN` |The same release and byte-stream compare on I2C2
+|===
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
