@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC internal AXI-Lite crossbar types and address constants.
+// SMC internal AXI-Lite crossbar types and configuration.
 //
 // Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. All eight rules
-// now derive their end addresses from smc_top_addrmap_pkg so the RDL remains
-// authoritative for decode extents. Array-indexed blocks (aR_ctrl, mR_ctrl,
-// xR_ctrl, inbound_filter_ctrl, outbound_filter_ctrl) use _TOTAL_SIZE.
+// carried into the open tree, so it cannot be regenerated. Address rules live
+// in smc_internal_axi_lite_xbar and derive their boundaries from
+// smc_top_addrmap_pkg.
 
 `include "axi/typedef.svh"
 
@@ -90,49 +89,6 @@ package smc_internal_axi_lite_xbar_pkg;
     logic [31:0] start_addr;
     logic [32:0] end_addr;
   } apb_addr_rule_t;
-
-  // ===========================================================================
-  // Address Range Constants (Named)
-  // ===========================================================================
-  // Output: smc_base_config — narrowed to smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE (0x4C)
-  localparam logic [31:0] SMC_BASE_CONFIG_SMC_BASE_CONFIG_BASE = 32'hc0010000;
-  localparam logic [31:0] SMC_BASE_CONFIG_SMC_BASE_CONFIG_SIZE = 32'h4c;
-  localparam logic [32:0] SMC_BASE_CONFIG_SMC_BASE_CONFIG_END  = 33'hc001004c;
-
-  // Output: aR_ctrl — narrowed to smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE (0x100)
-  localparam logic [31:0] AR_CTRL_AR_CTRL_BASE = 32'hc0012000;
-  localparam logic [31:0] AR_CTRL_AR_CTRL_SIZE = 32'h100;
-  localparam logic [32:0] AR_CTRL_AR_CTRL_END  = 33'hc0012100;
-
-  // Output: mR_ctrl — narrowed to smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_TOTAL_SIZE (0x40)
-  localparam logic [31:0] MR_CTRL_MR_CTRL_BASE = 32'hc0013000;
-  localparam logic [31:0] MR_CTRL_MR_CTRL_SIZE = 32'h40;
-  localparam logic [32:0] MR_CTRL_MR_CTRL_END  = 33'hc0013040;
-
-  // Output: xR_ctrl — narrowed to smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_TOTAL_SIZE (0x40)
-  localparam logic [31:0] XR_CTRL_XR_CTRL_BASE = 32'hc0014000;
-  localparam logic [31:0] XR_CTRL_XR_CTRL_SIZE = 32'h40;
-  localparam logic [32:0] XR_CTRL_XR_CTRL_END  = 33'hc0014040;
-
-  // Output: inbound_filter_ctrl — narrowed to SMC_TOP_SMC_INBOUND_FILTER_CTRL_TOTAL_SIZE (0x200)
-  localparam logic [31:0] INBOUND_FILTER_CTRL_INBOUND_FILTER_CTRL_BASE = 32'hc0015000;
-  localparam logic [31:0] INBOUND_FILTER_CTRL_INBOUND_FILTER_CTRL_SIZE = 32'h200;
-  localparam logic [32:0] INBOUND_FILTER_CTRL_INBOUND_FILTER_CTRL_END  = 33'hc0015200;
-
-  // Output: outbound_filter_ctrl — narrowed to SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_TOTAL_SIZE (0x200)
-  localparam logic [31:0] OUTBOUND_FILTER_CTRL_OUTBOUND_FILTER_CTRL_BASE = 32'hc0016000;
-  localparam logic [31:0] OUTBOUND_FILTER_CTRL_OUTBOUND_FILTER_CTRL_SIZE = 32'h200;
-  localparam logic [32:0] OUTBOUND_FILTER_CTRL_OUTBOUND_FILTER_CTRL_END  = 33'hc0016200;
-
-  // Output: mailbox — narrowed to smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE (0x1F850)
-  localparam logic [31:0] MAILBOX_MAILBOX_BASE = 32'hc0018000;
-  localparam logic [31:0] MAILBOX_MAILBOX_SIZE = 32'h1f850;
-  localparam logic [32:0] MAILBOX_MAILBOX_END  = 33'hc0037850;
-
-  // Output: dfx_csr — narrowed to smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE (0x18)
-  localparam logic [31:0] DFX_CSR_DFX_CSR_BASE = 32'hc000b800;
-  localparam logic [31:0] DFX_CSR_DFX_CSR_SIZE = 32'h18;
-  localparam logic [32:0] DFX_CSR_DFX_CSR_END  = 33'hc000b818;
 
   // ===========================================================================
   // Crossbar Configuration

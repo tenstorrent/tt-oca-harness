@@ -4,33 +4,10 @@
 // SMC local AXI crossbar.
 //
 // Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. Three rules now
-// derive their extents from smc_top_addrmap_pkg: cpu_ctrl, dma_ctrl, and
-// zeroer_ctrl (the former data_accel_ctrl 4 KiB rule is split into two).
-// The remaining rules are deliberately left as wide literal apertures because
-// they cover fabric-delegated regions (child xbars narrow them further),
-// non-RDL memories/peripherals, or windows that require a separate audit
-// before narrowing.
-//
-// ============================================================================
-// ADDRESS MAP
-// +─────────────────────────+───────────+──────────────────+──────────────────+
-// | Port                    | Protocol  |   Base Address   |   End Address    |
-// +─────────────────────────+───────────+──────────────────+──────────────────+
-// | front_port (wdt_debug)  | AXI4      | 0x0000_c000_0000 | 0x0000_c000_1000 |
-// | front_port (cpu_ctrl)   | AXI4      | 0x0000_c003_9000 | 0x0000_c003_92c0 |
-// | front_port (spm_memory) | AXI4      | 0x0000_c004_0000 | 0x0000_c016_0000 |
-// | front_port (plic)       | AXI4      | 0x0000_c400_0000 | 0x0000_c800_0000 |
-// | front_port (clint_beu)  | AXI4      | 0x0000_c800_0000 | 0x0000_c802_0000 |
-// | data_accel_ctrl (dma)   | AXI4      | 0x0000_c003_8000 | 0x0000_c003_8138 |
-// | data_accel_ctrl (zero)  | AXI4      | 0x0000_c003_8200 | 0x0000_c003_8218 |
-// | local_reg               | AXI4_LITE | 0x0000_c001_0000 | 0x0000_c003_8000 |
-// | local_reg               | AXI4_LITE | 0x0000_c000_b800 | 0x0000_c000_c000 |
-// | periph_reg              | AXI4_LITE | 0x0000_c000_2000 | 0x0000_c000_b800 |
-// | periph_reg              | AXI4_LITE | 0x0000_c003_a000 | 0x0000_c004_0000 |
-// | periph_reg              | AXI4_LITE | 0x0000_c040_0000 | 0x0000_c080_0000 |
-// | smc_dfd_reg             | APB4      | 0x0000_c016_0000 | 0x0000_c026_0000 |
-// +─────────────────────────+───────────+──────────────────+──────────────────+
+// carried into the open tree, so it cannot be regenerated. All address
+// boundaries derive from smc_top_addrmap_pkg. Direct endpoints use their
+// decoded extents; aggregate outputs cover the generated child-map bounds and
+// leave leaf-level holes for the child crossbar to reject.
 //
 // ============================================================================
 // CONNECTIVITY MATRIX
@@ -96,44 +73,91 @@ module smc_local_xbar
   // ===========================================================================
   // Address Map Configuration
   // ===========================================================================
-  // Rules marked "RDL" use smc_top_addrmap_pkg symbols. Rules marked "literal"
-  // are intentionally wide; see the module header for the rationale for each.
+  // Direct CPU-cluster resources use separate rules so gaps between them
+  // decode-error here instead of reaching the cluster.
   localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
-    // front_port.wdt_debug: literal — WDT/debug window pending audit before splitting
-    '{idx: 0, start_addr: 32'hc0000000, end_addr: 33'hc0001000},
-    // front_port.cpu_ctrl: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_{BASE_ADDR,SIZE}
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_WDT_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_WDT_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_WDT_SIZE)},
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE)},
-    // front_port.spm_memory: literal — memory, no RDL block
-    '{idx: 0, start_addr: 32'hc0040000, end_addr: 33'hc0160000},
-    // front_port.plic: literal — Chipyard-generated; wide by design
-    '{idx: 0, start_addr: 32'hc4000000, end_addr: 33'hc8000000},
-    // front_port.clint_beu: literal — Chipyard-generated; wide by design
-    '{idx: 0, start_addr: 32'hc8000000, end_addr: 33'hc8020000},
-    // data_accel_ctrl.dma_ctrl: RDL — smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_{BASE_ADDR,SIZE}
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_PLIC_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CLINT_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE0_BEU_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE1_BEU_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE2_BEU_SIZE)},
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE)},
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE)},
-    // data_accel_ctrl.zeroer_ctrl: RDL — smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_{BASE_ADDR,SIZE}
     '{idx: 1,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE)},
-    // local_reg.local_regs: literal — fabric delegation; child xbar narrows
-    '{idx: 2, start_addr: 32'hc0010000, end_addr: 33'hc0038000},
-    // local_reg.dfx_ctrl: literal — fabric delegation; child xbar narrows
-    '{idx: 2, start_addr: 32'hc000b800, end_addr: 33'hc000c000},
-    // periph_reg.periph_main: literal — fabric delegation; child xbar narrows
-    '{idx: 3, start_addr: 32'hc0002000, end_addr: 33'hc000b800},
-    // periph_reg.oca_i3c: literal — fabric delegation; child xbar narrows
-    '{idx: 3, start_addr: 32'hc003a000, end_addr: 33'hc0040000},
-    // periph_reg.periph_ext: literal — non-RDL vendor region
-    '{idx: 3, start_addr: 32'hc0400000, end_addr: 33'hc0800000},
-    // smc_dfd_reg.dfd_regs: literal — APB sub-map aperture; non-RDL vendor region
-    '{idx: 4, start_addr: 32'hc0160000, end_addr: 33'hc0260000}
+    // The internal and peripheral child xbars reject holes within these
+    // generated aggregate bounds.
+    '{idx: 2,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_SIZE)},
+    '{idx: 2,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE)},
+    '{idx: 3,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE)},
+    '{idx: 3,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
+    '{idx: 3,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE)},
+    '{idx: 4,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_SIZE)}
   };
 
   // ===========================================================================
@@ -391,8 +415,10 @@ module smc_local_xbar
 
   // AXI-Lite to APB Bridge (1 APB slave)
   localparam apb_addr_rule_t [0:0] SmcDfdRegApbAddrMap = '{
-    // dfd_regs: 0xc0160000 - 0xc0260000 -> slave[0]
-    '{idx: 0, start_addr: 32'hc0160000, end_addr: 33'hc0260000}
+    '{idx: 0,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_CLA_SIZE)}
   };
 
   axi_lite_to_apb #(

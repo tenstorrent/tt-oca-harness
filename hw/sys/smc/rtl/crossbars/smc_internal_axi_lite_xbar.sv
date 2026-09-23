@@ -6,23 +6,7 @@
 // Hand-maintained: the fabric_gen source configs for this crossbar were not
 // carried into the open tree, so it cannot be regenerated. All eight AddrMap
 // rules derive their end addresses from smc_top_addrmap_pkg so the RDL remains
-// authoritative for decode extents. Array-indexed blocks use _TOTAL_SIZE;
-// the literal start addresses for those rules equal the function at index 0.
-//
-// ============================================================================
-// ADDRESS MAP (RDL extents)
-// +──────────────────────+───────────+──────────────────+──────────────────+
-// | Port                 | Protocol  |   Base Address   |   End Address    |
-// +──────────────────────+───────────+──────────────────+──────────────────+
-// | smc_base_config      | AXI4_LITE | 0x0000_c001_0000 | 0x0000_c001_004c |
-// | aR_ctrl              | AXI4_LITE | 0x0000_c001_2000 | 0x0000_c001_2100 |
-// | mR_ctrl              | AXI4_LITE | 0x0000_c001_3000 | 0x0000_c001_3040 |
-// | xR_ctrl              | AXI4_LITE | 0x0000_c001_4000 | 0x0000_c001_4040 |
-// | inbound_filter_ctrl  | AXI4_LITE | 0x0000_c001_5000 | 0x0000_c001_5200 |
-// | outbound_filter_ctrl | AXI4_LITE | 0x0000_c001_6000 | 0x0000_c001_6200 |
-// | mailbox              | AXI4_LITE | 0x0000_c001_8000 | 0x0000_c003_7850 |
-// | dfx_csr              | AXI4_LITE | 0x0000_c000_b800 | 0x0000_c000_b818 |
-// +──────────────────────+───────────+──────────────────+──────────────────+
+// authoritative for decode extents. Array-indexed blocks use _TOTAL_SIZE.
 //
 // ============================================================================
 // CONNECTIVITY MATRIX
@@ -90,36 +74,33 @@ module smc_internal_axi_lite_xbar
   // ===========================================================================
   // Address Map Configuration
   // ===========================================================================
-  // All rules use smc_top_addrmap_pkg symbols for end_addr. Array-indexed
-  // blocks use _TOTAL_SIZE; their literal start_addr equals the BASE_ADDR
-  // function evaluated at index 0.
+  // All boundaries come from smc_top_addrmap_pkg. Array-indexed blocks use
+  // _TOTAL_SIZE from the first generated instance.
   localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
     // smc_base_config: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_{BASE_ADDR,SIZE}
     '{idx: 0,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_BASE_CONFIG_SIZE)},
-    // aR_ctrl: RDL — SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(0)=0xC0012000, TOTAL_SIZE=0x100
     '{idx: 1,
-      start_addr: 32'hc0012000,
-      end_addr:   33'(32'hc0012000 + smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE)},
-    // mR_ctrl: RDL — SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(0)=0xC0013000, TOTAL_SIZE=0x40
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(0)),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_BASE_ADDR(0)
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_ALIAS_REMAP_TOTAL_SIZE)},
     '{idx: 2,
-      start_addr: 32'hc0013000,
-      end_addr:   33'(32'hc0013000 + smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_TOTAL_SIZE)},
-    // xR_ctrl: RDL — SMC_TOP_SMC_XVISOR_REMAP_BASE_ADDR(0)=0xC0014000, TOTAL_SIZE=0x40
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(0)),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_BASE_ADDR(0)
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_MMODE_REMAP_TOTAL_SIZE)},
     '{idx: 3,
-      start_addr: 32'hc0014000,
-      end_addr:   33'(32'hc0014000 + smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_TOTAL_SIZE)},
-    // inbound_filter_ctrl: RDL — SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)=0xC0015000, TOTAL_SIZE=0x200
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_BASE_ADDR(0)),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_BASE_ADDR(0)
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_XVISOR_REMAP_TOTAL_SIZE)},
     '{idx: 4,
-      start_addr: 32'hc0015000,
-      end_addr:   33'(32'hc0015000
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_BASE_ADDR(0)
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_INBOUND_FILTER_CTRL_TOTAL_SIZE)},
-    // outbound_filter_ctrl: RDL — SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)=0xC0016000, TOTAL_SIZE=0x200
     '{idx: 5,
-      start_addr: 32'hc0016000,
-      end_addr:   33'(32'hc0016000
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR(0)
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_TOTAL_SIZE)},
     // mailbox: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_MAILBOX_{BASE_ADDR,SIZE}
     '{idx: 6,

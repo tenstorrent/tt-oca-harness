@@ -4,33 +4,9 @@
 // SMC peripheral AXI-Lite crossbar.
 //
 // Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. AddrMap windows
-// for reset_unit, misc, gpio, apb2avsbus, i2c, efuse_map, efuse_interface_ctrl,
-// telemetry, and system_timer_octs derive from smc_top_addrmap_pkg so the RDL
-// remains authoritative for those extents. Literal apertures are kept for uart,
-// dtp_csr, and i3c (whose RDL SIZE already equals the window), and for
-// efuse_shim (parametric) and external (non-RDL vendor region).
-//
-// ============================================================================
-// ADDRESS MAP (RDL extents where narrowed; aperture retained otherwise)
-// +────────────────────────+───────────+──────────────────+──────────────────+
-// | Port                   | Protocol  |   Base Address   |   End Address    |
-// +────────────────────────+───────────+──────────────────+──────────────────+
-// | reset_unit             | AXI4_LITE | 0x0000_c000_2000 | 0x0000_c000_20cc |
-// | misc                   | AXI4_LITE | 0x0000_c000_2800 | 0x0000_c000_2a0c |
-// | gpio                   | AXI4_LITE | 0x0000_c000_3000 | 0x0000_c000_3410 |
-// | apb2avsbus             | AXI4_LITE | 0x0000_c000_4000 | 0x0000_c000_405c |
-// | i2c                    | AXI4_LITE | 0x0000_c000_5000 | 0x0000_c000_5e0c |
-// | uart                   | AXI4_LITE | 0x0000_c000_6000 | 0x0000_c000_7000 |
-// | efuse (SMC_EFUSE_MAP)  | AXI4_LITE | 0x0000_c000_7000 | 0x0000_c000_7400 |
-// | efuse (INTF_CTRL)      | AXI4_LITE | 0x0000_c000_8000 | 0x0000_c000_801c |
-// | telemetry              | AXI4_LITE | 0x0000_c000_9000 | 0x0000_c000_9300 |
-// | system_timer_octs      | AXI4_LITE | 0x0000_c000_a000 | 0x0000_c000_a024 |
-// | dtp_csr                | AXI4_LITE | 0x0000_c000_b000 | 0x0000_c000_b800 |
-// | i3c                    | AXI4_LITE | 0x0000_c003_a000 | 0x0000_c004_0000 |
-// | efuse (shim, param)    | AXI4_LITE | 0x0000_c040_0000 | 0x0000_c040_0000+EFUSE_SHIM_SIZE |
-// | external               | AXI4_LITE | 0x0000_c040_0000+EFUSE_SHIM_SIZE | 0x0000_c080_0000 |
-// +────────────────────────+───────────+──────────────────+──────────────────+
+// carried into the open tree, so it cannot be regenerated. RDL-backed AddrMap
+// windows derive from smc_top_addrmap_pkg. The vendor eFuse shim is carved out
+// of the generated external window by the EFUSE_SHIM_SIZE parameter.
 //
 // ============================================================================
 // CONNECTIVITY MATRIX
@@ -48,7 +24,7 @@ module smc_periph_axi_lite_xbar
   import smc_periph_axi_lite_xbar_pkg::*;
 #(
   // Vendor eFuse shim CSR block carved off the base of the smc_external window;
-  // literal because the open smc_external map is opaque. Threaded from smc_peripherals.sv.
+  // Threaded from smc_peripherals.sv.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h44
 )
 (
@@ -119,10 +95,8 @@ module smc_periph_axi_lite_xbar
   // ===========================================================================
   // Address Map Configuration
   // ===========================================================================
-  // Rules marked "RDL" use smc_top_addrmap_pkg symbols so the RDL is
-  // authoritative for those decode windows. Rules marked "literal" keep the
-  // spec aperture because the RDL SIZE already equals the window, or because
-  // no RDL block backs the region.
+  // Every address boundary comes from the generated RDL map. EFUSE_SHIM_SIZE
+  // partitions the generated external window without duplicating its bounds.
   localparam addr_rule_t [NumAddrRules-1:0] AddrMap = '{
     // reset_unit: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_{BASE_ADDR,SIZE}
     '{idx: 0,
@@ -134,10 +108,10 @@ module smc_periph_axi_lite_xbar
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_SIZE)},
-    // gpio: RDL — SMC_TOP_GPIO_INTF_BASE_ADDR(0)=0xC0003000, SMC_TOP_GPIO_INTF_TOTAL_SIZE=0x410
     '{idx: 2,
-      start_addr: 32'hc0003000,
-      end_addr:   33'(32'hc0003000 + smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_TOTAL_SIZE)},
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)
+                    + smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_TOTAL_SIZE)},
     // apb2avsbus: RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_{BASE_ADDR,SIZE}
     '{idx: 3,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR),
@@ -148,8 +122,10 @@ module smc_periph_axi_lite_xbar
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_I2C_WRAP_SIZE)},
-    // uart: literal — RDL SIZE equals the 4 KiB aperture
-    '{idx: 5, start_addr: 32'hc0006000, end_addr: 33'hc0007000},
+    '{idx: 5,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_UART_WRAP_SIZE)},
     // efuse (SMC_EFUSE_MAP): RDL — smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_{BASE_ADDR,SIZE}
     '{idx: 6,
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR),
@@ -170,14 +146,23 @@ module smc_periph_axi_lite_xbar
       start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR),
       end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR
                     + smc_top_addrmap_pkg::SMC_TOP_SMC_SYSTEM_TIMER_OCTS_SIZE)},
-    // dtp_csr: literal — RDL SIZE equals the 2 KiB aperture
-    '{idx: 9, start_addr: 32'hc000b000, end_addr: 33'hc000b800},
-    // i3c: literal — RDL TOTAL_SIZE equals the 24 KiB aperture
-    '{idx: 10, start_addr: 32'hc003a000, end_addr: 33'hc0040000},
-    // efuse_shim: parametric on EFUSE_SHIM_SIZE (vendor region; no RDL block)
-    '{idx: 6, start_addr: 32'hc0400000, end_addr: 33'hc0400000 + 33'(EFUSE_SHIM_SIZE)},
-    // external: literal — non-RDL vendor region after the shim
-    '{idx: 11, start_addr: 32'hc0400000 + EFUSE_SHIM_SIZE, end_addr: 33'hc0800000}
+    '{idx: 9,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_DTP_CTRL_REG_SIZE)},
+    '{idx: 10,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_OCA_I3C_WRAP_SIZE)},
+    '{idx: 6,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + EFUSE_SHIM_SIZE)},
+    '{idx: 11,
+      start_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + EFUSE_SHIM_SIZE),
+      end_addr:   33'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_BASE_ADDR
+                    + smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE)}
   };
 
   // ===========================================================================

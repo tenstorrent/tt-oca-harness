@@ -803,7 +803,7 @@ hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
-hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv
+hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
 // Package(tt-oca-harness) Target(any(dtp, sep))
 hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv

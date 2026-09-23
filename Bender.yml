@@ -569,7 +569,7 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
-      - hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv
+      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
   - target: any(dtp, sep)
     files:
@@ -590,9 +590,9 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/rtl/smc_pkg.sv
-      - hw/sys/smc/rtl/smc_internal_axi_lite_xbar_pkg.sv
-      - hw/sys/smc/rtl/smc_local_xbar_pkg.sv
-      - hw/sys/smc/rtl/smc_periph_axi_lite_xbar_pkg.sv
+      - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
+      - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
+      - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/smc_config_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_4core_mem_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu_pkg.sv
@@ -1253,9 +1253,9 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
-      - hw/sys/smc/rtl/smc_internal_axi_lite_xbar.sv
-      - hw/sys/smc/rtl/smc_local_xbar.sv
-      - hw/sys/smc/rtl/smc_periph_axi_lite_xbar.sv
+      - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
+      - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
+      - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv
       - hw/sys/smc/rtl/smc.sv
       - hw/sys/smc/rtl/smc_base.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core/OCAH4CORECluster_ALU.sv

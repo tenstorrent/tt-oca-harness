@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC local AXI crossbar types and address constants.
+// SMC local AXI crossbar types and configuration.
 //
 // Hand-maintained: the fabric_gen source configs for this crossbar were not
-// carried into the open tree, so it cannot be regenerated. The following rules
-// now derive their extents from smc_top_addrmap_pkg: cpu_ctrl, dma_ctrl, and
-// zeroer_ctrl (the former data_accel_ctrl rule is split into two). Rules left
-// as literal apertures are intentionally wide to cover fabric-delegated or
-// non-RDL regions: wdt_debug, spm_memory, plic, clint_beu, local_regs,
-// dfx_ctrl, periph_main, oca_i3c, periph_ext, smc_dfd_reg.
+// carried into the open tree, so it cannot be regenerated. Address rules live
+// in smc_local_xbar and derive their boundaries from smc_top_addrmap_pkg.
 
 `include "axi/typedef.svh"
 `include "apb/typedef.svh"
@@ -23,7 +19,7 @@ package smc_local_xbar_pkg;
   // ===========================================================================
   localparam int unsigned NumInputs     = 3;
   localparam int unsigned NumOutputs    = 5;
-  localparam int unsigned NumAddrRules  = 13;
+  localparam int unsigned NumAddrRules  = 20;
   localparam int unsigned MaxInputIdW   = 6;
   localparam int unsigned XbarOutputIdW = 8;
 
@@ -276,60 +272,6 @@ package smc_local_xbar_pkg;
     logic [31:0] start_addr;
     logic [32:0] end_addr;
   } apb_addr_rule_t;
-
-  // ===========================================================================
-  // Address Range Constants (Named)
-  // ===========================================================================
-  // Output: front_port — literal wide apertures (non-RDL regions, see plan)
-  localparam logic [31:0] FRONT_PORT_WDT_DEBUG_BASE = 32'hc0000000;
-  localparam logic [31:0] FRONT_PORT_WDT_DEBUG_SIZE = 32'h1000;
-  localparam logic [32:0] FRONT_PORT_WDT_DEBUG_END  = 33'hc0001000;
-  // cpu_ctrl: narrowed to smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE (0x2C0)
-  localparam logic [31:0] FRONT_PORT_CPU_CTRL_BASE = 32'hc0039000;
-  localparam logic [31:0] FRONT_PORT_CPU_CTRL_SIZE = 32'h2c0;
-  localparam logic [32:0] FRONT_PORT_CPU_CTRL_END  = 33'hc00392c0;
-  localparam logic [31:0] FRONT_PORT_SPM_MEMORY_BASE = 32'hc0040000;
-  localparam logic [31:0] FRONT_PORT_SPM_MEMORY_SIZE = 32'h120000;
-  localparam logic [32:0] FRONT_PORT_SPM_MEMORY_END  = 33'hc0160000;
-  localparam logic [31:0] FRONT_PORT_PLIC_BASE = 32'hc4000000;
-  localparam logic [31:0] FRONT_PORT_PLIC_SIZE = 32'h4000000;
-  localparam logic [32:0] FRONT_PORT_PLIC_END  = 33'hc8000000;
-  localparam logic [31:0] FRONT_PORT_CLINT_BEU_BASE = 32'hc8000000;
-  localparam logic [31:0] FRONT_PORT_CLINT_BEU_SIZE = 32'h20000;
-  localparam logic [32:0] FRONT_PORT_CLINT_BEU_END  = 33'hc8020000;
-
-  // Output: data_accel_ctrl — split into dma_ctrl and zeroer_ctrl (RDL extents)
-  localparam logic [31:0] DATA_ACCEL_CTRL_DMA_CTRL_BASE = 32'hc0038000;
-  localparam logic [31:0] DATA_ACCEL_CTRL_DMA_CTRL_SIZE = 32'h138;
-  localparam logic [32:0] DATA_ACCEL_CTRL_DMA_CTRL_END  = 33'hc0038138;
-
-  localparam logic [31:0] DATA_ACCEL_CTRL_ZEROER_CTRL_BASE = 32'hc0038200;
-  localparam logic [31:0] DATA_ACCEL_CTRL_ZEROER_CTRL_SIZE = 32'h18;
-  localparam logic [32:0] DATA_ACCEL_CTRL_ZEROER_CTRL_END  = 33'hc0038218;
-
-  // Output: local_reg — literal wide apertures (fabric-delegated)
-  localparam logic [31:0] LOCAL_REG_LOCAL_REGS_BASE = 32'hc0010000;
-  localparam logic [31:0] LOCAL_REG_LOCAL_REGS_SIZE = 32'h28000;
-  localparam logic [32:0] LOCAL_REG_LOCAL_REGS_END  = 33'hc0038000;
-  localparam logic [31:0] LOCAL_REG_DFX_CTRL_BASE = 32'hc000b800;
-  localparam logic [31:0] LOCAL_REG_DFX_CTRL_SIZE = 32'h800;
-  localparam logic [32:0] LOCAL_REG_DFX_CTRL_END  = 33'hc000c000;
-
-  // Output: periph_reg — literal wide apertures (fabric-delegated)
-  localparam logic [31:0] PERIPH_REG_PERIPH_MAIN_BASE = 32'hc0002000;
-  localparam logic [31:0] PERIPH_REG_PERIPH_MAIN_SIZE = 32'h9800;
-  localparam logic [32:0] PERIPH_REG_PERIPH_MAIN_END  = 33'hc000b800;
-  localparam logic [31:0] PERIPH_REG_OCA_I3C_BASE = 32'hc003a000;
-  localparam logic [31:0] PERIPH_REG_OCA_I3C_SIZE = 32'h6000;
-  localparam logic [32:0] PERIPH_REG_OCA_I3C_END  = 33'hc0040000;
-  localparam logic [31:0] PERIPH_REG_PERIPH_EXT_BASE = 32'hc0400000;
-  localparam logic [31:0] PERIPH_REG_PERIPH_EXT_SIZE = 32'h400000;
-  localparam logic [32:0] PERIPH_REG_PERIPH_EXT_END  = 33'hc0800000;
-
-  // Output: smc_dfd_reg — literal wide aperture (non-RDL vendor region)
-  localparam logic [31:0] SMC_DFD_REG_DFD_REGS_BASE = 32'hc0160000;
-  localparam logic [31:0] SMC_DFD_REG_DFD_REGS_SIZE = 32'h100000;
-  localparam logic [32:0] SMC_DFD_REG_DFD_REGS_END  = 33'hc0260000;
 
   // ===========================================================================
   // Crossbar Configuration
