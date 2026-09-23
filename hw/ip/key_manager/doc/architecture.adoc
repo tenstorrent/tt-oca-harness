@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[key-manager-km-key-manager-km]]
-= Key Manager (KM)
+[[key-manager-architecture]]
+= Architecture
 
 The KM module aims to support a superset of the
 https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key

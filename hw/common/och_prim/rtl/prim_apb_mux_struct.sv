@@ -91,7 +91,7 @@ module prim_apb_mux_struct #(
         stream_arbiter #(
             .DATA_T      (apb_req_payload_t),
             .N_INP       (NUM_MASTERS)
-        ) stream_arbiter (
+        ) u_stream_arbiter (
             .clk_i,
             .rst_ni,
             .inp_data_i  (arb_data_in),

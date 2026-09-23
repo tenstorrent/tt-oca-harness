@@ -13,7 +13,7 @@
 <li><strong>confstrptr[3]</strong>: 3 registers, base 0x64, stride 0x4</li>
 <li><strong>progbuf[16]</strong>: 16 registers, base 0x80, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x10 - 0x3C</td><td><a href="#abstractdata_12_">abstractdata[12]</a></td><td>RW</td><td>Abstract Data Register. Used for arguments/return values of abstract commands.</td></tr>
@@ -43,7 +43,7 @@
 <tr><td>0xFC</td><td><a href="#sbdata3">sbdata3</a></td><td>RW</td><td>Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
 <tr><td>0x100</td><td><a href="#haltsum0">haltsum0</a></td><td>R</td><td>Read-only. Each bit indicates whether one specific hart is halted. Unavailable/nonexistent harts are not considered halted. LSB for hart {hartsel[19:5],5&#x27;h0}, MSB for hart {hartsel[19:5],5&#x27;h1f}.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="abstractdata_12_">abstractdata[12]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

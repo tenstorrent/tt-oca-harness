@@ -32,9 +32,9 @@ workflows that run them.
 
 | Document | What it covers |
 | --- | --- |
-| [`docs/DTP_VPLAN.adoc`](docs/DTP_VPLAN.adoc) | Every scenario with its procedure, checkers, and evidence; the negative-validation knobs; the formal verification plan; the verification scope, the requirement-to-test matrix, and known limitations |
-| [`docs/DTP_TB_ARCH.adoc`](docs/DTP_TB_ARCH.adoc) | Testbench hierarchy, VIP selection and DUT-local model ownership, environment components, stimulus, checking, and coverage strategies, the SV-UVM realization and its differences from cocotb, adding a scenario, overlaying a commercial VIP |
-| [`docs/DTP_FCOV.adoc`](docs/DTP_FCOV.adoc) | Functional coverage plan and signoff target |
+| [`docs/DTP_VPLAN.adoc`](docs/DTP_VPLAN.adoc) | Every scenario with its procedure, checkers, and pass criteria; the formal verification plan; the verification scope, the requirement-to-test matrix, the regression groups, and known limitations |
+| [`docs/DTP_TB_ARCH.adoc`](docs/DTP_TB_ARCH.adoc) | Testbench hierarchy, VIP selection and DUT-local model ownership, environment components, stimulus, checking (with the negative-validation knobs), and coverage strategies, the SV-UVM realization and its differences from cocotb, adding a scenario, overlaying a commercial VIP |
+| [`docs/DTP_FCOV.adoc`](docs/DTP_FCOV.adoc) | Functional coverage plan, coverage targets, and closure policy |
 | [`../doc/defines.adoc`](../doc/defines.adoc) | Every preprocessor define a DTP compile passes, including the assertion switches |
 | [`../doc/index.adoc`](../doc/index.adoc) | Design specification, with the JTAG and cross-trigger IP chapters |
 | [`hw/common/dv/README.md`](../../../common/dv/README.md) | Shared VIPs, BFM ownership, and the promotion checklist |

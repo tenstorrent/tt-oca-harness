@@ -612,6 +612,9 @@ sources:
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, axi_hang_detector)
+    files:
+      - hw/common/och_prim/rtl/prim_axi_snoop.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     files:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
@@ -627,10 +630,8 @@ sources:
       - hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
       - hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
       - hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-      - hw/common/och_prim/rtl/prim_axi_snoop.sv
       - hw/common/och_prim/rtl/prim_axi_user_override.sv
       - hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-      - hw/common/och_prim/rtl/prim_axil_err_slv.sv
       - hw/common/och_prim/rtl/prim_axil_prot_filter.sv
       - hw/common/och_prim/rtl/prim_bin2gray.sv
       - hw/common/och_prim/rtl/prim_carry_select_adder.sv
@@ -738,7 +739,7 @@ sources:
       - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
       - hw/ip/axi_filter/rtl/axi_filter_wrap.sv
       - hw/ip/axi_filter/rtl/traffic_filter.sv
-  - target: smc
+  - target: any(smc, axi_hang_detector)
     files:
       - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
   - target: any(sep, smc)

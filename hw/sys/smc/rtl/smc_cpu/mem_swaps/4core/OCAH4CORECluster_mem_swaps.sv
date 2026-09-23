@@ -19,7 +19,7 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
     .Width(144),
     .Depth(256),
     .DataBitsPerMask(72)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -54,7 +54,7 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
     .Width(108),
     .Depth(32),
     .DataBitsPerMask(54)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -89,7 +89,7 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
     .Width(94),
     .Depth(32),
     .DataBitsPerMask(47)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -124,7 +124,7 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
     .Width(66),
     .Depth(256),
     .DataBitsPerMask(33)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -158,7 +158,7 @@ module OCAH4CORECluster_mem_0_ext #(
     .Width(72),
     .Depth(4096),
     .DataBitsPerMask(72)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -190,7 +190,7 @@ module OCAH4CORECluster_rom_ext #(
     .Width(64),
     .Depth(16384),
     .MemInitFile("")
-  ) mem (
+  ) u_mem (
     .clk_i(R0_clk),
     .rst_ni(1'b1),  // unused
     .req_i(R0_en),
@@ -219,7 +219,7 @@ module OCAH4CORECluster_rom_ext #(
     // remaining entries stay X and cause X-propagation when the ICache
     // speculatively fetches beyond the loaded firmware range.
     for (int i = 0; i < 16384; i++) begin
-      mem.mem[i] = '0;
+      u_mem.mem[i] = '0;
     end
 
     // Check for rom_bin64 first (binary format, 64-bit-per-line)
@@ -231,7 +231,7 @@ module OCAH4CORECluster_rom_ext #(
       file_handle = $fopen(rom_mem_path, "r");
       if (file_handle) begin
         $fclose(file_handle);
-        $readmemb(rom_mem_path, mem.mem);
+        $readmemb(rom_mem_path, u_mem.mem);
         file_loaded = 1;
         $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from bin64 file: %s",
                  rom_mem_path);
@@ -247,7 +247,7 @@ module OCAH4CORECluster_rom_ext #(
       file_handle = $fopen(rom_mem_path, "r");
       if (file_handle) begin
         $fclose(file_handle);
-        $readmemh(rom_mem_path, mem.mem);
+        $readmemh(rom_mem_path, u_mem.mem);
         file_loaded = 1;
         $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from hex file: %s",
                  rom_mem_path);

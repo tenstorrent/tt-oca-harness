@@ -38,7 +38,7 @@ module prim_prog_clk_div_posedge #(
 
   prim_sync_reset #(
     .WIDTH(RESET_WIDTH)
-  ) reset_sync (
+  ) u_reset_sync (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_mode_i(test_en_i),
@@ -83,7 +83,7 @@ module prim_prog_clk_div_posedge #(
     end
   end
 
-  prim_stdbuf div_clk_stdbuf (
+  prim_stdbuf u_div_clk_stdbuf (
     .a_i(div_clk),
     .y_o(div_clk_buf)
   );
@@ -93,7 +93,7 @@ module prim_prog_clk_div_posedge #(
   // clk_i), so a single reset_n_syncd is correct for both rst0_ni and rst1_ni.
   prim_ag_clk_mux #(
     .SelectOnReset(DIVIDED_CLOCK_ON_RESET)
-  ) postdiv_mux (
+  ) u_postdiv_mux (
     .clk0_i(clk_i),
     .clk1_i(div_clk),
     .rst_clk0_ni(reset_n_syncd),

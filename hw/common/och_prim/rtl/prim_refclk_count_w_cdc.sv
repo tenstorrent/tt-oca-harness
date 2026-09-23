@@ -41,7 +41,7 @@ module prim_refclk_count_w_cdc #(
 
   prim_sync3 #(
     .WIDTH(1)
-  ) sync_cnt_en_count (
+  ) u_sync_cnt_en_count (
     .clk_i(refclk_i),
     .d_i  (cnt_en_i),
     .q_o  (ref_cnt_en)
@@ -52,7 +52,7 @@ module prim_refclk_count_w_cdc #(
 
   prim_sync_reset #(
     .WIDTH(16)
-  ) prst_wr_clk_domain_sync (
+  ) u_prst_wr_clk_domain_sync (
     .clk_i(out_clk_i),
     .rst_ni(prst_ni),
     .test_mode_i(1'b0),
@@ -61,7 +61,7 @@ module prim_refclk_count_w_cdc #(
   );
   prim_sync_reset #(
     .WIDTH(16)
-  ) prst_rd_clk_domain_sync (
+  ) u_prst_rd_clk_domain_sync (
     .clk_i(refclk_i),
     .rst_ni(prst_ni),
     .test_mode_i(1'b0),
@@ -85,7 +85,7 @@ module prim_refclk_count_w_cdc #(
     .Width(REF_COUNT_WIDTH),
     .Depth(CntFifoDepth),
     .OutputZeroIfEmpty(0)
-  ) cnt_update_async_fifo (
+  ) u_cnt_update_async_fifo (
     .clk_wr_i(out_clk_i),
     .rst_wr_ni(prstb_synced_write), // async reset, should be okay to use same reset
     .wvalid_i(cnt_update_i),
@@ -191,7 +191,7 @@ module prim_refclk_count_w_cdc #(
 
   prim_bin2gray #(
     .N(REF_COUNT_WIDTH)
-  ) prim_bin2gray (
+  ) u_prim_bin2gray (
     .a_i(bin_count),
     .z_o(gray_count)
   );
@@ -206,7 +206,7 @@ module prim_refclk_count_w_cdc #(
 
   prim_sync3 #(
     .WIDTH(REF_COUNT_WIDTH)
-  ) sync_ref_count (
+  ) u_sync_ref_count (
     .clk_i(out_clk_i),
     .d_i  (gray_count_sync),
     .q_o  (ref_count_sync_gray)
@@ -214,7 +214,7 @@ module prim_refclk_count_w_cdc #(
 
   prim_gray2bin #(
     .N(REF_COUNT_WIDTH)
-  ) prim_gray2bin (
+  ) u_prim_gray2bin (
     .a_i(ref_count_sync_gray),
     .z_o(count_o)
   );

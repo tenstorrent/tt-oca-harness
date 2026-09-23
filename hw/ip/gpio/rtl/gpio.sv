@@ -101,7 +101,7 @@ module gpio
 
   gpio_filter #(
     .MAX_TRANS(MAX_TRANS)
-  ) gpio_access_filter (
+  ) u_gpio_access_filter (
     .clk_i(clk_i),
     .rst_ni(rst_primary_ni),
     .test_en_i(test_en_i),
@@ -125,7 +125,7 @@ module gpio
   assign gpio_intf_axil_req = filtered_axil_req;
   assign filtered_axil_resp = gpio_intf_axil_resp;
 
-  gpio_intf_reg gpio_intf_reg (
+  gpio_intf_reg u_gpio_intf_reg (
     .clk(clk_i),
     .arst_n(rst_primary_ni),
 
@@ -243,7 +243,7 @@ module gpio
   prim_sync3r #(
     .WIDTH(1),
     .RANDOM_DELAY_GRAY_CODE(1'b0)
-  ) pad2core_sync (
+  ) u_pad2core_sync (
     .clk_i(clk_i),
     .d_i(pad2core),
     .rst_ni(rst_primary_ni),

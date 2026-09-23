@@ -21,5 +21,5 @@ include::partial$log_engine/regs/gen/html/log_engine.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/log_engine.adoc[]
+include::../regs/gen/adoc/log_engine.adoc[leveloffset=+2]
 endif::backend-pdf[]

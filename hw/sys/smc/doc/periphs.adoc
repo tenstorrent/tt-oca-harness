@@ -55,9 +55,9 @@ with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbon
 |Hardware component for decoding and processing telemetry data from
 multi-chiplet systems. |APB4/AXI4-Lite |3
 
-|I3C |I3C controller for enhanced serial communication. OCAH I3C is
-integrated but a work in progress, and will be documented in the TRM
-when officially verified. |AXI4-Lite |6
+|xref:smc:memmap.adoc#smc-i3c-registers[I3C] |I3C controller for enhanced serial
+communication. The generated register map is provided; integration
+verification remains a work in progress. |AXI4-Lite |6
 
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
 subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
@@ -101,9 +101,9 @@ with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbon
 |Hardware component for decoding and processing telemetry data from
 multi-chiplet systems. |APB4/AXI4-Lite |3
 
-|I3C |I3C controller for enhanced serial communication. OCAH I3C is
-integrated but a work in progress, and will be documented in the TRM
-when officially verified. |AXI4-Lite |6
+|<<smc-i3c-registers,I3C>> |I3C controller for enhanced serial communication.
+The generated register map is provided; integration verification remains a
+work in progress. |AXI4-Lite |6
 
 |Reset Unit |Reset control and synchronization, deals with SMC resets (core, primary),
 subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
@@ -131,6 +131,25 @@ include::../../../ip/avsbus_controller/doc/index.adoc[leveloffset=+1]
 include::../../../ip/gpio/doc/index.adoc[leveloffset=+1]
 
 include::../../../ip/telemetry_receiver/doc/index.adoc[leveloffset=+1]
+endif::backend-pdf[]
+
+== UART and Log Engine Wrapper Registers
+
+The wrapper maps include the UART and log-engine control registers and their
+composed register banks. Offsets are relative to each wrapper's base address.
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$uart_wrap/regs/gen/html/uart_wrap.html[]
+include::ip:partial$uart_log_engine_wrap/regs/gen/html/uart_log_engine_ctrl.html[]
+include::ip:partial$uart_log_engine_wrap/regs/gen/html/uart_log_engine_wrap.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../ip/uart/uart_wrap/regs/gen/adoc/uart_wrap.adoc[leveloffset=+1]
+include::../../../ip/uart/uart_log_engine_wrap/regs/gen/adoc/uart_log_engine_ctrl.adoc[leveloffset=+1]
+include::../../../ip/uart/uart_log_engine_wrap/regs/gen/adoc/uart_log_engine_wrap.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
 == Peripheral Parameter Settings

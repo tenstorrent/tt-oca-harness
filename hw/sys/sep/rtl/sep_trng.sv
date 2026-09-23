@@ -11,6 +11,7 @@ module sep_trng #(
   parameter int unsigned NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT
 ) (
   input logic clk_i,
+  input logic por_rst_ni,
   input logic rst_ni,
   input logic entropy_rosc_sample_clk_i,
 
@@ -48,7 +49,20 @@ module sep_trng #(
   output logic trng_reset_active_o
 );
 
-  assign trng_reset_active_o = ~rst_ni;
+  logic trng_reset_active_async;
+
+  assign trng_reset_active_async = ~rst_ni;
+
+  // POR initializes clear asserted without using the local reset being observed.
+  prim_flop_2sync #(
+    .Width     (1),
+    .ResetValue(1'b1)
+  ) u_trng_reset_active_sync (
+    .clk_i,
+    .rst_ni (por_rst_ni),
+    .d_i    (trng_reset_active_async),
+    .q_o    (trng_reset_active_o)
+  );
 
   logic [31:0] entropy_stream_data;
   logic entropy_stream_vld;

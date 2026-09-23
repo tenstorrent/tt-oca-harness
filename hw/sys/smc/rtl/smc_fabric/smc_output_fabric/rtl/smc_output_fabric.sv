@@ -75,7 +75,7 @@ module smc_output_fabric #(
       .input_axi_resp_t (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .output_axi_req_t (smc_pkg::smc_output_56_64_8_12_axi_req_t),
       .output_axi_resp_t (smc_pkg::smc_output_56_64_8_12_axi_resp_t)
-    ) prim_axi_id_converter (
+    ) u_prim_axi_id_converter (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
@@ -103,7 +103,7 @@ module smc_output_fabric #(
       .OutstandingTx(smc_pkg::FABRIC_ID_BUCKETS * MaxTrans),
       .DenyDelay(1),
       .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-    ) fabric_cg (
+    ) u_fabric_cg (
       .clk_i           (clk_i),
       .rst_ni          (rst_ni),
 
@@ -186,7 +186,7 @@ module smc_output_fabric #(
       .SpillB             (1'b0),
       .SpillAr            (1'b0),
       .SpillR             (1'b0)
-    ) output_axi_demux (
+    ) u_output_axi_demux (
       .clk_i              (fabric_clk),
       .rst_ni             (rst_ni),
       .test_i             (test_en_i),
@@ -210,7 +210,7 @@ module smc_output_fabric #(
 
       .axi_req_t      (smc_pkg::smc_56_64_6_12_axi_req_t),
       .axi_resp_t     (smc_pkg::smc_56_64_6_12_axi_resp_t)
-    ) prim_axi_user_override_struct (
+    ) u_prim_axi_user_override_struct (
       .axi_in_req_i   (axi_from_demux_req.filter),
       .axi_in_resp_o  (axi_from_demux_resp.filter),
       .axi_out_req_o  (axi_remap_out_req.filter),
@@ -227,7 +227,7 @@ module smc_output_fabric #(
       .IdxStart           (smc_pkg::OUTPUT_REMAP_IDX_START),
       .UserOverrideEn     (1'b1),
       .UserOverrideVal    (smc_pkg::MMODE_SRC_ID)
-    ) mmode_addr_remap (
+    ) u_mmode_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
@@ -250,7 +250,7 @@ module smc_output_fabric #(
       .IdxStart           (smc_pkg::OUTPUT_REMAP_IDX_START),
       .UserOverrideEn     (1'b1),
       .UserOverrideVal    (smc_pkg::OTHERS_SRC_ID)
-    ) xvisor_addr_remap (
+    ) u_xvisor_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
@@ -286,7 +286,7 @@ module smc_output_fabric #(
       .SpillB         (1'b0),
       .SpillAr        (1'b0),
       .SpillR         (1'b0)
-    ) output_mux (
+    ) u_output_mux (
       .clk_i          (fabric_clk),
       .rst_ni         (rst_ni),
       .test_i         (test_en_i),
@@ -318,7 +318,7 @@ module smc_output_fabric #(
     .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) sys_out_filter_cg (
+  ) u_sys_out_filter_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 
@@ -368,7 +368,7 @@ module smc_output_fabric #(
     .filter_b_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_b_chan_t),
     .filter_ar_chan_t    (smc_pkg::smc_output_56_64_8_12_axi_ar_chan_t),
     .filter_r_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_r_chan_t)
-  ) smc_sys_outbound_filter (
+  ) u_smc_sys_outbound_filter (
     .clk_i                      (filter_clk),
     .rst_ni                     (rst_ni),
     .test_en_i                  (test_en_i),

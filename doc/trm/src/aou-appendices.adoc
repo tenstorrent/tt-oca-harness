@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AoU Appendices
+:description: Supporting reference material for the AoU microarchitecture specification.
+
+The AoU microarchitecture specification includes the following appendices:
+
+ifndef::release[]
+* xref:aou-records-of-changes.adoc[Appendix A. Records of Changes] -- revision history.
+endif::release[]
+* xref:aou-referenced-documents.adoc[Appendix B. Referenced Documents] -- reference list.
