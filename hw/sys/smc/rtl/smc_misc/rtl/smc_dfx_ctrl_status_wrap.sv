@@ -43,7 +43,7 @@ module smc_dfx_ctrl_status_wrap (
 
   end
 
-  dfx_ctrl_status_reg dfx_ctrl_status_reg (
+  dfx_ctrl_status_reg u_dfx_ctrl_status_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 

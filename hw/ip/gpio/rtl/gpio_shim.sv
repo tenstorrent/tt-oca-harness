@@ -113,7 +113,7 @@ module gpio_shim
     .SpillB      (1'b0),
     .SpillAr     (1'b0),
     .SpillR      (1'b0)
-  ) shim_axil_demux (
+  ) u_shim_axil_demux (
     .clk_i(clk_i),
     .rst_ni(rst_primary_ni),
     .test_i(test_en_i),
@@ -126,11 +126,15 @@ module gpio_shim
   );
 
   // Connect demuxed port [1] to AXI-Lite error slave
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH(gpio_pkg::DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH(gpio_pkg::ADDR_WIDTH),
+    .AXI_DATA_WIDTH(gpio_pkg::DATA_WIDTH),
     .axil_req_t(gpio_axil_req_t),
-    .axil_resp_t(gpio_axil_resp_t)
+    .axil_resp_t(gpio_axil_resp_t),
+    .RESP(axi_pkg::RESP_DECERR),
+    .RESP_WIDTH(gpio_pkg::DATA_WIDTH),
+    .RESP_DATA(32'hBADCAB1E),
+    .MAX_TRANS(1)
   ) u_axil_err_slv (
     .clk_i(clk_i),
     .rst_ni(rst_primary_ni),
@@ -138,7 +142,7 @@ module gpio_shim
     .axil_resp_o(axil_resps_demuxed[1])
   );
 
-  gpio_ctrl_reg gpio_ctrl_reg (
+  gpio_ctrl_reg u_gpio_ctrl_reg (
     .clk(clk_i),
     .arst_n(rst_primary_ni),
 
@@ -257,7 +261,7 @@ module gpio_shim
   logic captured_strap;
 
   if (INPUT_BY_DEFAULT) begin : gen_capture_strap
-    prim_latch_n strap_latch (
+    prim_latch_n u_strap_latch (
       .d_i(pad2core_o),
       .g_ni(rst_cold_ni),
       .q_o(captured_strap)

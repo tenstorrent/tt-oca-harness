@@ -15,14 +15,14 @@ module prim_sync3_pulse (
 
   wire toggle;
 
-  prim_sync3_pulse_src i_src (
+  prim_sync3_pulse_src u_src (
     .src_clk_i(src_clk_i),
     .src_pulse_i(src_pulse_i),
     .src_rst_ni(src_rst_ni),
     .toggle_o(toggle)
   );
 
-  prim_sync3_pulse_dest i_dest (
+  prim_sync3_pulse_dest u_dest (
     .dst_clk_i(dst_clk_i),
     .src_rst_ni(src_rst_ni),
     .toggle_i(toggle),
@@ -58,7 +58,7 @@ module prim_sync3_pulse_dest (
   wire toggle_synced;
   wire src_reset_n_reg_dst_clk;
 
-  prim_flop_3sync_r sync3 (
+  prim_flop_3sync_r u_sync3 (
     .clk_i (dst_clk_i),
     .rst_ni(src_reset_n_reg_dst_clk),
     .d_i   (toggle_i),
@@ -67,7 +67,7 @@ module prim_sync3_pulse_dest (
 
   prim_sync_reset #(
     .WIDTH(3)
-  ) src_reset_n_sync (
+  ) u_src_reset_n_sync (
     .clk_i      (dst_clk_i              ),
     .rst_ni     (src_rst_ni             ),
     .test_mode_i(1'b0                   ),

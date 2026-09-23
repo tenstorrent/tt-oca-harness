@@ -317,7 +317,7 @@ module telemetry_receiver
   telemetry_receiver_reg_pkg::telemetry_receiver__in_t  reg_in;
   telemetry_receiver_reg_pkg::telemetry_receiver__out_t reg_out;
 
-  telemetry_receiver_reg telemetry_receiver_reg (
+  telemetry_receiver_reg u_telemetry_receiver_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 

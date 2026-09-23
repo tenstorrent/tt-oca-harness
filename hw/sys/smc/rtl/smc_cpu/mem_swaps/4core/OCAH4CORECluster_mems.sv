@@ -36,7 +36,7 @@ module OCAH4CORECluster_mems #(
   ) begin : gen_icache_tag_rams
     OCAH4CORECluster_rockettile_icache_tag_array_ext #(
       .MEM_CFG_WIDTH(MEM_CFG_WIDTH)
-    ) icache_tag_array (
+    ) u_icache_tag_array (
       .RW0_addr (l1_icache_tag_req[i].addr),
       .RW0_clk  (l1_icache_tag_req[i].clk),
       .RW0_wdata(l1_icache_tag_req[i].wdata),
@@ -55,7 +55,7 @@ module OCAH4CORECluster_mems #(
   ) begin : gen_icache_data_rams
     OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
       .MEM_CFG_WIDTH(MEM_CFG_WIDTH)
-    ) icache_data_arrays (
+    ) u_icache_data_arrays (
       .RW0_addr (l1_icache_data_req[i].addr),
       .RW0_clk  (l1_icache_data_req[i].clk),
       .RW0_wdata(l1_icache_data_req[i].wdata),
@@ -74,7 +74,7 @@ module OCAH4CORECluster_mems #(
   ) begin : gen_dcache_tag_rams
     OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
       .MEM_CFG_WIDTH(MEM_CFG_WIDTH)
-    ) dcache_tag_array (
+    ) u_dcache_tag_array (
       .RW0_addr (l1_dcache_tag_req[i].addr),
       .RW0_clk  (l1_dcache_tag_req[i].clk),
       .RW0_wdata(l1_dcache_tag_req[i].wdata),
@@ -93,7 +93,7 @@ module OCAH4CORECluster_mems #(
   ) begin : gen_dcache_data_rams
     OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
       .MEM_CFG_WIDTH(MEM_CFG_WIDTH)
-    ) dcache_data_arrays (
+    ) u_dcache_data_arrays (
       .RW0_addr (l1_dcache_data_req[i].addr),
       .RW0_clk  (l1_dcache_data_req[i].clk),
       .RW0_wdata(l1_dcache_data_req[i].wdata),
@@ -111,7 +111,7 @@ module OCAH4CORECluster_mems #(
     // Memory instantiation
     OCAH4CORECluster_mem_0_ext #(
       .MEM_CFG_WIDTH(MEM_CFG_WIDTH)
-    ) mem (
+    ) u_mem (
       .RW0_addr (scratch_ram_req[i].addr),
       .RW0_clk  (scratch_ram_req[i].clk),
       .RW0_wdata(scratch_ram_req[i].wdata),
@@ -126,7 +126,7 @@ module OCAH4CORECluster_mems #(
   // ROM
   OCAH4CORECluster_rom_ext #(
     .MEM_CFG_WIDTH(MEM_CFG_WIDTH)
-  ) rom_mem (
+  ) u_rom_mem (
     .R0_addr (rom_req.addr),
     .R0_clk  (rom_req.clk),
     .R0_rdata(rom_rsp.rdata),

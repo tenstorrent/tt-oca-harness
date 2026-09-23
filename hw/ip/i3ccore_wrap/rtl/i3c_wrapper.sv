@@ -95,7 +95,7 @@ module i3c_wrapper #(
     .CsrAddrWidth(CsrAddrWidth),
     .DatAw(DatAw),
     .DctAw(DctAw)
-  ) i3c (
+  ) u_i3c (
     .clk_i,
     .rst_ni,
 

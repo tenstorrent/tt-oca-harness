@@ -43,7 +43,7 @@ module prim_axi_id_converter #(
       .slv_resp_t(input_axi_resp_t),
       .mst_req_t(output_axi_req_t),
       .mst_resp_t(output_axi_resp_t)
-    ) axi_id_remap (
+    ) u_axi_id_remap (
       .clk_i(clk_i),
       .rst_ni(rst_ni),
       .slv_req_i(axi_in_req_i),
@@ -63,7 +63,7 @@ module prim_axi_id_converter #(
       .axi_in_resp_t  (input_axi_resp_t),
       .axi_out_req_t  (output_axi_req_t),
       .axi_out_resp_t (output_axi_resp_t)
-    ) smc_axi_id_prepend_wrap (
+    ) u_smc_axi_id_prepend_wrap (
       .axi_in_req_i   (axi_in_req_i),
       .axi_in_resp_o  (axi_in_resp_o),
       .axi_out_req_o  (axi_out_req_o),

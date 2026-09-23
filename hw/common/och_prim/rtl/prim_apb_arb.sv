@@ -163,7 +163,7 @@ module prim_apb_arb #(
     .AxiVldRdy(1'b1),
     .LockIn(1'b1),
     .FairArb(1'b1)
-  ) apb_arb (
+  ) u_apb_arb (
     .clk_i        (clk_i),
     .rst_ni       (rst_ni),
     .flush_i      (1'b0),

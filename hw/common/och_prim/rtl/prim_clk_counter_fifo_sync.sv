@@ -35,7 +35,7 @@ module prim_clk_counter_fifo_sync #(
 
   prim_clk_counter #(
     .WIDTH(CLOCK_COUNTER_WIDTH)
-  ) clk_counter (
+  ) u_clk_counter (
     .refclk_i(ref_clk_i),
     .refclk_cnt_done_i(ref_clk_done_i),
     .refclk_rst_ni(ref_clk_rst_ni),
@@ -51,7 +51,7 @@ module prim_clk_counter_fifo_sync #(
     .clk_cnt_valid_o(clock_count_valid)
   );
 
-  prim_sync_reset prim_pll_sync_reset (
+  prim_sync_reset u_prim_pll_sync_reset (
     .clk_i(clk_i),
     .rst_ni(tile_rst_ni),
     .test_mode_i('0),
@@ -61,7 +61,7 @@ module prim_clk_counter_fifo_sync #(
 
   wire combined_reset_n = tile_rst_ni & ss_rst_ni;
 
-  prim_sync_reset prim_pll_combined_sync_reset (
+  prim_sync_reset u_prim_pll_combined_sync_reset (
     .clk_i(clk_i),
     .rst_ni(combined_reset_n),
     .test_mode_i('0),
@@ -69,7 +69,7 @@ module prim_clk_counter_fifo_sync #(
     .sync_rst_no(combined_tile_reset_n_sync)
   );
 
-  prim_sync_reset ss_combined_sync_reset (
+  prim_sync_reset u_ss_combined_sync_reset (
     .clk_i(ss_clk_i),
     .rst_ni(combined_reset_n),
     .test_mode_i('0),
@@ -89,7 +89,7 @@ module prim_clk_counter_fifo_sync #(
   prim_fifo_async #(
     .Width(CLOCK_COUNTER_WIDTH + 1),
     .Depth(1)
-  ) prim_fifo_async (
+  ) u_prim_fifo_async (
     .clk_wr_i(clk_i),
     .rst_wr_ni(combined_tile_reset_n_sync),
     .wvalid_i(valid_update),
