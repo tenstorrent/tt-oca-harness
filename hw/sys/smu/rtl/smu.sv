@@ -984,7 +984,7 @@ module smu #(
       .axi_req_t          (sep_pkg::sep_56_64_6_12_axi_req_t),
       .axi_resp_t         (sep_pkg::sep_56_64_6_12_axi_resp_t),
       .AXI_ADDR_WIDTH     (smu_pkg::AXI_ADDR_WIDTH)
-    ) sep_ext_to_smc_axi_local_alias_remap (
+    ) u_sep_ext_to_smc_axi_local_alias_remap (
       .slv_req_i          (sep_ext_to_smc_axi_req),
       .slv_resp_o         (sep_ext_to_smc_axi_resp),
       .mst_req_o          (sep_ext_to_smc_axi_req_local),

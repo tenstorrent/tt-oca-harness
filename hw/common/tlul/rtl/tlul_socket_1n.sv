@@ -87,7 +87,7 @@ module tlul_socket_1n #(
     .ReqDepth(HReqDepth),
     .RspDepth(HRspDepth),
     .SpareReqW(NWD)
-  ) fifo_h (
+  ) u_fifo_h (
     .clk_i,
     .rst_ni,
     .tl_h_i,
@@ -211,7 +211,7 @@ module tlul_socket_1n #(
       .RspPass(DRspPass[i]),
       .ReqDepth(DReqDepth[i*4+:4]),
       .RspDepth(DRspDepth[i*4+:4])
-    ) fifo_d (
+    ) u_fifo_d (
       .clk_i,
       .rst_ni,
       .tl_h_i      (tl_u_o[i]),
@@ -240,7 +240,7 @@ module tlul_socket_1n #(
     assign tl_u_o[N].a_mask      = tl_t_o.a_mask;
     assign tl_u_o[N].a_data      = tl_t_o.a_data;
     assign tl_u_o[N].a_user      = tl_t_o.a_user;
-    tlul_err_resp err_resp (
+    tlul_err_resp u_err_resp (
       .clk_i,
       .rst_ni,
       .tl_h_i     (tl_u_o[N]),

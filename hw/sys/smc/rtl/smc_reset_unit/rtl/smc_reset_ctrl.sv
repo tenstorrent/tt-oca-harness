@@ -52,7 +52,7 @@ module smc_reset_ctrl (
   // Wait 32 cycles after power good de-assertion before broadcasting to rest of chip
   prim_sync_reset #(
     .WIDTH(32)
-  ) powergood_stretcher_n0_scan (
+  ) u_powergood_stretcher_n0_scan (
     .clk_i(clk_ref_i),
     .rst_ni(powergood_i),
     .test_mode_i(test_en_i),
@@ -79,7 +79,7 @@ module smc_reset_ctrl (
   // Only pass reset once all shift registers are 0, meaning it has been in asserted for 32 cycles
   assign cold_rst_deglitch_to_rstbypass = |cold_rst_deglitch_shift_reg_n0_scan;
 
-  prim_rstbypass_stdmux2 cold_rst_pre_extend_rstbypass (
+  prim_rstbypass_stdmux2 u_cold_rst_pre_extend_rstbypass (
     .rst_ni(cold_rst_deglitch_to_rstbypass),
     .test_rst_ni(scan_rst_ni),
     .test_mode_i(test_en_i),

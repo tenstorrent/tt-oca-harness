@@ -154,7 +154,7 @@ module hmac_wrapper (
 
   prim_mubi_pkg::mubi4_t hmac_idle;
 
-  hmac tt_hmac (
+  hmac u_tt_hmac (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
 

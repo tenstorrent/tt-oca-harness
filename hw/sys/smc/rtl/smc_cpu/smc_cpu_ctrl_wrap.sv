@@ -64,7 +64,7 @@ module smc_cpu_ctrl_wrap #(
 
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(RefCountWidth)
-  ) refclk_counter (
+  ) u_refclk_counter (
     .refclk_i(clk_ref_i),
     .prst_ni(rst_primary_ni),
     .cnt_en_i(1'b1),
@@ -233,7 +233,7 @@ module smc_cpu_ctrl_wrap #(
 
   logic [31:0] test_ctrl;
 
-  cpu_ctrl_reg cpu_ctrl_reg (
+  cpu_ctrl_reg u_cpu_ctrl_reg (
     .clk(clk_smc_i),
     .arst_n(rst_primary_ni),
 

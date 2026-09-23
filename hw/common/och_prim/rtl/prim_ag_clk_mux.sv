@@ -26,14 +26,14 @@ module prim_ag_clk_mux #(
   // Clock 0 synchronizer - resets to selected state based on SelectOnReset parameter
   generate
     if (SelectOnReset == 1'b0) begin : gen_sync_clk0_selected
-      prim_flop_4sync_s sync_clk0 (
+      prim_flop_4sync_s u_sync_clk0 (
         .clk_i(clk0_i),
         .d_i(~sel_i & !sel_clk1),
         .set_ni(rst_clk0_ni),
         .q_o(sel_sync_clk0)
       );
     end else begin : gen_sync_clk0_not_selected
-      prim_flop_4sync_r sync_clk0 (
+      prim_flop_4sync_r u_sync_clk0 (
         .clk_i(clk0_i),
         .d_i(~sel_i & !sel_clk1),
         .rst_ni(rst_clk0_ni),
@@ -45,14 +45,14 @@ module prim_ag_clk_mux #(
   // Clock 1 synchronizer - resets to selected state based on SelectOnReset parameter
   generate
     if (SelectOnReset == 1'b1) begin : gen_sync_clk1_selected
-      prim_flop_4sync_s sync_clk1 (
+      prim_flop_4sync_s u_sync_clk1 (
         .clk_i(clk1_i),
         .d_i(sel_i & !sel_clk0),
         .set_ni(rst_clk1_ni),
         .q_o(sel_sync_clk1)
       );
     end else begin : gen_sync_clk1_not_selected
-      prim_flop_4sync_r sync_clk1 (
+      prim_flop_4sync_r u_sync_clk1 (
         .clk_i(clk1_i),
         .d_i(sel_i & !sel_clk0),
         .rst_ni(rst_clk1_ni),
@@ -64,26 +64,26 @@ module prim_ag_clk_mux #(
   // Clock selection flops - reset behavior based on SelectOnReset parameter
   generate
     if (SelectOnReset == 1'b0) begin : gen_sel_clk0_selected
-      prim_dffsxq clk0_sel (
+      prim_dffsxq u_clk0_sel (
         .clk_i(clk0_i),
         .set_ni(rst_clk0_ni),
         .d_i(sel_sync_clk0),
         .q_o(sel_clk0)
       );
-      prim_dffrxq clk1_sel (
+      prim_dffrxq u_clk1_sel (
         .clk_i(clk1_i),
         .rst_ni(rst_clk1_ni),
         .d_i(sel_sync_clk1),
         .q_o(sel_clk1)
       );
     end else begin : gen_sel_clk1_selected
-      prim_dffrxq clk0_sel (
+      prim_dffrxq u_clk0_sel (
         .clk_i(clk0_i),
         .rst_ni(rst_clk0_ni),
         .d_i(sel_sync_clk0),
         .q_o(sel_clk0)
       );
-      prim_dffsxq clk1_sel (
+      prim_dffsxq u_clk1_sel (
         .clk_i(clk1_i),
         .set_ni(rst_clk1_ni),
         .d_i(sel_sync_clk1),
@@ -92,21 +92,21 @@ module prim_ag_clk_mux #(
     end
   endgenerate
 
-  prim_clkgater clk0_gate (
+  prim_clkgater u_clk0_gate (
     .clk_i(clk0_i),
     .en_i(sel_sync_clk0),
     .te_i(test_en_i),
     .clk_o(gated_clk0)
   );
 
-  prim_clkgater clk1_gate (
+  prim_clkgater u_clk1_gate (
     .clk_i(clk1_i),
     .en_i(sel_sync_clk1),
     .te_i(test_en_i),
     .clk_o(gated_clk1)
   );
 
-  prim_clock_or2 clk_out_or (
+  prim_clock_or2 u_clk_out_or (
     .in0_i(gated_clk0),
     .in1_i(gated_clk1),
     .out_o(clk_o)

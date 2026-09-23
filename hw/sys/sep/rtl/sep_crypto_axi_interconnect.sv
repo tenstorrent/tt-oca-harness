@@ -253,7 +253,7 @@ module sep_crypto_axi_interconnect (
     .SpillB          (1'b1),
     .SpillAr         (1'b1),
     .SpillR          (1'b1)
-  ) axi_demux (
+  ) u_axi_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -274,7 +274,7 @@ module sep_crypto_axi_interconnect (
     .Resp       (axi_pkg::RESP_DECERR),
     .ATOPs      (1'b0),
     .MaxTrans   (1)
-  ) axi_err_slv (
+  ) u_axi_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),

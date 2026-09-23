@@ -155,7 +155,7 @@ module sep_lifecycle_ctrl #(
     .full_resp_t    (sep_pkg::sep_32_64_6_12_axi_resp_t),
     .lite_req_t     (sep_pkg::sep_32_64_axil_req_t),
     .lite_resp_t    (sep_pkg::sep_32_64_axil_resp_t)
-  ) lifecycle_axi_to_axi_lite (
+  ) u_lifecycle_axi_to_axi_lite (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),

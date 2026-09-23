@@ -189,7 +189,7 @@ def stage_result(name: str) -> StageResult:
 
 
 def normalised(document: Any) -> Any:
-    """The document with every timestamp replaced by one sentinel."""
+    """The document with one sentinel in place of every timestamp."""
     if isinstance(document, dict):
         return {
             key: GENERATED_AT if key == "generated_at" else normalised(value)
