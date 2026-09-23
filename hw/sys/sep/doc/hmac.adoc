@@ -9,6 +9,13 @@
 The HMAC component is based on the
 https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC] design.
 
+[[sep-hmac-reference-diagram]]
+.OpenTitan HMAC core reference architecture
+image::opentitan_hmac.svg[alt="OpenTitan HMAC core reference architecture",width=100%,pdfwidth=100%]
+
+The figure shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.
+
 [[och-modifications-4]]
 == OCAH Modifications
 

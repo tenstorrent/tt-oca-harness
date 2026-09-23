@@ -36,6 +36,13 @@ Since the OTBN is programmable, more algorithms can easily be developed
 at a later time. The microcode is loaded into SRAM based instruction
 memory allowing firmware updates to be made in the field.
 
+[[sep-otbn-reference-diagram]]
+.OpenTitan OTBN core reference architecture
+image::opentitan_otbn.svg[alt="OpenTitan OTBN core reference architecture",width=100%,pdfwidth=100%]
+
+The figure shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.
+
 [[och-modifications-1]]
 == OCAH Modifications
 

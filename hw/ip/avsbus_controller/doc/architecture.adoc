@@ -14,6 +14,10 @@ commands and responses between the register and AVS clock domains, a protocol
 FSM that serializes and deserializes subframes, a CRC-3 engine shared between
 transmit and receive, and the AVS clock generation logic.
 
+[[avsbus-controller-diagram]]
+.AVSBus controller and protocol state machine
+image::SMC_AVSBusV1p3_FIG026.png[alt="AVSBus controller and protocol state machine",width=100%,pdfwidth=100%]
+
 === AVS Protocol Engine
 
 Software queues commands by writing `AVS_CMD`, which pushes a 32-bit word into

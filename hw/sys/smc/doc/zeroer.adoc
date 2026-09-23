@@ -31,6 +31,14 @@ sequences
 
 == Architecture
 
+The DMA and zeroer share the data-accelerator fabric path shown in
+ifdef::backend-html5[]
+xref:dma.adoc#smc-dma-zeroer-diagram[SMC DMA and memory-zeroer architecture].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-dma-zeroer-diagram,SMC DMA and memory-zeroer architecture>>.
+endif::backend-pdf[]
+
 === State Machine
 
 The zeroer implements a three-state operation model:

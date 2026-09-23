@@ -43,8 +43,12 @@ interfaces. While this does physically separate key and data transport
 it is not scalable and requires modifications to the Key Manager
 whenever a new accelerator is added to the subsystem.
 
-.SEP cryptographic subsystem and external memories. Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9 with masking disabled.
-image::SEP_Crypto_Complex.png[alt="SEP cryptographic subsystem with integrator-supplied Key Manager, OTBN and Adams Bridge memories",scaledwidth=100%]
+Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9
+with masking disabled.
+
+[[sep-crypto-diagram]]
+.SEP cryptographic subsystem and external memory interfaces
+image::SEP_Crypto_TopLevel_FIG010.drawio.png[alt="SEP cryptographic subsystem and external memory interfaces",width=100%,pdfwidth=100%]
 
 The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
 connect them through the dedicated `abr_mem` request/response interface.

@@ -27,6 +27,18 @@ endif::backend-pdf[]
 this path today -- it verifies a single classical RSA-3072 signature, and
 combined classical + PQC signing is deferred to a later release.
 
+[[sep-abr-mldsa-diagram]]
+.Adams Bridge ML-DSA reference architecture
+image::adams_bridge_mldsa.png[alt="Adams Bridge ML-DSA reference architecture",width=100%,pdfwidth=100%]
+
+[[sep-abr-mlkem-diagram]]
+.Adams Bridge ML-KEM reference architecture
+image::adams_bridge_mlkem.png[alt="Adams Bridge ML-KEM reference architecture",width=100%,pdfwidth=100%]
+
+These upstream diagrams describe the algorithm datapaths. The OCAH wrapper
+provides the AXI and key interfaces and exposes the working SRAM ports to
+the integrator, as described below.
+
 [[och-modifications-5]]
 == OCAH Modifications
 

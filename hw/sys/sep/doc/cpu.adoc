@@ -21,6 +21,20 @@ https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/inde
 Programmer’s Reference Manual] provides the details required for
 programming the CPU.
 
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-cpu-diagram]]
+.SEP VeeR EL2 CPU subsystem and memory interfaces
+image::SEP_CPU_FIG004.svg[alt="SEP VeeR EL2 CPU subsystem and memory interfaces",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=portrait]
+<<<
+endif::backend-pdf[]
+
 [[cpu-feature-summary]]
 == CPU Feature Summary
 
@@ -207,6 +221,13 @@ error
 SPI
 ** Peripheral signals read FIFO data available and transmit FIFO space
 available to DMA for automatic flow control
+
+[[sep-dma-reference-diagram]]
+.OpenTitan DMA core and inline hashing reference architecture
+image::opentitan_dma.svg[alt="OpenTitan DMA core and inline hashing reference architecture",width=100%,pdfwidth=100%]
+
+The figure shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.
 
 [[och-modifications]]
 === OCAH Modifications

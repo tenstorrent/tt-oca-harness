@@ -49,6 +49,14 @@ ifdef::backend-pdf[]
 <<ocah-clock-domains,OCAH Architecture>> chapter.
 endif::backend-pdf[]
 
+[[smu-composition-diagram]]
+.SMU composition with the optional SEP subsystem
+image::SMU_TopLevel_FIG001.drawio.png[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
+
+The dashed SEP boundary denotes the optional subsystem controlled by the
+`SEP` integration parameter. Memory capacities in the diagram describe the
+illustrated configuration.
+
 [[smu-axi-crossbar]]
 == AXI Crossbar
 
@@ -57,6 +65,10 @@ fabric between SEP, SMC, and the rest of the chiplet (reached through the
 `smu_axi_in` / `smu_axi_out` boundary pair). It is a 3×3 AXI4 crossbar with
 non-reflexive connectivity: each master can reach the other two subordinates
 but never its own inbound port.
+
+[[smu-crossbar-connectivity-diagram]]
+.SMU AXI crossbar connectivity
+image::SMU_AxiXbar_Connectivity_FIG002.1.drawio.png[alt="SMU AXI crossbar connectivity",width=100%,pdfwidth=100%]
 
 .SMU AXI crossbar ports
 [cols="<22%,<22%,<56%",options="header"]
@@ -82,6 +94,34 @@ endif::backend-pdf[]
 for the fixed-vs-programmable split and the reference envelope convention, and
 see the SMU AXI Crossbar Address Map section in the Integrator Guide for
 firmware programming order.
+
+[[smu-crossbar-decode-diagram]]
+.SMU aperture decode and routing
+image::SMU_AxiXbar_Decode_FIG002.2.drawio.png[alt="SMU aperture decode and routing",width=100%,pdfwidth=100%]
+
+[[smu-clocks-and-resets]]
+== Clocks and Resets
+
+The clock and reset trees show the distribution from the SMU boundary to
+DTP, SEP, SMC, and the shared AXI infrastructure.
+
+[[smu-clock-distribution]]
+.SMU clock distribution
+image::SMU_ClockingArchitecture_FIG004.png[alt="SMU clock distribution",width=100%,pdfwidth=100%]
+
+[[smu-reset-distribution]]
+.SMU reset distribution
+image::SMU_ResetArchitecture_FIG005.png[alt="SMU reset distribution",width=100%,pdfwidth=100%]
+
+[[smu-lifecycle-propagation]]
+== Lifecycle and Feature Control
+
+SEP lifecycle state and feature controls constrain the debug paths in DTP
+and the management functions in SMC.
+
+[[smu-lifecycle-propagation-diagram]]
+.SEP lifecycle and feature-control propagation to SMC and DTP
+image::SMU_LC_Feature_Control_Disable_Prop_FIG006.png[alt="SEP lifecycle and feature-control propagation to SMC and DTP",width=100%,pdfwidth=100%]
 
 [[child-subsystems]]
 anchor:smu-child-subsystems[]The subsystem chapters (DTP, SEP, SMC) follow

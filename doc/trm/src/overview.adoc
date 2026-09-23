@@ -58,3 +58,12 @@ relationship between the subsystems described above.
 
 .OCAH Top-Level Block Diagram
 image::ocah_top.png[OCAH Top-Level Block Diagram,scaledwidth=100.0%]
+
+The SMU crossbar permits each initiator to reach the other two targets;
+self-directed paths are not connected. The detailed connectivity is shown in
+ifdef::backend-html5[]
+xref:smu:index.adoc#smu-axi-crossbar[SMU AXI Crossbar].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smu-axi-crossbar,SMU AXI Crossbar>>.
+endif::backend-pdf[]

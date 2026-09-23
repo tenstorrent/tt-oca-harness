@@ -9,6 +9,22 @@
 The SMC fabric provides interconnect infrastructure with address
 management, traffic filtering, and security enforcement mechanisms.
 
+[[smc-fabric-topology]]
+== Fabric Topology
+
+[[smc-input-fabric-diagram]]
+.SMC input fabric topology and routing
+image::SMC_InputFabric_FIG004.png[alt="SMC input fabric topology and routing",width=100%,pdfwidth=100%]
+
+[[smc-local-fabric-diagram]]
+.SMC local fabric and peripheral islands
+image::SMC_LocalFabric_FIG005.png[alt="SMC local fabric and peripheral islands",width=100%,pdfwidth=100%]
+
+[[smc-output-fabric-diagram]]
+.SMC output fabric and remapping paths
+image::SMC_OutputFabric_FIG006.png[alt="SMC output fabric and remapping paths",width=100%,pdfwidth=100%]
+
+
 == Configuration Parameters
 
 The fabric supports the following configuration parameters to tune
@@ -266,6 +282,10 @@ traffic that matches no entry: the inbound filter blocks it, and the
 outbound filter permits it.
 
 == Inbound Filtering
+
+[[smc-traffic-filter-diagram]]
+.SMC inbound and outbound traffic-filter architecture
+image::SMC_InboundOutboundFilter_FIG008.png[alt="SMC inbound and outbound traffic-filter architecture",width=100%,pdfwidth=100%]
 
 Inbound filtering protects SMC resources from unauthorized external
 access by evaluating three dimensions of each transaction:

@@ -11,6 +11,10 @@ register-driven control and direct hardware guidance via the LSIO
 interface, all while maintaining strict access governance and flexible
 interrupt handling throughout.
 
+[[gpio-interface-diagram]]
+.GPIO controller and technology-specific interface shim
+image::SMC_GPIO_FIG021.jpeg[alt="GPIO controller and technology-specific interface shim",width=100%,pdfwidth=100%]
+
 === Functional Blocks
 
 The top-level GPIO controller (gpio.sv) sits at the center of the

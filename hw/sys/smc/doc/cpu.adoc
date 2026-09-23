@@ -23,6 +23,10 @@ and associativity
 management workloads
 * Full support for RISC-V privilege levels (Machine, Supervisor, User)
 
+[[smc-cpu-cluster-diagram]]
+.SMC CPU cluster and TileLink-to-AXI integration
+image::SMC_CPUCluster_FIG010.png[alt="SMC CPU cluster and TileLink-to-AXI integration",width=100%,pdfwidth=100%]
+
 == Processor Core Overview
 
 The table below summarizes the key features of the Rocket CPU core, and

@@ -74,6 +74,45 @@ after POR and configured by SEP firmware.
 .SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
 image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
 
+[[sep-fabric-topology]]
+== Fabric Topology
+
+The input fabric admits external traffic through the inbound filter and
+system-peripheral decode. The local fabric connects SEP initiators to local
+resources, while the output fabric selects remapped or direct outbound paths.
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-input-fabric-diagram]]
+.SEP input fabric
+image::SEP_Input_Fabric_FIG005.svg[alt="SEP input fabric",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-local-fabric-diagram]]
+.SEP local fabric
+image::SEP_Local_Fabric_FIG006.svg[alt="SEP local fabric",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-output-fabric-diagram]]
+.SEP output fabric
+image::SEP_Output_Fabric_FIG007.svg[alt="SEP output fabric",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=portrait]
+<<<
+endif::backend-pdf[]
+
 [[subsystem-external-interfaces]]
 == Subsystem External Interfaces
 
@@ -231,6 +270,10 @@ mapped IO, SEP’s traffic directly goes to the system fabric.
 
 [[mailboxes]]
 === Mailboxes
+
+[[sep-mailbox-diagram]]
+.SEP host mailbox architecture and interrupt routing
+image::SEP_AXILmailbox_FIG008.png[alt="SEP host mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
 
 SEP uses mailboxes to communicate with the rest of the system such as AP
 cores for example. Each different agent has its own private mailbox in

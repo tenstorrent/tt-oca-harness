@@ -100,6 +100,10 @@ endif::backend-pdf[]
 
 == Reset Conditioning
 
+[[key-manager-reset-diagram]]
+.Key Manager cold and warm reset conditioning
+image::SEP_KMResetDomains_FIG003.2.png[alt="Key Manager cold and warm reset conditioning",width=100%,pdfwidth=100%]
+
 The KM exposes two independent external reset inputs that map to two
 distinct reset domains. This split allows the SEP host to recover the KM
 CPU and volatile state without disturbing non-volatile configuration or
@@ -379,6 +383,17 @@ These events are captured in sticky interrupt status registers (WOC) and
 aggregated into an interrupt signal which is forwarded to the KM CPU.
 All event signals can also be triggered by a parallel software interrupt
 register to enable testing of interrupt service routines (ISR).
+
+[[key-manager-host-coordination]]
+== Host Coordination
+
+The SEP host submits key-load and key-transfer commands through the mailbox.
+The Key Manager validates the request and policy before accessing the vault
+or delivering key material to a cryptographic engine.
+
+[[key-manager-coordination-diagram]]
+.SEP host and Key Manager key-load and key-transfer sequence
+image::SEP_KM_Key_Load_Transfer_FIG017.png[alt="SEP host and Key Manager key-load and key-transfer sequence",width=100%,pdfwidth=100%]
 
 [[key-and-policy-vault-kpv]]
 == Key and Policy Vault (KPV)

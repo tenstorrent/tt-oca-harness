@@ -52,7 +52,9 @@ as environment or active attack and to alert the security system of the
 degradation via alarm interrupts. Metrics can be queried by software via
 the CSRs.
 
-image::SEP_TRNG_Entropy.png[SEP_TRNG_Entropy,scaledwidth=90.0%]
+[[sep-trng-diagram]]
+.SEP TRNG and DRBG entropy distribution
+image::SEP_Trng_TopLevel_FIG011.drawio.png[alt="SEP TRNG and DRBG entropy distribution",width=100%,pdfwidth=100%]
 
 In OCAH the whitened entropy stream from the noise source is not routed
 directly to the cryptographic accelerators. Instead it seeds the DRBG,

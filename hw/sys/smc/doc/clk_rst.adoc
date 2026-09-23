@@ -14,6 +14,10 @@ through clock gating.
 
 The SMC employs a multi-domain clocking architecture.
 
+[[smc-clock-tree]]
+.SMC clock tree and clock domains
+image::SMC_CLOCKING_FIG029.svg[alt="SMC clock tree and clock domains",width=100%,pdfwidth=100%]
+
 === The SMC Clock Domain
 
 The primary SMC clock domain (clk_smc_i) serves as the operational clock
@@ -200,6 +204,26 @@ subsystems participate in FLR sequences
 The final isolation state for each subsystem is the logical OR of all
 three sources, providing flexible control while maintaining clear
 precedence for safety-critical operations.
+
+The following diagrams show cool-reset and isolation propagation between
+primary and secondary chiplets for the three request sources.
+
+[[smc-flr-isolation-diagram]]
+.SMC FLR isolation connections between chiplets
+image::SMC_FLR_Isolate_Diagram_FIG016.png[alt="SMC FLR isolation connections between chiplets",width=100%,pdfwidth=100%]
+
+[[smc-flr-software-diagram]]
+.SMC-driven FLR isolation
+image::SMC_FLR_Isolate_Diagram_SMC_Driven_FIG017.png[alt="SMC-driven FLR isolation",width=100%,pdfwidth=100%]
+
+[[smc-flr-tile-diagram]]
+.Tile-request-driven FLR isolation
+image::SMC_FLR_Isolate_Diagram_Tile_Request_Driven_FIG018.png[alt="Tile-request-driven FLR isolation",width=100%,pdfwidth=100%]
+
+[[smc-flr-gpio-diagram]]
+.GPIO-driven FLR isolation
+image::SMC_FLR_Isolate_Diagram_GPIO_Driven_FIG019.png[alt="GPIO-driven FLR isolation",width=100%,pdfwidth=100%]
+
 
 ==== Programmable Reset Timing
 

@@ -22,6 +22,10 @@ specifications, version , using credit-based synchronization for
 continuous maintenance that adapts to varying system loads and
 communication delays.
 
+[[system-timer-octs-diagram]]
+.System Timer OCTS primary and secondary synchronization
+image::SMC_SystemTimerOCTS_FIG022.png[alt="System Timer OCTS primary and secondary synchronization",width=100%,pdfwidth=100%]
+
 === Timer Core Processing
 
 The timer core implements 64-bit counter management supporting both

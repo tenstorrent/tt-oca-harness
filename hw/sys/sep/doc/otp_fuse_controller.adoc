@@ -11,6 +11,14 @@ image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
 The One-Time Programmable (OTP) fuse controller stores persistent
 chiplet policy.
 
+[[sep-efuse-interface-diagram]]
+.eFuse controller and technology-specific interface shim
+image::SEP_eFuse_Interface_Block_Diagram_FIG023.png[alt="eFuse controller and technology-specific interface shim",width=100%,pdfwidth=100%]
+
+The SMC reuses the eFuse interface with `HAS_LC_STATE=0` and no secret-shadow
+ranges. It has no local lifecycle controller; its wrapper receives lifecycle
+state and security-disable policy from SEP.
+
 == Fuse Sensing and Boot Sequencing
 
 When SEP is released from reset (chiplet_cold_reset), the sensing FSM
@@ -29,6 +37,10 @@ After the fuses have been read into their shadow registers, a sense-completion
 indicator is generated. This triggers the DFT-based memory-repair machine for
 the SEP SRAMs. Once memory repair completes or is bypassed, the SEP CPU is
 enabled and fetches its first instruction from the SEP ROM.
+
+[[sep-efuse-sense-diagram]]
+.eFuse sensing state machine and shadow-register timing
+image::SEP_eFuse_Sense_FSM_FIG029.png[alt="eFuse sensing state machine and shadow-register timing",width=100%,pdfwidth=100%]
 
 == Shadow Register and JTAG Access Control
 

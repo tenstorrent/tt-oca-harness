@@ -8,7 +8,9 @@
 
 The diagram below shows the top level SEP architecture.
 
-image::SEP_Platform.png[SEP_Platform,scaledwidth=90.0%]
+[[sep-top-level-diagram]]
+.SEP top-level microarchitecture
+image::SEP_TopLevel_FIG001.drawio.png[alt="SEP top-level microarchitecture",width=100%,pdfwidth=100%]
 
 SEP is hierarchically organized as follows:
 
@@ -57,3 +59,10 @@ Technology and vendor specific macro blocks such as SRAM, ROM etc. are
 instantiated outside of SEP and have dedicated SEP interfaces. The goal
 is to cleanly separate the generic SEP IP from technology specific
 components in order to make integration and migration easier.
+
+[[sep-clock-distribution]]
+== Clock Distribution
+
+[[sep-clock-tree]]
+.SEP clock tree and clock domains
+image::SEP_CLOCKING_FIG002.svg[alt="SEP clock tree and clock domains",width=100%,pdfwidth=100%]

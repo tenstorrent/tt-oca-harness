@@ -15,6 +15,14 @@ stop, a GPIO toggle, a cross-trigger, or a trace capture — when those
 events occur. A trace subsystem timestamps the captured activity and
 streams it to memory for offline analysis.
 
+[[smc-dfd-diagram]]
+.DFD reference architecture
+image::SMC_DFD_FIG028.png[alt="DFD reference architecture",width=100%,pdfwidth=100%]
+
+The diagram shows the full `tt-dfd` block. SMC does not connect the instruction
+trace (N-Trace) input; its CLA and debug-signal trace paths provide the
+observation functions described here.
+
 Key features include:
 
 * A programmable debug bus that routes internal signals of interest to

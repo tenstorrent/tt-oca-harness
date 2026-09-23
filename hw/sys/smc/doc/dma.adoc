@@ -27,6 +27,10 @@ SMC fabric filtering.
 
 == Architecture Overview
 
+[[smc-dma-zeroer-diagram]]
+.SMC DMA and memory-zeroer architecture and shared fabric path
+image::SMC_DMA_ZEROER_FIG013_FIG014.png[alt="SMC DMA and memory-zeroer architecture and shared fabric path",width=100%,pdfwidth=100%]
+
 The DMA controller implements a frontend-backend architecture with the
 following modules:
 

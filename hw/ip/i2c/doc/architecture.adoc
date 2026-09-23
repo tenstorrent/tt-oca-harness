@@ -11,6 +11,10 @@ https://github.com/lowRISC/opentitan/tree/master/hw/ip/i2c[OpenTitan I2C
 controller]. The architecture provides high reliability with
 configurable timing, robust error handling, and AXI4-Lite integration.
 
+[[i2c-wrapper-diagram]]
+.OCAH I2C wrapper and generated register interface
+image::SMC_I2C_FIG023.png[alt="OCAH I2C wrapper and generated register interface",width=100%,pdfwidth=100%]
+
 === Block Diagram
 
 image::i2c_block_diagram.svg[I2C Block Diagram,width=100%]

@@ -24,6 +24,8 @@ This project incorporates code from the following third-party sources:
    Licensed under the Apache License, Version 2.0
    Project: https://github.com/lowRISC/opentitan
    Vendored under vendor/lowRISC/opentitan/upstream/
+   Reference figures under hw/sys/sep/doc/assets/upstream/opentitan_*.svg;
+   source revisions and paths are recorded in that directory's README.md.
 
 2. PULP Platform
    Copyright (c) ETH Zurich, University of Bologna and contributors
@@ -137,3 +139,12 @@ This project incorporates code from the following third-party sources:
     Project: https://github.com/mathjax/MathJax
     The unmodified es5/tex-svg.js bundle and LICENSE from mathjax@3.2.2
     are vendored under doc/ui-supplemental/js/vendor/mathjax/.
+
+================================================================================
+
+Adams Bridge reference figures:
+Copyright Adams Bridge contributors
+Licensed under the Apache License, Version 2.0
+Project: https://github.com/chipsalliance/adams-bridge
+Figures: hw/sys/sep/doc/assets/upstream/adams_bridge_*.png
+Source revisions and paths: hw/sys/sep/doc/assets/upstream/README.md
