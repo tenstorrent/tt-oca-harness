@@ -68,6 +68,7 @@ CHECKSUM: "2582788748 1594583517"
 ANNOTATION: "SMC-FSM-F6-ENABLE-EDGE: the state register loads StBusBusyHigh only on the rising edge of the monitor enable in multi-controller mode, and its disabled branch parks the register at StBusFree, so the predecessor at that edge is always StBusFree; an edge into it from any other state is an extraction artefact."
 MODULE: i2c_bus_monitor
 Fsm state_q "1594583517"
+Transition StBusBusyLow->StBusBusyHigh "1->2"
 Transition StBusBusyStop->StBusBusyHigh "3->2"
 
 CHECKSUM: "194876589 1063748259"

@@ -98,6 +98,88 @@ Branch 214 "683882288" "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn" (1) "MMR_CDbgC
 Branch 455 "2128509458" "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn" (1) "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn 0"
 Branch 466 "3498676337" "MMR_CDbgClaTimestampConfig_F_Resync_WrEn" (1) "MMR_CDbgClaTimestampConfig_F_Resync_WrEn 0"
 
+CHECKSUM: "671687310 1858521928"
+ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the shadow registers and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
+MODULE: efuse_guard
+Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (1 "01")
+Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (2 "10")
+Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (3 "11")
+Condition 6 "2989801452" "((program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (1 "01")
+Condition 6 "2989801452" "((program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (2 "10")
+Condition 6 "2989801452" "((program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) && (rma_chiplet_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (3 "11")
+Condition 9 "247465763" "((pro_read_intf_wr_index == '0) ? 1'b0 : efuse_guard.entry_write_locked(pro_read_intf_wr_index, shadow_regs_i)) 1 -1" (1 "0")
+Condition 9 "247465763" "((pro_read_intf_wr_index == '0) ? 1'b0 : efuse_guard.entry_write_locked(pro_read_intf_wr_index, shadow_regs_i)) 1 -1" (2 "1")
+Condition 11 "1814251451" "((pro_read_intf_rd_index == '0) ? 1'b0 : efuse_guard.entry_read_locked(pro_read_intf_rd_index, shadow_regs_i)) 1 -1" (1 "0")
+Condition 11 "1814251451" "((pro_read_intf_rd_index == '0) ? 1'b0 : efuse_guard.entry_read_locked(pro_read_intf_rd_index, shadow_regs_i)) 1 -1" (2 "1")
+Condition 13 "1172051810" "(pro_read_intf_rm_lc_state_write_lock || pro_read_intf_lock_lc_state_write) 1 -1" (2 "01")
+
+CHECKSUM: "3035079037 1696817153"
+ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the shadow registers and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
+MODULE: efuse_shadow_regs
+Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (1 "01")
+Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (2 "10")
+Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (3 "11")
+Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (1 "01")
+Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (2 "10")
+Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (3 "11")
+Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (1 "01111")
+Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (2 "10111")
+Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (3 "11011")
+Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (4 "11101")
+Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (5 "11110")
+Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (6 "11111")
+Condition 9 "1915092119" "(apb_req_from_ac.pwdata[0] | lc_state_cur[0]) 1 -1" (1 "00")
+Condition 9 "1915092119" "(apb_req_from_ac.pwdata[0] | lc_state_cur[0]) 1 -1" (2 "01")
+Condition 9 "1915092119" "(apb_req_from_ac.pwdata[0] | lc_state_cur[0]) 1 -1" (3 "10")
+Condition 10 "522092114" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) ? (apb_req_from_ac.pwdata[1] | lc_state_cur[1]) : lc_state_cur[1]) 1 -1" (1 "0")
+Condition 10 "522092114" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) ? (apb_req_from_ac.pwdata[1] | lc_state_cur[1]) : lc_state_cur[1]) 1 -1" (2 "1")
+Condition 11 "3858718990" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 11 "3858718990" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 13 "275687302" "((lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) ? (apb_req_from_ac.pwdata[2] | lc_state_cur[2]) : lc_state_cur[2]) 1 -1" (1 "0")
+Condition 13 "275687302" "((lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) ? (apb_req_from_ac.pwdata[2] | lc_state_cur[2]) : lc_state_cur[2]) 1 -1" (2 "1")
+Condition 15 "1470581215" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 15 "1470581215" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 17 "712546842" "(apb_req_from_ac.pwdata[3] | lc_state_cur[3]) 1 -1" (1 "00")
+Condition 17 "712546842" "(apb_req_from_ac.pwdata[3] | lc_state_cur[3]) 1 -1" (2 "01")
+Condition 17 "712546842" "(apb_req_from_ac.pwdata[3] | lc_state_cur[3]) 1 -1" (3 "10")
+Condition 18 "737362037" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (1 "0")
+Condition 18 "737362037" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (2 "1")
+Condition 19 "173520734" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && lc_state_cur[1]) 1 -1" (1 "01")
+Condition 19 "173520734" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && lc_state_cur[1]) 1 -1" (2 "10")
+Condition 19 "173520734" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && lc_state_cur[1]) 1 -1" (3 "11")
+Condition 20 "4237421861" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 20 "4237421861" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (1 "0")
+Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (2 "1")
+Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (1 "01")
+Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (2 "10")
+Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (3 "11")
+Condition 36 "313211475" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 36 "313211475" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!sop_state_change_completed_n0_scan))) 1 -1" (1 "01")
+Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!sop_state_change_completed_n0_scan))) 1 -1" (2 "10")
+Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!sop_state_change_completed_n0_scan))) 1 -1" (3 "11")
+Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+
+CHECKSUM: "768735472 3557211807"
+ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs a constant zero, so a term that needs either of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
+MODULE: idma_legalizer_rw_axi
+Condition 3 "1004549731" "((r_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
+Condition 5 "2025270838" "((w_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
+Condition 7 "622690179" "(r_tf_q.valid & r_ready_i & ((!flush_i))) 1 -1" (3 "110")
+Condition 8 "1876838491" "(w_tf_q.valid & w_ready_i & ((!flush_i))) 1 -1" (3 "110")
+Condition 9 "2076660534" "((r_ready_i & w_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
+Condition 11 "1365128112" "((r_ready_i & w_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
+Condition 13 "3221125229" "(r_tf_q.valid & w_ready_i & r_ready_i & ((!flush_i))) 1 -1" (4 "1110")
+Condition 14 "168225130" "(w_tf_q.valid & r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (4 "1110")
+Condition 16 "1766034539" "(r_done & w_done & r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (5 "11110")
+Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
+
 CHECKSUM: "3001181867 1671278051"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the conditions over its trntr signals have no stimulus that can reach them."
 MODULE: mmrs
@@ -119,7 +201,7 @@ Condition 33 "3332840335" "(((Trramstartlow_Warl_Check_ANY | Trramlimitlow_Warl_
 
 CHECKSUM: "3354362860 3417673543"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), so the trace sink's N-trace half has no source behind it; the conditions over its trntr signals have no stimulus that can reach them."
-ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every TrRamPend* and south-port condition follows."
+ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; a row that needs a TrRamPend* signal or a south-port valid asserted follows. A row that holds those signals at their constant value and turns on another term stays graded, because ordinary trace traffic reaches it."
 MODULE: trace_sink
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (2 "101")
@@ -145,7 +227,6 @@ Condition 20 "1716321492" "(trntrRamMode_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (3 "1
 Condition 21 "1679181820" "((trntrRamRpLow_ANY[31:2] == trntrRamLimitLow_ANY[31:2]) ? trntrRamStartLow_ANY[31:2] : ((trntrRamRpLow_ANY[31:2] + 30'b1))) 1 -1" (1 "0")
 Condition 23 "2139922978" "(trntrRamRpLow_ANY[2] ? TraceRamData64b_TS2[63:32] : TraceRamData64b_TS2[31:0]) 1 -1" (2 "1")
 Condition 24 "3747907426" "(((~|TrRamPendDstPktVld_ANY)) & TrdstFlushTimeoutDone_ANY & (((~trdstRamMode_ANY)) | (trdstRamMode_ANY & ((~|trdstNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
-Condition 24 "3747907426" "(((~|TrRamPendDstPktVld_ANY)) & TrdstFlushTimeoutDone_ANY & (((~trdstRamMode_ANY)) | (trdstRamMode_ANY & ((~|trdstNumFramesFilledInSRAM_ANY))))) 1 -1" (3 "110")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (1 "01")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (2 "10")
 Condition 49 "3173394396" "(trntrRamMode_ANY & (((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY)) 1 -1" (3 "11")
@@ -216,42 +297,34 @@ Condition 267 "1834590780" "(trntrRamActiveEnable_ANY & ((~trntrRamActiveEnable_
 Condition 268 "2207425479" "(((~trntrRamActiveEnable_ANY)) & trntrRamActiveEnable_ANY_d1) 1 -1" (1 "01")
 Condition 268 "2207425479" "(((~trntrRamActiveEnable_ANY)) & trntrRamActiveEnable_ANY_d1) 1 -1" (3 "11")
 Condition 320 "965866358" "(trntrRamEnableStart_ANY_d1 ? 5'b0 : (InsnTraceWrEnPerCore_TS0[0] ? ((trntrcorenextwritecnt_ANY[0] + 1'b1)) : trntrcorenextwritecnt_ANY[0])) 1 -1" (2 "1")
-Condition 329 "2162652259" "(TrRamPendPktVld_ANY[0] & TrRamPendPktRd_ANY[0].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 329 "2162652259" "(TrRamPendPktVld_ANY[0] & TrRamPendPktRd_ANY[0].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 329 "2162652259" "(TrRamPendPktVld_ANY[0] & TrRamPendPktRd_ANY[0].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 330 "3782674246" "(TrRamPendPktVld_ANY[0] & ((~TrRamPendPktRd_ANY[0].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 330 "3782674246" "(TrRamPendPktVld_ANY[0] & ((~TrRamPendPktRd_ANY[0].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 331 "75269814" "(TrRamPendPktVld_ANY[1] & TrRamPendPktRd_ANY[1].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 331 "75269814" "(TrRamPendPktVld_ANY[1] & TrRamPendPktRd_ANY[1].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 331 "75269814" "(TrRamPendPktVld_ANY[1] & TrRamPendPktRd_ANY[1].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 332 "3911214920" "(TrRamPendPktVld_ANY[1] & ((~TrRamPendPktRd_ANY[1].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 332 "3911214920" "(TrRamPendPktVld_ANY[1] & ((~TrRamPendPktRd_ANY[1].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 333 "2120407792" "(TrRamPendPktVld_ANY[2] & TrRamPendPktRd_ANY[2].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 333 "2120407792" "(TrRamPendPktVld_ANY[2] & TrRamPendPktRd_ANY[2].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 333 "2120407792" "(TrRamPendPktVld_ANY[2] & TrRamPendPktRd_ANY[2].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 334 "2221443747" "(TrRamPendPktVld_ANY[2] & ((~TrRamPendPktRd_ANY[2].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 334 "2221443747" "(TrRamPendPktVld_ANY[2] & ((~TrRamPendPktRd_ANY[2].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 335 "4210632741" "(TrRamPendPktVld_ANY[3] & TrRamPendPktRd_ANY[3].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 335 "4210632741" "(TrRamPendPktVld_ANY[3] & TrRamPendPktRd_ANY[3].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 335 "4210632741" "(TrRamPendPktVld_ANY[3] & TrRamPendPktRd_ANY[3].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 336 "2352999085" "(TrRamPendPktVld_ANY[3] & ((~TrRamPendPktRd_ANY[3].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 336 "2352999085" "(TrRamPendPktVld_ANY[3] & ((~TrRamPendPktRd_ANY[3].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 337 "2747992949" "(TrRamPendPktVld_ANY[4] & TrRamPendPktRd_ANY[4].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 337 "2747992949" "(TrRamPendPktVld_ANY[4] & TrRamPendPktRd_ANY[4].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 337 "2747992949" "(TrRamPendPktVld_ANY[4] & TrRamPendPktRd_ANY[4].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 338 "937814478" "(TrRamPendPktVld_ANY[4] & ((~TrRamPendPktRd_ANY[4].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 338 "937814478" "(TrRamPendPktVld_ANY[4] & ((~TrRamPendPktRd_ANY[4].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 339 "659618208" "(TrRamPendPktVld_ANY[5] & TrRamPendPktRd_ANY[5].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 339 "659618208" "(TrRamPendPktVld_ANY[5] & TrRamPendPktRd_ANY[5].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 339 "659618208" "(TrRamPendPktVld_ANY[5] & TrRamPendPktRd_ANY[5].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 340 "1068665280" "(TrRamPendPktVld_ANY[5] & ((~TrRamPendPktRd_ANY[5].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 340 "1068665280" "(TrRamPendPktVld_ANY[5] & ((~TrRamPendPktRd_ANY[5].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 341 "1565435366" "(TrRamPendPktVld_ANY[6] & TrRamPendPktRd_ANY[6].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 341 "1565435366" "(TrRamPendPktVld_ANY[6] & TrRamPendPktRd_ANY[6].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 341 "1565435366" "(TrRamPendPktVld_ANY[6] & TrRamPendPktRd_ANY[6].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 342 "1392141355" "(TrRamPendPktVld_ANY[6] & ((~TrRamPendPktRd_ANY[6].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 342 "1392141355" "(TrRamPendPktVld_ANY[6] & ((~TrRamPendPktRd_ANY[6].TrRamPendSrc_ANY))) 1 -1" (3 "11")
-Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY) 1 -1" (2 "10")
 Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 344 "1521288229" "(TrRamPendPktVld_ANY[7] & ((~TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY))) 1 -1" (2 "10")

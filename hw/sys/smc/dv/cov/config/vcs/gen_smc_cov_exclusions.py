@@ -29,6 +29,16 @@ Three more facts belong to one block each rather than to a family:
   the SMC integration, so the explicit-error-on-unmapped-access term it gates
   never evaluates true.
 
+A sixth belongs to the register specification rather than to the generated code:
+
+* A6 SINGLEPULSE-RETAIN: a field the RDL declares `singlepulse` holds a written
+  one for a single cycle, and the cpuif accepts no second write in that cycle,
+  so the storage reads zero at every write the field sees. The retain row of the
+  write-data ternary needs the storage at one while a write arrives with that
+  lane disabled, and no access produces it. A W1C or a plain write-only field
+  keeps its value between writes, so its retain row stays graded: only the
+  bench's inability to drive a partial write lane leaves that one uncovered.
+
 Two facts are the integration's: the DFD top instantiates its trace wrapper
 with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so the trace sink's N-trace
 half has no source behind it (P1 NTRACE-OFF, named by the `trntr` signal
@@ -38,6 +48,17 @@ of its MMR hardware write-enables with a constant one, so their write-data
 ternaries never take the else arm (P3 WREN-TIED); one trace source can never
 prime the sink's per-way pending count (P4 SINGLE-SOURCE); and the MMR
 instruction type has no driver outside the MMR files (P5 INSTR-TYPE-CONST).
+
+Two more are the integration's as well: `smc_efuse_wrapper` instantiates the
+eFuse with `HAS_LC_STATE = 0`, so the lifecycle-state arms of
+`efuse_shadow_regs` and `efuse_guard` are never entered and the RMA token
+comparisons inside them have no access that reaches them (P6 LC-STATE-OFF); and
+`idma_backend_wrapper` elaborates the backend with
+`ErrorCap = NO_ERROR_HANDLING`, whose bypass assigns the legalizer's `flush_i`
+and `kill_i` a constant zero (P7 NO-ERROR-CAP). The legalizer's
+`opt_tf_q.decouple_rw` is not one of these: `CONFIG.DECOUPLE_RW` is a
+software-writable RDL field the frontend carries into the backend options, so
+that branch stays graded.
 
 A third fact is not a register block's: a CRC or parity network is an XOR
 reduction, and condition coverage enumerates 2^n input combinations of it.
@@ -203,6 +224,13 @@ A5 = (
     "unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates "
     "true."
 )
+A6 = (
+    "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the "
+    "storage holds a written one for a single cycle and the cpuif accepts no second write in "
+    "that cycle; the retain row of the write-data ternary needs the storage at one while a "
+    "write arrives with that lane disabled and no access produces it. Fields of the same block "
+    "that keep their value between writes stay graded."
+)
 
 P1 = (
     "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) "
@@ -218,8 +246,10 @@ P3 = (
 P4 = (
     "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the "
     "two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which "
-    "only increments from those enables, stays at zero for the life of the design; every "
-    "TrRamPend* and south-port condition follows."
+    "only increments from those enables, stays at zero for the life of the design; a row that "
+    "needs a TrRamPend* signal or a south-port valid asserted follows. A row that holds those "
+    "signals at their constant value and turns on another term stays graded, because ordinary "
+    "trace traffic reaches it."
 )
 P5 = (
     "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB "
@@ -240,27 +270,99 @@ P2 = (
     "filter with filter_skip_i tied to zero, so the skip arm of the filter decision never "
     "runs and no access can produce a condition over it."
 )
+P6 = (
+    "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so "
+    "the lifecycle-state arms of the shadow registers and the guard are never entered and the "
+    "RMA token comparisons they hold have no access that can reach them. The fuse-sense, "
+    "security-disable and image-lock terms outside those arms stay graded."
+)
+P7 = (
+    "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = "
+    "NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs a constant "
+    "zero, so a term that needs either of them asserted is false for the life of the design. "
+    "The read and write backpressure rows of the same expressions stay graded."
+)
 
-# module -> [(class, expression pattern)] for conditions a disabled build option
-# or a tied-off integration input leaves without a source. Only uncovered rows
-# are taken.
-FEATURE_FACTS: "dict[str, list[tuple[str, object]]]" = {
+# (file suffix, first line, last line) of the source region a fact covers, for
+# where one file carries the same expression text inside and outside the region.
+LC_STATE_ARM = ("efuse_shadow_regs.sv", 290, 347)
+
+
+def in_region(src: str, region: "tuple[str, int, int] | None") -> bool:
+    """Whether a template entry's source line falls in a fact's region."""
+    if region is None:
+        return True
+    path, _, line = src.rpartition(":")
+    name, first, last = region
+    return path.endswith(name) and first <= int(line) <= last
+
+# module -> [(class, expression pattern, term-vector pattern or None, source
+# region or None)] for conditions a disabled build option or a tied-off
+# integration input leaves without a source. The vector pattern pins which row
+# of a multi-term expression the fact covers and the region which occurrence of
+# a repeated expression, so a row an access can reach stays graded. Only
+# uncovered rows are taken.
+FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "trace_sink": [
-        (P1, re.compile(r"\btrntr")),
-        (P4, re.compile(r"TrRamPend|TrRamSouth|TR_TS_South|South_Vld")),
+        (P1, re.compile(r"\btrntr"), None, None),
+        # The pending valid is the leading term: the row that turns it on is the
+        # fact's, the row that leaves it off belongs to ordinary trace traffic.
+        (P4, re.compile(r"^\(TrRamPendPktVld_ANY\[\d\] &"), re.compile(r"^1"), None),
+        (P4, re.compile(r"^\(\(\(~\|TrRamPend\w*PktVld_ANY\)\) &"), re.compile(r"^0"), None),
+        (P4, re.compile(r"^\(TrRamPend(Wr|Rd)En_ANY\[\d\] \|"), None, None),
+        (P4, re.compile(r"TrRamPendPkt(North|South)WrEn_TS0"), None, None),
+        (P4, re.compile(r"TrRamSouth|TR_TS_South|South_Vld"), None, None),
     ],
-    "axi_filter_wrap": [(P2, re.compile(r"filter_skip_i"))],
+    "axi_filter_wrap": [(P2, re.compile(r"filter_skip_i"), None, None)],
     "cla_mmr": [
-        (P3, re.compile(WREN_TIED, re.I)),
-        (P5, re.compile(r"instr_type")),
+        (P3, re.compile(WREN_TIED, re.I), None, None),
+        (P5, re.compile(r"instr_type"), None, None),
     ],
-    "mmrs": [(P1, re.compile(r"ntr_sink|NTR_SINK|\bTrramstart(low|high)_Warl"))],
+    "mmrs": [(P1, re.compile(r"ntr_sink|NTR_SINK|\bTrramstart(low|high)_Warl"), None, None)],
+    "efuse_shadow_regs": [
+        (
+            P6,
+            re.compile(r"lc_state_cur|rma_(sip|chiplet)_token_match_i|SHADOW_IDX_TRANSIENT_RMA_EN"),
+            None,
+            None,
+        ),
+        (
+            P6,
+            re.compile(r"write_setup_only && is_lc_state_access && apb_req_from_ac\.pstrb\[0\]"),
+            None,
+            None,
+        ),
+        (P6, re.compile(r"sim_skip_fuse_sense|security_disable_i"), None, LC_STATE_ARM),
+    ],
+    "efuse_guard": [
+        (P6, re.compile(r"rma_(sip|chiplet)_token_match_i"), None, None),
+        (P6, re.compile(r"pro_read_intf_(wr|rd)_index == '0"), None, None),
+        (P6, re.compile(r"pro_read_intf_lock_lc_state_write"), re.compile(r"^01$"), None),
+    ],
+    "idma_legalizer_rw_axi": [
+        (P7, re.compile(r"\| kill_i\)$"), re.compile(r"^01$"), None),
+        (P7, re.compile(r"& \(\(!flush_i\)\)\)$"), re.compile(r"^1+0$"), None),
+    ],
 }
 # Branch arms a feature fact also names: the else arm of a write-data ternary whose
 # enable is a tied constant.
 FEATURE_BRANCH_FACTS: "dict[str, list[tuple[str, object, str]]]" = {
     "cla_mmr": [(P3, re.compile(WREN_TIED, re.I), "0")],
+    "idma_legalizer_rw_axi": [(P7, re.compile(r"^kill_i$"), "1")],
 }
+
+# PeakRDL builds a software write as storage-with-the-lane-masked OR incoming
+# data, and urg scores the two operands as one row each. RETAIN is the row where
+# the first operand alone carries the result: the storage holds a one and the
+# write leaves that lane disabled. The row where the second operand carries it
+# is a plain write of a one, which an access reaches.
+RETAIN = re.compile(r"^10$")
+
+
+def retain(fields: str) -> "re.Pattern[str]":
+    """The retain operand of the named `REG.FIELD` alternation."""
+    return re.compile(r"^\(\(field_storage\.(?:" + fields + r")\.value & \(\(~decoded_wr_biten\[")
+
 
 # module -> [(class, expression pattern, term-vector pattern or None)]. These
 # are facts about one block, checked against its own source, not about a
@@ -272,6 +374,23 @@ EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
         (A4, re.compile(r"addr_hit\[\d+\]\s*&\s*reg_re"), re.compile(r"^110$")),
         (A5, re.compile(r"devmode_i"), re.compile(r"^1")),
     ],
+    "avsbus_controller_reg": [
+        (A6, retain(r"AVS_INTERRUPT_CLEAR\.\w+|AVS_CFG_1\.FORCE_SLAVE_RESYNC_OPERATION"), RETAIN),
+    ],
+    "telemetry_receiver_reg": [(A6, retain(r"CTRL\.(BUFFER_POP|TELEMETRY_RX_FLUSH)"), RETAIN)],
+    "system_timer_octs_reg": [(A6, retain(r"TIMER_START\.START"), RETAIN)],
+    "efuse_interface_ctrl_reg": [
+        (
+            A6,
+            retain(
+                r"EFUSE_INTERFACE_CTRL_STATUS\.\w+_error_clear"
+                r"|EFUSE_PROGRAM_CTRL\.efuse_program_go"
+                r"|EFUSE_READ_CTRL\.efuse_read_go"
+            ),
+            RETAIN,
+        )
+    ],
+    "cpu_ctrl_reg": [(A6, retain(r"WDT_TIMEOUT_RESET\.reset_cycle_count_\d"), RETAIN)],
 }
 
 
@@ -455,7 +574,7 @@ def render_regblock(
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (A1, A2, A3, A4, A5):
+        for reason in (A1, A2, A3, A4, A5, A6):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")
@@ -614,17 +733,22 @@ def render_feature(
         section = templates["cond"].get(module)
         if section is not None:
             checksum = section.checksum
-            for _, entry in section.entries:
+            for src, entry in section.entries:
                 m = COND_ROW_RE.match(entry)
                 if m is None:
                     continue
                 expr, vec = m.group(2), m.group(4)
                 if vec not in uncovered.get((module, expr), set()):
                     continue
-                for reason, pattern in FEATURE_FACTS.get(module, []):
-                    if pattern.search(expr):
-                        block.append((reason, entry))
-                        break
+                for reason, pattern, vector, region in FEATURE_FACTS.get(module, []):
+                    if not pattern.search(expr):
+                        continue
+                    if vector is not None and not vector.match(vec):
+                        continue
+                    if not in_region(src, region):
+                        continue
+                    block.append((reason, entry))
+                    break
         bsection = templates["branch"].get(module)
         if bsection is not None:
             checksum = checksum or bsection.checksum
@@ -640,7 +764,7 @@ def render_feature(
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (P1, P2, P3, P4, P5):
+        for reason in (P1, P2, P3, P4, P5, P6, P7):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

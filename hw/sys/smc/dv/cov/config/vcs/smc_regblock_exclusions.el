@@ -25,9 +25,20 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "3896755233 3909592511"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
 MODULE: avsbus_controller_reg
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
+Condition 71 "553260962" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 75 "1897250593" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 79 "889399730" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 83 "3829027232" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 87 "1190442178" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 91 "1602255566" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) | (decoded_wr_data[5] & decoded_wr_biten[5])) 1 -1" (3 "10")
+Condition 95 "795222567" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) | (decoded_wr_data[6] & decoded_wr_biten[6])) 1 -1" (3 "10")
+Condition 99 "1413304740" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
+Condition 103 "2792596154" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 114 "4205383914" "((field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
 
 CHECKSUM: "3619095557 1034725017"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -42,8 +53,13 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "4071069113 1776738744"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
 MODULE: cpu_ctrl_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Condition 54 "2648555519" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 58 "938649821" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 62 "2710835096" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 66 "196810938" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
 
 CHECKSUM: "4047357563 3105227975"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -59,11 +75,15 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 CHECKSUM: "2345381840 1625737755"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
 MODULE: efuse_interface_ctrl_reg
 Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
 Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
 Condition 74 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 74 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 17 "4208065857" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 34 "3341492462" "((field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
+Condition 47 "1725121280" "((field_storage.EFUSE_READ_CTRL.efuse_read_go.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
 
 CHECKSUM: "1147255362 2271730998"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -229,12 +249,15 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "1018686372 837048839"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
 MODULE: system_timer_octs_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Condition 39 "3493643897" "((field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 
 CHECKSUM: "656852128 1067758899"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
 MODULE: telemetry_receiver_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -242,6 +265,8 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 71 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 71 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Condition 31 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 35 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
 
 CHECKSUM: "427703398 1889139731"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
