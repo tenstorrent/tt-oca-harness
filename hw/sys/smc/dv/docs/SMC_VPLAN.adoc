@@ -429,6 +429,7 @@ feature rows.
 |`smc_i2c_master_target_test` |U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads.
 |`smc_i2c_intr_reg_sweep_test` |I2C interrupt and event registers cycled on all three instances, with the INTR_TEST to INTR_STATE round trip and the two unread read-mux rows.
 |`smc_i2c_config_regblock_sweep_test` |I2C configuration registers -- control, timing, FIFO thresholds, timeouts, target identity, override and SMBus control -- cycled on all three instances with both engines held disabled.
+|`smc_i2c_fifo_reset_pulse_test` |The four singlepulse I2C FIFO resets pulsed on all three instances against a measured fill level in the two FIFOs software can fill.
 |`smc_i2c_multi_instance_test` |I2C_1/2 + I2C_CTRL CSR sweep.
 |`smc_i2c_multi_sample_test` |Run the SMC OSS I2C multi-sample observability scenario.
 |`smc_i2c_p0_cfifo_test` |Controller FMT FIFO empty-threshold interrupt.
@@ -8283,6 +8284,41 @@ Drive `smc_i2c_config_regblock_sweep_test_seq`. Each checker below is a named co
 |===
 
 *Pass Criteria*: `CHK-I2C-CONFIG-IDLE-GUARD`, `CHK-I2C-CONFIG-REG-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-213-smc_i2c_fifo_reset_pulse_test]]
+===== 213 `smc_i2c_fifo_reset_pulse_test`
+
+*Source Module*: `smc_i2c_fifo_reset_pulse_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the I2C block left idle, neither engine enabled
+
+*Objective*: Pulse each of the four I2C FIFO resets and check it against a measured fill level.
+
+*Test Coverage*:
+
+* `smc_i2c_config_regblock_sweep_test` cycles the I2C configuration registers but cannot express `FIFO_CTRL`: `i2c.rdl` makes all four of its fields `sw = w` with `singlepulse`, so the generated contract pins no written value to read back and the half-register cycle has nothing to drive. Nothing else writes the register either, so none of the four resets had been pulsed on any instance.
+* The block is idle throughout -- `CTRL.ENABLEHOST` and `CTRL.ENABLETARGET` stay at their reset -- so no engine drains what the sequence puts in and every level read is one the sequence caused.
+* **`FMTRST` and `TXRST` carry the strong claim.** `i2c.rdl` maps them to the Controller TX and Target TX FIFOs, and both of those have a software write port, `FDATA` and `TXDATA`, whose push is not gated on either engine enable. The sequence fills each, reads the level out of `HOST_FIFO_STATUS.FMTLVL` and `TARGET_FIFO_STATUS.TXLVL`, pulses the reset and requires that level to have gone to empty. The two fills are different depths -- three bytes and five -- so a status register reporting the other FIFO's level fails the compare before any reset is pulsed.
+* **`RXRST` and `ACQRST` carry a weaker claim, stated here rather than implied.** They reset the Controller RX and Target RX FIFOs, and both of those are filled only by traffic on the wire: the controller receiving from a remote target, or a remote controller writing to this block as a target. Neither is reachable from the CSR port alone, and the leaves that drive the bus own the protocol agent and are a different shape. So what this leaf shows for these two is that each is pulsed while the two software-fillable FIFOs hold known, different levels and **neither level moves**. That fails if the reset decode is not one-hot, but it does **not** show that either reset empties the FIFO it names. Closing that needs a directed leaf on the protocol branch that first acquires a byte.
+* The same one-hot check covers the other two: `FMTRST` must leave the target transmit level untouched while clearing the controller one, and `TXRST` is pulsed last with the controller FIFO already empty, so each of the four resets is shown to reach its own FIFO and no other.
+* `FIFO_CTRL` is read after the four pulses and must read 0, which is the `singlepulse` contract the RDL gives all four fields.
+
+*Test Procedure*:
+
+Drive `smc_i2c_fifo_reset_pulse_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-FIFO-RST-EMPTIES` |On every instance FMTRST and TXRST each emptied the FIFO the RDL names for it, from a level the sequence had put there through FDATA and TXDATA and measured in the status registers first
+|`CHK-I2C-FIFO-RST-ONE-HOT` |On every instance each of the four resets reached its own FIFO and no other -- RXRST and ACQRST left both measured levels where they were, FMTRST left the target transmit level untouched, TXRST cleared the target level with the controller FIFO already empty -- and FIFO_CTRL read 0 afterwards, which is the singlepulse contract for all four
+|===
+
+*Pass Criteria*: `CHK-I2C-FIFO-RST-EMPTIES`, `CHK-I2C-FIFO-RST-ONE-HOT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
