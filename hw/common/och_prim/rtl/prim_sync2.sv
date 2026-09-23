@@ -21,7 +21,7 @@ module prim_sync2 #(
     .WIDTH                 (WIDTH),
     .RANDOM_DELAY_RESET    (0),
     .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
-  ) rand_del (
+  ) u_rand_del (
     .clk_i        (clk_i),            // input                   Clock
     .d_i          (d_i),              // input    [WIDTH-1:0]    Input Data
     .rst_ni       (1'b1),             // input                   Active Low Reset, if synchronizer is not resettable tie to 1
@@ -42,7 +42,7 @@ module prim_sync2 #(
   prim_flop_2sync #(
     .Width            (WIDTH),
     .EnablePrimCdcRand(1'b0)
-  ) sync2 (
+  ) u_sync2 (
     .clk_i (clk_i),
     .rst_ni(1'b1),      // non-resettable variant; use prim_sync2r when a reset is needed
     .d_i   (d_del),

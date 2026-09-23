@@ -112,7 +112,7 @@ module idma_backend_wrapper #(
         stream_fifo #(
           .DEPTH(M2B_FIFO_DEPTH),
           .T    (idma_req_t)
-        ) M2B_request_fifo (
+        ) u_M2B_request_fifo (
           .clk_i     (clk_i),
           .rst_ni    (rst_ni),
           .flush_i   (1'b0),
@@ -154,7 +154,7 @@ module idma_backend_wrapper #(
         .axi_rsp_t(int_axi_resp_t),
         .write_meta_channel_t(write_meta_channel_t),
         .read_meta_channel_t(read_meta_channel_t)
-      ) iDMA_backend (
+      ) u_iDMA_backend (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .testmode_i(test_en_i),
@@ -204,7 +204,7 @@ module idma_backend_wrapper #(
         .SpillB(1'b0),
         .SpillAr(1'b0),
         .SpillR(1'b0)
-      ) backend_axi_mux (
+      ) u_backend_axi_mux (
         .clk_i(clk_i),
         .rst_ni(rst_ni),
         .test_i(test_en_i),
@@ -225,7 +225,7 @@ module idma_backend_wrapper #(
         .r_chan_t  (mst_axi_r_chan_t),
         .axi_req_t (mst_axi_req_t),
         .axi_resp_t(mst_axi_resp_t)
-      ) dma_out_axi_cut (
+      ) u_dma_out_axi_cut (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .slv_req_i (mst_axi_req[i]),

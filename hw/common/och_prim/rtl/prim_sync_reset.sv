@@ -19,14 +19,14 @@ module prim_sync_reset #(
 
   logic [WIDTH-1:0] sync_reg;
 
-  prim_rstbypass_stdmux2 sync_rst_n_bypass (
+  prim_rstbypass_stdmux2 u_sync_rst_n_bypass (
     .rst_ni(sync_reg[WIDTH-1]),
     .test_rst_ni(scan_rst_ni),
     .test_mode_i(test_mode_i),
     .rst_no(sync_rst_no)
   );
 
-  prim_metastab_hardened_dffr sync_dffr (
+  prim_metastab_hardened_dffr u_sync_dffr (
     .clk_i(clk_i),
     .rst_ni(rst_ni),       // Asynch Reset
     .d_i (1'b1),
@@ -36,7 +36,7 @@ module prim_sync_reset #(
   generate
     for (genvar stage = 1; stage < WIDTH; stage = stage + 1) begin : gen_rst_sync_stage
 
-      prim_metastab_hardened_dffr sync_dffr (
+      prim_metastab_hardened_dffr u_sync_dffr (
         .clk_i(clk_i),
         .rst_ni(rst_ni),              // Asynch Reset
         .d_i (sync_reg[stage-1]),

@@ -19,7 +19,7 @@ module smc_version_id_wrap (
   logic [63:0] low;
   logic [63:0] high;
 
-  prim_rev_cell prim_rev_cell_0 (
+  prim_rev_cell u_prim_rev_cell_0 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -30,7 +30,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[7:0])
   );
 
-  prim_rev_cell prim_rev_cell_1 (
+  prim_rev_cell u_prim_rev_cell_1 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -41,7 +41,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[15:8])
   );
 
-  prim_rev_cell prim_rev_cell_2 (
+  prim_rev_cell u_prim_rev_cell_2 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -52,7 +52,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[23:16])
   );
 
-  prim_rev_cell prim_rev_cell_3 (
+  prim_rev_cell u_prim_rev_cell_3 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -63,7 +63,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[31:24])
   );
 
-  prim_rev_cell prim_rev_cell_4 (
+  prim_rev_cell u_prim_rev_cell_4 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -74,7 +74,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[39:32])
   );
 
-  prim_rev_cell prim_rev_cell_5 (
+  prim_rev_cell u_prim_rev_cell_5 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -85,7 +85,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[47:40])
   );
 
-  prim_rev_cell prim_rev_cell_6 (
+  prim_rev_cell u_prim_rev_cell_6 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -96,7 +96,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[55:48])
   );
 
-  prim_rev_cell prim_rev_cell_7 (
+  prim_rev_cell u_prim_rev_cell_7 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 

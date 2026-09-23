@@ -71,7 +71,7 @@ module idma_request_manager_wrapper #(
         .ExtPrio  (0),
         .AxiVldRdy(1),
         .LockIn   (0)   // don't lock in so in case mst is not ready, req can try a different req
-      ) i_rr_arb_tree (
+      ) u_rr_arb_tree (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
         .flush_i(1'b0),
@@ -107,7 +107,7 @@ module idma_request_manager_wrapper #(
         .FALL_THROUGH(1'b0),
         .DATA_WIDTH  ($clog2(NUM_CTRL_INTERFACES)),
         .DEPTH       (4)
-      ) req_tracking_fifo (
+      ) u_req_tracking_fifo (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .flush_i   (1'b0),
@@ -129,7 +129,7 @@ module idma_request_manager_wrapper #(
         .FALL_THROUGH(1'b0),
         .DATA_WIDTH  ($bits(resp_t)),
         .DEPTH       (1)
-      ) resp_buffer (
+      ) u_resp_buffer (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .flush_i   (1'b0),
@@ -163,7 +163,7 @@ module idma_request_manager_wrapper #(
         .ExtPrio  (0),
         .AxiVldRdy(1),
         .LockIn   (1)
-      ) i_rr_arb_tree (
+      ) u_rr_arb_tree (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
         .flush_i(1'b0),

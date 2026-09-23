@@ -73,7 +73,7 @@ module i2c
     .TARGET_TX_FIFO_DEPTH     (TARGET_TX_FIFO_DEPTH),
     .TARGET_RX_FIFO_DEPTH     (TARGET_RX_FIFO_DEPTH),
     .INPUT_DELAY_CYCLES       (INPUT_DELAY_CYCLES)
-  ) i2c_core (
+  ) u_i2c_core (
     // Global Interface
     .clk_i,
     .rst_ni,
@@ -113,7 +113,7 @@ module i2c
   // CSRs //
   //////////
 
-  i2c_reg i2c_reg (
+  i2c_reg u_i2c_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 

@@ -42,7 +42,7 @@ module prim_pulse_signal #(
   prim_updown_counter #(
     .Width(COUNT_WIDTH),
     .ResetValue({COUNT_WIDTH{1'b0}})
-  ) pulse_pulse_counter (
+  ) u_pulse_pulse_counter (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .clear_i(1'b0),
