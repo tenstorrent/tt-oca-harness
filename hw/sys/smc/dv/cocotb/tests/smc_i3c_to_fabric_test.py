@@ -33,9 +33,8 @@ class smc_i3c_to_fabric_test(smc_base_test):
         "CHK-I3C-CLOCK-GATE-RW",
         "CHK-I3C0-HC-CONTROL-BUS-ENABLE",
         "CHK-I3C0-HCI-VERSION",
-        "CHK-I3C0-PADS-RESOLVABLE",
     )
-    min_evidence = 4
+    min_evidence = 3
 
     auto_protocol_vip = False
 
@@ -61,9 +60,9 @@ class smc_i3c_to_fabric_test(smc_base_test):
                 "(base_registers.rdl) declared resets, and HC_CONTROL.BUS_ENABLE "
                 "written and read back, so the real i3ccore is enabled over the "
                 "fabric. I3C0 SCL/SDA external pull-low steps driven with the "
-                "core enabled: pad resolvability checked, DUT-drive levels "
-                "recorded OBSERVED-ONLY (no positive control exists for those "
-                "nets in this TB -- see the CHK/OBSERVED-ONLY lines). No I3C bus "
-                "protocol claim."
+                "core enabled: pad levels and resolvability recorded "
+                "OBSERVED-ONLY (no positive control exists for those nets in "
+                "this TB, and resolvability cannot fail on a two-state "
+                "simulator). No I3C bus protocol claim."
             ),
         )

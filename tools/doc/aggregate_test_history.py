@@ -10,15 +10,18 @@ Reads the gzipped per-run records under ``data/runs/`` on the
 page::
 
     {
-      "runs":  [{"date": str, "id": str}],
-      "flows": {"<flow>": {"<name>": [{"pass": int, "total": int,
-                                       "seeds": [{"seed": int,
-                                                  "reason": str}]} | None]}}
+      "series": [{"flow": str, "framework": str, "tool": str,
+                  "runs":  [{"date": str, "id": str}],
+                  "tests": {"<name>": [{"pass": int, "total": int,
+                                        "seeds": [{"seed": int,
+                                                   "reason": str}]} | None]}}]
     }
 
-``runs`` holds one entry per archive, oldest first, with the CI run it came
-from. Each test's list is the same length, one cell per run, counting the seeds
-that passed out of the seeds that ran:
+A block verified by more than one framework or simulator reports once per
+combination, so all three name a series. Each carries its own ``runs``, oldest
+first, because series run on their own cadences. Each test's list is the same
+length as that series' runs, one cell per run, counting the seeds that passed
+out of the seeds that ran:
 
     {"pass": 3, "total": 3}   every seed passed
     {"pass": 1, "total": 3}   mixed -- the run was flaky for this test
@@ -43,6 +46,9 @@ from pathlib import Path
 from typing import Any
 
 PASS = "PASS"
+
+# The fields that together name one series, matching trim_dashboard_data.py.
+IDENTITY_KEYS = ("flow", "framework", "tool")
 
 
 def archive_paths(ref: str, prefix: str) -> list[str]:
@@ -97,6 +103,31 @@ def read_archive(ref: str, path: str) -> dict[str, Any] | None:
     except (subprocess.CalledProcessError, OSError, ValueError):
         return None
     return record if isinstance(record, dict) else None
+
+
+def records(archive: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    The per-run records an archive holds.
+
+    An archive is either one run's record, carrying its tests at the top level,
+    or a summary wrapping one record per DUT under ``results``.
+
+    Args:
+        archive: A parsed archive
+
+    Returns:
+        Every record it holds, in the order published
+    """
+    # One record.
+    if isinstance(archive.get("tests_detail"), list):
+        return [archive]
+    # A summary.
+    results = archive.get("results")
+    return (
+        [record for record in results if isinstance(record, dict)]
+        if isinstance(results, list)
+        else []
+    )
 
 
 def tally(record: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
@@ -182,6 +213,43 @@ def run_stamp(record: dict[str, Any], path: str) -> datetime:
     return datetime.min.replace(tzinfo=timezone.utc)
 
 
+def legacy(series: list[dict[str, Any]]) -> dict[str, Any]:
+    """
+    The single-axis shape, written alongside the series for one release.
+
+    The page that reads it shares one run axis across every flow and cannot
+    tell two series of one block apart, so a block verified twice keeps only
+    the series read last. Written so the page can be updated separately, and
+    removed once it is.
+
+    Args:
+        series: The aggregated series
+
+    Returns:
+        A document holding ``runs`` and ``flows``
+    """
+    # One column per archive, as the page expects; an archive carries no
+    # identifier of its own, so runs are not merged by date.
+    columns = sorted(
+        (
+            (run["date"], run["id"], index, position)
+            for index, entry in enumerate(series)
+            for position, run in enumerate(entry["runs"])
+        ),
+        key=lambda column: (column[0], column[1]),
+    )
+    axis = [{"date": date, "id": run_id} for date, run_id, _, _ in columns]
+
+    flows: dict[str, dict[str, list[Any]]] = {}
+    for column, (_, _, index, position) in enumerate(columns):
+        entry = series[index]
+        tests = flows.setdefault(str(entry["flow"]), {})
+        for name, cells in entry["tests"].items():
+            row: list[Any] = tests.setdefault(name, [None] * len(axis))
+            row[column] = cells[position]
+    return {"runs": axis, "flows": flows}
+
+
 def main() -> int:
     """
     Aggregate the archives on a ref and write the test-history file.
@@ -195,47 +263,72 @@ def main() -> int:
     )
     parser.add_argument("output", type=Path, help="aggregate file to write")
     parser.add_argument("--ref", default="origin/dv-dashboard-data", help="git ref to read")
-    parser.add_argument("--prefix", default="data/runs/", help="archive path prefix")
-    parser.add_argument("--limit", type=int, default=0, help="keep only the newest N runs")
+    parser.add_argument(
+        "--runs-dir",
+        dest="runs_dirs",
+        action="append",
+        default=None,
+        help="directory of run archives within the ref, e.g. vcs/dtp_uvm/data/runs/; "
+        "repeat to read several publishers",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="keep only the newest N archives from each runs directory",
+    )
     args = parser.parse_args()
 
     entries: list[tuple[datetime, str, dict[str, Any]]] = []
-    for path in archive_paths(args.ref, args.prefix):
-        record = read_archive(args.ref, path)
-        if record is None:
-            print(f"warning: skipping unreadable {path}", file=sys.stderr)
-            continue
-        entries.append((run_stamp(record, path), path, record))
+    for runs_dir in args.runs_dirs or ["data/runs/"]:
+        paths = archive_paths(args.ref, runs_dir)
+        # An archive is named by publish date, so the window is chosen before
+        # any is read; the record's own timestamp then orders what is kept.
+        if args.limit > 0:
+            paths = sorted(paths)[-args.limit :]
+
+        found: list[tuple[datetime, str, dict[str, Any]]] = []
+        for path in paths:
+            record = read_archive(args.ref, path)
+            if record is None:
+                print(f"warning: skipping unreadable {path}", file=sys.stderr)
+                continue
+            found.append((run_stamp(record, path), path, record))
+        entries.extend(found)
 
     entries.sort(key=lambda entry: entry[0])
-    if args.limit > 0:
-        entries = entries[-args.limit :]
 
-    runs: list[dict[str, str]] = []
-    per_run: list[tuple[str, dict[str, list[dict[str, Any]]]]] = []
-    for stamp, path, record in entries:
-        runs.append({"date": stamp.date().isoformat(), "id": run_id(path)})
-        per_run.append((str(record.get("flow") or ""), tally(record)))
+    # Series need not share a cadence, so each carries its own run axis rather
+    # than a common one.
+    runs: dict[tuple[str, ...], list[dict[str, str]]] = {}
+    counts: dict[tuple[str, ...], list[dict[str, list[dict[str, Any]]]]] = {}
+    for stamp, path, archive in entries:
+        for record in records(archive):
+            if not record.get("flow"):
+                continue
+            key = tuple(str(record.get(field) or "") for field in IDENTITY_KEYS)
+            runs.setdefault(key, []).append({"date": stamp.date().isoformat(), "id": run_id(path)})
+            counts.setdefault(key, []).append(tally(record))
 
-    # A run that published nothing for a flow still occupies a column, so an
-    # absent cell reads as "did not run" rather than shifting the series.
-    flows: dict[str, dict[str, list[dict[str, Any] | None]]] = {}
-    for flow in sorted({flow for flow, _ in per_run if flow}):
-        names = sorted(
-            {name for run_flow, counts in per_run if run_flow == flow for name in counts}
-        )
-        flows[flow] = {
-            name: [
-                cell(counts[name]) if run_flow == flow and name in counts else None
-                for run_flow, counts in per_run
-            ]
+    series: list[dict[str, Any]] = []
+    for key in sorted(runs):
+        # A test missing from a run still occupies a column, so its cell reads
+        # as "did not run" rather than shifting the series.
+        names = sorted({name for run in counts[key] for name in run})
+        entry: dict[str, Any] = dict(zip(IDENTITY_KEYS, key))
+        entry["runs"] = runs[key]
+        entry["tests"] = {
+            name: [cell(run[name]) if name in run else None for run in counts[key]]
             for name in names
         }
+        series.append(entry)
 
     # Written compact rather than indented: it is machine-read only.
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    document = {"series": series}
+    document.update(legacy(series))
     args.output.write_text(
-        json.dumps({"runs": runs, "flows": flows}, separators=(",", ":"), sort_keys=True) + "\n",
+        json.dumps(document, separators=(",", ":"), sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return 0

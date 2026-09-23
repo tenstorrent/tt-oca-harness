@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from env.dtp_tap_device import DTP_NUM_CLK_STOP_REQ
+from env.dtp_dv_cfg import DTP_NUM_CLK_STOP_REQ
 
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
 

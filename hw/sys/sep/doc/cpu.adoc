@@ -99,7 +99,7 @@ first code running on the SEP host upon power on. It has the following
 features:
 
 * 64 kB capacity
-* SECDED Error Correction - single error detect double error correct
+* SECDED error correction - single-error correction, double-error detection
 ** 32-bit data + 7-bit ECC tag
 
 See {sep-rom-reference} for the hardware and firmware-image layout.

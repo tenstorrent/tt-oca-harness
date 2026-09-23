@@ -14,9 +14,9 @@ port, internal debug bridges, and a configurable cross-trigger fabric.
 ifdef::backend-html5[]
 ++++
 <p class="dashboard-badges">
-  <a href="../dashboard-block.html?flow=dtp"><img class="dashboard-badge" src="../data/badge-dtp-status.svg" alt="DTP verification status"></a>
-  <a href="../dashboard-block.html?flow=dtp"><img class="dashboard-badge" src="../data/badge-dtp-tests.svg" alt="DTP test pass rate"></a>
-  <a href="../dashboard-block.html?flow=dtp"><img class="dashboard-badge" src="../data/badge-dtp-coverage.svg" alt="DTP coverage"></a>
+  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-status.svg" alt="DTP (uvm, vcs) verification status"></a>
+  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-tests.svg" alt="DTP (uvm, vcs) test pass rate"></a>
+  <a href="../dashboard-block.html?flow=dtp&amp;framework=uvm&amp;tool=vcs"><img class="dashboard-badge" src="../data/badge-dtp-uvm-vcs-coverage.svg" alt="DTP (uvm, vcs) coverage"></a>
 </p>
 ++++
 endif::[]
