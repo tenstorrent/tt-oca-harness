@@ -257,6 +257,7 @@ feature rows.
 |`smc_dual_base_addressing_test` |`LOCAL_BASE` is read-only at 0xC000_0000, `GLOBAL_BASE` takes and returns a pattern, `REGION_SIZE` reads its 16 MiB reset.
 |`smc_filter_config_field_sweep_test` |Every FILTER_CONFIG field cycled to all-ones and all-zeros on all 32 entries, then the write-once lock set and the locked entry shown to refuse further configuration writes.
 |`smc_filter_region_span_test` |A filter region spanning two granules on every outbound entry, with one of them enabled and enforced against a DMA copy.
+|`smc_dma_decouple_rw_test` |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
 |`smc_filter_field_sweep_test` |Per-filter 3-field sweep x 4 entries x 2 dirs.
 |`smc_filter_multi_entry_test` |Filter 16 inbound + 16 outbound CONFIG sweep.
 |`smc_input_fabric_axi_wr_rd_test` |Run the input/output fabric CSR precheck over SEP_IN AXI.
@@ -8054,6 +8055,8 @@ Drive `smc_log_engine_abort_test_seq`. Each checker below is a named compare the
 * `log_engine/CTRL` is swept last, so the enable is only ever set while the region and write addresses are back at their reset and no LOG_CTRL element holds a length, and no transfer starts.
 * `AVS_CMD`, `AVS_INTERRUPT_CLEAR`, the telemetry counters, the DMA transfer descriptors and the eFuse read and program data registers are not driven: each is a command, an event clear or a hardware-owned value with a leaf of its own or no written-value expectation.
 
+* `EFUSE_INTERFACE_CTRL_STATUS` is the one register of the eFuse block no leaf reaches. Four of its fields are `sw = r; hw = w` and its three clears are write-only `singlepulse`, so the half-register cycle has nothing to drive and a sweep of it would assert rather than run. What it can be held to is checked instead: a read reports an idle block with no error bit and no clear bit set, a write of all three clears is accepted, and the register then reads back exactly what it read before -- so no clear stayed set and no `sw = r` state field moved under the write. The masks come from the generated `efuse_interface_ctrl.h`.
+
 *Test Procedure*:
 
 Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
@@ -8067,9 +8070,10 @@ Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compar
 |`CHK-PERIPH-TELEMETRY-SWEEP` |All three telemetry receivers cycled INTR_ENABLE, INTR_TEST and CTRL against their contract and were restored, and the events the test field raised were then cleared out of INTR_STATUS by a write of its declared mask
 |`CHK-PERIPH-LOG-ENGINE-SWEEP` |All four log engines cycled their region size, region address, write address and enable against their contract and were restored, with the enable set only while the addresses were at their reset
 |`CHK-PERIPH-REGBLOCK-COMPARES` |The scoreboard booked at least the expected number of exact-value compares of its own for the reads whose whole word the RDL contract predicts, independently of the sequence's counters
+|`CHK-PERIPH-EFUSE-STATUS` |EFUSE_INTERFACE_CTRL_STATUS read an idle block with no error bit and no clear bit set, took a write of all three of its write-only singlepulse clears, and read back exactly what it read before
 |===
 
-*Pass Criteria*: `CHK-PERIPH-LOG-ENGINE-SWEEP`, `CHK-PERIPH-REGBLOCK-COMPARES`, `CHK-PERIPH-REGBLOCK-SINGLE-SWEEP`, `CHK-PERIPH-TELEMETRY-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-PERIPH-EFUSE-STATUS`, `CHK-PERIPH-LOG-ENGINE-SWEEP`, `CHK-PERIPH-REGBLOCK-COMPARES`, `CHK-PERIPH-REGBLOCK-SINGLE-SWEEP`, `CHK-PERIPH-TELEMETRY-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -8356,6 +8360,41 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 |===
 
 *Pass Criteria*: `CHK-FILTER-REGION-ENFORCED`, `CHK-FILTER-REGION-SPAN` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-215-smc_dma_decouple_rw_test]]
+===== 215 `smc_dma_decouple_rw_test`
+
+*Source Module*: `smc_dma_decouple_rw_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN and JTAG); the SMC DMA
+
+*Objective*: Run DMA transfers with the read and write channels decoupled, and queue a second descriptor while the first is in flight.
+
+*Test Coverage*:
+
+* `CONFIG.DECOUPLE_RW` has never been written. Every DMA leaf leaves it at its reset, so the backend legalizer has only ever run its coupled arm, where the read and the write machine advance together; the decoupled arm, where either may advance alone, has never been entered. Nothing has queued a second descriptor while the legalizer was still busy either.
+* The golden for the field is the generated header, not the RTL: `dma_ctrl.h` gives `DMA_CTRL__CONFIG__DECOUPLE_RW_bm` the value `0x2` and its reset `0x0`, and `dma_ctrl.rdl` makes it `sw = rw`. The leaf reads `CONFIG` first and fails if the field is already set, writes it, and requires it to read back before running anything through it.
+* **Two transfers whose channels have different work to do.** Decoupling only shows if the two sides are not in step, so each transfer is two-dimensional with a stride on one side only: a scatter, where the source rows are contiguous and the destination rows are a stride apart, so the read side issues one long run and the write side many short ones; and a gather, the other way round, so the fragmented side is the read. Both move the same four distinct rows and every row is compared against its source at the stride that should have placed it, so a transfer that dropped, duplicated or misplaced a row fails rather than passing quietly.
+* **Two descriptors back to back.** `dma_ctrl.rdl` says of `NEXT_ID` that "Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly", and of `DONE` that it "Holds the cumulative number of completed transfers". The second descriptor is therefore programmed and submitted without waiting for the first, and the leaf requires both ids to be non-zero and rising, `DONE` to have advanced by two, and each destination to hold its own payload rather than the other's or the sentinel.
+* Every destination is seeded with a sentinel that is none of the payload rows, so a transfer that never ran reads as the sentinel and fails.
+* `CONFIG` is restored to its reset and read back. The leaf writes no other DMA field, and touches no fuse.
+
+*Test Procedure*:
+
+Drive `smc_dma_decouple_rw_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DMA-DECOUPLE-RW` |CONFIG.DECOUPLE_RW read back set from the mask the generated header gives it, and both transfers ran with the channels decoupled -- a scatter whose write side was the fragmented one and a gather whose read side was -- with every row landing where its stride puts it and matching its source; CONFIG was restored to its reset and read back
+|`CHK-DMA-QUEUED-DESCRIPTORS` |A second descriptor was programmed and submitted without waiting for the first, both NEXT_ID reads returned a non-zero and rising id rather than the 0 the RDL gives a rejected command, DONE advanced by two, and each destination held its own payload
+|===
+
+*Pass Criteria*: `CHK-DMA-DECOUPLE-RW`, `CHK-DMA-QUEUED-DESCRIPTORS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
