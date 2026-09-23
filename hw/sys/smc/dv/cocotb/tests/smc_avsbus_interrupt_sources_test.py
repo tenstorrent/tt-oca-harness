@@ -20,11 +20,12 @@ class smc_avsbus_interrupt_sources_test(smc_base_test):
         "CHK-AVS-CMD-FIFO-FULL-INT",
         "CHK-AVS-CMD-FIFO-OVERFLOW-INT",
         "CHK-AVS-INTERRUPT-CLEAR-SOURCES",
+        "CHK-AVS-IRQ-UNMASKED",
         "CHK-AVS-READBACK-FIFO-FULL-INT",
         "CHK-AVS-READBACK-HAS-DATA-INT",
         "CHK-AVS-READBACK-UNDERFLOW-INT",
     )
-    min_evidence = 6
+    min_evidence = 7
 
     auto_protocol_vip = False
 
@@ -40,7 +41,7 @@ class smc_avsbus_interrupt_sources_test(smc_base_test):
             # one AVS_READBACK read per readback slot, and a clear with its
             # readback per source. Literal here, not read from
             # `seq.accesses`.
-            min_csr_accesses=45,
+            min_csr_accesses=50,
             csr_accesses=seq.accesses,
             proxy=False,
             details="AVSBus FIFO interrupt sources raised and cleared through the write-1 register",

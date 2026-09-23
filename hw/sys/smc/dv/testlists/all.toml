@@ -52,7 +52,7 @@ includes = [
 # sep are: the loader errors when this list and the count diverge, so a leaf
 # cannot be added to a feature testlist and silently miss the regression.
 name = "all"
-expected_count = 233
+expected_count = 234
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -60,6 +60,7 @@ tests = [
     "smc_address_window_top_decode_test",
     "smc_alias_remap_spare_block_decode_test",
     "smc_avsbus_clock_config_proxy_test",
+    "smc_avsbus_clock_divider_test",
     "smc_avsbus_frame_transaction_test",
     "smc_avsbus_interrupt_sources_test",
     "smc_avsbus_retry_exhaust_test",
@@ -296,7 +297,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 214
+expected_count = 215
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -304,6 +305,7 @@ tests = [
     "smc_address_window_top_decode_test",
     "smc_alias_remap_spare_block_decode_test",
     "smc_avsbus_clock_config_proxy_test",
+    "smc_avsbus_clock_divider_test",
     "smc_avsbus_frame_transaction_test",
     "smc_avsbus_interrupt_sources_test",
     "smc_avsbus_retry_exhaust_test",

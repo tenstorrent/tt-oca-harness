@@ -6615,6 +6615,7 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 * `CMD_COMPLETE`, whose `(event || test) && enable` set path at `i2c_core.sv:1001` is the exact shape under test.
 * Both the held and the dropped consequence, as for the log engine.
+* Every one of the twenty sources in the `irq_o` reduction, each raised as the only enabled source so the output move belongs to that term and no other. `i2c.rdl` splits them: a latched source is `woclr` in `INTR_STATE` with a `singlepulse` `INTR_TEST` field and is released by a W1C; a level source is read-only in `INTR_STATE` with a plain `rw` `INTR_TEST` field and is released by writing that field back to 0. A source the bench holds asserted cannot be swept from a measured clear, so it is named in the evidence and skipped, and the leg states the minimum number of sources it still requires.
 
 *Test Procedure*:
 
@@ -6624,6 +6625,7 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 . Clear INTR_ENABLE only and sample the IRQ.
 . W1C the status, prove it cleared, then pulse INTR_TEST with INTR_ENABLE=0 and set the enable afterwards.
 . Require INTR_STATE to hold the event.
+. Sweep every source: clear it, enable it alone, raise it through INTR_TEST, require the IRQ to rise, release it and require the IRQ to fall with INTR_STATE clear.
 
 *Checkers*:
 
@@ -6632,10 +6634,11 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 |Checker |Description
 |`CHK-I2C-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
 |`CHK-I2C-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATE still carrying the bit -- the last is what separates an output mask from a DUT that simply clears the state
+|`CHK-I2C-INTR-MASK-EVERY-SOURCE` |At least 16 of the twenty interrupt sources each raised the IRQ while it was the only enabled source, and released it again with `INTR_STATE` clear
 |`CHK-I2C-INTR-MASK-LATCH` |An event arriving while masked is still latched and surfaces once the enable is set
 |===
 
-*Pass Criteria*: `CHK-I2C-INTR-MASK-ARM`, `CHK-I2C-INTR-MASK-DEASSERT` and `CHK-I2C-INTR-MASK-LATCH` hold after their compares; the last two are measured before either raises, so neither hides the other. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: `CHK-I2C-INTR-MASK-ARM`, `CHK-I2C-INTR-MASK-DEASSERT`, `CHK-I2C-INTR-MASK-EVERY-SOURCE` and `CHK-I2C-INTR-MASK-LATCH` hold after their compares; the last three are measured before any raises, so none hides another. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
@@ -9053,7 +9056,8 @@ Drive `smc_i2c_controller_sda_interference_test_seq`. Each checker below is a na
 * Both full flags follow their conditions rather than latching, so each is cleared only after its FIFO has drained; clearing while the condition holds leaves the flag set, which an earlier version of this leaf failed on.
 * The overflowing `AVS_CMD` write is refused on the bus as well as dropped, so the access itself is an observable of the full condition.
 * FIFO depths come from the generated register header's reset values for the vacant-slot fields, not from the design.
-* `READBACK_OVERFLOW_INT` is not raised. `architecture.adoc` lists it under Error Handling as "a response received when full is dropped", but the same document states that "while the readback FIFO is full the master launches no further commands, so a software reader that stops draining `AVS_READBACK` stalls the bus rather than losing responses". With no further command launched there is no response to drop, so the condition cannot arise from the bus side.
+* `READBACK_OVERFLOW_INT` is not raised here. `architecture.adoc` lists it under Error Handling as "a response received when full is dropped", while also stating that "while the readback FIFO is full the master launches no further commands". The two statements are hard to reconcile from the documentation alone, and the full flag crosses a clock domain, so a race that drops a response in flight is not ruled out. The source is left to a leaf that can set that race up deliberately.
+* The interrupt output is read as a DUT-produced observable. At reset every source is masked, so a raised source reaches nothing; the leaf opens the mask for the eight FIFO and protocol sources and requires the output to follow them. `AVS_SLAVE_ISSUED_INTERRUPT` stays masked: the slave-interrupt detector re-arms it from the idle level of the AVS serial data line, so it returns immediately after each clear and would hold the output high regardless of the sources under test. The entry state is established by clearing every source and reading the output low, not assumed.
 
 *Test Procedure*:
 
@@ -9070,9 +9074,51 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |`CHK-AVS-READBACK-HAS-DATA-INT` |Responses waiting in the readback FIFO raised `READBACK_HAS_DATA_INT`; once it was emptied, `AVS_INTERRUPT_CLEAR` removed the flag
 |`CHK-AVS-READBACK-UNDERFLOW-INT` |Reading `AVS_READBACK` on an empty FIFO raised `READBACK_UNDERFLOW_INT`, which `AVS_INTERRUPT_CLEAR` removed
 |`CHK-AVS-INTERRUPT-CLEAR-SOURCES` |All five sources above were each raised, observed in `AVS_INTERRUPT`, cleared through the write-only `AVS_INTERRUPT_CLEAR` and observed gone
+|`CHK-AVS-IRQ-UNMASKED` |With the FIFO sources unmasked the block's interrupt output was low at entry, rose as each source was raised and returned low once every one had been cleared
 |===
 
-*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all seven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-231-smc_avsbus_clock_divider_test]]
+===== 231 `smc_avsbus_clock_divider_test`
+
+*Source Module*: `smc_avsbus_clock_divider_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_avs_clk_from_dut`, the AVS clock at the pad
+
+*Objective*: A written AVSBus clock divider setting must reach the clock the block drives.
+
+*Test Coverage*:
+
+* `AVS_CFG_1.AVS_CLOCK_SELECT` resets to a divided source, so the divider is already in the AVS clock path. Every other leaf leaves `CLK_DIVIDER_VALUE` and `CLK_DIVIDER_DUTY_CYCLE_NUMERATOR` at their reset, and the divider only reloads when a written setting differs from the one it holds, so nothing shows that a written setting reaches the clock at all.
+* The divisor and the numerator are compared separately, so each is changed on its own: two divisors, each double the last, then a numerator change at a held divisor.
+* The minimum the RDL states for the divisor. Both fields reset to 0, which is below it, and the RDL explains the reset as a value chosen to match the divider's own reset copy so that no reload happens. Writing 0 deliberately is therefore not the same as leaving it: the divider takes the minimum of 2. The leaf measures that, and restores the clock by writing the hardware defaults the RDL names rather than the register's reset value.
+* Expected periods come from the reset measurement scaled by the programmed divisors, and the expected high fraction from the numerator over 256 as the RDL defines it; no rate is taken from the design.
+
+*Test Procedure*:
+
+[arabic]
+. Require `AVS_CLOCK_SELECT` to be a divided source and `STOP_AVS_CLOCK_ON_IDLE` to be clear, then measure the period and high fraction at the reset setting.
+. Write each divisor with the premux clocks gated around the change, as the register documentation prescribes, and measure again.
+. Change only the numerator and measure the high fraction and the period.
+. Write a divisor of 0 and measure the minimum the divider assumes.
+. Write the hardware defaults back and measure the reset rate again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-CLKDIV-PERIOD` |Each written divisor scaled the measured AVS clock period against the reset measurement
+|`CHK-AVS-CLKDIV-DUTY` |A numerator change on its own moved the high fraction to what the numerator asks for, at an unchanged period
+|`CHK-AVS-CLKDIV-MINIMUM` |A written divisor of 0 was taken as the minimum of 2, not as the reset behaviour
+|`CHK-AVS-CLKDIV-RESTORE` |The hardware-default divisor and numerator returned the clock to its reset period and high fraction
+|===
+
+*Pass Criteria*: all four checkers hold after their compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
