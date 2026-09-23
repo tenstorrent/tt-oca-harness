@@ -10,6 +10,29 @@ from tools.regs.common.rdlview import collect, compile_root, write_adoc, write_h
 
 
 class RegisterViewTests(unittest.TestCase):
+    def test_nested_banks_inside_array_keep_their_full_paths(self):
+        with TemporaryDirectory() as temp:
+            source = Path(temp) / "nested.rdl"
+            source.write_text("""
+regfile bank {
+    reg { field { sw = rw; hw = r; } value[31:0]; } control;
+};
+regfile channel {
+    bank tx @0x0;
+    bank rx @0x8;
+};
+addrmap top { channel channels[2] @0x0 += 0x20; };
+""")
+            data = collect(compile_root(str(source), None, []))
+            self.assertEqual(
+                [(reg.name, reg.addr) for reg in data.regs],
+                [
+                    ("channels[2].tx.control", "0x0 - 0x20"),
+                    ("channels[2].rx.control", "0x8 - 0x28"),
+                ],
+            )
+            self.assertEqual(len(data.arrays), 2)
+
     def test_distinct_banks_and_array_instances_survive_both_exports(self):
         with TemporaryDirectory() as temp:
             source = Path(temp) / "banks.rdl"

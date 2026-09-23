@@ -215,9 +215,11 @@ class Collector(RDLListener):
         if path in self.seen:
             return
         self.seen.add(path)
-        prefix = (enclosing if enclosing is not None and not node.is_array else node).parent
-        parents = prefix.get_path().split(".")[1:]
-        self.qualified_names[path] = ".".join([*parents, name])
+        qualified = path.split(".")[1:]
+        if node.is_array or enclosing is not None:
+            array_index = len(dim_node.get_path().split(".")) - 2
+            qualified[array_index] = f"{dim_node.inst_name}[{count}]"
+        self.qualified_names[path] = ".".join(qualified)
         selector = ".".join(re.sub(r"\[\d+\]$", "", segment) for segment in path.split(".")[1:])
         description = node.get_property("desc") or ""
         if selector in self.overrides:
