@@ -8299,6 +8299,45 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-234-smc_avsbus_retry_suppressed_test]]
+===== 234 `smc_avsbus_retry_suppressed_test`
+
+*Source Module*: `smc_avsbus_retry_suppressed_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at its idle level by the bench, so every reply reports the target as not responding
+
+*Objective*: A retry budget of 0 must answer an unanswered command without resending it.
+
+*Test Coverage*:
+
+* `AVS_CFG_0.MAX_RETRIES = 0`, which the design reads as programmed to suppress retries: the failing reply is pushed to the readback FIFO as it stands and the controller carries on. `smc_avsbus_retry_exhaust_test` covers the other side of the same register with a budget to spend; the two leaves differ only in the budget.
+* The absences that define suppression -- no retry state on the FSM debug bus, `TOTAL_RETRIES` unmoved, `AVS_MASTER_IS_RETRYING` never set, `MAX_RETRIES_ATTEMPTED_INT` never raised -- together with the one presence that separates suppression from dropping the reply: the readback FIFO still holds it.
+* A positive control on the same registers and the same probes. The same commands are then given a budget of 1, and the counter and the debug bus have to move; without it the absences above could all be dead probes.
+* The retry failure sources are cleared and required to stay clear only before the first command. Once the bench has held sdata idle through a burst, the controller's own resync traffic meets the same failing reply, so a later clear cannot be required to hold.
+
+*Test Procedure*:
+
+[arabic]
+. Hold the sdata pad at its idle level, save `AVS_CFG_0` and program `MAX_RETRIES` to 0.
+. Clear both retry failure sources and require them clear, then read the retry counter.
+. Queue two read commands and poll until the target is reported unresponsive, sampling the retrying flag on every poll.
+. Require the counter, the flag, the debug bus and the budget-exhausted interrupt to show no retry, and the readback FIFO to hold the replies.
+. Reprogram the budget to 1, queue the same commands, and require the counter and the debug bus to move.
+. Restore `AVS_CFG_0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-RETRY-SUPPRESSED` |With `MAX_RETRIES` at 0 the unanswered commands raised `SLAVE_UNRESPONSIVE_INT`, no retry was attempted by any of the four measures, and the failing replies still reached the readback FIFO
+|`CHK-AVS-RETRY-SUPPRESSED-CONTROL` |The same commands with a budget of 1 moved `TOTAL_RETRIES` and put the retry states on the debug bus, so the suppressed leg is measuring live probes
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
