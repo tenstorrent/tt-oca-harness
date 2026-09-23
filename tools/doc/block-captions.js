@@ -3,10 +3,6 @@
 
 'use strict'
 
-const escapeHtml = (text) => text.replace(/[&<>"']/g, (ch) => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-}[ch]))
-
 function tableTitle (section, headings) {
   if (headings.includes('Bits') && headings.includes('Field')) return `${section} fields`
   if (headings.includes('Address') && headings.includes('Name')) return `${section} register list`
@@ -79,7 +75,7 @@ exports.register = function (registry, { file } = {}) {
         doc.$register('refs', [id, block])
         if (owner) {
           if (!owners.has(owner)) owners.set(owner, [])
-          owners.get(owner).push(`<a href="#${escapeHtml(id)}">${label}</a>`)
+          owners.get(owner).push(`<a href="#${encodeURIComponent(id)}">${label}</a>`)
         }
       }
       for (const [owner, links] of owners) {

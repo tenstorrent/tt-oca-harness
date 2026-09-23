@@ -116,6 +116,24 @@ console.log(JSON.stringify(file.blockCatalog || []))
         ):
             self.assertIn(f'href="#{target}">{label}.', index)
 
+    def test_html_reference_fragments_encode_special_characters(self):
+        for attributes, fragment in (
+            ('[id="control%20port"]', "control%2520port"),
+            (
+                "[id='figure\"onmouseover=\"alert(1)']",
+                "figure%22onmouseover%3D%22alert(1)",
+            ),
+            ('[id="figure&<>\'/Δ?"]', "figure%26%3C%3E'%2F%CE%94%3F"),
+        ):
+            with self.subTest(attributes=attributes):
+                source = f"= Fixture\n:ocah-trm:\n\n{attributes}\nimage::figure.svg[Figure]\n"
+                html, _ = self.convert("javascript", source)
+                self.assertIn(
+                    '<p class="block-references">Figures and tables: '
+                    f'<a href="#{fragment}">Figure 1</a>.</p>',
+                    html,
+                )
+
     def test_opt_in_leaves_other_books_unchanged(self):
         source = SOURCE.replace(":block-catalog:\n", "").replace(":ocah-trm:\n", "")
         for backend in ("ruby", "javascript"):
