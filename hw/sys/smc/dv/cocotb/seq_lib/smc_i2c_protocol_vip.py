@@ -422,6 +422,22 @@ class SmcI2cMasterVip:
             self.scl_timeout_ns,
         )
 
+    def set_speed(self, speed: int) -> None:
+        """Change the bit rate, including part-way through a transfer.
+
+        A controller that changes rate mid-transfer is the only way to give a
+        target one bit period at one rate and the next at another, which is
+        what a test of the target's own timing thresholds needs. The timeout
+        for a held clock is left where the caller set it, since it bounds the
+        other device's behaviour rather than this one's.
+        """
+        self.speed = speed
+        self._bit_ns = max(1, int(1e9 / speed))
+        self._half_ns = max(1, self._bit_ns // 2)
+        self.log.info(
+            "%s speed changed: %d (half period %d ns)", self.log.name, speed, self._half_ns
+        )
+
     def _pull_sda(self, low: bool) -> None:
         _set_ext_low(self._sda_ext, _SDA_LOW, self._id, low)
 

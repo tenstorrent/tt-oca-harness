@@ -9424,6 +9424,89 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-235-smc_i2c_target_nack_timeout_test]]
+===== 235 `smc_i2c_target_nack_timeout_test`
+
+*Source Module*: `smc_i2c_target_nack_timeout_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads; observation on `TARGET_NACK_COUNT`, `ACQDATA` and the bus
+
+*Objective*: A stretch nobody releases must end in the target's own NACK, in both directions.
+
+*Test Coverage*:
+
+* The expiry of `TARGET_TIMEOUT_CTRL`, the cumulative limit on how long the target may stretch within one transaction. Every other stretch leaf is released by software first, so the limit had never been reached.
+* Both consequences the RDL names for it -- NACK an incoming data byte, release SDA for an outgoing one -- one leg each.
+* ACK Control Mode is the way into the incoming hold, so the target stops at the first data byte instead of after a whole acquisition FIFO of them. It is the same hold `smc_i2c_target_ack_ctrl_test` answers; the difference is that nothing answers it here.
+* An empty transmit FIFO is the way into the outgoing hold, and a released SDA line reads as all ones at the bench.
+* `TARGET_NACK_COUNT` is the register witness. `i2c_core.sv` increments it on the edge where the target decides to NACK the transaction, and the field is read-to-clear, so each leg reads it clear beforehand and requires exactly one afterwards -- not merely non-zero.
+* The acquisition stream must end with the NACK-stop entry, so software can see the transaction ended badly rather than inferring it from the missing data.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target with a short `TARGET_TIMEOUT_CTRL` allowance, and read `TARGET_NACK_COUNT` twice to clear it and prove it cleared.
+. Incoming: with ACK Control Mode enabled and its count at reset, drive a write and let the hold run out.
+. Require a NACK on the wire, exactly one counted transaction, and a NACK-stop entry closing the stream.
+. Outgoing: with the transmit FIFO empty, drive a read and let the hold run out.
+. Require all ones at the bench, exactly one counted transaction, and a NACK-stop entry.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-NACK-TIMEOUT-RX` |The allowance ran out at a held incoming byte: the byte was NACKed, the transaction counted once, and the stream closed with a NACK-stop entry
+|`CHK-I2C-TGT-NACK-TIMEOUT-TX` |The allowance ran out with nothing to transmit: SDA was released so the bench read all ones, the transaction counted once, and the stream closed with a NACK-stop entry
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-236-smc_i2c_target_fast_controller_test]]
+===== 236 `smc_i2c_target_fast_controller_test`
+
+*Source Module*: `smc_i2c_target_fast_controller_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, with its bit rate changed part-way through a transfer; observation on the ACK bits, `TARGET_NACK_COUNT` and `ACQDATA`
+
+*Objective*: A controller that releases SCL before the target's data hold time has elapsed must have its transaction abandoned.
+
+*Test Coverage*:
+
+* `TIMING3.THD_DAT`, the hold the target keeps with SCL low before driving an acknowledge. The threshold is a relation between that hold and the controller's SCL low period, so the leaf sets both: the target is given a hold far longer than any other leaf uses, and the bench is run at one rate well over it and one well under it.
+* Both places the target makes the decision: the acknowledge of the address byte and the acknowledge of a data byte.
+* The rate changes after the START in both fast legs, not before. The same hold governs both acknowledges, so at a single rate the address is always the first to go; and the bus monitor takes the same `THD_DAT` as its threshold for detecting a START (`i2c_bus_monitor.sv`), so a START clocked fast enough to violate the hold is not seen as a START at all. The measured consequence of getting that wrong was a transaction the target never joined: no acknowledge, no count, nothing acquired.
+* The hold is also kept below half the slow rate's low period, so the target always finishes driving an acknowledge before the clock rises again and the control transfers are clean.
+* A transfer entirely at the slow rate runs before and after the two fast legs, so the abandons are the difference the rate makes rather than a target that never works.
+* `TARGET_NACK_COUNT` is the register witness. It takes the edge on which the target decides to NACK the transaction and is read-to-clear, so each leg clears it and requires exactly its own -- one for each abandon, none for either control.
+* What reaches the acquisition FIFO separates the two abandons: the address leg records nothing for the address and closes with the NACK-stop entry, the data leg keeps its start entry but records no data.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target with a long `TIMING3.THD_DAT`, read back the timing, and require the acquisition FIFO empty.
+. Slow transfer: START, address, one data byte, STOP, all at the slow rate.
+. Address leg: START at the slow rate, change rate, then the address byte.
+. Data leg: START and address at the slow rate, park until the target's hold on that acknowledge has finished, change rate, then the data byte.
+. Slow transfer again.
+. For each leg, drain the acquisition FIFO once its level has settled and read `TARGET_NACK_COUNT`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-FAST-CTRL-CONTROL` |Both slow transfers were acknowledged throughout, acquired in full and counted no NACK
+|`CHK-I2C-TGT-FAST-CTRL-ADDR` |The address clocked under the hold time got no acknowledge, was counted once, and left only the NACK-stop entry
+|`CHK-I2C-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
