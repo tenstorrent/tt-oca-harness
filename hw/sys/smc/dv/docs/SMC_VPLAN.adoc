@@ -8221,6 +8221,45 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-232-smc_i2c_target_addr_stretch_test]]
+===== 232 `smc_i2c_target_addr_stretch_test`
+
+*Source Module*: `smc_i2c_target_addr_stretch_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads; observation on the resolved SCL net and on `ACQDATA`
+
+*Objective*: A repeated START issued while the target's acquisition FIFO is full must hold the bus through the address phase until software drains it.
+
+*Test Coverage*:
+
+* The address phase, which `smc_i2c_target_acq_stretch_test` does not reach: that leaf fills the FIFO part-way through a transfer, so the target stretches at a data byte. Holding the address phase needs the FIFO to still be out of room when a new address arrives, which only a repeated START can arrange -- a STOP would end the transfer and let software drain at leisure.
+* Both settings of `CTRL.NACK_ADDR_AFTER_TIMEOUT`, which `i2c.rdl` gives as ACK the address byte even if a stretch timeout occurs (`0`, for SMBus) or NACK it (`1`). The two settings take the target down different paths to the same hold, and in both the transfer has to complete once the FIFO is drained.
+* No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
+* `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target and require its acquisition FIFO to read empty and not full.
+. Write bytes one at a time, checking `STATUS.ACQFULL` between them, and stop as soon as the target reports it is out of room.
+. Issue a repeated START and the address again in the background, and measure the hold: only samples where the bus is low while the bench has released its own pull are counted.
+. Require the bench's transfer to still be in flight, then drain `ACQDATA` until it completes.
+. Compare the whole acquired stream against the bench's traffic and require every ACK bit to be low.
+. Repeat with `CTRL.NACK_ADDR_AFTER_TIMEOUT` set.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
+|`CHK-I2C-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set, which takes the target's other address-phase path to the same result
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
