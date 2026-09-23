@@ -221,7 +221,6 @@ def smc_indexed2_addr(symbol: str, outer: int = 0, inner: int = 0) -> int:
 # Integrator Guide smu.adoc "STAP Scan Chain Topology"). The SMU parameter
 # table there sets JTAG_STAP_IO_ENABLE=1, JTAG_SMC_DBG_ENABLE=1 and
 # JTAG_NUM_EXTRA_STAPS=1, and SEP=1 enables the SEP debug STAP.
-# smu_jtag_helpers.SMU_STAP_ORDER is the SEP=0 chain; this is the SEP=1 one.
 SMU_SEP_STAP_ORDER = ("io", "smc", "sep", "extra0")
 
 
