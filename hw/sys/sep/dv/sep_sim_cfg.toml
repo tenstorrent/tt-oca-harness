@@ -192,6 +192,31 @@ extra_args = ["-fno-dfg"]
 # so the post-compile check looks in a directory the compile does not write.
 # Point the check at the database the compile actually writes.
 design_artifact = "{build_dir}/../cov_build.vdb"
+
+# Assertion coverage is collected and scored whatever the `-cm` list says: in
+# this VCS version `-cm assert` does not gate it, and the compile-time
+# `-cm_common_hier` below is what keeps it inside the graded hierarchy. So the
+# metric is dropped HERE, at report time, which is the only place that works.
+#
+# Why it is dropped: SEP assertions are predominantly negative controls, where
+# the implication antecedent is an illegal condition. This environment drives
+# legal stimulus only, so those assertions can never record a successful
+# attempt. They are uncoverable by construction rather than by a stimulus gap,
+# and grading them reports the absence of traffic the stimulus policy forbids.
+#
+# This changes the SCORE only. Every assertion stays compiled, evaluating and
+# able to fail a test; nothing here touches checking. Restore `+assert` to the
+# metric list if SEP ever gains an illegal-stimulus environment.
+#
+# Overrides the shared [vcs] report_cmd in hw/common/dv/configs/simulators.toml
+# by adding `-metric`; the rest of the command is copied from it verbatim.
+report_cmd = [
+  "urg", "-full64",
+  "-dir", "{merged}",
+  "-report", "{report}",
+  "-format", "both",
+  "-metric", "line+cond+tgl+fsm+branch+group",
+]
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",

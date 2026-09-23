@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_feat_ctrl import feat_ctrl_nonvacuous_fixed
 from env.sep_lcc_golden import feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -46,7 +47,14 @@ class sep_efuse_image_test(sep_base_test):
         # reproduces this exact image for the model's t=0 load; see
         # cocotb/dv_sim_prestage.py). write_efuse_image records it as the golden for
         # the base post-sense backdoor compare.
-        img = self.select_efuse_image(fixed={"CHIPLET_UID": 0})
+        # CHIPLET_UID is pinned because the test programs one of its bits after
+        # the first sense. The disable vectors stay random: the helper returns
+        # them untouched unless the draw would make post-sense FEAT_CTRL zero,
+        # which would make the fail-closed contrast below vacuous.
+        # MIRROR: dv_sim_prestage.py EFUSE_IMAGE_REGISTRY["sep_efuse_image_test"].
+        img = self.select_efuse_image(
+            fixed=feat_ctrl_nonvacuous_fixed(self.random_seed(), base={"CHIPLET_UID": 0})
+        )
         self.write_efuse_image(img)
         await self.release_no_cpu_reset()
         await self.check_pre_sense_fail_closed()
