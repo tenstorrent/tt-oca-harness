@@ -674,7 +674,7 @@ module sep_fcov (
   localparam int unsigned SpareBitBase = (SEP_EFUSE_MAP_SPARE0_REG_OFFSET / 4) * 32;
   localparam int unsigned SpareBitSpan = (SpareStrideB / 4) * 32;
   // Slot 32+k owns spare k's write lock at bit 2*(32+k) of the LOCKS vector,
-  // which is where LOCKS_SPARE starts (periphs.adoc, sep_efuse_pkg).
+  // which is where LOCKS_SPARE starts (otp_fuse_controller.adoc, sep_efuse_pkg).
   localparam int unsigned SpareLockBase = (SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4) * 32;
   localparam int unsigned LockBitsPerSlot = 2;
 

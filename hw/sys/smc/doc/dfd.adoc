@@ -125,5 +125,5 @@ include::ip:partial$dfd/regs/gen/html/smc_cla.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[]
+include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[leveloffset=+1]
 endif::backend-pdf[]
