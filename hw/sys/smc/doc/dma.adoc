@@ -11,8 +11,8 @@ collection, security data processing, and inter-component communication
 without CPU intervention. The controller uses a frontend-backend
 architecture based on the PULP
 https://github.com/pulp-platform/iDMA[iDMA] engine, supporting
-multi-channel operation, scatter-gather transfers, and integration with
-SMC fabric filtering.
+register-programmed linear and 2D transfers, and integration with SMC
+fabric filtering. SMC enables one control stream.
 
 .DMA Controller Integration
 [width="100%",cols="30%,70%",options="header",]
@@ -103,11 +103,11 @@ independent DMA access
 
 |Atomic Operations |Atomic command submission and status reading
 
-|Error Reporting |Immediate visibility into operation status and error
-conditions
+|Error Reporting |No classified software error-status register in this
+control aperture
 
-|Configuration Lock |Protection against modification during active
-transfers
+|Configuration Lock |No configuration-lock register; software serializes
+updates to the shared transfer configuration
 |=======================================================================
 
 [[dma-stream-support]]
@@ -156,16 +156,16 @@ source/destination stride
 
 |Repeat Patterns |Configurable repeat count for repetitive operations
 
-|Scatter-Gather |Non-contiguous memory regions with hardware descriptor
-parsing
+|Scatter-Gather |No hardware descriptor-chain fetcher in this integration.
+Software submits separate register-programmed requests for unrelated regions
 |=======================================================================
 
 === Command Processing
 
-The DMA frontend streamlines command processing by parsing hardware
-descriptors directly, freeing software from interpretation overhead. It
-automatically calculates addresses for multi-dimensional transfers and
-optimizes burst lengths for efficient memory usage.
+Software programs the shared source, destination, length, stride, and
+repetition registers. Reading `NEXT_ID_0` submits that configuration to the
+2D midend, which expands the repetitions into linear backend requests.
+No memory-resident descriptor chain is fetched or interpreted.
 
 FIFO buffering between the frontend and midend ensures pipelined
 operation, while back-pressure handling absorbs system overloads without
@@ -266,23 +266,28 @@ backend.
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Feature |Description
-|Busy Status |Real-time busy indication per channel
+|Status |`STATUS_0[7:0]` repeats frontend command readiness; bit 8 is zero
+and bit 9 reports midend activity. These are not backend busy bits
 
 |Completion Tracking |Transfer completion ID tracking
 
-|Error Status |Error reporting and classification
-
-|Progress Monitoring |Real-time transfer progress indication
+|Progress and Error Reporting |Use the submitted transfer ID and `DONE_0`; no
+byte-progress or classified error-status register is exposed
 
 |Transfer Initiation |Atomic transfer start with ID allocation
 
-|Abort Capability |Safe transfer abort with state preservation
+|Abort Capability |No software abort register or state-preserving abort guarantee
 
-|Configuration Lock |Protection against inadvertent configuration
-changes
+|Configuration Lock |No software configuration lock
 
-|Interrupt Control |Configurable interrupt generation and masking
+|Interrupt Control |Unconditional one-cycle pulse when the wrapper busy
+output falls. No DMA-local interrupt enable, mask, or pending register
 |=======================================================================
+
+An idle frontend with room for another command can report `STATUS_0[7:0]`
+as `0xFF`. Conversely, zero in those bits does not establish that the last
+write has completed. Use `DONE_0` to track retired transfer IDs; the register
+name `BUSY` must not be interpreted as per-channel backend activity.
 
 === Performance Optimization and Power Management
 
@@ -350,8 +355,9 @@ interfaces, enabling parallel data movement.
 === Response Path
 
 As backends complete transfers, responses flow back through the request
-manager to the appropriate frontend, which updates status registers and
-generates interrupts. This completes the transfer loop and notifies
+manager to the appropriate frontend, which updates completed transfer IDs. The wrapper generates its interrupt
+when the combined busy indication falls, so the pulse is not a per-descriptor
+interrupt queue. This completes the transfer loop and notifies
 software of completion.
 
 === Type Definitions
