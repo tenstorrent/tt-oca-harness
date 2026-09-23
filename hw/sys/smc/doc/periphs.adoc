@@ -12,9 +12,10 @@ communication capabilities for the OCAH system, supporting various
 protocols and interfaces required for system operation and external
 connectivity.
 
-The following table summarizes the key peripherals, their communication
+<<smc-peripheral-summary-table>> summarizes the key peripherals, their communication
 protocols, and default instance counts:
 
+[[smc-peripheral-summary-table]]
 .SMC Peripheral Summary
 [width="100%",cols="25%,47%,17%,11%",options="header",]
 |=======================================================================
@@ -116,12 +117,16 @@ endif::backend-pdf[]
 [[smc-peripheral-integration]]
 == Peripheral Integration
 
-The following diagrams show the SMC wrappers and their interrupt connections.
-The individual IP sections describe the internal controller behavior.
+The wrapper diagrams in this section show the SMC integration and interrupt
+connections. The individual IP sections describe the internal controller behavior.
+
+<<smc-mailbox-diagram>> shows the SMC mailbox wrapper and its interrupt connections.
 
 [[smc-mailbox-diagram]]
 .SMC mailbox architecture and interrupt routing
 image::SMC_AXILMailbox_FIG027.png[alt="SMC mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
+
+<<smc-i3c-diagram>> shows the I3C wrapper and controller interfaces.
 
 [[smc-i3c-diagram]]
 .SMC I3C wrapper and controller interfaces
@@ -149,6 +154,9 @@ include::../../../ip/telemetry_receiver/doc/index.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
 == UART and Log Engine Wrapper Registers
+
+The UART wrapper is shown in <<smc-uart-wrapper-diagram>>; <<smc-log-engine-diagram>>
+shows the log-engine wrapper and its memory-to-UART data paths.
 
 [[smc-uart-wrapper-diagram]]
 .SMC UART wrapper
@@ -182,6 +190,10 @@ The SMC sets peripheral parameters at instantiation from `smc_config_pkg`,
 Most values match the IP defaults, but the following differ from the default
 documented in the IP's own section.
 
+<<smc-peripheral-parameter-overrides-table>> compares the SMC parameter overrides with
+each peripheral's default values.
+
+[[smc-peripheral-parameter-overrides-table]]
 .SMC Peripheral Parameter Overrides
 [width="100%",cols="16%,38%,18%,28%",options="header",]
 |=======================================================================

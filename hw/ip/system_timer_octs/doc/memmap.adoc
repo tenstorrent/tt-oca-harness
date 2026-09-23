@@ -217,13 +217,17 @@ multi-chiplet systems.
 
 === Reset Values and Power-On Behavior
 
+<<octs-register-reset-values-and-power-on-behavior-table>> lists the register reset
+values and their boot-time implications.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.*Register Reset Values and Power-On Behavior*
+[[octs-register-reset-values-and-power-on-behavior-table]]
+.OCTS Register Reset Values and Power-On Behavior
 [cols="32,20,48",options="header",role="port-reference"]
 |=======================================================================
 |Register |Reset Value |Notes

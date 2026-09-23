@@ -22,13 +22,18 @@ The `NUM_CT_SRC` and `NUM_CT_DST` parameters in
 26 each. The RTL derives the following localparams from the generated
 register map:
 
+<<ctm-configuration-constants-table>> lists the source and destination counts used by
+the CTM register map.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTM configuration constants" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctm-configuration-constants-table]]
 [cols="<24,<10,<66",options="header",role="port-reference"]
+.CTM configuration constants
 |===
 |Constant |Value |Description
 

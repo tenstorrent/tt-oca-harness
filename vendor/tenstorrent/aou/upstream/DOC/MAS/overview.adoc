@@ -37,6 +37,8 @@ The operating frequency of AOU_CORE targets 1 GHz and meets timing requirements 
 [[aou-2-features]]
 == 2. Features
 
+<<figure-1>> shows the AXI-to-UCIe bridge functions and their relationships.
+
 [caption=""]
 .Figure 1. Block Diagram of AOU_CORE and function description
 [[figure-1]]

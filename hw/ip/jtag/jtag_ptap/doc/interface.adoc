@@ -11,7 +11,12 @@ to the scan chain, and the next least significant bit presents a 0 as specified
 by the 1149.1 standard, section 7.2.1. All other bits of the instruction
 register always return 0s.
 
+<<ptap-instruction-encodings-table>> lists the PTAP instruction encodings and associated
+register lengths.
+
+[[ptap-instruction-encodings-table]]
 [cols="<,<,<,<",options="header"]
+.PTAP instruction encodings
 |===
 |Encoding |Name |Register Size |Description
 |0x00 |BYPASS |1 |IEEE 1149.1, Section 8.4
@@ -45,13 +50,18 @@ to the BYPASS instruction.
 These are the ports of `jtag_ptap`. Packed control and bus types remain
 bundles at the module boundary; their members are not separate scalar ports.
 
+<<ptap-signal-interface-table>> lists the PTAP ports and the types of its bundled
+interfaces.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="PTAP signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ptap-signal-interface-table]]
 [cols="<30,<14,<25,<31",options="header",role="port-reference"]
+.PTAP signal interface
 |===
 |Signal |Direction |Type / dimensions |Description
 |`client_tap_ctrl_i` |Input |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.

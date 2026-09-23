@@ -52,6 +52,9 @@ as environment or active attack and to alert the security system of the
 degradation via alarm interrupts. Metrics can be queried by software via
 the CSRs.
 
+<<sep-trng-diagram>> shows the entropy source, deterministic generator, and random-data
+distribution paths.
+
 [[sep-trng-diagram]]
 .SEP TRNG and DRBG entropy distribution
 image::SEP_Trng_TopLevel_FIG011.drawio.png[alt="SEP TRNG and DRBG entropy distribution",width=100%,pdfwidth=100%]
@@ -126,12 +129,14 @@ and `u_axis_edn_crypto_s3c_scan` covers staging outside the DRBG root. The
 combinational source-selection muxes are not scan assets.
 
 The noise is distributed via streaming interfaces. The stream interface is
-generic and compatible with AXI-Stream and TLUL-Stream. The following table
+generic and compatible with AXI-Stream and TLUL-Stream. <<entropy-streaming-signals-table>>
 describes the stream interface. Source is the generator of the signal. Sink is
 the consumer. The entropy streaming interface will not require address or mask
 signals.
 
+[[entropy-streaming-signals-table]]
 [cols="<20%,<20%,<20%,<40%",options="header",]
+.Entropy streaming signals
 |=======================================================================
 |Signal |Polarity |Width Range |Description
 |valid |source |1 |Active high indicates that the streaming data beat is valid.

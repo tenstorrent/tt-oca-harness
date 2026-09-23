@@ -21,6 +21,9 @@ https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/inde
 Programmer’s Reference Manual] provides the details required for
 programming the CPU.
 
+<<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
+memory interfaces.
+
 ifdef::backend-pdf[]
 [page-layout=landscape]
 <<<
@@ -229,7 +232,7 @@ available to DMA for automatic flow control
 .OpenTitan DMA core and inline hashing reference architecture
 image::opentitan_dma.svg[alt="OpenTitan DMA core and inline hashing reference architecture",width=100%,pdfwidth=100%]
 
-The figure shows the upstream DMA core. SEP adapts the host register interface
+<<sep-dma-reference-diagram>> shows the upstream DMA core. SEP adapts the host register interface
 to its AXI fabric as described below.
 
 [[och-modifications]]
@@ -253,6 +256,11 @@ streaming interfaces
 Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)
 
+<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
+described in this section.
+
+[[proposed-sep-dma-extensions-figure]]
+.Proposed SEP DMA extensions
 image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
 [[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]

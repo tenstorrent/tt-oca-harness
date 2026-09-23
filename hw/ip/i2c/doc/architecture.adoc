@@ -11,12 +11,19 @@ https://github.com/lowRISC/opentitan/tree/master/hw/ip/i2c[OpenTitan I2C
 controller]. The architecture provides high reliability with
 configurable timing, robust error handling, and AXI4-Lite integration.
 
+<<i2c-wrapper-diagram>> shows the I2C wrapper and its register interface.
+
 [[i2c-wrapper-diagram]]
 .OCAH I2C wrapper and generated register interface
 image::SMC_I2C_FIG023.png[alt="OCAH I2C wrapper and generated register interface",width=100%,pdfwidth=100%]
 
 === Block Diagram
 
+<<i2c-core-block-diagram-figure>> shows the controller core, FIFOs, and serial-interface
+logic.
+
+[[i2c-core-block-diagram-figure]]
+.I2C core block diagram
 image::i2c_block_diagram.svg[I2C Block Diagram,width=100%]
 
 === Functional Description
@@ -185,8 +192,10 @@ Note that the repeated START indicator only appears if it matches the address.
 Typically, this is the case, and a transaction that changes targets between transfers is strongly discouraged.
 If no additional transfers targeting this target's address occur, an entry representing the end of the transfer will wait for the STOP symbol.
 
-The following diagram shows consecutive entries inserted into ACQ FIFO during a write operation, assuming no NACK conditions:
+<<i2c-acq-fifo-write-sequence-figure>> shows consecutive entries inserted into ACQ FIFO during a write operation, assuming no NACK conditions:
 
+[[i2c-acq-fifo-write-sequence-figure]]
+.I2C ACQ FIFO write sequence
 image::i2c_acq_fifo_write.svg[ACQ FIFO Write Operation,width=100%]
 
 See <<target-nacks>> for more information about NACK conditions and the effect on the operation.
@@ -204,8 +213,10 @@ Note that data for TX FIFO is pushed through the register `TXDATA`.
 Typically, a NACK signal is followed by a STOP or repeated START signal; the IP will raise an exception if the controller sends a STOP signal after an ACK.
 The ACK/NACK signal is represented in the MSB of `ACQDATA.SIGNAL`, in the same entry as the STOP or repeated START signal.
 For ACK signals, the value of the MSB is 0; for NACK signals, the value is 1.
-The following diagram shows consecutive entries inserted into ACQ FIFO during a read operation:
+<<i2c-acq-fifo-read-sequence-figure>> shows consecutive entries inserted into ACQ FIFO during a read operation:
 
+[[i2c-acq-fifo-read-sequence-figure]]
+.I2C ACQ FIFO read sequence
 image::i2c_acq_fifo_read.svg[ACQ FIFO Read Operation,width=100%]
 
 == Target Clock Stretching
@@ -294,7 +305,11 @@ This feature is intended to support protocols that require mid-transfer NACK dec
 
 === FIFO Management System
 
+<<i2c-fifo-roles-table>> compares the FIFO roles in controller and target modes.
+
+[[i2c-fifo-roles-table]]
 [width="100%",cols="25%,35%,40%",options="header",]
+.I2C FIFO roles
 |=====================================================================================
 |FIFO |Controller Mode |Target Mode
 |TX FIFO |64 entries (addresses, write data) |64 entries (read response
@@ -350,9 +365,10 @@ conditions
 
 === Controller State Machine
 
-The controller FSM implements the complete I2C controller protocol:
+The controller FSM implements the complete I2C controller protocol (<<i2c-controller-fsm-states-table>>).
 
-.Controller FSM States
+[[i2c-controller-fsm-states-table]]
+.I2C Controller FSM States
 [width="100%",cols="15%,85%",options="header",]
 |=====================================================================================
 |State |Description
@@ -451,9 +467,10 @@ As there is an output flop, a 2-flop synchronizer, a rise time, and a pad input 
 Similarly, the high count must be long enough to cover the a round-trip time to sense outputs for various conditions (e.g. lost arbitration, target clock stretching, etc.).
 `THIGH` must be at least 4 cycles + `InputDelayCycles`.
 
-The component supports complete I2C timing parameter configuration:
+The component supports complete I2C timing parameter configuration (<<i2c-standard-timing-parameters-table>>).
 
-.Standard Timing Parameters
+[[i2c-standard-timing-parameters-table]]
+.I2C Standard Timing Parameters
 [width="100%",cols="25%,75%",options="header",]
 |===========================================================================
 |Parameter |Description
@@ -466,7 +483,10 @@ The component supports complete I2C timing parameter configuration:
 |*tSU_DAT/tHD_DAT* |Data setup and hold times
 |===========================================================================
 
-.Timeout Parameters
+<<i2c-timeout-parameters-table>> describes the bus timeout controls.
+
+[[i2c-timeout-parameters-table]]
+.I2C Timeout Parameters
 [width="100%",cols="25%,75%",options="header",]
 |==================================================================
 |Parameter |Description
@@ -737,8 +757,8 @@ The I2C component supports SMBus hybrid mode operation:
 
 === Implementation Details: Format Flag Parsing
 
-To illustrate the behavior induced by various flags added to the formatting queue, the following figure shows a simplified version of the `I2C_Controller` state machine.
-In this simplified view, many sequential states have been collapsed into four sub-sequences of states (shown in square brackets) or have their names abbreviated:
+The formatting flags control the `I2C_Controller` state machine. The sequence
+below groups its sequential states into four operations:
 * Issue start
 * Issue stop
 * Transmit Byte
@@ -746,8 +766,6 @@ In this simplified view, many sequential states have been collapsed into four su
 
 Within each of these sub-sequences, state transitions depend only on the SDA/SCL inputs or internal timers.
 Each sub-sequence has a terminal event--generically labeled "[completed]" which prompts the transition to another sequence or state.
-
-However, all transitions which are dependent on formatting flags are shown explicitly in this figure.
 
 The Controller FSM operates as follows:
 * From IDLE state, when FMT FIFO is not empty, it transitions to ACTIVE state

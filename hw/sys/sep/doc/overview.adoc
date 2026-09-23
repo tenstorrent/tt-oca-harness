@@ -6,7 +6,7 @@
 
 [[hardware-overview]]
 
-The diagram below shows the top level SEP architecture.
+<<sep-top-level-diagram>> shows the top level SEP architecture.
 
 [[sep-top-level-diagram]]
 .SEP top-level microarchitecture
@@ -62,6 +62,9 @@ components in order to make integration and migration easier.
 
 [[sep-clock-distribution]]
 == Clock Distribution
+
+<<sep-clock-tree>> shows the SEP clock distribution and the domains used by its
+subblocks.
 
 [[sep-clock-tree]]
 .SEP clock tree and clock domains

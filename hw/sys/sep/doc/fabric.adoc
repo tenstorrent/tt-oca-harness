@@ -81,6 +81,10 @@ The input fabric admits external traffic through the inbound filter and
 system-peripheral decode. The local fabric connects SEP initiators to local
 resources, while the output fabric selects remapped or direct outbound paths.
 
+The input paths are shown in <<sep-input-fabric-diagram>>, the local resource
+connections in <<sep-local-fabric-diagram>>, and the outbound paths in
+<<sep-output-fabric-diagram>>.
+
 ifdef::backend-pdf[]
 [page-layout=landscape]
 <<<
@@ -126,9 +130,11 @@ OTBN IMEM, OTBN DMEM
 [[local-and-external-axi4-traffic-remapping]]
 == Local and External AXI4 Traffic Remapping
 
+[[sep-system-peripheral-traffic-management-figure]]
+.SEP system-peripheral traffic management
 image::SEP_System.png[SEP_System,scaledwidth=90.0%]
 
-The figure above illustrates the AXI4 traffic management performed by
+<<sep-system-peripheral-traffic-management-figure>> illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
 the local masters from the SEP i.e. the CPU or the DMA controller.
 Traffic may be local to the SEP or outbound to external resources either
@@ -271,6 +277,8 @@ mapped IO, SEP’s traffic directly goes to the system fabric.
 [[mailboxes]]
 === Mailboxes
 
+<<sep-mailbox-diagram>> shows the host mailbox connections and interrupt routing.
+
 [[sep-mailbox-diagram]]
 .SEP host mailbox architecture and interrupt routing
 image::SEP_AXILmailbox_FIG008.png[alt="SEP host mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
@@ -318,7 +326,12 @@ write permissions and a write-once lock bit. See <<sep-traffic-filter-decode>>
 for the SEP filter instances and {axi-traffic-filter-ref} for the entry
 registers and the decode algorithm used to program them.
 
+<<sep-mailbox-qualification-table>> describes the traffic qualifications used to
+distinguish mailbox types.
+
+[[sep-mailbox-qualification-table]]
 [width="100%",cols="<20%,<80%",options="header",]
+.SEP mailbox qualification
 |=======================================================================
 |Mailbox Type |Description
 |ISS |Uses fabric source ID to qualify incoming transactions. Legal

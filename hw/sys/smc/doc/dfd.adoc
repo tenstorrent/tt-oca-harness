@@ -19,7 +19,7 @@ capabilities of the generic DFD block are not connected in SMC, as detailed belo
 .DFD reference architecture
 image::SMC_DFD_FIG028.png[alt="DFD reference architecture",width=100%,pdfwidth=100%]
 
-The diagram shows the full `tt-dfd` block. SMC does not connect the instruction
+<<smc-dfd-diagram>> shows the full `tt-dfd` block. SMC does not connect the instruction
 trace (N-Trace) input; its CLA and debug-signal trace paths provide the
 observation functions described here.
 
@@ -49,9 +49,11 @@ bus value.
 The CLA is organized as a set of nodes, each holding several event-action
 pairs (EAPs). An EAP binds one or more events, computed from the debug
 bus, to one or more actions taken when those events occur. The event
-engine evaluates several event types in parallel:
+engine evaluates several event types in parallel (<<smc-cla-event-types-table>>).
 
+[[smc-cla-event-types-table]]
 [cols="30%,70%",options="header",]
+.SMC CLA event types
 |=======================================================================
 |Event |Description
 |Signal match |Fires when the masked debug bus equals a programmed value

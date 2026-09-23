@@ -34,13 +34,18 @@ Two inter-chiplet signalling schemes are supported:
 The CTP has no build-time parameters. All operational settings are
 programmed at runtime through the AXI-Lite CSR interface:
 
+<<ctp-configuration-registers-table>> summarises the runtime controls exposed through
+the CTP CSR interface.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTP configuration registers" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctp-configuration-registers-table]]
 [cols="<28,<72",options="header",role="port-reference"]
+.CTP configuration registers
 |===
 |Register |Description
 |`MODE` |Select wire-OR (0) or point-to-point (1) signalling.

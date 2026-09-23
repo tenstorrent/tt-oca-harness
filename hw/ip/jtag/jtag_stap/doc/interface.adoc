@@ -8,13 +8,18 @@
 These are the ports of `jtag_stap`. Packed control and bus types remain
 bundles at the module boundary; their members are not separate scalar ports.
 
+<<stap-signal-interface-table>> lists the STAP ports and bundled scan-control
+interfaces.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="STAP signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[stap-signal-interface-table]]
 [cols="<30,<14,<25,<31",options="header",role="port-reference"]
+.STAP signal interface
 |===
 |Signal |Direction |Type / dimensions |Description
 |`client_scan_ctrl_i` |Input |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.

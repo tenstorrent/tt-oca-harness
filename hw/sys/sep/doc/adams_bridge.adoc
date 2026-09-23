@@ -27,6 +27,9 @@ endif::backend-pdf[]
 this path today -- it verifies a single classical RSA-3072 signature, and
 combined classical + PQC signing is deferred to a later release.
 
+The upstream ML-DSA and ML-KEM algorithm datapaths are shown in
+<<sep-abr-mldsa-diagram>> and <<sep-abr-mlkem-diagram>>, respectively.
+
 [[sep-abr-mldsa-diagram]]
 .Adams Bridge ML-DSA reference architecture
 image::adams_bridge_mldsa.png[alt="Adams Bridge ML-DSA reference architecture",width=100%,pdfwidth=100%]

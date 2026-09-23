@@ -46,6 +46,9 @@ whenever a new accelerator is added to the subsystem.
 Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9
 with masking disabled.
 
+<<sep-crypto-diagram>> shows the accelerator interconnect, Key Manager paths, and
+external memory interfaces.
+
 [[sep-crypto-diagram]]
 .SEP cryptographic subsystem and external memory interfaces
 image::SEP_Crypto_TopLevel_FIG010.drawio.png[alt="SEP cryptographic subsystem and external memory interfaces",width=100%,pdfwidth=100%]
@@ -90,11 +93,13 @@ and pulses `alert_o` when the handshake starts; a malformed encoding raises
 unused.
 
 PIC sources are in {sep-interrupt-map-ref}. A receiver's pulse and
-integrity-fail stay per-block at the receiver. The table shows which of those,
+integrity-fail stay per-block at the receiver. <<sep-crypto-alert-and-fault-routing-table>> shows which of those,
 the native error IRQs, and the bridge faults are OR'd onto a PIC source and
 which are not.
 
+[[sep-crypto-alert-and-fault-routing-table]]
 [cols="14%,18%,22%,16%,30%",options="header"]
+.SEP crypto alert and fault routing
 |===
 |Block |OT alert channels |Alert PIC |Native error IRQ |Bridge `err_o`
 |HMAC |`[0]` fatal |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault

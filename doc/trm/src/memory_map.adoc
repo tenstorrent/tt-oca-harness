@@ -12,7 +12,12 @@ system address range reaches the SMU external AXI input. Firmware then
 programs the SEP and SMC global base/size CSRs so the SMU crossbar can
 route incoming traffic to the correct inbound port.
 
+<<ocah-address-map-configuration-layers-table>> distinguishes the chiplet envelope,
+programmable apertures, and internal address maps.
+
+[[ocah-address-map-configuration-layers-table]]
 [cols="<24%,<24%,<32%,<20%",options="header"]
+.OCAH address-map configuration layers
 |===
 |Concept |Configured by |Purpose |Example
 

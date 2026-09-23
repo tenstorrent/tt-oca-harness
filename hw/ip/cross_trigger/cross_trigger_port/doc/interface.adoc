@@ -8,13 +8,18 @@
 These are the ports of `cross_trigger_port`. Packed control and bus types remain
 bundles at the module boundary; their members are not separate scalar ports.
 
+<<ctp-signal-interface-table>> lists the CTP ports and their signal types and
+directions.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTP signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctp-signal-interface-table]]
 [cols="<30,<14,<25,<31",options="header",role="port-reference"]
+.CTP signal interface
 |===
 |Signal |Direction |Type / dimensions |Description
 |`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.

@@ -10,7 +10,11 @@ The SMC Memory Zeroer efficiently initializes large memory regions to
 zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.
 
-.Memory Zeroer Integration
+<<smc-memory-zeroer-integration-table>> summarises the zeroer control aperture and
+fabric integration.
+
+[[smc-memory-zeroer-integration-table]]
+.SMC Memory Zeroer Integration
 [width="100%",cols="30%,70%",options="header",]
 |===================================================================
 |Parameter |Description
@@ -42,9 +46,10 @@ endif::backend-pdf[]
 
 === State Machine
 
-The zeroer implements a three-state operation model:
+The zeroer implements a three-state operation model (<<smc-zeroer-state-machine-table>>).
 
-.State Machine States
+[[smc-zeroer-state-machine-table]]
+.SMC zeroer state machine
 [width="100%",cols="25%,75%",options="header",]
 |======================================================================
 |State |Description
@@ -67,7 +72,11 @@ optional interrupt
 
 === AXI Master Interface
 
-.AXI4 Master Characteristics
+<<smc-zeroer-axi4-master-characteristics-table>> summarises the zeroer's AXI master
+interface.
+
+[[smc-zeroer-axi4-master-characteristics-table]]
+.SMC zeroer AXI4 Master Characteristics
 [width="100%",cols="30%,70%",options="header",]
 |====================================================================
 |Parameter |Specification
@@ -100,7 +109,11 @@ and interface isolation.
 
 === Clock Domains
 
-.Clock Domain Characteristics
+<<smc-zeroer-clock-domain-characteristics-table>> identifies the AXI and APB clock
+domains and their roles.
+
+[[smc-zeroer-clock-domain-characteristics-table]]
+.SMC zeroer Clock Domain Characteristics
 [width="100%",cols="25%,75%",options="header",]
 |=======================================================================
 |Clock Domain |Description
@@ -113,7 +126,11 @@ independent of AXI activity
 
 === Clock Gating
 
-.Clock Gating Control
+<<smc-zeroer-clock-gating-control-table>> gives the gating conditions for each clock
+domain.
+
+[[smc-zeroer-clock-gating-control-table]]
+.SMC zeroer Clock Gating Control
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Domain |Gating Logic
@@ -133,7 +150,11 @@ independent of AXI activity
 
 ==== Operation Control
 
-.Configuration and Control
+<<smc-zeroer-configuration-and-control-table>> defines the registers used to configure
+and start a zeroing operation.
+
+[[smc-zeroer-configuration-and-control-table]]
+.SMC zeroer Configuration and Control
 [width="100%",cols="30%,70%",options="header",]
 |===============================================================
 |Register |Description
@@ -155,7 +176,11 @@ responses are not distinguished from successful responses
 
 == Operation Details
 
-.Data Generation and Control
+<<smc-zeroer-data-generation-and-control-table>> summarises zero-data generation and
+transfer control.
+
+[[smc-zeroer-data-generation-and-control-table]]
+.SMC zeroer Data Generation and Control
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Feature |Description

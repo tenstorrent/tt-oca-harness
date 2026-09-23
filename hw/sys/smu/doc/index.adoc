@@ -71,6 +71,10 @@ but never its own inbound port.
 .SMU AXI crossbar connectivity
 image::SMU_AxiXbar_Connectivity_FIG002.1.drawio.png[alt="SMU AXI crossbar connectivity",width=100%,pdfwidth=100%]
 
+<<smu-axi-crossbar-ports-table>> lists the permitted initiator-to-subordinate paths and
+their purposes.
+
+[[smu-axi-crossbar-ports-table]]
 .SMU AXI crossbar ports
 [cols="<22%,<22%,<56%",options="header"]
 |===

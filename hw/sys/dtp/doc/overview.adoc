@@ -11,10 +11,11 @@ the Cross Trigger Network (CTN) — plus the DTP top-level wiring that connects
 them to each other, to the SMU AXI crossbar, and to the external JTAG and
 cross-trigger pads.
 
+[[dtp-internal-structure-figure]]
 .DTP internal structure
 image::dtp_arch_overview.svg[alt="DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",scaledwidth=90%]
 
-The figure uses blue borders and connectors for JTAG/JIU paths (including
+<<dtp-internal-structure-figure>> uses blue borders and connectors for JTAG/JIU paths (including
 instruction decode and selection signals), red for CTN paths, grey for pad I/O,
 and gold-dashed for the `jtag_clock_stop` control signal from PTAP to the
 clock-stop aggregator. Arrowheads indicate direction; solid arrows show primary

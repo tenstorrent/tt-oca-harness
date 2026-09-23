@@ -5,11 +5,17 @@
 :description: SEP OTP fuse fields, access policy, anti-rollback counters, and RTL integration.
 
 [[fuse-controller-otp-fuse-controller-otp,OTP Fuse Controller]]
+<<sep-otp-fuse-bank-diagram>> shows the OTP fuse-bank organization.
 
+[[sep-otp-fuse-bank-diagram]]
+.SEP OTP fuse bank
 image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
 
 The One-Time Programmable (OTP) fuse controller stores persistent
 chiplet policy.
+
+<<sep-efuse-interface-diagram>> shows the controller boundary and the
+technology-specific fuse interface.
 
 [[sep-efuse-interface-diagram]]
 .eFuse controller and technology-specific interface shim
@@ -27,7 +33,7 @@ shadow register.
 
 The _output_ of the LC_STATE shadow register shall remain 4’b1111 until fuse
 sensing completes; only then is the LC_STATE value sensed from the fuses driven
-to downstream logic such as the lifecycle controller. The fuse-field table below
+to downstream logic such as the lifecycle controller. <<sep-fuse-fields-table>>
 defines whether software can read and write the shadow register of each fuse
 field. Shadow registers that are not software-visible drive their fuse values
 directly to downstream hardware. All fuse fields other than LOCKS and LC_STATE
@@ -37,6 +43,8 @@ After the fuses have been read into their shadow registers, a sense-completion
 indicator is generated. This triggers the DFT-based memory-repair machine for
 the SEP SRAMs. Once memory repair completes or is bypassed, the SEP CPU is
 enabled and fetches its first instruction from the SEP ROM.
+
+<<sep-efuse-sense-diagram>> shows the fuse-sensing sequence and shadow-register timing.
 
 [[sep-efuse-sense-diagram]]
 .eFuse sensing state machine and shadow-register timing
@@ -55,7 +63,7 @@ or read-lock LOCKS or LOCKS_SPARE.
 The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
 shown in the figure, and each interface has its own access control. In addition
-to the shadow-register access control defined by the fuse-field table below, the
+to the shadow-register access control defined by <<sep-fuse-fields-table>>, the
 JTAG port shall be further restricted: in the PROD and RMA_SIP states it may
 reach only the eFuse MMR token block. That block is the three token-input arrays
 (RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
@@ -122,7 +130,12 @@ downstream logic during test.
 [[fuse-fields]]
 == Fuse Fields
 
+<<sep-fuse-fields-table>> lists the fuse-field indices, sizes, access permissions, and
+purposes.
+
+[[sep-fuse-fields-table]]
 [width="100%",cols="<15%,<10%,<10%,<10%,<10%,<45%",options="header",]
+.SEP fuse fields
 |=======================================================================
 |Field |Field index |Size (bits) |SW writable |SW readable |Description
 |LOCK |0 |96 |set-only |true |Lock control for each fuse field. The 96-bit lock

@@ -13,7 +13,7 @@ https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC] design.
 .OpenTitan HMAC core reference architecture
 image::opentitan_hmac.svg[alt="OpenTitan HMAC core reference architecture",width=100%,pdfwidth=100%]
 
-The figure shows the upstream core. The OCAH bus, key-delivery, and entropy
+<<sep-hmac-reference-diagram>> shows the upstream core. The OCAH bus, key-delivery, and entropy
 connections are described in the integration details below.
 
 [[och-modifications-4]]

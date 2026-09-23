@@ -232,9 +232,15 @@ To achieve nominal rates within 5% or so, we recommend that the internal clock i
 
 == Timing Parameter Examples
 
-The following tables show a couple of examples for calculating timing register parameters for Fast-mode Plus devices.
+<<fast-mode-plus-example-normal-capacitance-table>> and
+<<high-capacitance-fast-mode-plus-example-table>> give examples of timing-register
+calculations for Fast-mode Plus devices.
 Both examples assume a desired datarate of 1 Mbaud (the bus maximum) for an SCL period of 1 us, and an internal device clock period of 3 ns.
 
+<<fast-mode-plus-example-normal-capacitance-table>> gives example register values for a
+1 Mbaud bus with a 3 ns device clock.
+
+[[fast-mode-plus-example-normal-capacitance-table]]
 .Fast-mode Plus Example (Normal Capacitance)
 [width="100%",cols="25%,15%,15%,15%,30%",options="header"]
 |=====================================================================================
@@ -256,6 +262,10 @@ This next example shows how the first SCL timing registers: `TIMING0` and `TIMIN
 As in the previous example the integer register values are determined based on a system clock period, t~clk~, of 3ns.
 All other parameters in registers `TIMING2`, `TIMING3`, `TIMING4` are unchanged from the previous example.
 
+<<high-capacitance-fast-mode-plus-example-table>> gives the revised timing values for
+the high-capacitance example.
+
+[[high-capacitance-fast-mode-plus-example-table]]
 .High-Capacitance Fast-mode Plus Example
 [width="100%",cols="25%,15%,15%,15%,30%",options="header"]
 |=====================================================================================

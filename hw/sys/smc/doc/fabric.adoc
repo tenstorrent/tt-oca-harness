@@ -12,6 +12,9 @@ management, traffic filtering, and security enforcement mechanisms.
 [[smc-fabric-topology]]
 == Fabric Topology
 
+The SMC input, local, and output fabrics are shown in <<smc-input-fabric-diagram>>,
+<<smc-local-fabric-diagram>>, and <<smc-output-fabric-diagram>>, respectively.
+
 [[smc-input-fabric-diagram]]
 .SMC input fabric topology and routing
 image::SMC_InputFabric_FIG004.png[alt="SMC input fabric topology and routing",width=100%,pdfwidth=100%]
@@ -28,9 +31,10 @@ image::SMC_OutputFabric_FIG006.png[alt="SMC output fabric and remapping paths",w
 == Configuration Parameters
 
 The fabric supports the following configuration parameters to tune
-performance and area:
+performance and area (<<smc-fabric-configuration-parameters-table>>).
 
-.Fabric Configuration Parameters
+[[smc-fabric-configuration-parameters-table]]
+.SMC Fabric Configuration Parameters
 [width="100%",cols="30%,15%,55%",options="header",]
 |=======================================================================
 |Parameter |Default |Description
@@ -84,9 +88,10 @@ transactions to peripherals.
 == Dual-Network Architecture
 
 The SMC fabric implements two separate networks optimized for different
-traffic types:
+traffic types (<<smc-network-characteristics-table>>).
 
-.Network Characteristics
+[[smc-network-characteristics-table]]
+.SMC Network Characteristics
 [width="100%",cols="20%,30%,30%,20%",options="header",]
 |=======================================================================
 |Network |Connected Components |Protocol |Optimization Target
@@ -102,7 +107,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 
 == AXI Interface Widths
 
-The table below lists the common AXI signal widths shared across all AXI4 fabric interfaces.
+<<fabric-axi-widths>> lists the common AXI signal widths shared across all AXI4 fabric interfaces.
 
 [[fabric-axi-widths]]
 .AXI Common Signal Widths
@@ -117,7 +122,7 @@ The table below lists the common AXI signal widths shared across all AXI4 fabric
 |=======================================================================
 
 The AXI transaction ID width varies at each fabric stage because crossbars and multiplexers prepend additional bits to distinguish the originating port.
-The table below lists the ID width at each point in the fabric.
+<<fabric-axi-id-widths>> lists the ID width at each point in the fabric.
 
 [[fabric-axi-id-widths]]
 .AXI ID Widths by Fabric Stage
@@ -147,7 +152,11 @@ enforcement.
 Traffic managers initiate transactions on the fabric, accessing both
 local and remote resources through the dual-network architecture.
 
-.Fabric Traffic Managers
+<<smc-fabric-traffic-managers-table>> identifies the transaction initiators and their
+primary paths.
+
+[[smc-fabric-traffic-managers-table]]
+.SMC Fabric Traffic Managers
 [width="100%",cols="20%,15%,35%,30%",options="header",]
 |=======================================================================
 |Manager |Count |Primary Paths |Key Features
@@ -180,7 +189,11 @@ flexible address management between local and global address spaces.
 Traffic subordinates respond to transactions initiated by the managers,
 organized by network type and function.
 
-.Fabric Traffic Subordinates
+<<smc-fabric-traffic-subordinates-table>> identifies the transaction targets and their
+network connections.
+
+[[smc-fabric-traffic-subordinates-table]]
+.SMC Fabric Traffic Subordinates
 [width="100%",cols="20%,15%,35%,30%",options="header",]
 |=======================================================================
 |Subordinate |Count |Network |Function
@@ -283,6 +296,8 @@ outbound filter permits it.
 
 == Inbound Filtering
 
+<<smc-traffic-filter-diagram>> shows the inbound and outbound filter placement.
+
 [[smc-traffic-filter-diagram]]
 .SMC inbound and outbound traffic-filter architecture
 image::SMC_InboundOutboundFilter_FIG008.png[alt="SMC inbound and outbound traffic-filter architecture",width=100%,pdfwidth=100%]
@@ -332,9 +347,10 @@ attributes:
 === AXI Protection Bit Encoding
 
 AXI protection bits (`aw.prot` and `ar.prot`) are 3-bit fields that
-encode transaction security and privilege attributes:
+encode transaction security and privilege attributes (<<smc-axi-protection-bit-encoding-table>>).
 
-.Protection Bit Encoding
+[[smc-axi-protection-bit-encoding-table]]
+.SMC AXI Protection Bit Encoding
 [width="100%",cols="15%,15%,15%,15%,40%",options="header",]
 |=======================================================================
 |Bit [2] |Bit [1] |Bit [0] |Value |Description
@@ -470,9 +486,10 @@ latency.
 
 Each outbound transaction carries a Source ID identifying its privilege
 level and routing path, plus a cacheable flag from the alias remap
-configuration:
+configuration (<<smc-source-id-by-traffic-path-table>>).
 
-.Source ID by Traffic Path
+[[smc-source-id-by-traffic-path-table]]
+.SMC Source ID by Traffic Path
 [width="100%",cols="50%,50%",options="header",]
 |==============================
 |Traffic Path |Source ID

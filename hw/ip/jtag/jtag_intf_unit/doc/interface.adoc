@@ -5,9 +5,11 @@
 
 === Instruction Encodings
 
-The JTAG interface unit uses 6-bit instruction encodings:
+The JTAG interface unit uses 6-bit instruction encodings (<<jiu-instruction-encodings-table>>).
 
+[[jiu-instruction-encodings-table]]
 [cols="<,<,<,<",options="header"]
+.JIU instruction encodings
 |===
 |Encoding |Name |Register Size |Security
 |0x00 |BYPASS (IEEE 1149.1, Section 8.4) |1 |
@@ -60,13 +62,18 @@ to the BYPASS instruction.
 These are the ports of `jtag_intf_unit`. Packed control and bus types remain
 bundles at the module boundary; their members are not separate scalar ports.
 
+<<jiu-signal-interface-table>> lists the JTAG Interface Unit ports, including the
+bundled TAP and scan interfaces.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="JIU signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[jiu-signal-interface-table]]
 [cols="<30,<14,<25,<31",options="header",role="port-reference"]
+.JIU signal interface
 |===
 |Signal |Direction |Type / dimensions |Description
 |`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.

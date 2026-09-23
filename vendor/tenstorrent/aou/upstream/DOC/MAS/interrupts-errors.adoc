@@ -12,9 +12,12 @@ endif::[]
 [[aou-4-interrupt]]
 == 4. Interrupt
 
+<<table-4>> lists the interrupt names, access behavior, and triggering conditions.
+
 [[table-4]]
 
 [width="100%",cols="34%,33%,33%",options="header",]
+.Interrupt Sources
 |=================================================================================================================================
 |Interrupt Name |Access |Description
 |INT_ACTIVATE_START |W1C |Asserted when activation of the AoU Protocol layer is required.
@@ -25,7 +28,6 @@ endif::[]
 |INT_REQ_LINKRESET |W1C |Asserted when AOU_CORE encounters AOU SPEC protocol violation. Request link to go LinkReset.
 |=================================================================================================================================
 
-_Table 4. Interrupt Sources_
 
 * *INT_ACTIVATE_START*
 

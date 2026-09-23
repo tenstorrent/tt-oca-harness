@@ -29,7 +29,12 @@ selection, host TDO, and 3DCR updates are blocked.
 Three timing parameters are available to optimise the STAP for different
 physical topologies, particularly die-boundary crossings.
 
+<<stap-configuration-parameters-table>> lists the three STAP timing parameters and their
+defaults.
+
+[[stap-configuration-parameters-table]]
 [width="100%",cols="<30%,<10%,<10%,<50%",options="header"]
+.STAP configuration parameters
 |===
 |Parameter |Type |Default |Description
 

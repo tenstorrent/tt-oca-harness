@@ -14,9 +14,12 @@ endif::[]
 
 Performance evaluation is conducted in both 512-bit local die and 512-bit remote die environments. The initial latency is measured from the AXI input of the local AOU_CORE to the AXI output of the remote AOU_CORE.
 
+<<table-8>> lists the measured latency of each AXI channel in a back-to-back connection.
+
 [[table-8]]
 
 [cols=",",options="header",]
+.AOU_CORE Initial Latency (Cycles)
 |==========================================
 |AXI Channel |AoU Latency on B2B connection
 |Read Request (AR) |9
@@ -27,14 +30,18 @@ Performance evaluation is conducted in both 512-bit local die and 512-bit remote
 |Misc |9
 |==========================================
 
-_Table 8. AOU_CORE Initial Latency (Cycles)_
 
 The reason of two additional latency for AW and W CH is from WLAST signal generator, and data width converter.
+
+<<figure-29>> shows the initial transfer latency when AOU_CORE is connected through
+UCIe.
 
 [caption=""]
 .Figure 29. Initial Latency of AOU_CORE with UCIe (Cycle)
 [[figure-29]]
 image::image28.png[Figure 29. Initial Latency of AOU_CORE with UCIe (Cycle)]
+
+<<figure-30>> shows how bandwidth efficiency varies with UCIe FDI latency.
 
 [caption=""]
 .Figure 30. AoU Bandwidth Efficiency with Respect to UCIe FDI Latency
@@ -43,9 +50,13 @@ image::image29.png[Figure 30. AoU Bandwidth Efficiency with Respect to UCIe FDI 
 
 The results of efficiency measurements for read and write operations with varying burst lengths are presented. For write operations, two cases were evaluated. Normal Write and Write Full, where no write strobe bits are transmitted. The measured values and the corresponding expected values are as follows.
 
+<<table-9>> compares measured and expected efficiency across burst lengths and write
+modes.
+
 [[table-9]]
 
 [cols="a,a,a,a,a,a"]
+.AOU_CORE Data Transfer Efficiency
 |===
 a|Data transfer
 efficiency
@@ -106,7 +117,6 @@ a|66.7%
 
 |===
 
-_Table 9. AOU_CORE Data Transfer Efficiency_
 
 * 0.4% performance drop is not from IP, but just from transfer data size. If the transfer data size is the multiples of 6 burst such 132 beats, it shows the same performance number with the limit in AoU spec. Everything is the same case. Note that the efficiency is measured with 128/(cycle_from_1st_valid_to_last_valid + 1), where 1 is the hidden bubble right before the first valid. It is indispensable since AoU data message size can not covered in a single 64B chunk, unlike local AXI bus.
 
@@ -117,6 +127,9 @@ TBD
 
 [[aou-83-area]]
 === 8.3. Area
+
+<<figure-31>> shows the area contribution of each submodule in a single-resource-plane
+AoU.
 
 [caption=""]
 .Figure 31. Area of 1 RP AOU
@@ -135,9 +148,12 @@ With 2 RP, each AXI bandwidth is 512 bit and 256 bit, AOU_CORE area was 197k um^
 
 The FIFO depth of the two RPs are identical.
 
+<<table-10>> compares the reported area across resource-plane configurations.
+
 [[table-10]]
 
 [cols=",",options="header",]
+.AOU_CORE Area (measured at an ++FDI_CFG_SP_64B++-equivalent configuration; numbers will scale up for ++FDI_CFG_*_128B++ configurations due to the 88 \-> 140 R/W FIFO depth bump.)
 |=============================
 |AoU Area (um^2) |64GB/s
 |1RP
@@ -146,15 +162,16 @@ The FIFO depth of the two RPs are identical.
 |(AXI : 256bit & 512bit) |197K
 |=============================
 
-_Table 10. AOU_CORE Area (measured at an ++FDI_CFG_SP_64B++-equivalent configuration; numbers will scale up for ++FDI_CFG_*_128B++ configurations due to the 88 \-> 140 R/W FIFO depth bump.)_
-
 ifndef::release[]
 [[appendix-a-records-of-changes]]
 == Appendix A. Records of Changes
 
+<<table-11>> records revisions to the imported AoU microarchitecture specification.
+
 [[table-11]]
 
 [width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+.Record of Changes
 |======================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
 |Version |Date |Author |Reviewer |Description of Change
 |v0.1 |2025/08/20 |Soyoung Min, Jaeyun Lee, Hojun Lee |Kwanho Kim |Initial version.
@@ -163,18 +180,19 @@ ifndef::release[]
 | |2026/04/22 |Tenstorrent | |Refresh with 128B FDI support documentation. New [.monospaced]#++FDI_CONFIG++# parameter (single integer with named constants in [.monospaced]#++RTL/packet_def_pkg.sv++#). FDI ports renamed from [.monospaced]#++_32B++#/[.monospaced]#++_64B++# to [.monospaced]#++_0++#/[.monospaced]#++_1++#; second-PHY ports and [.monospaced]#++I_PHY_TYPE++# are gated by the [.monospaced]#pass:c[+define+TWO_PHY]# build flag. New [.monospaced]#++AOU_TOP++# wrapper introduced (adds [.monospaced]#++AOU_FDI_BRINGUP_CTRL++# for turn-key FDI bringup). New [.monospaced]#++RX_*_FIFO_RS_EN++# parameters control per-channel RX-FIFO output register-slices. [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# defaults are now FDI-config aware (140 entries for 1024b configurations, 88 otherwise). [.monospaced]#++RP_COUNT++# default changed from 2 to 1.
 |======================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
 
-_Table 11. Record of Changes_
 endif::release[]
 
 [[appendix-b-referenced-documents]]
 == Appendix B. Referenced Documents
 
+<<table-12>> lists the documents cited by the imported AoU microarchitecture
+specification.
+
 [[table-12]]
 
 [width="99%",cols="28%,50%,22%",options="header",]
+.Referenced Documents
 |===================================================================================
 |Document Name |Document Location and/or URL |Issuance Date
 |AXI-over-UCIe (AoU) Specification, Revision 0.7 |https://openchipletatlas.org |2025
 |===================================================================================
-
-_Table 12. Referenced Documents_

@@ -34,9 +34,11 @@ feature-control profile to `feat_ctrl_o`. See
 input arriving from the OTP shadow register; fail closed (force
 `feat_ctrl_o = 0`) on detection.
 
-The block diagram below shows a high-level view of the Life Cycle Controller
+<<sep-lifecycle-controller-figure>> shows a high-level view of the Life Cycle Controller
 components.
 
+[[sep-lifecycle-controller-figure]]
+.SEP lifecycle controller
 image::SEP_LC_Block.png[SEP_LC_Block,scaledwidth=100.0%]
 
 [[demote-1-2-in-field-debug-demotion]]
@@ -255,12 +257,13 @@ chiplets.
 access to that chiplet's own internal assets.
 
 A system instantiates *one* SiP-owner domain (shared) plus *one
-chiplet-owner domain per chiplet* that has its own protected assets. The
-diagram below shows three chiplets -- one primary and two secondaries --
+chiplet-owner domain per chiplet* that has its own protected assets. <<sep-security-domains-figure>> shows three chiplets -- one primary and two secondaries --
 giving three security domains: the SiP-owner domain, chiplet domain 1
 (primary), and chiplet domain 2 (secondary). A chiplet may or may not have
 a local SEP and life-cycle state.
 
+[[sep-security-domains-figure]]
+.SEP security domains
 image::SEP_Security_Domains.png[SEP_Security_Domains,scaledwidth=90.0%]
 
 Access is structured as follows:
@@ -339,6 +342,10 @@ Mixing the DEMOTE_1/2 bits into the KDF ensures that the derived keys in a
 demoted (debug) state are distinct from the live keys in the non-demoted PROD
 state.
 
+<<sep-lifecycle-state-machine-figure>> shows the lifecycle states and transition paths.
+
+[[sep-lifecycle-state-machine-figure]]
+.SEP lifecycle state machine
 image::SEP_LC_FSM.png[SEP_LC_FSM,scaledwidth=90.0%]
 
 During normal chiplet operation, the current LC state is retrieved from OTP and
@@ -353,7 +360,12 @@ that fails closed (forces `feat_ctrl_o = 0`) on any non-complementary
 codeword, guarding the LC_STATE path against fault injection (e.g. laser
 or FIB modification).
 
+<<sep-lifecycle-state-encodings-table>> defines the raw OTP encodings and meaning of
+each lifecycle state.
+
+[[sep-lifecycle-state-encodings-table]]
 [width="100%",cols="<22%,<16%,<62%",options="header",]
+.SEP lifecycle state encodings
 |=======================================================================
 |LC State Name |Encoding |Description
 |TEST_DEV |4’b0000 a|
@@ -429,7 +441,7 @@ In other words, each feature's enable is the inverse of its disable bits.
 [[feature-control-vector-definition]]
 === Disable Vector Format (SIP_DIS / SYS_DIS)
 
-The table below defines the *disable* vector format -- the bit layout shared by
+<<sep-feature-disable-vector-table>> defines the *disable* vector format -- the bit layout shared by
 both SIP_DIS and SYS_DIS (each is 64 bits). Each defined bit gates a specific
 feature or its associated scan chain; the remaining bits are
 reserved for adopter extension (see <<asset-and-scan-chain-protection>> and
@@ -452,7 +464,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[sep-feature-disable-vector-table]]
 [width="100%",cols="<8%,<13%,<22%,<57%",role="lifecycle-table",options="header",]
+.SEP feature-disable vector
 |=======================================================================
 |DIS bit index |Feature Category |Feature Name |Feature Description (`1'b1` disables the feature; `1'b0` enables it)
 
@@ -538,7 +552,12 @@ vectors. At *SiP-owner* access (RMA_SIP) only SIP_DIS applies; at
 creator has full access and no predecessor has authority to restrict them. The
 SEC_DIS override sits on top of this; see <<feat-ctrl-overrides-and-gates>>.
 
+<<sep-disable-vector-applicability-table>> identifies which disable vectors apply in
+each lifecycle state.
+
+[[sep-disable-vector-applicability-table]]
 [width="100%",cols="<26%,<74%",options="header",]
+.SEP disable-vector applicability
 |=======================================================================
 |LC state |Applicable DIS vectors
 
@@ -591,7 +610,7 @@ than on feature control -- see <<secure-tm-vs-scandump>>.
 === Per-LC-state Feature Control Profile
 
 Each LC state has a feature control profile that determines which features are
-enabled on the chiplet. The table below gives, for each combination of LC state,
+enabled on the chiplet. <<feature-control-table>> gives, for each combination of LC state,
 SEC_DIS, and demotion (DEMOTE_1 / DEMOTE_2), the resulting feature control
 vector as a tuple of three fields: DBG_1 / DBG_2 / Function. DBG_1 (local
 debug) is gated by Demotion 1 and DBG_2 (inter-chiplet debug bypass) by
@@ -681,13 +700,18 @@ Class 2 (scannable for test coverage but *never* scan-dumpable) are each split b
 protection rationale -- *a* for confidentiality and *b* for integrity. Class 3 is
 everything else.
 
+<<sep-security-asset-classes-table>> relates the asset classes to scan and scan-dump
+treatment.
+
 ifdef::backend-html5[]
 ++++
 <div class="lifecycle-table-scroll" role="region" aria-label="Asset classes and scan-chain treatment" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[sep-security-asset-classes-table]]
 [width="100%",cols="<17%,<25%,^10%,^12%,<36%",role="lifecycle-table lifecycle-table-wide",options="header",]
+.SEP security asset classes
 |=======================================================================
 |Class
 |Asset Examples
@@ -848,13 +872,17 @@ own SIB, which the feature control bits gate in the same way; what distinguishes
 it is that reaching it never permits a dump, because the DFT controller admits
 only test commands there and only while `secure_tm = 1`.
 
+<<sep-scan-chain-gates-table>> maps each asset class to its scan chain and dump gate.
+
 ifdef::backend-html5[]
 ++++
 <div class="lifecycle-table-scroll" role="region" aria-label="Feature-bit to scan-chain mapping" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[sep-scan-chain-gates-table]]
 [width="100%",cols="<18%,<20%,<27%,<35%",role="lifecycle-table",options="header",]
+.SEP scan-chain gates
 |=======================================================================
 |Asset Class |Scan Chain |Dump Gate |Notes
 
@@ -889,7 +917,11 @@ This section is *authoritative* for which feature control bits gate which Debug
 and Test Ports (DTP) path. It formalizes the layered model of
 <<multiple-security-domains>> as a three-case ladder built only from debug bits.
 
+<<dtp-access-cases-table>> defines the three cases used to determine debug-path access.
+
+[[dtp-access-cases-table]]
 [width="100%",cols="^10%,<35%,<55%",options="header",]
+.DTP access cases
 |=======================================================================
 |Case |Condition |Applies to
 
@@ -918,7 +950,12 @@ rather than a substitute for it. Because the composition is an AND, partial burn
 *fail safe*: `SEP_DBG` left open while `CHIPLET_DBG` is burned closed grants
 nothing.
 
+<<dtp-path-feature-gates-table>> lists the feature-control terms required for each DTP
+path.
+
+[[dtp-path-feature-gates-table]]
 [width="100%",cols="<30%,<20%,<50%",options="header",]
+.DTP path feature gates
 |=======================================================================
 |DTP path |Gating |Notes
 

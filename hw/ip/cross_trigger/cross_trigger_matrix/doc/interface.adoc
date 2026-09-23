@@ -8,13 +8,17 @@
 These are the ports of `cross_trigger_matrix`. Packed control and bus types remain
 bundles at the module boundary; their members are not separate scalar ports.
 
+<<ctm-signal-interface-table>> lists the CTM ports and bundled register interface.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTM signal interface" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctm-signal-interface-table]]
 [cols="<30,<14,<25,<31",options="header",role="port-reference"]
+.CTM signal interface
 |===
 |Signal |Direction |Type / dimensions |Description
 |`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.

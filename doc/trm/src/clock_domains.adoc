@@ -25,7 +25,7 @@ ifdef::backend-pdf[]
 <<ocah-top-block-diagram,OCAH top-level block diagram>>.
 endif::backend-pdf[]
 
-The following table summarises the clock domains present in OCAH.
+<<ocah-clock-domain-table>> summarises the clock domains present in OCAH.
 
 [[ocah-clock-domain-table]]
 .OCAH Clock Domains

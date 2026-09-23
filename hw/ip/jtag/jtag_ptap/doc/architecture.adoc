@@ -10,6 +10,10 @@ architecture supports Test Mode Persistence (TMP), boundary scan with dedicated
 scan ports and control signals, BIST functionality, and 3DIC support with STAP
 scan ports and control signals derived from internal TDRs.
 
+<<ptap-module-architecture-figure>> shows the control, decode, and scan-data paths
+through the PTAP.
+
+[[ptap-module-architecture-figure]]
 .PTAP module architecture
 image::ptap_module_diagram.svg[alt="PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",scaledwidth=90%]
 
@@ -21,13 +25,14 @@ grey carries scan-out returns — the selected IR or TDR scan-out is chosen by t
 Scan Path Mux and forwarded to PTAP_TDO (retimed on falling TCK edge; zero-length
 bypass uses the ZLB path, which bypasses the retimer).
 The TDR Bank registers (`BYPASS`, `IDCODE`, `DBG_CTRL`, and others) are listed in
-the Module Hierarchy table below.
+<<ptap-module-hierarchy-table>>.
 `BSR_SI`/`IJTAG_SI` scan-in arrives directly from PTAP_TDI fan-out;
 `BSR_SO`/`IJTAG_SO` scan-out returns are selected by the Scan Path Mux.
 
 === Module Hierarchy
 
-The PTAP implementation instantiates the following submodules:
+<<ptap-module-hierarchy-table>> identifies the PTAP submodules and the conditions under
+which they are instantiated.
 
 ifdef::backend-html5[]
 ++++
@@ -35,7 +40,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[ptap-module-hierarchy-table]]
 [.ptap-module-hierarchy,width="100%",cols="<30%,<45%,<25%",options="header"]
+.PTAP module hierarchy
 |===
 |Module |Purpose |Conditional
 
@@ -108,7 +115,12 @@ The TAP controller implements the IEEE 1149.1 16-state finite state machine
 using one-hot encoding. Each state is assigned a unique bit position within a
 16-bit vector, enabling direct state detection via single-bit comparisons.
 
+<<ptap-state-encodings-table>> lists the one-hot encodings and functions of the sixteen
+TAP-controller states.
+
+[[ptap-state-encodings-table]]
 [width="100%",cols="<20%,<20%,<60%",options="header"]
+.PTAP state encodings
 |===
 |State |Encoding |Description
 
@@ -145,7 +157,11 @@ stable control windows before the rising edge samples data.
 The PTAP employs a three-level reset hierarchy to support power-on
 initialization, JTAG reset, and conditional register preservation.
 
+<<ptap-reset-hierarchy-table>> identifies the source and scope of each PTAP reset.
+
+[[ptap-reset-hierarchy-table]]
 [width="100%",cols="<25%,<35%,<40%",options="header"]
+.PTAP reset hierarchy
 |===
 |Reset Signal |Source |Scope
 
@@ -204,7 +220,11 @@ latency.
 The IDCODE instruction accesses a TDR containing device identification
 information.
 
+<<ptap-idcode-fields-table>> defines the identification fields shifted out by IDCODE.
+
+[[ptap-idcode-fields-table]]
 [cols="2,2,1,7",options="header"]
+.PTAP IDCODE fields
 |===
 |Bits |Field |Access |Description
 |31:28 |si_rev |R |Silicon revision
@@ -227,7 +247,12 @@ To access the IDCODE TDR:
 The DEBUG_CONTROL instruction accesses a TDR defining general control bits for
 debug and control of the design.
 
+<<ptap-debug-control-fields-table>> defines the clock-stop and debug-control fields of
+the DEBUG_CONTROL TDR.
+
+[[ptap-debug-control-fields-table]]
 [width="100%",cols="2,2,1,1,6",options="header"]
+.PTAP DEBUG_CONTROL fields
 |===
 |Bits |Field |Access |Reset |Description
 |4 |cla_clock_stop |R |0 |When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when _cla_clock_stop_en_ is set.
@@ -251,7 +276,12 @@ To access the DEBUG_CONTROL TDR:
 The JTAG_CAPS instruction accesses a read-only TDR reporting the DTP version
 number and general configuration parameters for the DTP.
 
+<<ptap-jtag-caps-fields-table>> defines the version and configuration fields reported by
+JTAG_CAPS.
+
+[[ptap-jtag-caps-fields-table]]
 [width="100%",cols="2,2,1,7",options="header"]
+.PTAP JTAG_CAPS fields
 |===
 |Bits |Field |Access |Description
 |59:54 |num_xtrig_int_ct |R |The number of internal cross trigger signals.
@@ -342,7 +372,11 @@ _TMP_STATUS_ instructions have the same behavior as the _BYPASS_ instruction,
 and the _CH_RESET_N_ signal always responds to every POR, TRST, or TLR event,
 i.e. it is an exact copy of the _RESET_N_ signal.
 
+<<ptap-tmp-status-fields-table>> defines the bypass-escape and persistence-status bits.
+
+[[ptap-tmp-status-fields-table]]
 [width="100%",cols="3,1,6",options="header"]
+.PTAP TMP_STATUS fields
 |===
 |*Bit* |*Reset* |*Description*
 |Bypass Escape (bit 0) |0 |Whenever this bit is set, the TMP controller will transition to the _PERSISTENCE_OFF_ state when the TAP controller enters the _UPDATE_IR_ state after the _BYPASS_ instruction has been selected.
@@ -366,7 +400,11 @@ The PTAP has a 2-bit _3DCR_ register that is accessed with the _TAP_3DCR_
 instruction. This register provides an option to bypass all STAPs in the scan
 chain.
 
+<<ptap-3dcr-fields-table>> defines the configuration-hold and STAP-selection bits.
+
+[[ptap-3dcr-fields-table]]
 [width="100%",cols="3,1,6",options="header"]
+.PTAP 3DCR fields
 |===
 |*Bit* |*Reset* |*Description*
 |Config Hold |0 |When this bit is set, the PTAP TLR state does not reset this TDR, and it will hold its current state until TRST is asserted.
@@ -403,9 +441,12 @@ NUM_EXT_IC_RESET) + 1` bits, where each `NUM_*_IC_RESET` is half the width of
 its corresponding struct type when the matching enable parameter is set
 (otherwise 0).
 
-The TDR has the following structure:
+<<ptap-ic-reset-fields-table>> defines the reset-control, reset-enable, and bypass
+fields in the IC_RESET TDR.
 
+[[ptap-ic-reset-fields-table]]
 [width="100%",cols="2,2,1,1,6",options="header"]
+.PTAP IC_RESET fields
 |===
 |Bits |Field |Access |Reset |Description
 |2*n+2 |reset_control |RW |1 |The controlled, active-low reset value driven while _reset_enable_ is 0 (i.e. while JTAG override is active).
@@ -445,7 +486,12 @@ is enabled, the iJTAG network is selected for scan.
 This is a private instruction that accesses a read-only TDR reporting the
 configuration parameters for the given JTAG2AXI debugging instrument.
 
+<<ptap-jtag2axi-capability-fields-table>> defines the configuration fields reported by
+each JTAG2AXI instrument.
+
+[[ptap-jtag2axi-capability-fields-table]]
 [width="100%",cols="2,2,1,7",options="header"]
+.PTAP JTAG2AXI capability fields
 |===
 |Bits |Field |Access |Description
 |13:12 |rd_pl_depth |R |The depth of the transaction read queue where 0 indicates only a single outstanding transaction allowed at any given time.
@@ -469,10 +515,19 @@ scan size-field width: 1 bit for `D <= 16`, 2 bits for `D <= 64`, and 3 bits
 otherwise. The single-operation TDR has `2 + S + D/8 + D + A` bits.
 For `D=64` and `A=51`, it has 127 bits.
 
-.AXI Single OP Instruction layout with size==3 and addr_size==51.
+<<jtag2axi-single-operation-layout-figure>> shows the single-operation TDR for a 64-bit
+data bus and a 51-bit address bus.
+
+[[jtag2axi-single-operation-layout-figure]]
+.JTAG2AXI single-operation layout
 image::jtag2axi_single_op.svg[AXI Single OP Instruction layout with size==3 and addr_size==51,scaledwidth=90.0%]
 
+<<jtag2axi-single-operation-fields-table>> defines the address, data, byte-enable, size,
+and operation fields.
+
+[[jtag2axi-single-operation-fields-table]]
 [width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI single-operation fields
 |===
 |Bits |Field |Access |Reset |Description
 |(2+S+D/8+D) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.
@@ -498,10 +553,19 @@ The pipeline-depth field width `P` is 1 when `FIFO_DEPTH=0`, otherwise
 `$clog2(FIFO_DEPTH+1)`. The control TDR has `2 + S + P + A + 1` bits.
 For `D=64`, `A=51`, and `FIFO_DEPTH=3`, the length is 58 bits.
 
-.AXI Series Control Instruction layout with 64-bit data, 51-bit address and FIFO_DEPTH=3.
+<<jtag2axi-series-control-layout-figure>> shows the series-control TDR for 64-bit data,
+51-bit addresses, and FIFO_DEPTH=3.
+
+[[jtag2axi-series-control-layout-figure]]
+.JTAG2AXI series-control layout
 image::jtag2axi_series_ctrl.svg[AXI Series Control Instruction layout with addr_size==51,scaledwidth=90.0%]
 
+<<jtag2axi-series-control-fields-table>> defines the control fields used to start and
+manage a series of AXI accesses.
+
+[[jtag2axi-series-control-fields-table]]
 [width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI series-control fields
 |===
 |Bits |Field |Access |Reset |Description
 |(2+S+P+A) |reset |RW |0 |Reset the pending error flags reported in op.
@@ -530,19 +594,34 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-.AXISeriesDataIncr when AXISeriesCtrl.size==0.
+The incrementing payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3 are
+shown in <<jtag2axi-incrementing-data-layout-for-size-0-figure>>,
+<<jtag2axi-incrementing-data-layout-for-size-1-figure>>,
+<<jtag2axi-incrementing-data-layout-for-size-2-figure>>,
+<<jtag2axi-incrementing-data-layout-for-size-3-figure>>, respectively.
+
+[[jtag2axi-incrementing-data-layout-for-size-0-figure]]
+.JTAG2AXI incrementing data layout for size 0
 image::jtag2axi_series_data_incr0.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-.AXISeriesDataIncr when AXISeriesCtrl.size==1.
+[[jtag2axi-incrementing-data-layout-for-size-1-figure]]
+.JTAG2AXI incrementing data layout for size 1
 image::jtag2axi_series_data_incr1.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
 
-.AXISeriesDataIncr when AXISeriesCtrl.size==2.
+[[jtag2axi-incrementing-data-layout-for-size-2-figure]]
+.JTAG2AXI incrementing data layout for size 2
 image::jtag2axi_series_data_incr2.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
 
-.AXISeriesDataIncr when AXISeriesCtrl.size==3.
+[[jtag2axi-incrementing-data-layout-for-size-3-figure]]
+.JTAG2AXI incrementing data layout for size 3
 image::jtag2axi_series_data_incr3.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
 
+<<jtag2axi-incrementing-data-fields-table>> defines the payload shifted through the
+incrementing data instruction.
+
+[[jtag2axi-incrementing-data-fields-table]]
 [width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI incrementing data fields
 |===
 |Bits |Field |Access |Reset |Description
 |n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
@@ -565,19 +644,34 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-.AXISeriesDataNoIncr when AXISeriesCtrl.size==0.
+The non-incrementing payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3
+are shown in <<jtag2axi-non-incrementing-data-layout-for-size-0-figure>>,
+<<jtag2axi-non-incrementing-data-layout-for-size-1-figure>>,
+<<jtag2axi-non-incrementing-data-layout-for-size-2-figure>>,
+<<jtag2axi-non-incrementing-data-layout-for-size-3-figure>>, respectively.
+
+[[jtag2axi-non-incrementing-data-layout-for-size-0-figure]]
+.JTAG2AXI non-incrementing data layout for size 0
 image::jtag2axi_series_data_incr0.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-.AXISeriesDataNoIncr when AXISeriesCtrl.size==1.
+[[jtag2axi-non-incrementing-data-layout-for-size-1-figure]]
+.JTAG2AXI non-incrementing data layout for size 1
 image::jtag2axi_series_data_incr1.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
 
-.AXISeriesDataNoIncr when AXISeriesCtrl.size==2.
+[[jtag2axi-non-incrementing-data-layout-for-size-2-figure]]
+.JTAG2AXI non-incrementing data layout for size 2
 image::jtag2axi_series_data_incr2.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
 
-.AXISeriesDataNoIncr when AXISeriesCtrl.size==3.
+[[jtag2axi-non-incrementing-data-layout-for-size-3-figure]]
+.JTAG2AXI non-incrementing data layout for size 3
 image::jtag2axi_series_data_incr3.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
 
+<<jtag2axi-non-incrementing-data-fields-table>> defines the payload shifted through the
+non-incrementing data instruction.
+
+[[jtag2axi-non-incrementing-data-fields-table]]
 [width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI non-incrementing data fields
 |===
 |Bits |Field |Description |Access |Reset
 |n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
@@ -600,19 +694,34 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0.
+The error-status payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3 are
+shown in <<jtag2axi-error-status-data-layout-for-size-0-figure>>,
+<<jtag2axi-error-status-data-layout-for-size-1-figure>>,
+<<jtag2axi-error-status-data-layout-for-size-2-figure>>,
+<<jtag2axi-error-status-data-layout-for-size-3-figure>>, respectively.
+
+[[jtag2axi-error-status-data-layout-for-size-0-figure]]
+.JTAG2AXI error-status data layout for size 0
 image::jtag2axi_series_data_error0.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1.
+[[jtag2axi-error-status-data-layout-for-size-1-figure]]
+.JTAG2AXI error-status data layout for size 1
 image::jtag2axi_series_data_error1.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1,scaledwidth=90.0%]
 
-.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2.
+[[jtag2axi-error-status-data-layout-for-size-2-figure]]
+.JTAG2AXI error-status data layout for size 2
 image::jtag2axi_series_data_error2.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2,scaledwidth=90.0%]
 
-.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3.
+[[jtag2axi-error-status-data-layout-for-size-3-figure]]
+.JTAG2AXI error-status data layout for size 3
 image::jtag2axi_series_data_error3.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3,scaledwidth=90.0%]
 
+<<jtag2axi-data-and-error-status-fields-table>> defines the data payload and the shared
+increment-control and error-status bit.
+
+[[jtag2axi-data-and-error-status-fields-table]]
 [width="100%",cols="2,2,1,1,6",options="header"]
+.JTAG2AXI data and error-status fields
 |===
 |Bits |Field |Access |Reset |Description
 |n |increment/status |RW |0 |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".
@@ -626,7 +735,12 @@ synchronizes those bits to TCK and presents them here as ready-to-gate signals.
 Each input is active-high: when it is 1, the corresponding `jtag2axi` instance
 blocks AXI transaction generation.
 
+<<ptap-debug-disable-inputs-table>> maps the three JTAG2AXI bridges to their active-high
+disable inputs.
+
+[[ptap-debug-disable-inputs-table]]
 [width="100%",cols="<40%,<60%",options="header"]
+.PTAP debug-disable inputs
 |===
 |Debug Interface |Disable Input
 
