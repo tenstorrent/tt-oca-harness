@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 import tomllib
+from collections import Counter
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
@@ -171,6 +172,7 @@ class Collector(RDLListener):
         self.regs: list[Reg] = []
         self.arrays: dict[str, tuple[int, str, str | None]] = {}
         self.seen: set[str] = set()
+        self.qualified_names: dict[str, str] = {}
         self.overrides = overrides or {}
         self.used_overrides: set[str] = set()
 
@@ -182,7 +184,11 @@ class Collector(RDLListener):
         # array of registers is, so document one entry with the enclosing stride
         # rather than one entry per index.
         enclosing = array_ancestor(node)
-        if enclosing is not None and any(i != 0 for i in (enclosing.current_idx or [])):
+        if (
+            not node.is_array
+            and enclosing is not None
+            and any(i != 0 for i in (enclosing.current_idx or []))
+        ):
             return
 
         if node.is_array or enclosing is not None:
@@ -196,18 +202,22 @@ class Collector(RDLListener):
             else:
                 name = f"{enclosing.get_path_segment(array_suffix='')}[{count}].{node.inst_name}"
             addr = f"0x{base:X} - 0x{last:X}"
-            self.arrays.setdefault(
-                name, (count, f"0x{base:X}", f"0x{stride:X}" if stride else None)
+            self.arrays[node.get_path()] = (
+                count,
+                f"0x{base:X}",
+                f"0x{stride:X}" if stride else None,
             )
         else:
             name = node.inst_name
             addr = f"0x{node.absolute_address:X}"
 
-        key = name
-        if key in self.seen:
-            return
-        self.seen.add(key)
         path = node.get_path()
+        if path in self.seen:
+            return
+        self.seen.add(path)
+        prefix = (enclosing if enclosing is not None and not node.is_array else node).parent
+        parents = prefix.get_path().split(".")[1:]
+        self.qualified_names[path] = ".".join([*parents, name])
         selector = ".".join(re.sub(r"\[\d+\]$", "", segment) for segment in path.split(".")[1:])
         description = node.get_property("desc") or ""
         if selector in self.overrides:
@@ -232,6 +242,11 @@ class Collector(RDLListener):
 def collect(root, overrides: dict[str, str] | None = None) -> Collector:
     c = Collector(overrides)
     RDLWalker(unroll=True).walk(root, c)
+    counts = Counter(reg.name for reg in c.regs)
+    for reg in c.regs:
+        if counts[reg.name] > 1:
+            reg.name = c.qualified_names[reg.path]
+    c.arrays = {reg.name: c.arrays[reg.path] for reg in c.regs if reg.path in c.arrays}
     unmatched = set(c.overrides) - c.used_overrides
     if unmatched:
         raise ValueError(
