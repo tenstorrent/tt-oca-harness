@@ -206,15 +206,17 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   function void snapshot_target_word(dtp_j2a_target_t t, ref bit [7:0] image[bit [63:0]],
                                      input bit [63:0] addr, input int unsigned size);
     bit [63:0] word = read_target_mem_int(t, addr, size);
-    for (int unsigned b = 0; b < size_bytes(size); b++)
+    for (int unsigned b = 0; b < size_bytes(size); b++) begin
       if (!image.exists(addr + b)) image[addr+b] = word[8*b+:8];
+    end
   endfunction
 
   // Apply one write's enabled lanes to the byte image.
   function void image_write(ref bit [7:0] image[bit [63:0]], input bit [63:0] addr,
                             input bit [63:0] data, input bit [7:0] wstrb, input int unsigned size);
-    for (int unsigned b = 0; b < size_bytes(size); b++)
+    for (int unsigned b = 0; b < size_bytes(size); b++) begin
       if (wstrb[b]) image[addr+b] = data[8*b+:8];
+    end
   endfunction
 
   // CHK-J2A-MEM-IMAGE: every byte of the image matches the responder memory.
@@ -228,14 +230,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       bit [7:0] observed = 8'(read_target_mem_int(t, addr, 0));
       if (observed !== image[addr]) begin
         mismatches++;
-        `uvm_error("jtag2axi_image_chk", $sformatf(
-                   "%s: %s byte 0x%0h holds 0x%02h, image 0x%02h",
-                   context_s,
-                   t.name,
-                   addr,
-                   observed,
-                   image[addr]
-                   ))
+        `uvm_error("jtag2axi_image_chk", $sformatf("%s: %s byte 0x%0h holds 0x%02h, image 0x%02h",
+                                                   context_s, t.name, addr, observed, image[addr]))
       end
     end
     if (axi_evidence != null)
