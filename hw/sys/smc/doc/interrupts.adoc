@@ -59,7 +59,7 @@ additional globals (for example per-core Chipyard watchdog timers at indices
 
 === Bus Error Unit interrupts
 
-Each Bus Error Unit (BEU) accumulates error events for one core. The register
+A Bus Error Unit (BEU) accumulates error events for one core. The register
 named `ACCRUED_ENABLE` is sticky status, not an enable mask: events set its bits
 independently of `ENABLE`. Ordinary writes replace those bits; write zero to
 clear them. `ENABLE` instead gates capture of the first error's `CAUSE` and
