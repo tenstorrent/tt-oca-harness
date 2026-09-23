@@ -6,10 +6,11 @@
 //
 // Open-source reference models for the technology-specific IP SMC exposes
 // at this boundary: the shared eFuse bank/shim model (IsSmcInstance=1), the
-// PLL/PVT AXI-Lite models (pll_wrap.sv / pvt_wrap.sv), the I3C DAT/DCT/RLT
-// table memories, and one prim_pad_shim.sv instance per GPIO pin standing
-// in for the physical padring. The GPIO-shim per-pin CSR and adopter
-// peripheral extension AXI-Lite buses are terminated with
+// PLL/PVT AXI-Lite models (pll_wrap.sv / pvt_wrap.sv). pll_wrap is the
+// clock source the wrappers fan out to smc.sv / smu.sv. Also modeled here:
+// the I3C DAT/DCT/RLT table memories, and one prim_pad_shim.sv instance per
+// GPIO pin standing in for the physical padring. The GPIO-shim per-pin CSR
+// and adopter peripheral extension AXI-Lite buses are terminated with
 // prim_axi_lite_err_slv (DECERR).
 //
 // smc_wrapper.sv instantiates this module alongside the bare smc.sv core
@@ -33,8 +34,10 @@
 //-----------------------------------------------------------------------------
 
 module smc_ip_integration (
-    input logic clk_smc_i,
-    input logic rst_primary_smc_clk_ni,
+    output logic clk_ref_o,
+    output logic clk_sys_o,
+    output logic clk_periph_o,
+    input  logic rst_primary_smc_clk_ni,
 
     // The I3C table memories are the one block here that does not run on
     // clk_smc: the core drives them from the gated I3C peripheral clock.
@@ -108,6 +111,10 @@ module smc_ip_integration (
     // Signal Declarations //
     /////////////////////////
 
+    logic clk_ref;
+    logic clk_sys;
+    logic clk_periph;
+
     smc_pkg::smc_efuse_apb_req_t  efuse_model_otp_req;
     smc_pkg::smc_efuse_apb_resp_t efuse_model_otp_resp;
 
@@ -129,7 +136,7 @@ module smc_ip_integration (
         .fuse_command_req_t   (smc_efuse_pkg::fuse_command_req_t),
         .fuse_command_resp_t  (smc_efuse_pkg::fuse_command_resp_t)
     ) u_efuse_interface_shim (
-        .clk_i  (clk_smc_i),
+        .clk_i  (clk_sys),
         .rst_ni (rst_primary_smc_clk_ni),
 
         .fuse_bank_ctrl_req_i  (efuse_bank_ctrl_req_i),
@@ -150,7 +157,7 @@ module smc_ip_integration (
         .efuse_apb_req_t  (smc_pkg::smc_efuse_apb_req_t),
         .efuse_apb_resp_t (smc_pkg::smc_efuse_apb_resp_t)
     ) u_efuse_bank_model (
-        .clk_i  (clk_smc_i),
+        .clk_i  (clk_sys),
         .rst_ni (rst_primary_smc_clk_ni),
 
         .apb_req_i  (efuse_model_otp_req),
@@ -228,7 +235,7 @@ module smc_ip_integration (
         .SpillAr     (1'b1),
         .SpillR      (1'b0)
     ) u_smc_external_demux (
-        .clk_i           (clk_smc_i),
+        .clk_i           (clk_sys_o),
         .rst_ni          (rst_primary_smc_clk_ni),
         .test_i          (test_en_i),
         .slv_req_i       (smc_external_req_i),
@@ -244,10 +251,14 @@ module smc_ip_integration (
     ///////////////
 
     pll_wrap u_pll_wrap (
-        .clk_i      (clk_smc_i),
-        .rst_ni     (rst_primary_smc_clk_ni),
-        .axil_req_i (ext_req[ExtPll]),
-        .axil_resp_o(ext_resp[ExtPll])
+        .clk_i        (clk_sys),
+        .rst_ni       (rst_primary_smc_clk_ni),
+        .test_en_i    (test_en_i),
+        .axil_req_i   (ext_req[ExtPll]),
+        .axil_resp_o  (ext_resp[ExtPll]),
+        .clk_ref_o    (clk_ref),
+        .clk_sys_o    (clk_sys),
+        .clk_periph_o (clk_periph)
     );
 
     ///////////////
@@ -255,7 +266,7 @@ module smc_ip_integration (
     ///////////////
 
     pvt_wrap u_pvt_wrap (
-        .clk_i      (clk_smc_i),
+        .clk_i      (clk_sys),
         .rst_ni     (rst_primary_smc_clk_ni),
         .axil_req_i (ext_req[ExtPvt]),
         .axil_resp_o(ext_resp[ExtPvt])
@@ -277,7 +288,7 @@ module smc_ip_integration (
     end
 
     straps_reg u_straps_reg (
-        .clk    (clk_smc_i),
+        .clk    (clk_sys),
         .arst_n (rst_primary_smc_clk_ni),
 
         .s_axil_awvalid (ext_req[ExtStraps].aw_valid),
@@ -384,7 +395,7 @@ module smc_ip_integration (
             .Width       (TraceMemBankWidth),
             .MemInitFile ("")
         ) u_trace_mem_bank (
-            .clk_i     (clk_smc_i),
+            .clk_i     (clk_sys),
             .rst_ni    (rst_primary_smc_clk_ni),
             .req_i     (trace_mem_req[i].mem_chip_en),
             .write_i   (trace_mem_req[i].mem_wr_en),
@@ -444,7 +455,7 @@ module smc_ip_integration (
         .RESP_DATA      ('0),
         .MAX_TRANS      (2)
     ) u_gpio_ctrl_err_slv (
-        .clk_i      (clk_smc_i),
+        .clk_i      (clk_sys),
         .rst_ni     (rst_primary_smc_clk_ni),
         .axil_req_i (ext_req[ExtGpioCtrl]),
         .axil_resp_o(ext_resp[ExtGpioCtrl])
@@ -460,7 +471,7 @@ module smc_ip_integration (
         .RESP_DATA      ('0),
         .MAX_TRANS      (2)
     ) u_ext_unmapped_err_slv (
-        .clk_i      (clk_smc_i),
+        .clk_i      (clk_sys),
         .rst_ni     (rst_primary_smc_clk_ni),
         .axil_req_i (ext_req[ExtUnmapped]),
         .axil_resp_o(ext_resp[ExtUnmapped])
@@ -604,5 +615,9 @@ module smc_ip_integration (
         );
 
     end : gen_i3c_mem
+
+    assign clk_ref_o = clk_ref;
+    assign clk_sys_o = clk_sys;
+    assign clk_periph_o = clk_periph;
 
 endmodule

@@ -20,13 +20,13 @@
 //
 // This file is NOT standalone-compilable; it exists only for inclusion
 // inside the smc_uvm_top module header.
-`SMC_TB_IN_FIRST(logic, clk_smc_i)
-`SMC_TB_IN(logic, clk_ref_i)
-`SMC_TB_IN(logic, clk_periph_i)
-
-`SMC_TB_IN(logic, powergood_i)
+`SMC_TB_IN_FIRST(logic, powergood_i)
 `SMC_TB_IN(logic, rst_cold_ni)
 `SMC_TB_IN(logic, rst_cool_ni)
+
+`SMC_TB_OUT(logic, clk_smc_i)
+`SMC_TB_OUT(logic, clk_ref_i)
+`SMC_TB_OUT(logic, clk_periph_i)
 
 `SMC_TB_OUT(logic, powergood_stable_o)
 `SMC_TB_OUT(logic, rst_cold_stable_ref_clk_no)

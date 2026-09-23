@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SMU-local TB interface for the SV-UVM flow: the three harness clock
-// periods, the test-sequenced power-good and cold-reset pins, the external
+// SMU-local TB interface for the SV-UVM flow: wait-math clock periods,
+// the test-sequenced power-good and cold-reset pins, the external
 // boot-sequence gate, the reset-unit and fuse-sense observables the
 // sequences read, the cold-reset assertion counter a reference model
 // re-baselines on, and the JTAG SVA enable. Separate from the shared
@@ -15,11 +15,10 @@
 
 interface smu_tb_if;
 
-  // Clock periods the harness generators read, set by the env from
-  // smu_env_cfg (the test cfg randomizes them from the runner seed).
-  int unsigned ref_clk_period_ns    = 10;
-  int unsigned smu_clk_period_ns    = 10;
-  int unsigned periph_clk_period_ns = 10;
+  // Wait-math periods in nanoseconds. sys follows +pll_sys_period_ns; ref and periph are fixed.
+  realtime ref_clk_period_ns    = 10.0;
+  realtime smu_clk_period_ns    = 1.25;
+  realtime periph_clk_period_ns = 5.0;
 
   // Driven by the TB (bring-up and reset scenarios owned by the test).
   // Initial values match the cocotb bring-up at time zero: power-good and
