@@ -84,6 +84,22 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfd_cla_mmr_sweep_test"
+module = "smc_dfd_cla_mmr_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_node_eap_sweep_test"
+module = "smc_dfd_cla_node_eap_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpu_ecc_lint_pint_depth_test"
 module = "smc_cpu_ecc_lint_pint_depth_test"
 seed = 1
