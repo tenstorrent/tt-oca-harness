@@ -458,58 +458,98 @@ make -C hw/sys/smc/bootrom/dummy</code></pre>
 </div>
 <div class="paragraph">
 <p>Build the production ROM from the same container (self-contained Makefile, not
-the shared <code>compile.mk</code> engine):</p>
+the shared <code>compile.mk</code> engine).
+See <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/README.md"><code>hw/sys/smc/bootrom/prod/README.md</code></a> and
+<a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/doc/index.adoc"><code>hw/sys/smc/bootrom/prod/doc/</code></a> for
+the full target list, build variables, and architecture.</p>
+</div>
+<div class="paragraph">
+<p>The build splits across two halves so each runs in the right environment:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>toolchain-images</code> — RISC-V/picolibc compilation; use a container when <code>RISCV_TOOLCHAIN</code> is unset.</p>
+</li>
+<li>
+<p><code>pack-images</code> — image conversion via <code>uv</code>; can run in the container or on the host.</p>
+</li>
+</ul>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
-make -C hw/sys/smc/bootrom/prod</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Compile and link (use the container toolchain when RISCV_TOOLCHAIN is unset):
+scripts/docker-run.sh run-here make -C hw/sys/smc/bootrom/prod toolchain-images
+
+# Convert outputs to ROM preload formats on the host:
+make -C hw/sys/smc/bootrom/prod pack-images
+
+# Or build both in one step when the host has a picolibc-enabled toolchain:
+RISCV_TOOLCHAIN=/path/to/toolchain/bin make -C hw/sys/smc/bootrom/prod</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>Build products land under <code>build/release/</code> (or <code>build/debug/</code> with <code>BUILD_TYPE=debug</code>):
+<code>bin/</code> holds the ELF and binary image, <code>hex/</code> the ROM formats, and <code>disasm/</code> the disassembly.</p>
 </div>
 </div>
 <div class="sect2">
 <h3 id="sep-boot-rom"><a class="anchor" href="#sep-boot-rom"></a><a class="link" href="#sep-boot-rom">3.3. SEP boot ROM</a></h3>
 <div class="paragraph">
 <p><code>hw/sys/sep/bootrom/prod/</code> is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
-It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via <code>NONFREE_BOOTCODE_SOURCES</code> (same pattern as the SMC prod ROM).</p>
+It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via <code>NONFREE_BOOTCODE_SOURCES</code> (same pattern as the SMC prod ROM).
+See <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md"><code>hw/sys/sep/bootrom/prod/README.md</code></a> and
+<a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc"><code>hw/sys/sep/bootrom/prod/doc/</code></a> for
+the full target list, build variables, key provisioning, and boot flow.</p>
 </div>
 <div class="paragraph">
 <p>The ROM supports two SPI transports selected at build time by <code>BOOT_SPI_CONTROLLER_OT</code>; the unused driver is dropped by <code>--gc-sections</code> at link time.
-The open-source driver uses the OpenTitan SPI host (<code>BOOT_SPI_CONTROLLER_OT=1</code>).
-A proprietary memory-mapped SPI controller is also supported, plugged via the SEP extension port (<code>BOOT_SPI_CONTROLLER_OT=0</code>), but is optional from the OCAH open tree&#8217;s perspective.</p>
+The open-source OpenTitan SPI host (<code>BOOT_SPI_CONTROLLER_OT=1</code>) is the recommended transport and the one to use from the open tree.
+A proprietary memory-mapped SPI controller (<code>BOOT_SPI_CONTROLLER_OT=0</code>) is also supported via the SEP extension port but is not available in the open tree.
+The flag defaults to <code>0</code> in the Makefile; the named targets <code>ot-toolchain-images</code> and <code>ot-pio-toolchain-images</code> set it to <code>1</code> for you.</p>
 </div>
 <div class="paragraph">
-<p>The DV <code>sep</code> testbench has no SPI flash, so the ROM stubs SPI (<code>src/sep_spi.c</code>) and boots instead from the SMC-SRAM manifest path; <code>make pack-images</code> builds and packs the matching manifest+BL1 image (<code>build/smc_mem.hex</code>).</p>
+<p>The DV <code>sep</code> testbench has no SPI flash, so the ROM stubs SPI (<code>src/sep_spi.c</code>) and boots instead from the SMC-SRAM manifest path; <code>make oca-images</code> builds and packs the matching manifest+BL1 image (<code>build/smc_mem.hex</code>).</p>
 </div>
 <div class="paragraph">
-<p>The build is split into two halves so each can run in the correct environment:</p>
+<p>The build splits into two halves so each can run in the correct environment:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>toolchain-images</code> — RISC-V/picolibc compilation; use the container toolchain when <code>RISCV_TOOLCHAIN</code> is unset.</p>
+<p><code>ot-toolchain-images</code> — RISC-V/picolibc compilation with the OpenTitan SPI host; use the container when <code>RISCV_TOOLCHAIN</code> is unset.</p>
 </li>
 <li>
-<p><code>pack-images</code> — pure Python manifest packing via the <code>tt-oca-manifest</code> submodule (requires <code>uv</code>); runs on the host without the container.</p>
+<p><code>key-digests</code> and <code>oca-images</code> — pure Python via <code>uv</code>, which the container carries; can run in the container or on the host.
+<code>oca-images</code> is transport-agnostic: the same manifest+BL1 payload works with all three ROM variants, so no extra flags are needed after <code>ot-toolchain-images</code>.</p>
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>The manifest-tool submodule must be initialized before running <code>oca-images</code>:</p>
+</div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># OpenTitan SPI-host build (outputs to build_ot/):
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
-make -C hw/sys/sep/bootrom/prod ot-toolchain-images
-
-# Signed (secure boot) SPI flash image — requires the tt-oca-manifest submodule:
-# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
-make -C hw/sys/sep/bootrom/prod secure_boot_spi
-
-# Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
-make -C hw/sys/sep/bootrom/prod encrypted_boot_spi</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Outputs land under <code>hw/sys/sep/bootrom/prod/build_ot/</code> (signed/encrypted images land in <code>build/</code>):</p>
+<p>DV test manifest configs live under <code>configs/</code>; the corresponding test signing keys are in
+<code>tests/signing_keys/</code> (debug builds only — a release build reads public keys from
+<code>release_signing_keys/</code> and refuses to produce images anchored on test keys).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Recommended: compile with the OpenTitan SPI host (outputs to build_ot/):
+# - Prefix with `scripts/docker-run.sh run-here` to run in the container
+make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+
+# Pack all OCA test images (signed, encrypted, per-ROM-key, and negative cases):
+make -C hw/sys/sep/bootrom/prod oca-images</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>ROM images land under <code>build_ot/</code> (the OpenTitan variant&#8217;s build directory):</p>
 </div>
 <div class="ulist">
 <ul>
@@ -522,11 +562,18 @@ make -C hw/sys/sep/bootrom/prod encrypted_boot_spi</code></pre>
 <li>
 <p><code>boot_rom.dtcm.hex</code> — <code>.data</code>/<code>.bss</code> initial image as DCCM-relative byte hex.</p>
 </li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Packed flash images from <code>oca-images</code> always land under <code>build/</code>, regardless of which ROM variant was compiled:</p>
+</div>
+<div class="ulist">
+<ul>
 <li>
 <p><code>smc_mem.hex</code> — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.</p>
 </li>
 <li>
-<p><code>secure_boot.spi_preload</code> / <code>encrypted_boot.spi_preload</code> — SPI flash preload images (built by the corresponding targets above).</p>
+<p><code>secure_boot.spi_preload</code> / <code>encrypted_boot.spi_preload</code> — signed and AES-encrypted SPI flash preload images.</p>
 </li>
 </ul>
 </div>
@@ -589,14 +636,14 @@ make dv-fw-tests TARGET=key_manager TEST=rom_main</code></pre>
 <h2 id="simulation-and-testing"><a class="anchor" href="#simulation-and-testing"></a><a class="link" href="#simulation-and-testing">4. Simulation and Testing</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>We will use open source tools as much as possible and hence will focus
+<p>The OCA Harness uses open source tools as much as possible and hence focuses
 on using Verilator for unit tests. Verilator has comprehensive
 SystemVerilog (SV) support and is widely used in industry.</p>
 </div>
 <div class="sect2">
 <h3 id="testbench-and-test-sequence"><a class="anchor" href="#testbench-and-test-sequence"></a><a class="link" href="#testbench-and-test-sequence">4.1. Testbench and Test Sequence</a></h3>
 <div class="paragraph">
-<p>Most components use Cocotb Python tests. The DTP also has a nonfree UVM
+<p>Most components use Cocotb Python tests. Some DUTs also have a nonfree UVM
 test workflow using VCS. The testbench is run and configured using a Python
 script. Run the following command to see all available options:</p>
 </div>
