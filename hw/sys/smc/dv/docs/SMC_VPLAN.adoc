@@ -275,7 +275,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_cg_dft_reset_bringup_test` |LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override.
+|`smc_cg_dft_reset_bringup_test` |LIVE/CONNECTIVITY DFT test_en_i bypass, and the Zeroer clocks free-running under the primary reset with the gating enable at its reset value.
 |`smc_cold_boot_chain_order_test` |Power-good, fuse sense, core reset release, the ROM vector and cluster isolation are ordered across a second cold reset.
 |`smc_primary_reset_scope_test` |The cool pin asserts the primary reset and the cores and peripheral controllers stay held across the whole asserted window.
 |`smc_reset_sync_edge_test` |Synchronized primary resets assert asynchronously anchored on `clk_ref_i` and release synchronously to each output target clock.
@@ -428,7 +428,7 @@ feature rows.
 |`smc_i2c_p0_nack_test` |I2C NACK: allow-path + address NACK + data NACK.
 |`smc_i2c_p0_rdwr_test` |Internal dual-controller write/read proof.
 |`smc_i2c_p0_stretch_test` |I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte.
-|`smc_i2c_p0_timeout_test` |Stretch-timeout observation (empty target TX during host READ).
+|`smc_i2c_p0_timeout_test` |I2C1 stretch timeout measured against an I2C0 target proven live on the same shared bus.
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
 |`smc_smbus_alert_ara_test` |U4-2: DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
@@ -2184,11 +2184,13 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override.
+*Objective*: LIVE/CONNECTIVITY DFT test_en_i bypass, and the Zeroer clocks free-running under the primary reset with the gating enable at its reset value.
 
 *Test Coverage*:
 
 * DV-CARD: SMCCGP0_003 ANCHOR: smc_cg_dft_reset_bringup_test
+* `test_en_i` bypass A-B-A on the DMA and Zeroer gaters: gated off while idle, every cycle with `test_en_i` = 1, gated off again with `test_en_i` = 0 and gating re-programmed.
+* Zeroer clocks under reset: while `rst_primary_smc_clk_n` is asserted both Zeroer gated clocks run every cycle of the window. The cold reset returns `CLOCK_GATE_CONTROL` to its generated reset, so `tb_zeroer_cg_en` reads 0 across that window and is recorded in the token; an enabled gate held in reset cannot be produced from the frontdoor on this bench and is not claimed. What is claimed is the clock behaviour under reset with the enable at its reset value.
 
 *Test Procedure*:
 
@@ -2202,7 +2204,7 @@ Drive `smc_cg_dft_reset_bringup_test_seq`. Each checker below is a named compare
 |Checker |Description
 |`CHK-DFT-BYPASS-FREE-RUN` |Named compare in `smc_cg_dft_reset_bringup_test_seq.py`; the run fails if it mismatches
 |`CHK-NONVAC` |Non-vacuity count in `smc_cg_dft_reset_bringup_test_seq.py`
-|`CHK-RESET-OVERRIDE-FREE-RUN` |Named compare in `smc_cg_dft_reset_bringup_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-OVERRIDE-FREE-RUN` |With `rst_primary_smc_clk_n` = 0 both Zeroer gated clocks show an enabled edge on every cycle of the window, and `tb_zeroer_cg_en` reads 0 before and after it (`CLOCK_GATE_CONTROL` at its reset), carried in the token; a gated-off edge or an enable that did not reset fails the run (`smc_cg_dft_reset_bringup_test_seq.py`)
 |===
 
 
@@ -2998,8 +3000,8 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-COLD-BOOT-ORDER` |`powergood_stable` < `fuse_sense_done` < `core_reset_release` <= first retired instruction, as strict inequalities between cycle stamps on one `clk_smc_i` timeline; any observable that never reached its boot level inside the bound raises first
-|`CHK-COLD-BOOT-FIRST-FETCH-AT-ROM-VECTOR` |The first retired hart-0 PC equals the cold-reset ROM vector `rom.adoc` pins, and the retire happened no earlier than the core reset release
+|`CHK-COLD-BOOT-ORDER` |`powergood_stable` < `fuse_sense_done` < `core_reset_release` <= first retired instruction, as strict inequalities between cycle stamps on one `clk_smc_i` timeline. The retire stamp is taken from `tb_cpu_trace_valid_unmasked`, the retire record without the core-reset mask, so a retire during reset would be stamped before the release and fail the compare; any observable that never reached its boot level inside the bound raises first
+|`CHK-COLD-BOOT-FIRST-FETCH-AT-ROM-VECTOR` |The first retired hart-0 PC (`tb_cpu_trace_pc_unmasked`) equals the cold-reset ROM vector `rom.adoc` pins, and the retire, stamped from the unmasked probe, happened no earlier than the core reset release
 |`CHK-CLUSTER-SELF-ISOLATED-AT-COLD-BOOT` |`tb_cpu_cluster_isolate` read 1 while the cold pin was held and released strictly after both `smc_init_mem_done_o` rose and the core reset released
 |`CHK-COLD-BOOT-NOT-CLOSED` |A recorded gap, not a compare: sram-auto-init-runs, repair-triggered-by-fuse-sense-done and the repair/MBIST steps, and release-requires-uncore-out-of-reset, each with the tie-off or missing probe that prevents it. Logged unconditionally
 |`CHK-TIMEOUT-PATHS` |One line per bounded reset leg the run took, naming the bound and the `clk_ref_i` cycle at which the expected levels matched. The compare is the scoreboard's -- an expired bound raises there -- so these lines are the record of the bounded legs, not a separate compare
@@ -5987,11 +5989,13 @@ Drive `smc_i2c_p0_stretch_test_seq`. Each checker below is a named compare the D
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Stretch-timeout observation (empty target TX during host READ).
+*Objective*: I2C1 stretch timeout measured against an I2C0 target proven live on the same shared bus.
 
 *Test Coverage*:
 
-* I2C1 StretchTimeout while I2C0 target holds SCL.
+* Allow leg first: the I2C0 target's TX FIFO is preloaded and the I2C1 host reads the byte back through RDATA while I2C0's ACQ FIFO shows the START word for the read address, so the two controllers are demonstrably on one bus before anything is timed.
+* Timeout leg: the same read with the I2C0 TX FIFO empty. I2C1 raises `INTR_STATE.STRETCH_TIMEOUT` after the programmed count while I2C0 reports `INTR_STATE.TX_STRETCH` and holds the START word for that address, so the timeout is the host's measurement of the target's stretch and not of a stuck-low SCL with no target in the loop.
+* Release leg: a byte written to I2C0 TXDATA ends the stretch; the host leaves its busy state and reads that byte back.
 * Requires +smc_i2c_shared_bus.
 
 *Test Procedure*:
@@ -6004,12 +6008,14 @@ Drive `smc_i2c_p0_timeout_test_seq`. Each checker below is a named compare the D
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-I2C-P0-TIMEOUT` |Named compare in `smc_i2c_p0_timeout_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C-P0-TIMEOUT` |I2C1 `INTR_STATE.STRETCH_TIMEOUT` set within the bounded poll while I2C0 `INTR_STATE.TX_STRETCH` is set and I2C0's ACQ FIFO holds the START word carrying the read address (`smc_i2c_p0_timeout_test_seq.py`); any of the three missing fails the run
+|`CHK-I2C-P0-TIMEOUT-RELEASE` |After the timeout, a byte written to I2C0 TXDATA lets the I2C1 host leave its busy state and read exactly that byte (`smc_i2c_p0_timeout_test_seq.py`)
+|`CHK-I2C-P0-TIMEOUT-TARGET-LIVE` |Positive control run first: with the I2C0 TX FIFO preloaded, the I2C1 host reads exactly that byte and I2C0's ACQ FIFO holds the START word for the read address (`smc_i2c_p0_timeout_test_seq.py`)
 |`CHK-I2C-TIMEOUT-CSR-SWEEP` |Named compare in `smc_i2c_p0_timeout_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-TIMEOUT`, `CHK-I2C-TIMEOUT-CSR-SWEEP` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: `CHK-I2C-P0-TIMEOUT`, `CHK-I2C-P0-TIMEOUT-RELEASE`, `CHK-I2C-P0-TIMEOUT-TARGET-LIVE`, `CHK-I2C-TIMEOUT-CSR-SWEEP` hold after their compares. Enrolled in: `all`, `hosted`, `i2c`.
 '''''
 
 [[sec-133-smc_i2c_p1_rdwr_protocol_test]]
@@ -6282,11 +6288,10 @@ Drive `smc_i3c_to_fabric_test_seq`. Each checker below is a named compare the DU
 |`CHK-I3C-CLOCK-GATE-RW` |Named compare in `smc_i3c_to_fabric_test_seq.py`; the run fails if it mismatches
 |`CHK-I3C0-HC-CONTROL-BUS-ENABLE` |Named compare in `smc_i3c_to_fabric_test_seq.py`; the run fails if it mismatches
 |`CHK-I3C0-HCI-VERSION` |Named compare in `smc_i3c_to_fabric_test_seq.py`; the run fails if it mismatches
-|`CHK-I3C0-PADS-RESOLVABLE` |Every I3C0 net is resolvable (no X/Z) at each sample point of the four external pull-low steps in `smc_i3c_vip_utils.py`; the levels are recorded, not compared, and on Verilator (2-state) this compare cannot fail -- see Known Limitations
 |===
 
 
-*Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION`, `CHK-I3C0-PADS-RESOLVABLE` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION` hold after their compares. The four external pull-low steps are driven with the core enabled and their pad levels and resolvability are recorded, not claimed: no positive control exists for the DUT-drive nets in this bench, and resolvability cannot fail on the two-state simulator the `hosted` run uses. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== MAILBOX
@@ -8681,6 +8686,8 @@ to make, and waits on a ruling.
 |`smc_dual_axi_sram_probe_test` |`all`, `dual` |`target = "dual"` and `firmware = prod_rom` |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
 |`smc_occp_sanity_test` |`all`, `dual` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above
 |`smc_occp_dual_unsecure_boot_test` |`occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
+|`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
+|`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |minshaoho (`9282d8c14`) |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
 |===
 

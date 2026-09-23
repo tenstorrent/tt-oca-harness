@@ -75,7 +75,7 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
 
     def _record(self, contract: str, check_id: str, detail: str) -> None:
         self.contracts.add(contract)
-        self.logger.info("%s: %s", check_id, detail)
+        cocotb.log.info("%s: %s", check_id, detail)
 
     @staticmethod
     def _value(signal, label: str) -> int:

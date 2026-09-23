@@ -343,7 +343,7 @@ class smu_dtp_scan_chain_boundary_seq:
         sib_word, sib_width = ptap_prefixed(stap_sib_pattern(name, 1), len(SMU_SEP_STAP_ORDER))
         await self.jtag.shift_dr(sib_word, sib_width, back_to_rti=True)
         stap_word, stap_width = stap_3dcr_scan_word(
-            name, config_hold=1, stap_sel=1, tms_hold=1, close_sib=0
+            name, config_hold=1, stap_sel=1, tms_hold=1, sib_en=0
         )
         value, width = ptap_prefixed(stap_word, stap_width)
         await self.jtag.shift_dr(value, width, back_to_rti=True)
