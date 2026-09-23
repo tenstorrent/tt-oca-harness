@@ -352,6 +352,7 @@ feature rows.
 |`smc_dbs_idle_test` |Run the DBS/DFD/ECC diagnostic CSR precheck.
 |`smc_dfd_cla_mmr_sweep_test` |Every software-owned CLA MMR register driven half at a time against its generated RDL contract and restored.
 |`smc_dfd_cla_node_eap_sweep_test` |Every CLA event-action pair of every node activated over the whole LogicalOp range, cleared through its own W2C bit, with the node walk reaching all four nodes.
+|`smc_dfd_trace_accumulator_fill_test` |Debug-bus trace driven into the DST packetizer until its accumulator bank fills and the trace RAM sink takes it.
 |`smc_dfd_sanity_test` |Run diagnostic CSR reads as the public DFD bounded checker.
 |`smc_dfx_status_abort_test` |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
 |`smc_ijtag_basic_test` |Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario.
@@ -4299,6 +4300,41 @@ Drive `smc_dfd_cla_node_eap_sweep_test_seq`. Each checker below is a named compa
 
 
 *Pass Criteria*: `CHK-CLA-EAP-LOGICAL-OP-FIRE`, `CHK-CLA-EAP-STATUS-RESET`, `CHK-CLA-EAP-STATUS-W2C`, `CHK-CLA-NODE-TRAVERSAL` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-212-smc_dfd_trace_accumulator_fill_test]]
+===== 212 `smc_dfd_trace_accumulator_fill_test`
+
+*Source Module*: `smc_dfd_trace_accumulator_fill_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Debug-bus trace driven into the DST packetizer until its accumulator bank fills and the trace RAM sink takes it.
+
+*Test Coverage*:
+
+* The DFD clock held on through `DFX_CTRL.DEBUG_CTRL.force_clk_en`, and every value of the 6-bit `DEBUG_BUS_MUX.Dbmid` field written in the normal debug mode its RDL description names, so every debug-bus mux of the array passes its lanes.
+* The DST enabled with `Trdstformat` at the uncompressed value its own RDL description names, the trace funnel enabled, and the trace RAM sink given a window and activated.
+* The CLA armed and `CDbgNode0Eap0.Action0` driven over all 64 values of its 6-bit field. Which action code starts a trace is published by no RDL, generated header or MMR specification, so the sweep names none and reads the outcome off the DUT.
+* `Trdstcontrol.Trdstempty` and `Trdstramwplow`, both read at their RDL reset first, are the two hardware-driven witnesses that the accumulator bank left the empty state and that a filled bank was taken by the sink.
+
+*Test Procedure*:
+
+Drive `smc_dfd_trace_accumulator_fill_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DST-TRACE-IDLE` |`Trdstcontrol.Trdstempty` reads its RDL reset of 1 and `Trdstramwplow` reads its RDL reset of 0 with the DFD clock held on and no trace running; either one already off its reset fails it and makes the later observations unattributable
+|`CHK-DST-TRACE-ACCUMULATE` |At least one value of the 6-bit `Action0` field made the DUT clear `Trdstcontrol.Trdstempty`, so the debug bus reached the packetizer and its accumulator bank left the empty state; a sweep in which the bit never clears fails it
+|`CHK-DST-TRACE-BANK-HANDOFF` |`Trdstramwplow` left its RDL reset, so the trace RAM sink took at least one filled bank from the accumulator and the bank went empty again; a pointer still at its reset fails it
+|===
+
+
+*Pass Criteria*: `CHK-DST-TRACE-ACCUMULATE`, `CHK-DST-TRACE-BANK-HANDOFF`, `CHK-DST-TRACE-IDLE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== EFUSE
