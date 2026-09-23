@@ -33,7 +33,9 @@ from smc_base_test import smc_base_test
 #     sub-word write: the reset read, a write and a readback for each of the
 #     ones and zeros patterns, the restore write and its readback              7
 #   3 telemetry INTR_STATUS clears, 3 accesses each                           9
-PERIPH_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 472
+#   the eFuse status leg: the idle read, the write of its three clears and
+#     the readback                                                            3
+PERIPH_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 475
 
 
 @pyuvm.test()
@@ -41,12 +43,13 @@ class smc_periph_regblock_sweep_test(smc_base_test):
     """Cycle every unswept peripheral register against its RDL contract."""
 
     required_evidence = (
+        "CHK-PERIPH-EFUSE-STATUS",
         "CHK-PERIPH-LOG-ENGINE-SWEEP",
         "CHK-PERIPH-REGBLOCK-COMPARES",
         "CHK-PERIPH-REGBLOCK-SINGLE-SWEEP",
         "CHK-PERIPH-TELEMETRY-SWEEP",
     )
-    min_evidence = 4
+    min_evidence = 5
 
     auto_protocol_vip = False
 

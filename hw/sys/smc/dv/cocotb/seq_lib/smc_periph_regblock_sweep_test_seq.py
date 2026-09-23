@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import cocotb
 
+from .smc_addr_map import efuse_ifc_u32
 from .smc_log_engine_utils import WRAP, WRAP_PY
 from .smc_regblock_field_sweep_utils import (
     RegInstance,
@@ -88,6 +89,31 @@ _SINGLE: tuple[tuple[str, frozenset[str]], ...] = (
 # response, so its configuration takes the full-width cycle instead of the
 # half-register one. Its fields are still driven both ways.
 _WORD_ONLY: tuple[str, ...] = ("dma_ctrl/CONFIG",)
+
+# EFUSE_INTERFACE_CTRL_STATUS is the one register of the block no leaf reaches:
+# its four state fields are `sw = r; hw = w` and its three clears are
+# `singlepulse`, so the half-register cycle has nothing to drive. Every mask
+# here comes from the generated `efuse_interface_ctrl.h`.
+_EFUSE_STATUS = "efuse_interface_ctrl/EFUSE_INTERFACE_CTRL_STATUS"
+_EFUSE_STATUS_SYM = "EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__{field}_bm"
+_EFUSE_CLEARS = (
+    "EFUSE_REQ_ERROR_CLEAR",
+    "EFUSE_PROGRAM_ADDR_ERROR_CLEAR",
+    "EFUSE_READ_ADDR_ERROR_CLEAR",
+)
+_EFUSE_ERRORS = (
+    "EFUSE_REQ_ERROR",
+    "EFUSE_PROGRAM_ADDR_ERROR",
+    "EFUSE_READ_ADDR_ERROR",
+)
+
+
+def _efuse_mask(names: tuple[str, ...]) -> int:
+    mask = 0
+    for name in names:
+        mask |= efuse_ifc_u32(_EFUSE_STATUS_SYM.format(field=name))
+    return mask
+
 
 # The OCTS system timer CTRL cycles. Each pair is (ones-substitute,
 # low-substitute) in field terms; between them every bit of every field takes
@@ -119,6 +145,8 @@ _LOG_ENGINE_REGS = ("LOG_REGION_SIZE", "LOG_REGION_ADDR", "LOG_WRITE_ADDR", "CTR
 _ACCESSES_PER_CYCLE = 12
 _ACCESSES_PER_WORD_CYCLE = 7
 _ACCESSES_PER_INTR_CLEAR = 3
+# The eFuse status leg: the idle read, the write of the three clears, the readback.
+_ACCESSES_PER_EFUSE_STATUS_LEG = 3
 
 
 def _timer_ctrl_words(inst: RegInstance) -> tuple[tuple[int, int], ...]:
@@ -195,6 +223,7 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
     def __init__(self, name: str = "smc_periph_regblock_sweep_test_seq") -> None:
         super().__init__(name)
         self.intr_status_cleared = 0
+        self.status_legs = 0
 
     async def _clear_telemetry_status(self, inst: RegInstance) -> None:
         """W1C the events the INTR_TEST cycle raised, and prove they went."""
@@ -208,6 +237,46 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             f"was pending before the write)"
         )
         self.intr_status_cleared += 1
+
+    async def _efuse_status_leg(self) -> None:
+        """The one register of the eFuse block the sweep cannot express.
+
+        Four of its fields are `sw = r; hw = w` and the other three are
+        write-only `singlepulse` clears, so there is no value to write and read
+        back. What the register can be held to is that a read of it reports an
+        idle block, that a write of the three clears is accepted and leaves
+        none of them set, and that the read-only fields do not move under it.
+        """
+        inst = single_reg_instance(_EFUSE_STATUS)
+        clears = _efuse_mask(_EFUSE_CLEARS)
+        errors = _efuse_mask(_EFUSE_ERRORS)
+
+        before = await self.csr_read("EFUSE_STATUS_IDLE", inst.addr)
+        outside = before & ~inst.reg.declared_mask & self.word_mask(inst)
+        assert outside == 0, (
+            f"EFUSE_INTERFACE_CTRL_STATUS reads 0x{before:08x}, which drives 0x{outside:x} "
+            f"in bits no field of the register occupies"
+        )
+        assert before & errors == 0, (
+            f"EFUSE_INTERFACE_CTRL_STATUS reads 0x{before:08x} with one of its error bits "
+            f"set on an idle block; the clear written below would then have something to "
+            f"clear and the comparison after it would not mean what it claims"
+        )
+        assert before & clears == 0, (
+            f"EFUSE_INTERFACE_CTRL_STATUS reads 0x{before:08x} with one of its write-only "
+            f"clear bits set; the RDL makes all three `singlepulse`, so none of them reads "
+            f"back"
+        )
+
+        await self.csr_write("EFUSE_STATUS_CLEARS", inst.addr, clears)
+        after = await self.csr_read("EFUSE_STATUS_AFTER_CLEARS", inst.addr, expected=before)
+        assert after == before, (
+            f"EFUSE_INTERFACE_CTRL_STATUS read 0x{before:08x} before a write of its three "
+            f"clear bits (0x{clears:x}) and 0x{after:08x} after it; the clears are "
+            f"`singlepulse` so none may stay set, and the four state fields are "
+            f"`sw = r; hw = w` so a write may not move them"
+        )
+        self.status_legs += 1
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -242,6 +311,7 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             await self.granule_cycle(timer_ctrl, low_value=low, ones_value=ones)
         for inst in word_only:
             await self.word_cycle(inst)
+        await self._efuse_status_leg()
         cocotb.log.info(
             "CHK-PERIPH-REGBLOCK-SINGLE-SWEEP: %d single-instance peripheral registers of the "
             "AVSBus controller, the OCTS system timer, the eFuse interface controller and the "
@@ -294,6 +364,7 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             cycles * _ACCESSES_PER_CYCLE
             + len(word_only) * _ACCESSES_PER_WORD_CYCLE
             + receivers * _ACCESSES_PER_INTR_CLEAR
+            + _ACCESSES_PER_EFUSE_STATUS_LEG
         )
         cycles += len(word_only)
         self.assert_all_reachable(expected, "PERIPH_REGBLOCK_SWEEP")
@@ -316,6 +387,14 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         )
         predicted += receivers
         self.assert_value_checks(sb_before, predicted, "PERIPH_REGBLOCK_SWEEP")
+        assert self.status_legs == 1, f"{self.status_legs} eFuse status legs; the leaf runs one"
+        cocotb.log.info(
+            "CHK-PERIPH-EFUSE-STATUS: EFUSE_INTERFACE_CTRL_STATUS read an idle block with "
+            "no error bit and no clear bit set, took a write of all three of its "
+            "write-only singlepulse clears, and read back exactly what it read before, so "
+            "no clear stayed set and the four `sw = r` state fields did not move under the "
+            "write",
+        )
         cocotb.log.info(
             "CHK-PERIPH-REGBLOCK-COMPARES: the scoreboard booked at least %d exact-value "
             "compares of its own for the reads whose whole word the RDL contract predicts, "
