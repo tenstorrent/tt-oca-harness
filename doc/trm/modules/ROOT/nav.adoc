@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Documentation Overview]
-* xref:list-of-figures.adoc[List of Figures]
-* xref:list-of-tables.adoc[List of Tables]
+** xref:list-of-figures.adoc[List of Figures]
+** xref:list-of-tables.adoc[List of Tables]
 ifndef::release[]
-* xref:revision.adoc[Internal Revision History]
+** xref:revision.adoc[Internal Revision History]
 endif::release[]
 * xref:architecture.adoc[OCAH Architecture & Design]
 ** xref:overview.adoc[Platform Overview]
@@ -92,5 +92,6 @@ ifndef::release[]
 endif::release[]
 **** xref:aou-referenced-documents.adoc[Appendix B. Referenced Documents]
 * xref:ip-reference.adoc[IP Reference]
-* xref:referenced-documents.adoc[Referenced Documents]
 * xref:dashboard.adoc[Verification Dashboard]
+* Appendices
+** xref:referenced-documents.adoc[Referenced Documents]

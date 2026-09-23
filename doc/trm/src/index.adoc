@@ -40,10 +40,11 @@ ifdef::backend-html5[]
 
 This documentation is organized into the following sections:
 
-* xref:list-of-figures.adoc[List of Figures]
-* xref:list-of-tables.adoc[List of Tables]
+* Documentation Overview
+** xref:list-of-figures.adoc[List of Figures]
+** xref:list-of-tables.adoc[List of Tables]
 ifndef::release[]
-* xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
+** xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
 ** xref:overview.adoc[Platform Overview]
@@ -59,8 +60,9 @@ endif::release[]
 ** xref:smn.placeholder.adoc[System Management Network (SMN)]
 ** xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
 * xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
-* xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual
 * xref:dashboard.adoc[Verification Dashboard]
+* Appendices
+** xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
