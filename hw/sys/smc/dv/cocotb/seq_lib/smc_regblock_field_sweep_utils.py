@@ -185,6 +185,27 @@ class SmcRegblockFieldSweepSeq(SmcCsrSeq):
         return value
 
     @staticmethod
+    def pack_fields(inst: RegInstance, **values: int) -> int:
+        """Pack named fields of one register into a word, from the generated map.
+
+        For a register whose legal values are constrained, so a caller can
+        state the word it means in field terms instead of a literal.
+        """
+        by_name = {field.name: field for field in inst.reg.fields}
+        missing = set(values) - set(by_name)
+        assert not missing, (
+            f"{inst.label}: the generated map declares no field named {', '.join(sorted(missing))}"
+        )
+        word = 0
+        for name, value in values.items():
+            field = by_name[name]
+            assert value < (1 << field.width), (
+                f"{inst.label}.{name} is {field.width} bits and cannot hold {value}"
+            )
+            word |= value << field.offset
+        return word
+
+    @staticmethod
     def _held_mask(inst: RegInstance, hold_fields: frozenset[str]) -> int:
         mask = 0
         for field in inst.reg.fields:
@@ -202,6 +223,7 @@ class SmcRegblockFieldSweepSeq(SmcCsrSeq):
         inst: RegInstance,
         low_value: int = 0,
         hold_fields: frozenset[str] = frozenset(),
+        ones_value: int | None = None,
     ) -> None:
         """Half-register writes on one instance, then the RDL reset restored.
 
@@ -209,10 +231,16 @@ class SmcRegblockFieldSweepSeq(SmcCsrSeq):
         their reset: the caller states why at the call site. They stay in the
         model, so every read still checks them, and they are simply never given
         the ones pattern.
+
+        ``ones_value`` replaces the all-ones pattern, and ``low_value`` the
+        all-zeros one, for a register whose RDL constrains which words are
+        legal. The caller states the constraint and checks it holds for every
+        word it supplies; a register with no constraint leaves both alone.
         """
         reg = inst.reg
         held = self._held_mask(inst, hold_fields)
         driven = reg.rw_mask & ~held
+        high = driven if ones_value is None else (ones_value & driven)
         assert driven, (
             f"{inst.label}: no field of the register is software-writable with a "
             f"readback the contract pins and not held, so the cycle would write nothing"
@@ -222,7 +250,7 @@ class SmcRegblockFieldSweepSeq(SmcCsrSeq):
         model = reg.reset_word
         await self.read_check(inst, "reset", model)
 
-        for pattern, tag in ((driven, "ones"), (low_value & driven, "low")):
+        for pattern, tag in ((high, "ones"), (low_value & driven, "low")):
             for offset, width in granules:
                 gmask = ((1 << (width * 8)) - 1) << (offset * 8)
                 touched = driven & gmask

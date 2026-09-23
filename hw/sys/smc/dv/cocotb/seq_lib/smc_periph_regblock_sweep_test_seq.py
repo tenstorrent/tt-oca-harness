@@ -30,6 +30,17 @@ Three registers need more than that, and say so at the call site:
   which is what the ones leg and the restore of this cycle do. The gate is on
   the AVS protocol clock, not the register interface, so the block keeps
   answering throughout.
+* The OCTS system timer's `CTRL` does not take the all-ones and all-zeros
+  patterns at all. `system_timer_octs.rdl` says `CREDIT_VAL` "must be greater
+  than PULSE_WIDTH" and `PULSE_WIDTH` "must be less than CREDIT_VAL", and the
+  RTL holds a run-time assertion to it. All ones makes the two equal and all
+  zeros makes `CREDIT_VAL` zero, so both would break the constraint. The
+  register therefore takes two constrained cycles instead, whose four patterns
+  between them drive every bit of all three fields to 0 and to 1 while keeping
+  `CREDIT_VAL` above `PULSE_WIDTH` in every word written, including the
+  rounding the RDL gives a `PULSE_WIDTH` of 0 ("a value of 0 will be rounded up
+  to 1"). Both constrained fields sit in the same half of the word, so the
+  half-register writes never leave an illegal pair resident either.
 * The telemetry `INTR_TEST.BUFFER_THRESHOLD` field is plain storage, so the
   generic cycle drives it and leaves the event it raises in INTR_STATUS. Each
   receiver's INTR_STATUS is therefore cleared afterwards and re-read, which is
@@ -63,7 +74,6 @@ _SINGLE: tuple[tuple[str, frozenset[str]], ...] = (
     ("smc_avsbus_controller/AVS_CFG_0", frozenset()),
     ("smc_avsbus_controller/AVS_CFG_1", frozenset()),
     ("smc_avsbus_controller/AVS_CONFIG", frozenset()),
-    ("smc_system_timer_octs/CTRL", frozenset()),
     ("smc_system_timer_octs/TIMER_PRESET_LO", frozenset()),
     ("smc_system_timer_octs/TIMER_PRESET_HI", frozenset()),
     ("smc_system_timer_octs/TIMER_GPIO_ENABLE", frozenset()),
@@ -79,6 +89,22 @@ _SINGLE: tuple[tuple[str, frozenset[str]], ...] = (
 # half-register one. Its fields are still driven both ways.
 _WORD_ONLY: tuple[str, ...] = ("dma_ctrl/CONFIG",)
 
+# The OCTS system timer CTRL cycles. Each pair is (ones-substitute,
+# low-substitute) in field terms; between them every bit of every field takes
+# both values, and every word keeps CREDIT_VAL above the effective PULSE_WIDTH
+# the RDL defines (0 rounds up to 1).
+_TIMER_CTRL = "smc_system_timer_octs/CTRL"
+_TIMER_CTRL_LEGS: tuple[tuple[dict[str, int], dict[str, int]], ...] = (
+    (
+        {"CREDIT_VAL": 0xFF, "PULSE_WIDTH": 0xFE, "STEP": 0xFF},
+        {"CREDIT_VAL": 0x02, "PULSE_WIDTH": 0x00, "STEP": 0x00},
+    ),
+    (
+        {"CREDIT_VAL": 0xFD, "PULSE_WIDTH": 0x01, "STEP": 0x00},
+        {"CREDIT_VAL": 0x02, "PULSE_WIDTH": 0x00, "STEP": 0x00},
+    ),
+)
+
 _TELEMETRY = "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_"
 _TELEMETRY_PATH = "smc_telemetry_receiver_wrap/telemetry_receiver"
 _TELEMETRY_PY = "SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{index}__"
@@ -93,6 +119,56 @@ _LOG_ENGINE_REGS = ("LOG_REGION_SIZE", "LOG_REGION_ADDR", "LOG_WRITE_ADDR", "CTR
 _ACCESSES_PER_CYCLE = 12
 _ACCESSES_PER_WORD_CYCLE = 7
 _ACCESSES_PER_INTR_CLEAR = 3
+
+
+def _timer_ctrl_words(inst: RegInstance) -> tuple[tuple[int, int], ...]:
+    """The constrained CTRL words, checked against the RDL relation host-side.
+
+    `system_timer_octs.rdl` makes CREDIT_VAL greater than PULSE_WIDTH a
+    software constraint, and gives a PULSE_WIDTH of 0 the effective value 1.
+    Every word this sweep writes -- both legs of both cycles and the RDL reset
+    it restores -- is held to that here, before any access is issued, so a
+    regenerated map with different resets cannot let an illegal word through.
+    """
+    by_name = {field.name: field for field in inst.reg.fields}
+    reset = {
+        name: (inst.reg.reset_word >> field.offset) & ((1 << field.width) - 1)
+        for name, field in by_name.items()
+    }
+
+    def legal(values: dict[str, int], tag: str) -> None:
+        credit = values["CREDIT_VAL"]
+        effective = values["PULSE_WIDTH"] or 1
+        assert credit > effective, (
+            f"{inst.label} [{tag}]: CREDIT_VAL {credit} is not greater than the effective "
+            f"PULSE_WIDTH {effective}, which the RDL requires"
+        )
+
+    legal(reset, "rdl reset")
+    out: list[tuple[int, int]] = []
+    for index, (ones, low) in enumerate(_TIMER_CTRL_LEGS):
+        legal(ones, f"leg {index} ones")
+        legal(low, f"leg {index} low")
+        out.append(
+            (
+                SmcRegblockFieldSweepSeq.pack_fields(inst, **ones),
+                SmcRegblockFieldSweepSeq.pack_fields(inst, **low),
+            )
+        )
+    covered_ones = 0
+    covered_zero = 0
+    for ones, low in out:
+        covered_ones |= ones | low
+        covered_zero |= (~ones | ~low) & inst.reg.rw_mask
+    assert covered_ones & inst.reg.rw_mask == inst.reg.rw_mask, (
+        f"{inst.label}: the constrained patterns never drive "
+        f"0x{inst.reg.rw_mask & ~covered_ones:x} of the writable bits to 1"
+    )
+    assert covered_zero == inst.reg.rw_mask, (
+        f"{inst.label}: the constrained patterns never drive "
+        f"0x{inst.reg.rw_mask & ~covered_zero:x} of the writable bits to 0"
+    )
+    return tuple(out)
 
 
 def _telemetry_spec(register: str) -> tuple[str, str, str, str]:
@@ -138,6 +214,8 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
 
         singles = [(single_reg_instance(path), hold) for path, hold in _SINGLE]
         word_only = [single_reg_instance(path) for path in _WORD_ONLY]
+        timer_ctrl = single_reg_instance(_TIMER_CTRL)
+        timer_words = _timer_ctrl_words(timer_ctrl)
         telemetry = {name: reg_instances(*_telemetry_spec(name)) for name in _TELEMETRY_REGS}
         telemetry_status = reg_instances(*_telemetry_spec("INTR_STATUS"))
         log_engine = {name: reg_instances(*_log_engine_spec(name)) for name in _LOG_ENGINE_REGS}
@@ -160,6 +238,8 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
 
         for inst, hold in singles:
             await self.granule_cycle(inst, hold_fields=hold)
+        for ones, low in timer_words:
+            await self.granule_cycle(timer_ctrl, low_value=low, ones_value=ones)
         for inst in word_only:
             await self.word_cycle(inst)
         cocotb.log.info(
@@ -169,10 +249,13 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             "of the fields the contract pins through half-register writes whose byte lanes over "
             "the other half were deasserted, drove no bit outside the declared fields, and were "
             "restored; the eFuse data and program-enable bits were held at their reset "
-            "throughout, so nothing this leg wrote could arm a fuse burn, and %d further "
-            "register(s) whose block refuses a sub-word write took the same cycle at full "
-            "width",
+            "throughout, so nothing this leg wrote could arm a fuse burn; the OCTS system "
+            "timer CTRL took %d constrained cycles instead, every word of which keeps "
+            "CREDIT_VAL above the effective PULSE_WIDTH its RDL requires while the four "
+            "patterns between them still drive every writable bit both ways; and %d "
+            "register(s) whose block refuses a sub-word write took the cycle at full width",
             len(singles),
+            len(_TIMER_CTRL_LEGS),
             len(word_only),
         )
 
@@ -201,7 +284,12 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             ", ".join(_LOG_ENGINE_REGS),
         )
 
-        cycles = len(singles) + receivers * len(_TELEMETRY_REGS) + wraps * len(_LOG_ENGINE_REGS)
+        cycles = (
+            len(singles)
+            + len(_TIMER_CTRL_LEGS)
+            + receivers * len(_TELEMETRY_REGS)
+            + wraps * len(_LOG_ENGINE_REGS)
+        )
         expected = (
             cycles * _ACCESSES_PER_CYCLE
             + len(word_only) * _ACCESSES_PER_WORD_CYCLE
@@ -218,6 +306,8 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         # Predicted words: every read of a register no field of which hardware
         # drives, plus the cleared INTR_STATUS read of each receiver.
         predicted = sum(6 for inst, _hold in singles if self.volatile_mask(inst) == 0)
+        if self.volatile_mask(timer_ctrl) == 0:
+            predicted += 6 * len(_TIMER_CTRL_LEGS)
         predicted += sum(
             6 * receivers for name in _TELEMETRY_REGS if self.volatile_mask(telemetry[name][0]) == 0
         )
