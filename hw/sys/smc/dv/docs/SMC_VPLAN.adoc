@@ -225,6 +225,7 @@ feature rows.
 |Testcase |Objective
 |`smc_avsbus_clock_config_proxy_test` |AVS_CFG answers with AVS_CG_EN cleared and stops answering when set.
 |`smc_avsbus_frame_transaction_test` |Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each.
+|`smc_avsbus_interrupt_sources_test` |Each AVSBus FIFO interrupt source raised, observed, cleared through the write-only clear register and observed gone.
 |`smc_avsbus_retry_exhaust_test` |Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
 |`smc_avsbus_sanity_test` |Run the AVSBus sideband CSR precheck (alias of `smc_sideband_protocol_smoke_test_seq`).
 |`smc_avsbus_status_depth_test` |Run AVSBus status-side decode checks.
@@ -8959,6 +8960,46 @@ Drive `smc_i2c_controller_sda_interference_test_seq`. Each checker below is a na
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+
+[[sec-230-smc_avsbus_interrupt_sources_test]]
+===== 230 `smc_avsbus_interrupt_sources_test`
+
+*Source Module*: `smc_avsbus_interrupt_sources_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at the responding level by the bench
+
+*Objective*: Each AVSBus FIFO interrupt source raised, observed, cleared through the write-only clear register and observed gone.
+
+*Test Coverage*:
+
+* `AVS_INTERRUPT_CLEAR` is write-only and single-pulse, so writing a bit is only worth anything with the matching source already raised: a write with nothing pending clears nothing and proves nothing. The retry sources are covered by `smc_avsbus_retry_exhaust_test`; this leaf raises the FIFO sources.
+* The command FIFO is filled with the AVS clock gated off, so nothing drains it while it fills and the full condition does not depend on winning a race against the protocol engine.
+* Both full flags follow their conditions rather than latching, so each is cleared only after its FIFO has drained; clearing while the condition holds leaves the flag set, which an earlier version of this leaf failed on.
+* The overflowing `AVS_CMD` write is refused on the bus as well as dropped, so the access itself is an observable of the full condition.
+* FIFO depths come from the generated register header's reset values for the vacant-slot fields, not from the design.
+* `READBACK_OVERFLOW_INT` is not raised. `architecture.adoc` lists it under Error Handling as "a response received when full is dropped", but the same document states that "while the readback FIFO is full the master launches no further commands, so a software reader that stops draining `AVS_READBACK` stalls the bus rather than losing responses". With no further command launched there is no response to drop, so the condition cannot arise from the bus side.
+
+*Test Procedure*:
+
+Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-CMD-FIFO-FULL-INT` |A full command FIFO reported `AVS_NORMAL_STATUS.CMD_FIFO_FULL` and raised `CMD_FIFO_FULL_INT`; once the clock was restored and the FIFO drained, `AVS_INTERRUPT_CLEAR` removed the flag
+|`CHK-AVS-CMD-FIFO-OVERFLOW-INT` |A further `AVS_CMD` write against the full FIFO was refused on the bus and dropped, leaving the occupancy unchanged, and raised `CMD_FIFO_OVERFLOW_INT`, which `AVS_INTERRUPT_CLEAR` removed
+|`CHK-AVS-READBACK-FIFO-FULL-INT` |Responses filled the readback FIFO with `AVS_NORMAL_STATUS.READBACK_FIFO_FULL` set and raised `READBACK_FIFO_FULL_INT`; once the entries were read out, `AVS_INTERRUPT_CLEAR` removed the flag
+|`CHK-AVS-READBACK-HAS-DATA-INT` |Responses waiting in the readback FIFO raised `READBACK_HAS_DATA_INT`; once it was emptied, `AVS_INTERRUPT_CLEAR` removed the flag
+|`CHK-AVS-READBACK-UNDERFLOW-INT` |Reading `AVS_READBACK` on an empty FIFO raised `READBACK_UNDERFLOW_INT`, which `AVS_INTERRUPT_CLEAR` removed
+|`CHK-AVS-INTERRUPT-CLEAR-SOURCES` |All five sources above were each raised, observed in `AVS_INTERRUPT`, cleared through the write-only `AVS_INTERRUPT_CLEAR` and observed gone
+|===
+
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
