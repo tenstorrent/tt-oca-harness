@@ -25,7 +25,7 @@ def valid_source() -> str:
     markers = "\n".join(f"// datasheet-section: {section}" for section in SECTIONS)
     return f"""// SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-= OCAH DTP Datasheet
+= OCAH Example Datasheet
 :datasheet-status: Beta
 
 {markers}
@@ -116,135 +116,63 @@ class RepositoryContractTests(unittest.TestCase):
 
         self.assertEqual(validate_source(root / "doc/datasheets/template.adoc"), [])
 
-    def test_dtp_source_and_release_pdf_are_present(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-
-        self.assertEqual(validate_source(root / "doc/datasheets/src/dtp.adoc"), [])
-        self.assertEqual(validate_pdf(root / "doc/datasheets/dist/ocah-dtp-datasheet.pdf"), [])
-
-    def test_template_and_dtp_include_brand_and_copyright_metadata(self) -> None:
+    def test_template_includes_brand_and_copyright_metadata(self) -> None:
         root = Path(__file__).resolve().parents[3]
         template = (root / "doc/datasheets/template.adoc").read_text(encoding="utf-8")
-        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
         theme = (root / "doc/datasheets/datasheet-theme.yml").read_text(encoding="utf-8")
 
-        for document in (template, source):
-            self.assertIn("tt_logo_color-yellow-black.png", document)
-            self.assertIn(":copyright-year: 2026", document)
-            self.assertIn(":copyright-holder: Tenstorrent USA, Inc.", document)
+        self.assertIn("OPEN CHIPLET ATLAS HARNESS", template)
+        self.assertIn("tt_logo_color-yellow-black.png", template)
+        self.assertIn(":copyright-year: 2026", template)
+        self.assertIn(":copyright-holder: Tenstorrent USA, Inc.", template)
         self.assertIn("© {copyright-year} {copyright-holder}", theme)
 
-    def test_dtp_highlights_qualify_standards_claims(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
-
-        self.assertNotIn("* IEEE 1149.1-2013", source)
-        self.assertNotIn("* IEEE 1687-2014", source)
-        self.assertIn("implementing IEEE 1149.1-2013", source)
-        self.assertIn("implementing IEEE 1687-2014", source)
-
-    def test_dtp_uses_integrator_facing_reset_terminology(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
-        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(encoding="utf-8")
-
-        self.assertNotIn("IC_RESET slice", source)
-        self.assertNotIn("IC_RESET slice", diagram)
-        self.assertIn("reset-control outputs", source)
-        # Internal RTL signal names do not belong in the datasheet prose
-        # (PR #1542 review); keep them out of the integrator-facing text. The
-        # `IC_RESET` reset-signal reference and the `dbg_disable_i` port name
-        # are removed. Build-time *parameter* names such as
-        # `JTAG_IC_RESET_SMC_ENABLE` are integrator-facing configuration knobs
-        # and are intentionally retained in the configurability section.
-        self.assertNotIn("`IC_RESET`", source)
-        self.assertNotIn("IC_RESET in the RTL", source)
-        self.assertNotIn("`dbg_disable_i`", source)
-
-    def test_dtp_port_table_matches_current_debug_disable_interface(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        port_table = (root / "hw/sys/dtp/doc/port_table.adoc").read_text(encoding="utf-8")
-
-        self.assertNotIn("|`feat_ctrl_i`", port_table)
-        self.assertIn("|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t`", port_table)
-
-    def test_dtp_summary_counts_match_rtl_top_level(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        rtl_package = (root / "hw/sys/dtp/rtl/dtp_pkg.sv").read_text(encoding="utf-8")
-        smu_rtl = (root / "hw/sys/smu/rtl/smu.sv").read_text(encoding="utf-8")
-        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
-
-        expected = {
-            "DEFAULT_NUM_CTP": "16",
-            "DEFAULT_NUM_INT_CT": "10",
-            "DEFAULT_NUM_CLK_STOP_REQ": "9",
-        }
-        for parameter, value in expected.items():
-            self.assertRegex(rtl_package, rf"{parameter}\s*=\s*{value};")
-        self.assertRegex(smu_rtl, r"XTRIG_NUM_INT_CT\s*=\s*dtp_pkg::DEFAULT_NUM_INT_CT\s*-\s*2")
-        self.assertRegex(
-            smu_rtl,
-            r"XTRIG_NUM_CLK_STOP_REQ\s*=\s*dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ\s*-\s*1",
-        )
-        self.assertIn("!External / internal triggers !16 CTPs / 10 internal interfaces", source)
-        self.assertIn("!Clock-stop request inputs !9", source)
-        self.assertIn("exposes eight internal trigger interfaces and eight clock-stop", source)
-
-    def test_template_and_dtp_use_integrator_facing_section_names(self) -> None:
+    def test_template_uses_integrator_facing_section_names(self) -> None:
         root = Path(__file__).resolve().parents[3]
         template = (root / "doc/datasheets/template.adoc").read_text(encoding="utf-8")
-        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
 
-        for document in (template, source):
-            self.assertIn("SYSTEM ROLE", document)
-            self.assertIn("SYSTEM CONTEXT", document)
-            self.assertIn("RESOURCES", document)
-            self.assertIn("Documentation:", document)
-            self.assertNotIn("INTEGRATION FIT", document)
-            self.assertNotIn("Technical detail:", document)
+        self.assertIn("SYSTEM ROLE", template)
+        self.assertIn("SYSTEM CONTEXT", template)
+        self.assertIn("RESOURCES", template)
+        self.assertIn("Documentation:", template)
+        self.assertNotIn("INTEGRATION FIT", template)
+        self.assertNotIn("Technical detail:", template)
 
-    def test_dtp_context_diagram_relates_external_chiplet_and_internal_blocks(self) -> None:
+    def test_every_datasheet_source_has_a_valid_release_pdf(self) -> None:
         root = Path(__file__).resolve().parents[3]
-        diagram = (root / "doc/datasheets/assets/dtp-block-diagram.svg").read_text(encoding="utf-8")
+        sources = sorted((root / "doc/datasheets/src").glob("*.adoc"))
+        self.assertTrue(sources)
+        for source_path in sources:
+            with self.subTest(datasheet=source_path.name):
+                self.assertEqual(validate_source(source_path), [])
+                pdf = root / "doc/datasheets/dist" / f"ocah-{source_path.stem}-datasheet.pdf"
+                self.assertEqual(validate_pdf(pdf), [])
 
-        for label in (
-            "External debug / test",
-            "Chiplet boundary",
-            "Peer OCA chiplet",
-            "JTAG Interface Unit",
-            "Cross Trigger Network",
-            "SMC",
-            "SEP",
-            "Adopter IP",
-        ):
-            self.assertIn(label, diagram)
-
-    def test_dtp_abstracts_lifecycle_controls_in_interface_summary(self) -> None:
+    def test_every_datasheet_follows_the_template_conventions(self) -> None:
         root = Path(__file__).resolve().parents[3]
-        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
-
-        self.assertNotIn("!Debug security !`dbg_disable_i`", source)
-        self.assertRegex(
-            source,
-            r"([|!])Lifecycle policy \1Active-high, per-path debug and test disable controls",
-        )
-
-    def test_dtp_points_to_current_status_and_uses_full_size_resources(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
-
-        self.assertIn("current verification and maturity status", source.lower())
-        # Verification and maturity status is published on the live dashboard
-        # rather than as hardcoded counts (PR #1542/#1560 review).
-        self.assertIn("dashboard.html", source)
-        self.assertNotIn("OCAH DTP is beta RTL.", source)
-        # The RESOURCES links must render full size. Scope the check to the
-        # RESOURCES section itself; the TERMS and DOCUMENT CONTROL sections that
-        # follow it legitimately use [.datasheet-small].
-        resources = source.split("RESOURCES", maxsplit=1)[1].split(
-            "// datasheet-section:", maxsplit=1
-        )[0]
-        self.assertNotIn("[.datasheet-small]", resources)
+        for source_path in sorted((root / "doc/datasheets/src").glob("*.adoc")):
+            with self.subTest(datasheet=source_path.name):
+                source = source_path.read_text(encoding="utf-8")
+                self.assertIn("OPEN CHIPLET ATLAS HARNESS", source)
+                self.assertIn("tt_logo_color-yellow-black.png", source)
+                self.assertIn(":copyright-year: 2026", source)
+                self.assertIn(":copyright-holder: Tenstorrent USA, Inc.", source)
+                self.assertIn("SYSTEM ROLE", source)
+                self.assertIn("SYSTEM CONTEXT", source)
+                self.assertIn("RESOURCES", source)
+                self.assertIn("Documentation:", source)
+                self.assertNotIn("INTEGRATION FIT", source)
+                self.assertNotIn("Technical detail:", source)
+                # The RESOURCES links must render full size. Scope the check to
+                # the RESOURCES section itself; the TERMS and DOCUMENT CONTROL
+                # sections that follow it legitimately use [.datasheet-small].
+                resources = source.split("RESOURCES", maxsplit=1)[1].split(
+                    "// datasheet-section:", maxsplit=1
+                )[0]
+                self.assertNotIn("[.datasheet-small]", resources)
+                # Datasheets are adopter-facing, so a value is stated outright
+                # rather than deferred to the backlog item that may change it.
+                self.assertNotIn("/issues/", source)
 
 
 if __name__ == "__main__":

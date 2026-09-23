@@ -90,11 +90,11 @@ ocah-doc-setup: ocah-doc-trm-setup
 ocah-doc-html: ocah-doc-trm-html
 ocah-doc-pdf: ocah-doc-trm-pdf
 ocah-doc-serve: ocah-doc-trm-serve
-ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-contributing-clean ocah-doc-home-clean ocah-doc-datasheets-clean
+ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-starting-clean ocah-doc-home-clean ocah-doc-datasheets-clean
 
 ## Stage all books (registers + symlinks) without running Antora/asciidoctor-pdf.
 .PHONY: ocah-doc-all-setup
-ocah-doc-all-setup: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup ocah-doc-home-setup ocah-doc-datasheets-setup
+ocah-doc-all-setup: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-starting-setup ocah-doc-home-setup ocah-doc-datasheets-setup
 
 ## Build combined Antora HTML site - alias of doc-combined-html for consistency
 .PHONY: ocah-doc-all-html
@@ -102,7 +102,7 @@ ocah-doc-all-html: ocah-doc-combined-html
 
 ## Build PDFs for every book that has one (home is HTML-only).
 .PHONY: ocah-doc-all-pdf
-ocah-doc-all-pdf: ocah-doc-trm-pdf ocah-doc-integrator-pdf ocah-doc-programmer-pdf ocah-doc-appnotes-pdf ocah-doc-contributing-pdf ocah-doc-datasheets-pdf
+ocah-doc-all-pdf: ocah-doc-trm-pdf ocah-doc-integrator-pdf ocah-doc-programmer-pdf ocah-doc-appnotes-pdf ocah-doc-starting-pdf ocah-doc-datasheets-pdf
 
 # Construct combined Antora HTML site, and then manually serve
 .PHONY: ocah-doc-all-serve

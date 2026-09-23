@@ -28,6 +28,10 @@ the status to `Beta`, cite evidence in `content-readiness.md`, and do not put
 unresolved placeholders in a release source. Keep the rendered result to at most
 four US Letter pages.
 
+A sheet that needs different spacing to fit its pages may add
+`<product>-theme.yml` beside the shared theme. It must `extends:` the shared
+theme and change only spacing; the build selects it automatically.
+
 Use `Feature` and `Description` as the column headings in **At a Glance** tables,
 and `Feature` and `Integration options` in **Interfaces and configuration**
 tables. State the reference configuration in the accompanying text.

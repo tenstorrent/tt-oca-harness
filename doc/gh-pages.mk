@@ -64,7 +64,7 @@ ocah-doc-stage-ghpages: ocah-doc-combined-html
 	done
 	$(call ocah_stage_dashboard_data,$(OCAH_GHPAGES_DIR))
 	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
-	@echo "Note: SMU/SEP/SMC/AOU datasheet links remain placeholders until those sheets are authored."
+	@echo "Note: datasheet download links for sheets that are not yet authored remain placeholders."
 
 ## Push the already-staged tree to the gh-pages branch. This is what CI
 ## calls, after CI's own separate HTML/PDF build steps have already run.
