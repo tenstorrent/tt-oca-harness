@@ -221,7 +221,6 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
 [[tests]]
-[[tests]]
 name = "smc_i2c_target_acq_stretch_test"
 module = "smc_i2c_target_acq_stretch_test"
 
