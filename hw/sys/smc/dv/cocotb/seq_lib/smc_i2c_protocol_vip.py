@@ -382,11 +382,17 @@ class SmcI2cBusMonitor:
 class SmcI2cMasterVip:
     """Timer bit-bang I2C master (level-based stretch wait, no OD Edge)."""
 
+    #: Half periods the wait for SCL allowed before this became configurable.
+    #: The default bound is expressed in those terms so an existing caller
+    #: sees the same behaviour it always did.
+    DEFAULT_SCL_TIMEOUT_HALF_PERIODS = 100000
+
     def __init__(
         self,
         *,
         speed: int = 100_000,
         name: str = "smc_i2c0_master",
+        scl_timeout_ns: int | None = None,
     ) -> None:
         self.log = logging.getLogger(name)
         self.speed = speed
@@ -401,7 +407,20 @@ class SmcI2cMasterVip:
         _set_ext_low(self._sda_ext, _SDA_LOW, self._id, False)
         _set_ext_low(self._scl_ext, _SCL_LOW, self._id, False)
         self._active = False
-        self.log.info("%s bound: speed=%d (timer bit-bang)", name, speed)
+        self.scl_timeout_ns = (
+            scl_timeout_ns
+            if scl_timeout_ns is not None
+            else self.DEFAULT_SCL_TIMEOUT_HALF_PERIODS * self._half_ns
+        )
+        #: How long the last wait for SCL took, in ns. Published so a caller
+        #: can report a hold it tolerated as well as one it failed on.
+        self.last_scl_hold_ns = 0
+        self.log.info(
+            "%s bound: speed=%d scl_timeout=%d ns (timer bit-bang)",
+            name,
+            speed,
+            self.scl_timeout_ns,
+        )
 
     def _pull_sda(self, low: bool) -> None:
         _set_ext_low(self._sda_ext, _SDA_LOW, self._id, low)
@@ -410,11 +429,27 @@ class SmcI2cMasterVip:
         _set_ext_low(self._scl_ext, _SCL_LOW, self._id, low)
 
     async def _wait_scl_high(self) -> None:
-        for _ in range(100000):
+        """Wait for SCL to be released, giving up after ``scl_timeout_ns``.
+
+        Another device holding the clock is the normal way an I2C transfer is
+        paused, so this waits rather than failing immediately. What it does
+        not do is wait without a stated bound: the hold is measured, published
+        on ``last_scl_hold_ns``, and named in the error, so a caller that
+        wedges here reports how long the clock was held instead of running to
+        the end of its own timeout.
+        """
+        waited = 0
+        while waited < self.scl_timeout_ns:
             if int(self._scl.value):
+                self.last_scl_hold_ns = waited
                 return
             await Timer(self._half_ns, unit="ns")
-        raise SmcI2cVipError("SCL stayed low (stretch/timeout)")
+            waited += self._half_ns
+        self.last_scl_hold_ns = waited
+        raise SmcI2cVipError(
+            f"SCL stayed low for {waited} ns (bound {self.scl_timeout_ns} ns): another "
+            f"device is holding the clock"
+        )
 
     async def send_start(self) -> None:
         if self._active:
