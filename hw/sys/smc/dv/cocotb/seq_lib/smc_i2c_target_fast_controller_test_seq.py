@@ -1,0 +1,317 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""I2C0 target abandons a transaction a controller drives too fast for it.
+
+`TIMING3.THD_DAT` is the data hold time the target keeps before it drives an
+acknowledge, counted in its own clock periods. The target waits out that count
+with SCL low; if the controller releases SCL first, the acknowledge would land
+outside the bit it belongs to, and the design abandons the transaction instead
+of driving it late.
+
+The threshold is a relation between two numbers, so the leaf sets both. The
+target is programmed with a data hold time far longer than any other leaf uses
+and the bench controller is run at two rates around it: one whose SCL low
+period is well over the hold, and one whose low period is well under it.
+Nothing else changes between them.
+
+Both places the target makes that decision are driven -- the acknowledge of
+the address byte, and the acknowledge of a data byte -- and both change rate
+part-way through the transfer, after the START. The same hold count governs
+both acknowledges, so at one rate the address would always be the first to
+go; and the bus monitor takes the same `THD_DAT` as its threshold for
+detecting a START (`i2c_bus_monitor.sv`), so a start clocked fast enough to
+violate the hold is not seen as a start at all. The START therefore goes out
+at the slow rate in every leg, and only the bits after it change.
+
+A transfer at the slow rate runs before and after, so the abandons are the
+difference the rate makes rather than a target that never works. The register
+witness is `TARGET_NACK_COUNT`, which `i2c_core.sv` increments on the edge
+where the target decides to NACK the transaction; it is read-to-clear, so each
+leg requires exactly its own.
+"""
+
+from __future__ import annotations
+
+import cocotb
+from cocotb.triggers import ClockCycles, Timer
+
+from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
+from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_i2c_field_masks import (
+    I2C_ACQ_SIGNAL_ERROR,
+    I2C_ACQ_SIGNAL_NONE,
+    I2C_ACQ_SIGNAL_START,
+    I2C_ACQ_SIGNAL_STOP,
+    I2C_ACQDATA_SIGNAL,
+    I2C_ACQDATA_SIGNAL_BP,
+    I2C_CTRL_ACQ_START_STOP_EN,
+    I2C_CTRL_ENABLETARGET,
+    I2C_FIFO_CTRL_RXRST_FMTRST,
+    I2C_FIFO_CTRL_TXRST,
+    I2C_STATUS_ACQEMPTY,
+    I2C_TARGET_FIFO_STATUS_ACQLVL_BM,
+    I2C_TARGET_FIFO_STATUS_ACQLVL_BP,
+    I2C_WRAP_CTRL_TARGET,
+)
+from .smc_i2c_protocol_vip import SmcI2cMasterVip
+from .smc_i2c_target_smbus_test_seq import (
+    _pack_target_id,
+    _pack_timing0,
+    _pack_timing1,
+    _pack_timing2,
+    _pack_timing3,
+    _pack_timing4,
+)
+
+I2C0 = 0
+TARGET_ADDR = 0x26
+
+#: Data hold time in the target's own clock periods. The bench clocks
+#: `clk_periph_i` at 10 ns, so this is a hold of 2 us -- far longer than a
+#: real target would use, and chosen only so both bench rates below sit clear
+#: of it -- and below half the slow rate's low period, so the target always
+#: finishes driving an acknowledge before the clock rises again.
+TARGET_HOLD_CYCLES = 200
+#: The VIP holds SCL low for one bit period between bits, so the low period is
+#: 5 us at the slow rate and 1 us at the fast one: either side of the 2 us
+#: hold. Both are ordinary bus rates, well within what the target samples
+#: reliably.
+SLOW_SPEED = 200_000
+FAST_SPEED = 1_000_000
+PAYLOAD = bytes((0x80 + i) & 0xFF for i in range(1))
+#: Bus park before the data byte of the mid-transfer rate change, so the
+#: target's own hold on the address acknowledge has finished before the rate
+#: changes.
+PARK_NS = 8_000
+#: Rounds of waiting for the acquisition FIFO to settle after a STOP. The
+#: closing entry is written as the STOP is detected, which is after the
+#: bench's last bus edge.
+SETTLE_ROUNDS = 20
+SETTLE_CYCLES = 100
+#: Dwell after the bench's last edge before the acquisition FIFO is read.
+#: The target writes its closing entry only once it has detected the STOP,
+#: and `i2c_bus_monitor.sv` makes that detection take `THD_DAT`, which this
+#: leaf programs long. Ten times the hold leaves no doubt.
+STOP_DETECT_DWELL_NS = 10 * TARGET_HOLD_CYCLES * 10
+NACK_COUNT_BM = 0xFF
+
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
+I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", I2C0)
+I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", I2C0)
+I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", I2C0)
+I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", I2C0)
+I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", I2C0)
+I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", I2C0)
+I2C0_TARGET_NACK_COUNT = smc_indexed_addr(
+    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR", I2C0
+)
+I2C0_TARGET_FIFO_STATUS = smc_indexed_addr(
+    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", I2C0
+)
+I2C0_ACQDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR", I2C0)
+I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", I2C0)
+I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", I2C0)
+I2C0_TIMING2 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR", I2C0)
+I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", I2C0)
+I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", I2C0)
+
+_ABYTE_BM = 0xFF
+ADDR_BYTE = (TARGET_ADDR & 0x7F) << 1
+
+
+class smc_i2c_target_fast_controller_test_seq(SmcCsrSeq):
+    """A controller faster than the target's hold time must be refused."""
+
+    def __init__(self, name: str = "smc_i2c_target_fast_controller_test_seq") -> None:
+        super().__init__(name)
+        self.results: dict[str, tuple[list[int], list[tuple[int, int]], int]] = {}
+
+    async def _pop_all(self) -> list[tuple[int, int]]:
+        out: list[tuple[int, int]] = []
+        fifo = await self.csr_read("I2C0_TARGET_FIFO_STATUS", I2C0_TARGET_FIFO_STATUS)
+        level = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
+        for _ in range(level):
+            word = await self.csr_read("I2C0_ACQDATA", I2C0_ACQDATA)
+            out.append(((word & I2C_ACQDATA_SIGNAL) >> I2C_ACQDATA_SIGNAL_BP, word & _ABYTE_BM))
+        return out
+
+    async def _clear_nack_count(self, label: str) -> None:
+        first = await self.csr_read(f"I2C0_NACK_COUNT_{label}_CLEAR", I2C0_TARGET_NACK_COUNT)
+        again = await self.csr_read(f"I2C0_NACK_COUNT_{label}_ENTRY", I2C0_TARGET_NACK_COUNT)
+        assert again & NACK_COUNT_BM == 0, (
+            f"{label}: TARGET_NACK_COUNT reads {again & NACK_COUNT_BM} straight after a read "
+            f"cleared it from {first & NACK_COUNT_BM}"
+        )
+
+    async def _bring_up(self) -> None:
+        await self.csr_write("I2C0_DISABLE", I2C0_CTRL, 0)
+        await self.csr_write("I2C0_WRAP_TARGET", I2C0_WRAP_CTRL, I2C_WRAP_CTRL_TARGET)
+        await self.wait_i2c0_lsio_ready("I2C0_FAST_CONTROLLER")
+        await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, 0)
+        await self.csr_write("I2C0_TIMING0", I2C0_TIMING0, _pack_timing0(0x1A, 0x32))
+        await self.csr_write("I2C0_TIMING1", I2C0_TIMING1, _pack_timing1(2, 2))
+        await self.csr_write("I2C0_TIMING2", I2C0_TIMING2, _pack_timing2(5, 4))
+        timing3 = _pack_timing3(2, TARGET_HOLD_CYCLES)
+        await self.csr_write("I2C0_TIMING3", I2C0_TIMING3, timing3)
+        await self.csr_read("I2C0_TIMING3_RB", I2C0_TIMING3, expected=timing3)
+        await self.csr_write("I2C0_TIMING4", I2C0_TIMING4, _pack_timing4(4, 5))
+        await self.csr_write(
+            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST | I2C_FIFO_CTRL_TXRST
+        )
+        await self.csr_write(
+            "I2C0_TARGET_ID", I2C0_TARGET_ID, _pack_target_id(TARGET_ADDR, 0x7F, 0, 0)
+        )
+        await self.csr_write(
+            "I2C0_CTRL", I2C0_CTRL, I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, 20)
+        status = await self.csr_read("I2C0_STATUS_ENTRY", I2C0_STATUS)
+        assert status & I2C_STATUS_ACQEMPTY, (
+            f"the acquisition FIFO is not empty before the first transfer (STATUS=0x{status:08x})"
+        )
+
+    async def _settled_entries(self) -> list[tuple[int, int]]:
+        """Drain once the acquisition level is non-zero and has stopped moving.
+
+        Every leg ends with an entry -- a stop for the ones the target
+        acknowledges, a NACK-stop for the ones it abandons -- and the target
+        writes it only once it has detected the STOP, and that detection
+        takes `THD_DAT`, which this leaf programs long. Draining before it
+        lands would hand the entry to the next leg.
+        """
+        await Timer(STOP_DETECT_DWELL_NS, unit="ns")
+        level = -1
+        for _ in range(SETTLE_ROUNDS):
+            await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+            fifo = await self.csr_read("I2C0_TARGET_FIFO_STATUS", I2C0_TARGET_FIFO_STATUS)
+            now = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
+            if now > 0 and now == level:
+                return await self._pop_all()
+            level = now
+        raise AssertionError(
+            f"the acquisition FIFO never settled above empty in {SETTLE_ROUNDS} rounds "
+            f"(last level {level}); every leg closes with an entry of its own"
+        )
+
+    async def _run_leg(self, label: str, change_at: str | None) -> None:
+        """One transfer: START, address, one data byte, STOP.
+
+        Every leg starts at the slow rate. ``change_at`` names the byte whose
+        acknowledge is clocked at the fast rate instead.
+        """
+        await self._clear_nack_count(label)
+        master = SmcI2cMasterVip(speed=SLOW_SPEED, name=f"smc_i2c0_fast_ctrl_{label.lower()}")
+        acks: list[int] = []
+        await master.send_start()
+        if change_at == "address":
+            master.set_speed(FAST_SPEED)
+        acks.append(await master.send_byte(ADDR_BYTE))
+        if change_at == "data":
+            await Timer(PARK_NS, unit="ns")
+            master.set_speed(FAST_SPEED)
+        for value in PAYLOAD:
+            acks.append(await master.send_byte(value))
+        await master.send_stop()
+        entries = await self._settled_entries()
+        count = (
+            await self.csr_read(f"I2C0_NACK_COUNT_{label}", I2C0_TARGET_NACK_COUNT)
+        ) & NACK_COUNT_BM
+        self.results[label] = (acks, entries, count)
+
+    async def body(self) -> None:
+        await self.prove_dut_i2c0_pins()
+        cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
+        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
+        await self._bring_up()
+
+        await self._run_leg("BEFORE", None)
+        await self._run_leg("ADDR", "address")
+        await self._run_leg("DATA", "data")
+        await self._run_leg("AFTER", None)
+
+        for label, (acks, entries, count) in self.results.items():
+            cocotb.log.info(
+                "leg %s: ACK bits %s, TARGET_NACK_COUNT %d, acquired %s",
+                label,
+                acks,
+                count,
+                entries,
+            )
+
+        wanted = [
+            (I2C_ACQ_SIGNAL_START, ADDR_BYTE),
+            *[(I2C_ACQ_SIGNAL_NONE, v) for v in PAYLOAD],
+        ]
+        for label in ("BEFORE", "AFTER"):
+            acks, entries, count = self.results[label]
+            assert all(a == 0 for a in acks), (
+                f"{label}: the target refused a transfer whose SCL low period is well over "
+                f"its {TARGET_HOLD_CYCLES}-cycle hold time (ACK bits {acks}); the two legs "
+                f"between these are supposed to be the difference the rate makes"
+            )
+            assert [e[0] for e in entries] == [e[0] for e in wanted] + [I2C_ACQ_SIGNAL_STOP], (
+                f"{label}: the acquired signals are {entries}, not a start, the payload and a stop"
+            )
+            assert entries[: len(wanted)] == wanted, (
+                f"{label}: the acquired bytes do not match the transfer ({entries})"
+            )
+            assert count == 0, (
+                f"{label}: TARGET_NACK_COUNT reads {count} after a transfer the target "
+                f"acknowledged throughout"
+            )
+        cocotb.log.info(
+            "CHK-I2C-TGT-FAST-CTRL-CONTROL: at a bit rate whose SCL low period is well over "
+            "the target's programmed hold of %d cycles, the transfer before the two fast legs "
+            "and the transfer after them were both acknowledged throughout, acquired in full "
+            "and counted no NACK",
+            TARGET_HOLD_CYCLES,
+        )
+
+        acks, entries, count = self.results["ADDR"]
+        assert acks[0] == 1, (
+            f"ADDR: the target acknowledged its address to a controller whose SCL low period "
+            f"is under its {TARGET_HOLD_CYCLES}-cycle hold time (ACK bits {acks})"
+        )
+        assert count == 1, (
+            f"ADDR: TARGET_NACK_COUNT reads {count} after one transaction the target abandoned "
+            f"at the address acknowledge"
+        )
+        assert [e[0] for e in entries] == [I2C_ACQ_SIGNAL_ERROR], (
+            f"ADDR: the acquired stream is {entries}; a transaction abandoned before the "
+            f"address was acknowledged records nothing for the address itself and closes "
+            f"with the NACK-stop entry"
+        )
+        cocotb.log.info(
+            "CHK-I2C-TGT-FAST-CTRL-ADDR: a controller whose SCL low period is under the "
+            "target's %d-cycle hold time got no acknowledge for its address (ACK bits "
+            "%s), the transaction was counted once in TARGET_NACK_COUNT, and the only thing "
+            "acquired was the NACK-stop entry closing it (%s)",
+            TARGET_HOLD_CYCLES,
+            acks,
+            entries,
+        )
+
+        acks, entries, count = self.results["DATA"]
+        assert acks[0] == 0, (
+            f"DATA: the address was not acknowledged although it was clocked at the slow rate "
+            f"(ACK bits {acks})"
+        )
+        assert acks[1] == 1, (
+            f"DATA: the target acknowledged a data byte clocked faster than its "
+            f"{TARGET_HOLD_CYCLES}-cycle hold time (ACK bits {acks})"
+        )
+        assert count == 1, (
+            f"DATA: TARGET_NACK_COUNT reads {count} after one transaction the target abandoned "
+            f"at a data acknowledge"
+        )
+        assert all(e[0] != I2C_ACQ_SIGNAL_NONE for e in entries), (
+            f"DATA: a data entry reached the acquisition FIFO from the byte the target "
+            f"abandoned on ({entries})"
+        )
+        cocotb.log.info(
+            "CHK-I2C-TGT-FAST-CTRL-DATA: with the address clocked slowly and acknowledged, the "
+            "same transfer sped up for its data byte got no acknowledge for it (ACK bits %s), "
+            "was counted once in TARGET_NACK_COUNT and left no data entry behind (%s)",
+            acks,
+            entries,
+        )
