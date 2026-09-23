@@ -1041,16 +1041,18 @@ Constraints any adopter extension must satisfy:
 * *Asset-class compliance.* Secret-bearing fields used by the new chain
 must follow the asset-class scheme (see <<asset-and-scan-chain-protection>>):
 actual secrets and integrity-critical state are excluded from scan chains
-(Class 1), and any scannable secret-consuming logic (Class 2) has its
-scandump gated by the chain's feature control bit -- the same treatment
-that makes Class 2 safely scannable.
+(Class 1). A Class 2 chain must never admit a dump command. It may admit
+test commands only while `secure_tm = 1`, with secret sources disconnected
+and fuse programming blocked as specified above. The chain's feature-control
+bit controls reachability; it does not authorize a dump.
 
 * *Per-LC-state policy.* The new bit follows the standard
-per-LC-state formulas (see <<feature-control-table>>): disabled in
-PROD and PROD_END, bypassed by SEC_DIS, enabled at chiplet-owner
-access (RMA_CHIPLET) or under demotion, and subject to the
-predecessor-programs-disables convention for TEST_DEV and
-SiP-owner access.
+per-LC-state formulas for its group (see <<feature-control-table>>).
+DBG_1 and DBG_2 are disabled in undemoted PROD and in PROD_END;
+their respective demotion controls relax PROD to honor the disable vectors.
+Function bits continue to honor `~(SIP_DIS.FUNC | SYS_DIS.FUNC)` in both
+production states and are unaffected by demotion. All groups follow their
+listed TEST_DEV and RMA policies and the SEC_DIS override.
 
 NOTE: The specific bit-allocation convention -- which reserved bits
 are reserved for which adopters, and how bit assignments are advertised
