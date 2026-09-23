@@ -354,7 +354,7 @@ Other generated outputs remain under each owner&#8217;s
 <div class="paragraph">
 <p>For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
-<a href="../../ocah-docs/latest/architecture.html#ocah-memory-map" class="xref page">OCAH Memory Map</a>.</p>
+<a href="../../ocah-docs/latest/sep/memory_map.html" class="xref page">OCAH Memory Map</a>.</p>
 </div>
 </div>
 </div>
@@ -3663,23 +3663,23 @@ SEP latches it into <code>secure_tm_o</code> when fuse sensing completes, or at
 cold-reset release if SEC_DIS is already asserted. Secure test mode
 forces a no-secret, no-fuse-program configuration; it is not an
 authorization bit. See
-<a href="../../ocah-docs/latest/architecture.html#test-mode-entry" class="xref page">Test Mode Entry</a>
+<a href="../../ocah-docs/latest/sep/test_mode.html#test-mode-entry" class="xref page">Test Mode Entry</a>
 and
-<a href="../../ocah-docs/latest/architecture.html#secure-tm-vs-scandump" class="xref page"><code>secure_tm</code> and the Secure Scan Chain</a>
+<a href="../../ocah-docs/latest/sep/lifecycle_controller.html#secure-tm-vs-scandump" class="xref page"><code>secure_tm</code> and the Secure Scan Chain</a>
 in the TRM. <code>secure_tm_o</code> is also an SMU output.</p>
 </li>
 <li>
 <p><code>security_disable_o</code> is the SEC_DIS token-match result (emergency
 A0 unlock). On <code>sep.sv</code>, route it to SMC <code>sep_security_disable_i</code>; the
 SMU does that internally. See
-<a href="../../ocah-docs/latest/architecture.html#security-disable-sec_dis" class="xref page">Security Disable</a>
+<a href="../../ocah-docs/latest/sep/security_disable.html#security-disable-sec_dis" class="xref page">Security Disable</a>
 in the TRM.</p>
 </li>
 <li>
 <p><code>lc_state_o</code> is the differentially encoded LC_STATE shadow.
 <code>lc_sigint_err_o</code> is the decode integrity error (fail-closed). Both
 are SMU outputs. See
-<a href="../../ocah-docs/latest/architecture.html#life-cycle-controller-lcc-life-cycle-controller-lcc" class="xref page">Life Cycle Controller</a>
+<a href="../../ocah-docs/latest/sep/lifecycle_controller.html#life-cycle-controller-lcc-life-cycle-controller-lcc" class="xref page">Life Cycle Controller</a>
 in the TRM.</p>
 </li>
 <li>
@@ -3691,7 +3691,7 @@ in the TRM.</p>
 <p><code>lcc_demote_state_1_o</code> / <code>lcc_demote_state_2_o</code> are differentially
 encoded in-field debug demotion. They leave the SMU for adopter
 lifecycle logic and are not connected to the SMC. See
-<a href="../../ocah-docs/latest/architecture.html#demote-1-2-in-field-debug-demotion" class="xref page">in-field debug demotion</a>
+<a href="../../ocah-docs/latest/sep/lifecycle_controller.html#demote-1-2-in-field-debug-demotion" class="xref page">in-field debug demotion</a>
 in the TRM.</p>
 </li>
 <li>
