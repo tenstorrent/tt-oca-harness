@@ -225,11 +225,12 @@ def expected_site_data(
 ) -> dict[str, Any]:
     """The three trimmed documents for one run of the fixture DUT."""
     effective_metrics = {} if effective_metrics is None else effective_metrics
+    series = {"flow": "fixture", "framework": "cocotb", "tool": "verilator"}
     return {
         "summary": {
             "generated_at": GENERATED_AT,
-            "dut_status": [{"flow": "fixture", "tests_total": tests_total, "pass_rate": pass_rate}],
-            "results": [{"flow": "fixture", "coverage": {"effective_metrics": effective_metrics}}],
+            "dut_status": [{**series, "tests_total": tests_total, "pass_rate": pass_rate}],
+            "results": [{**series, "coverage": {"effective_metrics": effective_metrics}}],
         },
         "tests": {
             "generated_at": GENERATED_AT,
@@ -245,7 +246,7 @@ def expected_site_data(
                     "flaky_tests": flaky_tests,
                     "per_dut": [
                         {
-                            "flow": "fixture",
+                            **series,
                             "coverage_status": coverage_status,
                             "effective_metrics": effective_metrics,
                         }
@@ -435,9 +436,9 @@ class SiblingStagingReaders(SiteDataCase):
         self.write_run(PASSING, coverage=True)
         record, summary, _, _ = self.publish()
         badges = render_badges.badges_for(summary["dut_status"][0], record["coverage"])
-        self.assertEqual(badges["status"][:2], ("fixture", "passing"))
-        self.assertEqual(badges["tests"][:2], ("tests", "100.0 %"))
-        self.assertEqual(badges["coverage"][:2], ("coverage", "47.5 %"))
+        self.assertEqual(badges["status"][:2], ("fixture (cocotb, verilator)", "passing"))
+        self.assertEqual(badges["tests"][:2], ("tests (cocotb, verilator)", "100.0 %"))
+        self.assertEqual(badges["coverage"][:2], ("coverage (cocotb, verilator)", "47.5 %"))
 
     def test_test_history_reads_every_attempt_with_its_reason(self):
         self.write_run(RETRIED)
