@@ -1729,7 +1729,10 @@ args = [
   # +skip_fuse_sense: no OTP/eFuse data is read.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+  # TEST_DEV: the lifecycle posture that leaves every SEP debug path open, so
+  # dbg_disable.stap_sep is clear and the DTP forwards TMS to the SEP STAP. The
+  # default image carries no valid LC_STATE word and disables all debug paths.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
 ]
 
 [[tests]]
