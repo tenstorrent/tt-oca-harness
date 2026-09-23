@@ -28,15 +28,15 @@ anchor:composition[]The SMU combines:
   and memory-zeroer accelerators.
 
 ifdef::backend-html5[]
-* xref:dtp:index.adoc[*Debug and Test Ports (DTP)*] — {smu-dtp-desc}
 * xref:sep:index.adoc[*Security Processor (SEP)*] — {smu-sep-desc}
 * xref:smc:index.adoc[*System Management Controller (SMC)*] — {smu-smc-desc}
+* xref:dtp:index.adoc[*Debug and Test Ports (DTP)*] — {smu-dtp-desc}
 endif::backend-html5[]
 ifdef::backend-pdf[]
-* *Debug and Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
 * *Security Processor (SEP)* — {smu-sep-desc} See <<security-processor-sep>>.
 * *System Management Controller (SMC)* — {smu-smc-desc}
   See <<system-management-controller>>.
+* *Debug and Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
 endif::backend-pdf[]
 
 These three subsystems share a single primary clock domain (`clk_smu_i`) and
@@ -142,6 +142,6 @@ and the management functions in SMC, as shown in
 image::smu-lifecycle-controls.svg[alt="SEP lifecycle and feature-control propagation to SMC and DTP",width=100%,pdfwidth=100%]
 
 [[child-subsystems]]
-anchor:smu-child-subsystems[]The subsystem chapters (DTP, SEP, SMC) follow
+anchor:smu-child-subsystems[]The subsystem chapters (SEP, SMC, DTP) follow
 immediately; see the <<smu-composition,Composition>> section above for roles
 and cross-references.
