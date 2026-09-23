@@ -228,6 +228,7 @@ feature rows.
 |`smc_avsbus_retry_exhaust_test` |Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
 |`smc_avsbus_sanity_test` |Run the AVSBus sideband CSR precheck (alias of `smc_sideband_protocol_smoke_test_seq`).
 |`smc_avsbus_status_depth_test` |Run AVSBus status-side decode checks.
+|`smc_dma_reg_byte_enable_error_test` |Every writable DMA register refuses a two-byte write that omits lanes its PERMIT mask requires, and reads back unchanged.
 |`smc_dma_reserved_stream_banks_test` |All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`; reserved banks read their `dma.adoc` value and launch nothing.
 |`smc_dma_sanity_test` |Run DMA copy over output-fabric payload bytes and check the model.
 |`smc_octs_dual_sync_test` |U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges.
@@ -8501,6 +8502,40 @@ Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-210-smc_dma_reg_byte_enable_error_test]]
+===== 210 `smc_dma_reg_byte_enable_error_test`
+
+*Source Module*: `smc_dma_reg_byte_enable_error_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Refuse a sub-word write at every writable DMA register, and show the refusal takes no effect.
+
+*Test Coverage*:
+
+* `smc_periph_regblock_sweep_test` found that this block answers a sub-word write with an error, which is why its configuration takes the full-width cycle there. The generated block says why: `reg_error = (devmode_i & addrmiss) | wr_err` and `wr_err = reg_we & (addr_hit[N] & |(PERMIT[N] & ~reg_be))`, so a write errors when it omits a byte lane that register's `PERMIT` mask requires -- not merely when it is narrow. Every register update is gated on `!reg_error`.
+* That distinction decides where the write lands. `PERMIT` covers the lanes a register's fields occupy and all thirteen writable registers have fields in their low half, so a two-byte write at the register's own address can leave `PERMIT` satisfied and be accepted. The write therefore goes to the upper half, which omits the low lanes of all thirteen.
+* Each of the thirteen -- the configuration word and the twelve transfer-descriptor registers -- takes four accesses: a full-width read that records what it holds; a full-width write of that same value, which has to be accepted and is the live control that the address is writable at all; the two-byte write over the upper half, which has to be refused; and a full-width read that has to return the recorded value.
+* The last step is also why the leaf is safe against the transfer descriptors: a refused write never reaches the register. The second writes back the value already there. No transfer is started -- in this frontend the launch is a read of a `NEXT_ID` register, which is read-only and outside the set this leaf touches.
+* The read-only registers are left alone. Their uncovered rows pair `addr_hit` with `reg_re` and a set `reg_error`, which no stimulus can produce: `reg_re` and `reg_we` are mutually exclusive, `wr_err` is gated on `reg_we`, and `addrmiss` needs no address to hit.
+
+*Test Procedure*:
+
+Drive `smc_dma_reg_byte_enable_error_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DMA-REG-BYTE-ENABLE-ERROR` |At each of the thirteen writable DMA registers a full-width write of the word it already held was accepted and a two-byte write over its upper half was refused with an error response, so the refusal is the missing byte lanes and not a dead window
+|`CHK-DMA-REG-REFUSED-WRITE-NO-EFFECT` |Every one of the thirteen read back the word it held before its refused write, so the byte-enable error gates the register update rather than being reported after it
+|===
+
+*Pass Criteria*: `CHK-DMA-REG-BYTE-ENABLE-ERROR`, `CHK-DMA-REG-REFUSED-WRITE-NO-EFFECT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[sec-220-smc_avsbus_frame_transaction_test]]
 ===== 220 `smc_avsbus_frame_transaction_test`
 
@@ -9797,6 +9832,8 @@ to make, and waits on a ruling.
 |`smc_dual_axi_sram_probe_test` |`all`, `dual` |`target = "dual"` and `firmware = prod_rom` |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
 |`smc_occp_sanity_test` |`all`, `dual` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above
 |`smc_occp_dual_unsecure_boot_test` |`occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
+|`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
+|`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |minshaoho (`9282d8c14`) |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
 |===
 
