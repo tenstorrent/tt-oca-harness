@@ -29,7 +29,7 @@ entry the target appends so software can see the transaction ended badly.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, Timer
 
 from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -95,6 +95,11 @@ I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", I2
 _ABYTE_BM = 0xFF
 POLL_CYCLES = 100
 FINISH_POLLS = 4000
+#: Dwell between the bench's last edge and the drain. The target writes its
+#: closing entry once it has detected the STOP, which `i2c_bus_monitor.sv`
+#: makes take `TIMING3.THD_DAT` -- short here, but the entry is what each leg
+#: is reading for.
+STOP_DETECT_DWELL_NS = 2_000
 
 
 class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
@@ -108,6 +113,7 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         self.read_data = b""
 
     async def _pop_all(self, into: list[tuple[int, int]]) -> None:
+        await Timer(STOP_DETECT_DWELL_NS, unit="ns")
         fifo = await self.csr_read("I2C0_TARGET_FIFO_STATUS", I2C0_TARGET_FIFO_STATUS)
         level = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
         for _ in range(level):
