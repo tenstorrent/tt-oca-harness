@@ -359,6 +359,7 @@ feature rows.
 |`smc_dfd_cla_event_type_sweep_test` |Every event index driven into all three event selectors of each of node 0's event-action pairs.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
 |`smc_dfd_sink_mmr_sweep_test` |Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
+|`smc_dfd_ro_mmr_write_test` |Every read-only DFD MMR written, with the write required to be ignored.
 |`smc_dfd_sanity_test` |Run diagnostic CSR reads as the public DFD bounded checker.
 |`smc_dfx_status_abort_test` |mem_repair_abort / mbist_abort → STATUS_SMU sticky bits.
 |`smc_ijtag_basic_test` |Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario.
@@ -4548,6 +4549,41 @@ Drive `smc_dfd_sink_mmr_sweep_test_seq`. Each checker below is a named compare t
 
 
 *Pass Criteria*: `CHK-DFD-SINK-MMR-DECODE`, `CHK-DFD-SINK-MMR-READONLY` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-219-smc_dfd_ro_mmr_write_test]]
+===== 219 `smc_dfd_ro_mmr_write_test`
+
+*Source Module*: `smc_dfd_ro_mmr_write_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Every read-only DFD MMR written, with the write required to be ignored.
+
+*Test Coverage*:
+
+* The 37 registers of the `cla`, `dst`, `dst_sink` and `funnel` sub-blocks that the RDL gives no software-writable field -- the signal snapshots, the timestamps, the counters' hardware-driven halves, the sink data port and write pointer. The MMR write sweeps drive only registers that have a writable field, so the write decode of these addresses is otherwise never exercised.
+* Each register is read twice before the write, so a register that is moving on its own is measured rather than assumed, and only the ones that held still are required to hold their value across the write. The rest are still written, because the decode is what is exercised.
+* The CLA is checked disarmed before the sweep starts, so the hardware-driven registers are quiescent.
+
+*Test Procedure*:
+
+Drive `smc_dfd_ro_mmr_write_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DFD-RO-MMR-HELD` |Every register with no software-writable field that read the same value twice running returned it again after a software write of all ones; one that takes the value fails it unless it is a pinned deviation
+|`CHK-DFD-RO-MMR-UNDECLARED` |Every read of every written register drove 0 in each bit no field of the register occupies, before and after the write; a driven undeclared bit fails it
+|===
+
+*Known deviation*: `dst_sink/Trdstramwphigh` is declared `sw = r; hw = w` by `dfd_dst_sink.rdl` but takes a software write of all ones and reads it back. The leaf pins that behaviour rather than skipping the register, so correcting either the design or the map fails this leaf and the entry is revisited.
+
+
+*Pass Criteria*: `CHK-DFD-RO-MMR-HELD`, `CHK-DFD-RO-MMR-UNDECLARED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== EFUSE
