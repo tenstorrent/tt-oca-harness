@@ -223,6 +223,8 @@ feature rows.
 |===
 |Testcase |Objective
 |`smc_avsbus_clock_config_proxy_test` |AVS_CFG answers with AVS_CG_EN cleared and stops answering when set.
+|`smc_avsbus_frame_transaction_test` |Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each.
+|`smc_avsbus_retry_exhaust_test` |Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
 |`smc_avsbus_sanity_test` |Run the AVSBus sideband CSR precheck (alias of `smc_sideband_protocol_smoke_test_seq`).
 |`smc_avsbus_status_depth_test` |Run AVSBus status-side decode checks.
 |`smc_dma_reserved_stream_banks_test` |All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`; reserved banks read their `dma.adoc` value and launch nothing.
@@ -230,6 +232,7 @@ feature rows.
 |`smc_octs_dual_sync_test` |U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges.
 |`smc_octs_sanity_test` |AVSBus status-CSR decode plus the sideband observability probe, a recorded SUBSTITUTE for a pad-level OCTS checker; touches no OCTS register or pad.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
+|`smc_telemetry_atb_capture_test` |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
 |`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 |`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
@@ -7733,6 +7736,114 @@ Drive `smc_cpu_mmio_write_wedge_test_seq`. Each checker below is a named compare
 *Pass Criteria*: all five checkers hold. Enrolled in: `all`, `cpu`. Not in `hosted` (builds firmware).
 
 '''''
+
+[[sec-220-smc_avsbus_frame_transaction_test]]
+===== 220 `smc_avsbus_frame_transaction_test`
+
+*Source Module*: `smc_avsbus_frame_transaction_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at the responding level by the bench
+
+*Objective*: Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each.
+
+*Test Coverage*:
+
+* `AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE` routes the first launch through a slave resync, so the command path is entered the same way on every run.
+* Three commands queued back to back exercise the first, mid and last subframe shapes in one burst.
+* The sdata pad is held low, which `interface.adoc` "AVSBus Slave Subframe" makes a valid frame with slave acknowledgment 0, so the controller takes the accept path rather than the retry path.
+* The single-cycle end-of-subframe and post-resync launch states are not directly observable: `cur_state_debug_o` reaches the bench through two handshake data synchronizers, which forward the value they hold when a transfer opens. Their effect is checked instead.
+* The slave response word is not compared: the readback register reads 0 both for the all-zero subframe and for an empty FIFO.
+
+*Test Procedure*:
+
+Drive `smc_avsbus_frame_transaction_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-FRAME-FSM-MAIN-PATH` |`tb_avsbus_cur_state_debug` held each of AVS_IDLE, AVS_SLAVE_RESYNC, AVS_SHIFT_1ST_SUBFRAME, AVS_SHIFT_MID_SUBFRAME and AVS_SHIFT_LAST_SUBFRAME over two consecutive `clk_periph_i` samples; the one-hot bit order is transcribed from `architecture.adoc` "Protocol State Machine"
+|`CHK-AVS-MASTER-SUBFRAME` |Every master subframe captured on `avs_mdata_o` over the DUT's own AVS clock equals the queued AVS_CMD word in wire order -- `2'b01` preamble in [31:30] and the generated-header AVS_CMD fields in [29:3]; the hardware CRC-3 is excluded because no source in this tree publishes the polynomial
+|`CHK-AVS-CMD-FIFO-DRAIN` |After all three responses, AVS_FIFOS_STATUS reports the command FIFO at 0 occupied and the full generated depth vacant, with AVS_NORMAL_STATUS CMD_FIFO_EMPTY and AVS_BUS_IS_IDLE set
+|`CHK-AVS-READBACK-FIFO-FILL` |AVS_FIFOS_STATUS reports exactly one readback entry per command and the matching vacant count, with AVS_NORMAL_STATUS READBACK_HAS_DATA set
+|`CHK-AVS-READBACK-POP` |Each AVS_READBACK read returned OKAY on a non-empty FIFO and advanced the occupancy by exactly one, ending at 0 with READBACK_HAS_DATA clear
+|`CHK-AVS-VALID-ACK-NO-RETRY` |TOTAL_RETRIES is 0, AVS_MASTER_IS_RETRYING is clear, and neither SLAVE_UNRESPONSIVE_INT nor MAX_RETRIES_ATTEMPTED_INT is raised; `smc_avsbus_retry_exhaust_test` drives all three to 1 on the same registers
+|===
+
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-221-smc_avsbus_retry_exhaust_test]]
+===== 221 `smc_avsbus_retry_exhaust_test`
+
+*Source Module*: `smc_avsbus_retry_exhaust_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at its idle level by the bench
+
+*Objective*: Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
+
+*Test Coverage*:
+
+* The sdata pad idles high, which `interface.adoc` "AVSBus Slave Subframe" makes a frame whose Frame Valid bit says the target did not respond.
+* `AVS_CFG_0.MAX_RETRIES` is programmed to 2, so the retry countdown is walked rather than stepped straight to zero.
+* Two commands queued back to back separate the retry shapes: the reply to the first arrives while the second is on the wire, so the controller retries while still receiving before alternating transmit-only and receive-only retries.
+* The single-cycle end-of-subframe and buffered-reply retry states are not directly observable through the handshake-synchronised debug bus; the interrupt and retry-count checks stand in for them.
+
+*Test Procedure*:
+
+Drive `smc_avsbus_retry_exhaust_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-RETRY-FSM-PATH` |`tb_avsbus_cur_state_debug` held each of AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME, AVS_RETRY_SHIFT_XMIT_SUBFRAME and AVS_RETRY_SHIFT_RECV_SUBFRAME over two consecutive `clk_periph_i` samples
+|`CHK-AVS-RETRY-IN-PROGRESS` |AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING read back set on at least one poll taken while the burst was in flight, a register-path witness independent of the debug bus
+|`CHK-AVS-RETRY-BUDGET-EXHAUSTED` |AVS_NORMAL_STATUS.TOTAL_RETRIES reached at least the programmed budget and AVS_INTERRUPT carries both SLAVE_UNRESPONSIVE_INT and MAX_RETRIES_ATTEMPTED_INT
+|`CHK-AVS-RETRY-INT-W1C` |On an idle bus, AVS_INTERRUPT_CLEAR with both clear bits returned AVS_INTERRUPT to neither flag raised
+|===
+
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-222-smc_telemetry_atb_capture_test]]
+===== 222 `smc_telemetry_atb_capture_test`
+
+*Source Module*: `smc_telemetry_atb_capture_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the bench ATB beat driver on the receiver 0 pins
+
+*Objective*: One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
+
+*Test Coverage*:
+
+* Follows the three procedures in `hw/ip/telemetry_receiver/doc/programming.adoc`: reading a message, receiver flush and transmitter flush.
+* Each ATB beat requires the `atready_o` handshake; expiry is a failure, because a truncated frame can still clear STATUS.BUFFER_EMPTY and still match the probe id.
+* Which 9-bit block a counter byte lands in has no documented source, so every block below the header is filled valid and all-ones. `doc/index.adoc` supplies the rest: seven blocks per packet, four consecutive blocks per counter, and a counter valid only when all four of its blocks are.
+* The flush-acknowledge pins exist for receiver 0 only, so the transmitter-flush leg is not repeated on receivers 1 and 2.
+
+*Test Procedure*:
+
+Drive `smc_telemetry_atb_capture_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-TELEMETRY-ATB-MESSAGE-CAPTURE` |A complete last-flagged message cleared STATUS.BUFFER_EMPTY, TELEMETRY_PROBE_ID read back the framed probe id, TELEMETRY_COUNTER_VLDS read exactly one valid counter, TELEMETRY_COUNTER[0] read the all-ones value reassembled from four valid blocks while TELEMETRY_COUNTER[1] stayed at its generated reset, and CTRL.BUFFER_POP returned the buffer to empty
+|`CHK-TELEMETRY-RX-FLUSH` |With a message buffered, CTRL.TELEMETRY_RX_FLUSH returned STATUS.BUFFER_EMPTY to 1 within the poll bound and clearing the request read CTRL back at 0
+|`CHK-TELEMETRY-TX-FLUSH-HANDSHAKE` |`afvalid_o` idled at 0 with `afready_i` low, rose after CTRL.TELEMETRY_TX_FLUSH was written and stayed asserted while `afready_i` was low, then retired once `afready_i` went high with CTRL.TELEMETRY_TX_FLUSH self-cleared
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
