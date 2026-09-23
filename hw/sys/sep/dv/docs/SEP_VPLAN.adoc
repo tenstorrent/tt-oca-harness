@@ -446,6 +446,10 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Read-side counterpart of the strobe test: a read narrower than the 64-bit beat only obligates the responder to drive the addressed byte lanes (a 32-bit CSR leaves RDATA[63:32] undriven; a narrow-ARSIZE beat leaves every non-addressed lane undriven), so the value handed to the test must be a pure function of the addressed lanes. Every read is compared against an independent golden and repeated around a checked disturbing access, so a result that leaks undriven lanes or leftover channel state fails as a mismatch.
+|`sep_crypto_csr_wide_access_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|The SEP fabric is 64-bit and every crypto register block is 32-bit, so a 64-bit CSR access is not forwarded: the aperture's `axi_dw_converter` must split it into two 32-bit beats and reassemble the read data in order. The rest of the suite issues 32-bit beats, which take the converter's passthrough arm, so the downsize arm carries no evidence from any other leaf. The two arms are compared against each other -- the 64-bit read against the two 32-bit reads of the same words -- so a converter that zeroed a half, duplicated a word or swapped the halves fails as a mismatch. No burst is involved: `sep_crypto_axi_interconnect.sv:111-112` routes any `AxLEN != 0` to the crypto error slave, which `hw/sys/sep/doc/crypto.adoc` states to software as a single-beat rule.
 |`sep_axi_map_refuse_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -5504,6 +5508,47 @@ reported as such rather than counted as a pass.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+[[sep_crypto_csr_wide_access_test]]
+===== `sep_crypto_csr_wide_access_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_crypto_csr_wide_access_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves that a 64-bit read of a crypto CSR is re-beated by the aperture's width converter without changing the data. The fabric is 64-bit and the register block is 32-bit, so `AxSIZE=3` cannot be forwarded: the converter takes its downsize arm, issues two 32-bit beats and reassembles them. Every other leaf in the suite issues 32-bit beats and takes the passthrough arm instead, so no existing evidence covers the downsize arm at any of these apertures.
+
+*Test Coverage*: Five crypto apertures behind an `axi_dw_converter` -- AES, HMAC, KMAC, OTBN and entropy source -- each presented one 64-bit read and its two 32-bit equivalents.
+
+*Test Procedure*:
+
+[arabic]
+. For each aperture, read its chosen 8-byte aligned register pair as two 32-bit single beats.
+. Read the same two words again, single-beat, and require both passes to agree. A word that changes between them is live state rather than a comparand, and its aperture is reported instead of compared.
+. Read the same 8 bytes as ONE 64-bit beat.
+. Compare the 64-bit value against the two 32-bit values concatenated.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-WIDE-SPLIT
+|The 64-bit read equals the two 32-bit reads of the same words, at every aperture. The golden is the DUT's own passthrough arm, so this is converter-against-converter and never a recomputation.
+|CHK-WIDE-NONVAC
+|Every aperture in the table was presented, and at least three compared a NON-ZERO value. A pair that reads zero compares 0 against 0, which a converter returning nothing would also satisfy, so the floor is what makes the other checker mean something.
+|===
+*Evidence*: the register pairs are chosen for a non-zero reset in the generated map -- `HMAC_CFG` 0x4100, `KMAC_CFG_SHADOWED` 0x1000, `OTBN_STATUS` 0x4, `ENTROPY_SOURCE_COMPONENT_ID` 0x1000001 -- so the compared halves differ and a zeroed, duplicated or half-swapped result fails. Addresses come from the generated register header by symbol, never a literal.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Scope note*: the TRNG aperture is not in the table. A plain 32-bit read of its base answers DECERR from this test's quiescent state, so a wide access there would measure block reachability rather than the converter. The write direction is also out of scope: these are status and configuration registers, and writing them to obtain a comparand would test the register rather than the conversion.
 
 [[sep_axi_partial_lane_read_test]]
 ===== `sep_axi_partial_lane_read_test`
