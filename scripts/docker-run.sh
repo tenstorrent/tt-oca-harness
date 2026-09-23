@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes|starting|datasheets]|doc-stage>
 #   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
 #                   is what gets deployed
 #   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure
@@ -487,8 +487,9 @@ doc_product_paths() {
   appnotes) echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
   starting) echo "doc/starting antora-starting-playbook.yml ocah-doc-starting-setup ocah-doc-starting-pdf" ;;
   home) echo "doc/home antora-home-playbook.yml ocah-doc-home-setup" ;;
+  datasheets) echo "doc/datasheets - ocah-doc-datasheets-setup ocah-doc-datasheets-pdf" ;;
   *)
-    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home or starting)" >&2
+    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home, starting or datasheets)" >&2
     exit 1
     ;;
   esac
@@ -521,6 +522,10 @@ doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=() kroki_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
+  if [[ "$product" == datasheets ]]; then
+    echo "error: datasheets are standalone PDFs; use: ./scripts/docker-run.sh doc-pdf datasheets" >&2
+    exit 1
+  fi
   doc_setup "$product"
   if [ "$product" = trm ]; then
     for companion in home integrator programmer appnotes starting; do
@@ -577,6 +582,7 @@ doc_stage() {
   local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
   local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
   local starting_dist="${OCAH_STARTING_DIST:-doc/starting/dist}" starting_pdf="${OCAH_STARTING_PDF:-ocah-starting.pdf}"
+  local datasheets_dist="${OCAH_DATASHEETS_DIST:-doc/datasheets/dist}"
 
   if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
     echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -616,6 +622,12 @@ doc_stage() {
   else
     echo "warning: Getting Started PDF not found at $starting_dist/$starting_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf starting)"
   fi
+
+  local datasheet_pdf
+  for datasheet_pdf in "$ROOT/$datasheets_dist"/ocah-*-datasheet.pdf; do
+    [[ -f "$datasheet_pdf" ]] || continue
+    cp "$datasheet_pdf" "$ROOT/$ghpages_dir/downloads/"
+  done
 
   doc_stage_dashboard_data "$ROOT/$ghpages_dir"
 
