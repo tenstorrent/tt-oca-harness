@@ -21,7 +21,7 @@ Complete system initialization for multi-timer synchronization:
 // Release reset to all timers simultaneously
 
 // Configure PRIMARY timer
-write32(primary_base + 0x04, 0x0A05); // CTRL: CREDIT_VAL=10, PULSE_WIDTH=5
+write32(primary_base + 0x04, 0x0001050A); // CTRL: STEP=1, PULSE_WIDTH=5, CREDIT_VAL=10
 write32(primary_base + 0x0C, preset_lo); // TIMER_PRESET_LO
 write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI
 ----
@@ -30,7 +30,7 @@ write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI
 [source,sourceCode,c]
 ----
 for (int i = 0; i < num_secondary; i++) {
-    write32(secondary_base[i] + 0x04, 0x0A05); // Same CTRL settings
+    write32(secondary_base[i] + 0x04, 0x0001050A); // Same CTRL settings
     write32(secondary_base[i] + 0x0C, preset_lo); // Same preset
     write32(secondary_base[i] + 0x10, preset_hi); // Same preset
 }
