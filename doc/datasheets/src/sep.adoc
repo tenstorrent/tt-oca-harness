@@ -171,8 +171,8 @@ path
 !I/O and events !Quad-SPI pins, timer/software/external interrupts, watchdog
 reset request, mailbox interrupts, and error/status outputs
 !Build-time !Adams Bridge masking and SRAM latency, Key Manager read latency,
-external entropy-stream count (`EXT_TRNG_NUM_AXIS`, default 3), security-disable
-token, and AXI type parameters
+vendor eFuse shim CSR block size, and security-disable token. The external
+entropy-stream count is fixed at three
 !===
 
 a|
