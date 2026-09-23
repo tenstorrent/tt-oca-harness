@@ -8,7 +8,7 @@ things, and the two flows answer different questions:
 
 | File | Flow | Mechanism | Population |
 | --- | --- | --- | --- |
-| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` | the SEP rule: DUT minus the bench, the CPU subtree and the library cells; functional third-party IP stays graded |
+| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` | the SEP rule: DUT minus the bench, the CPU subtree, the library and interconnect cells and the I3C controllers; every other functional third-party IP stays graded |
 | `../verilator/smc_cov_scope.vlt` | public CI | `coverage_off -file`, globs | what SMC owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`, the `hw/top` shells and the `cov/sv` points |
 
 Both are applied at **compile** time, following what SEP measured
@@ -50,14 +50,27 @@ Verilator 5.050 leaves some vendored files instrumented that its scope names
 ### `smc_cov_scope.hier` (VCS)
 
     -tree smc_uvm_top 1        TB top's own body, children kept
-    // bench                   units compiled from hw/sys/smc/dv/tb and
-                               hw/sys/smc/dv/models
+    // bench                   units compiled from hw/sys/smc/dv/tb,
+                               hw/sys/smc/dv/models and the dv/ trees of the
+                               hw/ip blocks (the eFuse bank model and its
+                               register block), as SEP drops efuse_bank_model
     // cpu subtree             the chipyard-generated CPU cluster, the same
                                argument SEP uses to drop sep_cpu
-    // library cells           vendor/pulp-platform/common_cells and the
-                               OpenTitan prim library, the cells SEP drops
+    // library cells           vendor/pulp-platform/common_cells, the OpenTitan
+                               prim library (the cells SEP drops) and the OCAH
+                               och_prim library, the same kind of leaf cell
+    // interconnect cells      the vendored pulp AXI, APB, register_interface,
+                               AXI-Stream and OBI mux, demux, crossbar and
+                               converter children; the SMC fabric wrappers that
+                               instantiate them stay graded, so a decode or
+                               isolation fault still lands on SMC's own module
     // package                 axi_pkg, which would report an assertion row
                                with no logic behind it
+    // i3c controllers         -tree ...u_smc_peripherals.u_i3ccore_wrapper: the six
+                               I3C controllers and their AXI-Lite demux, a large
+                               third-party block that one SMC leaf reaches and
+                               that has its own bench (hw/ip/i3ccore_wrap/dv),
+                               the same argument SEP uses to drop sep_cpu
 
 The `-module` lines are generated:
 
@@ -83,18 +96,46 @@ reason under "Verilator glob matching" below:
 `hw/sys/smc/dv/cov/sv/*` is **not** excluded — those files carry
 the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
+## Exclusion files
+
+`coverage_policy.toml` beside this file names two `-elfile` files the report
+applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
+Both are written by `gen_smc_cov_exclusions.py` from urg's exclusion
+templates and the run's raw report (`cov/report_raw`, written without the
+exclusion files), and list only rows and branch directions that report marks
+uncovered, so a reachable point is never hidden by a pattern:
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions cond+branch -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+
+| File | Class | Fact |
+| --- | --- | --- |
+| `smc_regblock_exclusions.el` | A1 NO-STALL | a PeakRDL regblock without external registers hardwires `cpuif_req_stall_rd/wr` to zero: the valid-without-ready row of each AXI-Lite handshake condition and the stall branches cannot occur |
+| `smc_regblock_exclusions.el` | A2 NO-ERROR | a regblock generated with "No valid address check" never sets `decoded_err`, `cpuif_wr_err` or `cpuif_rd_err`: its error branches and SLVERR responses cannot occur |
+| `smc_xor_network_exclusions.el` | X1 XOR-NETWORK | a CRC or parity network is an XOR of four or more terms; condition coverage enumerates 2^n input combinations of a function the tests compare by its output |
+
+A regblock whose stall is `external_pending` (it has external registers)
+gets A2 only; a regblock that decodes errors gets neither. `--check` reports
+when the committed files no longer match the templates.
+
 ## Why these exclusions
 
 The chipyard-generated CPU cluster dominates the unscoped denominator and is
 reached only by the CPU-boot tests, so an unscoped headline is a statement
 about a core nobody grades here -- the same reason SEP drops `sep_cpu`. The
-library cells (pulp `common_cells`, OpenTitan `prim*`) are leaf primitives
-whose branches depend on parameters no SMC test chooses. Everything else the
-build compiles stays graded: the vendored I3C controller, DMA, debug and trace
-blocks and AXI fabric, and the `hw/ip` and `hw/common` blocks SMC integrates,
-because SMC tests drive them by name and their reachability from the SMC
-boundary is part of what this bench claims. The Verilator public-CI scope
-keeps the narrower owned-files set for the reasons above.
+six I3C controllers are the same case at the peripheral level: one SMC leaf
+reaches them, they carried three fifths of the uncovered points under the
+SEP rule, and `hw/ip/i3ccore_wrap/dv` grades their internals. The library
+cells (pulp `common_cells`, OpenTitan `prim*`, OCAH `och_prim`) are leaf
+primitives whose branches depend on parameters no SMC test chooses, and the
+vendored interconnect cells (pulp AXI/APB mux, demux, crossbar and converter
+children) are the same kind of parameterised library inside the fabric; SMC's
+own fabric wrappers around them stay graded. Everything else the build
+compiles stays graded: the vendored DMA, debug and trace blocks, and the
+`hw/ip` and `hw/common` blocks SMC integrates, because SMC tests drive them
+by name and their reachability from the SMC boundary is part of what this
+bench claims. The Verilator public-CI scope keeps the narrower
+owned-files set for the reasons above.
 
 ## Known gap in the Verilator scope
 

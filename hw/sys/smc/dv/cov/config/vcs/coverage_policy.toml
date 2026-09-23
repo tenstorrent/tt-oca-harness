@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC VCS coverage policy, the counterpart of hw/sys/sep/dv/cov/config/vcs/
+# coverage_policy.toml. It names the exclusion files the report applies; no
+# family carries a floor, the runner prints every family and grades nothing on
+# this flow.
+
+schema_version = 1
+dut = "smc"
+scope_epoch = "smc-vcs-cov-v1"
+
+# PeakRDL regblock structural facts (A1 NO-STALL, A2 NO-ERROR); the file
+# header and the generator's docstring state them.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_regblock_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# XOR reduction networks (CRC, parity): condition coverage enumerates 2^n
+# input combinations of a function the tests compare by its output.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_xor_network_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
