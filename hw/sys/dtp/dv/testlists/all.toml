@@ -3,16 +3,18 @@
 
 schema_version = 1
 
-# Aggregate testlist: merges the smoke and functional testlists. This is the file the DTP DUT
-# points at, so `--items smoke` and `--items functional` both resolve.
+# Aggregate testlist: merges the per-area testlists. This is the file dtp_sim_cfg.toml points
+# at, so every group name below resolves as an --items target.
 includes = ["jtag.toml", "jtag2axi.toml", "debug_tdr.toml", "scan.toml", "xtrig.toml"]
 
 [[groups]]
 name = "smoke"
+expected_count = 2
 tests = ["dtp_sanity_test", "dtp_jtag_idcode_test"]
 
 [[groups]]
 name = "basic_jtag"
+expected_count = 19
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -37,6 +39,7 @@ tests = [
 
 [[groups]]
 name = "functional"
+expected_count = 4
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_idcode_test",
@@ -46,6 +49,7 @@ tests = [
 
 [[groups]]
 name = "jtag2axi"
+expected_count = 79
 tests = [
     "dtp_jtag2axi_smc_axi_single_write_test",
     "dtp_jtag2axi_smc_axi_single_write_data_verify_test",
@@ -130,6 +134,7 @@ tests = [
 
 [[groups]]
 name = "scan"
+expected_count = 13
 tests = [
     "dtp_ijtag_sib_all_off_test",
     "dtp_ijtag_sib_all_on_test",
@@ -151,6 +156,7 @@ tests = [
 # sep_lifecycle_ctrl_pkg::dbg_disable_t fields.
 [[groups]]
 name = "dbg_disable"
+expected_count = 19
 tests = [
     "dtp_scan_dbg_disable_matrix_test",
     "dtp_jtag2axi_dbg_disable_matrix_test",
@@ -175,6 +181,7 @@ tests = [
 
 [[groups]]
 name = "xtrig"
+expected_count = 28
 tests = [
     "dtp_xtrig_reg_stall_test",
     "dtp_xtrig_rand_deterministic_csr_sweep_test",

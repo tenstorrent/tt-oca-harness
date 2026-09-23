@@ -14,15 +14,17 @@ SLVERR and latch DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive
 aggregator bits [40] and [42]. A dead-space beat past an adapter window is
 DECERR and never sets err_o, so the probes stay inside each routed extent.
 AES, CSRNG, EDN and WDT windows are packed to the last register; an unmapped
-beat there is past the rule and DECERRs.
+beat there is past the rule and DECERRs. Their PERIPH_BUS_ERR_STATUS bits are
+unreachable here, which is why periph_holes() names three blocks and not seven.
 
 OpenTitan interrupt-register layout (per IP base):
-  INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
+  INTR_STATE  @ +0x00  Event: RW1C; Status: RO
   INTR_ENABLE @ +0x04  RW    -- gates the IP intr_o = INTR_STATE & INTR_ENABLE
-  INTR_TEST   @ +0x08  WO    -- write 1 to a bit to set the matching INTR_STATE bit
-CSRNG/EDN bases (hw/sys/sep/rtl/sep_crypto_pkg.sv) and the per-source aggregator-bit map
-(hw/sys/sep/rtl/sep.sv sep_internal_interrupts assembly). 32-bit AXI beats
-(size=2) via the sep_crypto TL-UL bridge, like the AES/OTBN drivers.
+  INTR_TEST   @ +0x08  WO    -- Event: sets INTR_STATE; Status: held until written 0
+CSRNG/EDN bases from the generated register map. Aggregator bit =
+documented PIC source ID minus 1 (`hw/sys/sep/doc/interrupts.adoc`; PIC
+IDs are 1-based). 32-bit AXI beats (size=2) via the sep_crypto TL-UL
+bridge, like the AES/OTBN drivers.
 """
 
 from __future__ import annotations
@@ -30,24 +32,52 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
-from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
+from env.sep_spec_tables import pic
+from sep_reg_meta import CSRNG, EDN, HMAC, KMAC, OTBN, SEP_CPU_CTRL, RegBlock, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 CSRNG_BASE = sym("CSRNG_REG_MAP_BASE_ADDR")
 EDN_BASE = sym("EDN_REG_MAP_BASE_ADDR")
+HMAC_BASE = HMAC.addr("INTR_STATE")
+SECURE_DMA = RegBlock("SECURE_DMA")
+DMA_BASE = SECURE_DMA.addr("INTR_STATE")
 
 INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR") - CSRNG_BASE
 INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR") - CSRNG_BASE
 INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
+RESP_DECERR = 3
 
-# sep.sv sep_internal_interrupts: [40] DMA register-path, [42] periph OR.
-IRQ_DMA_REG_PATH = 40
-IRQ_DMA_HOST_PATH = 41
-IRQ_PERIPH_OR = 42
+# PIC source IDs from hw/sys/sep/doc/interrupts.adoc (1-based).
+# sep_internal_interrupts[N] feeds PIC source N+1.
+PIC_HMAC_DONE = pic("HMAC done")
+PIC_HMAC_ERR = pic("HMAC error")
+PIC_KMAC_DONE = pic("KMAC done")
+PIC_DMA_DONE = pic("DMA transfer done")
+PIC_DMA_CHUNK = pic("DMA chunk done")
+PIC_DMA_ERROR = pic("DMA error")
+PIC_CSRNG_CMD_REQ_DONE = pic("CSRNG command request done")
+PIC_CSRNG_ENTROPY_REQ = pic("CSRNG entropy request")
+PIC_CSRNG_HW_INST_EXC = pic("CSRNG HW instance exception")
+PIC_CSRNG_FATAL_ERR = pic("CSRNG fatal error")
+PIC_EDN_CMD_REQ_DONE = pic("EDN command request done")
+PIC_EDN_FATAL_ERR = pic("EDN fatal error")
+PIC_DMA_REG_PATH = pic("DMA register-path bus error")
+PIC_DMA_HOST_PATH = pic("DMA host-path integrity/bus fault")
+PIC_PERIPH_OR = pic("Peripheral register-bridge fault")
+
+
+def agg_from_pic(pic_source: int) -> int:
+    """Aggregator bit for a documented 1-based PIC source."""
+    return pic_source - 1
+
+
+IRQ_DMA_REG_PATH = agg_from_pic(PIC_DMA_REG_PATH)
+IRQ_DMA_HOST_PATH = agg_from_pic(PIC_DMA_HOST_PATH)
+IRQ_PERIPH_OR = agg_from_pic(PIC_PERIPH_OR)
 
 DMA_STATUS_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_STATUS")
 DMA_CLEAR_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_CLEAR")
@@ -117,6 +147,15 @@ class PeriphHole:
     clear_bit: int
 
 
+def hmac_misaligned_addr() -> int:
+    """A misaligned offset inside a mapped HMAC register.
+
+    ``CFG`` is a live 32-bit register, so byte offset +2 lies inside the HMAC
+    extent but is not word-aligned.
+    """
+    return HMAC.addr("CFG") + 2
+
+
 def periph_holes() -> tuple[PeriphHole, ...]:
     """HMAC / KMAC / OTBN holes that still reach an adapter ``err_o``."""
     return (
@@ -143,22 +182,86 @@ def otbn_reg_unmapped_addr() -> int:
 @dataclass(frozen=True)
 class IrqSrc:
     """One interrupt source: its IP base, the bit in that IP's INTR_* registers,
-    and the bit it drives in sep_internal_interrupts."""
+    and the bit it drives in sep_internal_interrupts.
+
+    kind is ``event`` (W1C INTR_STATE deasserts) or ``status`` (INTR_STATE is
+    read-only; writing INTR_TEST=0 is the deassert path).
+    """
 
     name: str
     base: int
     test_bit: int
     agg_idx: int
+    kind: str = "event"
 
 
-# reference sep_irq_ip_to_aggregator_test_seq sources -> sep.sv aggregator bits.
+# CSRNG/EDN Event sources plus HMAC error (Event) and DMA done/chunk/error
+# (Status). agg_idx is PIC source − 1 from interrupts.adoc. HMAC/KMAC
+# fifo_empty Status bits are idle-true and are not in this table.
 IRQ_TABLE = (
-    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, 23),
-    IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, 24),
-    IrqSrc("csrng_hw_inst_exc", CSRNG_BASE, 2, 25),
-    IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, 26),
-    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, 27),
-    IrqSrc("edn_fatal_err", EDN_BASE, 1, 28),
+    IrqSrc(
+        "csrng_cmd_req_done",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_CMD_REQ_DONE"]["bp"],
+        agg_from_pic(PIC_CSRNG_CMD_REQ_DONE),
+    ),
+    IrqSrc(
+        "csrng_entropy_req",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_ENTROPY_REQ"]["bp"],
+        agg_from_pic(PIC_CSRNG_ENTROPY_REQ),
+    ),
+    IrqSrc(
+        "csrng_hw_inst_exc",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_HW_INST_EXC"]["bp"],
+        agg_from_pic(PIC_CSRNG_HW_INST_EXC),
+    ),
+    IrqSrc(
+        "csrng_fatal_err",
+        CSRNG_BASE,
+        CSRNG.fields("INTR_STATE")["CS_FATAL_ERR"]["bp"],
+        agg_from_pic(PIC_CSRNG_FATAL_ERR),
+    ),
+    IrqSrc(
+        "edn_cmd_req_done",
+        EDN_BASE,
+        EDN.fields("INTR_STATE")["EDN_CMD_REQ_DONE"]["bp"],
+        agg_from_pic(PIC_EDN_CMD_REQ_DONE),
+    ),
+    IrqSrc(
+        "edn_fatal_err",
+        EDN_BASE,
+        EDN.fields("INTR_STATE")["EDN_FATAL_ERR"]["bp"],
+        agg_from_pic(PIC_EDN_FATAL_ERR),
+    ),
+    IrqSrc(
+        "hmac_err",
+        HMAC_BASE,
+        HMAC.field_lsb("INTR_STATE", "hmac_err"),
+        agg_from_pic(PIC_HMAC_ERR),
+    ),
+    IrqSrc(
+        "dma_done",
+        DMA_BASE,
+        SECURE_DMA.field_lsb("INTR_STATE", "dma_done"),
+        agg_from_pic(PIC_DMA_DONE),
+        "status",
+    ),
+    IrqSrc(
+        "dma_chunk_done",
+        DMA_BASE,
+        SECURE_DMA.field_lsb("INTR_STATE", "dma_chunk_done"),
+        agg_from_pic(PIC_DMA_CHUNK),
+        "status",
+    ),
+    IrqSrc(
+        "dma_error",
+        DMA_BASE,
+        SECURE_DMA.field_lsb("INTR_STATE", "dma_error"),
+        agg_from_pic(PIC_DMA_ERROR),
+        "status",
+    ),
 )
 
 
@@ -191,6 +294,23 @@ class SepIrqIp(SepAxiRegDriver):
 
     async def write32(self, addr: int, data: int) -> None:
         await self._wr(addr, data)
+
+    async def write_expect_slverr(self, addr: int, data: int) -> None:
+        """One full-width 32-bit write that must complete BRESP=SLVERR."""
+        seq = SepAxiAccessSeq(
+            f"{self._DRIVER_TAG.lower()}_wr_slverr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
+            expect_error=True,
+        )
+        await self.test.start_seq(seq)
+        if seq.resp_code != RESP_SLVERR:
+            raise AssertionError(
+                f"{self._DRIVER_TAG} write @0x{addr:08x} resp={seq.resp_code}, "
+                f"expected SLVERR (2); DECERR means the xbar refused before the adapter"
+            )
 
     async def read_expect_slverr(self, addr: int) -> int:
         """One 32-bit read that must complete SLVERR (through-adapter, not DECERR)."""

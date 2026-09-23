@@ -33,7 +33,7 @@ Configuration (set by the env after construction, like the agent's ``axi_prefix`
     master). Set to ``m_axi`` for the external SMN-inbound master.
   * ``fail_decerr`` -- whether a DECERR beat fails the test. True for the CPU-LSU
     bus (no inbound filter, a DECERR is a real decode bug); False for the external
-    bus, whose inbound filter *intentionally* routes blocked accesses to
+    bus, whose inbound filter routes blocked accesses to
     axi_err_slv with DECERR (the inbound-filter-gating test asserts that).
 
 It tallies beats + response codes so a clean run reports positive evidence.
@@ -81,6 +81,9 @@ class SepAxiMonitor(uvm_component):
     # Overridable per instance (set in the env's build_phase, top-down).
     bus_prefix = "s_axi"
     fail_decerr = True
+    # Fail if the prefix resolved to nothing. The s_axi instance is live on
+    # every env; m_axi ports exist too, but that instance idles on most tests.
+    require_attach = True
 
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
@@ -225,7 +228,11 @@ class SepAxiMonitor(uvm_component):
             )
         }
         if any(sig[n] is None for n in ("rvalid", "rready", "rdata")):
-            self.logger.info("%s read channel not found; AXI monitor idle", p)
+            msg = f"{p} read channel not found; AXI monitor idle"
+            if self.require_attach:
+                self._fail(msg)
+                return
+            self.logger.info(msg)
             return
         await self.cfg.reset_done.wait()
         self.logger.info(
@@ -285,6 +292,18 @@ class SepAxiMonitor(uvm_component):
             f"SEP AXI monitor [{self.bus_prefix}] found {len(self.errors)} "
             f"protocol error(s): " + "; ".join(self.errors[:8])
         )
+        sb = getattr(self.parent, "scoreboard", None)
+        if (
+            self.bus_prefix == "s_axi"
+            and sb is not None
+            and getattr(sb, "checks", 0) > 0
+            and (self.r_beats + self.b_resps) == 0
+        ):
+            raise AssertionError(
+                f"SEP AXI monitor [{self.bus_prefix}] saw 0 R/B beats while the "
+                f"scoreboard graded {sb.checks} transaction(s) -- the prefix "
+                "did not observe the live bus"
+            )
         self.logger.info(
             "SEP AXI monitor [%s]: %d R beats, %d B resps; R-resp tally %s; "
             "%d expected DECERR; max slave ready-wait aw=%d w=%d ar=%d "

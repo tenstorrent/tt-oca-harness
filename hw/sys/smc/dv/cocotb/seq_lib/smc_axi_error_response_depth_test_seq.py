@@ -8,6 +8,7 @@ import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
+    LOCAL_BASE_RESET,
     LOCAL_FABRIC_KEEP_MASK,
     external_gpio_ctrl_addr,
     local_fabric_masked_addr,
@@ -24,60 +25,57 @@ ALIVE_SENTINEL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
 # each address built from generated symbols rather than a hand-computed offset
 # ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 #
-# Neither probe is an address-decode hole. `smc.rdl:101-105` declares three
+# Neither probe is an address-decode hole. `smc.rdl` declares three
 # `external remapped_region` blocks of 0x80_0000 each -- ecam_region,
 # mmode_region, xvisor_region -- and `smc_addr.h` resolves them to
 # 0xC080_0000, 0xC100_0000 and 0xC180_0000. What the two probes demonstrate is
 # that an `external` region with no implementation behind it on this bench
-# answers DECERR with the err_slv signature. No genuinely unmapped SEP_IN
-# address is available to probe: the fold in `local_fabric_masked_addr` leaves
-# only addr[24:0], i.e. 0x000_0000..0x1FF_FFFF, and xvisor_region covers that
-# range up to the top.
+# answers DECERR with the err_slv signature, once reached at its own address
+# and once through the local-alias fold. Genuinely unmapped offsets are
+# `smc_deadspace_decode_test`'s subject, not this one's.
 #
-# Last page of ecam_region. Its upper 7 bits are already LOCAL_BASE's, so the
-# fold is the identity here and the request arrives where it was written.
+# Last page of ecam_region at its own address. It lies inside the local-alias
+# aperture (LOCAL_BASE .. LOCAL_BASE + REGION_SIZE at the generated resets), so
+# the fold is the identity and the request arrives where it was written.
 _UNIMPL_ECAM = (
     smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
 )
-# Last page of xvisor_region, reached only THROUGH the fold: the written
-# address carries a different upper 7 bits, so the request arrives at
-# `_XVISOR_TOP_PAGE` rather than at the address on the wire. The two asserts
-# below fail if the generated map moves either region such that the probe stops
-# demonstrating the fold.
-_XVISOR_TOP_PAGE = (
-    smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR") + smc_addr("SMC_TOP_XVISOR_REGION_SIZE") - 0x1000
-)
-_UNIMPL_XVISOR_VIA_MASK = 0xCE00_0000 | (_XVISOR_TOP_PAGE & LOCAL_FABRIC_KEEP_MASK)
-assert _UNIMPL_XVISOR_VIA_MASK != _XVISOR_TOP_PAGE, (
+# The same page reached only THROUGH the fold: the address on the wire carries
+# an out-of-aperture prefix, so it differs from the one the decoder sees.
+# mmode_region and xvisor_region lie above the reset aperture, so no SEP_IN
+# wire address reaches them; the fold target has to be a page inside it. The
+# two asserts fail if the generated map moves the region or resizes the
+# aperture such that the probe stops demonstrating the fold.
+_OUT_OF_APERTURE_PREFIX = LOCAL_BASE_RESET + 14 * (LOCAL_FABRIC_KEEP_MASK + 1)
+_UNIMPL_ECAM_VIA_FOLD = _OUT_OF_APERTURE_PREFIX | (_UNIMPL_ECAM & LOCAL_FABRIC_KEEP_MASK)
+assert _UNIMPL_ECAM_VIA_FOLD != _UNIMPL_ECAM, (
     "the high probe must be written OUTSIDE the local aperture so it reaches "
-    "xvisor_region only through the smc_local_fabric fold"
+    "ecam_region only through the local-alias fold"
 )
-assert local_fabric_masked_addr(_UNIMPL_XVISOR_VIA_MASK) == _XVISOR_TOP_PAGE, (
-    f"0x{_UNIMPL_XVISOR_VIA_MASK:08x} folds to "
-    f"0x{local_fabric_masked_addr(_UNIMPL_XVISOR_VIA_MASK):08x}, not to the "
-    f"xvisor_region top page 0x{_XVISOR_TOP_PAGE:08x}"
+assert local_fabric_masked_addr(_UNIMPL_ECAM_VIA_FOLD) == _UNIMPL_ECAM, (
+    f"0x{_UNIMPL_ECAM_VIA_FOLD:08x} folds to "
+    f"0x{local_fabric_masked_addr(_UNIMPL_ECAM_VIA_FOLD):08x}, not to the "
+    f"ecam_region top page 0x{_UNIMPL_ECAM:08x}"
 )
 
-# EXTERNAL_MANDATORY GPIO_CTRL is terminated with DECERR on the OSS DUT path
-# (smc_ip_integration err_slv). OCA_I3C_WRAP is a real core and answers OKAY,
-# so it is not a DECERR probe.
+# EXTERNAL_MANDATORY GPIO_CTRL is a DECERR probe: the OSS tree carries no GPIO
+# pad block behind that window (memmap.adoc lists it as technology-specific).
+# OCA_I3C_WRAP is a real core and answers OKAY, so it is not a DECERR probe.
 _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
-# Data an AXI error slave returns alongside the error response. The two
-# remap-region terminators are `prim_axi_lite_err_slv` instances at their
-# default RESP_DATA; the smc_ip_integration GPIO_CTRL terminator drives zero.
+# Data expected alongside the error response. ``ERR_SLAVE_SIGNATURE`` is the
+# word the eFuse architecture document states for a blocked request, applied to
+# the two remap-region probes under the DV-owned assumption ``SmcCsrSeq``
+# declares; the GPIO_CTRL probe expects the all-zero word
+# ``csr_read_decerr_zero`` also expects, a DV-owned expectation that the
+# terminator returns no payload.
 ERR_SLAVE_SIGNATURE = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 _GPIO_CTRL_ERR_DATA = 0x0
 
 # (name, addr, expected AXI resp, expected rdata)
 ERROR_PROBES: list[tuple[str, int, int, int]] = [
     ("UNIMPL_ECAM_REGION", _UNIMPL_ECAM, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
-    (
-        "UNIMPL_XVISOR_REGION_VIA_MASK",
-        _UNIMPL_XVISOR_VIA_MASK,
-        AXI_RESP_DECERR,
-        ERR_SLAVE_SIGNATURE,
-    ),
+    ("UNIMPL_ECAM_REGION_VIA_FOLD", _UNIMPL_ECAM_VIA_FOLD, AXI_RESP_DECERR, ERR_SLAVE_SIGNATURE),
     ("GPIO_CTRL_ERR_SLAVE", _GPIO_CTRL0, AXI_RESP_DECERR, _GPIO_CTRL_ERR_DATA),
 ]
 

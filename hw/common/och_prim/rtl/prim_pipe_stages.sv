@@ -10,7 +10,7 @@ module prim_pipe_stages #(
   parameter int unsigned NUM_STAGES = 1
 ) (
   input  logic               clk_i,
-  input  logic               reset_n_i,
+  input  logic               rst_ni,
   input  logic               en_i,
   input  logic   [WIDTH-1:0] d_i,
 
@@ -26,9 +26,9 @@ module prim_pipe_stages #(
 
     prim_pipe_stage #(
       .WIDTH(WIDTH)
-    ) prim_pipe_stage (
+    ) u_prim_pipe_stage (
       .clk_i      ( clk_i           ),
-      .reset_n_i  ( reset_n_i       ),
+      .rst_ni     ( rst_ni          ),
       .en_i       ( en_i            ),
       .d_i        ( stage_data[i]   ),
       .q_o        ( stage_data[i+1] )
@@ -46,15 +46,15 @@ module prim_pipe_stage #(
   parameter int unsigned WIDTH = 8
 ) (
   input logic clk_i,
-  input logic reset_n_i,
+  input logic rst_ni,
   input logic en_i,
   input logic [WIDTH-1:0] d_i,
 
   output logic [WIDTH-1:0] q_o
 );
 
-  always_ff @(posedge clk_i or negedge reset_n_i) begin
-    if (!reset_n_i) begin
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
       q_o <= WIDTH'(0);
     end else if (en_i) begin
       q_o <= d_i;

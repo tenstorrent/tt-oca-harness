@@ -167,7 +167,9 @@ class SmuSepSmokeSeq:
                     axi_writes,
                 )
                 self._log_sep_run_gate(f"heartbeat@{cycle}")
-            # SMC arm (CLA) releases SEP; watch for retires only after that.
+            # The SEP runs on its default run gate, independent of the SMC
+            # arm image; once that image has reported, a SEP out of reset that
+            # retires nothing for 100k cycles is diagnosed rather than timed out.
             if sep_reset and self.sb.smc_arm_seen and self.sb.trace_count == 0:
                 self._post_arm_idle = getattr(self, "_post_arm_idle", 0) + 1
                 if self._post_arm_idle == 1:

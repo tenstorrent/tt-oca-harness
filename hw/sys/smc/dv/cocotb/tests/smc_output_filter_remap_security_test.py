@@ -40,15 +40,23 @@ OUTPUT_FILTER_MIN_CSR_ACCESSES = 12
 # Independent literal floor for the non-CSR fabric traffic: pass-phase JTAG-AXI
 # write + read, block-phase blocked JTAG-AXI write + follow-up read. The OBSERVED
 # count is measured by the scoreboard's per-bus tally inside record_protocol_vip
-# (driver-stamped, one per completed access), never passed in from here -- passing
-# this constant as both the observation and the floor made the scoreboard assert
-# `4 >= 4` ([NO-ALWAYS-PASS-CHECKER]).
+# (driver-stamped, one per completed access), never passed in from here -- a
+# constant used as both the observation and the floor would make the scoreboard
+# assert `4 >= 4` ([NO-ALWAYS-PASS-CHECKER]).
 OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES = 4
 
 
 @pyuvm.test()
 class smc_output_filter_remap_security_test(smc_base_test):
     """Verify output filter allows reads and blocks writes at protocol level."""
+
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-NONVAC-PHASE-FENCE",
+        "CHK-OUTBOUND-BLOCK-WRITE",
+        "CHK-OUTBOUND-PASS-ALL",
+    )
+    min_evidence = 4
 
     auto_protocol_vip = False
 
@@ -183,9 +191,9 @@ class smc_output_filter_remap_security_test(smc_base_test):
             type(self).__name__,
             csr_accesses=pass_seq.accesses + block_seq.accesses,
             min_csr_accesses=OUTPUT_FILTER_MIN_CSR_ACCESSES,
-            # The four JTAG-AXI accesses are reported in their own field instead
-            # of a bare `+ 4` folded into csr_accesses, which labelled fabric
-            # traffic as CSR traffic. The observed count is MEASURED by
+            # The four JTAG-AXI accesses are reported in their own field rather
+            # than folded into csr_accesses, which would label fabric traffic as
+            # CSR traffic. The observed count is MEASURED by
             # record_protocol_vip from the scoreboard's JTAG AXI tally; only the
             # floor is written here.
             min_fabric_accesses=OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES,
@@ -198,4 +206,13 @@ class smc_output_filter_remap_security_test(smc_base_test):
             timeouts=None,
             proxy=False,
             details="Output filter pass/read-only behavior checked with responder counters",
+        )
+        cocotb.log.info(
+            "CHK-NONVAC: protocol-VIP record accepted with csr_accesses=%d against "
+            "floor %d and jtag_axi_accesses=%d against floor %d; the scoreboard "
+            "rejects the record, and the run fails, below either floor",
+            pass_seq.accesses + block_seq.accesses,
+            OUTPUT_FILTER_MIN_CSR_ACCESSES,
+            self.env.scoreboard.axi_accesses_by_bus.get("JTAG AXI", 0),
+            OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES,
         )

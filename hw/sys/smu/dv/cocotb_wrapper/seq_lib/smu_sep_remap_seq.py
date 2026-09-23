@@ -21,6 +21,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
 
 # Goldens are the firmware's own constants (sep_smu_remap.c).
@@ -39,10 +40,14 @@ SETTLE_CYCLES = 2000
 class SmuSepRemapSeq:
     """Require the firmware to park AND the remap table to hold the goldens."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_REAL_FW_REMAP_OK", "SEP_OUTPUT_REMAP_GOLDEN_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -160,7 +165,7 @@ class SmuSepRemapSeq:
             "CHK-SEP-REMAP-FRONTDOOR: PASS (boot_rom=1 iccm=1 pass_loop reached, traces=%d)",
             traces,
         )
-        for token in ("SEP_REAL_FW_REMAP_OK", "SEP_OUTPUT_REMAP_GOLDEN_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

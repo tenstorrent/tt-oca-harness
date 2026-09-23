@@ -34,7 +34,7 @@ ocah-doc-integrator-setup: ocah-doc-integrator-meta ocah-doc-reg-setup
 
 .PHONY: ocah-doc-integrator-html
 ocah-doc-integrator-html: ocah-doc-integrator-setup
-	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html integrator"; exit 1; }
+	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html integrator"; exit 1; }
 	@echo "Building Integrator Guide HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
@@ -48,6 +48,7 @@ ocah-doc-integrator-pdf: ocah-doc-integrator-setup
 	@mkdir -p "$(OCAH_INTEGRATOR_BUILD)/latex" "$(OCAH_INTEGRATOR_DIST)"
 	@rm -rf "$(OCAH_INTEGRATOR_SRC)/assets" && ln -s ../assets "$(OCAH_INTEGRATOR_SRC)/assets"
 	@cd "$(OCAH_INTEGRATOR_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
 		-o "$(OCAH_INTEGRATOR_BUILD)/latex/$(OCAH_INTEGRATOR_PDF)" src/index.adoc

@@ -5,7 +5,8 @@
 // dtp_ijtag_scan_test_seq. One parameterized sequence, dispatched on
 // `scenario`:
 //
-//   sib_all_off   all SIBs closed stays closed under any seeded gating mask
+//   sib_all_off   a seeded open set first, then all SIBs closed stays
+//                 closed under any seeded gating mask
 //   sib_all_on    all SIBs open, then each direct disable gates its SIB
 //                 in a seeded order while the others stay effective
 //   sib_random    exhaustive 8-pattern sweep plus 16 seeded pattern/mask
@@ -15,9 +16,11 @@
 //   dfd           DFD access, direct-disable gate, seeded patterns, and
 //                 stored-state preservation across a gate
 //
-// Every outcome is proved with a temporal scan-control window (a gated
-// SIB's controls never pulse; an effective SIB's select is seen high) plus
-// the SIB model's requested/gated/effective prediction.
+// Every pattern is proved by check_ijtag_pattern: a composed program scan
+// carrying seeded instrument values, then a marker scan under a temporal
+// window that yields the control evidence (CHK-SCAN-WIN), the measured
+// chain latency (CHK-SCAN-LEN), and the captured SIB states and instrument
+// registers against the SIB model (CHK-SCAN-CHAIN).
 
 class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_ijtag_scan_test_seq)
@@ -34,29 +37,30 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
   protected task check_stored_sib_across_gate(
       int unsigned sib, bit [DtpIjtagSibCount-1:0] open_pattern,
       sep_lifecycle_ctrl_pkg::dbg_disable_t gate_mask, string context_s);
-    string quiet[$];
-    string none[$];
     // Baseline: everything enabled, all SIBs closed.
     check_ijtag_pattern(3'b000, '0, {context_s, ".baseline"});
     // Attempt to open the target SIB while its disable is asserted.
     set_dbg_disable_full(gate_mask);
-    program_ijtag_sibs(open_pattern, {context_s, ".gated_open_attempt"});
+    program_ijtag_sibs(open_pattern, gate_mask, {context_s, ".gated_open_attempt"});
     // Release the disable without any reset: the gated open attempt must
     // not have stuck (a pre-staged open activating on release would be a
     // delayed-replay hazard).
     enable_all_debug();
-    quiet.delete();
-    quiet.push_back({ijtag_prefix(sib), "_select"});
-    start_scan_window(quiet);
-    program_ijtag_sibs(3'b000, {context_s, ".post_release"});
-    check_scan_window(quiet, none, {context_s, ".post_release_window"});
+    check_ijtag_all_closed('0, {context_s, ".post_release"});
     // Resume without reset: a sanctioned open now succeeds.
     check_ijtag_pattern(open_pattern, '0, {context_s, ".resume"});
   endtask
 
   protected task run_sib_all_off();
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
+    // A seeded open pattern first, so the all-off captures and the
+    // collapse to the three SIB bits are a transition from open SIBs.
+    bit [DtpIjtagSibCount-1:0] open_pattern = DtpIjtagSibCount'($urandom_range(7, 1));
     `uvm_info(get_type_name(), "iJTAG SIB all-off", UVM_LOW)
+    `uvm_info(get_type_name(), $sformatf(
+                                   "Step 1: open a seeded SIB set 0b%03b, then close every SIB",
+                                   open_pattern), UVM_LOW)
+    check_ijtag_pattern(open_pattern, '0, "all_off.open_seed");
     check_ijtag_pattern(3'b000, '0, "all_off.nominal");
     // Seeded per-pass disable mask: with every SIB closed, any lifecycle
     // gating state must leave the outcome identical (closed stays closed).
@@ -64,12 +68,15 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     d.dft_secure    = bit'($urandom_range(1));
     d.dft_nonsecure = bit'($urandom_range(1));
     d.dfd           = bit'($urandom_range(1));
+    `uvm_info(get_type_name(),
+              $sformatf("Step 2: close every SIB again under the disable mask 0x%03h", d), UVM_LOW)
     check_ijtag_pattern(3'b000, d, "all_off.random_disable");
+    check_ijtag_all_closed(d, "all_off.recheck");
   endtask
 
   protected task run_sib_all_on();
-    sep_lifecycle_ctrl_pkg::dbg_disable_t gate_masks[3];
-    int unsigned order[3] = '{0, 1, 2};
+    sep_lifecycle_ctrl_pkg::dbg_disable_t gate_masks[4];
+    int unsigned order[4] = '{0, 1, 2, 3};
     `uvm_info(get_type_name(), "iJTAG SIB all-on", UVM_LOW)
     check_ijtag_pattern(3'b111, '0, "all_on.nominal");
     gate_masks[0] = '0;
@@ -78,9 +85,13 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     gate_masks[1].dft_nonsecure = 1'b1;
     gate_masks[2] = '0;
     gate_masks[2].dfd           = 1'b1;
+    gate_masks[3] = '0;
+    gate_masks[3].dft_secure    = 1'b1;
+    gate_masks[3].dft_nonsecure = 1'b1;
+    gate_masks[3].dfd           = 1'b1;
     // Seeded per-pass order: each loop exercises a different gate
     // sequence.
-    for (int unsigned i = 2; i > 0; i--) begin
+    for (int unsigned i = 3; i > 0; i--) begin
       int unsigned j = $urandom_range(i);
       int unsigned tmp = order[i];
       order[i] = order[j];
@@ -88,6 +99,8 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     end
     foreach (order[i])
       check_ijtag_pattern(3'b111, gate_masks[order[i]], $sformatf("all_on.gated#%0d", order[i]));
+    // Full chain and scan controls again once every disable is clear.
+    check_ijtag_pattern(3'b111, '0, "all_on.restore");
   endtask
 
   protected task run_sib_random();
@@ -121,6 +134,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     `uvm_info(get_type_name(), "iJTAG DFT secure/non-secure access", UVM_LOW)
     check_ijtag_pattern(3'b010, '0, "dft.nonsecure_only");
     check_ijtag_pattern(3'b100, '0, "dft.secure_only");
+    check_ijtag_pattern(3'b110, '0, "dft.parallel");
     cases[0] = '{"secure_gated", 3'b100, 1'b1, 1'b0};
     cases[1] = '{"nonsecure_gated", 3'b010, 1'b0, 1'b1};
     // Cross-resource isolation: gating one DFT SIB must leave the other
@@ -168,7 +182,9 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
   endtask
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-OBS"};
+    // Per-pass evidence every iJTAG pass must record (cocotb twin:
+    // dtp_ijtag_scan_test_seq.py).
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"};
     seed_scenario_rng();
     // Scenario-owned Shift-x exits: skip the scan-count cross-check.
     attach_family_checker(required, 1'b0);
@@ -185,7 +201,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
                     "unknown iJTAG scenario %s", scenario))
     endcase
     enable_all_debug();
-    program_ijtag_sibs(3'b000, "cleanup");
+    program_ijtag_sibs(3'b000, '0, "cleanup");
     finalize_family_checker();
   endtask
 

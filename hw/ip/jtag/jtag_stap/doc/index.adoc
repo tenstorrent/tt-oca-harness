@@ -1,53 +1,72 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= JTAG STAP
+:description: Secondary TAP — hierarchical TAP interconnection per IEEE 1838-2019, STAP types and timing parameters.
+
 [[jtag-stap]]
-=== JTAG STAP
 
-==== Overview
+The Secondary TAP (STAP) enables hierarchical interconnection of TAP
+controllers across multiple chiplets as specified in IEEE 1838-2019 (3DIC).
+Each STAP interface extends the SiP's primary JTAG access across internal or
+external chiplets.
 
-The Secondary TAP (STAP) enables hierarchical interconnection of TAP controllers
-across multiple chiplets as specified in IEEE 1838-2019 (3DIC). Each STAP
-interface provides an extension of a SiP's primary JTAG interface across
-internal or external chiplets.
+== Overview
 
-The DTP supports the following STAP types:
+The DTP supports these STAP types:
 
-* *I/O STAP*: Extends JTAG to the next chiplet in the SiP
-* *SMC Debug STAP*: Provides access to the SMC CPU core debugger TAP
-* *SEP Debug STAP*: Provides access to the SEP CPU core debugger TAP
-* *Additional STAPs*: Provides access to additional TAPs for on or off-chip
-  connectivity
-* *Extended STAP Scan Interface*: Port for adding STAPs external to the DTP
+* *I/O STAP* — extends JTAG to the next chiplet in the SiP.
+* *SMC Debug STAP* — provides access to the SMC CPU core debugger TAP.
+* *SEP Debug STAP* — provides access to the SEP CPU core debugger TAP.
+* *Additional STAPs* — optional connections to additional on- or off-chip TAPs.
+* *Extended STAP Scan Interface* — a port for adding STAPs external to the DTP.
 
-==== Configuration Parameters
+Each STAP has an active-high disable input. When it is asserted, STAP
+selection, host TDO, and 3DCR updates are blocked.
 
-The STAP provides three timing-related configuration parameters to optimize
-performance across different physical topologies.
+== Configuration Parameters
 
-[width="100%",cols="<30%,<15%,<15%,<40%",options="header"]
+Three timing parameters are available to optimise the STAP for different
+physical topologies, particularly die-boundary crossings.
+
+[width="100%",cols="<30%,<10%,<10%,<50%",options="header"]
 |===
 |Parameter |Type |Default |Description
 
-|SCAN_IN_PIPE
+|`SCAN_IN_PIPE`
 |bit
 |0
-|Adds pipeline stage to client interface scan input for timing closure
+|Adds a pipeline stage to the client interface scan input for timing closure.
 
-|TDI_LOCKUP
+|`TDI_LOCKUP`
 |bit
 |0
-|Adds lockup latch to STAP TDI input for die boundary crossings
+|Adds a lockup latch to the STAP TDI input for die-boundary crossings.
 
-|SCAN_OUT_LOCKUP
+|`SCAN_OUT_LOCKUP`
 |bit
 |0
-|Adds lockup latch to STAP scan output for extended chain timing
+|Adds a lockup latch to the STAP scan output for extended chain timing.
 |===
 
 ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]
 
+== Architecture
+
+ifdef::backend-html5[]
+include::partial$jtag_stap/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+
+== Interface
+
+ifdef::backend-html5[]
+include::partial$jtag_stap/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]

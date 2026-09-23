@@ -1,20 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_register_sanity_test (Batch B).
+"""Sequence for smc_register_sanity_test.
 
 Real AXI traffic on the **SEP_IN** fabric ingress port:
   * read reset value from SMC scratch registers,
   * write distinct patterns,
   * read back the exact values.
 
-Access-port identity (do not restate this as "SYS AXI"): the test starts this
-sequence on ``env.sys_axi_agent``, whose driver is ``SmcSysAxiDriver`` with
-``bus_prefix = "s_axi"`` / ``bus_name = "SEP_IN AXI"``
-(``env/smc_sys_axi_agent.py``), and ``tb_top.sv`` wires the top-level ``s_axi_*``
-pins into ``smc.sep_axi_in_req_i``. The historical ``sys_axi_agent`` handle name
-is misleading; the separate ``env.sys_in_axi_agent`` (``bus_prefix =
-"sys_axi"``) is the one that drives ``sys_axi_in_req_i``, and this sequence never
-uses it.
+Access-port identity: the test starts this sequence on ``env.sys_axi_agent``,
+whose driver is ``SmcSysAxiDriver`` with ``bus_prefix = "s_axi"`` /
+``bus_name = "SEP_IN AXI"`` (``env/smc_sys_axi_agent.py``), and ``tb_top.sv``
+wires the top-level ``s_axi_*`` pins into ``smc.sep_axi_in_req_i``. The
+separate ``env.sys_in_axi_agent`` (``bus_prefix = "sys_axi"``) drives
+``sys_axi_in_req_i``; this sequence never uses it.
 
 What that does and does not prove: the scratch CSRs are internal to
 ``smc_misc_wrap`` and are reached over the same internal register fabric from
@@ -25,6 +23,7 @@ itself -- its AXI handshake, decode, or filtering is untouched by this test.
 
 from __future__ import annotations
 
+import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_indexed_addr
@@ -49,7 +48,7 @@ class smc_register_sanity_test_seq(smc_base_test_seq):
         super().__init__(name)
         self.accesses = 0
 
-    async def _read(self, name: str, addr: int, expected: int | None = None) -> None:
+    async def _read(self, name: str, addr: int, expected: int | None = None) -> int:
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
@@ -58,6 +57,7 @@ class smc_register_sanity_test_seq(smc_base_test_seq):
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
+        return item.rdata
 
     async def _write(self, name: str, addr: int, data: int) -> None:
         item = SmcSysAxiItem(f"wr_{name}")
@@ -87,24 +87,36 @@ class smc_register_sanity_test_seq(smc_base_test_seq):
             )
             targets.append((name, addr, pattern, entry.expected))
 
+        observed: dict[str, list[int]] = {name: [] for name, _, _, _ in targets}
         for name, addr, _pattern, reset in targets:
-            await self._read(name, addr, expected=reset)
+            observed[name].append(await self._read(name, addr, expected=reset))
 
         for name, addr, pattern, _reset in targets:
             await self._write(name, addr, pattern)
-            await self._read(name, addr, expected=pattern)
+            observed[name].append(await self._read(name, addr, expected=pattern))
 
         # Restore to the generated reset constant (not a literal 0), so the
         # closing readback re-proves the same RDL default the first read used.
         for name, addr, _pattern, reset in targets:
             await self._write(name, addr, reset)
-            await self._read(name, addr, expected=reset)
+            observed[name].append(await self._read(name, addr, expected=reset))
 
-        # Structural invariant (refactor guard), NOT the activity floor: the loops
-        # above are directed with no early exit, so this equals
-        # 3 CSRs x 5 accesses = 15 whenever body() completes. The fail-capable
-        # floor lives at the record_protocol_vip call in
-        # tests/smc_register_sanity_test.py (min_csr_accesses=15).
+        # Exact access count of this body (5 accesses per CSR); the fail-capable
+        # floor is `min_csr_accesses` at the record_protocol_vip call in
+        # tests/smc_register_sanity_test.py.
         assert self.accesses == 5 * len(WRITE_READBACK), (
             f"expected {5 * len(WRITE_READBACK)} real SEP_IN AXI CSR accesses, got {self.accesses}"
+        )
+        cocotb.log.info(
+            "CHK-CSR-SCRATCH-RW-RESTORE: %d scratch CSR(s) over SEP_IN AXI each read "
+            "its generated RDL reset, read back the written pattern, then read back "
+            "the reset after the restore write (%s); %d access(es), every read "
+            "compared by the scoreboard",
+            len(targets),
+            "; ".join(
+                f"{name}@0x{addr:08x} reset 0x{got[0]:08x} pattern 0x{got[1]:08x} "
+                f"restored 0x{got[2]:08x}"
+                for (name, addr, _pattern, _reset), got in zip(targets, observed.values())
+            ),
+            self.accesses,
         )

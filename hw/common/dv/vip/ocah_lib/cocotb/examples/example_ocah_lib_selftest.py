@@ -7,7 +7,8 @@ with ``hw/common/dv/vip`` on ``PYTHONPATH``). It pins the values the SV-UVM twin
 produces for ``OcahRng.salted_seed`` and the directed prefix of
 ``OcahRng.directed_patterns`` at a few widths, and exercises the
 ``OcahScoreboard`` pairing contract: either stream first, lanes, ``flush_expected``,
-unpaired items, a mismatch, and a required feature that never compares. Every
+unpaired items, a mismatch, and a required feature that never compares; and it
+checks that a sequence INFO record reaches the log under cocotb's default levels. Every
 verdict goes through the library's own evidence path; the run exits non-zero on
 the first contract that does not hold.
 """
@@ -21,7 +22,14 @@ from typing import cast
 
 from ocah_checker import OcahCheckerError
 
-from ocah_lib import OcahKnobs, OcahRefModel, OcahRng, OcahScoreboard, OcahScoreboardError
+from ocah_lib import (
+    OcahKnobs,
+    OcahRefModel,
+    OcahRng,
+    OcahScoreboard,
+    OcahScoreboardError,
+    OcahSequence,
+)
 
 LOG = logging.getLogger("ocah_lib_selftest")
 
@@ -293,6 +301,35 @@ def selftest_knobs() -> None:
         raise SelftestFailure("get_int_min clamped or accepted a value below the minimum")
 
 
+def selftest_sequence_logger() -> None:
+    """A sequence INFO record reaches a root handler under cocotb's default log levels."""
+    records: list[logging.LogRecord] = []
+
+    class _Capture(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    root = logging.getLogger()
+    cocotb_logger = logging.getLogger("cocotb")
+    saved = (root.handlers[:], root.level, cocotb_logger.level)
+    # cocotb's default configuration: handler on the root, root left at WARNING,
+    # only the `cocotb` hierarchy raised to INFO.
+    root.handlers = [_Capture()]
+    root.setLevel(logging.WARNING)
+    cocotb_logger.setLevel(logging.INFO)
+    try:
+        seq = OcahSequence("selftest_seq")
+        seq.log.info("sequence-info")
+        logging.getLogger("selftest_bare").info("bare-info")
+    finally:
+        root.handlers, root.level = saved[0], saved[1]
+        cocotb_logger.setLevel(saved[2])
+    messages = [record.getMessage() for record in records]
+    check(seq.log.name == "cocotb.selftest_seq", "sequence logger sits under the cocotb hierarchy")
+    check("sequence-info" in messages, "sequence INFO record reaches the root handler")
+    check("bare-info" not in messages, "a root-child logger's INFO record is dropped (control)")
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     logging.getLogger("selftest_scoreboard").setLevel(logging.CRITICAL)
@@ -302,6 +339,7 @@ def main() -> int:
         selftest_scoreboard_pairing,
         selftest_scoreboard_flush_and_unpaired,
         selftest_scoreboard_verdicts,
+        selftest_sequence_logger,
     ):
         LOG.info("---- %s", step.__name__)
         step()

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: inbound mailbox 0 STATUS/ERROR/IRQEN precheck."""
+"""SMC OSS inbound mailbox 0 STATUS/ERROR/IRQEN precheck."""
 
 from __future__ import annotations
 
@@ -12,7 +12,10 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_mailbox_inbound_test(smc_base_test):
-    """P1 coverage-gap depth: inbound mailbox 0 STATUS/ERROR/IRQEN precheck."""
+    """Inbound mailbox 0 STATUS/ERROR/IRQEN precheck."""
+
+    required_evidence = ("CHK-MAILBOX-INBOUND-RESET-SURFACE",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 
@@ -28,5 +31,5 @@ class smc_mailbox_inbound_test(smc_base_test):
             min_csr_accesses=6,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="P1 coverage-gap: inbound mailbox 0 STATUS/ERROR/IRQEN precheck",
+            details="inbound mailbox 0 STATUS/ERROR/IRQEN precheck",
         )

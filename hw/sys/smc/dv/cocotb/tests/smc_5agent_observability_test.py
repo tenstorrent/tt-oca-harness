@@ -12,6 +12,17 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_5agent_observability_test(smc_base_test):
+    required_evidence = (
+        "CHK-5AGENT-CLK",
+        "CHK-5AGENT-COMPOSITION",
+        "CHK-5AGENT-GPIO",
+        "CHK-5AGENT-I2C",
+        "CHK-5AGENT-IRQ-IDLE",
+        "CHK-5AGENT-IRQ-POSITIVE",
+        "CHK-5AGENT-RESET",
+    )
+    min_evidence = 7
+
     # `tb_gpio_irq_any` gets a same-run positive control inside this test's own
     # sequence; the other three idle-zero legs it asserts (`sync_irq`,
     # `uart_irq_any`, I2C `cg_en`) get theirs here: each control drives the

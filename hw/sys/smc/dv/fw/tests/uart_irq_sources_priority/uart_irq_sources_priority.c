@@ -458,8 +458,8 @@ static int uart_test_clear_behaviour(uint32_t uart_base) {
     }
 
     // --- THRE: natural empty with etbei; clear by IIR read (16550/RTL latch) ---
-    // Keep etbei=1 through the post-clear sample. Zeroing IER before -121 made the
-    // check always-pass; uart_poll_iir's IIR read is the architectural clear.
+    // Keep etbei=1 through the post-clear sample: with IER zeroed the pending
+    // check is vacuous. uart_poll_iir's IIR read is the architectural clear.
     ier.w = 0;
     ier.f.ETBEI = 1;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
@@ -658,8 +658,6 @@ int main(void) {
     uint32_t uart_idx = 0;
     uint32_t uart_base = get_uart_reg_base(uart_idx);
     int ret;
-
-    // peripherals_out_of_reset();
 
     // Enable the UART under test.
     uart_enable_single(uart_idx);

@@ -7,18 +7,11 @@
 # Every block the schema declares must appear here, with `write_locked`,
 # `read_locked`, and one `value` per field.
 #
-# Values are the unprogrammed state (0) except where a real default is needed:
+# Values are the unprogrammed state (0) except where a real default is needed.
 #
-#   BIRA            memory-repair data. Non-zero so the repair path sees a
-#                   populated array rather than an all-zero one.
-#   SOP_TOPOLOGY    a recognisable serial number, so a run that reads it back
-#                   can tell "read the fuse" from "read zeros".
-#   PLL_AND_SENSOR  the per-PLL default coefficient pattern.
-#
-# RESERVED[1] -- the OCCP transport timeout the boot ROM reads -- is 0 here.
-# The ROM treats 0 as "not programmed" and substitutes its own 10000-cycle
-# default (bootrom/prod/lib/src/occp.c). randomize_efuse.py is what overrides
-# it per run.
+# OCCP_TRANSPORT_TIMEOUT is 0 here. The ROM treats 0 as "not programmed"
+# and substitutes its own 10000-cycle default (bootrom/prod/lib/src/occp.c).
+# randomize_efuse.py is what overrides it per run.
 
 [LOCKS]
     write_locked = "False"
@@ -26,41 +19,11 @@
     [LOCKS.fields.lock_entries]
     value = 0x0
 
-[CHIPLET_ID]
+[JTAG_PUBLIC_IDENTITY]
     write_locked = "False"
-    read_locked = "False"
-    [CHIPLET_ID.fields.chiplet_id]
+    read_locked = "True"
+    [JTAG_PUBLIC_IDENTITY.fields.value]
     value = 0x0
-
-[PACKAGE_ID]
-    write_locked = "False"
-    read_locked = "False"
-    [PACKAGE_ID.fields.package_id]
-    value = 0x0
-
-[BIRA]
-    write_locked = "False"
-    read_locked = "False"
-    [BIRA.fields.repair_data]
-    value = 0x1a7b2f1e39d8d4a7c5f1b2d73a68c5f1a7c9e4d3b1a5f9a3d72e1a98c2f0a3b6000000000000000000000000000000000000000000000000000000000000000072a98f3d77b1c64efa2b5c98e76d3f1a5b9c84e76d3b21f9c5e7a3d1f24b98a67635c9e8d7b2a4f1c3d5e6a798b4f2c1d6e3a5b798c4d2e1f3a65b7c98d2f1e3000055550000FF13
-
-[CLUSTER]
-    write_locked = "False"
-    read_locked = "False"
-    [CLUSTER.fields.fuse_data]
-    value = 0x0
-
-[FABRIC]
-    write_locked = "False"
-    read_locked = "False"
-    [FABRIC.fields.fuse_data]
-    value = 0x0
-
-[SOP_TOPOLOGY]
-    write_locked = "False"
-    read_locked = "False"
-    [SOP_TOPOLOGY.fields.topology_serial]
-    value = 0xdeadbeef
 
 [I2C_I3C_ID]
     write_locked = "False"
@@ -68,26 +31,20 @@
     [I2C_I3C_ID.fields.interface_id]
     value = 0x0
 
-[I2C_CLOCK_GATING]
+[SMC_CONFIG]
     write_locked = "False"
     read_locked = "False"
-    [I2C_CLOCK_GATING.fields.clock_gating_config]
+    [SMC_CONFIG.fields.smc_config]
     value = 0x0
 
-[I3C_DISABLE]
+[OCCP_TRANSPORT_TIMEOUT]
     write_locked = "False"
     read_locked = "False"
-    [I3C_DISABLE.fields.disable_config]
+    [OCCP_TRANSPORT_TIMEOUT.fields.transport_timeout]
     value = 0x0
 
-[PLL_AND_SENSOR]
+[SPARE]
     write_locked = "False"
     read_locked = "False"
-    [PLL_AND_SENSOR.fields.pll_sensor_config]
-    value = 0x0020000000000000008000200000000000000080002000000000000000800020000000000000008000200000000000000080002000000000000000800020000000000000000000200000000000000000
-
-[RESERVED]
-    write_locked = "False"
-    read_locked = "False"
-    [RESERVED.fields.reserved_data]
+    [SPARE.fields.spare_data]
     value = 0x0

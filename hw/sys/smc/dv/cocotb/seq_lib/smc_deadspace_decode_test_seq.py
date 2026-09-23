@@ -244,7 +244,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
     async def _seed_live(self, probe: DeadspaceProbe) -> tuple[int, int]:
         """Seed a known non-zero value into the live CSR and prove it took.
 
-        This is ONE remediation closing two holes:
+        Seeding serves two purposes:
 
         * the read-alias leg is gated on ``before != 0`` and an unseeded live
           CSR that happens to read 0 makes the compare non-discriminating -- a
@@ -371,8 +371,8 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         # dead write wrapped through. `_seed_live` requires the seeded `before`
         # to equal neither payload, so that collision is impossible by
         # construction and the OKAY path's early return cannot hide it.
-        # PAYLOAD_ZERO therefore remains only as the second attempt on the
-        # refused path.
+        # PAYLOAD_ZERO is therefore only the second attempt on the refused
+        # path.
         for payload in (PAYLOAD, PAYLOAD_ZERO):
             dead_wr = await self._xfer(
                 f"{probe.name}_dead_wr_{payload:08x}",

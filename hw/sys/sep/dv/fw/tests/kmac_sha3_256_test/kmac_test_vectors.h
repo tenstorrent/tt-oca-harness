@@ -1,10 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/* Auto-generated test vectors - DO NOT EDIT BY HAND
- *
- * Use 'make generate-test-vectors' to regenerate this file.
- */
+/* SHA3-256 known-answer vectors (NIST FIPS 202), big-endian digest words. */
 
 #ifndef KMAC_TEST_VECTORS_H_
 #define KMAC_TEST_VECTORS_H_

@@ -33,24 +33,24 @@ module sep_wrapper
 
   output logic wdt_timer_rst_req_o,
 
-  input  logic jtag_tck,
-  input  logic jtag_tms,
-  input  logic jtag_tdi,
-  input  logic jtag_trst_n,
-  output logic jtag_tdo,
-  output logic jtag_tdoEn,
+  input  logic jtag_tck_i,
+  input  logic jtag_tms_i,
+  input  logic jtag_tdi_i,
+  input  logic jtag_trst_ni,
+  output logic jtag_tdo_o,
+  output logic jtag_tdoEn_o,
 
   input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
 
   input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
 
-  input  logic mpc_debug_halt_req,
-  input  logic mpc_debug_run_req,
-  input  logic mpc_reset_run_req,
+  input  logic mpc_debug_halt_req_i,
+  input  logic mpc_debug_run_req_i,
+  input  logic mpc_reset_run_req_i,
 
-  input  logic i_cpu_halt_req,
-  input  logic i_cpu_run_req,
+  input  logic cpu_halt_req_i,
+  input  logic cpu_run_req_i,
 
   input  logic test_en_i,
   input  logic scan_rst_ni,
@@ -68,7 +68,7 @@ module sep_wrapper
 
   output sep_cpu_trace_t sep_cpu_trace,
 
-  // CPU lockstep control/status; names match sep's ports for the .* binding
+  // CPU lockstep control/status
   input  sep_lockstep_ctrl_t   lockstep_ctrl_i,
   output sep_lockstep_status_t lockstep_status_o,
 
@@ -77,7 +77,7 @@ module sep_wrapper
 
   input logic                      timer_int,
   input logic                      soft_int,
-  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
+  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] sep_ext_interrupts_i,
 
   output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,
   input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,
@@ -96,10 +96,10 @@ module sep_wrapper
   output sep_io_spi_req_t sep_io_spi_req_o,
   input  sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-  input  logic spi_irq_i,
-
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
   output logic lc_sigint_err_o,
   output logic security_disable_o,
 
@@ -166,7 +166,6 @@ module sep_wrapper
   ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
-  logic ext_trng_alarm;
 
   // OTBN SRAM interfaces (sep <-> sep_ip_integration)
   sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req;
@@ -187,8 +186,73 @@ module sep_wrapper
     .EXT_TRNG_NUM_AXIS     (EXT_TRNG_NUM_AXIS),
     .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN)
   ) u_sep (
-    .*,
-
+    .clk_i,
+    .clk_ref_i,
+    .clk_wdt_i,
+    .rst_ni,
+    .dbg_rstb_i,
+    .wdt_rst_ni,
+    .jtag_tck_i,
+    .jtag_tms_i,
+    .jtag_tdi_i,
+    .jtag_trst_ni,
+    .jtag_tdo_o,
+    .jtag_tdoEn_o,
+    .jtag_sep_reset_ctrl_i,
+    .axil_sep_otp_jtag_req_i,
+    .axil_sep_otp_jtag_resp_o,
+    .mpc_debug_halt_req_i,
+    .mpc_debug_run_req_i,
+    .mpc_reset_run_req_i,
+    .cpu_halt_req_i,
+    .cpu_run_req_i,
+    .test_en_i,
+    .scan_rst_ni,
+    .ext_boot_seq_done_i,
+    .dmi_core_enable,
+    .dmi_uncore_enable,
+    .dmi_uncore_en,
+    .dmi_uncore_wr_en,
+    .dmi_uncore_addr,
+    .dmi_uncore_wdata,
+    .dmi_uncore_rdata,
+    .dmi_active,
+    .sep_cpu_trace,
+    .lockstep_ctrl_i,
+    .lockstep_status_o,
+    .jtag_id,
+    .timer_int,
+    .soft_int,
+    .smn_outbound_axi_req_o,
+    .smn_outbound_axi_resp_i,
+    .smn_inbound_axi_req_i,
+    .smn_inbound_axi_resp_o,
+    .sep_ext_to_smc_axi_req_o,
+    .sep_ext_to_smc_axi_resp_i,
+    .entropy_rosc_sample_clk_i,
+    .lcc_demote_state_1_o,
+    .lcc_demote_state_2_o,
+    .sep_io_spi_req_o,
+    .sep_io_spi_rsp_i,
+    .lc_state_o,
+    .dbg_disable_o,
+    .sep_fuse_dft_disable_o,
+    .smc_fuse_dft_disable_o,
+    .lc_sigint_err_o,
+    .security_disable_o,
+    .secure_tm_o,
+    .smc_mailbox_interrupt_o,
+    .smc_fuse_sense_done_i,
+    .sep_fuse_sense_done_o,
+    .secure_tm_req_i,
+    .smc_global_base_addr_i,
+    .smc_region_size_i,
+    .sep_global_base_addr_o,
+    .sep_region_size_o,
+    .km_unrecoverable_err_o,
+    .km_recoverable_err_o,
+    .ext_debug_bus_o,
+    .extintsrc_req       (sep_ext_interrupts_i),
 
     .wdt_timer_rst_req_o (wdt_timer_rst_req),
 
@@ -196,28 +260,23 @@ module sep_wrapper
     .sep_cpu_tcm_req_o (sep_cpu_tcm_req),
     .sep_cpu_tcm_rsp_i (sep_cpu_tcm_rsp),
 
-    .sep_sram_req (sep_sram_req),
-    .sep_sram_rsp (sep_sram_rsp),
-
-    .sep_boot_rom_req (sep_boot_rom_req),
-    .sep_boot_rom_rsp (sep_boot_rom_rsp),
-
-    .sep_crypto_pka_imem_sram_req (sep_crypto_pka_imem_sram_req),
-    .sep_crypto_pka_imem_sram_rsp (sep_crypto_pka_imem_sram_rsp),
-    .sep_crypto_pka_dmem_sram_req (sep_crypto_pka_dmem_sram_req),
-    .sep_crypto_pka_dmem_sram_rsp (sep_crypto_pka_dmem_sram_rsp),
-
-    .abr_mem_req (abr_mem_req),
-    .abr_mem_rsp (abr_mem_rsp),
-
+    .sep_sram_req,
+    .sep_sram_rsp,
+    .sep_boot_rom_req,
+    .sep_boot_rom_rsp,
+    .sep_crypto_pka_imem_sram_req,
+    .sep_crypto_pka_imem_sram_rsp,
+    .sep_crypto_pka_dmem_sram_req,
+    .sep_crypto_pka_dmem_sram_rsp,
+    .abr_mem_req,
+    .abr_mem_rsp,
     .ext_trng_axil_req_o  (ext_trng_axil_req),
     .ext_trng_axil_resp_i (ext_trng_axil_resp),
 
     .ext_trng_axis_req_i (ext_trng_axis_req),
     .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-    .ext_trng_irq_i   (ext_trng_irq),
-    .ext_trng_alarm_i (ext_trng_alarm),
+    .ext_trng_irq_i (ext_trng_irq),
 
     .km_rom_mem_req_o (km_rom_mem_req),
     .km_rom_mem_rsp_i (km_rom_mem_rsp),
@@ -280,8 +339,7 @@ module sep_wrapper
     .ext_trng_axis_req_o (ext_trng_axis_req),
     .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-    .ext_trng_irq_o   (ext_trng_irq),
-    .ext_trng_alarm_o (ext_trng_alarm),
+    .ext_trng_irq_o (ext_trng_irq),
 
     .axi_extension_axi_req_i  (axi_extension_axi_req),
     .axi_extension_axi_resp_o (axi_extension_axi_resp),

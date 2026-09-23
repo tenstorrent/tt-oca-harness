@@ -14,6 +14,13 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_axil_idle_test(smc_base_test):
+    required_evidence = (
+        "CHK-AXIL-IDLE",
+        "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+    )
+    min_evidence = 3
+
     # `tb_axil_efuse_bank_active` and `tb_axil_any_master_active` get a same-run
     # positive control from the sequence's `prove_axil_probe_alive`;
     # `tb_axil_external_active` gets it here: this control drives a frontdoor

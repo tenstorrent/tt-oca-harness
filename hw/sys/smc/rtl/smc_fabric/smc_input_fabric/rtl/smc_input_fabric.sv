@@ -146,7 +146,7 @@ module smc_input_fabric #(
     .resp_lite_t        (smc_pkg::smc_axil_56_64_resp_t),
     .axi_req_t          (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
     .axi_resp_t         (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t)
-  ) log_axi_lite_to_axi (
+  ) u_log_axi_lite_to_axi (
     .slv_req_lite_i     (axi_lite_log_req_i),
     .slv_resp_lite_o    (axi_lite_log_resp_o),
     .slv_aw_cache_i     ('0),
@@ -162,7 +162,7 @@ module smc_input_fabric #(
   smc_pkg::input_fabric_mux_axi_req_t         axi_to_input_mux_req;
   smc_pkg::input_fabric_mux_axi_resp_t        axi_to_input_mux_resp;
 
-  smc_alias_remap_wrap smc_alias_remap_wrap (
+  smc_alias_remap_wrap u_smc_alias_remap_wrap (
     .axi_in_jtag_req_i(axi_jtag_port_req_prepend_id),
     .axi_in_jtag_resp_o(axi_jtag_port_resp_prepend_id),
 
@@ -188,10 +188,10 @@ module smc_input_fabric #(
     .axi_out_remapped_data_accel_resp_i(axi_to_input_mux_resp.data_accel),
     .aR_ctrl_i(aR_ctrl_i),
 
-    .o_remap_debug_mmio(remap_debug_mmio_o),
-    .o_remap_debug_jtag(remap_debug_jtag_o),
-    .o_remap_debug_log(remap_debug_log_o),
-    .o_remap_debug_dma(remap_debug_dma_o)
+    .remap_debug_mmio_o(remap_debug_mmio_o),
+    .remap_debug_jtag_o(remap_debug_jtag_o),
+    .remap_debug_log_o(remap_debug_log_o),
+    .remap_debug_dma_o(remap_debug_dma_o)
   );
 
   smc_pkg::smc_56_64_6_12_axi_req_t   axi_from_input_mux_req;
@@ -220,7 +220,7 @@ module smc_input_fabric #(
     .SpillB             (1'b1),
     .SpillAr            (1'b1),
     .SpillR             (1'b1)
-  ) smc_input_axi_mux (
+  ) u_smc_input_axi_mux (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
     .test_i             (test_en_i),
@@ -272,7 +272,7 @@ module smc_input_fabric #(
     .SpillB         (1'b0),
     .SpillAr        (1'b1),
     .SpillR         (1'b0)
-  ) smc_local_global_demux (
+  ) u_smc_local_global_demux (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
     .test_i             (test_en_i),
@@ -293,7 +293,7 @@ module smc_input_fabric #(
     .input_axi_resp_t   (smc_pkg::smc_56_64_6_12_axi_resp_t),
     .output_axi_req_t   (smc_pkg::smc_local_32_64_6_12_axi_req_t),
     .output_axi_resp_t  (smc_pkg::smc_local_32_64_6_12_axi_resp_t)
-  ) smc_axi_addr_fixer (
+  ) u_smc_axi_addr_fixer (
     .axi_in_req_i       (axi_from_demux_req.local_fabric),
     .axi_in_resp_o      (axi_from_demux_resp.local_fabric),
     .axi_out_req_o      (axi_local_out_req_o),
@@ -318,7 +318,7 @@ module smc_input_fabric #(
     .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) sys_in_filter_cg (
+  ) u_sys_in_filter_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 
@@ -368,7 +368,7 @@ module smc_input_fabric #(
     .filter_b_chan_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_b_chan_t),
     .filter_ar_chan_t    (smc_pkg::smc_sys_in_56_64_6_12_axi_ar_chan_t),
     .filter_r_chan_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_r_chan_t)
-  ) smc_sys_inbound_filter (
+  ) u_smc_sys_inbound_filter (
     .clk_i                      (filter_clk),
     .rst_ni                     (rst_ni),
     .test_en_i                  (test_en_i),

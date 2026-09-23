@@ -11,9 +11,9 @@ interface controller's
 AXI-Lite mux -- proving CPU + JTAG coexistence with no corruption.
 
 The OTP image is real-sensed at LC_STATE=PROD, which makes the JTAG path
-LC-restricted (sep_efuse_wrapper): a JTAG access to the MMR token region is
-allowed, but a JTAG access to the shadow map / interface CSRs is routed to an
-error slave returning ``0xbadcab1e``. So the single PROD image exercises BOTH the
+LC-restricted: a JTAG access to the MMR token region is allowed, but a JTAG
+access to the shadow map / interface CSRs is denied (AMBA decode error plus
+the denied-access sentinel). So the single PROD image exercises BOTH the
 allowed-MMR coexistence AND the LC-gated deny -- with no backdoor lc_state force
 (the reference suite ``force_jtag_lc_state``).
 
@@ -25,8 +25,8 @@ Checkers (each logged):
     return OKAY -- the JTAG path reaches the eFuse through the mux. token1 is
     seeded because TOKEN_I is an ``external`` sw=rw word with no reset, so an
     unwritten read returns X.
-  * CHK-JTAG-DENY: a JTAG shadow-map read at PROD is DENIED -- error response AND
-    data == 0xbadcab1e (the LC-gated filter).
+  * CHK-JTAG-DENY: a JTAG shadow-map read at PROD is DENIED -- DECERR and
+    the denied-access sentinel (the LC-gated filter).
   * CHK-JTAG-ALLOW: a JTAG MMR read right after the deny still returns OKAY (MMR is
     allowed even in the restricted state).
   * CHK-JTAG-TOKEN-BLOCK: in PROD/RMA_SIP, JTAG may reach the MMR token
@@ -36,14 +36,15 @@ Checkers (each logged):
     ``CHK-JTAG-MMR`` already walks RMA ``TOKEN_I``.
     It is a sample of the allow class, not every TOKEN_I word and MATCH.
   * CHK-JTAG-IFACE-DENY: a JTAG read of the program/read interface
-    (`EFUSE_PROGRAM_CTRL`) DECERRs with ``0xbadcab1e`` — same class as shadow.
+    (`EFUSE_PROGRAM_CTRL`) DECERRs with the denied-access sentinel — same class
+    as shadow.
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], read via the read-only
     scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
     by the JTAG master.
 
-OSS deltas (documented): real PROD-sense replaces the reference suite's backdoor
-``force_jtag_lc_state``; a fixed CPU loop window replaces the reference suite's backdoor
-``uvm_hdl_deposit`` UVM_DONE release. A live CPU loop window replaces that deposit.
+Deltas vs the reference suite: real PROD-sense replaces its backdoor
+``force_jtag_lc_state``; a live CPU loop window replaces its backdoor
+``uvm_hdl_deposit`` UVM_DONE release.
 """
 
 from __future__ import annotations
@@ -57,6 +58,7 @@ from cocotb.triggers import RisingEdge
 from env.sep_lcc_golden import LC_PROD
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
+from seq_lib.sep_inbound_filter_rule_seq import ERR_SLV_RDATA, RESP_DECERR
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "efuse_jtag_el2_mux_test")
@@ -78,12 +80,9 @@ _EFUSE_MMR_SEC_DIS_MATCH = sym("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR")
 # Seeded into SEC_DISABLE_TOKEN_I[0] before the token-block sample reads it.
 _SEC_DIS_I0_SEED = 0x5A5A_4001
 # Interface control sits outside the token block and must DECERR in PROD.
+# DECERR is the AMBA AXI4-Lite decode error (IHI 0022). The data sentinel is
+# the same DV-owned denied-access value inbound-filter deny grades.
 _EFUSE_IFACE_PROGRAM = sym("EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR")
-_BADCAB1E = 0xBADC_AB1E
-# The JTAG LC-gated denial routes to prim_axi_lite_err_slv, whose default RESP is
-# RESP_DECERR (=3); the sep_efuse_wrapper instance does not override it. So a
-# denied JTAG access must return DECERR specifically (not merely any non-OKAY).
-_RESP_DECERR = 3
 
 _CPU_READY = 0xE905_0001
 _SCRATCH_READY = 0
@@ -146,6 +145,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             import shutil
 
             shutil.copyfile(src, os.path.join(os.getcwd(), dst))
+        self._log_firmware_identity(_ITCM_HEX, _DTCM_HEX)
 
         async def _load_tcm() -> None:
             from cocotb.triggers import ClockCycles
@@ -207,15 +207,16 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             "CHK-JTAG-MMR PASS: %d JTAG MMR rounds all OKAY (mux reached eFuse)", rounds
         )
 
-        # --- LC-gated: shadow read DENIED at PROD. The RTL routes it to the JTAG
-        # err-slave, which returns the SPECIFIC DECERR (resp=3) + data 0xbadcab1e;
-        # require both (a SLVERR or any other non-OKAY is a contract violation). ---
+        # --- LC-gated: shadow read DENIED at PROD. DECERR plus the denied-access
+        # sentinel; a SLVERR or any other non-OKAY is a contract violation. ---
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_SHADOW_BASE)
-        assert code == _RESP_DECERR, (
-            f"JTAG shadow read at PROD must be DENIED with DECERR (resp={_RESP_DECERR}), "
+        assert code == RESP_DECERR, (
+            f"JTAG shadow read at PROD must be DENIED with DECERR (resp={RESP_DECERR}), "
             f"got resp={code} rdata=0x{rdata:08x}"
         )
-        assert rdata == _BADCAB1E, f"JTAG denied-read data 0x{rdata:08x} != 0x{_BADCAB1E:08x}"
+        assert rdata == ERR_SLV_RDATA, (
+            f"JTAG denied-read data 0x{rdata:08x} != 0x{ERR_SLV_RDATA:08x}"
+        )
         self.logger.info(
             "CHK-JTAG-DENY PASS: JTAG shadow read @0x%08x denied with DECERR (resp=%d, rdata=0x%08x)",
             _EFUSE_SHADOW_BASE,
@@ -246,7 +247,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         # Seed the token-input word first, for the same reason token1 is seeded:
         # SEC_DISABLE_TOKEN_I is `external` sw=rw with no reset, so an unwritten
         # read returns X. Writing a TOKEN_I word starts no compare -- only a
-        # TOKEN_EOP write does, which this checker deliberately never issues.
+        # TOKEN_EOP write does, which this checker never issues.
         code, _ = await self.jtag_axil_op(
             write=True, addr=_EFUSE_MMR_SEC_DIS_I0, wdata=_SEC_DIS_I0_SEED
         )
@@ -263,7 +264,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
             code, rdata = await self.jtag_axil_op(write=False, addr=addr)
             assert code == 0, (
                 f"CHK-JTAG-TOKEN-BLOCK FAIL: JTAG {label} @0x{addr:08x} in PROD "
-                f"must be OKAY; RTL returned resp={code} rdata=0x{rdata:08x}"
+                f"must be OKAY; got resp={code} rdata=0x{rdata:08x}"
             )
             if addr == _EFUSE_MMR_SEC_DIS_I0:
                 assert rdata == _SEC_DIS_I0_SEED, (
@@ -276,12 +277,12 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         )
 
         code, rdata = await self.jtag_axil_op(write=False, addr=_EFUSE_IFACE_PROGRAM)
-        assert code == _RESP_DECERR, (
+        assert code == RESP_DECERR, (
             f"CHK-JTAG-IFACE-DENY FAIL: JTAG EFUSE_PROGRAM_CTRL @0x{_EFUSE_IFACE_PROGRAM:08x} "
-            f"in PROD must DECERR; RTL returned resp={code} rdata=0x{rdata:08x}"
+            f"in PROD must DECERR; got resp={code} rdata=0x{rdata:08x}"
         )
-        assert rdata == _BADCAB1E, (
-            f"CHK-JTAG-IFACE-DENY FAIL: denied-read data 0x{rdata:08x} != 0x{_BADCAB1E:08x}"
+        assert rdata == ERR_SLV_RDATA, (
+            f"CHK-JTAG-IFACE-DENY FAIL: denied-read data 0x{rdata:08x} != 0x{ERR_SLV_RDATA:08x}"
         )
         self.logger.info(
             "CHK-JTAG-IFACE-DENY PASS: JTAG program-interface read @0x%08x denied "

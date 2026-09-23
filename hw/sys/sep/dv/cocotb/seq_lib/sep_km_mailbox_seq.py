@@ -21,10 +21,14 @@ All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
-from sep_reg_meta import sym
+from env.sep_spec_tables import agg_from_pic
+from sep_reg_meta import KM_MAILBOX_SEP, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -41,55 +45,79 @@ KM_MBOX_IRQ_STATUS = sym("KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET")
 KM_MBOX_CTRL = sym("KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET")
 
-# STATUS bit positions
-KM_STATUS_INBOUND_EMPTY = 0
-KM_STATUS_INBOUND_FULL = 1
-KM_STATUS_OUTBOUND_EMPTY = 2
-KM_STATUS_OUTBOUND_FULL = 3
-KM_STATUS_INBOUND_DEPTH_LSB = 4
-KM_STATUS_OUTBOUND_DEPTH_LSB = 12
-KM_STATUS_INBOUND_OVERFLOW = 20
-KM_STATUS_OUTBOUND_OVERFLOW = 21
-KM_STATUS_INBOUND_UNDERFLOW = 22
-KM_STATUS_OUTBOUND_UNDERFLOW = 23
-KM_STATUS_INBOUND_SEPARATOR = 24
-KM_STATUS_OUTBOUND_SEPARATOR = 25
+# SEP_STATUS bit positions, from the generated export like the offsets above.
+# km_mailbox_sep.rdl declares SEP_STATUS with the `status_reg` typedef, so the
+# emitted name is KM_MAILBOX_SEP_STATUS_REG_*; sep_reg_meta._TYPE_ALIAS bridges
+# that. A field that moves in the RDL moves these with it.
+_KM_MBOX = KM_MAILBOX_SEP.field_lsb
+KM_STATUS_INBOUND_EMPTY = _KM_MBOX("SEP_STATUS", "inbound_empty")
+KM_STATUS_INBOUND_FULL = _KM_MBOX("SEP_STATUS", "inbound_full")
+KM_STATUS_OUTBOUND_EMPTY = _KM_MBOX("SEP_STATUS", "outbound_empty")
+KM_STATUS_OUTBOUND_FULL = _KM_MBOX("SEP_STATUS", "outbound_full")
+KM_STATUS_INBOUND_DEPTH_LSB = _KM_MBOX("SEP_STATUS", "inbound_depth")
+KM_STATUS_OUTBOUND_DEPTH_LSB = _KM_MBOX("SEP_STATUS", "outbound_depth")
+KM_STATUS_INBOUND_DEPTH_MASK = (1 << KM_MAILBOX_SEP.field_width("SEP_STATUS", "inbound_depth")) - 1
+KM_STATUS_OUTBOUND_DEPTH_MASK = (
+    1 << KM_MAILBOX_SEP.field_width("SEP_STATUS", "outbound_depth")
+) - 1
+KM_STATUS_INBOUND_OVERFLOW = _KM_MBOX("SEP_STATUS", "inbound_overflow")
+KM_STATUS_LOW_MASK = (1 << KM_STATUS_INBOUND_OVERFLOW) - 1
+KM_STATUS_OUTBOUND_OVERFLOW = _KM_MBOX("SEP_STATUS", "outbound_overflow")
+KM_STATUS_INBOUND_UNDERFLOW = _KM_MBOX("SEP_STATUS", "inbound_underflow")
+KM_STATUS_OUTBOUND_UNDERFLOW = _KM_MBOX("SEP_STATUS", "outbound_underflow")
+KM_STATUS_INBOUND_SEPARATOR = _KM_MBOX("SEP_STATUS", "inbound_separator")
+KM_STATUS_OUTBOUND_SEPARATOR = _KM_MBOX("SEP_STATUS", "outbound_separator")
 
-# SEP_IRQ_STATUS bit positions.
-KM_IRQ_OUTBOUND_DATA_AVAIL = 0
-KM_IRQ_INBOUND_SPACE_AVAIL = 1
-KM_IRQ_INBOUND_OVERFLOW = 2
-KM_IRQ_OUTBOUND_UNDERFLOW = 3
-KM_IRQ_FLUSHED_BY_KM = 4
-KM_IRQ_EN_OUTBOUND_DATA_AVAIL = 0
-KM_IRQ_EN_INBOUND_SPACE_AVAIL = 1
-KM_IRQ_EN_INBOUND_OVERFLOW = 2
-KM_IRQ_EN_OUTBOUND_UNDERFLOW = 3
-KM_IRQ_EN_FLUSHED_BY_KM = 4
+# SEP_IRQ_STATUS / SEP_IRQ_ENABLE bit positions, from the generated export.
+KM_IRQ_OUTBOUND_DATA_AVAIL = _KM_MBOX("SEP_IRQ_STATUS", "outbound_read_data_avail")
+KM_IRQ_INBOUND_SPACE_AVAIL = _KM_MBOX("SEP_IRQ_STATUS", "inbound_write_space_avail")
+KM_IRQ_INBOUND_OVERFLOW = _KM_MBOX("SEP_IRQ_STATUS", "inbound_overflow")
+KM_IRQ_OUTBOUND_UNDERFLOW = _KM_MBOX("SEP_IRQ_STATUS", "outbound_underflow")
+KM_IRQ_FLUSHED_BY_KM = _KM_MBOX("SEP_IRQ_STATUS", "flushed_by_km")
+KM_IRQ_EN_OUTBOUND_DATA_AVAIL = _KM_MBOX("SEP_IRQ_ENABLE", "outbound_read_data_avail_en")
+KM_IRQ_EN_INBOUND_SPACE_AVAIL = _KM_MBOX("SEP_IRQ_ENABLE", "inbound_write_space_avail_en")
+KM_IRQ_EN_INBOUND_OVERFLOW = _KM_MBOX("SEP_IRQ_ENABLE", "inbound_overflow_en")
+KM_IRQ_EN_OUTBOUND_UNDERFLOW = _KM_MBOX("SEP_IRQ_ENABLE", "outbound_underflow_en")
+KM_IRQ_EN_FLUSHED_BY_KM = _KM_MBOX("SEP_IRQ_ENABLE", "flushed_by_km_en")
 
-# sep.sv assembles km_mbox_irq onto sep_internal_interrupts[14].
-KM_MBOX_IRQ_AGG = 14
+KM_MBOX_IRQ_AGG = agg_from_pic("KM mailbox IRQ")
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
-# SEP_CTRL bit positions.
-KM_CTRL_INBOUND_OVERFLOW_RESP = 0
-KM_CTRL_OUTBOUND_UNDERFLOW_RESP = 1
-KM_CTRL_FLUSH = 2
+# SEP_CTRL bit positions, from the generated export.
+KM_CTRL_INBOUND_OVERFLOW_RESP = _KM_MBOX("SEP_CTRL", "inbound_overflow_resp")
+KM_CTRL_OUTBOUND_UNDERFLOW_RESP = _KM_MBOX("SEP_CTRL", "outbound_underflow_resp")
+KM_CTRL_FLUSH = _KM_MBOX("SEP_CTRL", "flush")
 
 # Both FIFOs are 16 entries deep (the KM firmware's own frame-size bound).
 KM_MBOX_DEPTH = 16
 
 # --- commands / responses / destinations ----------------------------------
+# rom_defs.h rom_km_cmd_id_t / rom_km_resp_id_t.
+KM_CMD_HW_VER = 0x00
+KM_CMD_ROM_VER = 0x01
+KM_CMD_SRAM_VER = 0x02
 KM_CMD_STAT = 0x03
+KM_CMD_RECOV_ACK = 0x04
+KM_CMD_EXEC_ROM = 0x10
+KM_CMD_SRAM_LOAD_EXEC = 0x11
+KM_CMD_SRAM_EXEC = 0x12
 KM_CMD_KEY_GENERATE = 0x22
 KM_CMD_KEY_REVOKE = 0x23
 KM_CMD_KEY_TRANSFER = 0x24
 KM_CMD_ENGINE_SHRED = 0x25
 KM_CMD_KEY_LOAD = 0x26
+KM_CMD_ABR_SK_TRANSFER = 0x27
+KM_CMD_OTP_READ_LOCK_COLD = 0x28
 KM_RESP_CMD = 0x00
 KM_RESP_KM_READY = 0x55
+# Unsolicited: the firmware posts this when Adams Bridge has written an ML-KEM
+# shared key into the sideload CSR and the block's KEY_VALID latched. It is the
+# only observation of the shim's interrupt path from the host side.
+KM_RESP_ABR_SHARED_KEY_READY = 0x56
+KM_RESP_RECOVERABLE_FAULT = 0xFE
+KM_RESP_UNRECOVERABLE_FAULT = 0xFF
 
 # Return codes (signed int8 in the RESP_CMD payload).
 KM_RC_SUCCESS = 0
@@ -111,11 +139,50 @@ KM_VALID_CMD_IDS = (
 # stand-in for "a handle the key registry does not hold".
 KM_KEY_HANDLE_NULL = 0x00
 
-# Destination bitmask (rom_defs.h / sep_km_types.sv): bit3 = OTBN
+# Destination bitmask (`rom_defs.h` rom_km_dest_bits_t /
+# `hw/ip/key_manager/doc/firmware.adoc` DEST_VALID): bit0 HMAC, bit1 KMAC,
+# bit2 AES, bit3 OTBN, bit4 ABR ML-DSA seed, bits 5-7 ABR ML-KEM.
 KM_DEST_HMAC = 0x01
 KM_DEST_KMAC = 0x02
 KM_DEST_AES = 0x04
 KM_DEST_OTBN = 0x08
+KM_DEST_ABR_MLDSA_SEED = 0x10
+KM_DEST_ABR_MLKEM_SEED_D = 0x20
+KM_DEST_ABR_MLKEM_SEED_Z = 0x40
+KM_DEST_ABR_MLKEM_MSG = 0x80
+
+
+# Packed versions: patch[7:0], minor[15:8], major[23:16] (rom_km_version_ret_t).
+def _hw_root() -> Path:
+    return Path(__file__).resolve().parents[5]
+
+
+def _km_csr_version_reset() -> int:
+    import importlib.util
+
+    reg_py = _hw_root() / "ip/key_manager/regs/gen/py/key_manager_reg.py"
+    spec = importlib.util.spec_from_file_location("key_manager_reg", reg_py)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {reg_py}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return int(mod.KM_CSR_VERSION_REG_REG_DEFAULT)
+
+
+def _km_rom_version() -> int:
+    """ROM version word from the firmware header, not a copied literal."""
+    hdr = (_hw_root() / "ip/key_manager/dv/fw/include/rom_defs.h").read_text()
+    parts: dict[str, int] = {}
+    for name in ("MAJOR", "MINOR", "PATCH"):
+        match = re.search(rf"#define ROM_KM_ROM_VERSION_{name}\s+(\d+)", hdr)
+        if match is None:
+            raise RuntimeError(f"ROM_KM_ROM_VERSION_{name} missing from rom_defs.h")
+        parts[name] = int(match.group(1))
+    return parts["PATCH"] | (parts["MINOR"] << 8) | (parts["MAJOR"] << 16)
+
+
+KM_HW_VER_1_0_0 = _km_csr_version_reset()
+KM_ROM_VER_1_1_0 = _km_rom_version()
 
 
 def crc8_rohc(data: bytes) -> int:
@@ -176,6 +243,18 @@ class SepKmMailbox:
         self.seq_num = 0  # next outbound command sequence number
         self._resp_seq = 0  # next expected response sequence; the firmware bumps
         # rom_resp_seq_num on EVERY frame, incl. boot RESP_KM_READY
+
+    def reset_host_seq(self) -> None:
+        """Resynchronize host counters with a KM that just reset its own.
+
+        ``rom_boot_init`` and the mailbox ISR flush path both zero
+        ``rom_cmd_seq_num`` / ``rom_resp_seq_num``. After a warm reset or a
+        SEP-initiated flush the next command and the next response are
+        sequence 0; leaving the host counters where they were produces a
+        false ``RC_CMD_NOSEQ``.
+        """
+        self.seq_num = 0
+        self._resp_seq = 0
 
     # --- raw register access ----------------------------------------------
     async def _wr(self, offset: int, data: int) -> None:
@@ -383,10 +462,8 @@ class SepKmMailbox:
         counters so the failure names which stage did not retire, rather than
         silently polling an empty mailbox for milliseconds of sim time.
 
-        The 8000-poll budget is 400k core cycles (~460 us), roughly 1.5x the
-        ~300 us the KM ROM needs to reach RESP_KM_READY in the reference subsystem tb.
-        Generous for a healthy boot, but bounded enough that a KM which never
-        boots fails in minutes instead of running the test to its 7200 s cap.
+        The 8000-poll budget is 400k core cycles: generous for a healthy boot, but
+        bounded so a KM that never boots fails here rather than at the run timeout.
         """
         try:
             words = await self.recv_frame(timeout=timeout, poll_cycles=poll_cycles)
@@ -456,6 +533,20 @@ class SepKmMailbox:
         )
         return rc, arg
 
+    async def abr_sk_transfer(self, *, dest: int, timeout: int = 200_000) -> tuple[int, int]:
+        """CMD_ABR_SK_TRANSFER; returns (return_code, return_arg).
+
+        Consumes the ML-KEM shared key Adams Bridge posted into the sideload
+        CSR and stores it in the KPV. The firmware rejects the command while
+        that block's KEY_VALID is clear, so the reject leg is the negative
+        control for the writeback path and the raw result is returned rather
+        than raised on."""
+        seq = await self.send_command(KM_CMD_ABR_SK_TRANSFER, [dest & 0xFFFF_FFFF])
+        rc, arg = await self.recv_resp_cmd(KM_CMD_ABR_SK_TRANSFER, seq, timeout=timeout)
+        await self.check_outbound_empty("POST-ABR-SK-TRANSFER")
+        self.log.info("KM CMD_ABR_SK_TRANSFER: dest=0x%02x rc=%d arg=0x%08x", dest, rc, arg)
+        return rc, arg
+
     async def check_outbound_empty(self, tag: str) -> None:
         status = await self._status()
         if not (status & (1 << KM_STATUS_OUTBOUND_EMPTY)):
@@ -485,6 +576,42 @@ class SepKmMailbox:
         await self.check_outbound_empty("POST-ENGINE-SHRED")
         self.log.info("KM CMD_ENGINE_SHRED: dest=0x%02x rc=%d arg=0x%08x", dest, rc, arg)
         return rc, arg
+
+    async def flush(self, *, timeout: int = 4_000) -> None:
+        """Pulse SEP_CTRL.FLUSH and wait until the bit self-clears.
+
+        While the KM is running this is the frontdoor that raises
+        ``RFAULT_FLUSHED_BY_SEP``: the firmware ISR resets both sequence
+        counters and posts ``RESP_RECOVERABLE_FAULT``. Call
+        ``reset_host_seq`` before receiving that frame.
+        """
+        await self.write_ctrl(1 << KM_CTRL_FLUSH)
+        for _ in range(timeout):
+            if (await self.read_ctrl() & (1 << KM_CTRL_FLUSH)) == 0:
+                return
+            await ClockCycles(cocotb.top.clk_i, 20)
+        raise AssertionError("KM mailbox CTRL.flush did not self-clear")
+
+    async def recv_unsolicited(self, expected_id: int, *, timeout: int = 200_000) -> list[int]:
+        """Receive one framed response that is not a RESP_CMD echo.
+
+        Used for ``RESP_KM_READY``, ``RESP_RECOVERABLE_FAULT`` and
+        ``RESP_UNRECOVERABLE_FAULT``. Frame integrity and the response
+        sequence still apply; the caller is responsible for
+        ``reset_host_seq`` when the KM has just zeroed its counters.
+        """
+        words = await self.recv_frame(timeout=timeout)
+        resp_id = (words[0] >> 8) & 0xFF
+        if resp_id != (expected_id & 0xFF):
+            raise AssertionError(
+                f"expected resp_id 0x{expected_id:02x}, got 0x{resp_id:02x} "
+                f"(frame={[hex(w) for w in words]})"
+            )
+        return words
+
+    async def post_raw_words(self, words: list[int]) -> None:
+        """Write raw inbound words, separator on the last. Not a command frame."""
+        await self._post_words(words)
 
     async def stat(self, *, timeout: int = 200_000) -> tuple[int, int]:
         """CMD_STAT; returns (return_code, return_arg).

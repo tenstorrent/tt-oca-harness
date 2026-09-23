@@ -51,8 +51,7 @@ class BitField(NamedTuple):
 # --------------------------------------------------------------------------
 # Scratch registers the ROM uses for SIM observability
 # (smc_scratchpad.h: SMC_SCRATCH_SIM_PASS_FAIL=0, SIM_POST_CODE=1,
-#  SIM_VIRT_CONSOLE=2). Index 0 already has a constant in smc_cpu_vip_utils
-# (CPU_CTRL_SCRATCH_0), so it is not duplicated here.
+#  SIM_VIRT_CONSOLE=2). Index 0 is `CPU_CTRL_SCRATCH_0` in smc_cpu_vip_utils.
 # --------------------------------------------------------------------------
 SCRATCH_POST_CODE = SMC_CPU_CTRL_SCRATCH_1__REG_ADDR
 

@@ -149,14 +149,14 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
 
         count_pri = await self._read_count()
         # Anchored to values this run measured, not to the PRESET this sequence
-        # programmed: COUNT enters the phase already above PRESET (0x1096 in the
-        # retained run), so an absolute comparison against it holds with or
-        # without the TIMER_START write.
+        # programmed: COUNT enters this phase above PRESET, so an absolute
+        # comparison against PRESET would hold with or without the TIMER_START
+        # write.
         assert count_reloaded < count_before_start, (
             f"OCTS TIMER_START did not reload COUNT: 0x{count_before_start:x} -> "
             f"0x{count_reloaded:x} (a free-running counter only increases)"
         )
-        assert count_reloaded - _OCTS_PRESET_VAL <= _OCTS_RELOAD_SLACK, (
+        assert _OCTS_PRESET_VAL <= count_reloaded <= _OCTS_PRESET_VAL + _OCTS_RELOAD_SLACK, (
             f"OCTS COUNT reloaded to 0x{count_reloaded:x}, not to PRESET "
             f"0x{_OCTS_PRESET_VAL:x} (+{_OCTS_RELOAD_SLACK} read latency)"
         )
@@ -166,10 +166,20 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
             f"{_OCTS_PRIMARY_WAIT} clk_smc_i, expected 1..{_OCTS_MAX_ADVANCE}"
         )
         cocotb.log.info(
-            "OCTS dual-sync PASS: secondary COUNT=0x%x primary "
-            "sync_edges=%d credit_edges=%d COUNT=0x%x",
+            "CHK-OCTS-DUAL-SYNC: SECONDARY strap: STATUS.MODE set, pad2core sync then "
+            "%d credits gave STATUS.RUNNING and COUNT=0x%x within [0x%x, 0x%x]; PRIMARY "
+            "strap: STATUS.MODE clear, %d sync_load and %d cnt_credit rising edges on "
+            "the DUT pads over %d clk_smc_i, TIMER_START reloaded COUNT 0x%x -> 0x%x "
+            "(PRESET 0x%x) and it advanced %d afterwards",
+            2,
             count_after,
+            expected_lo,
+            expected_hi,
             sync_edges,
             credit_edges,
-            count_pri,
+            _OCTS_PRIMARY_WAIT,
+            count_before_start,
+            count_reloaded,
+            _OCTS_PRESET_VAL,
+            advance,
         )

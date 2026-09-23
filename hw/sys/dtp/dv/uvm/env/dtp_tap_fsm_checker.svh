@@ -33,6 +33,10 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
   protected bit m_edge_seen  [16][2];
   protected int unsigned m_cycles;
   protected int unsigned m_mismatches;
+  // Power-on reset forces Test-Logic-Reset without a TCK edge or a TRST
+  // event; the tb_top assertion counter marks it, and the model
+  // re-baselines before the next step is judged.
+  protected logic [31:0] m_por_count = '0;
 
   function new(string name = "dtp_tap_fsm_checker", uvm_component parent = null);
     super.new(name, parent);
@@ -56,6 +60,12 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
       return;
     end
 
+    if (tb_vif.por_assert_count !== m_por_count) begin
+      m_por_count = tb_vif.por_assert_count;
+      m_model = OCAH_JTAG_TEST_LOGIC_RESET;
+      m_state_seen[OCAH_JTAG_TEST_LOGIC_RESET] = 1'b1;
+    end
+
     if (t.trst_n === 1'b0) begin
       expected = OCAH_JTAG_TEST_LOGIC_RESET;
     end else begin
@@ -66,7 +76,7 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
     expected_onehot = 16'h1 << int'(expected);
     m_cycles++;
 
-    if (!is_onehot(tb_vif.tap_state) || !is_valid_tap_state(tb_vif.tap_state)) begin
+    if (!dtp_tap_state_is_valid(tb_vif.tap_state)) begin
       m_mismatches++;
       `uvm_error(
           "sanity_fsm_visit_chk",

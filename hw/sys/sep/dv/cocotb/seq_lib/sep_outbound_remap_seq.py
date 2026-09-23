@@ -7,17 +7,18 @@ to a seed-selected outbound address, then programs one outbound-filter entry
 to allow only that remapped beat. A second region is left at offset 0 so its
 translated address misses the allow window (block-by-default DECERR).
 
-Address rewrite (``hw/common/axi/output_remap/rtl/output_remap.sv``):
-``{offset[55:IdxStart], adjusted[IdxStart-1:0]}`` with IdxStart=19
-(``sep_pkg`` 512 KiB regions). Region bases are
-``OCH_SEP_TOP_AP_REGION_BASE_ADDR`` / ``STEE_REGION_BASE_ADDR``.
+Address rewrite: ``{offset[55:IdxStart], adjusted[IdxStart-1:0]}``.
+IdxStart is log2(AP window / region count) from the generated map
+and fabric.adoc. Region bases are ``AP_REGION_MEM_BASE_ADDR`` /
+``STEE_REGION_MEM_BASE_ADDR``.
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import indexed_block_count, sym
+from env.sep_spec_tables import fabric_output_remap_regions
+from sep_reg_meta import AP_OUTPUT_REMAP_CTRL_0, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -29,6 +30,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_SRC_ID_LSB,
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     OUTFILT_BASE,
     REMAP_STRIDE,
@@ -38,18 +41,32 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 # och_sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
 AP_REGION_BASE = sym("AP_REGION_MEM_BASE_ADDR")
 STEE_REGION_BASE = sym("STEE_REGION_MEM_BASE_ADDR")
-# sep_pkg::NUM_*_OUTPUT_REMAP_IDX_START / NUM_*_OUTPUT_REMAP_REGIONS
-IDX_START = 19
-N_REGIONS = 16
+# Region count from fabric.adoc ("Sixteen remap regions") and the RDL array.
+# IdxStart is log2(AP window / N), so a size or count change fails import.
+N_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
+_AP_WINDOW = sym("AP_REGION_MEM_SIZE")
+if _AP_WINDOW % N_REGIONS:
+    raise RuntimeError(
+        f"AP_REGION_MEM_SIZE 0x{_AP_WINDOW:x} is not divisible by {N_REGIONS} regions"
+    )
+_REGION_SPAN = _AP_WINDOW // N_REGIONS
+if _REGION_SPAN.bit_count() != 1:
+    raise RuntimeError(f"output-remap region span 0x{_REGION_SPAN:x} is not a power of two")
+IDX_START = _REGION_SPAN.bit_length() - 1
+if N_REGIONS != fabric_output_remap_regions():
+    raise RuntimeError(
+        f"RDL has {N_REGIONS} AP remap regions; fabric.adoc states {fabric_output_remap_regions()}"
+    )
 # `outbound_filter_ctrl[32]`; the count comes from the export so a seed can
 # select any entry the bank actually has.
 OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 
-# sep_outbound_mbx STDOUT window: always-ready OKAY responder on smn_outbound.
+# sep_outbound_mbx STDOUT window. The responder OKAYs every outbound address;
+# only console capture decodes the write address.
 REMAP_TARGET_BASE = 0x8000_0000
+REMAP_ATTRS = AP_OUTPUT_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
+REMAP_OFFSET_MASK = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
 
-FILTER_START_ADDR = 0x08
-FILTER_END_ADDR = 0x10
 RESP_OKAY = 0
 RESP_DECERR = 3
 
@@ -79,15 +96,29 @@ class SepOutboundRemapCfg:
         self.entry = rng.randrange(OUTFILT_N_ENTRIES)
         # 8-byte aligned intra-region offset so the filter window is one beat.
         self.intra = rng.randrange(0, 0x1000, 8)
+        # Next beat of the same region. The allow entry covers one address,
+        # so this beat translates to a non-zero address outside that entry.
+        # Offset 0 on the other region can also miss because the translated
+        # address is low; this beat cannot.
+        self.neighbor_intra = self.intra + 8 if self.intra + 8 < _REGION_SPAN else self.intra - 8
         self.offset = REMAP_TARGET_BASE
         self.access_addr = remap_access_addr(self.region_base, self.region, self.intra)
         self.expect_addr = remapped_addr(self.offset, self.intra)
+        self.neighbor_addr = remap_access_addr(self.region_base, self.region, self.neighbor_intra)
+        self.neighbor_expect = remapped_addr(self.offset, self.neighbor_intra)
         self.forbidden_addr = remap_access_addr(self.region_base, self.forbidden_region, self.intra)
         self.forbidden_expect = remapped_addr(0, self.intra)
         if self.expect_addr == self.access_addr:
             raise RuntimeError("remap target equals identity -- vacuous")
         if self.expect_addr == self.forbidden_expect:
             raise RuntimeError("allowed and forbidden remaps collide")
+        if (
+            self.neighbor_expect == self.expect_addr
+            or self.neighbor_expect == self.forbidden_expect
+        ):
+            raise RuntimeError("neighbor remap does not leave the allow window")
+        if self.neighbor_expect < REMAP_TARGET_BASE:
+            raise RuntimeError("neighbor remap collapsed to a low address")
 
     def summary(self) -> str:
         return (
@@ -104,13 +135,14 @@ class SepOutboundRemap(SepAxiRegDriver):
     _DRIVER_TAG = "OUTREMAP"
 
     async def program(self, cfg: SepOutboundRemapCfg) -> None:
-        attrs = cfg.csr_base + cfg.region * REMAP_STRIDE
-        await self._wr(attrs, cfg.offset & 0xFFFF_FFFF)
-        await self._wr(attrs + 4, (cfg.offset >> 32) & 0x00FF_FFFF)
+        attrs = cfg.csr_base + cfg.region * REMAP_STRIDE + REMAP_ATTRS
+        masked = cfg.offset & REMAP_OFFSET_MASK
+        await self._wr(attrs, masked & 0xFFFF_FFFF)
+        await self._wr(attrs + 4, masked >> 32)
         rb_lo = await self._rd(attrs)
         rb_hi = await self._rd(attrs + 4)
-        want_lo = cfg.offset & 0xFFFF_FFFF
-        want_hi = (cfg.offset >> 32) & 0x00FF_FFFF
+        want_lo = masked & 0xFFFF_FFFF
+        want_hi = masked >> 32
         assert rb_lo == want_lo and rb_hi == want_hi, (
             f"{cfg.bank} r{cfg.region} ATTRS read 0x{rb_hi:08x}{rb_lo:08x} "
             f"!= 0x{want_hi:08x}{want_lo:08x}"
@@ -121,9 +153,13 @@ class SepOutboundRemap(SepAxiRegDriver):
         await self._wr(ebase + FILTER_START_ADDR + 4, 0)
         await self._wr(ebase + FILTER_END_ADDR, cfg.expect_addr)
         await self._wr(ebase + FILTER_END_ADDR + 4, 0)
-        cfg_lo = (
-            F_READ_ALLOWED | F_WRITE_ALLOWED | F_ENTRY_ENABLED | F_ALLOW_NS | (0 << F_SRC_ID_LSB)
-        )
+        await self.set_filter_enable(cfg, True)
+
+    async def set_filter_enable(self, cfg: SepOutboundRemapCfg, enabled: bool) -> None:
+        ebase = OUTFILT_BASE + cfg.entry * FILTER_STRIDE
+        cfg_lo = F_READ_ALLOWED | F_WRITE_ALLOWED | F_ALLOW_NS | (0 << F_SRC_ID_LSB)
+        if enabled:
+            cfg_lo |= F_ENTRY_ENABLED
         await self._wr(ebase + FILTER_CONFIG, cfg_lo)
 
 

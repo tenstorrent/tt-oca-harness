@@ -25,8 +25,8 @@
 // image (bl0_state.bl1_image_src_addr), not from the ICCM copy it executes from.
 //
 // No crt0: BL1 inherits CPU state (SP, PMA, mtvec) from the ROM, and it uses
-// the inherited SP from its first instruction — _start's own prologue pushes ra
-// (see build/bl1_pass_test.dis). So BL1's stack frames land in the ROM's DCCM
+// the inherited SP from its first instruction — _start's own prologue pushes ra.
+// So BL1's stack frames land in the ROM's DCCM
 // stack window, below __stack_top; that is safe only because __stack_top sits
 // __bl0_state_reserve bytes below the top of DCCM, so a downward-growing stack
 // cannot reach bl0_state. BL1's own data window stops short of the same
@@ -275,12 +275,10 @@ static inline void bl1_outbound_filter_init(void) {
 // rom_virt_console.h and status_ring.h -- far too much for a flat SRAM payload.
 // Keep the constants in step with that header.
 //
-// This BL1 no longer writes the DV outbound mailbox at 0x80000000. That address
-// is outside SEP, behind an outbound filter that blocks by default, so it only
-// works after bl1_outbound_filter_init() -- which made the order of these two
-// statements load-bearing for no benefit. cold_scratch is a SEP register and
-// works from the first instruction. See
-// dv/docs/rom_verdict_scratch0_migration.md.
+// The DV outbound mailbox at 0x80000000 is outside SEP, behind an outbound
+// filter that blocks by default, so it is usable only after
+// bl1_outbound_filter_init(); cold_scratch is a SEP register and works from
+// the first instruction, so the verdict goes there.
 // ---------------------------------------------------------------------------
 #define VERDICT_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 #define TEST_PASS_CODE 0xACAFACA1u
@@ -327,10 +325,8 @@ __attribute__((section(".text.init"))) void _start(void) {
     bl1_puts("BL1\n");
 
     // Handoff contract check, first thing and before the outbound filter is
-    // touched. It used to sit after bl1_outbound_filter_init() because its FAIL
-    // report went to the mailbox, which is outside SEP and blocked until the
-    // filter opens; reporting on cold_scratch[0] removes that constraint, so the
-    // check can go where it belongs -- before anything acts on the contract.
+    // touched: its FAIL report goes to cold_scratch[0], which needs no open
+    // filter, so the check runs before anything acts on the contract.
     bl1_puts("BL0S_CHK\n");
     if (bl1_verify_bl0_state()) {
         bl1_puts("BL0S_VERIFY_FAIL\n");

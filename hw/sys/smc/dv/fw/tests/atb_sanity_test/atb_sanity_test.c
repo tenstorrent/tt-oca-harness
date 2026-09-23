@@ -41,14 +41,8 @@
 #include "smc_test.h"
 
 /* Compare a register read against the generated reset default and fail on
- * mismatch.
- *
- * A read that is printed and discarded proves nothing, and a banner reading
- * "All default values verified" over such reads followed by an unconditional
- * test_pass(0) is worse than silence. Expectations come from
- * TELEMETRY_RECEIVER_*_REG_DEFAULT in smc_top_regs.h, reached through
- * smc_io.h, so the golden is the generated map rather than a hand-copied
- * literal.
+ * mismatch. Expectations come from the generated reset constants in
+ * smc_top_regs.h, reached through smc_io.h, so the golden is the generated map.
  */
 static void expect_field(const char *name, uint32_t got, uint32_t bm, uint32_t bp, uint32_t want) {
     uint32_t val = (got & bm) >> bp;

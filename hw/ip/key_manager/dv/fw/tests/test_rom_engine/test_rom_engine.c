@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_rom_engine.c
- * @brief T024 - Crypto engine sideload key driver unit test
+ * @brief Crypto engine sideload key driver unit test
  *
  * Exercises rom_sideload.h for all sideload engines: shred, write key, and
  * dual-share XOR verification for HMAC, KMAC, AES, OTBN, and the four Adams

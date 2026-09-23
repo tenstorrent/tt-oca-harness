@@ -304,7 +304,15 @@ module flow_active
   logic err_handled_q, err_handled_d;
 
   // IBI signals
-  logic ibi_abort, ibi_done;
+  logic ibi_abort, ibi_nodata, ibi_done;
+  // IBI policy is resolved from the DAT entry belonging to the requesting Target.
+  // dat_rdata only holds that entry once dat_captured pulses (3 cycles after the
+  // address byte), so the ACK/NACK must not be taken from it before then.
+  logic [6:0] ibi_req_da_d, ibi_req_da_q;
+  logic ibi_pol_valid_d, ibi_pol_valid_q;
+  logic ibi_pol_abort_d, ibi_pol_abort_q;
+  logic ibi_pol_nodata_d, ibi_pol_nodata_q;
+  logic ibi_dat_hit;
   i3c_ibi_status_desc_t ibi_status_d, ibi_status_q;
   logic [  $clog2(IBIBufferDepthDwords)-1:0] ibi_dword_select;
   logic [$clog2((HciIbiDataWidth >> 3))-1:0] ibi_byte_select;
@@ -633,6 +641,26 @@ module flow_active
     end
   end
 
+  // Store the IBI requester address and the policy resolved for it
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (~rst_ni) begin
+      ibi_req_da_q    <= '0;
+      ibi_pol_valid_q <= 1'b0;
+      ibi_pol_abort_q <= 1'b0;
+      ibi_pol_nodata_q <= 1'b0;
+    end else begin
+      ibi_req_da_q    <= ibi_req_da_d;
+      ibi_pol_valid_q <= ibi_pol_valid_d;
+      ibi_pol_abort_q <= ibi_pol_abort_d;
+      ibi_pol_nodata_q <= ibi_pol_nodata_d;
+    end
+  end
+
+  // The DAT entry carries its own dynamic address, so it doubles as a tag: the
+  // reverse lookup table has no miss indication and returns index 0 for an
+  // unprogrammed address, which would otherwise alias onto a valid entry.
+  assign ibi_dat_hit = (dat_rdata.dynamic_address[6:0] == ibi_req_da_q);
+
   // Combinational state output update
   always_comb begin
     i3c_fsm_idle_o = 1'b0;
@@ -679,6 +707,11 @@ module flow_active
     prev_cmd_toc_d = prev_cmd_toc_q;
     ibi_done = 1'b0;
     ibi_abort = 1'b0;
+    ibi_nodata = 1'b0;
+    ibi_req_da_d = ibi_req_da_q;
+    ibi_pol_valid_d = ibi_pol_valid_q;
+    ibi_pol_abort_d = ibi_pol_abort_q;
+    ibi_pol_nodata_d = ibi_pol_nodata_q;
     ibi_status_d = ibi_status_q;
     ibi_data_d = ibi_data_q;
     ibi_wb_d = ibi_wb_q;
@@ -988,7 +1021,8 @@ module flow_active
 
         if (transfer_cnt_q <= data_length & (~fmt_bit_i & fmt_flag_read_valid_i) & ~fmt_flag_stop_after_o) begin  // receive RX T bit
           fmt_flag_stop_after_o = 1'b1;
-          resp_err_status_d = I3cShortReadErr;
+          // SRE=0 is ALLOW_SHORT_READ: the transfer succeeded, just with fewer bytes.
+          resp_err_status_d = regular_direct_cmd_desc.sre ? I3cShortReadErr : Success;
           rx_dword_array[byte_select] = fmt_byte_i;
           rx_queue_wvalid_o = 1'b1; // send the uncompleted word to the RX queue when transaction is finished early
         end
@@ -1555,7 +1589,10 @@ module flow_active
         fmt_flag_stop_after_o = 1'b0;
         fmt_flag_restart_after_o = 1'b0;
         ibi_data_d = ibi_data_q;
-        ibi_abort = dat_rdata.ibi_reject | ~dat_rdata.ibi_payload | (ibi_max_data_dwords_i == '0);
+        // Only the queue-capacity term is known without the DAT fetch; the
+        // DAT-derived terms are held off until the fetch for this requester lands.
+        ibi_abort = (ibi_pol_valid_q & ibi_pol_abort_q) | (ibi_max_data_dwords_i == '0);
+        ibi_nodata = ibi_pol_valid_q & ibi_pol_nodata_q;
         rlt_req = 1'b0;
         if (~ibi_wb_q) begin
           if (transfer_cnt_q == '0) begin
@@ -1574,15 +1611,34 @@ module flow_active
               fmt_bit_o = 1'b1;  // NACK the dynamic address
               ibi_status_d.ibi_sts = 1'b1;
               ibi_wb_d = fmt_fifo_rdone_i;
+            // A Target with IBI_PAYLOAD=0 releases SDA after the ACK, so the read
+            // phase must be skipped entirely: ACK the address and STOP.
+            end else if (ibi_nodata) begin
+              fmt_flag_stop_after_o = 1'b1;
+              fmt_flag_read_bytes_o = 1'b0;
+              ibi_wb_d = fmt_fifo_rdone_i;
             end
-            // (OCA) the IBI Status Descriptor IBI_ID field carries the target's 7-bit dynamic address
-            ibi_status_d.ibi_id = fmt_flag_read_valid_i ? {1'b0, fmt_byte_i[7:1]} : ibi_status_q.ibi_id;
+            // (OCA) the IBI Status Descriptor IBI_ID field carries the target's 7-bit dynamic address + RnW bit
+            //       TODO: only Regular IBI is supported right now, the ibi_id will have to change if more status_types are supported
+            ibi_status_d.ibi_id = fmt_flag_read_valid_i ? fmt_byte_i : ibi_status_q.ibi_id;
             rlt_req = fmt_flag_read_valid_i;
             rlt_dynamic_address = fmt_flag_read_valid_i ? 7'(fmt_byte_i >> 1) : 7'h0;
             // Fetch DAT for next cycle
             dat_index_hw_o = rlt_dat_index;
             dat_read_valid_hw_o = rlt_valid;
             transfer_cnt_en = fmt_fifo_rdone_i;
+            // Capture the requester and invalidate the previous resolution, then
+            // resolve once the DAT entry for this requester has been captured.
+            if (fmt_flag_read_valid_i) begin
+              ibi_req_da_d = 7'(fmt_byte_i >> 1);
+              ibi_pol_valid_d = 1'b0;
+              ibi_pol_abort_d = 1'b0;
+              ibi_pol_nodata_d = 1'b0;
+            end else if (dat_captured & ~ibi_pol_valid_q) begin
+              ibi_pol_abort_d = ~ibi_dat_hit | dat_rdata.ibi_reject;
+              ibi_pol_nodata_d = ibi_dat_hit & ~dat_rdata.ibi_reject & ~dat_rdata.ibi_payload;
+              ibi_pol_valid_d = 1'b1;
+            end
           end else begin
             // (OCA) bound the IBI by what actually fits in the IBI queue right now
             if (transfer_cnt_q == (ibi_max_data_dwords_i << 2)) begin
@@ -1608,6 +1664,12 @@ module flow_active
             if (ibi_wb_cnt_q == '0) begin  // First entry is the IBI Status Descriptor
               ibi_queue_wdata_o  = ibi_status_q;
               ibi_queue_wvalid_o = 1'b1;
+              // (OCA) A rejected IBI carries no payload. The lese branch below always
+              // emits one data DWORD, so a zero-length record must finish here
+              if (((ibi_status_q.data_length + 3) >> 2) == '0) begin
+                ibi_done = 1'b1;
+                ibi_wb_d = 1'b0;
+              end
             end else if (ibi_wb_cnt_q < ((ibi_status_q.data_length + 3) >> 2)) begin
               ibi_queue_wdata_o  = ibi_data_q[ibi_wb_cnt_q-1];
               ibi_queue_wvalid_o = 1'b1;
@@ -1820,7 +1882,9 @@ module flow_active
         end else if (transfer_cnt_q >= data_length & fmt_flag_read_valid_i) begin
           state_next = regular_direct_cmd_desc.wroc ? WriteResp : Idle;
         end else if (transfer_cnt_q < data_length & (~fmt_bit_i & fmt_flag_read_valid_i)) begin  // receive RX T bit
-          state_next = regular_direct_cmd_desc.sre ? WriteResp : Idle;
+          // SRE=1 makes the short read an error, which must be reported regardless of WROC;
+          // SRE=0 makes it a normal completion, reported only if WROC asks for one.
+          state_next = (regular_direct_cmd_desc.sre | regular_direct_cmd_desc.wroc) ? WriteResp : Idle;
         end
       end
       I2CRead: begin

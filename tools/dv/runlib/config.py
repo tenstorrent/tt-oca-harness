@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import ast
 import copy
+import os
 import re
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
@@ -132,6 +134,228 @@ ALL_PLACEHOLDERS = COMMON_PLACEHOLDERS | {
     "image",
 }
 
+# Placeholders of a formal launch template: the `argv` array on a `kind = "formal"` tool table
+# in simulators.toml, or the `argv` override on an `[formal.apps.<app>.<tool>]` table. Scalar
+# placeholders render inside any element.
+FORMAL_SCALAR_PLACEHOLDERS = {"binary", "script", "cwd", "run_dir", "item"}
+# A list placeholder is an element on its own and splices zero or more argv tokens.
+FORMAL_LIST_PLACEHOLDERS = {"args", "formal_args"}
+# An optional placeholder has a value only when the CLI supplies one; it sits inside an optional
+# group (a nested array), which renders whole or not at all.
+FORMAL_OPTIONAL_PLACEHOLDERS = {"proof_depth"}
+FORMAL_PLACEHOLDERS = (
+    FORMAL_SCALAR_PLACEHOLDERS | FORMAL_LIST_PLACEHOLDERS | FORMAL_OPTIONAL_PLACEHOLDERS
+)
+FormalArgvTemplate = list[str | list[str]]
+
+# `[formal.apps.<app>.<tool>.evidence]`: the summary file a backend without a native task
+# summary writes, and the line patterns that grade it. `summary` renders these placeholders and
+# resolves against the app's `cwd` when relative.
+FORMAL_EVIDENCE_KEYS = {
+    "summary",
+    "pass_patterns",
+    "fail_patterns",
+    "inconclusive_patterns",
+    "cover_patterns",
+    "unreached_patterns",
+}
+FORMAL_EVIDENCE_REQUIRED_PATTERNS = ("pass_patterns", "fail_patterns")
+FORMAL_EVIDENCE_PLACEHOLDERS = {"run_dir", "item", "cwd"}
+
+# Tool-table keys that describe one deployment rather than the tool: a site file
+# (runlib.site) supplies them and the checked-in registry rejects them.
+SITE_ONLY_TOOL_KEYS = {"launcher", "extra_env", "setup_hook"}
+
+# Executor registry (executors.toml). Schema 1 declares `[local]` and a cluster table named
+# by one `binary`; schema 2 names a `driver` and every scheduler command the driver runs, so
+# `--doctor` can check each command and a site can retarget any of them in configuration.
+EXECUTOR_SCHEMA_VERSIONS = {1, 2}
+EXECUTOR_KINDS = {"local", "cluster"}
+# Driver names a cluster table may select; `runlib.executors` says which of them dispatch.
+CLUSTER_DRIVERS = frozenset({"lsf", "slurm"})
+LOCAL_EXECUTOR_KEYS = {"kind", "description", "submit_argv", "wait_mode"}
+CLUSTER_EXECUTOR_V1_KEYS = {
+    "kind",
+    "binary",
+    "submit_argv",
+    "wait_mode",
+    "env_passthrough",
+    "defaults",
+}
+CLUSTER_EXECUTOR_KEYS = {
+    "kind",
+    "description",
+    "driver",
+    "binaries",
+    "wait_mode",
+    "submit_argv",
+    "query_argv",
+    "history_argv",
+    "cancel_argv",
+    "worker_argv",
+    "history_parser",
+    "env_passthrough",
+    "defaults",
+    "limits",
+    "setup_hook",
+    "arrays",
+    "builds",
+    "build_defaults",
+    "build_submit_argv",
+}
+# Where a cluster executor runs the target builds.
+EXECUTOR_BUILD_MODES = {"local", "scheduler"}
+# Executor keys that describe one deployment; the checked-in registry rejects them.
+SITE_ONLY_EXECUTOR_KEYS = {"setup_hook"}
+# The normalized resource vocabulary: an executor's `defaults`, a stage's `resources`, and the
+# `--queue/--cores/--mem-mb/--walltime` flags all speak it.
+EXECUTOR_RESOURCE_KEYS = {"queue", "cores", "mem_mb", "walltime"}
+# `[<executor>.limits]`: the coordinator loop's knobs, each with the bound a value must meet.
+EXECUTOR_LIMIT_KEYS: dict[str, tuple[type, float]] = {
+    "max_in_flight": (int, 1),
+    "submit_batch_size": (int, 1),
+    "query_batch_size": (int, 1),
+    "poll_interval_sec": (float, 0.1),
+    "artifact_grace_sec": (float, 0),
+    "cancel_grace_sec": (float, 0),
+    "command_timeout_sec": (float, 1),
+    "array_chunk_size": (int, 1),
+}
+ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# Placeholders an executor argv template may render. Resource values come in every unit a
+# scheduler asks for, so a site template picks `{mem_gb}` or `{walltime_min}` as needed.
+EXECUTOR_RESOURCE_PLACEHOLDERS = {
+    "queue",
+    "cores",
+    "mem_mb",
+    "mem_gb",
+    "walltime",
+    "walltime_sec",
+    "walltime_min",
+    "walltime_hms",
+}
+EXECUTOR_SUBMIT_PLACEHOLDERS = EXECUTOR_RESOURCE_PLACEHOLDERS | {
+    "joblog",
+    "jobname",
+    "array_range",
+    "image",
+    "script",
+    "manifest",
+    "python",
+    "run_dir",
+    "repo_root",
+    "leaf_dir",
+    "task_id",
+    "executor",
+}
+# `{job_ids_argv}` splices one token per job id; the other two render inside one token.
+EXECUTOR_QUERY_PLACEHOLDERS = {"job_id", "job_ids_csv", "job_ids_argv"}
+EXECUTOR_WORKER_PLACEHOLDERS = {"python", "manifest", "repo_root", "run_dir", "leaf_dir", "task_id"}
+EXECUTOR_TEMPLATE_PLACEHOLDERS = {
+    "submit_argv": EXECUTOR_SUBMIT_PLACEHOLDERS,
+    "build_submit_argv": EXECUTOR_SUBMIT_PLACEHOLDERS,
+    "query_argv": EXECUTOR_QUERY_PLACEHOLDERS,
+    "history_argv": EXECUTOR_QUERY_PLACEHOLDERS,
+    "cancel_argv": EXECUTOR_QUERY_PLACEHOLDERS,
+    "worker_argv": EXECUTOR_WORKER_PLACEHOLDERS,
+}
+# A wall-time request: minutes (`90`), a unit suffix (`90m`, `2h`, `30s`, `1d`), `HH:MM`,
+# `HH:MM:SS`, or `D-HH[:MM[:SS]]`. Two colon-separated fields are hours and minutes.
+WALLTIME_UNIT_RE = re.compile(r"^(\d+)([smhd])$")
+WALLTIME_CLOCK_RE = re.compile(r"^(?:(\d+)-)?(\d+)(?::(\d{1,2}))?(?::(\d{1,2}))?$")
+_WALLTIME_UNIT_SEC = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def parse_walltime_sec(text: str) -> int:
+    """Seconds in a wall-time request; a ConfigError names the accepted forms."""
+    value = str(text).strip()
+    total = 0
+    if value.isdigit():
+        total = int(value) * 60
+    elif unit := WALLTIME_UNIT_RE.match(value):
+        total = int(unit.group(1)) * _WALLTIME_UNIT_SEC[unit.group(2)]
+    elif clock := WALLTIME_CLOCK_RE.match(value):
+        days, hours, minutes, seconds = clock.groups()
+        if int(minutes or 0) < 60 and int(seconds or 0) < 60:
+            total = int(hours) * 3600 + int(minutes or 0) * 60 + int(seconds or 0)
+            if days:
+                total += int(days) * 86400
+    if total > 0:
+        return total
+    raise ConfigError(
+        f"invalid walltime {text!r}: use minutes, a unit suffix (s/m/h/d), HH:MM, HH:MM:SS, "
+        "or D-HH:MM:SS"
+    )
+
+
+def validate_resource_table(table: Any, where: str) -> dict[str, Any]:
+    """Shape-check a normalized resource table and return it with typed values."""
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where} must be a table")
+    validate_allowed_keys(table, EXECUTOR_RESOURCE_KEYS, where)
+    out: dict[str, Any] = {}
+    if "queue" in table:
+        if not isinstance(table["queue"], str) or not table["queue"]:
+            raise ConfigError(f"{where}.queue must be a non-empty string")
+        out["queue"] = table["queue"]
+    for key in ("cores", "mem_mb"):
+        if key in table:
+            value = table[key]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ConfigError(f"{where}.{key} must be a positive integer")
+            out[key] = value
+    if "walltime" in table:
+        value = table["walltime"]
+        if not isinstance(value, str) or not value:
+            raise ConfigError(f"{where}.walltime must be a non-empty string")
+        try:
+            parse_walltime_sec(value)
+        except ConfigError as exc:
+            raise ConfigError(f"{where}.walltime: {exc}") from exc
+        out["walltime"] = value
+    return out
+
+
+def validate_limits_table(table: Any, where: str) -> dict[str, Any]:
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where} must be a table")
+    validate_allowed_keys(table, set(EXECUTOR_LIMIT_KEYS), where)
+    out: dict[str, Any] = {}
+    for key, value in table.items():
+        kind, floor = EXECUTOR_LIMIT_KEYS[key]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ConfigError(f"{where}.{key} must be a number")
+        if kind is int and not isinstance(value, int):
+            raise ConfigError(f"{where}.{key} must be an integer")
+        if value < floor:
+            raise ConfigError(f"{where}.{key} must be at least {floor:g}")
+        out[key] = value
+    return out
+
+
+def validate_argv_template(template: Any, where: str, allowed: set[str], *, required: bool) -> None:
+    """An executor argv template: strings and optional groups over the allowed placeholders."""
+    if template is None:
+        if required:
+            raise ConfigError(f"{where} is required")
+        return
+    if not isinstance(template, list) or (required and not template):
+        raise ConfigError(f"{where} must be a non-empty list of argv tokens")
+    for idx, element in enumerate(template):
+        if isinstance(element, list):
+            if not element or not all(isinstance(token, str) and token for token in element):
+                raise ConfigError(f"{where}[{idx}]: an optional group holds non-empty strings only")
+            continue
+        if not isinstance(element, str) or not element:
+            raise ConfigError(f"{where}[{idx}] must be a non-empty string or a group")
+    validate_placeholders_in_value(template, where, allowed)
+
+
+TOOL_KINDS = {"simulation", "formal"}
+# A tool table's `min_version`: a dotted release number, compared by the doctor against the
+# first such number in the release line the tool's binary prints.
+MIN_VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
+
 TOP_LEVEL_KEYS = {
     "schema_version",
     "name",
@@ -161,8 +385,9 @@ TOP_LEVEL_KEYS = {
     "dut",
     "tb",
     # Injected by load_dut when --overlay/OCAH_DV_OVERLAY is active; a sim config or profile
-    # may never set it (overlays are explicit-activation only — see apply_adopter_overlay).
+    # may never set them (overlays are explicit-activation only — see apply_adopter_overlay).
     "adopter_overlay",
+    "adopter_overlay_env",
 }
 
 BUILD_KEYS = {
@@ -188,11 +413,19 @@ BUILD_KEYS = {
 SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
 
 # Keys an adopter overlay file (--overlay / OCAH_DV_OVERLAY) may carry (see
-# apply_adopter_overlay). The layer is append-only by design: every allowed key ADDS to the
-# merged DUT view (build inputs, target defines/flags, run args) and none can replace or
-# remove what the checked-in configs declare — so a run with an overlay differs from the
-# baseline only by the overlay's own additions.
-ADOPTER_OVERLAY_KEYS = {"description", "frameworks", "build", "sim", "target_defaults", "targets"}
+# apply_adopter_overlay). The layer is append-only: every allowed key ADDS to the
+# merged DUT view (build inputs, target defines/flags, run args, process environment) and
+# none can replace or remove what the checked-in configs declare — so a run with an overlay
+# differs from the baseline only by the overlay's own additions.
+ADOPTER_OVERLAY_KEYS = {
+    "description",
+    "frameworks",
+    "build",
+    "sim",
+    "env",
+    "target_defaults",
+    "targets",
+}
 ADOPTER_OVERLAY_BUILD_KEYS = {"incdirs", "sources", "source_lists"}
 ADOPTER_OVERLAY_SIM_KEYS = {"args"}
 ADOPTER_OVERLAY_TARGET_KEYS = {"defines", "flags", "tools"}
@@ -270,7 +503,10 @@ TEST_KEYS = {
     "timeout_sec",
     "tags",
     "run_modes",
+    "tools",
     "firmware",
+    "expect_fail",
+    "expect_fail_match",
     "args",
     "overrides",
 }
@@ -290,23 +526,23 @@ COVERAGE_TOOL_KEYS = {
     "fail_under",
     "input_glob",
     "merge_cmd",
+    "combine_cmd",
     "merged_name",
     "parser",
     "policy_file",
     "report_cmd",
     "sim_args",
     "test_args",
-    "waiver_files",
 }
 COVERAGE_LIST_KEYS = {
     "build_args",
     "compile_args",
     "exclude_files",
     "merge_cmd",
+    "combine_cmd",
     "report_cmd",
     "sim_args",
     "test_args",
-    "waiver_files",
 }
 COVERAGE_PARSERS = {"verilator", "urg", "imc"}
 
@@ -438,7 +674,7 @@ def _assign_toml_value(
 def _load_toml_subset(path: Path) -> dict[str, Any]:
     """Small TOML reader for the repo's DV configs when Python lacks tomllib/tomli.
 
-    It intentionally covers only the constructs used by these configs: tables, arrays of tables,
+    It covers only the constructs used by these configs: tables, arrays of tables,
     strings, booleans, integers, floats, and arrays.
     """
     data: dict[str, Any] = {}
@@ -533,6 +769,158 @@ def validate_placeholders_in_value(
             validate_placeholders_in_value(item, f"{where}.{key}", allowed)
 
 
+def _validate_formal_argv_element(text: str, where: str, *, in_group: bool) -> None:
+    names = PLACEHOLDER_RE.findall(text)
+    unknown = sorted(set(names) - FORMAL_PLACEHOLDERS)
+    if unknown:
+        raise ConfigError(
+            f"{where}: unsupported placeholder(s): {', '.join('{' + name + '}' for name in unknown)}"
+        )
+    for name in names:
+        if name in FORMAL_LIST_PLACEHOLDERS:
+            if in_group:
+                raise ConfigError(
+                    f"{where}: list placeholder {{{name}}} cannot sit inside an optional group"
+                )
+            if text != "{" + name + "}":
+                raise ConfigError(
+                    f"{where}: list placeholder {{{name}}} must be an element on its own"
+                )
+        elif name in FORMAL_OPTIONAL_PLACEHOLDERS and not in_group:
+            raise ConfigError(
+                f"{where}: optional placeholder {{{name}}} must sit inside an optional group, "
+                f'for example ["-depth", "{{{name}}}"]'
+            )
+
+
+def validate_formal_argv_template(value: Any, where: str) -> FormalArgvTemplate:
+    """Check a formal launch template and return it.
+
+    A template is a non-empty array whose elements are strings or optional groups (nested arrays
+    of strings). Every placeholder is one of FORMAL_PLACEHOLDERS; a list placeholder is an
+    element on its own outside any group; an optional placeholder appears only inside a group,
+    and every group references one.
+    """
+    if not isinstance(value, list) or not value:
+        raise ConfigError(f"{where}: `argv` must be a non-empty list")
+    template: FormalArgvTemplate = []
+    for idx, element in enumerate(value):
+        label = f"{where}[{idx}]"
+        if isinstance(element, str):
+            _validate_formal_argv_element(element, label, in_group=False)
+            template.append(element)
+        elif isinstance(element, list):
+            if not element or not all(isinstance(sub, str) for sub in element):
+                raise ConfigError(f"{label}: an optional group must be a non-empty list of strings")
+            for sub_idx, sub in enumerate(element):
+                _validate_formal_argv_element(sub, f"{label}[{sub_idx}]", in_group=True)
+            if not FORMAL_OPTIONAL_PLACEHOLDERS & _template_placeholders([element]):
+                raise ConfigError(
+                    f"{label}: an optional group must reference an optional placeholder "
+                    f"({', '.join('{' + n + '}' for n in sorted(FORMAL_OPTIONAL_PLACEHOLDERS))})"
+                )
+            template.append(list(element))
+        else:
+            raise ConfigError(f"{label}: `argv` elements are strings or optional groups")
+    return template
+
+
+def _template_placeholders(template: FormalArgvTemplate) -> set[str]:
+    names: set[str] = set()
+    for element in template:
+        for text in element if isinstance(element, list) else [element]:
+            names.update(PLACEHOLDER_RE.findall(text))
+    return names
+
+
+def formal_template_placeholders(template: FormalArgvTemplate) -> set[str]:
+    """Every placeholder a validated template references."""
+    return _template_placeholders(template)
+
+
+def render_formal_argv(
+    template: FormalArgvTemplate,
+    scalars: dict[str, str],
+    lists: dict[str, list[str]],
+    optional: dict[str, str | None],
+) -> list[str]:
+    """Render a validated formal launch template into argv.
+
+    A list placeholder element splices its tokens; an optional group renders when every optional
+    placeholder it references has a value and is dropped otherwise.
+    """
+    values = dict(scalars)
+    values.update({name: value for name, value in optional.items() if value is not None})
+
+    def render(text: str) -> str:
+        rendered = text
+        for key, value in values.items():
+            rendered = rendered.replace("{" + key + "}", value)
+        return rendered
+
+    argv: list[str] = []
+    for element in template:
+        if isinstance(element, list):
+            needed = _template_placeholders([element]) & set(optional)
+            if any(optional[name] is None for name in needed):
+                continue
+            argv.extend(render(sub) for sub in element)
+            continue
+        names = PLACEHOLDER_RE.findall(element)
+        if len(names) == 1 and names[0] in lists and element == "{" + names[0] + "}":
+            argv.extend(lists[names[0]])
+            continue
+        argv.append(render(element))
+    return argv
+
+
+def validate_formal_evidence_hook(table: Any, where: str) -> dict[str, Any]:
+    """Check an app's `evidence` table and return it."""
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: `evidence` must be a table")
+    validate_allowed_keys(table, FORMAL_EVIDENCE_KEYS, where)
+    summary = table.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        raise ConfigError(f"{where}: `summary` must name the summary file")
+    unknown = sorted(set(PLACEHOLDER_RE.findall(summary)) - FORMAL_EVIDENCE_PLACEHOLDERS)
+    if unknown:
+        allowed = ", ".join("{" + name + "}" for name in sorted(FORMAL_EVIDENCE_PLACEHOLDERS))
+        raise ConfigError(
+            f"{where}.summary: unknown placeholder(s) {', '.join('{' + n + '}' for n in unknown)}"
+            f"; allowed: {allowed}"
+        )
+    for key in sorted(FORMAL_EVIDENCE_KEYS - {"summary"}):
+        patterns = as_str_list(table.get(key), f"{where}.{key}")
+        if key in FORMAL_EVIDENCE_REQUIRED_PATTERNS and not patterns:
+            raise ConfigError(f"{where}: `{key}` must list at least one pattern")
+        for pattern in patterns:
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ConfigError(f"{where}.{key}: invalid regex `{pattern}`: {exc}") from exc
+    return table
+
+
+def validate_formal_apps(formal: Any, where: str) -> None:
+    """Check every `argv` override and `evidence` table under `[formal.apps.<app>.<tool>]`."""
+    if not isinstance(formal, dict):
+        return
+    apps = formal.get("apps", {})
+    if not isinstance(apps, dict):
+        return
+    for app_name, app in apps.items():
+        if not isinstance(app, dict):
+            continue
+        for tool, tool_cfg in app.items():
+            if not isinstance(tool_cfg, dict):
+                continue
+            table_where = f"{where} [formal.apps.{app_name}.{tool}]"
+            if "argv" in tool_cfg:
+                validate_formal_argv_template(tool_cfg["argv"], f"{table_where}.argv")
+            if "evidence" in tool_cfg:
+                validate_formal_evidence_hook(tool_cfg["evidence"], f"{table_where}.evidence")
+
+
 def validate_coverage_tool_table(
     table: dict[str, Any],
     where: str,
@@ -608,6 +996,16 @@ def validate_stage_table(stage_name: str, stage: dict[str, Any], where: str) -> 
         "resources",
     }
     validate_allowed_keys(stage, allowed, f"{where} [native.stages.{stage_name}]")
+    if "default_executor" in stage and (
+        not isinstance(stage["default_executor"], str) or not stage["default_executor"]
+    ):
+        raise ConfigError(
+            f"{where} [native.stages.{stage_name}].default_executor must be a non-empty string"
+        )
+    if "resources" in stage:
+        validate_resource_table(
+            stage["resources"], f"{where} [native.stages.{stage_name}].resources"
+        )
     validate_placeholders_in_value(stage, f"{where} [native.stages.{stage_name}]")
 
 
@@ -715,7 +1113,11 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
     for section_name in ("coverage", "c_build", "formal", "sim"):
         section = data.get(section_name, {})
         if isinstance(section, dict):
-            validate_placeholders_in_value(section, f"{flow.path} [{section_name}]")
+            allowed = ALL_PLACEHOLDERS
+            if section_name == "formal":
+                allowed = ALL_PLACEHOLDERS | FORMAL_PLACEHOLDERS
+            validate_placeholders_in_value(section, f"{flow.path} [{section_name}]", allowed)
+    validate_formal_apps(data.get("formal"), str(flow.path))
     coverage = data.get("coverage", {})
     if isinstance(coverage, dict):
         for tool, table in coverage.items():
@@ -907,7 +1309,7 @@ def _merge_framework_config(
     # layers, matching the `target_defaults` -> `targets` append in selected_target(): a
     # framework overlay contributes its gate define (e.g. the profile's `UVM`) on top of the
     # shared simulation set instead of replacing the list. Tool `flags` keep the plain
-    # overlay-wins semantics — an overlay may deliberately zero a tool's flag list (the uvm
+    # overlay-wins semantics — an overlay may zero a tool's flag list (the uvm
     # overlay relies on the vcs stage preamble for its flags).
     for section_name in ("target_defaults", "targets"):
         section = merged.get(section_name)
@@ -1048,6 +1450,74 @@ def _append_unique(target: dict[str, Any], key: str, extra: list[str], where: st
         target[key] = combined
 
 
+_ENV_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def expand_env_vars(text: str, where: str, environ: Mapping[str, str] | None = None) -> str:
+    """Expand ``$VAR`` / ``${VAR}`` in one adopter-overlay path from ``environ``.
+
+    ``environ`` defaults to the process environment; the overlay applier passes that environment
+    with the overlay's own ``[env]`` table applied on top. Only overlay-supplied ``[build]``
+    entries pass through here: checked-in configs and the entries inside a ``source_lists``
+    manifest stay literal (repo-relative or absolute). An unset variable is a
+    :class:`ConfigError` naming the variable and the entry under ``where`` (the overlay file and
+    key). A set-but-empty variable expands to the empty string, as in a shell.
+    """
+    source = os.environ if environ is None else environ
+
+    def substitute(match: re.Match[str]) -> str:
+        name = match.group(1) or match.group(2)
+        value = source.get(name)
+        if value is None:
+            raise ConfigError(f"{where}: environment variable `{name}` is not set (entry `{text}`)")
+        return value
+
+    return _ENV_VAR_RE.sub(substitute, text)
+
+
+_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def validate_env_table(table: Any, where: str) -> dict[str, str]:
+    """Validate a ``NAME = "value"`` environment table: shell-legal names, string values."""
+    if table is None:
+        return {}
+    if not isinstance(table, dict):
+        raise ConfigError(f'{where}: must be a table of NAME = "value" pairs')
+    env: dict[str, str] = {}
+    for name, value in table.items():
+        if not _ENV_NAME_RE.match(name):
+            raise ConfigError(f"{where}: `{name}` is not a valid environment variable name")
+        if not isinstance(value, str):
+            raise ConfigError(f"{where}.{name}: value must be a string")
+        env[name] = value
+    return env
+
+
+def _overlay_env_table(overlay: dict[str, Any], where: str) -> dict[str, str]:
+    """Validate an overlay's ``[env]`` table: shell-legal variable names, string values."""
+    return validate_env_table(overlay.get("env"), f"{where} [env]")
+
+
+def activate_adopter_overlay_env(
+    data: dict[str, Any], environ: MutableMapping[str, str] | None = None
+) -> dict[str, str]:
+    """Apply the overlay's ``[env]`` table to ``environ`` (the process environment by default).
+
+    Every stage subprocess, ``env/`` snapshot, and in-process tool runner copies the process
+    environment, so one application at run start reaches build and sim alike. An overlay value
+    replaces an ambient one. Returns the applied table, empty when the view carries no overlay
+    ``[env]``.
+    """
+    target = os.environ if environ is None else environ
+    env = data.get("adopter_overlay_env")
+    if not isinstance(env, dict) or not env:
+        return {}
+    applied = {str(name): str(value) for name, value in env.items()}
+    target.update(applied)
+    return applied
+
+
 def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) -> None:
     """Apply one adopter overlay file on top of the merged DUT view (append-only).
 
@@ -1061,7 +1531,13 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
     before `[build].source_lists` expansion, so an overlay-supplied manifest expands like a
     DUT-owned one):
 
-    - `[build]` `incdirs`/`sources`/`source_lists`: dedup-append AFTER the DUT's own entries.
+    - `[build]` `incdirs`/`sources`/`source_lists`: `$VAR`/`${VAR}` expand from the process
+      environment with the overlay's `[env]` applied on top (an unset variable is a config
+      error), then dedup-append AFTER the DUT's own entries.
+    - `[env]` (string values): validated and recorded under the reserved `adopter_overlay_env`
+      key; the run path applies it to the process environment once, at run start, through
+      :func:`activate_adopter_overlay_env`, where an overlay value replaces an ambient one.
+      Loading never touches the environment, so `--validate-configs` and `--list` stay pure.
     - `[sim].args`: append after the merged `[sim].args` (still before run-mode/test/CLI args).
     - `[target_defaults.<t>]`/`[targets.<t>]` `defines`/`flags` and `[...tools.<tool>].flags`:
       dedup-append into the matching table (created when absent).
@@ -1069,8 +1545,9 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
       view whose selected framework is not listed raises :class:`OverlayFrameworkMismatch`.
 
     Applying the same overlay to the same view is deterministic and repeatable: list order is
-    preserved and the dedup rules make a re-application a no-op. The applied path is recorded
-    under the reserved `adopter_overlay` key (surfaced in result.json).
+    preserved and the dedup rules make a re-application a no-op. The applied path and `[env]`
+    table are recorded under the reserved `adopter_overlay` / `adopter_overlay_env` keys
+    (surfaced in result.json as `overlay` / `overlay_env`).
     """
     where = f"adopter overlay {overlay_path}"
     if not overlay_path.is_file():
@@ -1090,6 +1567,11 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
                 f"is `{selected or '<none>'}`"
             )
 
+    overlay_env = _overlay_env_table(overlay, where)
+    # Path expansion resolves against the environment the stages run with once the table is
+    # activated.
+    expansion_env: dict[str, str] = {**os.environ, **overlay_env}
+
     build_overlay = config_section(overlay, "build")
     if build_overlay:
         validate_allowed_keys(build_overlay, ADOPTER_OVERLAY_BUILD_KEYS, f"{where} [build]")
@@ -1097,7 +1579,11 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
         if not isinstance(build, dict):
             raise ConfigError(f"{where}: merged [build] is not a table")
         for key in ("incdirs", "sources", "source_lists"):
-            extra = as_str_list(build_overlay.get(key), f"{where} build.{key}")
+            key_where = f"{where} build.{key}"
+            extra = [
+                expand_env_vars(text, key_where, expansion_env)
+                for text in as_str_list(build_overlay.get(key), key_where)
+            ]
             if extra:
                 _append_unique(build, key, extra, f"{where} merged build")
 
@@ -1145,6 +1631,8 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
                     _append_unique(tools.setdefault(tool_name, {}), "flags", extra, tool_where)
 
     data["adopter_overlay"] = repo_rel(root, overlay_path)
+    if overlay_env:
+        data["adopter_overlay_env"] = overlay_env
 
 
 def load_dut(
@@ -1187,9 +1675,9 @@ def load_dut(
                     f"{path}: profile `{profile}` declares no [frameworks.<name>] sections, so "
                     "this DUT cannot declare frameworks"
                 )
-            # Legacy single-framework profile: `[sim].args` appends across profile->DUT
-            # inheritance (every other inherited array replaces). Capture both lists before
-            # deep_merge clobbers the DUT's, then re-join.
+            # Single-framework profile (no [frameworks.<name>] sections): `[sim].args` appends
+            # across profile->DUT inheritance (every other inherited array replaces). Capture both
+            # lists before deep_merge clobbers the DUT's, then re-join.
             dut_sim_args = as_str_list(config_section(data, "sim").get("args"), "sim.args")
             profile_sim_args = as_str_list(
                 config_section(profile_cfg, "sim").get("args"), "sim.args"
@@ -1199,11 +1687,12 @@ def load_dut(
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
 
-    if "adopter_overlay" in data:
-        raise ConfigError(
-            f"{path}: `adopter_overlay` may not be set in a sim config or profile — the adopter "
-            "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
-        )
+    for reserved in ("adopter_overlay", "adopter_overlay_env"):
+        if reserved in data:
+            raise ConfigError(
+                f"{path}: `{reserved}` may not be set in a sim config or profile — the adopter "
+                "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
+            )
     if adopter_overlay is not None:
         # After the framework merge (the overlay extends the selected view) and before
         # source-list expansion (an overlay-supplied manifest expands like a DUT-owned one).
@@ -1253,78 +1742,174 @@ def load_dut(
     )
 
 
-def load_simulators(root: Path) -> dict[str, Any]:
-    path = configs_root(root) / "simulators.toml"
-    if not path.is_file():
-        raise ConfigError(f"missing simulator registry: {path}")
-    data = load_toml(path)
-    simulators = {key: value for key, value in data.items() if key != "schema_version"}
+def validate_simulator_registry(simulators: dict[str, Any], where: str) -> None:
+    """Validate a tool registry: checked-in, or checked-in with a site layer merged in."""
     for tool, table in simulators.items():
         if not isinstance(table, dict):
-            raise ConfigError(f"{path}: [{tool}] must be a table")
-        frameworks = as_str_list(table.get("frameworks"), f"{path} [{tool}].frameworks")
+            raise ConfigError(f"{where}: [{tool}] must be a table")
+        kind = table.get("kind")
+        if kind not in TOOL_KINDS:
+            raise ConfigError(
+                f"{where}: [{tool}].kind must be one of {', '.join(sorted(TOOL_KINDS))}"
+            )
+        if not isinstance(table.get("binary", tool), str) or not table.get("binary", tool):
+            raise ConfigError(f"{where}: [{tool}].binary must be a non-empty string")
+        frameworks = as_str_list(table.get("frameworks"), f"{where} [{tool}].frameworks")
         if not frameworks:
             raise ConfigError(
-                f"{path}: [{tool}] must declare `frameworks` (the frameworks this tool can run)"
+                f"{where}: [{tool}] must declare `frameworks` (the frameworks this tool can run)"
+            )
+        if "license_env" not in table:
+            raise ConfigError(
+                f"{where}: [{tool}] must declare `license_env` ([] for a license-free tool)"
+            )
+        as_str_list(table.get("license_env"), f"{where} [{tool}].license_env")
+        min_version = table.get("min_version")
+        if min_version is not None and not (
+            isinstance(min_version, str) and MIN_VERSION_RE.fullmatch(min_version)
+        ):
+            raise ConfigError(
+                f'{where}: [{tool}].min_version must be a dotted release number such as "5.036"'
+            )
+        if kind == "formal":
+            if "argv" not in table:
+                raise ConfigError(
+                    f"{where}: [{tool}] is a formal backend and must carry an `argv` launch template"
+                )
+            validate_formal_argv_template(table["argv"], f"{where} [{tool}].argv")
+        elif "argv" in table:
+            raise ConfigError(
+                f"{where}: [{tool}].argv is a formal launch template; `{tool}` is kind `{kind}`"
             )
         coverage_defaults = table.get("coverage_defaults")
         if coverage_defaults is None:
             continue
         if not isinstance(coverage_defaults, dict):
-            raise ConfigError(f"{path}: [{tool}.coverage_defaults] must be a table")
+            raise ConfigError(f"{where}: [{tool}.coverage_defaults] must be a table")
         validate_coverage_tool_table(
             coverage_defaults,
-            f"{path} [{tool}.coverage_defaults]",
+            f"{where} [{tool}.coverage_defaults]",
             require_complete=True,
         )
-        supported = as_str_list(table.get("supports_cov"), f"{path} [{tool}].supports_cov")
+        supported = as_str_list(table.get("supports_cov"), f"{where} [{tool}].supports_cov")
         if not any(
             metric in {"line", "toggle", "branch", "fsm", "functional"} for metric in supported
         ):
             raise ConfigError(
-                f"{path}: [{tool}] declares coverage defaults but no normalized coverage metric"
+                f"{where}: [{tool}] declares coverage defaults but no normalized coverage metric"
+            )
+
+
+def load_simulators(root: Path) -> dict[str, Any]:
+    """The checked-in tool registry; ``runlib.site.merged_simulators`` layers a site file on it."""
+    path = configs_root(root) / "simulators.toml"
+    if not path.is_file():
+        raise ConfigError(f"missing simulator registry: {path}")
+    data = load_toml(path)
+    simulators = {key: value for key, value in data.items() if key != "schema_version"}
+    validate_simulator_registry(simulators, str(path))
+    for tool, table in simulators.items():
+        site_only = sorted(set(table) & SITE_ONLY_TOOL_KEYS)
+        if site_only:
+            raise ConfigError(
+                f"{path}: [{tool}] carries deployment key(s) {', '.join(site_only)}; "
+                "they belong in the site layer (site.local.toml)"
             )
     return simulators
 
 
+def validate_executor_registry(executors: dict[str, Any], where: str) -> None:
+    """Validate an executor registry: checked-in, or checked-in with a site layer merged in."""
+    if "local" not in executors:
+        raise ConfigError(f"{where}: missing required [local] executor")
+    for name, cfg in executors.items():
+        if not isinstance(cfg, dict):
+            raise ConfigError(f"{where}: [{name}] must be a table")
+        kind = cfg.get("kind")
+        if kind == "local":
+            validate_allowed_keys(cfg, LOCAL_EXECUTOR_KEYS, f"{where} [{name}]")
+            if cfg.get("submit_argv") not in ([], None):
+                raise ConfigError(f"{where}: [local].submit_argv must be []")
+            if cfg.get("wait_mode") != "inline":
+                raise ConfigError(f"{where}: [local].wait_mode must be `inline`")
+        elif kind == "cluster" and "driver" in cfg:
+            validate_cluster_executor(cfg, f"{where} [{name}]")
+        elif kind == "cluster":
+            validate_allowed_keys(cfg, CLUSTER_EXECUTOR_V1_KEYS, f"{where} [{name}]")
+            if not isinstance(cfg.get("binary"), str) or not cfg.get("binary"):
+                raise ConfigError(f"{where}: [{name}].binary must be a non-empty string")
+            as_str_list(cfg.get("submit_argv"), f"{name}.submit_argv")
+            as_str_list(cfg.get("env_passthrough"), f"{name}.env_passthrough")
+            validate_placeholders_in_value(
+                cfg.get("submit_argv", []), f"{where} [{name}].submit_argv"
+            )
+        else:
+            raise ConfigError(f"{where}: [{name}].kind must be `local` or `cluster`")
+
+
+def validate_cluster_executor(cfg: dict[str, Any], where: str) -> None:
+    """A schema-2 cluster table: a driver, the binaries it runs, and its argv templates."""
+    validate_allowed_keys(cfg, CLUSTER_EXECUTOR_KEYS, where)
+    driver = cfg.get("driver")
+    if driver not in CLUSTER_DRIVERS:
+        raise ConfigError(f"{where}.driver must be one of: {', '.join(sorted(CLUSTER_DRIVERS))}")
+    binaries = as_str_list(cfg.get("binaries"), f"{where}.binaries")
+    if not binaries or not all(binaries):
+        raise ConfigError(f"{where}.binaries must name every scheduler command the driver runs")
+    if cfg.get("wait_mode", "poll") != "poll":
+        raise ConfigError(f"{where}.wait_mode must be `poll` on a cluster executor")
+    for key, allowed in EXECUTOR_TEMPLATE_PLACEHOLDERS.items():
+        validate_argv_template(
+            cfg.get(key),
+            f"{where}.{key}",
+            allowed,
+            required=key in {"submit_argv", "query_argv", "cancel_argv"},
+        )
+    for name in as_str_list(cfg.get("env_passthrough"), f"{where}.env_passthrough"):
+        if not ENV_NAME_RE.match(name):
+            raise ConfigError(f"{where}.env_passthrough: {name!r} is not a variable name")
+    if "defaults" in cfg:
+        validate_resource_table(cfg["defaults"], f"{where}.defaults")
+    if "build_defaults" in cfg:
+        validate_resource_table(cfg["build_defaults"], f"{where}.build_defaults")
+    if "builds" in cfg and cfg["builds"] not in EXECUTOR_BUILD_MODES:
+        raise ConfigError(
+            f"{where}.builds must be one of: {', '.join(sorted(EXECUTOR_BUILD_MODES))}"
+        )
+    if "limits" in cfg:
+        validate_limits_table(cfg["limits"], f"{where}.limits")
+    for key in ("description", "history_parser", "setup_hook"):
+        if key in cfg and (not isinstance(cfg[key], str) or not cfg[key]):
+            raise ConfigError(f"{where}.{key} must be a non-empty string")
+    if "arrays" in cfg and not isinstance(cfg["arrays"], bool):
+        raise ConfigError(f"{where}.arrays must be true or false")
+
+
 def load_executors(root: Path) -> dict[str, Any]:
+    """The checked-in executor registry; ``runlib.site.merged_executors`` layers a site file on it."""
     path = configs_root(root) / "executors.toml"
     if not path.is_file():
         raise ConfigError(f"missing executor registry: {path}")
     data = load_toml(path)
+    if data.get("schema_version") not in EXECUTOR_SCHEMA_VERSIONS:
+        raise ConfigError(
+            f"{path}: schema_version must be one of "
+            + ", ".join(str(version) for version in sorted(EXECUTOR_SCHEMA_VERSIONS))
+        )
     executors = {key: value for key, value in data.items() if key != "schema_version"}
-    if "local" not in executors:
-        raise ConfigError(f"{path}: missing required [local] executor")
-    for name, cfg in executors.items():
-        if not isinstance(cfg, dict):
-            raise ConfigError(f"{path}: [{name}] must be a table")
-        kind = cfg.get("kind")
-        if kind == "local":
-            validate_allowed_keys(cfg, {"kind", "submit_argv", "wait_mode"}, f"{path} [{name}]")
-            if cfg.get("submit_argv") not in ([], None):
-                raise ConfigError(f"{path}: [local].submit_argv must be []")
-            if cfg.get("wait_mode") != "inline":
-                raise ConfigError(f"{path}: [local].wait_mode must be `inline`")
-        elif kind == "cluster":
-            validate_allowed_keys(
-                cfg,
-                {"kind", "binary", "submit_argv", "wait_mode", "env_passthrough", "defaults"},
-                f"{path} [{name}]",
+    validate_executor_registry(executors, str(path))
+    for name, table in executors.items():
+        site_only = sorted(set(table) & SITE_ONLY_EXECUTOR_KEYS)
+        if site_only:
+            raise ConfigError(
+                f"{path}: [{name}] carries deployment key(s) {', '.join(site_only)}; "
+                "they belong in the site layer (site.local.toml)"
             )
-            if not isinstance(cfg.get("binary"), str) or not cfg.get("binary"):
-                raise ConfigError(f"{path}: [{name}].binary must be a non-empty string")
-            as_str_list(cfg.get("submit_argv"), f"{name}.submit_argv")
-            as_str_list(cfg.get("env_passthrough"), f"{name}.env_passthrough")
-            validate_placeholders_in_value(
-                cfg.get("submit_argv", []), f"{path} [{name}].submit_argv"
-            )
-        else:
-            raise ConfigError(f"{path}: [{name}].kind must be `local` or `cluster`")
     return executors
 
 
 def load_sim_cfg(flow: Dut, root: Path) -> dict[str, Any]:
-    # The flow and sim_cfg are now one merged file; the loaded DUT already holds it.
+    # The sim_cfg tables live in the DUT config file, so the loaded DUT already holds them.
     return flow.raw
 
 
@@ -1386,8 +1971,7 @@ def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str
 def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:
     """The active `[targets.<name>]` table (defines + per-tool flags + build_dir).
 
-    OD-19 merged the former `[compile_targets]`/`[run_targets]` split into one `[targets]` table
-    keyed by `[defaults].target`.
+    One `[targets]` table serves compile and run; `[defaults].target` selects the entry.
     """
     name = name or default_target_name(sim_cfg)
     target_defaults = (
@@ -1458,8 +2042,8 @@ def targeted_sim_cfg(
     """Return a cloned config resolved for one target.
 
     Stage implementations consume source-selection fields from `[build]`, while target policy lives
-    under `[targets.<name>]`. Keep the existing stage API by copying target-owned source selectors
-    into the cloned `[build]` table and overriding `[defaults].target`.
+    under `[targets.<name>]`; the clone copies target-owned source selectors into `[build]` and
+    sets `[defaults].target`.
     """
     cfg = copy.deepcopy(sim_cfg)
     cfg.setdefault("defaults", {})["target"] = target_name
@@ -1480,8 +2064,8 @@ def targeted_sim_cfg(
 
     # These source lists are additive: DUT-wide sources from `[build]` plus target-owned shims/stubs.
     # `exclude_files` is likewise additive: DUT-wide drops from `[build]` plus target-owned drops
-    # (e.g. the lsu_stub target excludes the real hw/sep/sep_cpu.sv so its appended stub is the
-    # only definition, with all DUT packages already declared ahead of it).
+    # (e.g. a CPU-stub target excludes the real hw/sys/sep/rtl/sep_cpu.sv so its appended stub
+    # is the only definition, with all DUT packages already declared ahead of it).
     for key in ("stubs", "sources", "exclude_files"):
         if key in target:
             build[key] = _merge_unique_strings(
@@ -1505,10 +2089,9 @@ def targeted_sim_cfg(
         if not isinstance(build_dir, str) or not build_dir:
             raise ConfigError(f"`targets.{target_name}.build_dir` must be a non-empty string")
         # Per-target subdir so targets that share one build_dir do not clobber each other's
-        # generated filelist (last-writer-wins): without the target_name key, every target derived
-        # the SAME filelists/{bender,files}.f and a later target's flist overwrote an earlier one,
-        # so a multi-target regression compiled the wrong source set (e.g. lsu_stub built with the
-        # real sep_cpu instead of the stub). Keying on target_name gives each its own filelist.
+        # generated filelist: a shared filelists/{bender,files}.f is last-writer-wins, so a
+        # multi-target regression would compile a later target's source set (e.g. the real
+        # sep_cpu in place of a CPU-stub target's stub).
         filelist_root = Path(build_dir) / "filelists" / target_name
         work_dir = target.get("work_dir", build_dir)
         if not isinstance(work_dir, str) or not work_dir:
@@ -1555,8 +2138,8 @@ def target_flags(target: dict[str, Any], tool: str) -> list[str]:
     return flags
 
 
-# The compile/run target split is gone; both accessors now resolve the one merged target table so
-# the existing stage code (which still distinguishes compile vs run locally) keeps working.
+# One target table serves both compile and run; these accessors let stage code that distinguishes
+# compile from run resolve the same target.
 def selected_compile_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return selected_target(sim_cfg)
 
@@ -1584,7 +2167,7 @@ def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any
         requested = test.run_modes[0]
         where = f"test `{test.name}` run_modes"
     if not requested:
-        # The implicit fallback is optional by design: a DUT whose tests all carry run_modes
+        # The implicit fallback is optional: a DUT whose tests all carry run_modes
         # never consults it, and a DUT without a `smoke` mode must still resolve (to no mode).
         requested = defaults_cfg(sim_cfg).get("run_mode", "smoke")
         mode = run_modes_cfg(sim_cfg).get(str(requested), {})
@@ -1610,19 +2193,44 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         where = f"{source}: " if source else ""
         raise ConfigError(f"{where}{name}.target must be a non-empty string")
     where = f"{source}: " if source else ""
+    expect_fail = entry.get("expect_fail")
+    if expect_fail is not None and (not isinstance(expect_fail, str) or not expect_fail.strip()):
+        raise ConfigError(
+            f"{where}{name}.expect_fail must be a non-empty string recording why the leaf "
+            "fails on the current DUT (the defect it reproduces)"
+        )
+    expect_fail_match = entry.get("expect_fail_match")
+    if expect_fail_match is not None:
+        if not isinstance(expect_fail_match, str) or not expect_fail_match.strip():
+            raise ConfigError(f"{where}{name}.expect_fail_match must be a non-empty regex string")
+        if expect_fail is None:
+            raise ConfigError(f"{where}{name}.expect_fail_match requires expect_fail")
+        try:
+            re.compile(expect_fail_match)
+        except re.error as exc:
+            raise ConfigError(
+                f"{where}{name}.expect_fail_match is not a valid regex: {exc}"
+            ) from exc
 
     # `module` is either a bare string (bound to the DUT's default framework) or a per-framework
-    # binding map `{ cocotb = "...", uvm = "..." }`. Resolution against the selected framework
+    # binding map `{ cocotb = "...", uvm = "..." }`. A map value of `false` declares the
+    # framework out of scope for the scenario. Resolution against the selected framework
     # happens at catalog load, where the flow is known.
     raw_module = entry.get("module", name)
     bindings: dict[str, str] = {}
+    excluded: set[str] = set()
     if isinstance(raw_module, dict):
         for fw, value in raw_module.items():
             if not isinstance(fw, str) or not FRAMEWORK_NAME_RE.match(fw):
                 raise ConfigError(f"{where}{name}.module has an invalid framework key `{fw}`")
-            if not isinstance(value, str) or not value:
-                raise ConfigError(f"{where}{name}.module.{fw} must be a non-empty string")
-            bindings[fw] = value
+            if value is False:
+                excluded.add(fw)
+            elif isinstance(value, str) and value:
+                bindings[fw] = value
+            else:
+                raise ConfigError(
+                    f"{where}{name}.module.{fw} must be a non-empty string or `false`"
+                )
         if not bindings:
             raise ConfigError(f"{where}{name}.module must declare at least one framework binding")
         module = ""
@@ -1630,6 +2238,15 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         module = raw_module
     else:
         raise ConfigError(f"{where}{name}.module must be a non-empty string or a binding table")
+
+    # `tools = []` names no simulator that could ever run the scenario, which is a way
+    # of deleting a test without saying so. Caught here, where an absent key is still
+    # distinguishable from an explicitly empty one -- as_str_list flattens both to [].
+    if "tools" in entry and not entry["tools"]:
+        raise ConfigError(
+            f"{where}{name}.tools is empty, so no tool could ever run this scenario; "
+            f"drop the key to allow every tool, or name the ones that work"
+        )
 
     overrides_raw = entry.get("overrides", {})
     overrides: dict[str, dict[str, Any]] = {}
@@ -1652,6 +2269,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         name=name,
         module=module,
         bindings=bindings,
+        excluded=frozenset(excluded),
         overrides=overrides,
         target=target,
         seed=as_int(entry.get("seed"), f"{name}.seed"),
@@ -1659,8 +2277,11 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         timeout_sec=as_int(entry.get("timeout_sec"), f"{name}.timeout_sec"),
         tags=as_str_list(entry.get("tags"), f"{name}.tags"),
         run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
+        tools=as_str_list(entry.get("tools"), f"{name}.tools"),
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
+        expect_fail=expect_fail,
+        expect_fail_match=expect_fail_match,
         source=source,
     )
 
@@ -1670,8 +2291,9 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
 
     A bare-string `module` is normalized to a binding for the DUT's default framework; a binding
     map is looked up by the selected framework. A scenario with no binding for the selected
-    framework keeps `module = ""` — the catalog legitimately holds it, and selection fails
-    loudly (or skips under --skip-unimplemented) before it can run.
+    framework keeps `module = ""`; selection decides before it can run: a framework the map
+    declares `false` is skipped from group and tag selections, a framework the map omits is an
+    error unless --skip-unimplemented is given.
     """
     if not flow.framework:
         for test in tests.values():
@@ -1683,7 +2305,11 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
         return
     implemented = set(flow.frameworks)
     for test in tests.values():
-        for label, keys in (("module binding(s)", test.bindings), ("override(s)", test.overrides)):
+        for label, keys in (
+            ("module binding(s)", test.bindings),
+            ("exclusion(s)", test.excluded),
+            ("override(s)", test.overrides),
+        ):
             unknown = sorted(set(keys) - implemented)
             if unknown:
                 raise ConfigError(
@@ -1732,6 +2358,31 @@ def _validate_run_mode_references(flow: Flow, tests: dict[str, TestEntry]) -> No
         validate_run_mode_request(flow.raw, str(default), f"{flow.path}: [defaults].run_mode")
 
 
+def _validate_tool_references(flow: Flow, tests: dict[str, TestEntry]) -> None:
+    """Every per-test ``tools`` entry must name a simulator the DUT declares.
+
+    Runs after include expansion, like the run-mode check beside it. A name the DUT does
+    not declare could never match the selected tool, so the scenario would be skipped on
+    every run -- silently, and for a typo. An empty list means unrestricted, the same way
+    an absent ``tags`` or ``run_modes`` does; an explicitly empty one is rejected at
+    parse time, where it is still distinguishable from an absent key.
+    """
+    for test in tests.values():
+        if not test.tools or not test.module:
+            # No binding for the selected framework means this view never runs the
+            # scenario at all (see _resolve_catalog_frameworks), so which simulators it
+            # would need is not this view's business -- and a framework overlay may
+            # legitimately declare a narrower `tools` list than the tool the scenario names.
+            continue
+        where = f"{test.source or flow.path}: test `{test.name}`"
+        unknown = [name for name in test.tools if name not in flow.tools]
+        if unknown:
+            raise ConfigError(
+                f"{where}: `tools` names {', '.join(f'`{n}`' for n in unknown)}, which "
+                f"dut `{flow.name}` does not declare (declares: {', '.join(flow.tools)})"
+            )
+
+
 def _validate_group_members(
     tests: dict[str, TestEntry], groups: dict[str, list[str]], group_sources: dict[str, Path]
 ) -> None:
@@ -1756,14 +2407,14 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         raw_path = Path(str(testlist["path"])).expanduser()
         path = raw_path if raw_path.is_absolute() else root / raw_path
         if not path.is_file() and not raw_path.is_absolute():
-            # The clean contract says testlist paths are DUT-local. The sandbox configs still use
-            # repo-relative paths, so accept both while preferring the existing repo-relative form.
+            # A relative testlist path may be repo-relative or DUT-local; repo-relative wins.
             path = flow.path.parent / raw_path
         tests, groups, group_sources = _merge_testlist_data(
             load_toml(path), path, path.parent, root, [path]
         )
         _resolve_catalog_frameworks(flow, tests, path)
         _validate_run_mode_references(flow, tests)
+        _validate_tool_references(flow, tests)
         _validate_group_members(tests, groups, group_sources)
         return TestCatalog(path=path, tests=tests, groups=groups)
     # No separate testlist file: read inline [[tests]]/[[groups]] from the flow TOML.
@@ -1777,6 +2428,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
     )
     _resolve_catalog_frameworks(flow, tests, flow.path)
     _validate_run_mode_references(flow, tests)
+    _validate_tool_references(flow, tests)
     _validate_group_members(tests, groups, group_sources)
     return TestCatalog(path=None, tests=tests, groups=groups)
 

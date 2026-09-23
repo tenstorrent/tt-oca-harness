@@ -2,40 +2,85 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP primary TAP register map.
 
-Centralizes the TDR map so the JTAG driver and sequences agree on register
-names, widths, and IR opcodes.
+One table of the TDRs the tests exercise, so the JTAG driver and the sequences
+agree on register names, sizes, and IR opcodes. The opcodes are the
+interface-unit instruction table (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`,
+"Instruction Encodings"); the register sizes are the TDR layouts in
+`hw/ip/jtag/jtag_ptap/doc/architecture.adoc` and, for the instructions that
+document does not lay out, the interface-unit table's "Register Size" column;
+the JTAG2AXI TDR sizes derive from the bridge geometries in
+``dtp_types.JTAG2AXI_TARGETS``.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .dtp_types import DTP_IR_WIDTH, JTAG2AXI_TARGETS, DtpJtagInstr
+from .dtp_dv_cfg import (
+    DTP_BSR_ENABLE,
+    DTP_CLAMP_ENABLE,
+    DTP_DEFAULT_IDCODE,
+    DTP_EXTEST_PULSE_ENABLE,
+    DTP_EXTEST_TRAIN_ENABLE,
+    DTP_HIGHZ_ENABLE,
+    DTP_IC_RESET_INSTR_ENABLE,
+    DTP_INTEST_ENABLE,
+    DTP_NUM_EXT_IC_RESET,
+    DTP_NUM_EXTRA_STAPS,
+    DTP_NUM_SEP_IC_RESET,
+    DTP_NUM_SMC_IC_RESET,
+    DTP_NUM_XTRIG_CTP,
+    DTP_NUM_XTRIG_INT_CT,
+    DTP_OCH_VER,
+    DTP_RUNBIST_ENABLE,
+    DTP_SEP_DBG_ENABLE,
+    DTP_SMC_DBG_ENABLE,
+    DTP_STAP_IO_ENABLE,
+    DTP_TMP_ENABLE,
+)
+from .dtp_types import DTP_IR_WIDTH, JTAG2AXI_TARGETS, DtpJtag2AxiTargetCfg, DtpJtagInstr
 
-DTP_DEFAULT_IDCODE = 0x0000_0001
+__all__ = [
+    "DTP_BSR_MODEL_LEN",
+    "DTP_DEBUG_CONTROL_LEN",
+    "DTP_DEFAULT_IDCODE",
+    "DTP_EXPECTED_JTAG2AXI_CAPS",
+    "DTP_EXPECTED_JTAG_CAPS",
+    "DTP_IC_RESET_LEN",
+    "DTP_IC_RESET_PORTS",
+    "DTP_JTAG2AXI_CAPS_LEN",
+    "DTP_JTAG2AXI_RD_PL_DEPTH",
+    "DTP_JTAG2AXI_WR_PL_DEPTH",
+    "DTP_JTAG_CAPS_LEN",
+    "DTP_TMP_STATUS_LEN",
+    "DtpTapDevice",
+    "DtpTapRegister",
+    "pack_jtag2axi_caps",
+    "pack_jtag_caps",
+    "unpack_jtag2axi_caps",
+]
+
+# Register sizes of the interface-unit instruction table.
 DTP_BYPASS_LEN = 1
 DTP_TMP_STATUS_LEN = 2
 DTP_DEBUG_CONTROL_LEN = 5
-DTP_IC_RESET_PORTS = 3
+DTP_TAP_3DCR_LEN = 2
+# IC_RESET: reset_hold plus one {reset_enable, reset_control} pair per port
+# ("IC_RESET Support" table) over the bench configuration's slices.
+DTP_IC_RESET_PORTS = DTP_NUM_SMC_IC_RESET + DTP_NUM_SEP_IC_RESET + DTP_NUM_EXT_IC_RESET
 DTP_IC_RESET_LEN = (2 * DTP_IC_RESET_PORTS) + 1
+# JTAG_CAPS[59:0] ("JTAG Capabilities" table) and *_JTAG2AXI_CAPS[13:0]
+# ("*_JTAG2AXI_CAPS" table).
 DTP_JTAG_CAPS_LEN = 60
 DTP_JTAG2AXI_CAPS_LEN = 14
-DTP_TAP_3DCR_LEN = 2
+# SELECT_IJTAG: one bit per SIB of the DTP iJTAG network
+# (dtp_scan_ref_model.IJTAG_SIB_ORDER).
 DTP_SELECT_IJTAG_MIN_LEN = 3
-DTP_NUM_XTRIG_CTP = 16
-DTP_NUM_XTRIG_INT_CT = 10
-DTP_NUM_CLK_STOP_REQ = 9
-DTP_NUM_EXTRA_STAPS = 1
-DTP_NUM_SMC_IC_RESET = 1
-DTP_NUM_SEP_IC_RESET = 1
-DTP_NUM_EXT_IC_RESET = 1
-DTP_OCH_VER = 0
+# Read and write pipeline depth every JTAG2AXI bridge publishes in the
+# rd_pl_depth and wr_pl_depth fields of its *_JTAG2AXI_CAPS TDR; the CAPS
+# scenarios compare them.
 DTP_JTAG2AXI_RD_PL_DEPTH = 3
 DTP_JTAG2AXI_WR_PL_DEPTH = 3
-DTP_SMC_ADDR_WIDTH = 56
-DTP_SMC_DATA_WIDTH = 64
-DTP_OTP_ADDR_WIDTH = 32
-DTP_OTP_DATA_WIDTH = 32
 # The OSS TB uses a compact local scan model for boundary-scan scenarios.
 DTP_BSR_MODEL_LEN = 8
 
@@ -47,26 +92,26 @@ def _data_width_to_size_encoding(width_bits: int) -> int:
 
 
 def pack_jtag_caps() -> int:
-    """Pack the default DTP JTAG_CAPS value for the standalone OSS DTP instance."""
+    """Pack the bench configuration's JTAG_CAPS value ("JTAG Capabilities" table)."""
     return (
         (DTP_NUM_XTRIG_INT_CT << 54)
         | (DTP_NUM_XTRIG_CTP << 48)
         | (DTP_NUM_EXTRA_STAPS << 44)
-        | (1 << 43)  # STAP_IO_EN
-        | (1 << 42)  # SEP_DBG_EN
-        | (1 << 41)  # SMC_DBG_EN
+        | (DTP_STAP_IO_ENABLE << 43)
+        | (DTP_SEP_DBG_ENABLE << 42)
+        | (DTP_SMC_DBG_ENABLE << 41)
         | (DTP_NUM_SMC_IC_RESET << 33)
         | (DTP_NUM_SEP_IC_RESET << 25)
         | (DTP_NUM_EXT_IC_RESET << 17)
-        | (1 << 16)  # IC_RST_INST_EN
-        | (1 << 15)  # TMP_INST_EN
-        | (1 << 14)  # RUNBIST_INST_EN
-        | (1 << 13)  # HIGHZ_INST_EN
-        | (1 << 12)  # CLAMP_INST_EN
-        | (1 << 11)  # INTEST_INST_EN
-        | (1 << 10)  # EXTEST_PULSE_EN
-        | (1 << 9)  # EXTEST_TRAIN_EN
-        | (1 << 8)  # BSR_INST_EN
+        | (DTP_IC_RESET_INSTR_ENABLE << 16)
+        | (DTP_TMP_ENABLE << 15)
+        | (DTP_RUNBIST_ENABLE << 14)
+        | (DTP_HIGHZ_ENABLE << 13)
+        | (DTP_CLAMP_ENABLE << 12)
+        | (DTP_INTEST_ENABLE << 11)
+        | (DTP_EXTEST_PULSE_ENABLE << 10)
+        | (DTP_EXTEST_TRAIN_ENABLE << 9)
+        | (DTP_BSR_ENABLE << 8)
         | DTP_OCH_VER
     )
 
@@ -79,7 +124,7 @@ def pack_jtag2axi_caps(
     rd_pl_depth: int = DTP_JTAG2AXI_RD_PL_DEPTH,
     wr_pl_depth: int = DTP_JTAG2AXI_WR_PL_DEPTH,
 ) -> int:
-    """Pack a JTAG2AXI_CAPS value using the RTL bit-field encoding."""
+    """Pack a *_JTAG2AXI_CAPS value ("*_JTAG2AXI_CAPS" table, bits 13:0)."""
     return (
         ((rd_pl_depth & 0x3) << 12)
         | ((wr_pl_depth & 0x3) << 10)
@@ -89,25 +134,84 @@ def pack_jtag2axi_caps(
     )
 
 
+def unpack_jtag2axi_caps(value: int) -> dict[str, int]:
+    """Fields of a *_JTAG2AXI_CAPS value by the table's names."""
+    return {
+        "rd_pl_depth": (value >> 12) & 0x3,
+        "wr_pl_depth": (value >> 10) & 0x3,
+        "data_size": (value >> 7) & 0x7,
+        "addr_size": (value >> 1) & 0x3F,
+        "bus_type": value & 0x1,
+    }
+
+
 DTP_EXPECTED_JTAG_CAPS = pack_jtag_caps()
-DTP_EXPECTED_SMC_JTAG2AXI_CAPS = pack_jtag2axi_caps(
-    bus_type=0,
-    addr_width=DTP_SMC_ADDR_WIDTH,
-    data_width=DTP_SMC_DATA_WIDTH,
-)
-DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS = pack_jtag2axi_caps(
-    bus_type=1,
-    addr_width=DTP_OTP_ADDR_WIDTH,
-    data_width=DTP_OTP_DATA_WIDTH,
-)
-DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS = DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS
+# Expected *_JTAG2AXI_CAPS value per CAPS register name, from the geometry table.
+DTP_EXPECTED_JTAG2AXI_CAPS: dict[str, int] = {
+    cfg.caps_reg: pack_jtag2axi_caps(
+        bus_type=cfg.bus_type, addr_width=cfg.addr_width, data_width=cfg.data_width
+    )
+    for cfg in JTAG2AXI_TARGETS.values()
+}
 
 
 @dataclass(frozen=True)
 class DtpTapRegister:
+    """One TDR: its shift length in bits, IR opcode, and whether Update-DR writes it."""
+
     width: int
     instr: int
     write: bool = False
+
+
+def _fixed_registers() -> dict[str, DtpTapRegister]:
+    """TDRs whose sizes come straight from the instruction table and the PTAP layouts."""
+    return {
+        "BYPASS_00": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_00)),
+        "IDCODE": DtpTapRegister(32, int(DtpJtagInstr.IDCODE)),
+        "RUNBIST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.RUNBIST)),
+        "SAMPLE_PRELOAD": DtpTapRegister(
+            DTP_BSR_MODEL_LEN, int(DtpJtagInstr.SAMPLE_PRELOAD), write=True
+        ),
+        "EXTEST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST), write=True),
+        "EXTEST_TRAIN": DtpTapRegister(
+            DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST_TRAIN), write=True
+        ),
+        "EXTEST_PULSE": DtpTapRegister(
+            DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST_PULSE), write=True
+        ),
+        "CLAMP": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP)),
+        "HIGHZ": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.HIGHZ)),
+        "INTEST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.INTEST), write=True),
+        "CLAMP_HOLD": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_HOLD)),
+        "CLAMP_RELEASE": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_RELEASE)),
+        "TMP_STATUS": DtpTapRegister(DTP_TMP_STATUS_LEN, int(DtpJtagInstr.TMP_STATUS), write=True),
+        "IC_RESET": DtpTapRegister(DTP_IC_RESET_LEN, int(DtpJtagInstr.IC_RESET), write=True),
+        "TAP_3DCR": DtpTapRegister(DTP_TAP_3DCR_LEN, int(DtpJtagInstr.TAP_3DCR), write=True),
+        "DEBUG_CONTROL": DtpTapRegister(
+            DTP_DEBUG_CONTROL_LEN, int(DtpJtagInstr.DEBUG_CONTROL), write=True
+        ),
+        "JTAG_CAPS": DtpTapRegister(DTP_JTAG_CAPS_LEN, int(DtpJtagInstr.JTAG_CAPS)),
+        "SELECT_IJTAG": DtpTapRegister(
+            DTP_SELECT_IJTAG_MIN_LEN, int(DtpJtagInstr.SELECT_IJTAG), write=True
+        ),
+        "ZERO_LENGTH_BYPASS": DtpTapRegister(0, int(DtpJtagInstr.ZERO_LENGTH_BYPASS)),
+        "INV_BYPASS": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.INV_BYPASS)),
+        "BYPASS_3F": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_3F)),
+    }
+
+
+def _jtag2axi_registers(cfg: DtpJtag2AxiTargetCfg) -> dict[str, DtpTapRegister]:
+    """One bridge's CAPS, SINGLE_OP, and SERIES_CTRL TDRs at its geometry."""
+    return {
+        cfg.caps_reg: DtpTapRegister(DTP_JTAG2AXI_CAPS_LEN, int(DtpJtagInstr[cfg.caps_reg])),
+        cfg.single_op_reg: DtpTapRegister(
+            cfg.single_op_len, int(DtpJtagInstr[cfg.single_op_reg]), write=True
+        ),
+        cfg.series_ctrl_reg: DtpTapRegister(
+            cfg.series_ctrl_len, int(DtpJtagInstr[cfg.series_ctrl_reg]), write=True
+        ),
+    }
 
 
 class DtpTapDevice:
@@ -117,103 +221,9 @@ class DtpTapDevice:
         self.name = "dtp"
         self.idcode = DTP_DEFAULT_IDCODE
         self.ir_len = DTP_IR_WIDTH
-        self.regs: dict[str, DtpTapRegister] = {
-            "BYPASS_00": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_00)),
-            "IDCODE": DtpTapRegister(32, int(DtpJtagInstr.IDCODE)),
-            "RUNBIST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.RUNBIST)),
-            "SAMPLE_PRELOAD": DtpTapRegister(
-                DTP_BSR_MODEL_LEN,
-                int(DtpJtagInstr.SAMPLE_PRELOAD),
-                write=True,
-            ),
-            "EXTEST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.EXTEST), write=True),
-            "EXTEST_TRAIN": DtpTapRegister(
-                DTP_BSR_MODEL_LEN,
-                int(DtpJtagInstr.EXTEST_TRAIN),
-                write=True,
-            ),
-            "EXTEST_PULSE": DtpTapRegister(
-                DTP_BSR_MODEL_LEN,
-                int(DtpJtagInstr.EXTEST_PULSE),
-                write=True,
-            ),
-            "CLAMP": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP)),
-            "HIGHZ": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.HIGHZ)),
-            "INTEST": DtpTapRegister(DTP_BSR_MODEL_LEN, int(DtpJtagInstr.INTEST), write=True),
-            "CLAMP_HOLD": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_HOLD)),
-            "CLAMP_RELEASE": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.CLAMP_RELEASE)),
-            "TMP_STATUS": DtpTapRegister(
-                DTP_TMP_STATUS_LEN,
-                int(DtpJtagInstr.TMP_STATUS),
-                write=True,
-            ),
-            "IC_RESET": DtpTapRegister(
-                DTP_IC_RESET_LEN,
-                int(DtpJtagInstr.IC_RESET),
-                write=True,
-            ),
-            "TAP_3DCR": DtpTapRegister(
-                DTP_TAP_3DCR_LEN,
-                int(DtpJtagInstr.TAP_3DCR),
-                write=True,
-            ),
-            "DEBUG_CONTROL": DtpTapRegister(
-                DTP_DEBUG_CONTROL_LEN,
-                int(DtpJtagInstr.DEBUG_CONTROL),
-                write=True,
-            ),
-            "JTAG_CAPS": DtpTapRegister(DTP_JTAG_CAPS_LEN, int(DtpJtagInstr.JTAG_CAPS)),
-            "SELECT_IJTAG": DtpTapRegister(
-                DTP_SELECT_IJTAG_MIN_LEN,
-                int(DtpJtagInstr.SELECT_IJTAG),
-                write=True,
-            ),
-            "SMC_OTP_JTAG2AXI_CAPS": DtpTapRegister(
-                DTP_JTAG2AXI_CAPS_LEN,
-                int(DtpJtagInstr.SMC_OTP_JTAG2AXI_CAPS),
-            ),
-            "SEP_OTP_JTAG2AXI_CAPS": DtpTapRegister(
-                DTP_JTAG2AXI_CAPS_LEN,
-                int(DtpJtagInstr.SEP_OTP_JTAG2AXI_CAPS),
-            ),
-            "ZERO_LENGTH_BYPASS": DtpTapRegister(0, int(DtpJtagInstr.ZERO_LENGTH_BYPASS)),
-            "INV_BYPASS": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.INV_BYPASS)),
-            "BYPASS_3F": DtpTapRegister(DTP_BYPASS_LEN, int(DtpJtagInstr.BYPASS_3F)),
-            "SMC_JTAG2AXI_CAPS": DtpTapRegister(
-                DTP_JTAG2AXI_CAPS_LEN,
-                int(DtpJtagInstr.SMC_JTAG2AXI_CAPS),
-            ),
-            "SMC_AXI_SINGLE_OP": DtpTapRegister(
-                JTAG2AXI_TARGETS["smc_axi"].single_op_len,
-                int(DtpJtagInstr.SMC_AXI_SINGLE_OP),
-                write=True,
-            ),
-            "SMC_AXI_SERIES_CTRL": DtpTapRegister(
-                JTAG2AXI_TARGETS["smc_axi"].series_ctrl_len,
-                int(DtpJtagInstr.SMC_AXI_SERIES_CTRL),
-                write=True,
-            ),
-            "SMC_OTP_AXI_SINGLE_OP": DtpTapRegister(
-                JTAG2AXI_TARGETS["smc_otp"].single_op_len,
-                int(DtpJtagInstr.SMC_OTP_AXI_SINGLE_OP),
-                write=True,
-            ),
-            "SMC_OTP_AXI_SERIES_CTRL": DtpTapRegister(
-                JTAG2AXI_TARGETS["smc_otp"].series_ctrl_len,
-                int(DtpJtagInstr.SMC_OTP_AXI_SERIES_CTRL),
-                write=True,
-            ),
-            "SEP_OTP_AXI_SINGLE_OP": DtpTapRegister(
-                JTAG2AXI_TARGETS["sep_otp"].single_op_len,
-                int(DtpJtagInstr.SEP_OTP_AXI_SINGLE_OP),
-                write=True,
-            ),
-            "SEP_OTP_AXI_SERIES_CTRL": DtpTapRegister(
-                JTAG2AXI_TARGETS["sep_otp"].series_ctrl_len,
-                int(DtpJtagInstr.SEP_OTP_AXI_SERIES_CTRL),
-                write=True,
-            ),
-        }
+        self.regs: dict[str, DtpTapRegister] = _fixed_registers()
+        for cfg in JTAG2AXI_TARGETS.values():
+            self.regs.update(_jtag2axi_registers(cfg))
         # Idle TCK cycles after every op (JTAG2AXI CDC + AXI round trip).
         self.idle_delay = idle_delay
 

@@ -7,7 +7,7 @@ name = "smc_cold_reset_test"
 module = "smc_cold_reset_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "reset", "project_p0", "pyuvm"]
+tags = ["smoke", "ci", "reset"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -15,7 +15,7 @@ name = "smc_powergood_glitch_test"
 module = "smc_powergood_glitch_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "reset", "pyuvm"]
+tags = ["ci", "reset"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -23,7 +23,7 @@ name = "smc_cold_reset_repeated_test"
 module = "smc_cold_reset_repeated_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "reset", "pyuvm"]
+tags = ["ci", "reset"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -31,7 +31,7 @@ name = "smc_reset_recovery_matrix_test"
 module = "smc_reset_recovery_matrix_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "reset", "canonical", "pyuvm"]
+tags = ["ci", "reset", "canonical"]
 run_modes = ["smoke"]
 
 # BFM rebuild of GPIO boot-stall (pad 57 sticky). Needs hold from t=0.
@@ -40,7 +40,7 @@ name = "smc_gpio_boot_stall_test"
 module = "smc_gpio_boot_stall_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "boot_stall", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "boot_stall"]
 run_modes = ["smoke"]
 args = ["+smc_hold_cpu_boot"]
 
@@ -50,7 +50,7 @@ name = "smc_jtag_boot_stall_sanity_test"
 module = "smc_jtag_boot_stall_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "boot_stall", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "boot_stall"]
 run_modes = ["smoke"]
 args = ["+smc_hold_cpu_boot"]
 
@@ -60,7 +60,7 @@ name = "smc_mixed_boot_stall_test"
 module = "smc_mixed_boot_stall_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "boot_stall", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "boot_stall"]
 run_modes = ["smoke"]
 args = ["+smc_hold_cpu_boot"]
 
@@ -70,7 +70,7 @@ name = "smc_reset_unit_sanity_test"
 module = "smc_reset_unit_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "wdt", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "wdt"]
 run_modes = ["smoke"]
 
 # BFM: NDM pin → REQUEST/IRQ[11] → PROCESS CSR (no Force/FW).
@@ -79,7 +79,7 @@ name = "smc_ndm_reset_test"
 module = "smc_ndm_reset_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "ndm", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "ndm"]
 run_modes = ["smoke"]
 
 # BFM: SW RESET_CTRL.core0 → RESET_TIMEOUT.reset_applied (no Force drain).
@@ -88,7 +88,7 @@ name = "smc_cpu_reset_source_test"
 module = "smc_cpu_reset_source_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "cpu", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "cpu"]
 run_modes = ["smoke"]
 
 # BFM: product cfg_flr_pf_active_i (not rst_cool_ni / smc_flr_sanity proxy).
@@ -97,9 +97,8 @@ name = "smc_cool_reset_from_pcie_test"
 module = "smc_cool_reset_from_pcie_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "flr", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "flr"]
 run_modes = ["smoke"]
-
 
 # BFM: ss_reset_complete_i → CSR + SS_WARM_RESET_N SS0 pin (no FW).
 [[tests]]
@@ -107,7 +106,7 @@ name = "smc_ss_reset_complete_test"
 module = "smc_ss_reset_complete_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "ss_reset", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "ss_reset"]
 run_modes = ["smoke"]
 
 # BFM: packed jtag_reset_ctrl_i (not boot-stall JTAG / rst_cool_ni / FLR).
@@ -116,7 +115,7 @@ name = "smc_jtag_reset_ctrl_test"
 module = "smc_jtag_reset_ctrl_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "jtag_reset_ctrl", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "jtag_reset_ctrl"]
 run_modes = ["smoke"]
 
 # BFM: FLR cool × rst_cold_ni (cold wins). Not rst_cool_ni / BMC Force.
@@ -125,7 +124,46 @@ name = "smc_cool_reset_x_cold_reset_test"
 module = "smc_cool_reset_x_cold_reset_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "reset", "flr", "tier_c", "pyuvm"]
+tags = ["ci", "reset", "flr"]
+run_modes = ["smoke"]
+
+[[tests]]
+# reset_unit.rdl:87-95 and :18-26 declare both as sw=rw with onwrite=woset, so a
+# taken lock cannot be released, and smc_subsystem_resets.sv gates each target's
+# writes with the inverted lock. Both properties, on both pairs, are asserted
+# here and nowhere else. One testcase rather than two: the registers have the
+# same declaration and the same gate, so a second would differ only in two
+# addresses.
+name = "smc_reset_unit_lock_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_reset_unit_lock_test", uvm = "smc_reset_unit_lock_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_reset_sync_edge_test"
+module = "smc_reset_sync_edge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_primary_reset_scope_test"
+module = "smc_primary_reset_scope_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cold_boot_chain_order_test"
+module = "smc_cold_boot_chain_order_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "boot"]
 run_modes = ["smoke"]
 
 [[groups]]
@@ -134,6 +172,7 @@ tests = [
     "smc_cold_reset_test",
     "smc_powergood_glitch_test",
     "smc_cold_reset_repeated_test",
+    "smc_reset_unit_lock_test",
     "smc_reset_recovery_matrix_test",
     "smc_gpio_boot_stall_test",
     "smc_jtag_boot_stall_sanity_test",
@@ -152,7 +191,7 @@ name = "smc_jtag_reset_proxy_test"
 module = "smc_jtag_reset_proxy_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "jtag_depth", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -160,13 +199,14 @@ name = "smc_flr_sanity_test"
 module = "smc_flr_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_multi_reset_csr_persistence_test"
-module = "smc_multi_reset_csr_persistence_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_multi_reset_csr_persistence_test", uvm = "smc_multi_reset_csr_persistence_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]

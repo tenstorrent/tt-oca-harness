@@ -29,8 +29,8 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
-# OSS-owned firmware lives under the DV tree (sibling of cocotb/) so it migrates
-# with the env. parents[3] of .../cocotb/tests/cpu/<file> == the DV root.
+# Firmware lives under the DV tree (sibling of cocotb/); parents[3] of
+# .../cocotb/tests/cpu/<file> is the DV root.
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "hello_world")
 _ITCM_HEX = os.path.join(_FW_DIR, "hello_world.itcm.hex")
@@ -66,4 +66,19 @@ class sep_hello_world_test(sep_base_test):
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+        )
+
+        # CHK-BOOT: the console line is the evidence the card names -- only executed
+        # code out of tightly-coupled memory can produce it. The boot scoreboard
+        # raises on its absence; assert it here too so the record rests on the text
+        # rather than on the run having ended.
+        console = self.sb.console_text()
+        assert self.sb.expected_line in console, (
+            f"firmware console has no {self.sb.expected_line!r}, so the core did not "
+            f"reach the firmware entry point. Console was:\n{console}"
+        )
+        self.logger.info(
+            "CHK-BOOT PASS: %r on the console, so the core executed from "
+            "tightly-coupled memory and reached the entry point",
+            self.sb.expected_line,
         )

@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from cocotb.triggers import RisingEdge, Timer
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence, resp_name
 
+from seq_lib.smu_tb_pins import smu_axi_in_prefix
+
 __all__ = [
     "AXI_TIMEOUT_NS",
     "AXI_BOUND_LABEL",
@@ -40,8 +42,22 @@ AXI_TIMEOUT_NS = 200_000
 AXI_BOUND_LABEL = "bound=200us"
 
 
-async def make_smu_axi_master(dut, clk, reset) -> OcahAxiMasterSequence:
-    agent = OcahAxiMasterAgent.from_prefix(dut, "s_axi", clk, reset)
+async def make_smu_axi_master(
+    dut, clk, reset, *, prefix: str | None = None
+) -> OcahAxiMasterSequence:
+    """Master on the SMU AXI slave, named by whichever TB top is loaded.
+
+    tb/tb_wrapper_top.sv exposes the interface -- ``smu_axi_in_req_i`` /
+    ``smu_axi_in_resp_o`` on smu_wrapper.sv -- as ``ext_in_*``; a top that
+    flattens it as ``s_axi_*`` resolves too. The prefix is detected rather
+    than passed.
+
+    The wrapper carries the required AXI4 signals but not the optional
+    qualifiers (prot/cache/qos/region/lock, and the user fields), which
+    cocotbext-axi treats as optional, so a master builds without them. A
+    test that asserts on those qualifiers needs them wired out first.
+    """
+    agent = OcahAxiMasterAgent.from_prefix(dut, prefix or smu_axi_in_prefix(dut), clk, reset)
     await agent.start()
     await Timer(1, unit="ns")
     return agent.sequence

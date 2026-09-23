@@ -8,7 +8,7 @@ from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Authoritative AVSBus window (PeakRDL). Status regs return OKAY; AVS_READBACK
-# is still an error-slave on this SEP_IN path (SLVERR, data=0).
+# is an error-slave on this SEP_IN path (SLVERR, data=0).
 AVSBUS_STATUS_OKAY_READS = [
     ("AVS_DEBUG_READBACK", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_DEBUG_READBACK_BASE_ADDR")),
     ("AVS_NORMAL_STATUS", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_NORMAL_STATUS_BASE_ADDR")),

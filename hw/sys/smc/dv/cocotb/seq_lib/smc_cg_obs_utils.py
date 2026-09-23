@@ -7,7 +7,7 @@ A module-level ``logging.getLogger(__name__)`` is **not** captured by the
 cocotb/pyuvm runner, so the ``CHK-*`` / ``STEP`` / ``FENCE`` records written
 through one never reach the kept log -- an evidence token that exists only in
 the Python process cannot be re-verified by an audit
-(``[EVIDENCE-TOKEN-CONDITIONAL]``). Do not reintroduce a module logger here.
+(``[EVIDENCE-TOKEN-CONDITIONAL]``). No module-level logger belongs here.
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ def sample_bit(dut, name: str) -> int:
 
 
 def mark_fence(fence: list[tuple[str, int]], term: str) -> None:
-    t = int(get_sim_time(units="ns"))
+    t = int(get_sim_time(unit="ns"))
     fence.append((term, t))
     cocotb.log.info("FENCE %s @ %dns", term, t)
 

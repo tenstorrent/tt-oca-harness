@@ -14,7 +14,17 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_static_cg_sanity_test(smc_base_test):
-    """P0 bring-up LIVE gate-disabled free-run (+ legacy P1 threshold)."""
+    """P0 bring-up LIVE gate-disabled free-run plus the P1 module-gating thresholds."""
+
+    required_evidence = (
+        "CHK-DMA-GATE-DISABLED-FREE-RUN",
+        "CHK-ENABLE-THRESHOLD",
+        "CHK-MODULE-GATING",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-ZEROER-GATE-DISABLED-FREE-RUN",
+    )
+    min_evidence = 6
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -63,7 +73,7 @@ class smc_static_cg_sanity_test(smc_base_test):
             details=(
                 f"STATIC_CG P0+P1 LIVE: measured={seq.measured} "
                 f"cells={seq.required_cells_hit}. Enable-threshold coverage is "
-                f"hysteresis 8 and 63 only; the CG_HYSTERESIS 0..7 band is "
+                f"hysteresis 9 and 63 only; the CG_HYSTERESIS 0..8 band is "
                 f"not exercised and is not claimed here."
             ),
         )

@@ -1,0 +1,418 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[cdc-timing-constraints]]
+= CDC Timing Constraints
+
+OCAH ships synthesis constraints that bound the enumerated synchronization
+structures in the SMC, SEP, DTP and SMU. Independent CDC sign-off is still
+required for the assembled SoC. This section explains what those constraints do, how they
+are produced, and what an adopter has to change when integrating OCAH into their
+own flow and cell library.
+
+The collateral ships with the harness. `integration/constraint/<block>/synth/`
+groups it by system while preserving the original filenames and relative path
+depth:
+
+* `constraints.sdc` -- the block's full timing intent, including the clock
+definitions and the asynchronous clock groups. It sources the two files below.
+* `<block>_cdc_max_delay.tcl` -- generated-clock periods and any hand-written
+overrides.
+* `<block>_cdc_max_delay_generated.tcl` -- the per-instance calls.
+
+The shared `async_clock_groups.tcl` and `cdc_max_delay_procs.tcl` helpers are
+under `integration/constraint/shared/`. These are symlink indexes: the
+canonical per-system files remain under `hw/sys/<block>/synth/`, and the
+canonical shared helpers remain under `flows/synth/constraints/`. Regenerate
+the index with `python3 scripts/update_integration_symlinks.py` after changing the
+collateral inventory.
+
+== Why crossings are bounded rather than timed
+
+A clock-domain crossing has no fixed phase relationship, so it cannot be timed
+against a capture edge. Its correctness still depends on delay, though: every CDC
+element assumes the data reaches the receiver within a bounded time.
+
+OCAH therefore keeps the crossings visible to the tool and gives each one an
+explicit upper bound, sized from the clock that captures it. This asserts no phase
+relationship -- it states only how much delay the crossing tolerates while its CDC
+element's guarantee still holds.
+
+== What is constrained
+
+Each enumerated CDC element in each block is given its own `set_max_delay`,
+sized from the clock that actually captures it as read from the netlist. Muxed
+domains resolve to several clocks; the tightest period wins.
+
+The elements covered are `prim_sync2/3/4` and their reset and set variants, the
+pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
+`avsbus_async_fifo`, `cdc_fifo_gray`, `axi_cdc`, `prim_reg_cdc`,
+`prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`, `dmi_wrapper` and
+Rocket `AsyncQueue`.
+
+The bound depends on what protects the crossing:
+
+[options="header"]
+|===
+| Kind of path | Bound | Reason
+
+| Synchronizer data input
+| `0.5 * T_dst`
+| Leaves half a destination period of settling margin before the capture edge the synchronizer relies on.
+
+| Protocol-protected data
+| `1.0 * T_dst`
+| Conservative. The requirement is set by the pointer synchronizer's depth -- see below.
+
+| Two-phase handshake nets
+| `min(T_src, T_dst)`
+| `cdc_2phase` runs the handshake in both directions, so the tighter domain governs. This is the module's own stated requirement.
+|===
+
+`T_dst` rather than `min(T_src, T_dst)` in the general case because the gating
+synchronizer is clocked by the destination, so its settling window is `S * T_dst`
+and `T_src` does not enter the guarantee. This makes slow-to-fast and fast-to-slow
+equally safe.
+
+=== Why protocol-protected data still needs a bound
+
+The payload of a gray-pointer FIFO or a req/ack handshake never passes through a
+synchronizer -- only the pointer or request does. So this is not a metastability
+constraint, and it is reasonable to ask why such a path needs a bound at all, or
+why a single blanket bound covering every crossing in the design would not be
+enough.
+
+Because the protocol guarantees *ordering*, not *arrival*. The read side will not
+look at an entry until the write pointer has crossed, which takes `SYNC_STAGES`
+destination cycles, where `SYNC_STAGES` is the depth of the pointer
+synchronizer. Nothing in the protocol ensures the data physically arrived within
+that window; that is a timing property, and only a `max_delay` states it. Miss it
+and the consumer samples the entry's previous contents. There is no violation
+report and no metastability event, just wrong data.
+
+So the requirement is `data path < SYNC_STAGES * T_dst`. It is not a fixed number
+of nanoseconds: it scales with the clock that captures the crossing, and the
+destination periods within one design span an order of magnitude.
+
+[options="header"]
+|===
+| Destination period | Guarantee at 3 stages
+
+| 1 ns  | 3 ns
+| 5 ns  | 15 ns
+| 10 ns | 30 ns
+|===
+
+That is why the bound is applied per instance rather than as one global value. A
+single blanket `max_delay` has to be chosen once for the whole design: loose
+enough to be feasible on the slowest domains, it permits several times more delay
+than a fast crossing's pointer scheme tolerates; tight enough for the fastest
+domain, it over-constrains every slow crossing and burns effort closing paths
+that were never at risk. Sizing each crossing from its own capturing clock is the
+only bound that tracks the requirement.
+
+The blanket default that the clock-group layer applies (see <<cdc-two-layers,The
+two layers>>) is deliberately on the loose side, and for slow destination domains
+it is already sufficient -- there the explicit per-instance constraint is
+redundant. It is the fast crossings that need it.
+
+`1.0 * T_dst` is therefore conservative by a factor of two to three. It is kept
+simple deliberately, but if wide payloads such as AXI data will not close, raising
+`cdc_data_delay` to `2.0 * T_dst` stays inside a three-stage guarantee with a
+cycle to spare. An adopter whose synchronizer cells use a different depth should
+recompute from their own `SYNC_STAGES` rather than inheriting this factor.
+
+Enumeration and clock resolution run once, offline, against an elaborated design,
+and their output is an explicit per-block file of constraint calls that is reviewed
+and checked in. The flow itself does no discovery. This matters to an integrator
+because those files are written against the OCAH hierarchy and OCAH's clock names.
+If you instantiate a block as delivered, you do not need to regenerate or hand-edit
+them: set `::cdc_hier_prefix` to where the block sits in your hierarchy, and
+optionally `::cdc_clock_alias` to map OCAH clock names onto your own. Regeneration
+is needed only when the block is reconfigured in a way that changes which CDC
+elements exist, since no prefix can conjure constraints for elements the file never
+listed (see <<cdc-integration-checklist,Integration checklist>> item 2).
+
+[[cdc-two-layers]]
+== The two layers
+
+The per-instance bounds take effect only on top of a correctly configured
+clock-group layer. That layer decides whether the tool considers inter-domain
+paths at all, so it must be established first; the per-instance exceptions then
+refine it.
+
+*Layer 1* is `set_async_clock_groups`, defined in
+`flows/synth/constraints/async_clock_groups.tcl` and called from each block's
+`constraints.sdc`. It declares the asynchronous groups *with `-allow_paths`* and
+applies a loose 20 ns / -20 ns default to every inter-group clock pair.
+
+[IMPORTANT]
+====
+`-allow_paths` is a prerequisite, not a refinement. In DC and PrimeTime exception
+priority, `set_false_path` outranks `set_max_delay` regardless of which is more
+specific, so a bare `set_clock_groups -asynchronous` silently masks *every*
+per-instance constraint. There is no warning; the exceptions simply have no
+effect.
+====
+
+The 20 ns default is what makes `-allow_paths` safe to enable. Once paths are
+allowed, every crossing without a specific constraint would otherwise be timed
+against a meaningless launch-capture relationship and fail. The default bounds
+them loosely so that only deliberately tightened paths appear as real
+requirements. It is emitted per ordered clock pair, never group-wide, because a
+20 ns bound inside a group would mask genuine setup failures on synchronous paths.
+
+*Layer 2* is the per-instance `set_max_delay` output of the three steps above, with
+two deliberate carve-outs:
+
+* *Paths from primary inputs revert to the default.* A synchronizer input
+  reachable from a top-level port carries that port's `set_input_delay`, which is a
+  budget figure rather than real logic and can alone exceed the tightened bound.
+  Only the parent block sees both ends, so there is nothing to tighten at block
+  level.
+* *Same-clock instances are skipped.* A two-clock element wired to one clock is not
+  a crossing, and applying `set_max_delay -ignore_clock_latency` there would
+  replace a proper setup check with a flat budget that discards skew and
+  uncertainty. These are emitted commented out. OCAH has five, where OpenTitan
+  AES, KMAC and OTBN instantiate `prim_sync_reqack_data` on EDN and OTP interfaces
+  that are separate domains upstream but share a clock in SEP.
+
+== What is covered
+
+[options="header"]
+|===
+| Block | CDC elements constrained | Exceptions emitted
+
+| SMC | 365 | 412
+| SEP | 18 | 21
+| DTP | 250 | 270
+| SMU | 758 | 838
+|===
+
+SMU is a flat build containing the other three, so its instance paths carry
+`u_smc/`, `gen_sep.u_sep/` and `u_dtp/` prefixes. It is not the sum of the parts:
+DTP contributes 375 elements inside SMU against 250 standalone, because it
+instantiates three JTAG2AXI bridges in the SMU configuration and two on its own.
+
+[[cdc-integration-checklist]]
+== Integration checklist
+
+Five things must change, three should be checked. None of them requires editing
+per-instance data by hand; every change is either a one-line policy edit or a
+regeneration.
+
+=== 1. Repoint the constraints at the pin of the cell inside the prim wrapper
+
+This is the most important change.
+
+As shipped, the procs target the prim wrapper's own port, `prim_sync3/d_i`. That
+port exists only as long as the wrapper survives as a hierarchical boundary, and a
+prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
+dissolving its ports.
+
+[WARNING]
+====
+Do not rely on the wrapper port surviving. Anchor the constraint to the pin of the
+cell instantiated *inside* the wrapper. When you swap in your own synchronizer,
+that cell is a real library cell or macro -- a leaf that cannot be flattened -- so
+its pins persist through optimisation regardless of what happens to the RTL
+hierarchy around it.
+====
+
+[source,tcl]
+----
+proc set_cdc_max_delay_prim_sync3 { inst dst_clk {delay {}} } {
+    cdc_emit "prim_sync3 $inst" [cdc_sync_delay $dst_clk $delay] to \
+        {} [get_pins "$inst/u_my_sync_cell/D" -quiet]
+}
+----
+
+`$inst` stays the wrapper instance path the generator recorded; you extend it down
+to the leaf. If your cell is instantiated in a generate loop or per bit, the path
+needs a glob. Note that generate scopes are separated by `.`, not `/`:
+
+[source,tcl]
+----
+[get_pins "$inst/g_bits*.u_my_sync_cell/D" -quiet]
+----
+
+Anchoring this way makes hierarchy preservation a safety margin rather than a
+load-bearing dependency.
+
+If you keep the prim wrappers unchanged, the shipped port names work as-is, but
+your flow must then preserve those wrapper boundaries. A `destination empty`
+warning appearing after `compile` where there was none at constraint-load time
+means a boundary was dissolved.
+
+If you go further and replace a wrapper with a module of your own name, the
+enumeration that produced `<block>_cdc_max_delay_generated.tcl` knows nothing
+about it and those crossings end up with no per-instance bound at all. Nothing
+warns -- an element that was never listed cannot report itself missing. Add the
+calls for it to `<block>_cdc_max_delay.tcl` by hand; the procs take an instance
+path and the capturing clock regardless of the module they were named after.
+
+=== 2. Point the files at your hierarchy, or regenerate
+
+The checked-in `<block>_cdc_max_delay_generated.tcl` files are written against the
+OCAH hierarchy, with paths relative to the block's own top and clocks named as
+OCAH names them. Two ways to make them apply to your design.
+
+*If you instantiate the block as delivered*, reuse the files and set two
+variables. Both default to no-ops, so leaving them alone reproduces the shipped
+behaviour exactly.
+
+[source,tcl]
+----
+# where the block sits in your hierarchy, with a trailing slash
+set ::cdc_hier_prefix "u_chiplet/u_mgmt/u_smc/"
+
+# optional: map an OCAH clock name onto the clock you actually drive it with
+set ::cdc_clock_alias(SMCCLK) MY_SYS_CLK
+----
+
+The prefix is prepended to every instance path. The alias is applied wherever a
+clock name reaches the tool, so OCAH's names become labels in your design. You can
+also skip the alias and supply the period directly with
+`set ::cdc_clock_period(SMCCLK) <ps>`, which is enough for the synchronizer
+constraints; the alias additionally matters for the data-path constraints, which
+name the destination clock as a timing endpoint and so need it to exist.
+
+*If you reconfigure the block*, regenerate instead. Changing parameters that add
+or remove CDC elements makes the shipped file stale in the silent direction -- the
+constraints that should exist for new elements simply will not, and nothing warns.
+The prefix does not help with that.
+
+A wrong prefix fails loudly: every path resolves to nothing, so you get a warning
+per constraint against a zero exception count, and `SUMMARY 0 exceptions` is itself
+reported as a setup failure.
+
+Regeneration is also the right answer whenever a parent build contains the block.
+Instance counts there can differ from the standalone build, so a parent's file is
+not the child's file with a prefix.
+
+=== 3. Set the default bound
+
+The 20 ns / -20 ns figures are a starting point. Both are
+`info exists`-guarded in `flows/synth/constraints/async_clock_groups.tcl`, so
+setting them before that file is sourced overrides without editing it. `set_async_clock_groups` also
+accepts per-call overrides, which is the cleaner way to give one block a different
+default:
+
+[source,tcl]
+----
+set_async_clock_groups { {CLK_A} {CLK_B} } -max_delay 8000 -min_delay -8000
+----
+
+Two constraints on the choice. The default must exceed every per-instance bound
+you tighten, because it also governs paths from primary inputs into synchronizers;
+if it is tighter than `0.5 * T_dst` it becomes the binding constraint there. And
+tighter is not automatically better: this is a net for crossings you have not
+enumerated, so set it loose enough that those do not fail and rely on layer 2 for
+the paths that matter.
+
+The minimum is negative deliberately. With `-allow_paths` a crossing has no
+meaningful hold relationship, and a zero floor would report hold violations where
+hold is not a real requirement.
+
+=== 4. Declare your own clock groups
+
+`set_async_clock_groups` is called from each block's `constraints.sdc` with that
+block's group list. Each inner list is one asynchronous group and globs are
+allowed. Globs resolve when the call runs, so it has to come after every
+`create_clock` and `create_generated_clock` it is meant to cover.
+
+[source,tcl]
+----
+set_async_clock_groups {
+    {CLK_A CLK_A_DERIVED_*}
+    {CLK_B}
+    {JTAG_TCK}
+} -exclude {{PATTERN_X* PATTERN_Y*}}
+----
+
+`-exclude` takes pairs of patterns and suppresses that part of the cross product,
+for clock pairs that already have a `-logically_exclusive` or
+`-physically_exclusive` relationship that `-allow_paths` would contradict. Omit it
+unless you hit a `TIM-184` conflict.
+
+=== 5. Declare periods for generated clocks
+
+A generated clock exposes no readable `period` attribute in Design Compiler, so
+any generated clock that clocks a CDC element needs an explicit entry in
+`<block>_cdc_max_delay.tcl`:
+
+[source,tcl]
+----
+set ::cdc_clock_period(MY_DIV_CLK) [expr {4 * $clock_periods(MY_MASTER_PERIOD)}]
+----
+
+Omitting one is loud -- a `no period for clock` warning per affected element -- so
+a clean run means you have them all. Keep them in step with your
+`create_generated_clock` divide factors; nothing cross-checks them.
+
+=== Also check
+
+*Hierarchy preservation.* The reference flow applies `set_ungroup false` and
+`set_boundary_optimization false` to the CDC designs before `compile`. How much
+this matters depends on item 1: with leaf cell pins it is a safety margin, with
+wrapper ports it is load-bearing. Either way, your flow needs the equivalent, and
+it needs to name your cells rather than OCAH's.
+
+*Delay factors.* `0.5 * T_dst` and `1.0 * T_dst` are policy, not physics. If your
+methodology wants more settling margin, change `cdc_sync_delay` and
+`cdc_data_delay` in `flows/synth/constraints/cdc_max_delay_procs.tcl`.
+Per-instance overrides are also available without editing procs: every proc takes
+an optional trailing delay in picoseconds, and re-stating a call in
+`<block>_cdc_max_delay.tcl` after the `source` wins.
+
+*Tool differences.* Two Design Compiler specific choices to revisit under
+PrimeTime. `get_attribute <pin> clocks` is used because `get_clocks -of_objects`
+is PrimeTime-only, and generated clocks may expose a readable `period` in
+PrimeTime, making item 5 unnecessary.
+
+== Confirming it worked
+
+Load the constraints and check the summary:
+
+....
+INFO: cdc_max_delay: SUMMARY <n> exceptions, 0 warnings
+....
+
+Zero warnings is necessary but not sufficient. A pin pattern that matches nothing
+warns, but one that matches the *wrong* thing does not. Two stronger checks:
+
+* *Predict the count.* Multiply each proc's number of emitted exceptions by its
+  number of calls and compare against the summary. A mismatch localises the
+  failure, because the size of the shortfall identifies which proc did not fire.
+* *Confirm the precedence.* Layer 2 is on pins and layer 1 on clocks, and the
+  design assumes the more specific specification wins. Verify once in your tool:
+
+[source,tcl]
+----
+report_timing -to [get_pins <a synchronizer>/d_i] -nworst 1
+----
+
+The `max_delay` line must show your `0.5 * T_dst` value rather than the default. If
+it shows the default, layer 2 is inert and nothing else in this section applies.
+
+`SUMMARY 0 exceptions` is treated as a setup failure and warns as such. It means
+the constraints did not load, not that the design has no crossings.
+
+== Scope and limitations
+
+The 20 ns default is loose by design. Against a 1 ns clock it permits twenty clock
+periods of delay into a synchronizer input. It is a safety net that keeps
+`-allow_paths` usable, not a real constraint; any crossing that matters belongs in
+layer 2.
+
+Enumeration works from a fixed list of module names, so a hand-written two-flop
+synchronizer that uses none of them will not be found. Structural detection of
+crossings is what a static CDC tool does, and this flow does not attempt it. These
+constraints time crossings already known to exist; they are not a substitute for
+CDC signoff.
+
+Because the instance list is generated offline, removals are loud but additions
+are silent. A stale instance path warns, but a synchronizer added without
+regenerating produces no warning: the constraint never exists, the path falls back
+to the default, and it passes timing. Regenerate and diff the result against what
+is checked in whenever the RTL changes.

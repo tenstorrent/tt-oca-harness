@@ -16,19 +16,14 @@ OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 OTBN_IMEM_SMOKE_WORD = 0x0000_0013
 OTBN_DMEM_SMOKE_WORD = 0xA5A5_5A5A
 
-# OTBN STATUS encoding, from the vendored OpenTitan otbn_pkg::status_e.
+# OTBN STATUS encoding, from the generated otbn.adoc STATUS field.
 OTBN_STATUS_BUSY_EXECUTE = 0x01
 OTBN_STATUS_LOCKED = 0xFF
 
-# The state in which a bus access to IMEM/DMEM is illegal. Per the vendored RTL,
-# imem_access_core = busy_execute_q | start_q and dmem_access_core = busy_execute_q
-# (otbn.sv), so while OTBN is executing, a bus request is diverted to a dummy
-# response and latches the fatal illegal_bus_access error.
-#
-# Note the two BusySecWipe*mem states are NOT that case: they are raised by
-# otbn_{d,i}mem_scramble_key_req_busy (otbn.sv status_d), i.e. a scramble-key
-# request is outstanding -- bus access still reaches the SRAM, so they are not the
-# states to exclude.
+# The state in which a bus access to IMEM/DMEM is illegal. While STATUS
+# is BusyExecute, a host request is diverted and latches illegal_bus_access.
+# The BusySecWipe*mem encodings are not that case: a scramble-key request
+# is outstanding and the bus still reaches the SRAM.
 OTBN_MEM_ACCESS_ILLEGAL_STATES = (OTBN_STATUS_BUSY_EXECUTE,)
 
 # OTBN IMEM/DMEM are 32-bit SECDED words and reject a 64-bit beat with SLVERR, so

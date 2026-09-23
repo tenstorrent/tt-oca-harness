@@ -19,7 +19,7 @@
 <li><strong>SEMA[4]</strong>: 4 registers, base 0x260, stride 0x8</li>
 <li><strong>DUMMY_ROM_NULL[4]</strong>: 4 registers, base 0x2A0, stride 0x8</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x18</td><td><a href="#RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
@@ -44,7 +44,7 @@
 <tr><td>0x298</td><td><a href="#DUMMY_ROM_3">DUMMY_ROM_3</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x2A0 - 0x2B8</td><td><a href="#DUMMY_ROM_NULL_4_">DUMMY_ROM_NULL[4]</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="RESET_VECTOR_4_">RESET_VECTOR[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -79,9 +79,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:37</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Live status: high while a pending software reset has exceeded<br>timeout_value (timeout/error flag; set in both modes).</td></tr>
+<tr><td>36</td><td>reset_timeout</td><td>R</td><td>0x0</td><td>Status for the active software reset request: high after the request exceeds<br>timeout_value and remains high until the request is deasserted. Set in both modes.</td></tr>
 <tr><td>35:33</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is actually applied<br>at the cluster (drain complete and reset asserted).</td></tr>
+<tr><td>32</td><td>reset_applied</td><td>R</td><td>0x0</td><td>Live status: high while a requested software reset is applied at the cluster,<br>either after drain completes or after a force-mode timeout.</td></tr>
 <tr><td>31:17</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>16</td><td>timeout_mode</td><td>RW</td><td>0x0</td><td>Timeout mode: 0 = give up and report error (stay withheld, do not apply);<br>1 = force the reset on timeout.</td></tr>
 <tr><td>15:0</td><td>timeout_value</td><td>RW</td><td>0x0</td><td>Cycles (clk_smc) a software reset may stay pending (withheld, waiting<br>for drain) before timeout. 0 = disabled, wait indefinitely.</td></tr>

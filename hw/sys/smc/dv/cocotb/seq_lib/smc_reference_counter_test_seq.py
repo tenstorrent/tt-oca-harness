@@ -31,8 +31,7 @@ _REF_WAIT = 32
 # the count crosses a CDC synchroniser on its way to the CPU domain.  The
 # bracketing counts below already absorb the whole duration of both accesses;
 # this allowance only covers the synchroniser depth (a couple of refclk
-# periods).  It is a stated tolerance on an exact expectation, not a fudge
-# factor tuned until the test passed.
+# periods).
 _CDC_SKEW_REF = 4
 
 EXPECTED_ACCESSES = 2

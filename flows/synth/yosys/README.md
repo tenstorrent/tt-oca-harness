@@ -1,19 +1,26 @@
 # Open-source lint/synth/format flows
 
-Slang and verible Make targets are native-or-fail (tools must be on `PATH`);
-yosys synthesis is Docker-by-default. Covered blocks: the four `hw/sys`
-blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP packages (currently
-`aou`). The EDA container image,
-[`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools), bundles
-`slang`, `yosys` + the `yosys-slang` plugin, and `verible`. See
-[`tools/docker/README.md`](../../../tools/docker/README.md) for how the
+All targets are native-or-fail (tools must be on `PATH`; a hint to use the
+container is printed on failure). Covered blocks:
+the four `hw/sys` blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP
+packages (currently `aou`). The container bundles `slang`,
+`yosys` + the `yosys-slang` plugin, and `verible`. See
+[`scripts/docker.md`](../../../scripts/docker.md) for how the
 container is invoked.
+
+**Status: work in progress.** What is here is an initial set of scripts -
+enough to elaborate and map the four `hw/sys` blocks, not a qualified
+synthesis flow. Timing constraints are not wired in at all (see
+[Timing constraints](#timing-constraints-constraintssdc-vs-the-abc-driving-cellload-model)
+below), so the timing and area reports carry no weight. Commands, layout and
+reports will keep changing as the flow matures; until then, use it at your own
+risk.
 
 ## Commands
 
 ```bash
 make lint-slang-all     [BLOCK=<block>]              # slang --lint-only
-make synth-all          [BLOCK=<block>] [TECH=<pdk>] # yosys + yosys-slang
+make synth-yosys-all    [BLOCK=<block>] [TECH=<pdk>] # yosys + yosys-slang
 make format-sv          [FORMAT_PATH=<path>]         # verible-verilog-format --inplace
 make format-sv-check    [FORMAT_PATH=<path>]         # verible-verilog-format --verify
 ```
@@ -27,16 +34,17 @@ namespace, unconditionally, for every goal - `make lint-slang-all TARGET=smu` wo
 have no registers. `FORMAT_PATH` scopes formatting to a subtree (default
 `hw`); it is not called `PATH` for the same kind of reason - that would
 clobber the shell's own command-search path for every recipe. `make
-lint-slang*` / `format-sv*` / `lint-sv-verible` require the matching tool on
-`PATH` (or use `./scripts/docker-run.sh eda-run make …`). Only `make synth*`
-runs through Docker by default (`OCAH_EDA_IMAGE`, overridable), since few
-hosts have `yosys`+`yosys-slang`+an open PDK installed.
+lint-slang*` / `format-sv*` / `lint-sv-verible` / `synth-yosys*` all require the
+matching tool on `PATH`; if it is not found, Make prints a hint to use
+`./scripts/docker-run.sh run-here make …` and exits. `yosys` and `yosys-slang`
+are optional host installs — the container is the intended fallback for
+hosts that do not have them.
 
 For ad-hoc debugging, the container is also reachable directly:
 
 ```bash
-./scripts/docker-run.sh eda-run yosys --version
-./scripts/docker-run.sh eda-shell
+./scripts/docker-run.sh run-here yosys --version
+./scripts/docker-run.sh shell-here # Use 1-1 paths as bender flist uses absolute paths
 ```
 
 ## Lint (slang) vs. synth's elaboration (yosys)
@@ -57,45 +65,75 @@ exactly **one** descriptor, `hw/<tree>/<block>/flow.mk`
 (`FLOW_DESIGN`/`FLOW_BENDER_TARGETS`), consumed by both engines, instead of
 two near-duplicate per-block files.
 
+## Structural readiness without technology mapping
+
+From the repository root, select the structural-only driver and a separate output
+directory:
+
+```bash
+make synth-yosys-all BLOCK=dtp OCAH_SYNTH_DIR=build/readiness \
+  OCAH_YOSYS_SYNTH_TCL="$PWD/flows/synth/yosys/scripts/readiness.tcl"
+```
+
+Run each block independently when collecting a full status matrix: the normal
+multi-block dispatcher stops at the first failure. The driver elaborates with
+strict module resolution, records pre-cleanup checks and cell statistics, rejects
+inferred latch cells and blackboxes, then flattens and checks the cleaned design.
+It stops before technology mapping or ABC; `TECH` does not affect this driver.
+Frontend and lint warnings still require review even if the structural check
+passes. Assertions are ignored, enum conversions are strict unless a block declares
+the audited compatibility path below, and the Slang unroll limit is 100000. This is
+not CDC or timing sign-off.
+
+The flow loads the SystemVerilog frontend when Yosys starts (`yosys -m slang`);
+individual Tcl drivers do not load a version-specific plugin filename. Unknown
+modules remain fatal. Blocks that require a vendor compatibility exception declare
+an owner-local diagnostic pattern file through `FLOW_SYNTH_SLANG_EXPECTED_ERRORS`
+and the corresponding lowering option through `FLOW_SYNTH_SLANG_COMPAT_FLAGS`.
+Before Yosys runs, full standalone Slang elaboration requires every listed
+path-and-message pattern exactly once and rejects every additional error. Yosys then
+uses the lowering option because accepting a diagnostic alone cannot turn the
+strictly invalid enum assignment into a lowerable AST.
+
+### Reviewed latch definition
+
+A latch is reviewed only when all of these are recorded and verified:
+
+1. The RTL expresses intentional storage (`always_latch` or an explicit latch
+   primitive); an incomplete combinational assignment is not eligible.
+2. Its functional purpose and enable behaviour are identified, including reset,
+   test and power-state expectations where applicable.
+3. A site-specific rule identifies the owning source location and expected latch
+   cell type. Broad module-tree or count-only rules are not acceptable.
+4. The synthesized latch cells retain source attribution to that reviewed site,
+   and every other latch remains a failure.
+5. The rule has an owner, rationale and review reference, and becomes stale when
+   its source match is unused.
+
+Cell counts are evidence for detecting change, not the basis for acceptance. The
+current structural driver reports all latches and rejects them all; reviewed-latch
+rules must not be added until this policy is implemented with unused-rule checking.
+
 ## Scaling across PDKs: `TECH=`
 
 `TECH` (default `ihp-sg13g2`) is completely independent of `BLOCK`, so adding
 a PDK later never touches an existing one:
 
 ```bash
-make synth-all BLOCK=smu TECH=ihp-sg13g2   # default
-make synth-all BLOCK=smu TECH=sky130A      # once wired up (see below)
+make synth-yosys-all BLOCK=smu TECH=ihp-sg13g2   # default
+make synth-yosys-all BLOCK=smu TECH=sky130A      # once wired up (see below)
 ```
 
-The value is literally the PDK subdirectory name `hpretl/iic-osic-tools`
-itself uses: it bundles several (`ihp-sg13g2`, `sky130A`, `gf180mcuD`,
-`ihp-sg13cmos5l`) at `$PDK_ROOT/<name>`, selected by the `PDK` environment
-variable. `TECH` is forwarded into the container as `PDK=$(TECH)` (see
-`yosys.mk`), and `scripts/init_tech.tcl` reads `$::env(PDK)` back out.
+The value is the PDK name as used by `ciel` — `yosys.mk` passes it into the
+container as `PDK=$(TECH)`, and `scripts/init_tech.tcl` reads `$::env(PDK)`
+back out. Only `ihp-sg13g2` is currently supported. PDKs are downloaded on
+demand via `ciel build` into `PDK_ROOT` (default `local/pdks`). See
+[`pdks.md`](pdks.md) for install instructions and how to wire up a new PDK.
 
 Build output is TECH-scoped (`hw/<tree>/<block>/build/synth/<tech>/...`), so
 re-running with a different `TECH` never clobbers a previous PDK's results.
 `lint`/`format` have no PDK dimension, so their output stays flat
 (`build/lint/...`).
-
-### Adding a PDK
-
-1. Add `tech/<pdk>/tech.tcl` - the only PDK-specific data: `pdk_cells_lib`/
-   `pdk_sram_lib`/`pdk_io_lib` paths, the liberty file(s) (`tech_cells`/
-   `tech_macros`), the tie-off cell names (`tech_cell_tiehi`/`tech_cell_tielo`),
-   an optional `dont_use_list`, and the ABC constraint (`abc_constr`,
-   `abc_period_ps`) - see `tech/ihp-sg13g2/tech.tcl` for the shape. Each PDK
-   gets its own directory so it can grow beyond these two files (e.g. extra
-   corners, vendored macro views) without colliding with another PDK's names.
-2. If the PDK is already bundled in the image, nothing else changes:
-   `scripts/init_tech.tcl` is a thin, tech-agnostic dispatcher that resolves
-   `tech/$PDK/tech.tcl` from the environment and errors with the list of
-   known `tech/*` subdirectories on an unknown value.
-3. If it is not bundled, point `OCAH_EDA_IMAGE` at an image/tag that has it.
-
-`scripts/common.tcl`, `scripts/elab.tcl`, and `scripts/synth.tcl` never change
-for a new PDK - every tech-specific value is hidden behind the generic names
-`init_tech.tcl` + `tech/<pdk>/tech.tcl` define.
 
 ## Timing constraints (`constraints.sdc`) vs. the ABC driving-cell/load model
 
@@ -116,7 +154,7 @@ synchronizer and async FIFO individually, using the procedures in
 `<block>_cdc_max_delay_generated.tcl`. "CDC Timing Constraints" in the Integrator
 Guide documents how the bounds are derived and the integration steps they require.
 
-**None of this is read by `make synth-all` today**, and that is intentional, not
+**None of this is read by `make synth-yosys-all` today**, and that is intentional, not
 an oversight. Yosys's ABC step (`scripts/synth.tcl`) does not consume SDC at
 all - ABC's timing model is a driving-cell/load pair
 (`tech/ihp-sg13g2/abc.constr`, i.e. `set_driving_cell`/`set_load`) plus a single
@@ -130,12 +168,6 @@ carried as genuine, validated documentation of block-level timing intent:
 ready to become real inputs the moment such a stage exists, rather than
 needing to be reverse-engineered from scratch later.
 
-A standalone post-synthesis OpenSTA run (source the SDC, check timing
-against the synthesized netlist, no P&R required) is a plausible, low-cost
-future addition - OpenSTA (`sta`) is already present in the EDA image used
-by this flow - but it was deliberately not wired up in this pass so this SDC
-work could land as pure documentation first.
-
 ## Layout
 
 ```
@@ -146,7 +178,7 @@ flows/
 │   ├── async_clock_groups.tcl   # set_async_clock_groups: -allow_paths + default inter-group bound
 │   └── cdc_max_delay_procs.tcl  # one set_cdc_max_delay_* proc per CDC element type
 ├── synth/yosys/
-│   ├── yosys.mk              # ocah-synth-all / ocah-synth, TECH ?= ihp-sg13g2
+│   ├── yosys.mk              # ocah-synth-yosys-all / ocah-synth-yosys, TECH ?= ihp-sg13g2
 │   ├── scripts/
 │   │   ├── common.tcl        # env vars, out/tmp/reports dirs
 │   │   ├── init_tech.tcl     # resolves $PDK, sources tech/$PDK/tech.tcl
@@ -177,6 +209,9 @@ vendored packages in this repo (generated regs, waivers, etc.) - see
 `vendor/tenstorrent/aou/overlay/flow.mk` for an example.
 
 ## Provenance
+
+This flow was adapted from the
+[Croc Yosys synthesis flow](https://github.com/pulp-platform/croc/tree/main/yosys).
 
 The Tcl scripts and IHP SG13G2 tech data follow a common open-source
 Yosys + `yosys-slang` + ABC synthesis pattern, generalized here to be

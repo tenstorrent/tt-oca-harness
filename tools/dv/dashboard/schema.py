@@ -3,10 +3,10 @@
 
 """Normalized DV/FV result schemas.
 
-The dashboard intentionally consumes plain JSON records so it can be generated
-without EDA tools or a database server. Keep this schema tool-neutral: a DV
-simulation, a Verilator compile smoke, and an FV connectivity run should all fit
-in the same envelope.
+The dashboard consumes plain JSON records so it can be generated without EDA
+tools or a database server. Keep this schema tool-neutral: a DV simulation, a
+Verilator compile smoke, and an FV connectivity run should all fit in the same
+envelope.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "0.1"
+SCHEMA_VERSION = "0.2"
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
 STATUS_UNKNOWN = "UNKNOWN"
@@ -71,17 +71,7 @@ def _merge_failure_buckets(results: list[dict[str, Any]]) -> list[dict[str, Any]
     merged: dict[tuple[str, str], dict[str, Any]] = {}
     for result in results:
         flow = str(result.get("flow", ""))
-        buckets = list(result.get("failure_buckets") or [])
-        for test in result.get("tests_detail") or []:
-            for bucket in test.get("failure_buckets") or []:
-                b = dict(bucket)
-                if test.get("log"):
-                    examples = list(b.get("examples") or [])
-                    if test["log"] not in examples:
-                        examples.append(test["log"])
-                    b["examples"] = examples
-                buckets.append(b)
-        for bucket in buckets:
+        for bucket in result.get("failure_buckets") or []:
             if not isinstance(bucket, dict):
                 continue
             kind = str(bucket.get("kind") or "unknown")
@@ -112,9 +102,18 @@ def _merge_failure_buckets(results: list[dict[str, Any]]) -> list[dict[str, Any]
     )
 
 
+def run_completed(result: dict[str, Any]) -> bool | None:
+    """The record's `tests.completed`: `None` when the producer did not say."""
+    tests = result.get("tests")
+    completed = tests.get("completed") if isinstance(tests, dict) else None
+    return completed if isinstance(completed, bool) else None
+
+
 def _category_summary(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     categories: dict[str, dict[str, Any]] = {}
     for result in results:
+        if run_completed(result) is False:
+            continue
         flow = str(result.get("flow", ""))
         for test in result.get("tests_detail") or []:
             category = str(test.get("category") or flow or "uncategorized")
@@ -175,6 +174,7 @@ def _dut_status(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "tests_failing": int(tests.get("failing") or 0),
                 "tests_skipped": int(tests.get("skipped") or 0),
                 "tests_unknown": int(tests.get("unknown") or 0),
+                "tests_completed": tests.get("completed"),
                 "pass_rate": tests.get("pass_rate"),
                 "category_count": len(categories),
                 "categories": categories,
@@ -327,15 +327,15 @@ def make_result(
     duration_sec: float | None = None,
     tests_total: int = 0,
     tests_passing: int = 0,
+    tests_completed: bool | None = None,
     coverage_percent: float | None = None,
-    coverage_breakdown: dict[str, float] | None = None,
     coverage_details: dict[str, Any] | None = None,
     artifacts: dict[str, Any] | None = None,
     failure_buckets: list[dict[str, Any]] | None = None,
     source: dict[str, Any] | None = None,
     run_metadata: dict[str, Any] | None = None,
     tests_detail: list[dict[str, Any]] | None = None,
-    junit_xml: list[dict[str, Any]] | None = None,
+    junit_xml: dict[str, Any] | None = None,
     regression: dict[str, Any] | None = None,
     warnings: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -343,10 +343,6 @@ def make_result(
     tests_failing = max(tests_total - tests_passing, 0)
     coverage = dict(coverage_details or {})
     coverage["total_percent"] = coverage_percent
-    if coverage_breakdown:
-        coverage["metrics"] = dict(coverage_breakdown)
-        for name, value in coverage_breakdown.items():
-            coverage[f"{name}_percent"] = value
     payload = {
         "schema_version": SCHEMA_VERSION,
         "generated_at": utc_now(),
@@ -365,7 +361,9 @@ def make_result(
             "total": tests_total,
             "passing": tests_passing,
             "failing": tests_failing,
-            "pass_rate": pct(tests_passing, tests_total),
+            "completed": tests_completed,
+            # A run that stopped before its planned leaves has no denominator.
+            "pass_rate": None if tests_completed is False else pct(tests_passing, tests_total),
         },
         "coverage": coverage,
         "artifacts": artifacts or {},
@@ -386,7 +384,7 @@ def make_result(
 
 
 def make_result_from_run_result(run_result: Any, repo_root: Path) -> dict[str, Any]:
-    """Convert a `dvfv.launcher.RunResult` into normalized dashboard data."""
+    """Convert a launcher ``RunResult`` into one normalized dashboard result record."""
     flow = run_result.command.flow
     status = STATUS_PASS if run_result.passed else STATUS_FAIL
     artifacts = {}
@@ -441,20 +439,26 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     warning_count = 0
     failed_tests = 0
     flaky_tests = 0
+    incomplete_runs = 0
     for result in results:
         tests = result.get("tests", {})
+        if run_completed(result) is False:
+            # Its leaves would lend the aggregate a rate no run earned; the record still
+            # counts as a failing flow and keeps its failure buckets.
+            incomplete_runs += 1
+            tests = {}
         test_total += int(tests.get("total") or 0)
         test_passing += int(tests.get("passing") or 0)
         test_failing += int(tests.get("failing") or 0)
         test_skipped += int(tests.get("skipped") or 0)
         test_unknown += int(tests.get("unknown") or 0)
-        if result.get("tests_detail"):
+        if tests and result.get("tests_detail"):
             detail_statuses = [
                 str(test.get("status") or STATUS_UNKNOWN)
                 for test in result.get("tests_detail") or []
             ]
             counts = _status_count(detail_statuses)
-            # Prefer detailed skip/unknown counts when available; older collected records only had
+            # Prefer detailed skip/unknown counts when available; a record may carry only
             # total/passing/failing.
             test_skipped += counts["skipped"] if not tests.get("skipped") else 0
             test_unknown += counts["unknown"] if not tests.get("unknown") else 0
@@ -462,10 +466,10 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
         if isinstance(regression, dict):
             failed_tests += len(regression.get("failed_tests") or [])
             flaky_tests += len(regression.get("flaky_tests") or [])
-        for entry in result.get("junit_xml") or []:
-            junit_total += 1
-            if not entry.get("exists", True):
-                junit_missing += 1
+        junit = result.get("junit_xml")
+        if isinstance(junit, dict):
+            junit_total += int(junit.get("total") or 0)
+            junit_missing += int(junit.get("missing") or 0)
         warning_count += len(result.get("warnings") or [])
         cov = result.get("coverage", {}).get("total_percent")
         if isinstance(cov, (int, float)):
@@ -491,6 +495,7 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
             "skipped": test_skipped,
             "unknown": test_unknown,
             "pass_rate": pct(test_passing, test_total),
+            "incomplete_runs": incomplete_runs,
         },
         "coverage": {
             "average_total_percent": None,

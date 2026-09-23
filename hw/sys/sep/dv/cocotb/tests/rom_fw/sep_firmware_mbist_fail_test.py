@@ -52,19 +52,17 @@ All-ones-but-one can only pass if the ROM reads bit 1 specifically.
 
 BYPASS. The escape from a check that RAN AND FAILED is the eFuse ``STATUS_RPT``
 bit 2, left unblown here. It is a fuse, so this particular escape cannot be
-arranged at run time by holding a pin. Bit 2 is still inside ``reserved[31:2]`` in
-``sep_efuse_map.rdl``, so its use there is undeclared (A32).
+arranged at run time by holding a pin. Bit 2 is inside ``reserved[31:2]`` in
+``sep_efuse_map.rdl``, so its use there is undeclared in the register model.
 
-That is a claim about the FUSE, not about the gate. Two STRAPS now skip their arm
+That is a claim about the FUSE, not about the gate. Two STRAPS skip their arm
 outright -- ``BYPASS_SRAM_REPAIR`` (``STRAPS_LO[13]``, pin 13) and
 ``MBIST_BYPASS`` (``STRAPS_HI[22]``, pin 54) -- so anyone able to hold a pin can
 still stop the corresponding check from being evaluated at all. That is the
-straps' documented purpose in OCAH-MAS, and neither arm has a testcase. An earlier
-version of this note read the fuse's pin-immunity as a property of the whole gate;
-it is not.
+straps' documented purpose in OCAH-MAS, and neither arm has a testcase.
 
 The terminal outcome is a silent halt, so ``SepBootScoreboard`` is not used: it
-expects a firmware completion signal that this path deliberately never sends.
+expects a firmware completion signal that this path never sends.
 """
 
 from __future__ import annotations
@@ -78,6 +76,7 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
+from env.sep_smc_mem import SMC_SCRATCH10_ADDR
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -122,7 +121,7 @@ _PROGRESS_EVERY = 50_000
 # spin to be restructured without rewriting this test, while still being three
 # orders of magnitude below the range forward execution would cover.
 #
-# Retirement COUNT is deliberately not used: the spin retires roughly one
+# Retirement COUNT is not used: the spin retires roughly one
 # instruction every five cycles, so volume looks identical to slow forward
 # progress. Location is what separates them.
 _QUIESCE_CYCLES = 2_000
@@ -206,6 +205,8 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             run_pulse_cycles=40,
         )
 
+        smc_mem = self.cfg.smc_mem
+        assert smc_mem is not None, "SMC responder not bound (rom_boot target only)"
         status_seq: list[int] = []
         scratch10_seq: list[int] = []
         last_status = None
@@ -219,7 +220,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             if status != last_status:
                 last_status = status
                 status_seq.append(status)
-            s10 = self.rd(dut.smc_scratch10_probe_o) & 0xFFFF_FFFF
+            s10 = smc_mem.read32(SMC_SCRATCH10_ADDR)
             if s10 != last_s10:
                 last_s10 = s10
                 scratch10_seq.append(s10)
@@ -256,11 +257,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
                 if self.rd(dut.cpu_trace_valid_o):
                     # No shift: cpu_trace_addr_o is driven straight from
                     # trace_rv_i_address_ip (tb_top.sv), so it is already a
-                    # byte address. The `<< 1` this used to carry printed PCs
-                    # that map to no instruction -- 0x20080498 instead of
-                    # 0x1004024c. The span check still held (8 <= 64, in fact
-                    # stricter), so it was misleading output rather than a
-                    # false pass, but the addresses in the log were fiction.
+                    # byte address; a shifted PC maps to no ROM instruction.
                     post_pcs.add(self.rd(dut.cpu_trace_addr_o))
                 if (
                     (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
@@ -291,7 +288,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"0x{self.dft_status_injected:08x}; the ROM did not read our DFX_CTRL_STATUS. "
             f"Observed {s10_hex}"
         )
-        self.logger.info("CHK-DFT-READ: ROM read DFT_STATUS=0x%08x", self.dft_status_injected)
+        self.logger.info("CHK-DFT-READ PASS: ROM read DFT_STATUS=0x%08x", self.dft_status_injected)
 
         # CHK-DFT-DETECT: the gate classified it as a failure and said so before
         # consulting the bypass fuse. Without this, a ROM that skipped straight to
@@ -367,7 +364,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"reported the failure and then carried on executing"
         )
         self.logger.info(
-            "CHK-DFT-TERMINAL: cold_scratch[1] = 0x%08x, then spinning across "
+            "CHK-DFT-TERMINAL PASS: cold_scratch[1] = 0x%08x, then spinning across "
             "%d byte(s) at %s for %d cycles",
             _STATUS_DFT_GATE_BLOCKED,
             post_span,

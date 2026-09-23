@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut entropy_source` (discovered by the
+# hw/ip/<name>/dv convention). IP-level cocotb bench for the entropy source:
+# the DUT's AXI4-Lite CSR port is driven by the AXI VIP, while deterministic
+# leaf instances expose FIFO, health-test, decorrelator, conditioner,
+# noise-source, sampler-clock, and debug-monitor behavior.
+name = "entropy_source"
+profile = "native"
+default_framework = "cocotb"
+description = "Entropy Source IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/entropy_source/dv/build"]
+
+[build]
+top_module = "entropy_source_tb_top"
+top_file = "hw/ip/entropy_source/dv/tb/tb_top.sv"
+filelist = "hw/ip/entropy_source/dv/build/entropy_source_dut_compile.f"
+bender_filelist = "hw/ip/entropy_source/dv/build/entropy_source_bender.f"
+work_dir = "hw/ip/entropy_source/dv/build"
+incdirs = ["hw/common/assert"]
+common_bender_targets = [
+  "axi_rtl",
+  "common_cells_rtl",
+]
+# Entropy-source RTL plus its OpenTitan primitive closure.
+bender_targets = ["entropy_source"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/entropy_source/dv/cocotb"
+test_dir = "hw/ip/entropy_source/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+  "hw/ip/entropy_source/regs/gen/py",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Entropy Source reset, CSR, and interrupt sanity"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "Entropy datapath, FIFO, health-test, and monitor scenarios"
+timeout_sec = 1200
+args = []
+
+[targets.default]
+description = "Entropy Source IP-level cocotb target"
+build_dir = "hw/ip/entropy_source/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "-Wno-LATCH",
+  "-Wno-TIMESCALEMOD",
+  "+define+VERILATOR",
+]

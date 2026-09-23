@@ -158,13 +158,11 @@ int main(void) {
     simputshex32("", noc_o_ctrl);
     simputs(" (readable)\n");
 
-    // Try to write to CTRL register (BUFFER_POP singlepulse)
-    // Note: This is a singlepulse field, so writing 1 pops buffer
-    // For safety, only write if buffer has data (but initially it's empty)
+    // CTRL.BUFFER_POP is a single-pulse field (writing 1 pops one entry); this step only
+    // reports whether the buffer holds data.
     uint32_t noc_o_status = read_reg(TELEMETRY_RECEIVER_NOC_O_BASE + REG_STATUS);
     if ((noc_o_status & 0x1) == 0) { // BUFFER_EMPTY = 0 means buffer has data
         simputs("  NOC_O buffer has data, can pop\n");
-        // Don't actually pop since there's no real data expected
     } else {
         simputs("  NOC_O buffer is empty, BUFFER_POP skipped (as expected)\n");
     }

@@ -1,50 +1,53 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Payload/TOC mutation for boot testcases whose defect lives PAST the crypto chain.
+"""Payload-side mutation for a packed OCA image: the TOC, its images, re-sealing.
 
-WHY THIS IS A SEPARATE MODULE FROM ``sep_manifest_mutate``. That module states its
-own operating rule in its docstring: every mutation it performs is rejected before
-the RSA step, so the stale signature is never reached and re-signing is
-"deliberately not done". The defects here are the opposite case. BL1 size, BL1
-entry point and post-decrypt TOC content are all validated by
-``validate_manifest_payload()`` / ``check_bl1_image()``, which run AFTER
-``manifest_crypto_validate()`` has verified the signature
-(``manifest_load.c`` then). A payload mutation that is not
-re-sealed therefore never reaches the check it is aimed at: it dies at
-``PLD_HASH_MISMATCH`` (``manifest_crypto.c``), or at ``SIG_FAILED`` once
-``payload_hash`` -- which sits INSIDE the TBS at offset 552 -- is corrected.
+Companion to :mod:`sep_manifest_mutate`, which owns the manifest body. Everything here
+concerns what the manifest points AT -- the payload TOC, the images it lists, and
+the two digests plus one signature that seal the pair together.
 
-So these mutations must re-seal the slot, in this order:
+WHAT SEALING MEANS HERE. Four things have to agree or the ROM rejects the slot
+before any planted defect is reached:
 
-    per-image hash  ->  payload_hash  ->  manifest_hash  ->  RSA signature
+  1. each TOC entry's ``hash`` is SHA-256 over ``payload[offset:offset+length]``;
+  2. the manifest's ``payload_hash`` covers the stored bytes the consumer
+     authenticates first -- the whole ciphertext when encrypted, the TOC bytes
+     otherwise, which is what ``payload_hashed_length`` spans in each case;
+  2b. the manifest's ``payload_hash_chain`` is the iterative chain
+     ``h = SHA-256(TOC bytes)``, then ``h = SHA-256(h || SHA-256(image))`` per
+     entry, which anchors the recovered plaintext back to the manifest;
+  3. the manifest's ``signature_classic`` is RSA-3072 PKCS#1-v1.5-SHA256 over the
+     signed region, and ``manifest_hash`` is SHA-256 of that same region.
 
-RE-SIGNING IS POSSIBLE HERE, and that is not a shortcut. The images under test are
-signed with the dev0 test key, whose private half ships in the tree at
-``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem``
-and whose modulus digest is the ROM's own key slot 0
-(``bootrom/prod/src/key_digests.c:19-21``). Re-signing keeps the ROM's signature
-check ENABLED and passing on a legitimately signed image; it does not bypass,
-weaken or stub anything. The alternative -- running these testcases with secure
-boot off -- would be the weaker test, because the ROM would then skip the whole
-crypto chain and the BL1 verdict would be reached by a different path than the one
-production uses.
+Those last two are one commitment, not two. PKCS#1 v1.5 signs a DigestInfo
+wrapping SHA-256 of the message, so the value the signature commits to IS what
+``manifest_hash`` stores -- which is why a verifier can check the signature
+against ``manifest_hash`` without re-reading the region, and why
+:func:`reseal` must refresh ``manifest_hash`` before it signs.
 
-SIGNING USES ONLY THE STANDARD LIBRARY. The DV virtualenv has no ``cryptography``
-module, so :func:`sign_pkcs1v15_sha256` implements EMSA-PKCS1-v1_5 directly (the
-packer's scheme: ``manifest_signing.py``, ``PKCS1v15()`` + ``SHA256``).
-:func:`verify_signing_key` is what makes that trustworthy: it re-derives the
-signature of the UNMUTATED slot and requires it to equal the shipped bytes
-exactly. A wrong padding, a wrong digest prefix or a wrong TBS boundary cannot
-survive that, so the re-sealed image is signed by construction rather than by
-assertion.
+:func:`verify_sealed` asserts all three, and :func:`reseal` re-establishes them in
+that order -- innermost first, because each outer digest covers the one inside it.
 
-ANCHORING, generally. Every entry point calls :func:`verify_sealed` on the image
-BEFORE mutating it. That reproduces the ROM's own checks -- TOC magic, the
-TOC/manifest payload-length agreement, ``payload_hash`` over
-``payload_hashed_length``, each image's digest, ``manifest_hash`` over the TBS,
-and an RSA verification against the manifest's own modulus -- so a packer change
-that moved any field turns into a loud failure here instead of a negative test
-that passes for the wrong reason.
+RE-SIGNING IS POSSIBLE ON THIS TREE. The six ROM signing keys live in
+``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{0..5}.pem`` and each
+one's modulus hashes to the matching ``digest_rom_key<N>`` in the generated
+``key_digests.c`` -- checked by :func:`verify_signing_key`. So a mutation inside
+the signed region can be re-sealed and still boot, which is what a test needs when
+the defect is a *value* the ROM should accept or reject on policy rather than a
+broken seal.
+
+BOTH PAYLOAD DIGESTS COME FROM THE PACKER. ``oca.payload.compute_payload_hashes``
+computes them, so this module does not restate the chain construction and cannot
+drift from it. A digest this layer computed itself would be a second opinion on
+something the packer already owns, and a reseal that got it wrong produces an
+image the ROM rejects for a field :func:`verify_sealed` called sound.
+
+The signer is stdlib-only, by necessity rather than preference: the DV virtualenv
+has no ``cryptography``. It is PKCS#1 v1.5 over SHA-256 with a 384-byte modulus,
+which is the one signature type this ROM accepts (SEP-ROM-SB-090).
+
+Run ``python3 sep_payload_mutate.py`` to check every packed image against all three
+seals and the key correspondence.
 """
 
 from __future__ import annotations
@@ -53,103 +56,138 @@ import base64
 import hashlib
 from pathlib import Path
 
+if __package__ in (None, ""):  # run directly, not imported as env.sep_payload_mutate
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from env import sep_manifest_mutate as mm
 
-# ── Manifest fields this module touches (manifest.h) ──────────────────
-# All are inside the TBS except boot_arguments, so writing any of them obliges a
-# rehash + re-sign. verify_sealed() cross-checks every one against real bytes.
-OFF_PAYLOAD_HASH = 552  # 32 B, SHA-256 over payload[:payload_hashed_length]
-OFF_PAYLOAD_HASHED_LEN = 584  # uint64
-OFF_PAYLOAD_LENGTH = 600  # uint64
-OFF_BOOT_PAYLOAD_OFFSET = 1160  # int64, first field of boot_arguments
-OFF_USAGE_FLAGS = 92  # uint32, usage_constraints.flags (16 + 76)
+K = mm.K
 
-# ── TOC layout (manifest.h) ──────────────────────────────────────────
-TOC_MAGIC = b"PTOC"  # TOC_HEADER_MAGIC_WORD 0x434f5450
-TOC_HDR_SIZE = 32
-TOC_ENTRY_SIZE = 216
-TOC_OFF_PAYLOAD_LENGTH = 8  # uint64 in the header
-TOC_OFF_IMAGE_COUNT = 16  # uint64 in the header
+# ---------------------------------------------------------------------------
+# Manifest-side fields that describe the payload
+# ---------------------------------------------------------------------------
+OFF_PAYLOAD_OFFSET = K.OFF_PAYLOAD_OFFSET
+OFF_PAYLOAD_LENGTH = K.OFF_PAYLOAD_LENGTH
+OFF_PAYLOAD_HASHED_LENGTH = K.OFF_PAYLOAD_HASHED_LENGTH
+OFF_PAYLOAD_HASH = K.OFF_PAYLOAD_HASH
+OFF_PAYLOAD_HASH_CHAIN = K.OFF_PAYLOAD_HASH_CHAIN
+OFF_PAYLOAD_ENCRYPTION_CONTROL = K.OFF_PAYLOAD_ENCRYPTION_CONTROL
 
-# Field offsets within a toc_entry.
-E_TYPE = 0
-E_OFFSET = 8
-E_LENGTH = 16
-E_LOAD_ADDR = 32
-E_ENTRY_POINT = 40
-E_HASH = 56
+# ---------------------------------------------------------------------------
+# Payload TOC
+# ---------------------------------------------------------------------------
+# Header: magic at 0, format version at 4 and 6, payload_length at 8,
+# image_count at 16, 32 bytes total. An entry is 276 bytes -- type, group,
+# offset, length, version, security_version, load_addr, entry_point,
+# target_chiplet_id, a 64-byte hash field and a 128-byte description. Every
+# offset is read from constants.py rather than restated here.
+TOC_MAGIC = K.PTOC_MAGIC
+TOC_OFF_PAYLOAD_LENGTH = K.OFF_TOC_PAYLOAD_LENGTH
+TOC_OFF_IMAGE_COUNT = K.OFF_TOC_IMAGE_COUNT
+TOC_HDR_SIZE = K.TOC_HEADER_SIZE
+TOC_ENTRY_SIZE = K.TOC_ENTRY_SIZE
 
-# IMAGE_TYPE_SEP_BL1, manifest.h -- "SEPBL1" packed little-endian into a u64.
-IMAGE_TYPE_SEP_BL1 = 0x0000_314C_4250_4553
+E_TYPE = K.OFF_TOC_ENTRY_TYPE
+E_GROUP = K.OFF_TOC_ENTRY_GROUP
+E_OFFSET = K.OFF_TOC_ENTRY_OFFSET
+E_LENGTH = K.OFF_TOC_ENTRY_LENGTH
+E_LOAD_ADDR = K.OFF_TOC_ENTRY_LOAD_ADDR
+E_ENTRY_POINT = K.OFF_TOC_ENTRY_ENTRY_POINT
+E_HASH = K.OFF_TOC_ENTRY_HASH
 
-# check_bl1_image()'s load window, manifest.h.
-SEP_SRAM_BASE = 0x1000_0000
-SEP_SRAM_SIZE = 0x0004_0000
+# The BL1 image's 16-byte ASCII type string, as the ROM matches it
+# (rom_handoff.c SEP_BL1_IMAGE_TYPE).
+IMAGE_TYPE_SEP_BL1 = b"OCAHSEP BLSTAGE1"
 
-# manifest.h -- both check_bl1_image() arms return this one error code.
-MANIFEST_ERR_BL1_BAD_ADDR = 0x0003_000A
-# manifest.h
-MANIFEST_ERR_BAD_TOC_ID = 0x0003_0005
+# ---------------------------------------------------------------------------
+# Rejection codes
+# ---------------------------------------------------------------------------
+# Two families, and they are not interchangeable. The ROM refuses a BL1 on its
+# own account with a whole OCA_BOOT_ERR_* constant; the library's rejections are
+# OCA_BOOT_ERR_BASE OR-ed with a result.
+MANIFEST_ERR_NO_BL1 = mm.rom_boot_err("OCA_BOOT_ERR_NO_BL1")
+MANIFEST_ERR_BL1_BAD_ADDR = mm.rom_boot_err("OCA_BOOT_ERR_BL1_BAD_ADDR")
+MANIFEST_ERR_BL1_TOO_LARGE = mm.rom_boot_err("OCA_BOOT_ERR_BL1_TOO_LARGE")
+# The library's TOC rejection. Derived, but which result a garbage TOC lands on
+# is not yet confirmed against a run -- the decryption-failure test is what will
+# settle it.
+MANIFEST_ERR_BAD_TOC_ID = mm.boot_err("OCA_FAIL_PAYLOAD_TOC")
 
-# The dev0 signing key, relative to the repo's sep root.
-_SEP_ROOT = Path(__file__).resolve().parents[3]
-DEV0_KEY = (
-    _SEP_ROOT
-    / "bootrom"
-    / "prod"
-    / "tools"
-    / "tt-boot-manifest"
-    / "tests"
-    / "signing_keys"
-    / "rsa_private_key.dev0.pem"
-)
-
-# EMSA-PKCS1-v1_5 DigestInfo prefix for SHA-256 (RFC 8017 section 9.2, note 1).
-_SHA256_DIGESTINFO = bytes.fromhex("3031300d060960864801650304020105000420")
-
+# ---------------------------------------------------------------------------
+# Signing keys
+# ---------------------------------------------------------------------------
 RSA_KEY_BYTES = 384  # RSA-3072
+SIGNING_KEY_DIR = mm._SEP_ROOT / "bootrom" / "prod" / "tests" / "signing_keys"
+NUM_ROM_SIGNING_KEYS = mm.PUBK_SEL_NUM_ROM_KEYS
 
 
-# ── minimal DER / PKCS#8 reader ───────────────────────────────────────────────
+def rom_signing_key(index: int) -> Path:
+    """PEM path for one ROM key slot.
+
+    The Makefile's ``SEP_SIGNING_KEY`` default is slot 0's, and each slot's
+    modulus hashes to the matching digest in the generated key_digests.c, so the
+    index here is the same slot number ``public_key_select_classic`` names.
+    """
+    if not 0 <= index < NUM_ROM_SIGNING_KEYS:
+        raise ValueError(f"ROM key slot {index} is outside 0..{NUM_ROM_SIGNING_KEYS - 1}")
+    p = SIGNING_KEY_DIR / f"rsa_private_key.rom_key{index}.pem"
+    if not p.is_file():
+        raise AssertionError(f"{p} not found; re-sealing a signed slot needs it")
+    return p
+
+
+# ---------------------------------------------------------------------------
+# Minimal DER, and PKCS#1 v1.5 signing over SHA-256
+# ---------------------------------------------------------------------------
 def _der_len(b: bytes, i: int) -> tuple[int, int]:
     n = b[i]
     i += 1
-    if n & 0x80:
-        k = n & 0x7F
-        n = int.from_bytes(b[i : i + k], "big")
-        i += k
-    return n, i
+    if n < 0x80:
+        return n, i
+    k = n & 0x7F
+    return int.from_bytes(b[i : i + k], "big"), i + k
 
 
 def _der_tlv(b: bytes, i: int) -> tuple[int, bytes, int]:
     tag = b[i]
-    i += 1
-    ln, i = _der_len(b, i)
-    return tag, b[i : i + ln], i + ln
+    ln, j = _der_len(b, i + 1)
+    return tag, b[j : j + ln], j + ln
 
 
-def load_rsa_private_key(pem_path: Path = DEV0_KEY) -> tuple[int, int, int]:
-    """Return ``(n, e, d)`` from an unencrypted PKCS#8 RSA PEM.
+def load_rsa_private_key(pem_path: Path) -> tuple[int, int, int]:
+    """Return ``(n, e, d)`` from an unencrypted RSA PEM, PKCS#1 or PKCS#8.
+
+    The ROM signing keys are PKCS#1 (``BEGIN RSA PRIVATE KEY``): a bare
+    ``RSAPrivateKey`` SEQUENCE of INTEGERs. PKCS#8 (``BEGIN PRIVATE KEY``) wraps
+    the same structure in a ``PrivateKeyInfo`` with an OCTET STRING, so the label
+    selects how far to unwrap before the shared parse.
 
     Only the three values signing needs are returned; the CRT parameters are
-    ignored because ``pow(m, d, n)`` does not need them and correctness is
+    ignored because ``pow(m, d, n)`` does not need them, and correctness is
     established by :func:`verify_signing_key` rather than by the parse.
     """
     text = Path(pem_path).read_text()
-    body = "".join(line for line in text.splitlines() if "-----" not in line)
-    der = base64.b64decode(body)
-    tag, info, _ = _der_tlv(der, 0)  # PrivateKeyInfo
+    pkcs1 = "BEGIN RSA PRIVATE KEY" in text
+    der = base64.b64decode("".join(ln for ln in text.splitlines() if "-----" not in ln))
+
+    tag, outer, _ = _der_tlv(der, 0)
     if tag != 0x30:
         raise AssertionError(f"{pem_path}: expected a DER SEQUENCE, got tag 0x{tag:02x}")
-    i = 0
-    _, _, i = _der_tlv(info, i)  # version
-    _, _, i = _der_tlv(info, i)  # algorithm identifier
-    tag, pk, _ = _der_tlv(info, i)  # privateKey OCTET STRING
-    if tag != 0x04:
-        raise AssertionError(f"{pem_path}: expected an OCTET STRING, got tag 0x{tag:02x}")
-    tag, rsa_seq, _ = _der_tlv(pk, 0)  # RSAPrivateKey
-    if tag != 0x30:
-        raise AssertionError(f"{pem_path}: inner key is not a SEQUENCE")
+    if pkcs1:
+        rsa_seq = outer
+    else:
+        i = 0
+        _, _, i = _der_tlv(outer, i)  # version
+        _, _, i = _der_tlv(outer, i)  # algorithm identifier
+        tag, pk, _ = _der_tlv(outer, i)  # privateKey OCTET STRING
+        if tag != 0x04:
+            raise AssertionError(f"{pem_path}: expected an OCTET STRING, got tag 0x{tag:02x}")
+        tag, rsa_seq, _ = _der_tlv(pk, 0)
+        if tag != 0x30:
+            raise AssertionError(f"{pem_path}: inner key is not a SEQUENCE")
+
     vals: list[int] = []
     j = 0
     while j < len(rsa_seq) and len(vals) < 4:
@@ -161,29 +199,35 @@ def load_rsa_private_key(pem_path: Path = DEV0_KEY) -> tuple[int, int, int]:
     return n, e, d
 
 
+# DigestInfo prefix for SHA-256, RFC 8017 A.2.4.
+_SHA256_DIGESTINFO = bytes.fromhex("3031300d060960864801650304020105000420")
+
+
 def _emsa_pkcs1_v15(msg: bytes, k_bytes: int) -> int:
     t = _SHA256_DIGESTINFO + hashlib.sha256(msg).digest()
     if k_bytes < len(t) + 11:
-        raise AssertionError("modulus too small for a SHA-256 PKCS#1 v1.5 signature")
-    em = b"\x00\x01" + b"\xff" * (k_bytes - len(t) - 3) + b"\x00" + t
-    return int.from_bytes(em, "big")
+        raise ValueError("modulus too small for PKCS#1 v1.5 SHA-256")
+    pad = b"\xff" * (k_bytes - len(t) - 3)
+    return int.from_bytes(b"\x00\x01" + pad + b"\x00" + t, "big")
 
 
 def sign_pkcs1v15_sha256(msg: bytes, n: int, d: int) -> bytes:
-    """RSASSA-PKCS1-v1_5 sign, matching ``manifest_signing.py``."""
+    """RSA-3072 PKCS#1 v1.5 signature over SHA-256(msg)."""
     k = (n.bit_length() + 7) // 8
     return pow(_emsa_pkcs1_v15(msg, k), d, n).to_bytes(k, "big")
 
 
 def verify_pkcs1v15_sha256(msg: bytes, sig: bytes, n: int, e: int = 65537) -> bool:
-    """Public-key verification, so an image can be checked without the private key."""
+    """True iff ``sig`` is a valid PKCS#1 v1.5 SHA-256 signature over ``msg``."""
     k = (n.bit_length() + 7) // 8
     if len(sig) != k:
         return False
     return pow(int.from_bytes(sig, "big"), e, n) == _emsa_pkcs1_v15(msg, k)
 
 
-# ── slot geometry ────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Payload geometry
+# ---------------------------------------------------------------------------
 def _u64(buf, at: int) -> int:
     return int.from_bytes(bytes(buf[at : at + 8]), "little")
 
@@ -195,12 +239,7 @@ def _put_u64(buf: bytearray, at: int, value: int) -> None:
 def payload_base(buf, slot: str) -> int:
     """Flash byte offset of ``slot``'s payload (manifest base + payload_offset)."""
     base = mm.slot_base(slot)
-    off = int.from_bytes(
-        bytes(buf[base + OFF_BOOT_PAYLOAD_OFFSET : base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
-        "little",
-        signed=True,
-    )
-    return base + off
+    return base + _u64(buf, base + OFF_PAYLOAD_OFFSET)
 
 
 def manifest_payload_length(buf, slot: str) -> int:
@@ -208,26 +247,23 @@ def manifest_payload_length(buf, slot: str) -> int:
 
 
 def payload_hashed_length(buf, slot: str) -> int:
-    return _u64(buf, mm.slot_base(slot) + OFF_PAYLOAD_HASHED_LEN)
+    return _u64(buf, mm.slot_base(slot) + OFF_PAYLOAD_HASHED_LENGTH)
 
 
 def is_encrypted(buf, slot: str) -> bool:
-    """usage_constraints.flags bit 1, manifest.h."""
-    base = mm.slot_base(slot)
-    flags = int.from_bytes(
-        bytes(buf[base + OFF_USAGE_FLAGS : base + OFF_USAGE_FLAGS + 4]), "little"
-    )
-    return bool((flags >> 1) & 1)
+    """True when ``payload_encryption_control`` asks for a decrypt."""
+    base = mm.slot_base(slot) + OFF_PAYLOAD_ENCRYPTION_CONTROL
+    return int.from_bytes(bytes(buf[base : base + 2]), "little") != 0
 
 
 def read_bytes(buf, start: int, length: int) -> bytes:
     """Flash bytes as the ROM will see them, padding past the image with 0xFF.
 
-    The SPI BFM's backing store and its out-of-range reads are both 0xFF
-    (``ocah_spi_flash.py``), so a read that runs past the programmed
-    image returns erased bytes rather than failing. Modelling that here is what
-    lets a testcase declare an image size larger than the material actually
-    programmed and still know, exactly, which bytes the ROM will hash.
+    The SPI BFM's backing store and its out-of-range reads are both 0xFF, so a
+    read that runs past the programmed image returns erased bytes rather than
+    failing. Modelling that here is what lets a testcase declare an image size
+    larger than the material actually programmed and still know, exactly, which
+    bytes the ROM will hash.
     """
     have = bytes(buf[start : start + length])
     if len(have) < length:
@@ -244,15 +280,18 @@ def toc_entries(buf, slot: str) -> list[int]:
     return [p + TOC_HDR_SIZE + i * TOC_ENTRY_SIZE for i in range(count)]
 
 
-def find_image(buf, slot: str, image_type: int = IMAGE_TYPE_SEP_BL1) -> int:
+def entry_type(buf, entry_off: int) -> bytes:
+    """An entry's 16-byte ASCII type string."""
+    return bytes(buf[entry_off + E_TYPE : entry_off + E_TYPE + 16])
+
+
+def find_image(buf, slot: str, image_type: bytes = IMAGE_TYPE_SEP_BL1) -> int:
     """Flash offset of the TOC entry whose ``type`` is ``image_type``."""
     for e in toc_entries(buf, slot):
-        if _u64(buf, e + E_TYPE) == image_type:
+        if entry_type(buf, e) == image_type:
             return e
-    raise AssertionError(
-        f"{slot} TOC has no image of type 0x{image_type:x}; "
-        f"types present: {[hex(_u64(buf, e + E_TYPE)) for e in toc_entries(buf, slot)]}"
-    )
+    present = [entry_type(buf, e) for e in toc_entries(buf, slot)]
+    raise AssertionError(f"{slot} TOC has no image of type {image_type!r}; present: {present}")
 
 
 def bl1_field(buf, slot: str, field_off: int) -> int:
@@ -271,22 +310,38 @@ def describe_bl1(buf, slot: str) -> str:
     )
 
 
-# ── the anchor ───────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# The anchor, and re-sealing
+# ---------------------------------------------------------------------------
+def _packer_payload_hashes(buf, slot: str) -> tuple[bytes, bytes]:
+    """``(payload_hash_field, payload_hash_chain_field)`` per the packer.
+
+    Cleartext only: the chain is over plaintext, which an encrypted payload does
+    not expose here.
+    """
+    p = payload_base(buf, slot)
+    p_len = manifest_payload_length(buf, slot)
+    toc_bytes = payload_hashed_length(buf, slot)
+    payload = read_bytes(buf, p, p_len)
+    ranges = [(_u64(buf, e + E_OFFSET), _u64(buf, e + E_LENGTH)) for e in toc_entries(buf, slot)]
+    return mm.PF.compute_payload_hashes(payload, toc_bytes, ranges)
+
+
 def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
     """Reproduce the ROM's structural and cryptographic checks over ``slot``.
 
     Called before every mutation and again after re-sealing. Before, it proves the
-    offsets in this module address the fields they claim, so a mutation lands where
-    intended. After, it proves the re-seal is complete -- an image that still
-    carries a stale hash or signature would be rejected by the ROM for that stale
-    field, and the testcase would then observe a terminal error that has nothing to
-    do with the defect it planted.
+    offsets in this module address the fields they claim, so a mutation lands
+    where intended. After, it proves the re-seal is complete -- an image that
+    still carried a stale digest or signature would be rejected for that stale
+    field, and the testcase would observe a terminal error that has nothing to do
+    with the defect it planted.
 
     ``check_toc`` is cleared for an encrypted payload, whose TOC is ciphertext
     until the ROM decrypts it; the manifest-side checks still apply.
     """
     base = mm.slot_base(slot)
-    mm.verify_layout(buf, slot)  # magic + manifest_hash == sha256(TBS)
+    mm.verify_layout(buf, slot)  # magic + manifest_hash over the signed region
 
     hashed = payload_hashed_length(buf, slot)
     p_len = manifest_payload_length(buf, slot)
@@ -294,15 +349,15 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
     if hashed > p_len:
         raise AssertionError(
             f"{slot} payload_hashed_length ({hashed}) exceeds payload_length ({p_len}); "
-            f"validate_manifest_header would reject this before any check under test"
+            f"the ROM would reject this before any check under test"
         )
-    stored = bytes(buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + 32])
+    stored = bytes(buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + mm.DIGEST_LEN])
     calc = hashlib.sha256(read_bytes(buf, p, hashed)).digest()
     if stored != calc:
         raise AssertionError(
-            f"{slot} payload_hash does not equal sha256(payload[:{hashed}]) "
+            f"{slot} payload_hash does not cover payload[:{hashed}] "
             f"(stored {stored.hex()}, computed {calc.hex()}); either the slot is not "
-            f"sealed or OFF_PAYLOAD_HASH/OFF_PAYLOAD_HASHED_LEN are wrong"
+            f"sealed or OFF_PAYLOAD_HASH/OFF_PAYLOAD_HASHED_LENGTH are wrong"
         )
 
     if check_toc:
@@ -316,200 +371,285 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
         if toc_plen != p_len:
             raise AssertionError(
                 f"{slot} TOC payload_length ({toc_plen}) != manifest payload_length "
-                f"({p_len}); validate_manifest_payload rejects this as TOC_PLEN_MISMATCH"
+                f"({p_len}); the ROM rejects the pair as inconsistent"
             )
         for i, e in enumerate(toc_entries(buf, slot)):
             off, ln = _u64(buf, e + E_OFFSET), _u64(buf, e + E_LENGTH)
-            want = bytes(buf[e + E_HASH : e + E_HASH + 32])
+            want = bytes(buf[e + E_HASH : e + E_HASH + mm.DIGEST_LEN])
             got = hashlib.sha256(read_bytes(buf, p + off, ln)).digest()
             if want != got:
                 raise AssertionError(
-                    f"{slot} image {i} digest mismatch (stored {want.hex()}, "
-                    f"computed {got.hex()} over payload[{off}:{off + ln}]); the ROM "
-                    f"would reject this as IMAGE_HASH_MISMATCH, not the planted defect"
+                    f"{slot} image {i} ({entry_type(buf, e)!r}) digest mismatch "
+                    f"(stored {want.hex()}, computed {got.hex()} over "
+                    f"payload[{off}:{off + ln}]); the ROM would reject this as an "
+                    f"entry-hash failure, not the planted defect"
                 )
 
-    n, e_pub, _d = load_rsa_private_key()
-    tbs = bytes(buf[base : base + mm.TBS_LEN])
-    sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
-    if not verify_pkcs1v15_sha256(tbs, sig, n):
-        raise AssertionError(
-            f"{slot} signature does not verify against the dev0 modulus; the ROM "
-            f"would reject this slot as SIG_FAILED before reaching the payload checks"
+        want_hash, want_chain = _packer_payload_hashes(buf, slot)
+        got_chain = bytes(
+            buf[base + OFF_PAYLOAD_HASH_CHAIN : base + OFF_PAYLOAD_HASH_CHAIN + mm.DIGEST_LEN]
         )
+        if got_chain != want_chain[: mm.DIGEST_LEN]:
+            raise AssertionError(
+                f"{slot} payload_hash_chain does not match the packer's chain over "
+                f"the TOC and its images (stored {got_chain.hex()}, computed "
+                f"{want_chain[: mm.DIGEST_LEN].hex()}); the ROM confirms this after "
+                f"hashing every image, so a stale chain rejects the slot"
+            )
+
+    verify_signing_key(buf, slot)
 
 
-def verify_signing_key(buf, slot: str) -> None:
-    """Prove the local signer reproduces the packer's signature, byte for byte.
+def slot_signing_key(buf, slot: str) -> tuple[int, int, int]:
+    """``(n, e, d)`` for the key ``slot``'s manifest selects.
 
-    This is the load-bearing check for every re-sealed image. If
-    :func:`sign_pkcs1v15_sha256` regenerates the SHIPPED signature of an untouched
-    slot exactly, then the padding, the digest prefix, the TBS boundary and the key
-    parse are all correct, and a signature it produces over modified bytes is a
-    genuine dev0 signature. Without this the re-seal would be an unverified claim,
-    and its failure mode -- the ROM rejecting the slot as SIG_FAILED -- looks like a
-    plausible negative-test result.
+    Which key signed a slot is a property of the slot, not a fixed default: the
+    manifest names one of the ROM slots in ``public_key_select_classic`` and only
+    that key's PEM can verify or re-sign it.
     """
-    base = mm.slot_base(slot)
-    n, _e, d = load_rsa_private_key()
-    tbs = bytes(buf[base : base + mm.TBS_LEN])
-    shipped = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
-    mine = sign_pkcs1v15_sha256(tbs, n, d)
-    if mine != shipped:
-        raise AssertionError(
-            f"local re-signing does not reproduce the shipped {slot} signature "
-            f"(computed {mine[:8].hex()}..., shipped {shipped[:8].hex()}...); the "
-            f"signing scheme here no longer matches the packer, so a re-sealed image "
-            f"would be rejected as SIG_FAILED and the testcase would prove nothing"
-        )
+    return load_rsa_private_key(rom_signing_key(mm.get_public_key_sel(buf, slot)))
 
 
-# ── re-sealing ───────────────────────────────────────────────────────────────
-def rehash_image(buf: bytearray, slot: str, entry: int) -> None:
-    """Recompute one TOC entry's digest over its (possibly resized) body."""
-    p = payload_base(buf, slot)
-    off, ln = _u64(buf, entry + E_OFFSET), _u64(buf, entry + E_LENGTH)
-    buf[entry + E_HASH : entry + E_HASH + 32] = hashlib.sha256(
-        read_bytes(buf, p + off, ln)
-    ).digest()
+def signing_key_for_slot(buf, slot: str) -> int:
+    """The ROM key slot whose private key signed this slot, found from the modulus.
 
+    Not from ``public_key_sel``. A manifest names the anchor the CONSUMER should
+    check it against, which is not always a ROM slot: a fused-key manifest selects
+    slot 16 or 17, where the anchor is a digest in a chiplet fuse and no private
+    key exists in the tree. The modulus the slot carries is what a re-seal has to
+    sign with, and it is a ROM key in every image this tree packs.
 
-def reseal(buf: bytearray, slot: str) -> None:
-    """payload_hash -> manifest_hash -> signature, in the only order that works.
-
-    Each step consumes the previous one's output: ``payload_hash`` lives in the TBS,
-    ``manifest_hash`` is the digest of the TBS, and the signature is over the TBS.
-    Per-image digests are NOT recomputed here -- a testcase that resizes an image
-    must call :func:`rehash_image` itself, so that leaving an image digest stale is
-    a deliberate choice rather than a silent side effect of re-sealing.
+    So this matches the embedded modulus against the ROM signing keys rather than
+    trusting the selector, which is correct for both: for a ROM-slot manifest the
+    two agree, and for a fused-key manifest only this one has an answer.
     """
-    base = mm.slot_base(slot)
-    p = payload_base(buf, slot)
-    hashed = payload_hashed_length(buf, slot)
-    buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + 32] = hashlib.sha256(
-        read_bytes(buf, p, hashed)
-    ).digest()
-    mm.rehash(buf, slot)  # manifest_hash = sha256(TBS)
-    n, _e, d = load_rsa_private_key()
-    tbs = bytes(buf[base : base + mm.TBS_LEN])
-    buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES] = sign_pkcs1v15_sha256(
-        tbs, n, d
+    modulus = mm.public_key_modulus(buf, slot)
+    digest = hashlib.sha256(modulus).digest()
+    for index in range(NUM_ROM_SIGNING_KEYS):
+        if digest == mm.rom_key_digest(index):
+            return index
+    raise AssertionError(
+        f"{slot} carries a modulus matching none of the ROM signing keys "
+        f"0..{NUM_ROM_SIGNING_KEYS - 1}, so nothing in this tree can re-sign it. "
+        f"sha256(modulus)={digest.hex()}"
     )
 
 
-# ── the mutations ────────────────────────────────────────────────────────────
+def verify_signing_key(buf, slot: str) -> int:
+    """Prove the slot's signature verifies under the key that signed it. Returns the slot.
+
+    Two things at once, and both matter for a re-seal: the signature has to verify
+    under the modulus the manifest carries, and -- when the manifest names a ROM
+    slot -- that modulus has to hash to the provisioned digest for it, or the ROM
+    refuses the key regardless of the signature.
+
+    The digest half is skipped for a manifest selecting a FUSED key (slot 16 or
+    17). There the anchor is a digest in a chiplet fuse, which the testcase
+    programs through its eFuse preload rather than the generated key_digests.c,
+    so comparing against a ROM digest would assert something the ROM never checks
+    on that path. The signature half still applies and is what this returns on.
+    """
+    sel = mm.get_public_key_sel(buf, slot)
+    key_slot = signing_key_for_slot(buf, slot)
+    rom_anchored = sel < NUM_ROM_SIGNING_KEYS
+    if rom_anchored and sel != key_slot:
+        raise AssertionError(
+            f"{slot} selects ROM slot {sel} but carries rom_key{key_slot}'s modulus; "
+            f"the image and the selector disagree about which key signed this manifest"
+        )
+    n, e, _d = load_rsa_private_key(rom_signing_key(key_slot))
+    modulus = n.to_bytes(RSA_KEY_BYTES, "big")
+    if modulus != mm.public_key_modulus(buf, slot):
+        raise AssertionError(
+            f"{slot} embedded modulus is not rom_key{key_slot}'s; the PEM and the "
+            f"image disagree about which key signed this manifest"
+        )
+    if rom_anchored and hashlib.sha256(modulus).digest() != mm.rom_key_digest(key_slot):
+        raise AssertionError(
+            f"rom_key{key_slot}.pem does not hash to digest_rom_key{key_slot} in the "
+            f"generated key_digests.c; the ROM would refuse this key"
+        )
+    base = mm.slot_base(slot)
+    signed = bytes(buf[base : base + mm.SIGNED_REGION_END])
+    sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
+    if not verify_pkcs1v15_sha256(signed, sig, n, e):
+        raise AssertionError(
+            f"{slot} signature does not verify under rom_key{key_slot} over the "
+            f"signed region; the ROM would reject the slot before the payload checks"
+        )
+    return key_slot
+
+
+def reseal(buf: bytearray, slot: str, *, check_toc: bool = True) -> int:
+    """Re-establish every seal over ``slot`` after a mutation. Returns the key slot.
+
+    Innermost first, because each digest covers the one inside it: entry hashes,
+    then payload_hash, then manifest_hash, then the signature. Doing it in any
+    other order leaves an outer digest covering bytes that changed after it was
+    taken.
+    """
+    p = payload_base(buf, slot)
+    if check_toc:
+        for e in toc_entries(buf, slot):
+            off, ln = _u64(buf, e + E_OFFSET), _u64(buf, e + E_LENGTH)
+            digest = hashlib.sha256(read_bytes(buf, p + off, ln)).digest()
+            buf[e + E_HASH : e + E_HASH + mm.DIGEST_LEN] = digest
+
+    base = mm.slot_base(slot)
+    if check_toc:
+        # Both fields from the packer, so the chain construction lives in one
+        # place and a format change reaches this module for free.
+        h_field, chain_field = _packer_payload_hashes(buf, slot)
+        buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + mm.HASH_FIELD_SIZE] = h_field
+        buf[base + OFF_PAYLOAD_HASH_CHAIN : base + OFF_PAYLOAD_HASH_CHAIN + mm.HASH_FIELD_SIZE] = (
+            chain_field
+        )
+    else:
+        # Ciphertext: payload_hash covers the stored bytes, and the chain covers
+        # plaintext this module cannot see, so it is left alone.
+        hashed = payload_hashed_length(buf, slot)
+        buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + mm.DIGEST_LEN] = hashlib.sha256(
+            read_bytes(buf, p, hashed)
+        ).digest()
+
+    mm.rehash(buf, slot)
+
+    # From the modulus, not the selector: a fused-key manifest selects slot 16 or
+    # 17, which names a chiplet fuse rather than a key this tree holds.
+    key_slot = signing_key_for_slot(buf, slot)
+    n, _e, d = load_rsa_private_key(rom_signing_key(key_slot))
+    signed = bytes(buf[base : base + mm.SIGNED_REGION_END])
+    sig = sign_pkcs1v15_sha256(signed, n, d)
+    buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES] = sig
+    return key_slot
+
+
+# ---------------------------------------------------------------------------
+# BL1 image mutators
+# ---------------------------------------------------------------------------
 def set_bl1_entry_point(buf: bytearray, slot: str, value: int | None = None) -> int:
-    """Make BL1's ``entry_point`` violate ``entry_point < length``.
+    """Set BL1's ``entry_point``. Defaults to ``length``, the boundary value.
 
-    ``check_bl1_image`` returns 2 for this (``manifest.h``), which
-    ``validate_manifest_payload`` prints as ``BL1_ENTRY_RANGE`` before returning
-    ``MANIFEST_ERR_BL1_BAD_ADDR`` (``manifest_load.c``).
-
-    The default is ``entry_point == length`` exactly: the smallest value the
-    condition rejects. A larger value would pass just as well against a ROM that
-    had mistakenly written ``>`` instead of ``>=``, so the boundary is the only
-    choice that pins the comparison.
-
-    The image BODY is untouched, so its digest stays valid and the run reaches the
-    BL1 check rather than dying at IMAGE_HASH_MISMATCH. Returns the value written.
+    ``entry_point == length`` is the smallest value SEP-ROM-MAN-060 rejects, so it
+    separates a correct ``>=`` bound from a ``>`` that would accept one byte past
+    the image.
     """
     verify_sealed(buf, slot)
-    verify_signing_key(buf, slot)
-    entry = find_image(buf, slot)
-    length = _u64(buf, entry + E_LENGTH)
+    e = find_image(buf, slot)
     if value is None:
-        value = length
-    if value < length:
-        raise ValueError(
-            f"entry_point 0x{value:x} is below length 0x{length:x}; that is a VALID "
-            f"entry point and would not exercise the check under test"
-        )
-    _put_u64(buf, entry + E_ENTRY_POINT, value)
+        value = _u64(buf, e + E_LENGTH)
+    _put_u64(buf, e + E_ENTRY_POINT, value)
     reseal(buf, slot)
-    verify_sealed(buf, slot)
     return value
 
 
 def set_bl1_zero_length(buf: bytearray, slot: str) -> int:
-    """Give BL1 a zero image size -- the "zero" size class of TP053-S.
-
-    WHICH SIZE CLASS THIS ROM CAN ACTUALLY BE SHOWN. The procedure names three
-    (zero, larger than IRAM, larger than the spec's max BL1 size), and only the
-    first is reachable at a sane simulation cost. The reason is check ordering
-    inside ``validate_manifest_payload``:
-
-      * ``manifest_load.c`` rejects ``offset + length > payload_length`` as
-        ``MANIFEST_ERR_IMAGE_OOB`` before anything BL1-specific runs, so an
-        oversized length can only be reached by GROWING the payload to match.
-      * ``check_bl1_image``'s containment arm (``manifest.h``,
-        ``BL1_ADDR_RANGE``) only fires once ``load_addr + length`` leaves the
-        256 KiB ICCM window. With the shipped ``load_addr`` of 0xC0000000 that
-        needs length > 0x40000, i.e. a >256 KiB payload -- roughly 160 ms of extra
-        simulated SPI time per slot at this TB's ~610 ns/byte, on both slots.
-      * The explicit ``length == 0 || length > SEP_SRAM_SIZE`` gate at
-        ``rom_handoff.c`` (``BL1_SIZE`` / ``MANIFEST_ERR_BL1_TOO_LARGE``)
-        is downstream of manifest validation, and ``manifest_load.c``
-        says so in as many words: by the time handoff runs the slot has already
-        been accepted. Both of its arms are therefore already rejected upstream.
-
-    So zero is the class this ROM demonstrates cheaply and unambiguously, at
-    ``manifest_load.c``: ``IMAGE_LEN_ZERO idx=<i>`` then
-    ``MANIFEST_ERR_IMAGE_OOB``. The index in the marker is what makes the verdict
-    attributable -- this payload's TOC holds exactly one image and it is the BL1,
-    so ``idx=0`` names the entry that was mutated.
-
-    The body digest is recomputed over the now-empty range even though the ROM
-    rejects the length before reading it, so that the length is the ONLY thing
-    wrong with the image. Returns the previous length.
-    """
+    """Set BL1's ``length`` to zero. Returns the length it had."""
     verify_sealed(buf, slot)
-    verify_signing_key(buf, slot)
-    entry = find_image(buf, slot)
-    was = _u64(buf, entry + E_LENGTH)
-    if was == 0:
-        raise ValueError(f"{slot} BL1 length is already zero; that is not a mutation")
-    _put_u64(buf, entry + E_LENGTH, 0)
-    rehash_image(buf, slot, entry)
+    e = find_image(buf, slot)
+    before = _u64(buf, e + E_LENGTH)
+    _put_u64(buf, e + E_LENGTH, 0)
     reseal(buf, slot)
-    # check_toc is kept on: everything except the zero length must still be valid,
-    # and verify_sealed's own image-digest check would catch a stale body hash.
+    return before
+
+
+def set_bl1_load_addr(buf: bytearray, slot: str, value: int) -> int:
+    """Set BL1's ``load_addr``. Returns the address it had."""
     verify_sealed(buf, slot)
-    return was
+    e = find_image(buf, slot)
+    before = _u64(buf, e + E_LOAD_ADDR)
+    _put_u64(buf, e + E_LOAD_ADDR, value)
+    reseal(buf, slot)
+    return before
 
 
-def corrupt_ciphertext(
-    buf: bytearray, slot: str, *, block: int = 0, byte_index: int = 0, mask: int = 0x01
-) -> tuple[int, int]:
-    """Flip a bit of the ENCRYPTED payload so the plaintext TOC magic cannot survive.
+def corrupt_ciphertext(buf: bytearray, slot: str, *, offset: int = 0) -> int:
+    """Flip a byte of an encrypted payload. Returns the flash offset touched.
 
-    TP049 variant (b). AES-CBC decryption never reports an error for wrong input --
-    it is a permutation, so any ciphertext decrypts to something -- and the ROM's
-    own ``aes128cbc_decrypt`` only fails on a bad length or an engine alert
-    (``aes_driver.c``). The failure therefore has to surface
-    DOWNSTREAM, at the TOC identifier check (``manifest_load.c``), which is
-    exactly what the procedure asks for: "corrupt the encrypted payload so the
-    decrypted plaintext does not match the TOC magic".
-
-    Corrupting block 0 is deliberate: in CBC, ``P0 = D(C0) XOR IV``, so altering
-    ``C0`` randomises the whole of plaintext block 0 -- the 16 bytes that begin with
-    the ``PTOC`` identifier. The manifest is re-sealed afterwards because
-    ``payload_hash`` covers the CIPHERTEXT and is verified before decryption
-    (``manifest_crypto.c``); without the re-seal the ROM would stop at
-    ``PLD_HASH_MISMATCH`` and never call the decrypt path at all.
-
-    Returns ``(flash_offset, new_byte)``.
+    The TOC is ciphertext until the ROM decrypts it, so its entry hashes cannot be
+    recomputed here -- ``check_toc`` is cleared throughout. What is re-sealed is
+    the manifest's view: payload_hash covers the ciphertext, so the ROM reaches
+    decryption and fails there rather than on a stale digest.
     """
     if not is_encrypted(buf, slot):
-        raise AssertionError(
-            f"{slot} does not have the encrypted_payload flag set; corrupting its "
-            f"payload would not exercise decryption"
-        )
+        raise AssertionError(f"{slot} payload is not encrypted; there is no ciphertext to flip")
     verify_sealed(buf, slot, check_toc=False)
-    verify_signing_key(buf, slot)
-    p = payload_base(buf, slot)
-    at = p + block * 16 + byte_index
-    before = buf[at]
-    buf[at] = before ^ mask
-    reseal(buf, slot)
-    verify_sealed(buf, slot, check_toc=False)
-    return at, buf[at]
+    at = payload_base(buf, slot) + offset
+    buf[at] ^= 0xFF
+    reseal(buf, slot, check_toc=False)
+    return at
+
+
+def _selftest() -> int:
+    """Check every packed image against all three seals."""
+    build = mm._SEP_ROOT / "bootrom" / "prod" / "build"
+    images = sorted(build.glob("oca_*_boot.bin"))
+    if not images:
+        print(f"no packed images in {build}; run `make oca-images` first")
+        return 1
+    print(
+        f"TOC entry: type@{E_TYPE} offset@{E_OFFSET} length@{E_LENGTH} "
+        f"load_addr@{E_LOAD_ADDR} entry_point@{E_ENTRY_POINT} hash@{E_HASH}"
+    )
+    print(f"entry size {TOC_ENTRY_SIZE}, header {TOC_HDR_SIZE}, magic {TOC_MAGIC!r}")
+    print(f"signing keys: {SIGNING_KEY_DIR}\n")
+    bad = sealed = skipped = 0
+    for img in images:
+        buf = bytearray(img.read_bytes())
+        try:
+            v = mm.variant_at(buf, mm.slot_base("primary"))
+            if v.magic != K.OCAC_MAGIC:
+                print(f"  skip {img.name} ({v.format_name})")
+                skipped += 1
+                continue
+            if mm.signature_type(buf, "primary") == mm.SIG_TYPE_NO_SIGNATURE:
+                print(f"  skip {img.name} (unsigned)")
+                skipped += 1
+                continue
+            if not mm.can_anchor_public_key(buf, "primary"):
+                print(f"  skip {img.name} (key not anchorable from the tree)")
+                skipped += 1
+                continue
+            enc = is_encrypted(buf, "primary")
+            verify_sealed(buf, "primary", check_toc=not enc)
+            has_bl1 = True
+            if not enc:
+                try:
+                    find_image(buf, "primary")
+                except AssertionError:
+                    has_bl1 = False  # the no-BL1 fixture, by construction
+            # A reseal of an untouched image must be a no-op.
+            before = bytes(buf)
+            reseal(buf, "primary", check_toc=not enc)
+            if bytes(buf) != before:
+                print(f"  FAIL {img.name}: reseal changed an unmutated image")
+                bad += 1
+            # And must restore the seals after a real mutation.
+            if not enc:
+                mm.set_selector_bit(buf, "primary", K.SELECTOR_BIT_LIFECYCLE_PACKAGE, True)
+                try:
+                    verify_sealed(buf, "primary")
+                except AssertionError:
+                    pass
+                else:
+                    print(f"  FAIL {img.name}: signed-region mutation still verified")
+                    bad += 1
+                reseal(buf, "primary")
+                verify_sealed(buf, "primary")
+            sealed += 1
+            if enc:
+                note = "encrypted, manifest seals only"
+            elif not has_bl1:
+                note = "no BLSTAGE1 image, by construction"
+            else:
+                note = describe_bl1(buf, "primary")
+            print(f"  ok   {img.name}: {note}")
+        except AssertionError as exc:
+            print(f"  FAIL {img.name}: {exc}")
+            bad += 1
+    print(f"\n{len(images)} image(s): {sealed} sealed, {skipped} skipped, {bad} failure(s)")
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_selftest())

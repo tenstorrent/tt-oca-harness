@@ -1,0 +1,505 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[dv-runbook]]
+= DV Infrastructure Runbook
+
+The hosted DV service is three GitHub workflows and one data branch: the
+pull-request gate (`sim.yml`), the scheduled regression tiers
+(`regress.yml`), the weekly publication (`dashboard.yml`), and the branch
+`dv-dashboard-data` it writes. This page is the operating manual for that
+service: what runs when and under which budget, what remains after a
+cancellation, how to recover a missed tier or a failed publication, how long
+evidence is kept, which component acts on which failure, how to escalate,
+and what the service does not do. The mechanism behind each statement is on
+the other pages of this guide: the runner's CI section
+(xref:run-dv.adoc#runner-ci[Continuous integration]), the dashboard's
+(xref:run-dashboard.adoc#dashboard-ci[Continuous integration]), and the
+contracts on xref:interfaces.adoc[DV Infrastructure Interfaces]. Every
+target below is one the workflows enforce.
+
+== Service targets
+
+[cols="<2,<3,<2,<4",options="header"]
+|===
+|Service |Trigger and schedule |Budget |What the result means
+
+|Pull-request gate: `verilator-smoke (<dut>)` for `dtp`, `sep`, `smu`,
+and `smc`
+|`sim.yml` on every pull request, every push to `main`, and
+`workflow_dispatch`. A new push to a pull request cancels the smoke run it
+supersedes; a push to `main` never cancels a run in progress.
+|60 minutes per DUT job, including a Verilator build on a cache miss.
+|`verilator-smoke (dtp)` and `verilator-smoke (sep)` are the required
+contexts on `main`: a failed, cancelled, or missing one blocks the merge. The
+other three report without blocking. A documentation-only diff runs every
+job, which prints one line and skips the simulation, so the contexts
+report regardless.
+
+|Nightly regression
+|`regress.yml` on the cron `0 18 * * 0-5` (18:00 UTC, Sunday to Friday) or
+`workflow_dispatch` with `tier=nightly`.
+|360 minutes per job, the hosted runner's cap.
+|A triage signal, not a gate: one random seed per test of each DUT's
+regression group, no coverage. A red nightly names the leaves to look at
+and blocks nothing.
+
+|Weekly regression
+|`regress.yml` on the cron `0 18 * * 6` (18:00 UTC, Saturday) or
+`workflow_dispatch` with `tier=weekly`.
+|360 minutes per job.
+|The run the dashboard publishes. A red weekly publishes regardless; the
+publication gates on the presence and shape of each DUT's native result,
+never on the run's conclusion.
+
+|Weekly publication
+|`dashboard.yml` on every `regress` completion, publishing only when the
+completed run is a scheduled weekly; `workflow_dispatch` with `run_id`
+publishes a dispatched weekly or backfills one.
+|30 minutes.
+|One record per weekly DUT, their aggregate, one trend point, and the
+week's failure classification, on the branch and in a 90-day artifact. The
+publication is all or nothing: a missing DUT tree or a record that fails a
+gate publishes nothing.
+|===
+
+Exactly one scheduled tier runs per day. Scheduled tiers are never
+cancelled by the workflow: a dispatched tier runs beside a scheduled one and
+queues only behind an earlier dispatch of the same tier. Publications are
+serialized and never cancel one another.
+
+=== Capacity
+
+Every row runs on the GitHub-hosted `ubuntu-latest` image unless the
+repository variable `DV_LARGE_RUNNER` names a larger GitHub-hosted label,
+which promotes the `sep` rows of every tier and the weekly rows of `dtp`,
+`smu`, and `smc`; the labelled SMC row and the three
+`cross_trigger` rows stay on the standard runner (the runner page's CI
+section states the mechanism and its failure mode: a label with no matching
+runner queues until GitHub gives the job up). The SEP model is the row the
+larger runner exists for. Each row's duration is on its job in the Actions
+run; a row that approaches the cap has two remedies, both pull requests:
+promote the row, or name a smaller group. The coverage-instrumented
+Verilator models of `dtp`, `sep`, and `smu` do not fit a hosted job; the
+coverage regression runs on the licensed simulator flow outside hosted CI.
+
+A Verilator cache miss adds a from-source build to every job of a run that
+starts before one of them has saved the cache. The cache is keyed on the
+Verilator tag, the runner operating system, and the architecture, so the
+first run after a tag change, or after GitHub evicts the entry, pays the
+build once per row.
+
+== Retention
+
+[cols="<3,<3,<2",options="header"]
+|===
+|Evidence |Where |Kept
+
+|Smoke and nightly run trees (logs, per-leaf results, JUnit XML)
+|Artifact `dv-run-<dut>-verilator-<tier>` on the workflow run
+|14 days
+
+|Weekly run trees
+|Artifact `dv-run-<dut>-verilator-weekly`
+|30 days
+
+|Normalized weekly bundle (records, summary, history snapshot,
+classification)
+|Artifact `dv-dashboard-data` on the publication run
+|90 days
+
+|Current weekly records and any staged coverage files
+|Branch `dv-dashboard-data`, `latest/`
+|Until the next publication replaces them
+
+|Trend history
+|Branch `dv-dashboard-data`, `data/history.json`
+|The newest 90 points
+
+|Weekly archives
+|Branch `dv-dashboard-data`, `data/runs/<dut>/` and the flat `data/runs/`
+series
+|The newest 90 runs per series
+
+|Verilator build
+|`actions/cache`, keyed on tag, operating system, and architecture
+|Until GitHub evicts the entry; the next miss rebuilds it
+
+|Job logs
+|The workflow run
+|GitHub's log retention for the repository
+|===
+
+Two consequences follow. A published record's native links
+(`artifacts.log`, `artifacts.result_json`, `artifacts.regression_json`, and
+the coverage `source_` paths) resolve only while the weekly artifact exists,
+so a record older than 30 days stands on its normalized content alone. And the branch is the only store that outlives the artifacts,
+which is why trend continuity lives there and why the `dashboard` workflow
+is the only writer of `latest/` and `data/`.
+
+== Cancellation
+
+=== What a cancelled job leaves behind
+
+The runner writes an atomic `UNKNOWN` checkpoint before its first leaf and
+after every completed leaf. When the hosted runner cancels a job, at the
+360-minute cap or through `gh run cancel`, the runner receives a signal and,
+when its handler completes, replaces the checkpoint with an `ERROR` record
+carrying an `interruption` object and a `progress` partition of every
+planned leaf into completed, interrupted, and missing, prints
+`incomplete run: N of M planned leaves ran, no pass rate`, and writes one
+run-level `results/results.xml` with a single errored `interruption`
+testcase (xref:run-dv.adoc#runner-interrupted-checkpoints[Interrupted-run
+checkpoints]). If the handler never runs, the last `UNKNOWN` checkpoint
+stands with every completed leaf inside it. Either way `tests.completed` is
+`false` and `tests.pass_rate` is `null`. The cancelled job skips its
+remaining steps, the result gate among them, and ends `cancelled`; the
+artifact upload alone runs regardless, so the run tree is kept for the
+tier's period.
+
+The dashboard publishes a cancelled weekly DUT as recorded: `FAIL` or
+`UNKNOWN`, with `tests.completed` `false` and its finished leaves counted.
+A DUT whose job never produced a `result.json`, because it was cancelled
+before the runner started or never uploaded, fails the whole publication.
+
+=== What a cancelled cluster run leaves behind
+
+A run on a cluster executor cancels its own jobs by id when it is
+interrupted and waits up to the executor's cancel grace for the scheduler
+to confirm each stop; a second signal ends the wait. The interrupted
+summary then names what is still unaccounted for:
+
+[source,bash]
+----
+jq '.interruption | {signal, cancellation}' <run>/result.json
+jq '.progress.interrupted[] | {item, seed, jobs: [.jobs[] | .job_id]}' <run>/result.json
+jq '.jobs[] | {task_id, native_job_id, last_state, cancel_reply}' \
+  <run>/stages/regress/jobs/cancel-unconfirmed.json
+----
+
+Expected: no `cancellation` object. One is recorded only when a stop went
+unconfirmed, with `confirmed` below `requested`; each `unconfirmed` job id
+is one the scheduler did not know or had not stopped when the wait ended.
+Query it by id with the scheduler's own command
+(`bjobs <id>`, `squeue -j <id>`), and cancel it by id if it is still live.
+Never cancel by user or job-name pattern: job names repeat across runs
+that share a run directory name, and other runs share the account. If the
+coordinator died without its handler, the last `UNKNOWN` checkpoint's
+`progress.active` leaves carry the same `jobs` lists, and those ids are the
+only record of what may still be running.
+
+=== Cancelling a run
+
+[source,bash]
+----
+gh run list --workflow regress.yml -L 5        # find the run
+gh run cancel <run id>                         # cancel every job of it
+----
+
+A cancelled scheduled weekly triggers the publication regardless. It
+publishes an interrupted tree as recorded and fails closed only on a DUT
+with no run tree or no `result.json`. To publish a complete weekly instead,
+dispatch the tier again and publish it by run id
+(<<runbook-recover-tier>>). A cancelled
+pull-request smoke run is re-run by pushing again or with
+`gh run rerun <run id>`.
+
+== Recovery procedures
+
+Each procedure names the symptom, the evidence to read, and the action.
+Re-run a job only when the cause was the host; a design or test failure is
+fixed in a pull request, never retried into green.
+
+[[runbook-recover-gate]]
+=== A required smoke context is red on `main`
+
+. Open the run's `Gate on native result` step and the artifact
+  `dv-run-<dut>-verilator-smoke`. The run-level `result.json` names the
+  failing stage; a leaf's `failure_buckets` and `reason` classify it
+  (xref:run-dv.adoc#runner-leaf-grading[How a simulation leaf is graded]).
+. `ERROR` or `TIMEOUT` in a build stage, an apt mirror stall, or a Verilator
+  build that ran out of budget is a host failure: re-run the failed jobs
+  with `gh run rerun <run id> --failed` once the cache has been saved or the
+  mirror recovered.
+. A leaf `FAIL` on `main` is a design or test regression from the merge
+  that turned the context red: revert it or fix it forward in a pull
+  request. The DUT tree owns the leaf; the runner package owns a grading
+  error.
+. `UNKNOWN` is an evidence gap: the simulator returned zero without the
+  framework's positive evidence. The parser policy and the runner own it
+  (xref:run-dv.adoc#runner-status-vocabulary[One vocabulary across
+  result.json, JUnit, and the dashboard]).
+
+=== A nightly is red
+
+The nightly blocks nothing, so the procedure is triage, not recovery. Read
+the run tree's `result.json` and the leaf records; each leaf's
+`failure_buckets` classify it as infrastructure, design, or unknown the way
+the weekly's `classification.json` does for the published run, and nightly
+trees never reach the dashboard. A leaf `TIMEOUT` is bounded by the
+DUT config's resolved leaf timeout, which the DUT tree owns; an
+infrastructure `ERROR` in every row of the run points at the composite
+action or the runner image.
+
+[[runbook-recover-tier]]
+=== A scheduled tier did not run, or has to run again
+
+[source,bash]
+----
+gh workflow run regress.yml -f tier=nightly          # or tier=weekly
+gh run list --workflow regress.yml -L 3               # the dispatched run id
+gh workflow run dashboard.yml -f run_id=<weekly run id>   # publish a dispatched weekly
+----
+
+A dispatched tier queues behind an earlier dispatch of the same tier and
+runs beside a scheduled one. Only a scheduled weekly publishes
+automatically; a dispatched weekly publishes when `dashboard.yml` is
+dispatched with its run id. Every publication adds a trend point whose
+identity includes the run and the dashboard checkout revision, so a
+re-published weekly does not replace its earlier point.
+
+[[runbook-recover-publish]]
+=== A publication failed
+
+. Read the `Locate the weekly run trees` step. `::error::` naming a DUT
+  means no unexpired artifact exists for that row: the job died before the
+  runner created the run directory, or the artifact expired. The collect
+  step reports a tree that exists without a `result.json`. Either way, fix
+  or re-run that row, then publish by run id.
+. A failed gate in the collect, aggregate, or classify steps means a record
+  did not carry its schema version, its DUT's `flow`, a recognized status,
+  or one entry per DUT. The dashboard package owns the collector and the
+  gates; verify a fix with a dry run against the same run id before
+  publishing:
++
+[source,bash]
+----
+gh workflow run dashboard.yml -f run_id=<weekly run id> -f dry_run=true
+----
++
+. A failed push after three rebase attempts most often means another
+  publisher wrote the branch during the publication; the step's git error
+  names a permissions or conflict failure when it is one of those instead.
+  Dispatch the publication again; `latest/` is replaced wholesale, and the
+  archives and history are additive.
+
+=== The data branch holds a wrong publication
+
+Re-dispatching the publication for the right run id replaces `latest/` and
+adds a trend point and archives; it removes only the entries beyond the
+newest 90. A wrong archive or history point stays until that trim reaches
+it. Removing it earlier is a manual commit on `dv-dashboard-data` by the DV
+workflow owners: revert the publication commit, which touches `latest/`,
+`data/`, and the branch `README.md`, so the other publishers' top-level
+directories are untouched. Never force-push the
+branch; the other publishers rebase onto it.
+
+=== A row queues and never starts
+
+`DV_LARGE_RUNNER` names a label the organization has no runner for. The
+promoted rows queue until GitHub gives them up, since the job's
+`timeout-minutes` budget applies only once a runner has started the job,
+and everything with `needs:` on them stalls. Clear the variable or point it
+back at the standard label:
+
+[source,bash]
+----
+gh variable delete DV_LARGE_RUNNER
+----
+
+=== The `sep` rows fail before the runner starts
+
+The step `Check out the tt-oca-manifest submodule` fails when the
+repository secret `OCA_BOOT_MANIFEST_OCA_MODEL_PAT` is unset or has
+expired. The private submodule is the only one in the tree and only the
+`sep` rows need it. Rotating the secret is a repository-settings change by
+the repository administrators; no workflow edit is involved.
+
+=== Every row pays a Verilator build
+
+The first run after a change to the composite action's `verilator-version`
+default, or after GitHub evicted the cache entry, builds Verilator in every
+row that starts before one has saved the cache. Nothing is wrong; the next
+run hits the cache. A build that exceeds the action's `timeout` wrapper
+fails the job, and re-running the failed jobs after the first row saved the
+cache recovers it.
+
+=== The flist stage fails in every row
+
+Bender is installed at its latest release on each job and is not pinned. A
+release that cannot resolve the checked-in `Bender.yml` fails the `flist`
+stage in every row at once, while a developer host with an earlier release
+passes. Pinning is a one-line change to the composite action's
+`bender-install` step, which takes a `version` input; the release each run
+used is recorded as `tool_versions.bender` in its `result.json`, so the last
+good release is in the last green run tree.
+
+=== The digest email did not arrive
+
+The `Email digest` step is skipped while the secret `OCAH_MAIL_TO` is
+empty; with it set and `OCAH_MAIL_USERNAME` or `OCAH_MAIL_PASSWORD` absent,
+the step runs and fails. The branch push does not depend on it, but a
+failed digest step turns the `dashboard` run red, and the documentation
+workflow redeploys the site only after a green `dashboard` run.
+
+=== The documentation site shows stale data
+
+The site is a consumer of the branch, rendered by `tools/doc` through the
+documentation workflow after each publication. It redeploys only after a
+`dashboard` run that concluded green, so a red publication, a failed digest
+step included, leaves the site on the previous data. A stale page after a
+green `dashboard` run is a documentation-build matter, outside these
+workflows.
+
+=== GitHub-hosted runners are unavailable
+
+When the runners are back, dispatch the tier the outage skipped
+(<<runbook-recover-tier>>).
+Pull-request gates recover on the next push or `gh run rerun`.
+
+== Ownership and escalation
+
+Responsibility follows the tree that holds the file, as the interfaces page
+states it: the DUT tree owns its sim config, testlists, leaf timeouts, and
+coverage policy; the shared configuration directory owns the registries and
+profiles; the runner package owns the native result and its grading; the
+dashboard package owns the normalized data and the publication gates; the
+workflow files own the matrices, budgets, schedules, and retention; the root
+project file and lockfile own the Python environment. The tracker, not this
+page, names people.
+
+[cols="<3,<3,<3",options="header"]
+|===
+|Symptom |Component that acts |Path
+
+|A leaf fails or times out
+|The DUT tree
+|`hw/<ip or sys>/<dut>/dv/`
+
+|A leaf grades `UNKNOWN`, a status maps wrongly, a checkpoint is missing
+|The runner package
+|`tools/dv/runlib/`, `hw/common/dv/configs/parsers.toml`
+
+|A record fails a publication gate, a link is broken, a trend point is wrong
+|The dashboard package
+|`tools/dv/dashboard/`, `tools/dv/run_dashboard.py`
+
+|A tier missed its schedule, a budget or retention is wrong, a row needs a
+different runner or group
+|The DV workflows and the composite action
+|`.github/workflows/sim.yml`, `regress.yml`, `dashboard.yml`,
+`.github/actions/dv-run/`
+
+|A tool is missing or too old, a package fails to import
+|The environment pins
+|`pyproject.toml`, `uv.lock`, `hw/common/dv/configs/simulators.toml`
+(xref:run-dv.adoc#runner-environment-matrix[Supported environments])
+
+|A secret or repository variable is unset or expired
+|Repository administration
+|Repository settings; no file in the tree
+|===
+
+To escalate, open a Bug issue with the taxonomy the tracker enforces:
+Workstream `INFRA`, Subsystem `OCAH`, Component `CI` (Component `DEPS` for
+a toolchain or dependency matter), and Target release `Future` unless the
+fix is scheduled. State the run id, the failing job and
+step, and the classification from the procedures above. The runbook defines
+the priority by reach: `P0` when the pull-request gate blocks every
+contributor, `P1` when a scheduled tier or the publication is down, `P2`
+otherwise. The issue is the backup path when no component picks the failure
+up: the repository's curation automation, when enabled, assigns unassigned
+issues and nudges an idle assigned issue on the cadence
+`.github/ISSUE_CURATION.md` states.
+
+== Rehearsing a recovery
+
+The two exercises below prove the cancellation and publication contracts
+without changing production code or publishing anything. Record the run ids
+and the observed fields in the tracker, not on this page.
+
+=== Interrupt a local run and recover it
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --items all --tool verilator \
+  --sim-jobs 1 --run-dir build/ci/runs/dtp/verilator/rehearsal &
+pid=$!
+sleep 45; kill -TERM "$pid"; wait "$pid"; echo "exit $?"
+jq '{status, interruption, progress: (.progress | {state, completed_count, interrupted_count, missing_count}), tests: {completed: .tests.completed, pass_rate: .tests.pass_rate}}' \
+  build/ci/runs/dtp/verilator/rehearsal/result.json
+cat build/ci/runs/dtp/verilator/rehearsal/results/results.xml
+----
+
+Expected, in either of the two shapes the runner contract allows: a handled
+interruption, which is status `ERROR` with an `interruption` object naming
+`SIGTERM`, the completed leaves counted and the rest interrupted or missing,
+and one errored `interruption` testcase in the run-level JUnit file; or the
+fallback, the last atomic `UNKNOWN` checkpoint with every completed leaf
+inside it and no run-level JUnit file. Both carry `tests.completed` `false`
+and `tests.pass_rate` `null`, and neither can be read as a pass. A handled
+interruption exits with 128 plus the signal number, 143 for `SIGTERM`; the
+record's own `exit_code` is the status's. Record
+which shape appeared, the exit code, and the console tail in the tracker;
+a Python traceback on the console means the runner's handler did not
+complete, which is a runner defect to file. Recover by running the same
+selection again
+into a fresh directory, then collect both trees:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --items all --tool verilator \
+  --run-dir build/ci/runs/dtp/verilator/rehearsal-rerun
+python3 tools/dv/run_dashboard.py collect --dut dtp \
+  --run-dir build/ci/runs/dtp/verilator/rehearsal --output rehearsal.result.json
+python3 tools/dv/run_dashboard.py collect --dut dtp \
+  --run-dir build/ci/runs/dtp/verilator/rehearsal-rerun --output rehearsal-rerun.result.json
+----
+
+Expected: the interrupted record carries a non-`PASS` status with
+`tests.completed` `false`, as a cancelled weekly DUT publishes; the rerun's
+record carries `PASS` when every leaf passed.
+
+=== Dry-run a publication against a published weekly
+
+[source,bash]
+----
+git log origin/dv-dashboard-data --oneline --grep 'publish regress run' -1   # a published run id
+gh workflow run dashboard.yml --ref main -f run_id=<run id> -f dry_run=true
+gh run watch "$(gh run list --workflow dashboard.yml --event workflow_dispatch -L1 --json databaseId --jq '.[0].databaseId')"
+----
+
+Expected: the Actions list labels the run `dashboard dry run (regress run
+<id>)`; the locate, download, collect, aggregate, and classify steps
+succeed, and the publish, bundle, and digest steps are skipped. The branch
+and the artifacts are unchanged. The same dispatch without `dry_run`
+publishes, which is the recovery for a dispatched or missed weekly.
+
+== Known limitations
+
+* Every row of a tier carries the same job budget, 360 minutes for the
+  scheduled tiers and 60 for smoke, and nothing bounds a job between that
+  budget and the leaf timeout; a row that grows past the cap is cancelled
+  with partial evidence.
+* The runner has no automatic retry in hosted CI, and a leaf is graded on
+  its single attempt.
+* The nightly is a signal only; nothing blocks on it, and nothing publishes
+  it.
+* Only a scheduled weekly publishes automatically; a dispatched weekly and a
+  backfill need a second dispatch, and every publication adds a trend point.
+* Bender is unpinned in hosted CI; `tool_versions.bender` in each run's
+  `result.json` is the only record of the release that ran.
+* The `sep` rows depend on a repository secret for a private submodule; a
+  public fork cannot run them.
+* The larger-runner promotion is a repository variable whose label is not
+  validated; a wrong label stalls the promoted rows until GitHub gives them
+  up.
+* Hosted CI runs Verilator only, collects no coverage, and runs no formal
+  job (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
+* The branch keeps 90 history points and 90 archives per series and no
+  more; nothing removes a wrong point except the trim or a manual revert.
+* The documentation site's rendering of the data is outside these
+  workflows.
+* Of the DV contexts, main protection requires `verilator-smoke (dtp)` and
+  `verilator-smoke (sep)` only; the other smoke rows and the scheduled tiers
+  report without blocking.

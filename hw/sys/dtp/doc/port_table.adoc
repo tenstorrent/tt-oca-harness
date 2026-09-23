@@ -1,108 +1,122 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[.small,stretch]
+_Legend: Where no Default entry is shown in Description / Default, the original port reference specifies N/A — those ports have no integrator-supplied default; connect as directed by Description._
+
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="DTP port reference" tabindex="0">
+++++
+endif::backend-html5[]
+
+[.port-reference.small,stretch]
 .DTP Port Declaration
-[%autowidth,options="header",frame=all,grid=all]
+[cols="<20%,<16%,<8%,<11%,<25%,<20%",options="header",frame=all,grid=all]
 |===
-|Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
+|Interface Name |Type |Dir |Width |Description / Default |Connection
 
-|`clk_i` |`logic` |Input |1 |System clock for cross trigger logic and JTAG2AXI bridges. |System clock |N/A
-|`rst_n_i` |`logic` |Input |1 |System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller. |System reset |N/A
-|`pwr_on_rst_ni` |`logic` |Input |1 |Power-on reset for JTAG state machine (active low, asynchronous). |Power-on reset |N/A
-|`feat_ctrl_i` |`sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t` |Input |- |Lifecycle feature control vector gating debug interfaces. Enable-polarity (1 = feature enabled). |Lifecycle controller |N/A
+|`clk_i` |`logic` |In |1 |System clock for cross trigger logic and JTAG2AXI bridges. |System clock
+|`rst_n_i` |`logic` |In |1 |System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller. |System reset
+|`pwr_on_rst_ni` |`logic` |In |1 |Power-on reset for JTAG state machine (active low, asynchronous). |Power-on reset
+|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |In |- |Per-path lifecycle controls for disabling debug and test interfaces. Active-high (1 = path disabled). DTP synchronizes each field into the JTAG TCK domain. |SEP lifecycle controller or adopter-equivalent policy source
 
-|`jtag_ptap_client_tap_ctrl_i` |`jtag_tap_ctrl_t` |Input |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads |N/A
-|`jtag_ptap_client_tdi_i` |`logic` |Input |1 |Primary JTAG TDI. |External JTAG pads |N/A
-|`jtag_ptap_client_tdo_o` |`logic` |Output |1 |Primary JTAG TDO. |External JTAG pads |N/A
-|`jtag_ptap_client_tdo_oen_o` |`logic` |Output |1 |Primary JTAG TDO output enable. |External JTAG pads |N/A
+|`jtag_ptap_client_tap_ctrl_i` |`jtag_tap_ctrl_t` |In |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads
+|`jtag_ptap_client_tdi_i` |`logic` |In |1 |Primary JTAG TDI. |External JTAG pads
+|`jtag_ptap_client_tdo_o` |`logic` |Out |1 |Primary JTAG TDO. |External JTAG pads
+|`jtag_ptap_client_tdo_oen_o` |`logic` |Out |1 |Primary JTAG TDO output enable. |External JTAG pads
 
-|`jtag_bsr_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Output |- |Boundary scan control. Tie scan_in to scan_out if BSR is disabled. |Boundary scan chain |N/A
-|`jtag_bsr_host_scan_in_i` |`logic` |Input |1 |Boundary scan data in. |Boundary scan chain |N/A
-|`jtag_bsr_host_scan_out_o` |`logic` |Output |1 |Boundary scan data out. |Boundary scan chain |N/A
+|`jtag_bsr_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Out |- |Boundary scan control. Tie scan_in to scan_out if BSR is disabled. |Boundary scan chain
+|`jtag_bsr_host_scan_in_i` |`logic` |In |1 |Boundary scan data in. |Boundary scan chain
+|`jtag_bsr_host_scan_out_o` |`logic` |Out |1 |Boundary scan data out. |Boundary scan chain
 
-|`jtag_stap_io_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |I/O STAP TAP control for chiplet-to-chiplet connectivity. `.tck` remains driven when the STAP generate is off. |I/O STAP host |TMS/TRST idle if `JTAG_STAP_IO_ENABLE=0`
-|`jtag_stap_io_host_tdi_i` |`logic` |Input |1 |I/O STAP TDI. |I/O STAP host |Tie to '0 if unused
-|`jtag_stap_io_host_tdo_o` |`logic` |Output |1 |I/O STAP TDO. |I/O STAP host |N/A
-|`jtag_stap_io_host_tdo_oen_o` |`logic` |Output |1 |I/O STAP TDO output enable. |I/O STAP host |N/A
+|`jtag_stap_io_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |I/O STAP TAP control for chiplet-to-chiplet connectivity. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_STAP_IO_ENABLE=0`. |I/O STAP host
+|`jtag_stap_io_host_tdi_i` |`logic` |In |1 |I/O STAP TDI. Default: Tie to '0 if unused. |I/O STAP host
+|`jtag_stap_io_host_tdo_o` |`logic` |Out |1 |I/O STAP TDO. |I/O STAP host
+|`jtag_stap_io_host_tdo_oen_o` |`logic` |Out |1 |I/O STAP TDO output enable. |I/O STAP host
 
-|`jtag_stap_smc_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |SMC debug STAP TAP control. `.tck` remains driven when the STAP generate is off. |SMC JTAG port |TMS/TRST idle if `JTAG_SMC_DBG_ENABLE=0`
-|`jtag_stap_smc_host_tdi_i` |`logic` |Input |1 |SMC debug STAP TDI (from SMC TDO). |SMC JTAG port |Tie to '0 if unused
-|`jtag_stap_smc_host_tdo_o` |`logic` |Output |1 |SMC debug STAP TDO (to SMC TDI). |SMC JTAG port |N/A
-|`jtag_stap_smc_host_tdo_oen_o` |`logic` |Output |1 |SMC debug STAP TDO output enable. |SMC JTAG port |N/A
+|`jtag_stap_smc_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |SMC debug STAP TAP control. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_SMC_DBG_ENABLE=0`. |SMC JTAG port
+|`jtag_stap_smc_host_tdi_i` |`logic` |In |1 |SMC debug STAP TDI (from SMC TDO). Default: Tie to '0 if unused. |SMC JTAG port
+|`jtag_stap_smc_host_tdo_o` |`logic` |Out |1 |SMC debug STAP TDO (to SMC TDI). |SMC JTAG port
+|`jtag_stap_smc_host_tdo_oen_o` |`logic` |Out |1 |SMC debug STAP TDO output enable. |SMC JTAG port
 
-|`jtag_stap_sep_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |SEP debug STAP TAP control. `.tck` remains driven when the STAP generate is off. |SEP JTAG port |TMS/TRST idle if `JTAG_SEP_DBG_ENABLE=0`
-|`jtag_stap_sep_host_tdi_i` |`logic` |Input |1 |SEP debug STAP TDI (from SEP TDO). |SEP JTAG port |Tie to '0 if unused
-|`jtag_stap_sep_host_tdo_o` |`logic` |Output |1 |SEP debug STAP TDO (to SEP TDI). |SEP JTAG port |N/A
-|`jtag_stap_sep_host_tdo_oen_o` |`logic` |Output |1 |SEP debug STAP TDO output enable. |SEP JTAG port |N/A
+|`jtag_stap_sep_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |- |SEP debug STAP TAP control. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_SEP_DBG_ENABLE=0`. |SEP JTAG port
+|`jtag_stap_sep_host_tdi_i` |`logic` |In |1 |SEP debug STAP TDI (from SEP TDO). Default: Tie to '0 if unused. |SEP JTAG port
+|`jtag_stap_sep_host_tdo_o` |`logic` |Out |1 |SEP debug STAP TDO (to SEP TDI). |SEP JTAG port
+|`jtag_stap_sep_host_tdo_oen_o` |`logic` |Out |1 |SEP debug STAP TDO output enable. |SEP JTAG port
 
-|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TAP control array. `.tck` remains driven when the STAP generate is off. |Extra STAP hosts |TMS/TRST idle if `JTAG_NUM_EXTRA_STAPS=0`
-|`jtag_stap_extra_host_tdi_i` |`logic` |Input |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDI array. |Extra STAP hosts |Tie to '0 if unused
-|`jtag_stap_extra_host_tdo_o` |`logic` |Output |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO array. |Extra STAP hosts |N/A
-|`jtag_stap_extra_host_tdo_oen_o` |`logic` |Output |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts |N/A
+|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TAP control array. `.tck` remains driven when the STAP generate is off. Default: TMS/TRST idle if `JTAG_NUM_EXTRA_STAPS=0`. |Extra STAP hosts
+|`jtag_stap_extra_host_tdi_i` |`logic` |In |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDI array. Default: Tie to '0 if unused. |Extra STAP hosts
+|`jtag_stap_extra_host_tdo_o` |`logic` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO array. |Extra STAP hosts
+|`jtag_stap_extra_host_tdo_oen_o` |`logic` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts
 
-|`jtag_stap_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Output |- |Extended STAP scan control. Tie scan_in to scan_out if unused. |STAP scan chain |N/A
-|`jtag_stap_host_scan_in_i` |`logic` |Input |1 |Extended STAP scan data in. |STAP scan chain |N/A
-|`jtag_stap_host_scan_out_o` |`logic` |Output |1 |Extended STAP scan data out. |STAP scan chain |N/A
+|`jtag_stap_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Out |- |Extended STAP scan control. Tie scan_in to scan_out if unused. |STAP scan chain
+|`jtag_stap_host_scan_in_i` |`logic` |In |1 |Extended STAP scan data in. |STAP scan chain
+|`jtag_stap_host_scan_out_o` |`logic` |Out |1 |Extended STAP scan data out. |STAP scan chain
 
-|`jtag_dfd_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Output |- |DFD iJTAG scan control. Tie scan_in to scan_out if unused. |DFD iJTAG chain |N/A
-|`jtag_dfd_host_scan_in_i` |`logic` |Input |1 |DFD iJTAG scan data in. |DFD iJTAG chain |N/A
-|`jtag_dfd_host_scan_out_o` |`logic` |Output |1 |DFD iJTAG scan data out. |DFD iJTAG chain |N/A
+|`jtag_dfd_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Out |- |DFD iJTAG scan control. Tie scan_in to scan_out if unused. |DFD iJTAG chain
+|`jtag_dfd_host_scan_in_i` |`logic` |In |1 |DFD iJTAG scan data in. |DFD iJTAG chain
+|`jtag_dfd_host_scan_out_o` |`logic` |Out |1 |DFD iJTAG scan data out. |DFD iJTAG chain
 
-|`jtag_dft_secure_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Output |- |Secure DFT iJTAG scan control. Tie scan_in to scan_out if unused. |Secure DFT iJTAG chain |N/A
-|`jtag_dft_secure_host_scan_in_i` |`logic` |Input |1 |Secure DFT iJTAG scan data in. |Secure DFT iJTAG chain |N/A
-|`jtag_dft_secure_host_scan_out_o` |`logic` |Output |1 |Secure DFT iJTAG scan data out. |Secure DFT iJTAG chain |N/A
+|`jtag_dft_secure_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Out |- |Secure DFT iJTAG scan control. Tie scan_in to scan_out if unused. |Secure DFT iJTAG chain
+|`jtag_dft_secure_host_scan_in_i` |`logic` |In |1 |Secure DFT iJTAG scan data in. |Secure DFT iJTAG chain
+|`jtag_dft_secure_host_scan_out_o` |`logic` |Out |1 |Secure DFT iJTAG scan data out. |Secure DFT iJTAG chain
 
-|`jtag_dft_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Output |- |Non-secure DFT iJTAG scan control. Tie scan_in to scan_out if unused. |Non-secure DFT iJTAG chain |N/A
-|`jtag_dft_host_scan_in_i` |`logic` |Input |1 |Non-secure DFT iJTAG scan data in. |Non-secure DFT iJTAG chain |N/A
-|`jtag_dft_host_scan_out_o` |`logic` |Output |1 |Non-secure DFT iJTAG scan data out. |Non-secure DFT iJTAG chain |N/A
+|`jtag_dft_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Out |- |Non-secure DFT iJTAG scan control. Tie scan_in to scan_out if unused. |Non-secure DFT iJTAG chain
+|`jtag_dft_host_scan_in_i` |`logic` |In |1 |Non-secure DFT iJTAG scan data in. |Non-secure DFT iJTAG chain
+|`jtag_dft_host_scan_out_o` |`logic` |Out |1 |Non-secure DFT iJTAG scan data out. |Non-secure DFT iJTAG chain
 
-|`axi_smc_dbg_req_o` |`smc_jtag_axi_req_t` |Output |- |SMC fabric debug AXI request. Active when `JTAG_SMC_DBG_ENABLE=1`. |SMC `jtag_axi_in_req_i` |Tie to '0 if disabled
-|`axi_smc_dbg_resp_i` |`smc_jtag_axi_resp_t` |Input |- |SMC fabric debug AXI response. |SMC `jtag_axi_in_resp_o` |Tie to '0 if disabled
+|`axi_smc_dbg_req_o` |`smc_jtag_axi_req_t` |Out |- |SMC fabric debug AXI request. Active when `JTAG_SMC_DBG_ENABLE=1`. Default: tie to '0 if disabled. |SMC `jtag_axi_in_req_i`
+|`axi_smc_dbg_resp_i` |`smc_jtag_axi_resp_t` |In |- |SMC fabric debug AXI response. Default: tie to '0 if disabled. |SMC `jtag_axi_in_resp_o`
 
-|`axil_smc_otp_jtag_req_o` |`smc_otp_axil_req_t` |Output |- |SMC OTP debug AXI-Lite request. |SMC `axil_smc_otp_jtag_req_i` |Tie to '0 if disabled
-|`axil_smc_otp_jtag_resp_i` |`smc_otp_axil_resp_t` |Input |- |SMC OTP debug AXI-Lite response. |SMC `axil_smc_otp_jtag_resp_o` |Tie to '0 if disabled
+|`axil_smc_otp_jtag_req_o` |`smc_otp_axil_req_t` |Out |- |SMC OTP debug AXI-Lite request. Default: tie to '0 if disabled. |SMC `axil_smc_otp_jtag_req_i`
+|`axil_smc_otp_jtag_resp_i` |`smc_otp_axil_resp_t` |In |- |SMC OTP debug AXI-Lite response. Default: tie to '0 if disabled. |SMC `axil_smc_otp_jtag_resp_o`
 
-|`axil_sep_otp_jtag_req_o` |`sep_otp_axil_req_t` |Output |- |SEP OTP debug AXI-Lite request. |SEP `axil_sep_otp_jtag_req_i` |Tie to '0 if disabled
-|`axil_sep_otp_jtag_resp_i` |`sep_otp_axil_resp_t` |Input |- |SEP OTP debug AXI-Lite response. |SEP `axil_sep_otp_jtag_resp_o` |Tie to '0 if disabled
+|`axil_sep_otp_jtag_req_o` |`sep_otp_axil_req_t` |Out |- |SEP OTP debug AXI-Lite request. Default: tie to '0 if disabled. |SEP `axil_sep_otp_jtag_req_i`
+|`axil_sep_otp_jtag_resp_i` |`sep_otp_axil_resp_t` |In |- |SEP OTP debug AXI-Lite response. Default: tie to '0 if disabled. |SEP `axil_sep_otp_jtag_resp_o`
 
-|`stop_clks_o` |`logic` |Output |1 |Clock stop output from JTAG DEBUG_CONTROL or CLA clock-stop requests via CTN. |PLL clock gates |N/A
-|`cla_clock_stop_en_o` |`logic` |Output |1 |CLA clock stop enable from DEBUG_CONTROL register. |Clock control logic |N/A
+|`stop_clks_o` |`logic` |Out |1 |Clock stop output from JTAG DEBUG_CONTROL or CLA clock-stop requests via CTN. |PLL clock gates
+|`cla_clock_stop_en_o` |`logic` |Out |1 |CLA clock stop enable from DEBUG_CONTROL register. |Clock control logic
 
-|`jtag_boot_stall_ovrd_o` |`logic` |Output |1 |JTAG boot stall override enable. |Boot control |N/A
-|`jtag_boot_stall_o` |`logic` |Output |1 |JTAG boot stall value when override is asserted. |Boot control |N/A
+|`jtag_boot_stall_ovrd_o` |`logic` |Out |1 |JTAG boot stall override enable. |Boot control
+|`jtag_boot_stall_o` |`logic` |Out |1 |JTAG boot stall value when override is asserted. |Boot control
 
-|`jtag_ic_reset_smc_o` |`ic_reset_smc_t` |Output |`$bits(ic_reset_smc_t)` |SMC IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SMC reset control struct. Tied to '0 when `JTAG_IC_RESET_SMC_ENABLE=0`. |SMC `jtag_smc_reset_ctrl_i` |N/A
-|`jtag_ic_reset_sep_o` |`ic_reset_sep_t` |Output |`$bits(ic_reset_sep_t)` |SEP IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SEP reset control struct. Tied to '0 when `JTAG_IC_RESET_SEP_ENABLE=0`. |SEP `jtag_sep_reset_ctrl_i` |N/A
-|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Output |`$bits(ic_reset_ext_t)` |External IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized per integrator-defined type. Tied to '0 when `JTAG_IC_RESET_EXT_ENABLE=0`. |Integrator-defined reset overrides for logic outside the SMU |N/A
+|`jtag_ic_reset_smc_o` |`ic_reset_smc_t` |Out |`$bits(ic_reset_smc_t)` |SMC IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SMC reset control struct. Tied to '0 when `JTAG_IC_RESET_SMC_ENABLE=0`. |SMC `jtag_smc_reset_ctrl_i`
+|`jtag_ic_reset_sep_o` |`ic_reset_sep_t` |Out |`$bits(ic_reset_sep_t)` |SEP IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SEP reset control struct. Tied to '0 when `JTAG_IC_RESET_SEP_ENABLE=0`. |SEP `jtag_sep_reset_ctrl_i`
+|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Out |`$bits(ic_reset_ext_t)` |External IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized per integrator-defined type. Tied to '0 when `JTAG_IC_RESET_EXT_ENABLE=0`. |Integrator-defined reset overrides for logic outside the SMU
 
-|`jtag_ptap_state_o` |`tap_state_e` |Output |- |Current PTAP TAP state. |Debug infrastructure |N/A
-|`jtag_ptap_inst_decoded_o` |`jtag_instruction_decoded_e` |Output |- |Current decoded PTAP instruction. |Debug infrastructure |N/A
+|`jtag_ptap_state_o` |`tap_state_e` |Out |- |Current PTAP TAP state. |Debug infrastructure
+|`jtag_ptap_inst_decoded_o` |`jtag_instruction_decoded_e` |Out |- |Current decoded PTAP instruction. |Debug infrastructure
 
-|`axil_xtrig_req_i` |`xtrig_axil_req_t` |Input |- |Cross trigger CSR AXI-Lite request. |SMC `axil_dtp_csr_req_o` |N/A
-|`axil_xtrig_resp_o` |`xtrig_axil_resp_t` |Output |- |Cross trigger CSR AXI-Lite response. |SMC `axil_dtp_csr_resp_i` |N/A
+|`axil_xtrig_req_i` |`xtrig_axil_req_t` |In |- |Cross trigger CSR AXI-Lite request from SMC. |SMC `axil_dtp_csr_req_o`
+|`axil_xtrig_resp_o` |`xtrig_axil_resp_t` |Out |- |Cross trigger CSR AXI-Lite response to SMC. |SMC `axil_dtp_csr_resp_i`
 
-|`xtrig_ctm_src_req_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests from CTM to destination sinks. |Cross trigger network |N/A
-|`xtrig_ctm_src_ack_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |Tie to '0 in pulse-sync mode
-|`xtrig_ctm_dst_req_i` |`logic` |Input |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests from source generators. |Cross trigger network |Tie to '0 if unused
-|`xtrig_ctm_dst_ack_o` |`logic` |Output |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger network |N/A
+|`xtrig_ctm_src_req_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests from CTM to destination sinks. |Cross trigger sinks
+|`xtrig_ctm_src_ack_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). Default: tie to '0 in pulse-sync mode. |Cross trigger sinks
+|`xtrig_ctm_dst_req_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests from source generators. Default: tie to '0 if unused. |Cross trigger sources
+|`xtrig_ctm_dst_ack_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger sources
 
-|`xtrig_clk_stop_req_i` |`logic` |Input |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices in the chiplet. |Clock stop requesters |Tie to '0 if unused
+|`xtrig_clk_stop_req_i` |`logic` |In |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices in the chiplet. Default: Tie to '0 if unused. |Clock stop requesters
 
-|`xtrig_ctp_req_out_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output (to GPIO pad ring). |GPIO pad ring |N/A
-|`xtrig_ctp_req_out_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output enable. |GPIO pad ring |N/A
-|`xtrig_ctp_req_out_din_i` |`logic` |Input |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data input (from GPIO pad ring). |GPIO pad ring |Tie to '0 if unused
-|`xtrig_ctp_req_out_din_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data input enable. |GPIO pad ring |N/A
-|`xtrig_ctp_req_in_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data output. |GPIO pad ring |N/A
-|`xtrig_ctp_req_in_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data output enable. |GPIO pad ring |N/A
-|`xtrig_ctp_req_in_din_i` |`logic` |Input |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data input. |GPIO pad ring |Tie to '0 if unused
-|`xtrig_ctp_req_in_din_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data input enable. |GPIO pad ring |N/A
-|`xtrig_ctp_ack_in_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data output. |GPIO pad ring |N/A
-|`xtrig_ctp_ack_in_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data output enable. |GPIO pad ring |N/A
-|`xtrig_ctp_ack_in_din_i` |`logic` |Input |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data input. |GPIO pad ring |Tie to '0 if unused
-|`xtrig_ctp_ack_in_din_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data input enable. |GPIO pad ring |N/A
-|`xtrig_ctp_ack_out_dout_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data output. |GPIO pad ring |N/A
-|`xtrig_ctp_ack_out_dout_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data output enable. |GPIO pad ring |N/A
-|`xtrig_ctp_ack_out_din_i` |`logic` |Input |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data input. |GPIO pad ring |Tie to '0 if unused
-|`xtrig_ctp_ack_out_din_en_o` |`logic` |Output |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data input enable. |GPIO pad ring |N/A
+|`xtrig_ctp_req_out_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output (to pad ring). |GPIO pad ring
+|`xtrig_ctp_req_out_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-out output enable. |GPIO pad ring
+|`xtrig_ctp_req_out_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP request-out loopback input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_req_out_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-out input enable. |GPIO pad ring
+|`xtrig_ctp_req_in_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data output. |GPIO pad ring
+|`xtrig_ctp_req_in_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-in output enable. |GPIO pad ring
+|`xtrig_ctp_req_in_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_req_in_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-in input enable. |GPIO pad ring
+|`xtrig_ctp_ack_in_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data output. |GPIO pad ring
+|`xtrig_ctp_ack_in_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in output enable. |GPIO pad ring
+|`xtrig_ctp_ack_in_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_ack_in_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in input enable. |GPIO pad ring
+|`xtrig_ctp_ack_out_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data output. |GPIO pad ring
+|`xtrig_ctp_ack_out_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out output enable. |GPIO pad ring
+|`xtrig_ctp_ack_out_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_ack_out_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out input enable. |GPIO pad ring
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]

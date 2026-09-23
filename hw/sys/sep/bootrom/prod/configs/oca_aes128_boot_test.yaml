@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# OCA-classic RSA-3072 signed boot image with an AES-256-CBC encrypted payload.
+#
+# encryption_secret must match the CLASS_KEY fuse bank the ROM derives from, so
+# the VP fuse map in virtual_platform/tests/fuse_maps/oca_class_key.yaml carries
+# the same 32 bytes. Change one and the payload hash chain fails after a
+# successful-looking decrypt, which is a confusing way to find out.
+#
+# The IV and KDF input are pinned rather than left to the producer's random
+# default: an absent value is generated per pack and recorded in a side-car JSON,
+# which would make every build produce a different image.
+#
+# Encryption requires secure_boot: 1 (the producer rejects it otherwise, and the
+# library gates decryption on CONFIRMED secure boot).
+manifest_format: oca-classic
+manifest_identifier: "OCAH128"
+description: "OCAH SEP boot ROM AES-128-CBC encrypted payload test image"
+secure_boot: 1
+
+signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
+signing_authority: local
+signing_key_name: "test_rom_key_0"
+signing_key_file: "tests/signing_keys/rsa_private_key.rom_key0.pem"
+public_key_select_classic: 0x01
+public_key_encoding: 0x02            # RAW
+signature_encoding: 0x02             # RAW
+
+encrypted_payload: 1
+encryption_type: 0x01                # AES-128-CBC
+encryption_key_derivation_function: 0x0001   # SP 800-108r1 CTR-HMAC-SHA-256
+encryption_shared_secret_select: 1   # 1-based index; SEP provisions CLASS_KEY as slot 1
+encryption_secret: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+encryption_iv: "101112131415161718191a1b1c1d1e1f"
+encryption_kdf_input: "a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7c7d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8"
+
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  - type: "OCAHSEP BLSTAGE1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+    # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
+    # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
+    # so it only runs correctly when loaded there. The ROM honours whichever region
+    # this names (SEP-ROM-MAN-060 permits SRAM or ICCM) and copies via the DMA,
+    # which is mandatory for an ICCM destination: the LSU cannot store to ICCM.
+    load_addr: 0xC0000000
+
+# The 128-bit half of the cipher support. Same CLASS_KEY secret and the same KDF;
+# only out_bits in the derivation block and the AES key length change, so this
+# and the AES-256 image together cover both widths of aes_cbc_decrypt()'s
+# one-hot KEY_LEN field.

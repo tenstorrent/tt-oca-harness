@@ -41,22 +41,16 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      # Consumed by ocah_stage_dashboard_data (doc/doc.mk).
-      OCAH_DASHBOARD_DATA_DIR: ${{ github.workspace }}/dashboard-data/latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Checkout dashboard data branch
-        uses: actions/checkout@v4
-        # Docs should still build even if data branch is ever empty
-        continue-on-error: true
-        with:
-          ref: dv-dashboard-data
-          path: dashboard-data
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
 
       - name: Setup system dependencies
         run: |
@@ -100,6 +94,7 @@ jobs:
         run: |
           make ocah-doc-trm-pdf
           make ocah-doc-integrator-pdf
+          make ocah-doc-datasheets-pdf
         continue-on-error: true
 
       # Only a successful dashboard run redeploys.

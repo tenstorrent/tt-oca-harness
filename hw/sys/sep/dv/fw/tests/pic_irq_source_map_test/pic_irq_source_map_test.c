@@ -9,7 +9,7 @@
 //   mailbox[0]  sep_internal_interrupts[0]  -> PIC source 1   (real FIFO push)
 //   OTBN done   sep_internal_interrupts[29] -> PIC source 30  (INTR_TEST)
 //   HMAC done   sep_internal_interrupts[17] -> PIC source 18  (INTR_TEST)
-//   extras      INTR_TEST pool (DMA / KMAC / CSRNG / EDN / KMAC-err)
+//   extras      INTR_TEST pool (DMA done/chunk/error / HMAC-err / KMAC / CSRNG / EDN / KMAC-err)
 //
 // PIC source id = sep_internal_interrupts index + 1 (VeeR EL2 extintsrc_req is
 // 1-based; source 0 is the tied no-interrupt source). Each ISR reads the claim
@@ -60,6 +60,11 @@
 // the tied no-interrupt source and has no MEIE word.
 #define UNEXPECTED_CLAIM_MAX 64
 
+/* Incremented by fw/startup/crt0.s _dummy_int_handler on every claim of a
+ * source that has no registered ISR. A quiet-window pass that only looks at
+ * g_count[] / g_unexpected_claims cannot see those claims. */
+extern volatile uint32_t sep_dummy_int_count;
+
 struct pic_src_desc {
     uint32_t pic_src;
     uint32_t kind;
@@ -76,9 +81,18 @@ static const struct pic_src_desc k_catalog[] = {
     {9u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
      OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
      SECURE_DMA__INTR_STATE__DMA_DONE_bm, "DMA"},
+    {10u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
+     SECURE_DMA__INTR_STATE__DMA_CHUNK_DONE_bm, "DMA-chunk"},
+    {11u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
+     SECURE_DMA__INTR_STATE__DMA_ERROR_bm, "DMA-error"},
     {18u, PIC_KIND_INTR, OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR,
      OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR,
      HMAC__INTR_STATE__HMAC_DONE_bm, "HMAC"},
+    {20u, PIC_KIND_INTR, OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR,
+     HMAC__INTR_STATE__HMAC_ERR_bm, "HMAC-err"},
     {21u, PIC_KIND_INTR, OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
      OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR,
      KMAC__INTR_STATE__KMAC_DONE_bm, "KMAC"},
@@ -421,13 +435,18 @@ int main(void) {
             spurious = 1;
         }
     }
-    if (spurious || g_unexpected_claims != 0) {
+    if (spurious || g_unexpected_claims != 0 || sep_dummy_int_count != 0) {
         sep_mbx_puts("FAIL: spurious ISR before any source asserted\n");
+        if (sep_dummy_int_count != 0) {
+            sep_mbx_puts("FAIL: dummy handler served unregistered IRQ count=");
+            sep_mbx_puthex(sep_dummy_int_count);
+            sep_mbx_putc('\n');
+        }
         report_unexpected();
         errors++;
     } else {
         sep_mbx_puts("CHK-NONVAC PASS: no spurious ISR before any trigger "
-                     "(quiet window clean)\n");
+                     "(quiet window clean, dummy handler count 0)\n");
     }
 
     for (int i = 0; i < g_n_src; i++) {
@@ -458,9 +477,24 @@ int main(void) {
             storm = 1;
         }
     }
+    if (g_unexpected_claims != 0) {
+        sep_mbx_puts("FAIL: unexpected PIC claim after the walk (storm)\n");
+        report_unexpected();
+        errors++;
+        storm = 1;
+    }
     if (!storm) {
         sep_mbx_puts("CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared "
                      "it (claim completed, no storm)\n");
+    }
+
+    if (sep_dummy_int_count != 0) {
+        sep_mbx_puts("FAIL: dummy handler served unregistered IRQ after walk count=");
+        sep_mbx_puthex(sep_dummy_int_count);
+        sep_mbx_putc('\n');
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-DUMMY PASS: dummy handler count 0 after the walk\n");
     }
 
     if (errors == 0) {

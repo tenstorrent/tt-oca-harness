@@ -2,32 +2,22 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary-TAP access for the wrapper flow.
 
-The wrapper testbench exposes the same `jtag_tck/tms/trst/tdi/tdo` pins the
-bare `--dut smu` harness does, so `OcahJtagMasterDriver` binds to either DUT
-unchanged. This module is a small local copy of the binding rather
-than an import from the bare tree's `seq_lib`: the wrapper flow keeps its own
-PyUVM root precisely so module names do not collide with that catalog, and both
-trees define `seq_lib`.
-
-Only what a wrapper test needs lives here -- the TAP factory and the IR opcodes
-read from RTL. The full register map the bare DTP suite builds is not
-replicated; a wrapper test that needs one of those registers should add it.
+The wrapper testbench exposes the primary TAP as the `jtag_tck/tms/trst/tdi/tdo`
+pins `OcahJtagMasterDriver` binds to. This module carries the TAP factory and
+the IR opcodes, taken from the DV-owned DTP instruction table. The full DTP
+register map is `make_smu_jtag_tap` in `seq_lib/smu_jtag_helpers.py`.
 """
 
 from __future__ import annotations
 
-import re
-from functools import lru_cache
-from pathlib import Path
-
 import cocotb
+from dtp_types import DTP_IR_WIDTH, DtpJtagInstr
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
-_REPO_ROOT = Path(__file__).resolve().parents[6]
-_JTAG_INST_PKG = _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "rtl" / "jtag_inst_reg_pkg.sv"
-_IR_ENUM_RE = re.compile(r"^\s+(\w+_INSTR)\s+=\s+6'h([0-9A-Fa-f]+)")
-
-PTAP_IR_WIDTH = 6
+PTAP_IR_WIDTH = DTP_IR_WIDTH
+# Every JTAG_IDCODE_* parameter defaults to 0 in doc/integrator/src/smu.adoc,
+# "SMU Default Parameters"; only the architecture.adoc "ID Code" marker bit
+# (bit 0, always 1) is set.
 PTAP_DEFAULT_IDCODE = 0x0000_0001
 
 #: JTAG2AXI CAPS geometry register width (architecture.adoc, bits 13:0).
@@ -49,9 +39,9 @@ def single_op_payload(
     """Pack a SINGLE_OP DR, LSB-first: OP2 | SIZE2 | WSTRB8 | DATA64 | ADDR56.
 
     `op` sits in the LOWEST bits -- architecture.adoc lists it at [1:0] -- and
-    the address at the top. This matches pack_single_op() in the bare
-    `--dut smu` helpers, which the DTP suite exercises; the field offsets are
-    not obvious from the document's relative "(...) +: width" notation alone.
+    the address at the top. This matches pack_single_op() in
+    `seq_lib/smu_jtag_helpers.py`; the field offsets are not obvious from the
+    document's relative "(...) +: width" notation alone.
     """
     return (
         (op & 0x3)
@@ -87,28 +77,16 @@ def single_op_rdata(captured: int) -> int:
     return (int(captured) >> 12) & ((1 << 64) - 1)
 
 
-@lru_cache(maxsize=1)
-def _ir_opcodes() -> dict[str, int]:
-    """IR opcode map straight out of the RTL package.
+def ptap_ir_opcode(name: str) -> int:
+    """PTAP IR opcode for instruction ``name``.
 
-    Read from source rather than duplicated as constants, so an opcode change
-    in the design surfaces as a test failure instead of silent drift.
+    ``DtpJtagInstr`` (hw/sys/dtp/dv/cocotb/env/dtp_types.py) transcribes the
+    "Instruction Encodings" table of hw/ip/jtag/jtag_intf_unit/doc/interface.adoc.
     """
-    out: dict[str, int] = {}
-    for line in _JTAG_INST_PKG.read_text(encoding="utf-8").splitlines():
-        m = _IR_ENUM_RE.match(line)
-        if m:
-            out[m.group(1)] = int(m.group(2), 16)
-    if "IDCODE_INSTR" not in out:
-        raise RuntimeError(f"IR opcodes missing from {_JTAG_INST_PKG}")
-    return out
-
-
-def ptap_ir_opcode(rtl_symbol: str) -> int:
-    table = _ir_opcodes()
-    if rtl_symbol not in table:
-        raise KeyError(f"{rtl_symbol} not in {_JTAG_INST_PKG}")
-    return table[rtl_symbol]
+    try:
+        return int(DtpJtagInstr[name])
+    except KeyError as exc:
+        raise KeyError(f"{name} is not a DtpJtagInstr instruction name") from exc
 
 
 def make_wrapper_ptap(period_ns: float = 100) -> OcahJtagMasterDriver:
@@ -120,7 +98,7 @@ def make_wrapper_ptap(period_ns: float = 100) -> OcahJtagMasterDriver:
         idle_delay=2,
         add_bypass=True,
     )
-    device.add_reg("IDCODE", 32, ptap_ir_opcode("IDCODE_INSTR"))
+    device.add_reg("IDCODE", 32, ptap_ir_opcode("IDCODE"))
     # SMC fabric JTAG2AXI. CAPS is read-only geometry; SINGLE_OP is the write
     # that launches a transaction, and is what dbg_disable.smc_jtag2axi gates.
     # Field order per hw/ip/jtag/jtag_ptap/doc/architecture.adoc:
@@ -130,12 +108,12 @@ def make_wrapper_ptap(period_ns: float = 100) -> OcahJtagMasterDriver:
     device.add_reg(
         "SMC_JTAG2AXI_CAPS",
         SMC_JTAG2AXI_CAPS_LEN,
-        ptap_ir_opcode("SMC_JTAG2AXI_CAPS_INSTR"),
+        ptap_ir_opcode("SMC_JTAG2AXI_CAPS"),
     )
     device.add_reg(
         "SMC_AXI_SINGLE_OP",
         SMC_AXI_SINGLE_OP_LEN,
-        ptap_ir_opcode("SMC_AXI_SINGLE_OP_INSTR"),
+        ptap_ir_opcode("SMC_AXI_SINGLE_OP"),
         write=True,
     )
 

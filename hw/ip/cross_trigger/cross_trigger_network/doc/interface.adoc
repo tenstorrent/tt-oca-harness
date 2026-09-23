@@ -2,16 +2,20 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[cross-trigger-network-interface]]
-==== Interface
 
-===== Cross Trigger Port (CTP)
+=== Cross Trigger Port (CTP)
 
-The following diagram and table illustrate the logical behavior and signal
-interface of a CTP module:
+The table below lists the CTP signals and their mode-dependent behavior.
+For the module diagram and signalling modes, see
+<<cross-trigger-network-architecture,CTN Architecture>>.
 
-image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port interface" tabindex="0">
+++++
+endif::backend-html5[]
 
-[width="100%",cols="<34%,<33%,<33%",options="header",]
+[cols="<30,<12,<58",options="header",role="port-reference"]
 |=======================================================================
 |Name |Direction |Description
 |mode |input |Indicates the operational mode of the CTP. 0 for wire-OR
@@ -71,7 +75,13 @@ pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls
 this signal. In wire-OR mode it is unused.
 |=======================================================================
 
-===== Cross Trigger Matrix (CTM)
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Cross Trigger Matrix (CTM)
 
 The CTM has the following data ports and logical structure:
 
@@ -82,12 +92,14 @@ The CTM has the following data ports and logical structure:
   CTPs, or other cross trigger generating devices, where M is the number of
   these cross trigger sources.
 
-===== Cross Trigger Network Module Interface
+=== Cross Trigger Network Module Interface
 
 The top-level `cross_trigger_network` module has the following interface:
 
 *Parameters*
 
+* `NUM_CTP`, `NUM_INT_CT`, `NUM_CLK_STOP_REQ` - External CTP, internal CT, and
+  clock-stop request counts (defaults 16, 10, 9)
 * `INT_CT_MODE` - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 =
   P2P)
 * `axil_req_t`, `axil_resp_t` - AXI-Lite request/response types
@@ -120,7 +132,7 @@ output logic [NUM_INT_CT-1:0] ctm_dst_ack_o
 // CT_Req_out, CT_Req_in, CT_Ack_in, CT_Ack_out signals
 ----
 
-===== Dependencies
+=== Dependencies
 
 The CTN depends on the following components:
 

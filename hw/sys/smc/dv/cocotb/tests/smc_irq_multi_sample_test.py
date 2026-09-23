@@ -13,6 +13,9 @@ from smc_base_test import smc_base_test
 class smc_irq_multi_sample_test(smc_base_test):
     """Run the SMC OSS IRQ multi-sample observability scenario."""
 
+    required_evidence = ("CHK-IRQ-MULTI-SAMPLE-STABLE",)
+    min_evidence = 1
+
     # Both proof legs of this testcase (the scoreboard idle compare and the
     # sequence's cross-gap stability compare) are satisfied by a tied-off probe
     # -- a dead net is perfectly stable. These controls prove each aggregate

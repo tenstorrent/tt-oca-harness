@@ -2,11 +2,16 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[stap-interface]]
-==== Interface
 
-===== Signal Interface
+=== Signal Interface
 
-[cols="<,<,<,<",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="STAP signal interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<13,<9,<50",options="header",role="port-reference"]
 |===
 |Signal |Direction |Width |Description
 |clk_i |Input |1 |JTAG TCK clock
@@ -17,7 +22,7 @@
 |shift_i |Input |1 |Shift control from PTAP
 |update_i |Input |1 |Update control from PTAP
 |tms_i |Input |1 |TMS from PTAP
-|security_disable_i |Input |1 |Security lockout override (lifecycle control)
+|security_disable_i |Input |1 |Active-high disable (1 = STAP locked out)
 |stap_tdi_o |Output |1 |TDI to downstream TAP
 |stap_tdo_i |Input |1 |TDO from downstream TAP
 |stap_tms_o |Output |1 |TMS to downstream TAP (or parked value when disabled)
@@ -26,7 +31,13 @@
 |stap_enabled_o |Output |1 |Indicates STAP is selected and enabled
 |===
 
-===== Timing Requirements
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
+=== Timing Requirements
 
 The STAP interface timing follows IEEE 1838-2019:
 
@@ -36,7 +47,7 @@ The STAP interface timing follows IEEE 1838-2019:
 * The lockup latch captures data on the falling edge of TCK when transitioning
   out of Shift-DR/IR states
 
-===== Dependencies
+=== Dependencies
 
 The STAP depends on the following components:
 

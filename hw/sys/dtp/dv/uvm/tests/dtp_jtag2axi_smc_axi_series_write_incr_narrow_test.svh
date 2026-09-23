@@ -5,8 +5,10 @@
 // `series_write_incr_narrow` SMC fabric JTAG2AXI scenario: SERIES_CTRL
 // programs a 32-bit incrementing write stream whose base sits at beat
 // offset +4, SERIES_DATA_INCR beats land on the AXI lanes selected by
-// that address, and the responder backdoor plus final SERIES_CTRL
-// capture prove the memory image and post-stream address.
+// that address (per-beat strobe and lane-data intents: CHK-AXI-STRB,
+// CHK-AXI-WDATA, CHK-AXI-WADDR), a sentinel beside the stream stays
+// untouched, and the responder backdoor plus final SERIES_CTRL capture
+// prove the memory image and post-stream address.
 
 class dtp_jtag2axi_smc_axi_series_write_incr_narrow_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_series_write_incr_narrow_test)
@@ -18,7 +20,15 @@ class dtp_jtag2axi_smc_axi_series_write_incr_narrow_test extends dtp_base_test;
 
   virtual function void configure_test_cfg(dtp_test_cfg cfg);
     super.configure_test_cfg(cfg);
-    cfg.require_axi_ids("smc_axi", '{"CHK-AXI-RESP", "CHK-AXI-COMPLETION", "CHK-AXI-NONVAC"});
+    cfg.require_axi_ids("smc_axi",
+                        '{
+                            "CHK-AXI-RESP",
+                            "CHK-AXI-WADDR",
+                            "CHK-AXI-STRB",
+                            "CHK-AXI-WDATA",
+                            "CHK-AXI-COMPLETION",
+                            "CHK-AXI-NONVAC"
+                        });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();

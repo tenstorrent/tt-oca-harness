@@ -57,6 +57,7 @@ LCR_WLS = _field_mask(_UART_H, "UART_16550_MAIN__LCR__WLS_bm")
 MCR_LOOP = _field_mask(_UART_H, "UART_16550_MAIN__MCR__LOOP_bm")
 MCR_RTS = _field_mask(_UART_H, "UART_16550_MAIN__MCR__RTS_bm")
 LSR_DR = _field_mask(_UART_H, "UART_16550_MAIN__LSR__DR_bm")
+LSR_OE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__OE_bm")
 LSR_THRE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__THRE_bm")
 LSR_TEMT = _field_mask(_UART_H, "UART_16550_MAIN__LSR__TEMT_bm")
 
@@ -72,6 +73,10 @@ _TRIG_1B = 0
 _TRIG_4B = 1
 _TRIG_32B = 4
 _TRIG_LEVEL_CHARS = {_TRIG_1B: 1, _TRIG_4B: 4, _TRIG_32B: 32}
+# The receiver FIFO depth: the largest trigger level the RDL lists that a
+# 32-entry FIFO can reach, and the number of characters the above-depth leg
+# queues so the unsupported encodings are sampled on a full FIFO.
+_RX_FIFO_DEPTH = _TRIG_LEVEL_CHARS[_TRIG_32B]
 _ABOVE_FIFO_DEPTH_TRIGGERS = {
     5: 64,
     6: 128,
@@ -83,7 +88,7 @@ _ABOVE_FIFO_DEPTH_TRIGGERS = {
 }
 
 # Baud divisor used by the TX-FIFO-reset leg to hold data in the transmitter
-# long enough for LSR.THRE to be sampled at 0. Not a tuned magic number:
+# long enough for LSR.THRE to be sampled at 0. Derivation:
 # uart_16550/doc/interface.adoc ("Serial Interface Timing") states the serial
 # rate comes from the divisor latches with **16x oversampling**, so one 8N1
 # character (start + 8 data + 1 stop = 10 bit times) occupies
@@ -168,7 +173,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if _iir_pending(iir) and _iir_id(iir) == expect_id:
                 return iir
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: IIR id=0x{expect_id:x} not seen last=0x{iir:08x} "
             f"pending={_iir_pending(iir)} id=0x{_iir_id(iir):x}"
@@ -180,7 +185,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read(f"{label}_LSR", UART_LSR)
             if bool(lsr & mask) == want_set:
                 return lsr
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: LSR bit 0x{mask:02x} never reached {int(want_set)} (last LSR=0x{lsr:08x})"
         )
@@ -191,7 +196,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"{label}_IIR", UART_IIR)
             if not (_iir_pending(iir) and _iir_id(iir) == forbidden_id):
                 return iir
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         raise AssertionError(
             f"{label}: IIR id=0x{forbidden_id:x} still pending after "
             f"{iters} samples (last=0x{iir:08x})"
@@ -237,7 +242,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
                     f"FCR.RCVR_TRIGGER programmed to {depth} "
                     f"(sample {sample}, IIR=0x{held:08x})"
                 )
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
 
         # Threshold character.
         await self.csr_write(f"{label}_THR_TRIG", UART_RBR, 0x30 + depth)
@@ -278,7 +283,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read("RST_TEMT_WAIT", UART_LSR)
             if lsr & LSR_TEMT:
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(f"TEMT not set before RX reset LSR=0x{lsr:08x}")
 
@@ -287,7 +292,7 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read("RST_DR_WAIT", UART_LSR)
             if lsr & LSR_DR:
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(f"LSR.DR=0 before RX reset LSR=0x{lsr:08x}")
         lsr = await self.csr_read("RST_DR_PRE", UART_LSR)
@@ -338,16 +343,53 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             lsr = await self.csr_read("TX_TEMT_POST", UART_LSR)
             if lsr & LSR_TEMT:
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(f"TEMT not set after TX reset LSR=0x{lsr:08x}")
         cocotb.log.info("CHK-UART-FIFO-RST-TX: THRE+TEMT after XMIT_FIFO_RESET")
 
+    async def _refill_to_depth(self, label: str) -> int:
+        """Pop one character and loop one back, so the FIFO returns to its depth.
+
+        The arrival re-evaluates the trigger level against the encoding that is
+        programmed at that moment and clears any Reception Timeout, so the IIR
+        sampled right after it reports the level compare and not a timeout
+        left over from the previous encoding.
+        """
+        await self.csr_read(f"{label}_POP", UART_RBR)
+        await self.csr_write(f"{label}_REFILL_THR", UART_RBR, 0x7E)
+        await self._wait_lsr_bit(f"{label}_REFILL_TEMT", LSR_TEMT, True)
+        return await self._wait_lsr_bit(f"{label}_REFILL_DR", LSR_DR, True)
+
     async def _test_above_depth_triggers(self) -> None:
-        """An empty 32-entry FIFO never reaches unsupported thresholds 64 through 4096."""
+        """Unsupported thresholds 64 through 4096 never fire on a FULL 32-entry FIFO.
+
+        Sampling an empty FIFO would prove nothing: no level fires at depth 0.
+        The FIFO is filled to its depth through loopback, and for every
+        encoding the level is re-evaluated by popping one character and
+        looping one back, so the 32nd arrival is compared against that
+        encoding. The same refill raises RECEIVED_DATA_READY at the
+        32-character encoding immediately before and immediately after the
+        sweep, so a level that could not fire at all is told apart from one
+        that does not fire above the depth.
+        """
         await self._fifo_reset(rx=True, tx=True)
+        await self._fifo_set_trigger(_TRIG_32B)
+        await self.csr_read("ABOVE_DEPTH_IIR_CLR", UART_IIR)
+        for i in range(_RX_FIFO_DEPTH):
+            await self.csr_write(f"ABOVE_DEPTH_FILL_{i}", UART_RBR, 0x60 + i)
+        # TEMT under MCR.LOOP: every character written has been received.
+        await self._wait_lsr_bit("ABOVE_DEPTH_FILL_TEMT", LSR_TEMT, True)
+        lsr = await self._wait_lsr_bit("ABOVE_DEPTH_FULL", LSR_DR, True)
+        assert not (lsr & LSR_OE), (
+            f"LSR=0x{lsr:08x} reports an overrun after {_RX_FIFO_DEPTH} looped-back "
+            f"characters: the RX FIFO is shallower than the 32-character trigger level"
+        )
+        armed = await self._wait_iir_id("ABOVE_DEPTH_ARMED", _INTR_ID_RDR)
         for trigger_cfg, threshold in _ABOVE_FIFO_DEPTH_TRIGGERS.items():
             await self._fifo_set_trigger(trigger_cfg)
+            lsr = await self._refill_to_depth(f"ABOVE_DEPTH_{threshold}")
+            assert not (lsr & LSR_OE), f"overrun while refilling to depth: LSR=0x{lsr:08x}"
             samples = []
             for sample in range(_PRE_HOLD_SAMPLES):
                 iir = await self.csr_read(f"ABOVE_DEPTH_{threshold}_{sample}_IIR", UART_IIR)
@@ -355,16 +397,31 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
                 if _iir_pending(iir) and _iir_id(iir) == _INTR_ID_RDR:
                     raise AssertionError(
                         f"RCVR trigger {trigger_cfg:#x} ({threshold} characters) "
-                        f"raised RECEIVED_DATA_READY for an empty 32-entry FIFO: "
-                        f"IIR=0x{iir:08x}"
+                        f"raised RECEIVED_DATA_READY with {_RX_FIFO_DEPTH} characters "
+                        f"queued in the 32-entry FIFO: IIR=0x{iir:08x}"
                     )
             cocotb.log.info(
-                "CHK-UART-FIFO-TRIG-ABOVE-DEPTH: encoding=0x%x threshold=%d "
-                "characters stayed below RECEIVED_DATA_READY across IIR samples %s",
+                "CHK-UART-FIFO-TRIG-ABOVE-DEPTH: encoding=0x%x threshold=%d characters: the "
+                "32nd character arrived with this encoding programmed (LSR=0x%08x, DR set, no "
+                "overrun; the same refill raised IIR=0x%08x at the 32-character encoding) and "
+                "RECEIVED_DATA_READY stayed absent across IIR samples %s",
                 trigger_cfg,
                 threshold,
+                lsr,
+                armed,
                 [f"0x{value:08x}" for value in samples],
             )
+        # Same depth, supported encoding again: the level compare is live.
+        await self._fifo_set_trigger(_TRIG_32B)
+        await self._refill_to_depth("ABOVE_DEPTH_REARM")
+        rearmed = await self._wait_iir_id("ABOVE_DEPTH_REARMED", _INTR_ID_RDR)
+        cocotb.log.info(
+            "above-depth positive control: the 32-character encoding raised IIR=0x%08x again on "
+            "the %d queued characters after the sweep",
+            rearmed,
+            _RX_FIFO_DEPTH,
+        )
+        await self._fifo_reset(rx=True, tx=True)
 
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)

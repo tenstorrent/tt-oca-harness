@@ -314,17 +314,17 @@ int main(void) {
         /* Ensure outbound FIFO is empty (drained by earlier tests) */
         TEST_ASSERT(mbox_outbound_empty(), "Outbound FIFO should be empty");
 
-        /* Status bit 4 should be 1 (FIFO has space) even before enable */
+        /* outbound_write_space_avail should be 1 (FIFO has space) even before enable */
         irq_status_val = MBOX_IRQ_STATUS_REG.w;
         TEST_LOG("  KM IRQ_STATUS (before enable): 0x%08X", irq_status_val);
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail,
-                    "IRQ_STATUS bit 4 should be set when FIFO has space");
+                    "IRQ_STATUS.outbound_write_space_avail should be set when FIFO has space");
 
         /* Enable the outbound write space IRQ */
         MBOX_IRQ_ENABLE_REG.f.outbound_write_space_avail_en = 1;
         test_delay(10);
         TEST_ASSERT(MBOX_IRQ_ENABLE_REG.f.outbound_write_space_avail_en,
-                    "IRQ_ENABLE bit 4 should be set");
+                    "IRQ_ENABLE.outbound_write_space_avail_en should be set");
 
         /* Fill outbound FIFO to capacity (MAILBOX_DEPTH = 16) */
         TEST_LOG("  Filling outbound FIFO with %d entries...", 16);
@@ -334,12 +334,12 @@ int main(void) {
         }
         test_delay(10);
 
-        /* FIFO is full: status bit 4 should be 0, IRQ should be deasserted */
+        /* FIFO is full: outbound_write_space_avail should be 0, IRQ should be deasserted */
         TEST_ASSERT(mbox_outbound_full(), "Outbound FIFO should be full");
         irq_status_val = MBOX_IRQ_STATUS_REG.w;
         TEST_LOG("  KM IRQ_STATUS (FIFO full): 0x%08X", irq_status_val);
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail, 0,
-                       "IRQ_STATUS bit 4 should be clear when FIFO full");
+                       "IRQ_STATUS.outbound_write_space_avail should be clear when FIFO full");
 
         /* SEP reads one entry -> FIFO has space again */
         if (!tb_sep_mbox_read(&read_data, 1000)) {
@@ -347,11 +347,11 @@ int main(void) {
         }
         test_delay(10);
 
-        /* Status bit 4 should be 1 again (space available) */
+        /* outbound_write_space_avail should be 1 again (space available) */
         irq_status_val = MBOX_IRQ_STATUS_REG.w;
         TEST_LOG("  KM IRQ_STATUS (after one SEP read): 0x%08X", irq_status_val);
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail,
-                    "IRQ_STATUS bit 4 should be set after SEP reads one entry");
+                    "IRQ_STATUS.outbound_write_space_avail should be set after SEP reads one entry");
 
         /* Drain remaining entries */
         for (unsigned i = 1; i < 16; i++) {
@@ -362,9 +362,9 @@ int main(void) {
         test_delay(10);
         TEST_ASSERT(mbox_outbound_empty(), "Outbound FIFO should be empty after drain");
 
-        /* Status bit 4 still set (empty FIFO has space) */
+        /* outbound_write_space_avail still set (empty FIFO has space) */
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail,
-                    "IRQ_STATUS bit 4 should be set when FIFO is empty (has space)");
+                    "IRQ_STATUS.outbound_write_space_avail should be set when FIFO is empty (has space)");
     }
     TEST_SUBTEST_PASS();
 
@@ -382,7 +382,7 @@ int main(void) {
         MBOX_IRQ_ENABLE_REG.f.outbound_write_space_avail_en = 0;
         test_delay(10);
 
-        /* Status bit 4 should still reflect FIFO state (has space) */
+        /* outbound_write_space_avail should still reflect FIFO state (has space) */
         irq_status_val = MBOX_IRQ_STATUS_REG.w;
         TEST_LOG("  KM IRQ_STATUS (IRQ disabled, FIFO has space): 0x%08X", irq_status_val);
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail,
@@ -395,7 +395,7 @@ int main(void) {
         }
         test_delay(10);
 
-        /* Status bit 4 should be 0 (FIFO full), IRQ still disabled */
+        /* outbound_write_space_avail should be 0 (FIFO full), IRQ still disabled */
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail, 0,
                        "Status bit clear when FIFO full (IRQ disabled)");
 
@@ -405,7 +405,7 @@ int main(void) {
         }
         test_delay(10);
 
-        /* Status bit 4 should be 1 (space available), but IRQ not asserted */
+        /* outbound_write_space_avail should be 1 (space available), but IRQ not asserted */
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail,
                     "Status bit set when FIFO has space (IRQ still disabled)");
 
@@ -435,7 +435,7 @@ int main(void) {
         MBOX_IRQ_ENABLE_REG.f.outbound_write_space_avail_en = 1;
         test_delay(10);
 
-        /* FIFO is empty -> status bit 4 should be 1 */
+        /* FIFO is empty -> outbound_write_space_avail should be 1 */
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail,
                     "Status bit set when FIFO empty (has space)");
 
@@ -446,7 +446,7 @@ int main(void) {
         }
         test_delay(10);
 
-        /* FIFO full -> status bit 4 should be 0 */
+        /* FIFO full -> outbound_write_space_avail should be 0 */
         TEST_ASSERT_EQ(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail, 0,
                        "Status bit clear when FIFO full");
 
@@ -458,7 +458,7 @@ int main(void) {
         }
         test_delay(10);
 
-        /* FIFO empty again -> status bit 4 should be 1 */
+        /* FIFO empty again -> outbound_write_space_avail should be 1 */
         TEST_ASSERT(MBOX_IRQ_STATUS_REG.f.outbound_write_space_avail,
                     "Status bit reasserts after FIFO drained");
 

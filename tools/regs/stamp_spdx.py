@@ -26,6 +26,7 @@ HEADERS = {
     ".c": f"/* {SPDX_ID} */\n/* {SPDX_COPY} */\n\n",
     ".h": f"/* {SPDX_ID} */\n/* {SPDX_COPY} */\n\n",
     ".py": f"# {SPDX_ID}\n# {SPDX_COPY}\n\n",
+    ".rdl": f"// {SPDX_ID}\n// {SPDX_COPY}\n\n",
     ".adoc": f"// {SPDX_ID}\n// {SPDX_COPY}\n\n",
     ".html": f"<!-- {SPDX_ID} -->\n<!-- {SPDX_COPY} -->\n",
     ".xml": f"<!-- {SPDX_ID} -->\n<!-- {SPDX_COPY} -->\n",
@@ -43,14 +44,19 @@ def stamp_file(path: Path) -> bool:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return False
-    if "SPDX-License-Identifier" in "\n".join(text.splitlines()[:25]):
+    original = text
+    if path.suffix == ".xml":
+        ending = "\n" if text.endswith("\n") else ""
+        text = "\n".join(line.rstrip() for line in text.splitlines()) + ending
+    if "SPDX-License-Identifier" not in "\n".join(text.splitlines()[:25]):
+        header = HEADERS[path.suffix]
+        decl = _XML_DECL_RE.match(text) if path.suffix == ".xml" else None
+        if decl:
+            text = text[: decl.end()] + header + text[decl.end() :]
+        else:
+            text = header + text
+    if text == original:
         return False
-    header = HEADERS[path.suffix]
-    decl = _XML_DECL_RE.match(text) if path.suffix == ".xml" else None
-    if decl:
-        text = text[: decl.end()] + header + text[decl.end() :]
-    else:
-        text = header + text
     path.write_text(text, encoding="utf-8")
     return True
 

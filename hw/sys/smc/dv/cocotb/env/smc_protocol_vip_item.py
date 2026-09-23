@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC protocol VIP sequence item.
 
-This item records an OSS-runnable protocol intent for tests that still use
-direct-AXI CSR stimulus until public BFMs are available.
+This item records an OSS-runnable protocol intent for tests whose stimulus is
+direct-AXI CSR traffic rather than a pad-level BFM.
 """
 
 from __future__ import annotations

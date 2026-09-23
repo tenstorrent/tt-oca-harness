@@ -14,6 +14,15 @@ from smc_base_test import smc_base_test
 class smc_i2c_fifo_full_test(smc_base_test):
     """FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only)."""
 
+    required_evidence = (
+        "CHK-I2C-FIFO-FULL-ACQ",
+        "CHK-I2C-FIFO-FULL-BASIC",
+        "CHK-I2C-FIFO-FULL-FMT",
+        "CHK-I2C-FIFO-FULL-RX",
+        "CHK-I2C-FIFO-FULL-TX",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -25,10 +34,8 @@ class smc_i2c_fifo_full_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 281 accesses observed in the retained
-            # regression run; the FMT/TX/RX FIFO status polls are a
-            # timing-dependent remainder, so the floor is set below the observed
-            # count. Literal here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the FMT/TX/RX FIFO status polls are timing-dependent.
             min_csr_accesses=200,
             csr_accesses=seq.accesses,
             proxy=False,

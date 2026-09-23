@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -103,9 +103,12 @@ module = "cpu.sep_hmac_kmac_cpu_crypto_smoke_test"
 firmware = "hmac_kmac_smoke_test"
 seed = 1
 timeout_sec = 3600
-tags = ["boot", "cpu", "crypto", "hmac", "kmac", "subsystem"]
+tags = ["boot", "cpu", "crypto", "hmac", "kmac", "aes", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+# +esrc_noise_force: the AES leg reseeds its masking PRNG from crypto-EDN, and
+# the firmware brings the entropy stack up itself. Under Verilator the ESRC ring
+# oscillators do not self-oscillate, so the raw noise comes from the testbench.
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # Standalone KMAC-family mode x strength breadth (RAND-REP). no_cpu direct-AXI walk
@@ -158,7 +161,7 @@ args = ["+skip_fuse_sense"]
 # (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
 # shared DRBG is correct. CHK5 scores AES golden (AES beats == AXIS1 order) and
 # KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
-# bit-exact routing is a Phase 2 claim, not this test.
+# bit-exact routing is sep_crypto_edn_multisink_arbitration_test's claim, not this test's.
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
 # oscillators under Verilator. c_compile builds rom_main.rom.parhex
 # (firmware mode km_rom_main; wipe defines off).
@@ -195,7 +198,10 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # EDN is enabled, then the real entropy chain is brought up so prim_arbiter_ppc
 # inside drbg_axis_edn_adapter has to grant both. Distinct from the AES+KMAC
 # time-span overlap test above, which cannot hold two edn_req bits together.
-# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd ROUTING (two live sinks).
+# Then OTBN RND, the adapter's third scored client, is driven by a program
+# blocked on the RND CSR; its routing and consume are graded, not alternation.
+# Strict CHK1..CHK4 + CHK5 ROUTING on all four adapter clients and the entropy
+# pool (five scored streams).
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1
@@ -217,6 +223,44 @@ module = "crypto.sep_abr_mldsa_keygen_kat_test"
 seed = 1
 timeout_sec = 7200
 tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge ML-DSA-87 sigGen and sigVer NIST KAT on the same aperture.
+# MLDSA_CTRL.CTRL SIGNING (0x2) and VERIFYING (0x3), external-mu ACVP groups.
+# Deterministic signing, so the signature is compared word-for-word against the
+# vendored vector. VERIFY is walked with the case that must verify and the case
+# that must not, and the two MLDSA_VERIFY_RES values must differ. ZEROIZE
+# between commands. RANDCFG: masking entropy from the run seed; the vectors are
+# fixed. KEYGEN_SIGN, ML-KEM and the key-vault seed path are not claimed.
+# no_cpu; +skip_fuse_sense.
+name = "sep_abr_mldsa_sign_verify_kat_test"
+module = "crypto.sep_abr_mldsa_sign_verify_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mldsa", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT.
+# MLKEM_CTRL.CTRL KEYGEN (0x1), ENCAPS (0x2) and DECAPS (0x3), each compared
+# against the published ACVP value: keyGen ek and dk from the two seeds, encaps
+# ciphertext and shared key from (ek, m) written over the bus, and decaps walked
+# with both the valid case and the modified-ciphertext case. FIPS-203 implicit
+# rejection means the bad ciphertext yields a DIFFERENT published shared key
+# rather than an error, so that leg is a value compare too. ZEROIZE between
+# commands. No randomization: every input is a fixed vector. KEYGEN+DECAPS,
+# ML-DSA and the key-vault seed path are not claimed.
+# no_cpu; +skip_fuse_sense.
+name = "sep_abr_mlkem_kat_test"
+module = "crypto.sep_abr_mlkem_kat_test"
+seed = 1
+timeout_sec = 10800
+tags = ["crypto", "abr", "mlkem", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

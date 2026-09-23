@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_shred.c
- * @brief T057 - Engine shred test
+ * @brief Engine shred test
  *
  * Boots the KM firmware and exercises the CMD_ENGINE_SHRED command:
  *   1. Generate key, transfer to AES, then shred AES → success

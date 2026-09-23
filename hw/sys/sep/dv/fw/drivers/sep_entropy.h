@@ -3,11 +3,9 @@
 //
 // SEP real-entropy bring-up (ESRC -> DRBG -> CSRNG -> EDN) firmware driver.
 // Header-only. Programs the OpenTitan-style entropy stack over the EL2 LSU bus so
-// the Key Manager (and crypto engines) receive real EDN genbits -- the
-// firmware-replicable equivalent of the reference UVM bring-up
-// (sep_drbg_uvm_base_test_seq.sv configure_drbg_chain_from_cfg / enable_edn_mode),
-// NOT a force. Order matters (mirrors the reference suite guard "configure EDN commands
-// ONLY, do NOT enable EDN yet"):
+// the Key Manager (and crypto engines) receive real EDN genbits from the
+// programmed stack, with no testbench force. Order matters: EDN commands are
+// staged first and EDN is enabled last:
 //   1. sep_entropy_configure()       -- PHASE-A: mux, ESRC config (gens OFF),
 //                                        CSRNG enable, stage EDN commands.
 //   2. sep_entropy_start_generators()-- enable the ring-osc generators.
@@ -82,9 +80,9 @@
 // entropy_stream_valid, so enabling EDN before it issues an Instantiate against
 // a source that cannot answer. ALERT/ERR mean the FSM escalated and no further
 // entropy will come out -- a different verdict from "not yet".
-#define SEP_MAIN_SM_BOOT_PHASE_DONE (1u << 12)
-#define SEP_MAIN_SM_ERR (1u << 11)
-#define SEP_MAIN_SM_ALERT (1u << 10)
+#define SEP_MAIN_SM_BOOT_PHASE_DONE ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bm
+#define SEP_MAIN_SM_ERR ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bm
+#define SEP_MAIN_SM_ALERT ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm
 
 // One boot health-test window is 2048 samples at the div64 rate, ~131k core
 // cycles; each poll here is an uncached AXI read, so a few thousand covers it.
@@ -98,8 +96,8 @@ static inline void sep_entropy_wr(uint32_t addr, uint32_t value) {
     *(volatile uint32_t *)addr = value;
 }
 
-// Program a freshly reset entropy complex. This intentionally does not touch
-// SW_RESET_N: alarm recovery must keep consumers quiesced while reinitializing.
+// Program a freshly reset entropy complex without touching SW_RESET_N: alarm
+// recovery must keep consumers quiesced while reinitializing.
 static inline void sep_entropy_program_after_reset(void) {
     sep_entropy_wr(SEP_CLOCK_GATE_CTRL, SEP_CLOCK_GATE_ENTROPY);
     sep_entropy_wr(SEP_EXT_TRNG_SRC_SEL, 0x0);

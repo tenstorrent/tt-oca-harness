@@ -326,3 +326,55 @@ class OcahAxiReadResult:
                 "hold_stable": self.hold_stable,
             },
         )
+
+
+@dataclass(frozen=True)
+class OcahAxiWritePairResult:
+    """Two single-beat writes issued back to back (``write_pair_skewed_result``).
+
+    ``first`` and ``second`` are the per-transaction results in issue order.
+    ``aw_stall_cycles`` counts the cycles AWVALID was held while AWREADY was
+    low across the pair, and ``aw_stable`` reports that every such stalled
+    beat kept AWVALID asserted with AWADDR unchanged until AWREADY
+    (IHI 0022 A3.2.1).
+    """
+
+    first: OcahAxiWriteResult
+    second: OcahAxiWriteResult
+    aw_stall_cycles: int
+    aw_stable: bool
+
+    @property
+    def ok(self) -> bool:
+        return self.first.ok and self.second.ok
+
+    @property
+    def timed_out(self) -> bool:
+        return self.first.timed_out or self.second.timed_out
+
+
+@dataclass(frozen=True)
+class OcahAxiReadPairResult:
+    """Two single-beat reads with the second AR presented under an RREADY hold
+    (``read_pair_hold_result``).
+
+    ``first`` and ``second`` are the per-transaction results in issue order;
+    ``first.hold_stable`` carries the hold window's RVALID/RDATA/RRESP
+    stability. ``ar_stall_cycles`` counts the cycles ARVALID was held while
+    ARREADY was low across the pair, and ``ar_stable`` reports that every such
+    stalled beat kept ARVALID asserted with ARADDR unchanged until ARREADY
+    (IHI 0022 A3.2.1).
+    """
+
+    first: OcahAxiReadResult
+    second: OcahAxiReadResult
+    ar_stall_cycles: int
+    ar_stable: bool
+
+    @property
+    def ok(self) -> bool:
+        return self.first.ok and self.second.ok
+
+    @property
+    def timed_out(self) -> bool:
+        return self.first.timed_out or self.second.timed_out

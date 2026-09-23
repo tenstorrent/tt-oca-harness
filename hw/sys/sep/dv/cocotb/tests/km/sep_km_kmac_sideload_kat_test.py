@@ -9,12 +9,9 @@ KMAC-256 (cSHAKE, PREFIX="KMAC") over a fixed message; the test proves KMAC
 consumed exactly the sideloaded key.
 
 KMAC DOES have a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is
-a sideload-vs-SW cross-check rather than a comparison against a known answer. Note
-this is a gap in THIS test, not a missing capability: env/sep_kmac_golden.py is a
-pure-Python FIPS-202/SP800-185 KMAC model that self-tests at import against hashlib
-and the NIST sample vectors, and sep_kmac_mode_strength_rand_test already compares
-it bit-exactly against this same masked engine. Attaching it here would upgrade the
-cross-check below into a real known-answer test. The OSS port is a FRONTDOOR
+a sideload-vs-SW cross-check rather than a comparison against a known answer
+(env/sep_kmac_golden.py holds a bit-exact KMAC model; sep_kmac_mode_strength_rand_test
+compares it against this engine). The OSS port is a FRONTDOOR
 known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
 sideload output to that specific key via the SW path, and the dummy-key negative
 reference proves the key actually drives the output. Consume-proof is
@@ -27,7 +24,8 @@ VPLAN-parity checkers:
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
             sideload targets released; AES/HMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to KMAC
-  CHK-PUB   public KMAC KEY_SHARE0/1 read back zero after sideload (no key leak)
+  PUB-OBS   public KMAC KEY_SHARE0/1 read back zero after sideload. NOT a checker:
+            kmac.hjson declares them swaccess=wo, so the read cannot fail
   CHK-SIDE  sideload digest != dummy digest (the sideloaded key drives the output)
   CHK-MAC   sideload digest == SW-key(KNOWN key) digest (consume-proof: KMAC used
             exactly the KM-delivered known key)
@@ -37,7 +35,7 @@ VPLAN-parity checkers:
   CHK-ERR   KMAC ERR_CODE == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
-Accepted scope deltas vs the reference suite (documented; no silent skips):
+Scope deltas vs the reference suite:
   * Like the reference suite, no bit-exact KMAC golden -- the consume-proof is the cross-check.
     The OSS port strengthens it with a KNOWN distinct-word key (vs the reference suite's
     backdoor-reconstructed KM-generated key), so no backdoor and no key/mask
@@ -131,7 +129,7 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         self.logger.info("CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox")
 
         # --- Frontdoor consume-proof: load known key -> transfer -> keyed MAC ---
-        # CHK-A: provision the KNOWN key into a KPV handle (no backdoor needed).
+        # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_KMAC)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
@@ -173,8 +171,8 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
             f"KMAC not released for the transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+KMAC released, AES/HMAC/OTBN "
-            "parked (SW_RESET_N=0x%02x)",
+            "CHK-ISO key-bus isolation PASS: only KM+KMAC released, "
+            "AES/HMAC/OTBN parked (SW_RESET_N=0x%02x)",
             rst,
         )
 
@@ -183,19 +181,21 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to KMAC)")
 
-        # CHK-PUB: the sideloaded key is NOT exposed on the public KEY_SHARE CSRs.
+        # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero. Logged, not scored
+        # -- kmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL.
         s0_pub, s1_pub, ctl_pub = await self.kmac.read_public_key_shares()
         assert all(w == 0 for w in s0_pub + s1_pub), (
             "KMAC public KEY_SHARE0/1 not all zero after sideload (key leak): "
             f"s0={[hex(w) for w in s0_pub if w]} s1={[hex(w) for w in s1_pub if w]}"
         )
         assert ctl_pub != 0, (
-            "CHK-PUB positive control failed: KMAC STATUS read back 0 over the same "
+            "PUB-OBSERVATION positive control failed: KMAC STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
         self.logger.info(
-            "CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)",
+            "PUB-OBSERVATION KMAC public KEY_SHARE0/1 frontdoor reads zero after "
+            "sideload. Not scored: kmac.hjson declares them swaccess=wo, so this read "
+            "cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,
         )
 

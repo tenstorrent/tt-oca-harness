@@ -14,10 +14,6 @@
  * 4. Test CMDINVAL error with invalid SPEED=3
  * 5. Test CSIDINVAL error with CSID > NUM_CS
  * 6. Verify ERROR_STATUS W1C clear
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_cmd_queue_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -76,23 +72,23 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
+    spi_controller__CONTROL_t ctrl;
     spi_controller__STATUS_t status;
-    spi_controller__CMD_t cmd;
+    spi_controller__COMMAND_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
 
     /* Enable controller */
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure clock */
-    spi_controller__CFG_t cfg;
+    spi_controller__CONFIGOPTS_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = spi_clkdiv();
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     /* Step 1: Verify CMDQD initial state */
     printf("\nStep 1: Command queue initial state\n");
@@ -112,7 +108,7 @@ int main(void) {
     /* Step 3: Issue valid command (positive control before negative tests) */
     printf("\nStep 3: Issue valid command (TX, Standard, LEN=3)\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x9F000000);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -123,7 +119,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD issued: LEN=%u, SPEED=%u, DIR=%u, CSAAT=%u\n", cmd.f.LEN, cmd.f.SPEED,
            cmd.f.DIRECTION, cmd.f.CSAAT);
 
@@ -148,8 +144,8 @@ int main(void) {
     cmd.f.LEN = 0;
     cmd.f.SPEED = 3; /* reserved speed → CMDINVAL */
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x00);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_error_bit(err_cmdinval_set, TIMEOUT_LIMIT, "CMDINVAL")) {
         pass = 0;
@@ -173,8 +169,8 @@ int main(void) {
     cmd.f.LEN = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x00);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_error_bit(err_csidinval_set, TIMEOUT_LIMIT, "CSIDINVAL")) {
         pass = 0;

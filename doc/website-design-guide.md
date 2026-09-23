@@ -17,7 +17,7 @@ The site is built with [Antora](https://antora.org), a static site generator for
 | Integrator Guide | `ocah-integrator-guide` | Yes |
 | Programmer's Guide | `ocah-programmer-guide` | Yes |
 | Application Notes | `ocah-appnotes` | Yes |
-| Contributing | `ocah-contributing` | Yes |
+| Getting Started Guide | `ocah-starting` | Yes |
 
 **Home is the site's entry point.** `antora-playbook.yml`'s `site.start_page` points at `ocah-home::index.adoc`. 
 Home is genuinely separate front-matter content (feature overview, motivation, use cases, licensing) rather than a book, and is structured as independent linked pages rather than a book-style `include::` chain.
@@ -38,10 +38,10 @@ Deployment is via GitHub Actions (`.github/workflows/doc.yml`), which builds and
 This is the single most important architectural fact for anyone editing content under `hw/`.
 
 `doc/stage-docs.sh` runs once per component during its build `-setup` step. 
-For **every** component — including Home and Contributing, neither of which has any content directly about SEP, SMC, DTP, or the IP catalog — it stages five Antora modules: 
+For **every** component — including Home and the Getting Started Guide, neither of which has any content directly about SEP, SMC, DTP, or the IP catalog — it stages five Antora modules: 
 - `ROOT` (that component's own pages) 
 - `smc`, `sep`, `dtp`
-- `ip` (a full, independent copy of the shared hardware documentation from `hw/sys/{smc,sep,dtp}/doc` and every `hw/ip/*/doc`, `hw/common/axi/*/doc`, plus vendor overlay register partials).
+- `ip` (a full, independent copy of the shared hardware documentation from `hw/sys/{smc,sep,dtp}/doc` and every `hw/ip/*/doc`, plus vendor overlay register partials).
 
 Practically, this means:
 - Editing a file under `hw/sys/smc/doc/` or `hw/ip/*/doc/` affects **every** component's build, not just whichever book you think of as "the SMC book" or "the peripherals book" — there isn't one; the same source is duplicated six times over.
@@ -69,7 +69,7 @@ The navbar contains:
 - The OCA logo and site title, in-flow (not centered — centering caused overlap with the menus at narrower widths). **The logo is the site's link back to Home**.
 - A search box.
 - Three dropdown menus: 
-  - **Guides** links to each book's home page — TRM, Integrator Guide, Programmer's Guide, Application Notes, Contributing, in that order 
+  - **Guides** links to each book's home page — Getting Started, TRM, Integrator Guide, Programmer's Guide, Application Notes, in that order 
   - **Downloads** PDF downloads for every book that has one — all five except Home
   - **Datasheets** per-subsystem datasheet PDFs, kept as a separate menu from Downloads for clarity, since combining them read as cluttered.
 - A Tenstorrent logo linking to tenstorrent.com.
@@ -92,7 +92,7 @@ This is Antora's native, content-driven navigation tree — generated automatica
 For the book components, this is deliberately kept **flat, at chapter level only** — no deep per-section sub-entries. 
 This matches the single-file PDF's own chapter structure and avoids the numbering/duplication problems that arise if HTML and PDF chapter structures diverge.
 
-Contributing's `nav.adoc` groups its eight sub-pages into two labeled sections rather than a flat list, since Contributing's content is two audiences' worth of material.
+Getting Started's `nav.adoc` groups its eight sub-pages into two labeled sections rather than a flat list, since Getting Started's content is two audiences' worth of material.
 The matching PDF structure achieves the same visual grouping via two `== ` group headings with `leveloffset=+1` applied to the includes underneath each, so the included 
 pages nest correctly one level below the group heading rather than becoming siblings of it.
 
@@ -261,7 +261,7 @@ appearing correctly in navigation and the switcher panel, rather than being hidd
 not dynamically generated from the component catalog — favors robustness over the small ongoing cost of adding one line per new book/download.
 - **Flat, chapter-level-only left navigation for the books**
 matching the PDF's own chapter structure, rather than deep per-section navigation entries — avoids numbering/duplication issues between HTML and PDF. 
-Contributing's two-section grouping is a deliberate exception.
+Getting Started's two-section grouping is a deliberate exception.
 - **Per-page (not per-site) section numbering is accepted as-is.** 
 A genuine Antora limitation, not something to "fix" by merging content into longer pages.
 - **Every component stages its own full copy of the shared hardware documentation**
@@ -276,6 +276,8 @@ on the dashboard mockup and similar status displays — legibility of the pass/f
 - **Missing PDFs degrade gracefully, not fatally.**
 The staging step that copies each component's PDF into the deployed site's downloads area checks for the file's existence first; 
 a missing PDF produces a build-time warning and is skipped, rather than failing the entire site build.
+- **Datasheets are standalone PDF products, not Antora components.**
+The shared source structure and theme live under `doc/datasheets/`; `make ocah-doc-datasheets-pdf` validates and renders the available sheets, and the normal staging step copies them into the site's `downloads/` directory. Datasheet links for products without an authored sheet continue to degrade gracefully as described above.
 - **No CSS `@import` chains** 
 Every stylesheet is linked explicitly, to keep it visible and avoid silent link failures.
 
@@ -348,4 +350,4 @@ Reports a single count of how many were excluded, not a per-file list.
 **Known limitations, worth knowing before relying on it for something load-bearing:**
 - It follows `include::` and `image::`/`image:` only — not `xref:` links. In practice this shouldn't miss real content.
 - `:imagesdir:` tracking assumes the attribute is set once and doesn't change mid-document.
-- The register-table detection heuristic is specific to the exact html5/pdf same-basename pairing convention described above. 
+- The register-table detection heuristic is specific to the exact html5/pdf same-basename pairing convention described above.

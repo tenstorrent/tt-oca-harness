@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_cpu_firmware_boot_test (DV Skill 1.5 / SMC_002 rev 3).
+"""Sequence for smc_cpu_firmware_boot_test (SMC_002).
 
 Emits exact STEP/CHK evidence for reset-vector fetch, ROM-as-target,
 clk_smc LIVE consumer advance, and eFuse sense completion.
@@ -75,11 +75,11 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             )
             return
 
-        # `is_resolvable` here and at :74 is a 4-state precondition, not a
-        # check: under Verilator (2-state) it is constant-true, so the `-1` /
-        # `continue` branches are unreachable in the retained evidence. The
-        # fail-capable part of this helper is the 0->1 transition requirement
-        # and the bounded expiry raise below ([NO-DUMMY-DEAD-CODE]).
+        # `is_resolvable` here and in the loop below is a 4-state precondition,
+        # not a check: under Verilator (2-state) it is constant-true, so the
+        # `-1` / `continue` branches are unreachable there. The fail-capable
+        # part of this helper is the 0->1 transition requirement and the
+        # bounded expiry raise below ([NO-DUMMY-DEAD-CODE]).
         val = (
             int(dut.tb_fuse_sense_done.value) if dut.tb_fuse_sense_done.value.is_resolvable else -1
         )
@@ -121,12 +121,10 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         self._mark_step("S1", "SETUP clocks/resets; CPU BFM observability")
         await check_cpu_bfm_observability()
         assert int(dut.powergood_stable_o.value) == 1
-        # PRECONDITION, not a check: every retained run of this testcase is
-        # Verilator (2-state), where `is_resolvable` cannot be False, so this
-        # line has no FAIL-ON path in the evidence that exists; it serves
+        # PRECONDITION, not a check: under Verilator (2-state) `is_resolvable`
+        # cannot be False, so this line has no FAIL-ON path there; it serves
         # the 4-state simulators. The verdict-bearing compares on this path are
-        # the value compares at :104, :113, :148, :155, :166 and :192
-        # ([NO-DUMMY-DEAD-CODE]).
+        # the value compares in S2 and S3 below ([NO-DUMMY-DEAD-CODE]).
         assert dut.rst_primary_smc_clk_no.value.is_resolvable
 
         # S2 — eFuse sense completion (before vector release)

@@ -36,9 +36,20 @@ _MAX_RUN_CYCLES = 4_000_000
 # Markers that must appear on the ROM's scratch virtual console.
 #
 #   SMC_MEM_CHK        boot-ROM stage: the SMC memory check ran
-#   MANIFEST_HASH_OK   the ROM reports it validated the manifest hash
-#   PLD_HASH_OK        the ROM reports it validated the payload hash
+#   ROM_HASH_VERIFIED  the ROM recomputed its own hash and it matched
+#   MANIFEST_OK        the ROM validated the manifest (framing + manifest hash)
+#   PAYLOAD_OK         the ROM validated the payload (hash, hash chain, TOC entries)
+#   MEAS_BOOT_STATE_OK the boot-state measurement was enrolled
 #   BL1, FUSE_CHK      emitted by the copied payload AFTER handoff
+#
+# ROM_HASH_VERIFIED is the exception to the caveat below: it is emitted only after
+# the ROM recomputes SHA-256 over its own .text+.metadata and byte-compares it
+# against the embedded build-time hash, so it is a real positive result rather than
+# a report of intent. Requiring it also catches a build whose insert-rom-sha256.py
+# step was skipped -- that leaves the embedded hash all zeros, which fails the parse.
+#
+# They now cover strictly more: the OCA library checks the
+# payload hash chain and every TOC entry hash, not just the payload hash.
 #
 # The pair at the end is what evidences the transfer of control: those two strings
 # exist only in the BL1 source, nowhere in the boot-ROM sources. The two hash
@@ -47,8 +58,10 @@ _MAX_RUN_CYCLES = 4_000_000
 # rejected. Nothing here corrupts one, so the negative direction is untested.
 _REQUIRED_ROM_MARKERS = (
     "SMC_MEM_CHK",
-    "MANIFEST_HASH_OK",
-    "PLD_HASH_OK",
+    "ROM_HASH_VERIFIED",
+    "MANIFEST_OK",
+    "PAYLOAD_OK",
+    "MEAS_BOOT_STATE_OK",
     "BL1",
     "FUSE_CHK",
 )
@@ -64,7 +77,6 @@ class sep_rom_non_secure_boot_test(sep_base_test):
 
     # Gate on the ROM/BL1 verdict word in cold_scratch[0] rather than the
     # outbound mailbox. Inherited by every subclass in this directory.
-    # See dv/docs/rom_verdict_scratch0_migration.md.
     verdict_source = "scratch0"
 
     def build_phase(self) -> None:
@@ -90,9 +102,9 @@ class sep_rom_non_secure_boot_test(sep_base_test):
         try:
             # No TCM staging: the ROM runs from Boot ROM (+sep_boot_rom_hex) and
             # pulls BL1 off SPI into ICCM itself, so there is no firmware image for
-            # the tcm_load_i backdoor to place. That backdoor also gave every
-            # ICCM/DCCM row valid ECC; DCCM now gets it from the vector.S scrub and
-            # ICCM from the DMA that loads BL1, within the loaded image only.
+            # the tcm_load_i backdoor to place. Valid ECC comes from the vector.S
+            # scrub for DCCM and from the DMA that loads BL1 for ICCM, within the
+            # loaded image only.
             await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
             await self.poll_boot(
                 self.sb,

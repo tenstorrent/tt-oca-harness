@@ -40,18 +40,18 @@ module entropy_ripple_divider #(
       if (i == 0) begin : gen_first_stage
         // First stage: clocked by input clock
         prim_dffrxq u_div_ff (
-          .i_CK (clk_i),
-          .i_D  (div_qb[i]),
-          .i_RN (rst_ni),
-          .o_Q  (div_q[i])
+          .clk_i (clk_i),
+          .d_i  (div_qb[i]),
+          .rst_ni (rst_ni),
+          .q_o  (div_q[i])
         );
       end else begin : gen_ripple_stage
         // Subsequent stages: clocked by previous stage's Q output
         prim_dffrxq u_div_ff (
-          .i_CK (div_q[i-1]),
-          .i_D  (div_qb[i]),
-          .i_RN (rst_ni),
-          .o_Q  (div_q[i])
+          .clk_i (div_q[i-1]),
+          .d_i  (div_qb[i]),
+          .rst_ni (rst_ni),
+          .q_o  (div_q[i])
         );
       end
 

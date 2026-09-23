@@ -1,22 +1,34 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle carrying the encrypted-payload class key.
 #
 # sep_efuse_class_key.toml is the TEST_DEV version of this file, used by
-# sep_firmware_encrypted_boot_test. That test picks TEST_DEV deliberately, so a
+# sep_rom_oca_encrypted_boot_test. That test picks TEST_DEV so a
 # signature failure cannot mask a decryption failure.
 #
 # sep_decryption_failure_terminal_test needs the opposite trade. Its stimulus is a
 # corrupted CIPHERTEXT, and the manifest is re-hashed and re-signed with the dev0
 # key afterwards (cocotb/env/sep_payload_mutate.py), so the signature is valid by
 # construction and cannot mask anything. PROD then buys the stronger precondition:
-# secure_boot_enabled() enforces the crypto chain from the LIFECYCLE rather than
-# from a manifest flag (manifest_load.c:278-288), so the run cannot silently
+# plat_is_secure_boot_active() enforces the crypto chain from the LIFECYCLE
+# (oca_platform.c) rather than from a manifest flag, so the run cannot silently
 # degrade to a non-secure boot in which the payload is never decrypted at all.
 #
-# CLASS_KEY is byte-identical to sep_efuse_class_key.toml: it is the KBKDF root
-# the ROM derives the payload AES key from, and it must stay equal to the key
-# pack_images.py encrypted with (configs/encrypted_boot_test.yaml
-# encryption_key_input) or the payload would decrypt to garbage for a reason this
-# testcase did not plant. It is a published test vector, not a device secret.
+# CLASS_KEY is the KBKDF root the ROM derives the payload AES key from, and it
+# must equal the secret the packer encrypted with -- configs/
+# oca_encrypted_boot_test.yaml `encryption_secret`, the 32 bytes 00 01 .. 1f --
+# or the payload decrypts to garbage for a reason this testcase did not plant.
+# It is a published test vector, not a device secret.
+#
+# Stored little-endian, so the byte at fuse offset 0 is the low byte of the
+# value below; sep_rom_oca_encrypted_boot_test programs the same bytes as
+# little-endian 32-bit words and that image decrypts, which is the cross-check.
+#
+# The value here used to be a 16-byte pre-OCA key left over from AES-128. The
+# ROM reads 32 bytes and this config is AES-256, so every payload decrypted to
+# garbage and stripped a random PKCS#7 pad: AES_PAD_BAD on BOTH slots, since the
+# two carry identical ciphertext.
 #
 # SBOOT_DIS stays 0 so nothing can opt out of the crypto chain.
 
@@ -26,4 +38,4 @@
 
 [CLASS_KEY]
   [CLASS_KEY.fields.key]
-  value = 0x0000000000000000000000000000000054e01f1d0eb208a04dbd502a53bda99b
+  value = 0x1f1e1d1c1b1a191817161514131211100f0e0d0c0b0a09080706050403020100

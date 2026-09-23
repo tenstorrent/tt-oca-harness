@@ -55,6 +55,24 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
             cfg.expect_addr,
         )
 
+        await remap.set_filter_enable(cfg, False)
+        self.env.axi_monitor.arm_expected_decerr(1)
+        closed = remap_probe_seq(cfg.access_addr, expect_error=True)
+        await self.start_seq(closed)
+        assert closed.resp_code == RESP_DECERR, (
+            f"allow-listed remapped 0x{cfg.access_addr:08x} resp={closed.resp_code} "
+            f"with the outbound entry disabled, expected DECERR "
+            f"(target 0x{cfg.expect_addr:08x} just completed OKAY)"
+        )
+        self.logger.info(
+            "CHK-FILTER-DISABLE PASS: %s r%d access 0x%08x -> DECERR "
+            "with the allow entry disabled (same remapped target)",
+            cfg.bank,
+            cfg.region,
+            cfg.access_addr,
+        )
+        await remap.set_filter_enable(cfg, True)
+
         self.env.axi_monitor.arm_expected_decerr(1)
         bad = remap_probe_seq(cfg.forbidden_addr, expect_error=True)
         await self.start_seq(bad)
@@ -68,6 +86,23 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
             cfg.bank,
             cfg.forbidden_region,
             cfg.forbidden_addr,
+        )
+        self.env.axi_monitor.arm_expected_decerr(1)
+        neighbor = remap_probe_seq(cfg.neighbor_addr, expect_error=True)
+        await self.start_seq(neighbor)
+        assert neighbor.resp_code == RESP_DECERR, (
+            f"same-region neighbor 0x{cfg.neighbor_addr:08x} resp={neighbor.resp_code}, "
+            f"expected DECERR (translates to 0x{cfg.neighbor_expect:08x}, "
+            f"outside the one-beat allow at 0x{cfg.expect_addr:08x})"
+        )
+        self.logger.info(
+            "CHK-FILTER-DROP PASS: %s r%d access 0x%08x -> DECERR "
+            "(translates to 0x%08x, outside the one-beat allow at 0x%08x)",
+            cfg.bank,
+            cfg.region,
+            cfg.neighbor_addr,
+            cfg.neighbor_expect,
+            cfg.expect_addr,
         )
         # Config report, not a checker. The seed picks one region and one entry,
         # and a bound on an index the same seed generated cannot fail. The

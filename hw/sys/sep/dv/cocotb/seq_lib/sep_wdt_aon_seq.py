@@ -7,7 +7,7 @@ CPU-LSU master (no_cpu). Exercises the aon_timer internals beyond the bark/bite/
 story: the WKUP (wakeup) timer + its wkup_expired RW1C status, the WDOG
 counter/pet, and the WDOG_REGWEN config-lock.
 
-Register map (vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl; offsets verified):
+Register map (vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl):
   WKUP_CTRL   +0x04  enable[0], prescaler[12:1]
   WKUP_THOLD  +0x08 (hi) / +0x0C (lo)   64-bit threshold
   WKUP_COUNT  +0x10 (hi) / +0x14 (lo)   64-bit counter (RW by sw + hw)
@@ -19,8 +19,9 @@ Register map (vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl
   WKUP_CAUSE  +0x34  wakeup-request; level-held, AON-domain, cleared by WRITING 0
                      once the count>=thold condition is gone
 WDOG_REGWEN gates WDOG_CTRL / WDOG_BARK_THOLD / WDOG_BITE_THOLD only
-(aon_timer_reg_top.sv src_regwen_i): the WKUP registers and WDOG_COUNT stay
-writable while the watchdog config is locked.
+(aon_timer.hjson regwen linkage, checked at the CHK-REGWEN-SCOPE site): the
+WKUP registers and WDOG_COUNT stay writable while the watchdog config is
+locked.
 The WDT runs on clk_wdt (~1000x slower than the core clock in this env); the block
 is always clocked (no CLOCK_GATE_CTRL ungate needed).
 """
@@ -54,7 +55,10 @@ WKUP_PRESCALER_SHIFT = WDT_TIMER.field_lsb("WKUP_CTRL", "prescaler")
 WDOG_ENABLE = WDT_TIMER.field_mask("WDOG_CTRL", "enable")
 INTR_TEST_WKUP_EXPIRED = WDT_TIMER.field_mask("INTR_TEST", "wkup_timer_expired")
 INTR_WKUP_EXPIRED = WDT_TIMER.field_mask("INTR_STATE", "wkup_timer_expired")
+INTR_WKUP_LSB = WDT_TIMER.field_lsb("INTR_STATE", "wkup_timer_expired")
 INTR_WDOG_BARK = WDT_TIMER.field_mask("INTR_STATE", "wdog_timer_bark")
+WKUP_CAUSE_BIT = WDT_TIMER.field_mask("WKUP_CAUSE", "cause")
+WKUP_CAUSE_LSB = WDT_TIMER.field_lsb("WKUP_CAUSE", "cause")
 
 RESP_OKAY = 0
 
@@ -88,9 +92,10 @@ class SepWdtCfg:
         self.bark_prelock = rng.randrange(0x1000, 0x1_0000)  # pre-lock BARK_THOLD
         self.bark_postlock = self.bark_prelock ^ 0xFFFF  # distinct locked-write attempt
         # WKUP_CTRL.prescaler: the wakeup counter advances once every
-        # (prescaler + 1) clk_wdt ticks (aon_timer_core.sv wkup_incr), so a value
-        # well above 1 makes the divided rate distinguishable from prescaler=0
-        # inside one measurement window.
+        # (prescaler + 1) ticks -- the OpenTitan AON Timer specification's
+        # cycles-per-tick rule, carried by sep_spec_tables -- so a value well above
+        # 1 makes the divided rate distinguishable from prescaler=0 inside one
+        # measurement window.
         self.wkup_prescaler = rng.randrange(24, 64)
         # Post-lock WKUP_THOLD_LO probe value: a register the WDOG lock must NOT
         # reach. Distinct from every threshold above so the readback is attributable.

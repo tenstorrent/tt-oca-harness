@@ -3,6 +3,7 @@
 """KM key/policy vault: slot extent, SRAM write-lock, and the KPV seal.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_vault.parhex. RANDCFG.
+Loaded image md5 8d1c9f0f40e680d11e15a37008f65fa9.
 Not ``rom_main``: KPV CTRL and SRAM_LOCK are on the KM CPU bus. The seal
 lives here rather than on the mailbox command set because no command
 seals a slot -- over the mailbox an erase always frees, so the retire
@@ -12,7 +13,7 @@ region and seal/free slot pair through the mailbox; the ROM walks slot
 the selected SRAM region and W1C-clears the violation / IRQ, then runs
 the seal contrast: the same erase retires a sealed slot and frees an
 unsealed one.
-Result flags in KM SRAM word0 (the signed-off ``km_sram_word0_o`` probe).
+Result flags in KM SRAM word0 (the ``km_sram_word0_o`` probe).
 """
 
 from __future__ import annotations
@@ -89,7 +90,7 @@ class sep_km_key_policy_vault_test(sep_base_test):
         _bit(FLAG_LOCKUSE, "CHK-LOCKUSE")
         self.logger.info(
             "CHK-LOCKUSE PASS: key-data read of the lock_use slot raised SLVERR and "
-            "returned zero data"
+            "returned zero, after a known non-zero store landed on that slot"
         )
         _bit(FLAG_EXTENT, "CHK-EXTENT")
         self.logger.info("CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")

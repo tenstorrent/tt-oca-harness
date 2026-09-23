@@ -5,17 +5,17 @@
 MODEL-BACKED, DECLARED. `tb_efuse_otp_word0` / `tb_efuse_programmed_word0` tap
 the adopter-supplied simulation stand-in for the foundry OTP macro,
 `hw/ip/efuse/dv/models/efuse_bank_model.sv`, instantiated at
-`hw/top/smc_ip_integration.sv:102-115`. Its set-once behaviour is `onwrite =
-woset` in `hw/ip/efuse/regs/efuse_bank.rdl`, a register file no other module in
+`hw/top/smc_ip_integration.sv:147-160`. Its set-once behaviour is `onwrite =
+woset` in `hw/ip/efuse/dv/models/regs/efuse_bank.rdl`, a register file no other module in
 `hw/` instantiates, and its program-failure injection
-(`efuse_bank_model.sv:122`) is a `+smc_efuse_prog_fail_count` plusarg with no
+(`efuse_bank_model.sv:107-120`) is a `+smc_efuse_prog_fail_count` plusarg with no
 silicon counterpart. Nothing observed on those two probes is evidence that a
 fuse burns in silicon.
 
 DEFENDS (real DUT RTL):
   * Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP
-    window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:683`,
-    loaded by the sense FSM at `efuse_shadow_regs.sv:536-556`).
+    window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:674-679`,
+    loaded by the sense FSM at `efuse_shadow_regs.sv:512-540`).
   * The eFuse interface controller issues a PROGRAM command, latches the
     readback comparison result and reports it in `PROGRAM_STATUS`
     (`efuse_interface_shim.sv:433` -> `efuse_program_interface.sv:160`), with
@@ -29,7 +29,7 @@ DEFENDS (model-scored, not silicon):
     reached the bank; it says nothing about fuse physics.
 
 DOES NOT DEFEND:
-  * Samsung macro analog timing / voltage.
+  * Foundry OTP macro analog timing / voltage.
   * Full OCCP ROM secure-boot stack (see smc_occp_sanity_secure_error_test).
 """
 
@@ -45,20 +45,18 @@ from .smc_efuse_vip_utils import efuse_preload_word_at
 EFUSE_STATUS = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR")
 EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 # Addressed and NAMED by the same generated symbol. At this offset the shadow
-# block serves raw shadow word 0 (`efuse_shadow_regs.sv:683` returns
+# block serves raw shadow word 0 (`efuse_shadow_regs.sv:674-679` returns
 # `shadow_efuse.values[paddr>>2]` for the whole map window) rather than the
 # lock fields the register name implies, which is why the value read back is
 # fuse content and not the register's 0x0 reset.
 SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 
 # Word 0 of the preload asset the bank model $readmemh's at time 0, derived from
-# the asset at run time rather than transcribed, so it follows the asset instead
-# of rotting into a false identity.
+# the asset at run time so it follows a regenerated asset.
 OTP_WORD0_MARKER = efuse_preload_word_at(SMC_EFUSE_MAP_LOCKS)
 
-# PROGRAM_CTRL field masks by generated symbol, matching the sibling eFuse
-# sequences. Hand-written shifts are correct-but-unsourced and would keep
-# asserting an old field identity after an eFuse RDL regeneration.
+# PROGRAM_CTRL field masks by generated symbol, so an eFuse RDL regeneration
+# moves them with it.
 _PROG_DATA = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_DATA_bm")
 _PROG_GO = efuse_ifc_u32("EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_GO_bm")
 _PROG_READBACK = efuse_ifc_u32(
@@ -91,17 +89,15 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         clk = dut.clk_smc_i
 
         # The shared helper waits for the fuse-sense handshake AND the delayed
-        # fuse_reset / warm-reset release the eFuse CSR block sits behind, so no
-        # magic settle count is needed here.
+        # fuse_reset / warm-reset release the eFuse CSR block sits behind.
         await self.wait_fuse_sense_done()
 
         # PRELOAD PLUMBING, not sense proof. Both sides of this compare are
         # supplied by the testbench: the left is the bank model's own storage and
         # the right is the asset the model $readmemh'd into it, with no DUT RTL
-        # in between (fuse sense only READS this array). It is kept because it
-        # localises a dropped `+smc_efuse_hex` plusarg to one line instead of
-        # letting it surface as a confusing shadow-read mismatch, and it is
-        # named so no reader credits it as OTP or sense evidence.
+        # in between (fuse sense only READS this array). It localises a dropped
+        # `+smc_efuse_hex` plusarg to one line instead of a later shadow-read
+        # mismatch.
         otp0 = int(dut.tb_efuse_otp_word0.value)
         assert otp0 == OTP_WORD0_MARKER, (
             f"eFuse bank-model preload plumbing: model storage word 0 is "
@@ -115,10 +111,9 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
             otp0,
         )
 
-        # `tb_efuse_programmed_word0` is `assign`ed from `tb_efuse_otp_word0` at
-        # `hw/sys/smc/dv/tb/tb_top.sv:1358`, so the two probes are one net. Only
-        # one of them is sampled below; comparing them to each other would be an
-        # equality that holds by construction.
+        # `tb_efuse_programmed_word0` is `assign`ed from `tb_efuse_otp_word0` in
+        # `hw/sys/smc/dv/tb/tb_top.sv`, so the two probes are one net and are
+        # never compared to each other.
 
         # SENSE + SHADOW TRANSPORT, real DUT RTL. SEP_IN AXI -> SMC fabric ->
         # efuse_shadow_reg_access_control -> efuse_shadow_regs, whose word 0 was

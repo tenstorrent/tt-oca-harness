@@ -357,6 +357,71 @@ package i2c_reg_pkg;
     } i2c__in_t;
 
     typedef struct {
+        logic value;
+    } i2c__INTR_STATE__RX_OVERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__SCL_INTERFERENCE__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__SDA_INTERFERENCE__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__STRETCH_TIMEOUT__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__SDA_UNSTABLE__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__CMD_COMPLETE__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__UNEXP_STOP__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__HOST_TIMEOUT__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__SMBALERT__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__CONTROLLER_TX_FIFO_ERROR__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__CONTROLLER_RX_FIFO_ERROR__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__TARGET_TX_FIFO_ERROR__out_t;
+
+    typedef struct {
+        logic value;
+    } i2c__INTR_STATE__TARGET_RX_FIFO_ERROR__out_t;
+
+    typedef struct {
+        i2c__INTR_STATE__RX_OVERFLOW__out_t RX_OVERFLOW;
+        i2c__INTR_STATE__SCL_INTERFERENCE__out_t SCL_INTERFERENCE;
+        i2c__INTR_STATE__SDA_INTERFERENCE__out_t SDA_INTERFERENCE;
+        i2c__INTR_STATE__STRETCH_TIMEOUT__out_t STRETCH_TIMEOUT;
+        i2c__INTR_STATE__SDA_UNSTABLE__out_t SDA_UNSTABLE;
+        i2c__INTR_STATE__CMD_COMPLETE__out_t CMD_COMPLETE;
+        i2c__INTR_STATE__UNEXP_STOP__out_t UNEXP_STOP;
+        i2c__INTR_STATE__HOST_TIMEOUT__out_t HOST_TIMEOUT;
+        i2c__INTR_STATE__SMBALERT__out_t SMBALERT;
+        i2c__INTR_STATE__CONTROLLER_TX_FIFO_ERROR__out_t CONTROLLER_TX_FIFO_ERROR;
+        i2c__INTR_STATE__CONTROLLER_RX_FIFO_ERROR__out_t CONTROLLER_RX_FIFO_ERROR;
+        i2c__INTR_STATE__TARGET_TX_FIFO_ERROR__out_t TARGET_TX_FIFO_ERROR;
+        i2c__INTR_STATE__TARGET_RX_FIFO_ERROR__out_t TARGET_RX_FIFO_ERROR;
         logic intr;
     } i2c__INTR_STATE__out_t;
 

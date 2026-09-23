@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD_END with no demotion request at all -> not demoted, both registers locked.
 
-Outcome **O1** of the [C15] decision table in
+Outcome **O1** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD_END stimulus it shares with its
 sibling is in ``rom_fw/sep_demotion_prod_end_base.py``.
 
@@ -13,7 +13,7 @@ every combination of them produces this same outcome. Batch R3 already covered O
 with ``sep_firmware_demotion_decision_auth_flag_0_prod_end_test``. This row drives
 the *baseline* combination -- all three inputs clear -- which is the one
 combination for which the PROD_END short-circuit is not even load-bearing: a ROM
-that evaluated ``selector_bits[17]`` first would take the ``else`` at
+that evaluated ``demotion_control`` BL1_DEMOTION_VALID first would take the ``else`` at
 ``rom_main.c``, and the only difference would be the console tokens and
 DEMOTE_2. So unlike its ``sel_bit_set`` sibling, this member is not a negative
 control on the short-circuit ORDER; it is the null stimulus.
@@ -23,7 +23,7 @@ What it does still assert, per run and on both channels:
   * that a part at PROD_END with a manifest that asks for nothing is **still**
     locked down -- ``DEMOTE: PROD_END lock`` (``rom_main.c``) and
     ``DEMOTE_LOCKED``, each exactly once and after ``MANIFEST_OK``,
-    with **every other [C15] string forbidden**. ``BL1_DEMOTE=`` and
+    with **every other [S25] string forbidden**. ``BL1_DEMOTE=`` and
     ``BL2_DEMOTE_DEC=`` absent is the direct observable that the ``else`` arm at
     never ran;
   * DEMOTE_1 = (demote 0, lock 1) **and DEMOTE_2 = (demote 0, lock 1)** read from
@@ -37,17 +37,9 @@ What it does still assert, per run and on both channels:
     word is the only run-time observable on which they differ;
   * that the ROM decoded raw LC 0x8 as PROD_END, because both slots'
     ``life_cycle_states`` are narrowed to PROD_END only and
-    ``manifest_load.c`` refuses the manifest otherwise.
+    ``oca_boot.c`` refuses the manifest otherwise.
 
-The reference expects only ``STATUS: DEMOTION_NOT_SELECTED`` for the PROD_END row
-and appends no lock expectation at all (``sep_demotion_uid_checker.py``).
-There is no architected demotion status code on this ROM, so the console tokens
-plus the register channel are the substitution -- and the DEMOTE_1/DEMOTE_2 lock
-requirements are an ADDITION derived from this ROM (``rom_main.c``,),
-not a port of anything the reference checks. Disclosed here and in the row's
-``flow_deviation``.
-
-Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot
+Needs ``+esrc_noise_force``: PROD_END enforces secure boot
 (``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN. The RSA
 assertions are untouched.
 """

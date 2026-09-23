@@ -22,13 +22,12 @@ This test reproduces BOTH reference suite verdicts:
      LSU bus). Plus the base test's automatic post-sense shadow compare proves the
      sensed CHIPLET_UID actually equals the staged image (0xDEADBEEF).
 
-OSS delta vs the reference suite (documented): the reference suite observer deposits an UVM_DONE marker to
-release a waiting host loop; cocotb cannot deposit an internal register without a
-force port, so the OSS host loop is a FIXED contended window and the observer is
+Delta vs the reference suite: its observer deposits a UVM_DONE marker to release a
+waiting host loop; cocotb cannot deposit an internal register without a force
+port, so here the host loop is a FIXED contended window and the observer is
 read-only. Mutual non-starvation is proven by the host completing all
 CONTENDED_LOOPS (final COUNT) AND the KM making progress (CHANGES > 0) in the same
-window -- equivalent-or-stronger evidence than a single sampled before/after
-window plus a release handshake.
+window.
 """
 
 from __future__ import annotations
@@ -165,6 +164,6 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
             f"{bad_tag} KM MMR tag/ordering failures (cross-attribution at the mux)"
         )
         self.logger.info(
-            "coexist observer PASS: both CPUs contended at the eFuse mux, host "
+            "CHK-COEXIST PASS: both CPUs contended at the eFuse mux, host "
             "data uncorrupted, KM progress monotonic and correctly attributed"
         )

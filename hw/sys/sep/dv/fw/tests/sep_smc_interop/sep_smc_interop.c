@@ -72,8 +72,8 @@ __attribute__((noinline, used)) void sep_smc_interop_fail_loop(void) {
 
 /*
  * Write a 64-bit filter field as two 32-bit stores. The SEP CPU is RV32; a WRITE_REG64 to a
- * CSR whose upper half lands off-map faults (that is what wedged the previous 002 firmware),
- * so program every 64-bit filter/aperture field with explicit 32-bit CSR writes.
+ * CSR whose upper half lands off-map faults, so program every 64-bit filter/aperture field
+ * with explicit 32-bit CSR writes.
  */
 static inline void wr_filter_field32(uint32_t addr, uint64_t val) {
     WRITE_REG(addr + 0x0u, (uint32_t)(val & 0xFFFFFFFFu));
@@ -132,9 +132,9 @@ static int run_interop_sequence(void) {
     }
 
     /* Gate on the SMC "up" marker BEFORE the first SMC-scratch write: POLL (read) scratch2 for
-     * SMC_UP, exactly like smu_smc_stall_sep polls INIT_RELEASE_OK. This is what keeps the READY
-     * publish below from racing the just-released SMC clearing/initing its own scratch (the race
-     * that wedged the sep_axi_in write). On timeout, publish a fail marker and stop. */
+     * SMC_UP, exactly like smu_smc_stall_sep polls INIT_RELEASE_OK, so the READY publish below
+     * cannot race the just-released SMC clearing/initing its own scratch. On timeout, publish a
+     * fail marker and stop. */
     if (sep_smc_scratch_wait(SEP_INTEROP_SMC_SCRATCH2_ALIAS, SEP_INTEROP_SMC_UP,
                              SEP_INTEROP_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_INTEROP_SMC_SCRATCH12_ALIAS, SEP_INTEROP_TEST_FAIL);

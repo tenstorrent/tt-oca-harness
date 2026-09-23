@@ -6,9 +6,9 @@
 # then fills in the per-block policy (which outputs each block gets).
 
 # First-party tops: dirs holding the dir-name RDL
-# (hw/{ip,sys,common/axi}/<name>/regs/<name>.rdl). System-level register sources
+# (hw/{ip,sys}/<name>/regs/<name>.rdl). System-level register sources
 # are normalized into hw/sys/<name>/regs (for example SMC and SEP); AXI network
-# and monitor elements live under hw/common/axi/<name>/regs; legacy per-RTL
+# and monitor elements live under hw/ip/<name>/regs; legacy per-RTL
 # data/registers trees are intentionally not discovered here. Role == location
 # (see doc/user_guide/regs.adoc), so discovery is a pure glob. IPs may also be
 # grouped one level deeper by family (hw/ip/<family>/<ip>/regs, e.g. jtag, uart,
@@ -21,7 +21,6 @@ ocah_reg_dirs := $(wildcard \
   $(OCAH_ROOT)/hw/ip/*/regs \
   $(OCAH_ROOT)/hw/ip/*/*/regs \
   $(OCAH_ROOT)/hw/sys/*/regs \
-  $(OCAH_ROOT)/hw/common/axi/*/regs \
   $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs)
 ocah_reg_root_if_rdl = $(if $(wildcard $(1)/$(notdir $(patsubst %/regs,%,$(1))).rdl),$(patsubst $(OCAH_ROOT)/%,%,$(patsubst %/regs,%,$(1))))
 OCAH_RDL_REG_BLOCKS := $(sort $(foreach d,$(ocah_reg_dirs),$(call ocah_reg_root_if_rdl,$(d))))
@@ -53,8 +52,6 @@ ocah_reg_file_block_id = $(patsubst $(OCAH_ROOT)/%,%,$(basename $(1)))
 OCAH_RDL_FILE_REG_FILES := $(sort $(OCAH_REG_STANDALONE_RDL_FILES) $(OCAH_EXTRA_REG_RDL_FILES))
 OCAH_RDL_FILE_REG_BLOCKS := $(foreach f,$(OCAH_RDL_FILE_REG_FILES),$(call ocah_reg_file_block_id,$(f)))
 
-OCAH_BENDER ?= bender
-ocah_bender_path = $(strip $(shell $(OCAH_BENDER) path $(1) 2>/dev/null))
 ocah_relpath = $(patsubst $(OCAH_ROOT)/%,%,$(1))
 
 # Per-id accessors: name, source root, make-safe key (ids may contain '/').
@@ -66,24 +63,35 @@ ocah_reg_key = $(subst /,_,$(1))
 # committed (a clean checkout needs no regen), so these are NOT discovered here as
 # blocks - the committed RDL is found by the globs above. This is purely the
 # regen source map for the on-demand `regen-vendor-rdl` target (see phony.mk).
-# Entry: <committed-rdl-relpath>:<bender-pkg>:<pkg-relative-hjson>[:<addrmap-name>].
-# The optional 4th field overrides the emitted addrmap name for IPs vendored under
+# Entry: <committed-rdl-relpath>:<opentitan-relative-hjson>[:<addrmap-name>].
+# The optional 3rd field overrides the emitted addrmap name for IPs vendored under
 # their upstream name but renamed in tt-oca (dma -> secure_dma, spi_host ->
 # spi_controller); reggen reproduces the same registers, only the top name differs.
 OCAH_VENDOR_HJSON_RDLS ?= \
-  vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl:opentitan:upstream/hw/ip/aes/data/aes.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:opentitan:upstream/hw/ip/hmac/data/hmac.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:opentitan:upstream/hw/ip/kmac/data/kmac.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:opentitan:upstream/hw/ip/otbn/data/otbn.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl:opentitan:upstream/hw/ip/aon_timer/data/aon_timer.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl:opentitan:upstream/hw/ip/csrng/data/csrng.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/edn/regs/edn.rdl:opentitan:upstream/hw/ip/edn/data/edn.hjson \
-  vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:opentitan:upstream/hw/ip/dma/data/dma.hjson:secure_dma \
-  vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:opentitan:upstream/hw/ip/spi_host/data/spi_host.hjson:spi_controller
+  vendor/lowRISC/opentitan/overlay/regs/aes/regs/aes.rdl:upstream/hw/ip/aes/data/aes.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:upstream/hw/ip/hmac/data/hmac.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:upstream/hw/ip/kmac/data/kmac.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:upstream/hw/ip/otbn/data/otbn.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/aon_timer/regs/aon_timer.rdl:upstream/hw/ip/aon_timer/data/aon_timer.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/csrng/regs/csrng.rdl:upstream/hw/ip/csrng/data/csrng.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/edn/regs/edn.rdl:upstream/hw/ip/edn/data/edn.hjson \
+  vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/secure_dma.rdl:upstream/hw/ip/dma/data/dma.hjson:secure_dma \
+  vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:upstream/hw/ip/spi_host/data/spi_host.hjson:spi_controller
 
 ocah_vhr_rdl     = $(word 1,$(subst :, ,$(1)))
-ocah_vhr_hjson   = $(call ocah_bender_path,$(word 2,$(subst :, ,$(1))))/$(word 3,$(subst :, ,$(1)))
-ocah_vhr_nameopt = $(if $(word 4,$(subst :, ,$(1))),--name $(word 4,$(subst :, ,$(1))))
+ocah_vhr_hjson   = $(OCAH_ROOT)/vendor/lowRISC/opentitan/$(word 2,$(subst :, ,$(1)))
+ocah_vhr_nameopt = $(if $(word 3,$(subst :, ,$(1))),--name $(word 3,$(subst :, ,$(1))))
+ocah_vhr_name    = $(basename $(notdir $(call ocah_vhr_rdl,$(1))))
+
+# Preserve each checked-in RDL's compatibility-sensitive serializer dialect.
+OCAH_VHR_UPPERCASE_FIELDS := aes csrng secure_dma spi_controller
+OCAH_VHR_FIRST_REPLICA_MULTIREGS := secure_dma
+OCAH_VHR_BASE_MULTIREG_FIELDS := aes
+OCAH_VHR_FLATTEN_MULTIREGS := csrng
+OCAH_VHR_ARRAYED_WINDOWS := spi_controller
+OCAH_VHR_NO_METADATA := aes csrng secure_dma spi_controller
+OCAH_VHR_NO_GUARD := aes csrng secure_dma spi_controller
+OCAH_VHR_NO_UDP_INCLUDE := secure_dma spi_controller
 
 # Overlay hook: extra block ids, usually variants reusing a top RDL.
 OCAH_EXTRA_REG_BLOCKS ?=
@@ -105,8 +113,6 @@ OCAH_REG_CATALOG_DIRS := \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/regs/blocks/*) \
-  $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs) \
-  $(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/include) \
   $(wildcard $(OCAH_ROOT)/hw/sys/*/dv/models/regs) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/dv/models/regs) \
   $(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs) \

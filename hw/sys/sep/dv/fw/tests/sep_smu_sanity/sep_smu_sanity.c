@@ -7,7 +7,7 @@
  * Purpose
  * -------
  *   Demonstrates that, with the real SEP RTL instantiated inside the SMU
- *   wrapper (compile_smu_chiplet_sep_rtl, +define+SEP_RTL), the SEP CPU
+ *   wrapper (compile_smu_chiplet, +define+SEP_RTL), the SEP CPU
  *   boots from its TCM and can correctly access several IP modules through
  *   the SEP local fabric.
  *
@@ -40,18 +40,15 @@
 #include "test_completion.h"
 
 /*
- * NOTE on STDOUT usage
- * --------------------
+ * STDOUT usage
+ * ------------
  * In the SMU testbench the cocotb monitor wakes on every AXI awvalid pulse on
- * the SEP ext_out interface and runs a Python coroutine to inspect the data.
- * Each printf() byte is an 8-bit AXI write and therefore induces enormous
- * cocotb VPI overhead (the prior version stalled the simulator at 27us for
- * tens of minutes of wall time).
+ * the SEP ext_out interface and runs a Python coroutine to inspect the data,
+ * so each printf() byte (an 8-bit AXI write) costs a VPI round trip.
  *
- * To keep the test fast we drop printf() entirely and rely solely on the
- * 32-bit magic-word handshake from test_completion.h (test_pass / test_fail).
- * Diagnostic information is preserved by writing failure stage IDs into the
- * SEP outbound STDOUT mailbox as 32-bit stores so they remain visible in
+ * printf() is compiled out; completion is the 32-bit magic-word handshake from
+ * test_completion.h (test_pass / test_fail). Failure stage IDs are 32-bit
+ * stores to the SEP outbound STDOUT mailbox so they remain visible in
  * waveforms / sim.log without the per-byte overhead.
  */
 #define printf(...) ((void)0)
@@ -244,9 +241,9 @@ static int kmac_sha3_256_abc(uint32_t digest_be[8]) {
     cmd.f.cmd = KMAC_CMD_START;
     WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    /* Write "abc" — must use byte stores to the SAME word-aligned base
-     * (kmac_sha3_256_test fix v2): non-word-aligned byte stores get dropped
-     * by the 64→32 AXI DW converter, so use fifo8[0] for all three bytes. */
+    /* Write "abc" — must use byte stores to the SAME word-aligned base:
+     * non-word-aligned byte stores get dropped by the 64→32 AXI DW converter,
+     * so use fifo8[0] for all three bytes. */
     {
         volatile uint8_t *fifo8 =
             (volatile uint8_t *)(uintptr_t)(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR);
@@ -304,22 +301,16 @@ static int stage_kmac(void) {
 }
 
 int main(void) {
-    /* The outbound window must be opened BEFORE the first STDOUT store.
+    /* The outbound window must be opened BEFORE the first STDOUT store. The
+     * SEP outbound filter is instantiated with BlockByDefault=1
+     * (sep_system_peripherals.sv), so an unmatched write is isolated and
+     * answered with an error, which the EL2 takes as a store access fault;
+     * crt0's _trap then jumps to _finish and the firmware dies before it can
+     * open the very window it needs.
      *
-     * An earlier revision emitted STAGE_BEACON(0) here, ahead of
-     * sep_outbound_filter_init(), assuming a pre-filter store would simply be
-     * dropped.  It is not dropped: the SEP outbound filter is instantiated
-     * with BlockByDefault=1 (sep_system_peripherals.sv), so an unmatched write
-     * is isolated and answered with an error, which the EL2 takes as a store
-     * access fault.  crt0's _trap then jumps to _finish, so the firmware dies
-     * before it can open the very window it needs -- a deadlock by
-     * construction.  Observed at SMU level as: SEP retires only as far as
-     * main+0x10, _trap runs once, then _finish spins forever having issued
-     * zero outbound AW.
-     *
-     * Beacon 0 therefore now means "main entered AND the outbound window is
-     * open".  Liveness earlier than that is covered by sep_smu_boot_health,
-     * whose evidence is SEP-local and needs no outbound path at all.
+     * Beacon 0 therefore means "main entered AND the outbound window is open".
+     * Liveness earlier than that is covered by sep_smu_boot_health, whose
+     * evidence is SEP-local and needs no outbound path at all.
      */
     sep_outbound_filter_init();
     STAGE_BEACON(0);

@@ -27,6 +27,11 @@
 `SEP_TB_IN_FIRST(logic, clk_i)
 `SEP_TB_IN(logic, clk_wdt_i)
 `SEP_TB_IN(logic, entropy_rosc_sample_clk_i)
+// Free-running reference clock for the SEP_CPU_CTRL REFERENCE_COUNTER. It is a
+// genuinely separate clock: prim_refclk_count_w_cdc counts on this edge and
+// resynchronises the value onto clk_i, so leaving it undriven freezes the
+// counter and its CDC.
+`SEP_TB_IN(logic, clk_ref_i)
 
 // Reset (driven by cocotb, active-low)
 `SEP_TB_IN(logic, rst_ni)
@@ -36,7 +41,8 @@
 `SEP_TB_IN(logic, mpc_reset_run_req)
 // TEST_EN strap (frontdoor DUT input). Latched into secure_tm on fuse-sense-done
 // (or on cold-reset release when security_disable is set). Default 0 = functional
-// mode; drive 1 before sense to open FEAT_CTRL[47:32].
+// mode; drive 1 before sense to latch secure_tm. SECURE_TM does not qualify
+// feature control.
 `SEP_TB_IN(logic, test_en_strap_i)
 // JTAG SW-reset hold (frontdoor DUT input jtag_sep_reset_ctrl_i). When 1,
 // that engine is held in SW reset regardless of SW_RESET_N, so it never
@@ -46,9 +52,10 @@
 `SEP_TB_IN(logic, jtag_hmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_kmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_trng_rst_hold_i)
+`SEP_TB_IN(logic, jtag_abr_rst_hold_i)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
-// pair onto the LCC decoder input (signed off -- no legal OTP image can present
-// one). See the force block below.
+// pair onto the LCC decoder input (no legal OTP image can present one). See
+// the force block below.
 `SEP_TB_IN(logic, lc_sigint_inject_i)
 // Token-comparator redundancy fault inject. Default 0. Encoding:
 //   3'b000 off
@@ -68,15 +75,18 @@
 //          so the presented token does not reach the result: they show that
 //          a unanimous legal pair raises no fault, not that any particular
 //          token compares a particular way.
-// Signed off -- no legal token/OTP image can break the three identical
-// compare cones. See the force block below.
+// No legal token/OTP image can break the three identical compare cones. See
+// the force block below.
 `SEP_TB_IN(logic [2:0], token_cmp_fault_inject_i)
 // Which token comparator the inject hits. Default 0.
 //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
 `SEP_TB_IN(logic [1:0], token_cmp_fault_sel_i)
+// RMA_SIP digest test-enable inject. The production test input is tied
+// low in this testbench, so the latch-freeze path has no frontdoor.
+`SEP_TB_IN(logic, token_digest_test_en_inject_i)
 // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
 // broken codeword onto the host-adapter command-integrity decoder input
-// (signed off -- software cannot emit a bad TL-UL user code). The checker
+// (software cannot emit a bad TL-UL user code). The checker
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block below.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
@@ -278,26 +288,13 @@
 // the AXI ready/valid combinational cones.
 `SEP_TB_OUT(logic [63:0], sram_word0_probe_o)
 `SEP_TB_OUT(logic [383:0], sram_payload_probe_o)
-// SMC scratch[10] (smc_base+0x390D0), the slot the ROM publishes the raw
-// DFX/MEM_REPAIR status into when it blocks the boot -- the documented
-// JTAG-readable evidence that the ROM saw the failure. Sampled rather than
-// continuously assigned: axi_sim_mem backs the SMC with an ASSOCIATIVE array,
-// which cannot appear in a continuous assign. Reads 0 until the ROM writes it.
-`SEP_TB_OUT(logic [31:0], smc_scratch10_probe_o)
-// DFX_CTRL_STATUS_SMU (smc_base+0xB800) as the SMC model actually holds it,
-// i.e. the word the ROM's MEM_REPAIR gate reads over AXI. The FAILURE arm can
-// confirm its own injection from SMC scratch[10], because the gate republishes
-// the raw value there; the PASS arm cannot, because that publication sits on
-// the failure branch and the pass branch writes nothing at all. Without this
-// probe a pass-arm test whose +sep_dft_status silently failed to apply would
-// read the tb default 0x113 -- which has mem_repair_success, mbist_done AND
-// mbist_pass set, so it would still boot and still be green, and the whole
-// discrimination the testcase rests on would be untested.
-`SEP_TB_OUT(logic [31:0], smc_dft_status_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
-// design does not implement -- see the SMC address decode check below. Any
-// test may assert this is 0; the flat axi_sim_mem cannot catch it otherwise.
+// design does not implement -- see the SMC address decode check in tb_top.
+// Any test may assert this is 0; the SMC responder is a flat memory that
+// answers every address, so nothing else catches it. The words the ROM
+// publishes into that memory (SMC scratch[10], DFX_CTRL_STATUS_SMU) are read
+// through the responder's backdoor, not through a probe port.
 `SEP_TB_OUT(logic [31:0], smc_addr_violations_o)
 `SEP_TB_OUT(logic [31:0], km_rom_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
@@ -392,7 +389,7 @@
 // sequence the adapter hands to the crypto endpoints; with a single active
 // crypto sink the adapter is in-order so AES's post-adapter beats equal this
 // stream 1:1, and each word is also chained to the CHK4 genbits golden. Mirrors
-// the reference suite's hw_axis1_* tap (sep_entropy_noise_if.sv). Read-only XMR, no force.
+// the reference suite's hw_axis1_* tap. Read-only XMR, no force.
 `SEP_TB_OUT(logic, axis1_tvalid_o)  // entropy_muxed_req[1].tvalid
 `SEP_TB_OUT(logic, axis1_tready_o)  // entropy_muxed_rsp[1].tready
 `SEP_TB_OUT(logic [31:0], axis1_tdata_o)  // entropy_muxed_req[1].tdata (32b word)
@@ -414,7 +411,22 @@
 // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
 // completion bits, used to prove reset cannot precede the slowest drain.
 `SEP_TB_OUT(logic, trng_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, trng_reset_active_probe_o)
 `SEP_TB_OUT(logic [2:0], trng_axi_isolated_probe_o)
+// Same observation for the HMAC accelerator domain. An accelerator reset
+// depends on BOTH its host path and its Key Manager path, so both isolate
+// completion bits are exposed. Each bit is named here rather than exposing the
+// packed sep_crypto_isolate_t vector, so no test has to hand-derive a field
+// position from the struct declaration.
+`SEP_TB_OUT(logic, hmac_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, hmac_host_isolated_probe_o)
+`SEP_TB_OUT(logic, hmac_km_isolated_probe_o)
+`SEP_TB_OUT(logic, kmac_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, kmac_host_isolated_probe_o)
+`SEP_TB_OUT(logic, kmac_km_isolated_probe_o)
+`SEP_TB_OUT(logic, abr_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, abr_host_isolated_probe_o)
+`SEP_TB_OUT(logic, abr_km_isolated_probe_o)
 // IP-interrupt aggregator: observation-only mirror of the 34-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
@@ -423,10 +435,11 @@
 `SEP_TB_OUT(logic [sep_pkg::NUM_INTERNAL_IRQS-1:0], sep_internal_interrupts_probe_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
+`SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)
 // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
 // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
-// SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
-// single" is this bridge. The external master still sees AxLEN=1;
+// fabric.adoc "convert burst to single" is this bridge. The external master
+// sees AxLEN=1;
 // Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
 // local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
 // m_axi ready/valid cones.
@@ -442,6 +455,44 @@
 `SEP_TB_OUT(logic, lcc_security_disable_probe_o)
 `SEP_TB_OUT(logic, lcc_sigint_err_probe_o)
 `SEP_TB_OUT(logic, secure_tm_o)
+// RMA_SIP digest-latch scan-freeze observability: the retained-digest sticky
+// latch and its enable/valid chain, tapped so a fault-injection test can
+// watch capture, hold, and DFT-freeze behavior without a force.
+`SEP_TB_OUT(logic [255:0], token_digest_sticky_o)
+`SEP_TB_OUT(logic, token_digest_valid_o)
+`SEP_TB_OUT(logic, token_digest_test_en_o)
+`SEP_TB_OUT(logic, token_digest_latch_en_pre_o)
+`SEP_TB_OUT(logic, token_digest_valid_en_pre_o)
+`SEP_TB_OUT(logic, token_digest_latch_en_o)
+`SEP_TB_OUT(logic, token_digest_valid_en_o)
+
+// eFuse read/program FSM fail-closed observability and fault injection.
+// `efuse_read_interface` and `efuse_program_interface` each hold a two-bit
+// state whose only legal encodings are 2'b01 and 2'b10; 2'b00 and 2'b11 are
+// unreachable by any frontdoor stimulus, so the fail-closed behaviour the
+// design asserts on them has no other way to be provoked. The inject inputs
+// drive one illegal encoding for one cycle; the probes are read-only taps on
+// the state and on the error/data outputs the contract names.
+`SEP_TB_IN(logic [1:0], efuse_read_state_inject_i)
+`SEP_TB_IN(logic, efuse_read_state_inject_en_i)
+`SEP_TB_IN(logic [1:0], efuse_program_state_inject_i)
+`SEP_TB_IN(logic, efuse_program_state_inject_en_i)
+`SEP_TB_OUT(logic [1:0], efuse_read_state_o)
+`SEP_TB_OUT(logic [1:0], efuse_program_state_o)
+`SEP_TB_OUT(logic, efuse_read_error_o)
+`SEP_TB_OUT(logic, efuse_read_done_o)
+`SEP_TB_OUT(logic, efuse_read_busy_o)
+`SEP_TB_OUT(logic [31:0], efuse_read_back_data_o)
+// One per interface: each drives its own command request, and checking the
+// program machine against the read machine's request would hold on any RTL.
+`SEP_TB_OUT(logic, efuse_read_cmd_req_valid_o)
+`SEP_TB_OUT(logic, efuse_program_cmd_req_valid_o)
+// The program interface's retirement outputs, so its fail-closed leg grades the
+// same contract the read leg does rather than only the absence of a command.
+`SEP_TB_OUT(logic, efuse_program_error_o)
+`SEP_TB_OUT(logic, efuse_program_done_o)
+`SEP_TB_OUT(logic, efuse_program_busy_o)
+`SEP_TB_OUT(logic [31:0], efuse_program_read_back_data_o)
 // Demotion state outputs expose the differential {~demote, demote} encoding;
 // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
 // have no DUT output, and the CPU owns their AXI frontdoor during firmware
@@ -451,24 +502,41 @@
 `SEP_TB_OUT(logic [1:0], lcc_demote_state_2_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_1_probe_o)
 `SEP_TB_OUT(logic, lcc_demote_lock_2_probe_o)
-// OTP JTAG2AXIL disable bits of DUT dbg_disable_o (frontdoor). LCC ties
-// both to 0; the fuse controller enforces access. Sliced here so cocotb
-// can read them without a packed-struct field walk.
+// Each dbg_disable_o bit as its own DUT-output port (frontdoor). Checkers
+// read these by name so a packed-struct reorder cannot swap two same-case
+// bits past the golden. The flattened vector stays for a width self-test.
+`SEP_TB_OUT(logic, dbg_disable_stap_io_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_smc_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_sep_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_extra_o)
+`SEP_TB_OUT(logic, dbg_disable_stap_host_o)
+`SEP_TB_OUT(logic, dbg_disable_dft_secure_o)
+`SEP_TB_OUT(logic, dbg_disable_dft_nonsecure_o)
+`SEP_TB_OUT(logic, dbg_disable_dfd_o)
+`SEP_TB_OUT(logic, dbg_disable_smc_jtag2axi_o)
 `SEP_TB_OUT(logic, dbg_disable_smc_otp_jtag2axi_o)
 `SEP_TB_OUT(logic, dbg_disable_sep_otp_jtag2axi_o)
-// The whole dbg_disable_o struct, flattened to one vector. The two bits
-// above are the pair LCC ties to zero and cannot tell a correct gating
-// formula from a broken one. The other nine follow feat_ctrl: sip_debug
-// as the mandatory outer gate, chiplet_dbg per scope, sep_debug
-// additionally for the SEP S-TAP. Exported whole rather than bit by bit
-// so a field added to the struct widens the vector.
 `SEP_TB_OUT(logic [$bits(sep_lifecycle_ctrl_pkg::dbg_disable_t)-1:0], dbg_disable_all_o)
+// DFT-inserted fuse-path disables. Real DUT outputs (sep_wrapper), not
+// internal probes: no functional consumer and no CSR mirror. Disable
+// polarity: SEP is Case 3 AND sep_fuse_dbg (bit 2), inverted; SMC is
+// Case 2 AND smc_fuse_dbg (bit 3), inverted.
+`SEP_TB_OUT(logic, sep_fuse_dft_disable_o)
+`SEP_TB_OUT(logic, smc_fuse_dft_disable_o)
 // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
 // asserted when the WDT count reaches BITE_THOLD). Brought out so the
 // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
 // reset-request edge. This
 // is a DUT output (frontdoor), not an internal-signal probe.
 `SEP_TB_OUT(logic, wdt_timer_rst_req_o)
+// SMC-facing mailbox interrupt: a REAL `sep` output port
+// (sep.sv smc_mailbox_interrupt_o, fed by the mailbox block's
+// outbound_interrupt_o). It leaves the block instead of reaching the SEP CPU
+// PIC, so nothing inside sep observes it. Brought out so the mailbox delivery
+// test can prove the direction: a push at the inbound aperture raises the CPU
+// PIC source and leaves this line low; a push at the outbound aperture raises
+// this line and no PIC source. One bit per mailbox channel.
+`SEP_TB_OUT(logic [sep_pkg::NUM_MAILBOXES-1:0], smc_mailbox_interrupt_o)
 `SEP_TB_OUT(logic, spi_cs_n_o)
 `SEP_TB_OUT(logic, spi_sck_o)
 `SEP_TB_OUT(logic, spi_mosi_o)

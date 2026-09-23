@@ -36,8 +36,11 @@ CONFIG := smc
 # *directory* containing the toolchain binaries. When empty, compiler-dependent
 # targets run through scripts/docker-run.sh run-here.
 RISCV_TOOLCHAIN ?=
-OCAH_ROOT ?= $(abspath $(CURDIR)/../../../../..)
+PROD_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+OCAH_ROOT  ?= $(abspath $(PROD_DIR)/../../../../..)
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
+UV = uv
+PYTHON ?= $(UV) --directory "$(OCAH_ROOT)" run --locked python3
 
 ifneq ($(RISCV_TOOLCHAIN),)
   _TC_PREFIX := $(RISCV_TOOLCHAIN)/
@@ -53,7 +56,7 @@ SIZE := $(_TC_PREFIX)riscv64-unknown-elf-size
 NM   := $(_TC_PREFIX)riscv64-unknown-elf-nm
 
 # Architecture / ABI – same as hw/sys/smc/dv/fw/toolchain.mk
-ARCH      := rv64imafdczicsr_zba_zbb_zbc_zbs_zifencei_zihpm
+ARCH      := rv64imafdczicsr_zba_zbb_zbs_zifencei_zihpm
 ABI       := lp64d
 ARCHFLAGS := -march=$(ARCH) -mabi=$(ABI) -mtune=rocket
 
@@ -61,16 +64,16 @@ ARCHFLAGS := -march=$(ARCH) -mabi=$(ABI) -mtune=rocket
 # DIRECTORY STRUCTURE
 # =============================================================================
 
-SRC_DIR    := src
-INCLUDE_DIR := include
-DRIVERS_DIR := drivers
-LIB_DIR    := lib
-BOOT_DIR   := boot
-LINKER_DIR := linker
-REG_DIR    := registers
-SCRIPTS_DIR := scripts
+SRC_DIR    := $(PROD_DIR)/src
+INCLUDE_DIR := $(PROD_DIR)/include
+DRIVERS_DIR := $(PROD_DIR)/drivers
+LIB_DIR    := $(PROD_DIR)/lib
+BOOT_DIR   := $(PROD_DIR)/boot
+LINKER_DIR := $(PROD_DIR)/linker
+REG_DIR    := $(PROD_DIR)/registers
+SCRIPTS_DIR := $(PROD_DIR)/scripts
 
-BUILD_DIR  := build
+BUILD_DIR  := $(PROD_DIR)/build
 # DV-only ROM padding self-test builds (never a production image).
 # ROM_PADDING_SELFTEST=1 jumps into EBREAK padding; =2 executes a generic EBREAK.
 ROM_PADDING_SELFTEST ?=
@@ -255,7 +258,7 @@ toolchain-images:
 	  echo "[bootrom] RISCV_TOOLCHAIN is unset; building in the OCAH toolchain container"; \
 	  env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS \
 	    "$(OCAH_DOCKER_RUN)" run-here \
-	    $(MAKE) -C "$(CURDIR)" \
+	    $(MAKE) -C "$(PROD_DIR)" \
 	    BUILD_TYPE="$(BUILD_TYPE)" TARGET="$(TARGET)" CHIP_ARCH="$(CHIP_ARCH)" \
 	    ENABLE_RELEASE_PRINTS="$(ENABLE_RELEASE_PRINTS)" \
 	    ROM_PADDING_SELFTEST="$(ROM_PADDING_SELFTEST)" I3C_CORE="$(I3C_CORE)" \
@@ -276,12 +279,12 @@ pack-images:
 	  exit 1; \
 	}
 	@echo "PRELOAD $(PRELOAD_HEX_FILE)"
-	@python3 $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py \
+	@$(PYTHON) $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py \
 	    $(HEX_FILE) --out_file $(PRELOAD_HEX_FILE)
 	@echo "ECC $(ECC_HEX_FILE)"
-	@python3 $(SCRIPTS_DIR)/gen_64b_ecc.py $(BIN_FILE) $(ECC_HEX_FILE)
+	@$(PYTHON) $(SCRIPTS_DIR)/gen_64b_ecc.py $(BIN_FILE) $(ECC_HEX_FILE)
 	@echo "BIN64 $(BIN64_FILE)"
-	@python3 $(SCRIPTS_DIR)/bin_to_64b.py \
+	@$(PYTHON) $(SCRIPTS_DIR)/bin_to_64b.py \
 	    --input $(BIN_FILE) --output $(BIN64_FILE)
 
 .PHONY: info
@@ -358,15 +361,15 @@ $(HEX_FILE): $(ELF_FILE) | $(HEX_DIR)
 # Post-processing scripts live in scripts/ next to this Makefile.
 $(PRELOAD_HEX_FILE): $(HEX_FILE) | $(HEX_DIR)
 	@echo "PRELOAD $@"
-	@python3 $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py $< --out_file $@
+	@$(PYTHON) $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py $< --out_file $@
 
 $(ECC_HEX_FILE): $(BIN_FILE) | $(HEX_DIR)
 	@echo "ECC $@"
-	@python3 $(SCRIPTS_DIR)/gen_64b_ecc.py $< $@
+	@$(PYTHON) $(SCRIPTS_DIR)/gen_64b_ecc.py $< $@
 
 $(BIN64_FILE): $(BIN_FILE) | $(HEX_DIR)
 	@echo "BIN64 $@"
-	@python3 $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
+	@$(PYTHON) $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
 
 # nm listing next to the images: the DV processor-state monitors symbolize
 # retired PCs from it.

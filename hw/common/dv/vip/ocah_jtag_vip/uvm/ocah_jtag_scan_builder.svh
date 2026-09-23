@@ -77,10 +77,14 @@ class ocah_jtag_scan_builder extends uvm_subscriber #(ocah_jtag_event);
       void'(publish(1'b0, t.timestamp));
     end
 
-    // The instruction becomes active leaving Update-IR.
-    if (previous == OCAH_JTAG_UPDATE_IR && m_pending_ir_valid) begin
-      m_active_ir        = m_pending_ir;
-      m_active_ir_known  = 1'b1;
+    // The instruction becomes active leaving Update-IR. Without a Shift-IR
+    // cycle the register latches its device-specific Capture-IR pattern,
+    // which the reconstruction cannot know.
+    if (previous == OCAH_JTAG_UPDATE_IR) begin
+      if (m_pending_ir_valid) begin
+        m_active_ir       = m_pending_ir;
+        m_active_ir_known = 1'b1;
+      end else m_active_ir_known = 1'b0;
       m_pending_ir_valid = 1'b0;
     end
   endfunction

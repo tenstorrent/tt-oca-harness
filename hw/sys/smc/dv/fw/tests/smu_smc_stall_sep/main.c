@@ -14,13 +14,12 @@
  * runs a scratch handshake proving the SEP is (a) live, (b) actively GO-polling,
  * (c) frozen by CLA halt while SMC keeps progressing, (d) resumed by CLA release
  * and able to finish an acknowledged completion protocol. No forces/deposits:
- * halt = CLA node0 EAP action[0] (mpc_debug_halt_req), release = actions [1]/[4].
+ * halt = CLA node0 EAP action[0] (mpc_debug_halt_req_i), release = actions [1]/[4].
  *
- * STACKLESS BY DESIGN (uses the common smc_stackless_test.h scaffolding): the
- * SMU cocotb / SEP-driven boot does not initialise the SMC SRAM stack, so main()
- * makes NO function calls and uses only the SMC_* absolute-MMIO/delay/poll macros
- * -> no stack frame. If a future edit reintroduces `add sp,sp,-N` in main, it
- * will hang -- verify the .dis.
+ * STACKLESS (smc_stackless_test.h): the SMU cocotb / SEP-driven boot does not
+ * initialise the SMC SRAM stack, so main() makes no function calls and uses only
+ * the SMC_* absolute-MMIO/delay/poll macros; any `add sp,sp,-N` in main hangs
+ * the core.
  */
 SMC_STACKLESS_ENTRY(smu_smc_stall_sep_entry)
 
@@ -68,10 +67,8 @@ int main(void) {
     WAIT_RSP(SMU_STALL_POLL_ARMED, ok);
     if (!ok) goto fail;
 
-    /* S5: program CLA halt (action[0] mpc_debug_halt_req) only after POLL_ARMED;
-     * read back exact. Verify every halt-phase CLA CSR (not just EAP0/EAP1)
-     * before publishing HALT_OK, matching the initial-release readback -- proves
-     * the halt configuration, not just the action words. */
+    /* S5: program CLA halt (action[0] mpc_debug_halt_req_i) only after POLL_ARMED;
+     * read back every halt-phase CLA CSR before publishing HALT_OK. */
     SMC_WR64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR, SMU_STALL_CLA_CTRLSTATUS_EXPECT);
     SMC_WR64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR, SMU_STALL_CLA_EAP0_HALT);
     SMC_WR64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR, SMU_STALL_CLA_EAP1_HALT);

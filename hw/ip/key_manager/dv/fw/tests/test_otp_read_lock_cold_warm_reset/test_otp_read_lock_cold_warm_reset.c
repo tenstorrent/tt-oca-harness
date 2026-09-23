@@ -16,7 +16,7 @@
  * warm reset; on restart the firmware reads the marker to select the phase.
  *
  * One secret and one public identity field are locked in each domain, so the
- * newer identity lock bits are exercised on both sides of the reset.
+ * identity lock bits are exercised on both sides of the reset.
  *
  * Phase 0 — cold boot (marker == 0):
  *   1. Drive OTP pattern; verify the fields to be warm-locked (chiplet_uid,

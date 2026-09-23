@@ -101,6 +101,10 @@ module sep_efuse_wrapper #(
   logic [sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_local_raw;
   logic lc_sigint_err;
   logic lc_restricted_state;
+  localparam sep_efuse_pkg::addr_t EFUSE_MMR_BASE_ADDR =
+      sep_efuse_pkg::addr_t'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR);
+  localparam sep_efuse_pkg::addr_t EFUSE_MMR_SIZE =
+      sep_efuse_pkg::addr_t'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE);
 
   // Efuse signals
   logic fuse_sense_done;
@@ -158,7 +162,7 @@ module sep_efuse_wrapper #(
     .full_resp_t    (sep_efuse_axi32_resp_t),
     .lite_req_t     (sep_efuse_pkg::efuse_axil_req_t),
     .lite_resp_t    (sep_efuse_pkg::efuse_axil_resp_t)
-  ) sep_efuse_axi_to_axi_lite (
+  ) u_sep_efuse_axi_to_axi_lite (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
@@ -212,8 +216,12 @@ module sep_efuse_wrapper #(
   );
 
   // Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only access the MMR registers.
-  assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
-  assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
+  assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside
+      {[EFUSE_MMR_BASE_ADDR:
+        EFUSE_MMR_BASE_ADDR + EFUSE_MMR_SIZE - sep_efuse_pkg::addr_t'(1)]};
+  assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside
+      {[EFUSE_MMR_BASE_ADDR:
+        EFUSE_MMR_BASE_ADDR + EFUSE_MMR_SIZE - sep_efuse_pkg::addr_t'(1)]};
 
   // A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP.
   assign lc_restricted_state = lc_sigint_err ||
@@ -275,7 +283,7 @@ module sep_efuse_wrapper #(
     .axi_resp_t  (sep_efuse_pkg::efuse_axil_resp_t),
     .NoSlvPorts  (2),
     .MaxTrans    (2),
-    .FallThrough (1'b1),
+    .FallThrough (1'b0),
     .SpillAw     (1'b1),
     .SpillW      (1'b1),
     .SpillB      (1'b1),

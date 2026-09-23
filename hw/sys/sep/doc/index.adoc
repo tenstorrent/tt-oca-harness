@@ -1,33 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Security Processor (SEP)
+:description: SEP architecture, security model, processing subsystems, peripherals, and register reference.
+
 [[security-processor-sep]]
-== Security Processor (SEP)
 
-:imagesdir: assets
+The Security Processor (SEP) is the chiplet Root of Trust. Its documentation is
+organized into focused topic pages so architecture, security policy, software
+interfaces, and generated register details can be read independently.
 
-include::introduction.adoc[leveloffset=0]
-include::threat_model.adoc[leveloffset=0]
-include::attack_countermeasures.adoc[leveloffset=0]
-include::overview.adoc[leveloffset=0]
-include::fabric.adoc[leveloffset=0]
-
-// Shared AXI fabric IP. The traffic filter decode is common to SEP and SMC, so
-// it is included once here (SEP is the first subsystem in the TRM) and
-// hw/sys/smc/doc/fabric.adoc cross-references it instead of including it again.
 ifdef::backend-html5[]
-include::ip:axi_filter/doc/index.adoc[leveloffset=0]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::../../../common/axi/axi_filter/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
+== Start Here
 
-include::memory_map.adoc[leveloffset=0]
-include::cpu.adoc[leveloffset=0]
-include::interrupts.adoc[leveloffset=0]
-include::crypto.adoc[leveloffset=0]
-include::periphs.adoc[leveloffset=0]
-include::token_processing.adoc[leveloffset=0]
-include::security_disable.adoc[leveloffset=0]
-include::lifecycle_controller.adoc[leveloffset=0]
-include::test_mode.adoc[leveloffset=0]
+* xref:introduction.adoc[Introduction] -- SEP responsibilities and services.
+* xref:threat_model.adoc[Threat Model] -- attacks considered by the design.
+* xref:attack_countermeasures.adoc[Attack Countermeasures] -- architectural,
+  debug, and DFT protections.
+* xref:overview.adoc[Hardware Overview] -- major SEP blocks and their
+  relationships.
+
+== Architecture and Interfaces
+
+* xref:fabric.adoc[SEP Interconnect] -- internal and external transaction paths.
+* xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter] -- shared SEP and SMC filter decode.
+* xref:memory_map.adoc[Memory Map and Register Reference] -- address regions and
+  generated register tables.
+* xref:cpu.adoc[CPU Subsystem] -- VeeR EL2 configuration, boot, DMA, and alarms.
+* xref:rom.adoc[Boot ROM] -- immutable boot firmware and ROM architecture.
+* xref:interrupts.adoc[Interrupts] -- PIC assignments and non-PIC interrupt paths.
+* xref:crypto.adoc[Cryptographic Subsystem] -- cryptographic accelerators,
+  entropy, and key management.
+* xref:periphs.adoc[Fuse Controller and Lifecycle Controller] -- OTP, lifecycle
+  and security control, SPI, watchdog, and reset control.
+
+== Security Control
+
+* xref:token_processing.adoc[Token Processing] -- token generation, matching,
+  and fault handling.
+* xref:security_disable.adoc[Security Disable] -- emergency security-disable
+  behavior.
+* xref:lifecycle_controller.adoc[Life Cycle Controller] -- lifecycle states,
+  demotion, and feature control.
+* xref:test_mode.adoc[Test Mode Entry] -- secure test-mode qualification.
+endif::backend-html5[]

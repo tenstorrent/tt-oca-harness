@@ -16,7 +16,7 @@ This project and everyone participating in it is governed by our [Code of Conduc
 For detailed documentation, please refer to the GitHub pages site generated as a
 deployment of this repository: [tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
 
-The Getting Started and Contributing Guide, in particular, can be found [here](https://tenstorrent.github.io/tt-oca-harness/ocah-contributing/latest/index.html).
+The Getting Started and Contributing Guide, in particular, can be found [here](https://tenstorrent.github.io/tt-oca-harness/ocah-starting/latest/index.html).
 
 ## Development Workflow
 
@@ -25,7 +25,7 @@ The Getting Started and Contributing Guide, in particular, can be found [here](h
 3. Open a pull request against `main`. The template is guidance only; CI does not require Summary or Test plan, but the daily curator will normalize the title to `scope: summary` format and repair any missing template sections. Add `Fixes #N` when the PR closes an issue.
 4. Be responsive to review feedback.
 
-Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/contributing/`](doc/contributing/).
+Pull requests are reviewed on a weekly basis. The full how-to is in [`doc/starting/`](doc/starting/).
 
 ## Reporting Issues
 

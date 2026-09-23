@@ -2,10 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ESRC FIPS_LOCK certified-configuration walk.
 
-RANDCFG: every seed walks every field entropy_source.sv marks
-``swwel = fips_lock``, except ``CTRL.MODULE_ENABLE`` -- clearing that stops the
-block for the rest of the walk, so its lock belongs to the reset-recovery
-vehicle. Continuous
+RANDCFG: every seed walks every field ``entropy_source.rdl`` marks ``swwel``
+-- the certified-configuration inventory FIPS_LOCK.LOCK freezes -- except
+``CTRL.MODULE_ENABLE``, where clearing the field stops the block for the rest
+of the walk, so its lock belongs to the reset-recovery vehicle. ``_WALK_FIELDS``
+below declares what this walk covers and is reconciled against the RDL at
+import, so a lock added or dropped in the RDL fails here instead of silently
+leaving the walk short. Continuous
 knobs (which legal pre-lock value and which rejected poke) come from the
 run seed. ``SepEsrcFipsLockCfg`` is the SSOT for both programming and
 the post-lock golden. Observe FIFOs stay writable. Retired ``CTRL[0]``
@@ -15,6 +18,7 @@ is RAZ/WI; the shared TRNG reset and ``rst_ni`` clear the lock.
 from __future__ import annotations
 
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import esrc_fips_locked_fields
 from sep_reg_meta import ENTROPY_SOURCE, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -42,7 +46,8 @@ from seq_lib.sep_esrc_bringup_seq import (
     RING_OSC_SAMPLECLK_ONLY,
 )
 
-LOCK_BIT = 0x1
+LOCK_BIT = ENTROPY_SOURCE.fields("FIPS_LOCK")["LOCK"]["bm"]
+OBS_ENABLE_BIT = ENTROPY_SOURCE.fields("BIW_OBS_CTRL")["RAW_ENABLE"]["bm"]
 SHA256_BIT = ENTROPY_SOURCE.fields("CTRL")["SHA256_WHITENING_ENABLE"]["bm"]
 CHURN_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENTROPY_CHURN_ENABLE"]["bm"]
 WINDOW_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
@@ -63,14 +68,77 @@ APT_LIMIT = ENTROPY_SOURCE.fields("RECOMMENDED_THRESHOLDS")["APT_LIMIT"]
 # cutoff can never exceed it. entropy_source.rdl states the window in the
 # APT_LIMIT description.
 APT_WINDOW = 1024
-# entropy_source.sv locks both HEALTH_TEST_CTRL fields under FIPS_LOCK.LOCK
-# (ENABLE and REPETITION_LIMIT both carry swwel = fips_lock), so the compare
+# entropy_source.rdl marks both HEALTH_TEST_CTRL fields swwel, so the compare
 # window is both field bitmasks, taken from the generated export rather than a
 # hand-typed width.
 HT_ENABLE_MASK = (
     ENTROPY_SOURCE.fields("HEALTH_TEST_CTRL")["ENABLE"]["bm"]
     | ENTROPY_SOURCE.fields("HEALTH_TEST_CTRL")["REPETITION_LIMIT"]["bm"]
 )
+
+
+# What this walk covers, declared per register. Reconciled against the swwel
+# inventory in entropy_source.rdl at import: a field the RDL locks and this walk
+# does not reach fails here, and so does a field named here that the RDL does
+# not lock. The RTL is not consulted -- it is hand-written and maintained apart
+# from the RDL, so it is the thing under test, not the expectation.
+_WALK_FIELDS: dict[str, frozenset[str]] = {
+    "CTRL": frozenset(
+        {
+            "AUTOTUNE_ENABLE",
+            "BYPASS_ENTROPY_COMPRESSOR",
+            "DOWNSAMPLE_RATE",
+            "SHA256_WHITENING_ENABLE",
+        }
+    ),
+    "HEALTH_TEST_CTRL": frozenset({"ENABLE", "REPETITION_LIMIT"}),
+    "HEALTH_TEST_WINDOW_SIZE": frozenset({"SIZE"}),
+    "DECORRELATOR_CTRL": frozenset({"BYPASS", "SAMPLE_CLK_DIV"}),
+    "DECORRELATOR_MASK": frozenset({"ENTROPY_BYTE_MASK"}),
+    "RING_OSC_ENABLE": frozenset({"ENABLE", "SAMPLE_CLK_ENABLE"}),
+    "RING_OSC_TUNE": frozenset({"DETUNE", "SAMPLE_CLK_DETUNE"}),
+    "RING_OSC_CTRL": frozenset({"SAMPLE_CLK_SELECT"}),
+    "FIFO_CTRL": frozenset({"ENTROPY_CHURN_ENABLE"}),
+    "ALERT_THRESHOLD": frozenset({"THRESHOLD"}),
+    "MARKOV_TEST_PROB_THRESHOLDS": frozenset({"PROB_01_THRESHOLD", "PROB_10_THRESHOLD"}),
+    "APT_PROPORTION_1BIT": frozenset({"LIMIT"}),
+    "APT_PROPORTION_LO": frozenset({"LIMIT"}),
+    "MIN_ENTROPY_H": frozenset({"H"}),
+    **{f"GENERATOR_{idx}_SAMPLE_CLK_CONFIG": frozenset({"SAMPLE_CLK_DIVIDE"}) for idx in range(12)},
+}
+
+# Locked fields this walk deliberately does not poke, each with the reason it
+# cannot be reached here. An entry is a standing exception, not a gap to ignore.
+_WALK_EXCLUDED: dict[tuple[str, str], str] = {
+    ("CTRL", "MODULE_ENABLE"): (
+        "clearing it idles the main state machine for the rest of the walk; its "
+        "lock is proven by the reset-recovery vehicle instead"
+    ),
+}
+
+
+def _reconcile_walk_with_rdl() -> None:
+    """Fail import if the declared walk and the RDL lock inventory disagree."""
+    rdl = esrc_fips_locked_fields()
+    expected = {(r, f) for r, fields in rdl.items() for f in fields}
+    walked = {(r, f) for r, fields in _WALK_FIELDS.items() for f in fields}
+    missing = expected - walked - set(_WALK_EXCLUDED)
+    if missing:
+        raise RuntimeError(
+            "entropy_source.rdl locks fields this FIPS_LOCK walk does not reach, "
+            f"and they are not declared exclusions: {sorted(missing)}"
+        )
+    unknown = walked - expected
+    if unknown:
+        raise RuntimeError(
+            f"this walk names fields entropy_source.rdl does not mark swwel: {sorted(unknown)}"
+        )
+    stale = set(_WALK_EXCLUDED) - expected
+    if stale:
+        raise RuntimeError(f"excluded fields are no longer locked in the RDL: {sorted(stale)}")
+
+
+_reconcile_walk_with_rdl()
 
 
 class SepEsrcFipsLockTarget:
@@ -264,7 +332,7 @@ class SepEsrcFipsLockCfg:
             SepEsrcFipsLockTarget(
                 "ALERT_THRESH", ESRC_ALERT_THRESHOLD, thresh_pre, 1, THRESH_MASK, THRESH_RESET
             ),
-            # The remaining registers entropy_source.sv marks swwel = fips_lock.
+            # The remaining registers entropy_source.rdl marks swwel.
             _locked_target(
                 "MARKOV_THRESH",
                 ESRC_MARKOV_TEST_PROB_THRESHOLDS,
@@ -351,10 +419,10 @@ class SepEsrcFipsLock(SepAxiRegDriver):
         return cur, await self._rd(ESRC_CTRL)
 
     async def write_obs_enable(self, enable: int) -> None:
-        await self._wr(ESRC_BIW_OBS_CTRL, enable & 0x1)
+        await self._wr(ESRC_BIW_OBS_CTRL, enable & OBS_ENABLE_BIT)
 
     async def read_obs_enable(self) -> int:
-        return (await self._rd(ESRC_BIW_OBS_CTRL)) & 0x1
+        return (await self._rd(ESRC_BIW_OBS_CTRL)) & OBS_ENABLE_BIT
 
     async def write_min_entropy_h(self, h: int) -> None:
         await self._wr(ESRC_MIN_ENTROPY_H, h & MIN_ENTROPY_H_MASK)

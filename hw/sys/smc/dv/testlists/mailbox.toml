@@ -8,7 +8,7 @@ name = "smc_mailbox_idle_test"
 module = "smc_mailbox_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "project_p0", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -16,7 +16,7 @@ name = "smc_mailbox_data_error_test"
 module = "smc_mailbox_data_error_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "mailbox_depth", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -24,7 +24,7 @@ name = "smc_mailbox_inbound_test"
 module = "smc_mailbox_inbound_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -32,7 +32,7 @@ name = "smc_mailbox_multi_instance_test"
 module = "smc_mailbox_multi_instance_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -40,11 +40,24 @@ name = "smc_mailbox_field_sweep_test"
 module = "smc_mailbox_field_sweep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
-[[groups]]
-name = "mailbox_depth"
-tests = [
-    "smc_mailbox_data_error_test",
-]
+[[tests]]
+# OUTBOUND_MAILBOX_0.CTRL @0x48, which smc_mailbox_field_sweep_test cannot
+# reach: its offset list stops at IRQEN @0x38. CTRL is sw=w, so the coverage is
+# the flush's effect on STATUS rather than a readback.
+name = "smc_mailbox_flush_test"
+module = "smc_mailbox_flush_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_mailbox_event_irq_test"
+module = "smc_mailbox_event_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

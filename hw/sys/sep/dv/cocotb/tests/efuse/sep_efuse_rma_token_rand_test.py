@@ -16,7 +16,7 @@ status, sticky bit / IRQ survive a valid-token retry, and
 ``sep_internal_interrupts[39]`` (PIC source 40). Collapse and disagreement
 have no frontdoor; the tb injects them on the RMA_SIP comparator rails.
 
-Does not stretch the Phase 1 stitch e2e. Real fuse sense. Starts in PROD
+Does not stretch the stitch e2e. Real fuse sense. Starts in PROD
 so the SIP then CHIPLET walk is W1S-legal.
 """
 
@@ -69,7 +69,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         # The image pins SEC_DISABLE clear and no SEC_DIS token is presented, so
         # the value is known ahead of the read. Feeding the probe into the golden
         # would let a spuriously asserted security-disable move the expectation
-        # with it instead of failing (AGENTS.md section 7).
+        # with it instead of failing.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         assert sec_dis == 0, (
             f"SEC_DIS asserted ({sec_dis}) but this test presents no token; the "
@@ -131,7 +131,9 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         )
 
     def _irq39(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_TOKEN_MATCH_FAULT) & 1
+        mask = 1 << IRQ_TOKEN_MATCH_FAULT
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask)
+        return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
         seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT)
@@ -250,9 +252,10 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         assert irq == 1, "irq39 dropped on a valid-token retry"
         await self._wr_fault(0)
         still = await self._rd_fault()
-        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write 0 left 0x{still:x}"
+        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write-0 left 0x{still:x}"
         self.logger.info(
-            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, write-0 ignored",
+            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, "
+            "write-0 left the fault and irq set",
             code,
             still,
         )

@@ -19,6 +19,11 @@ Three bundles exist in ``tb_top.sv``:
   instances (64-bit address and data, 16-bit ID and user). The geometry
   selftests bind the 32-bit stacks to them through ``OcahAxiConfig`` and
   judge the member bits above the configured geometry at the raw handles.
+* ``mt_axi`` / ``u_mt_axi_if`` — the struct-port bundle: ``OcahAxiMasterAgent``
+  drives the flat request nets that tb_top packs into a pulp request struct,
+  ``ocah_axi_struct_bridge`` places that struct on ``u_mt_axi_if``, and
+  ``OcahAxiSlaveAgent`` answers there with ``OcahAxiMonitor`` feeding the VIP
+  scoreboard, the topology a block tb_top uses for a struct boundary.
 
 The seed accessor and the salted scenario RNG live here: these selftests are
 plain cocotb tests without a base test class.
@@ -39,6 +44,7 @@ from ocah_axi_vip import (
     OcahAxiLiteMasterAgent,
     OcahAxiLiteSlaveAgent,
     OcahAxiMasterAgent,
+    OcahAxiMonitor,
     OcahAxiProtocol,
     OcahAxiSlaveAgent,
 )
@@ -248,33 +254,70 @@ _LITE_WRITE_KEYS = (
 _LITE_READ_KEYS = ("arvalid", "arready", "araddr", "rvalid", "rready", "rdata", "rresp")
 
 
-async def observe_lite_write(dut, *, max_cycles: int = 400) -> list[dict[str, int]]:
-    """Record the l_axi write channels once per cycle until the B handshake.
+async def observe_lite_write(
+    dut, *, max_cycles: int = 400, handshakes: int = 1
+) -> list[dict[str, int]]:
+    """Record the l_axi write channels once per cycle until the ``handshakes``-th B handshake.
 
     Start as a background task before issuing the transaction; the returned
     per-cycle sample list is the wire-level truth the tests judge the VIP's
     skew/deferral claims against (independent of the VIP's own bookkeeping).
     """
     samples: list[dict[str, int]] = []
+    seen = 0
     for _ in range(max_cycles):
         await RisingEdge(dut.clk)
         row = {key: _sample(getattr(dut, f"l_axi_{key}")) for key in _LITE_WRITE_KEYS}
         samples.append(row)
         if row["bvalid"] and row["bready"]:
-            return samples
-    raise AssertionError(f"no l_axi B handshake within {max_cycles} cycles")
+            seen += 1
+            if seen >= handshakes:
+                return samples
+    raise AssertionError(f"no {handshakes} l_axi B handshake(s) within {max_cycles} cycles")
 
 
-async def observe_lite_read(dut, *, max_cycles: int = 400) -> list[dict[str, int]]:
-    """Record the l_axi read channels once per cycle until the R handshake."""
+async def observe_lite_read(
+    dut, *, max_cycles: int = 400, handshakes: int = 1
+) -> list[dict[str, int]]:
+    """Record the l_axi read channels once per cycle until the ``handshakes``-th R handshake."""
     samples: list[dict[str, int]] = []
+    seen = 0
     for _ in range(max_cycles):
         await RisingEdge(dut.clk)
         row = {key: _sample(getattr(dut, f"l_axi_{key}")) for key in _LITE_READ_KEYS}
         samples.append(row)
         if row["rvalid"] and row["rready"]:
-            return samples
-    raise AssertionError(f"no l_axi R handshake within {max_cycles} cycles")
+            seen += 1
+            if seen >= handshakes:
+                return samples
+    raise AssertionError(f"no {handshakes} l_axi R handshake(s) within {max_cycles} cycles")
+
+
+def stall_cycles(samples: list[dict[str, int]], valid: str, ready: str) -> int:
+    """Number of sampled cycles with ``valid`` set and ``ready`` clear."""
+    return sum(1 for row in samples if row[valid] and not row[ready])
+
+
+def handshake_cycles(samples: list[dict[str, int]], valid: str, ready: str) -> list[int]:
+    """Every sample index where ``valid`` and ``ready`` are both set, in order."""
+    return [index for index, row in enumerate(samples) if row[valid] and row[ready]]
+
+
+def address_stable_while_stalled(
+    samples: list[dict[str, int]], valid: str, ready: str, addr: str
+) -> bool:
+    """True when every stalled beat kept ``valid`` set and ``addr`` unchanged until ``ready``."""
+    pending: int | None = None
+    for row in samples:
+        if row[valid] and pending is not None and row[addr] != pending:
+            return False
+        if row[valid] and not row[ready]:
+            pending = row[addr]
+        elif row[valid] and row[ready]:
+            pending = None
+        elif pending is not None:
+            return False
+    return True
 
 
 def first_cycle(samples: list[dict[str, int]], key: str, *, start: int = 0) -> int | None:
@@ -371,3 +414,33 @@ async def drive_wire_read(
     raise AssertionError(
         f"no R handshake within {timeout_cycles} cycles for read arid=0x{arid:x} addr=0x{addr:08x}"
     )
+
+
+def build_bridge_stack(
+    dut: Any, *, timeout_ns: int = 100_000
+) -> tuple[OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiMonitor]:
+    """Master on the mt_axi struct-side nets; slave agent and monitor on u_mt_axi_if.
+
+    The struct geometry (32-bit address and data, 8-bit ID, 1-bit user) is the
+    one ``WIDE_AXI_GEOMETRY`` binds onto the default-geometry interface.
+    """
+    scope = dut.u_mt_axi_if
+    slave = OcahAxiSlaveAgent(
+        WIDE_AXI_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_mt_axi_slave",
+    )
+    monitor = OcahAxiMonitor(WIDE_AXI_GEOMETRY.bus(scope), dut.clk, name="harness_mt_axi_monitor")
+    master = OcahAxiMasterAgent.from_prefix(
+        dut,
+        "mt_axi",
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_mt_axi_master",
+    )
+    return master, slave, monitor

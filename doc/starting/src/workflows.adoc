@@ -1,0 +1,828 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[workflows]]
+= Workflows
+
+[WARNING]
+====
+This section is currently under development.
+
+- More details on Yosys/Synthesis once finalised - Port local PDK usage from `lowrisc/container-testing`
+- DV FW sections reference source files frequently, how necessary is this?
+- Linters are still WIP on findings; the shared `flow.mk` path is the one to run
+====
+
+This document specifies the development methodology for this project.
+
+== Build with Bender
+
+Bender is used for managing IP dependencies and managing builds.
+Makefiles are used for build automation.
+
+To initialise or update the Bender-generated file list, run the following
+command:
+
+```bash
+make generate_filelist
+```
+
+[[vendor-packages]]
+=== Third-party (vendor) package imports with Bender
+
+External IP is materialized under `vendor/` via Bender's `vendor_package` feature. If a
+vendored tree is also consumed as a Bender package, the root `dependencies:` entry points
+at the local package root under `vendor/`; direct third-party `git:` dependencies are not
+used.
+
+=== Ground rules
+
+- **Import only what OCAH uses.** Every `vendor_package` entry carries a narrowly scoped
+  include/`mapping:` list and uses `exclude_from_upstream:` to document intentionally
+  omitted upstream paths. Whole-repository imports are prohibited.
+- **Commit vendored sources.** Materialized files under `vendor/` are committed so every
+  revision is self-contained and reproducible without network access.
+- **Pin every upstream entry.** `rev:` must be a full commit hash or an immutable tag;
+  mutable refs such as branch names are prohibited.
+- **Resolve vendored packages locally.** Packages with hand-authored manifests under
+  `vendor/` are pinned via `Bender.local` so transitive users resolve the committed copy.
+
+=== Filesystem layout
+
+Vendored packages preserve upstream GitHub org/repo casing under
+`vendor/<GitHubOrg>/<GitHubRepo>/`. Bender materializes selected upstream files into
+`upstream/` (wiped and refreshed by `bender vendor init`), then applies local patches.
+Patch files live in the sibling `patches/` directory so they survive a refresh:
+
+```
+vendor/lowRISC/opentitan/
+  patches/
+    0001-some_change.patch     ← NNNN-<snake_case>.patch, applied in filename order
+  upstream/                    ← target_dir (refreshed by bender vendor init)
+    hw/ip/otbn/{data,rtl}/      ← selected register + RTL sources
+    util/reggen/                ← selected reggen modules only
+```
+
+=== Bender.yml `vendor_package` template
+
+```yaml
+vendor_package:
+  - name: <descriptive-name>
+    target_dir: vendor/<GitHubOrg>/<GitHubRepo>/upstream
+    upstream: { git: "<upstream-url>", rev: "<full-commit-hash-or-tag>" }
+    exclude_from_upstream:
+      - "<unused/path/relative/to/upstream/root>"
+    mapping:
+      - { from: "<upstream/file/or/dir>", to: "<local/file/or/dir>", patch_dir: "<local/patch/scope>" }
+    patch_dir: "vendor/<GitHubOrg>/<GitHubRepo>/patches"
+```
+
+=== Authoring a patch
+
+1. Materialize/refresh the vendor tree: `bender vendor init`
+2. Edit files under `vendor/<GitHubOrg>/<GitHubRepo>/upstream/`.
+3. Stage: `git add vendor/<GitHubOrg>/<GitHubRepo>/`
+4. Generate the patch (Bender prompts for a message): `bender vendor patch`
+5. Rename to the numbering convention:
+   `mv vendor/.../patches/<auto-name>.patch vendor/.../patches/<NNNN>-<description>.patch`
+6. Commit both the patched source and the new `.patch` file.
+
+`bender vendor init` re-fetches the pinned commit, copies the selected files, excludes
+`exclude_from_upstream:` paths, and re-applies all patches from `patch_dir` in
+lexicographic order.
+
+CI runs `bender vendor diff --err_on_diff` on every hardware-CI push so a stale
+`upstream/` tree or a patch that no longer applies fails the gate.
+
+== Register generation
+
+Register collateral is generated from per-block SystemRDL under `hw/{ip,sys}/<name>/regs/`.
+HJSON-backed OpenTitan blocks are first exported to RDL via
+`tools/regs/reggen_wrapper.py` using the vendored OpenTitan reggen modules. Run
+`make regen-regs` to regenerate; committed generated output always corresponds to the
+RDL sources. The flow lives in `hw/common/regs/` (discovery, classification, and rules).
+
+== DV Firmware
+
+Per-subsystem DV firmware libraries (runtime **drivers**, not tests) are built via
+`make dv-fw-libs [TARGET=key_manager|sep|smc]` (alias of `ocah-dv-fw-libs`). Each
+subsystem owns a `fw.mk` + `toolchain.mk` under `hw/{ip,sys}/<name>/dv/fw/` and builds
+as an independent recursive sub-make so the target CPUs (PicoRV32/KM, VeeR EL2/SEP,
+Rocket/SMC) never share ISA/ABI/libc flag state.
+
+The RISC-V toolchain is provided by the project container or selected via
+`RISCV_TOOLCHAIN`. The build flow lives in `hw/common/dv/fw/`.
+
+=== SMC DV test firmware
+
+C test images are built via the standard dispatcher:
+
+```bash
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
+make dv-fw-tests TARGET=smc
+make dv-fw-tests TARGET=smc TEST=version_id   # one test
+```
+
+Each subsystem's tests link against one of that subsystem's **link modes** —
+memory targets discovered from `link/modes/*.ld` (e.g. SMC: `sram`, `rom`; SEP:
+`tcm`; KM: `vrom`) — and output artifacts fold the mode into their name
+(`<test>.<mode>.elf`, e.g. `version_id.sram.elf`). A test uses its subsystem's
+default mode unless it overrides `FW_TEST_MODE_<test>`; see `hw/common/dv/fw/compile.mk`
+for the full mechanism.
+
+Most SMC tests default to `sram` mode. The OCCP master BFM tests (`occp_sanity`,
+`occp_master`) are declared `rom`-mode in `hw/sys/smc/dv/fw/fw.mk` because they
+exercise the I3C master path and must run from the ROM address space. They link
+against the open-source weak `I3C_GetDriverInstance` stub (returns `NULL`) so
+the build is self-contained.
+
+=== SMC boot ROM
+
+`hw/sys/smc/bootrom/` holds two independent ROM firmware trees:
+
+* `dummy/` — the lightweight DV stub used today. Its only job is to boot from
+the ROM address (`0xc0040000`), write `TEST_ROM_PASS` (`0x77777777`) to `scratch_0`,
+and spin in `wfi` so the testbench can load real firmware into SRAM. It builds as
+one `rom`-mode test named `dummy` (source `rom.c`) on top of the same generalized
+firmware engine as the SMC DV tests above, reusing `hw/sys/smc/dv/fw/`'s drivers,
+toolchain settings, and link scripts.
+* `prod/` — self-contained production boot ROM with its own includes and drivers
+(not shared with `dv/fw/`). It implements the OCCP target-side protocol and uses weak
+stubs so the open tree links cleanly; the nonfree drivers override them at link time
+via `NONFREE_DRIVER_SOURCES`.
+
+Build the dummy ROM with its standalone Makefile:
+
+```bash
+# From the repo root (OCAH_ROOT resolved automatically):
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
+make -C hw/sys/smc/bootrom/dummy
+```
+
+Outputs land under `hw/sys/smc/bootrom/dummy/build/tests/dummy/` (e.g.
+`dummy.rom.elf`, `dummy.rom.bin`, `dummy.rom.hex`, plus `.preload.hex` /
+`.spi` variants from the shared SMC post-process step).
+
+Build the production ROM from the same container (self-contained Makefile, not
+the shared `compile.mk` engine):
+
+```bash
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
+make -C hw/sys/smc/bootrom/prod
+```
+
+=== SEP boot ROM
+
+`hw/sys/sep/bootrom/prod/` is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
+It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via `NONFREE_BOOTCODE_SOURCES` (same pattern as the SMC prod ROM).
+
+The ROM supports two SPI transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
+The open-source driver uses the OpenTitan SPI host (`BOOT_SPI_CONTROLLER_OT=1`).
+A proprietary memory-mapped SPI controller is also supported, plugged via the SEP extension port (`BOOT_SPI_CONTROLLER_OT=0`), but is optional from the OCAH open tree's perspective.
+
+The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) and boots instead from the SMC-SRAM manifest path; `make pack-images` builds and packs the matching manifest+BL1 image (`build/smc_mem.hex`).
+
+The build is split into two halves so each can run in the correct environment:
+
+* `toolchain-images` — RISC-V/picolibc compilation; use the container toolchain when `RISCV_TOOLCHAIN` is unset.
+* `pack-images` — pure Python manifest packing via the `tt-oca-manifest` submodule (requires `uv`); runs on the host without the container.
+
+```bash
+# OpenTitan SPI-host build (outputs to build_ot/):
+# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+
+# Signed (secure boot) SPI flash image — requires the tt-oca-manifest submodule:
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+make -C hw/sys/sep/bootrom/prod secure_boot_spi
+
+# Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
+make -C hw/sys/sep/bootrom/prod encrypted_boot_spi
+```
+
+Outputs land under `hw/sys/sep/bootrom/prod/build_ot/` (signed/encrypted images land in `build/`):
+
+* `boot_rom.vmem` — 64-bit VMEM for the Boot ROM responder.
+* `boot_rom.itcm.hex` — ROM `.text` as ICCM-relative byte hex.
+* `boot_rom.dtcm.hex` — `.data`/`.bss` initial image as DCCM-relative byte hex.
+* `smc_mem.hex` — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.
+* `secure_boot.spi_preload` / `encrypted_boot.spi_preload` — SPI flash preload images (built by the corresponding targets above).
+
+=== KM boot ROM
+
+The Key Manager (KM) subsystem (PicoRV32) has no dedicated `bootrom/` directory.
+Its ROM firmware lives in the DV firmware tree at `hw/ip/key_manager/dv/fw/` and is built by the same shared engine (`compile.mk`) used for DV tests.
+
+Two link modes are discovered from `hw/ip/key_manager/dv/fw/link/modes/`:
+
+* `vrom` (default for test images) — the ROM carries only the interrupt-vector sections (`.text.reset`, `.text.irq_vec`, `.text.irq_handler`); the rest of the code runs from a side-loaded Virtual ROM (VROM).
+* `rom` — the entire image runs from ROM with no VROM.
+  The production entry point (`production/rom_main`) and all `sep_images/` entries always use this mode.
+
+The production entry point is `production/rom_main/rom_main.c`.
+It runs forever serving the KM mailbox and is not enumerated by the test regression (only `tests/test_*` directories are).
+The SEP UVM testbench loads all KM ROM images via `+KM_ROM_HEX_FILE`.
+
+```bash
+# Build the production ROM entry (uses the standard DV firmware dispatcher):
+# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make dv-fw-tests TARGET=key_manager TEST=rom_main
+```
+
+Outputs land under `hw/ip/key_manager/dv/fw/build/tests/rom_main/`:
+
+* `rom_main.rom.elf` — linked ELF.
+* `rom_main.rom.hex` — address-zero-based Verilog hex for the ROM responder.
+* `rom_main.rom.parhex` — parity-annotated hex (used by the KM RTL's ROM model).
+* `rom_main.rom.sym` / `rom_main.sym` — symbol tables (the bare `rom_main.sym` lets the SEP UVM resolve firmware symbols from the `rom`-mode image).
+
+== Simulation and Testing
+
+We will use open source tools as much as possible and hence will focus
+on using Verilator for unit tests. Verilator has comprehensive
+SystemVerilog (SV) support and is widely used in industry.
+
+=== Testbench and Test Sequence
+
+Most components use Cocotb Python tests. The DTP also has a nonfree UVM
+test workflow using VCS. The testbench is run and configured using a Python
+script. Run the following command to see all available options:
+
+```bash
+./tools/dv/run_dv.py --help
+usage: run_dv.py [options]
+
+Native OSS DV/FV launcher for listing DUTs, validating configs, and running simulation or formal flows.
+
+options:
+...
+```
+
+If you want to manage python dependencies yourself, rather than through `uv`, the
+environment variable `OCAH_DV_SKIP_UV=1` may be set, in which case the system Python
+installation will be used.
+
+To check that all testsuites are configured properly, run the following:
+
+```bash
+./tools/dv/run_dv.py --validate-configs
+Validating configs in hw/common/dv/configs
+
+  simulators.toml  OK
+  executors.toml   OK
+  parsers.toml     OK
+  dtp              OK
+  dtp_uvm          OK
+  sep              OK
+  smc_wrapper      OK
+  smu              OK
+  smu_wrapper      OK
+
+Result: 6 DUT(s): 6 OK, 0 FAILED
+```
+
+Use the `--doctor` flag to check the testbench environment for an individual
+configuration - note that while this will check for the presence of optional
+proprietary tools, these remain entirely optional.
+
+```bash
+./tools/dv/run_dv.py --doctor --dut sep
+configs : OK
+checking: DUT `sep` (would run with: verilator)
+
+python/package:
+  python                   OK       3.11.15
+  shared dv package        OK       0.1.0
+  cocotb                   OK       2.0.1
+  pyuvm                    OK       4.0.1
+  cocotbext-axi            OK       0.1.28
+  cocotbext-jtag           OK       0.4.0
+  cocotbext-i2c            OK       0.1.2
+  namespace bridge         OK       <repo-root>/build/dv/python
+  namespace PYTHONPATH     OK       <repo-root>/build/dv/python
+  import ocah_axi_vip      OK       import OK
+  import sep               OK       import OK
+  import sep.cocotb.env    OK       import OK
+
+  tool       binary       status                     licenses
+  verilator  verilator    found: /nix/store/hiyac264333480jfax3374g1mp6nckv7-verilator-5.050/bin/verilator none needed
+  xcelium    xrun         MISSING from PATH          0/2 env set  (optional)
+  vcs        vcs          MISSING from PATH          0/2 env set  (optional)
+
+Result: required tool `verilator` is available
+```
+
+Having selected a Device to Test with the `--dut` flag, use `--list` to
+print the available tests and testlists for the device.
+
+```bash
+./tools/dv/run_dv.py --dut sep --list
+name       : sep
+kind       : dv
+framework  : cocotb
+root       : hw/sys/sep/dv
+tools      : verilator, xcelium, vcs
+default    : verilator
+stages     : ...
+tests      : ...
+groups     : all=... cpu=... cpu_stub=...
+```
+
+To run an individual set of tests, list them using the `--items` flag.
+
+```bash
+./tools/dv/run_dv.py --dut smc_wrapper --items octs_sanity_test smc_axil_idle_test
+...
+```
+
+This may similarly be used to run preconfigured test groups.
+
+Further options, including seeds and regressions are available, consult the `--help`
+flag to see usage.
+
+=== Visual Debugging and Waveform Viewer
+
+When debugging particularly difficuly RTL issues, it is useful to be able to view the signals
+travelling between components. For this, a wave trace may be generated and inspected. To
+generate a trace, use the `--waves` argument.
+
+```bash
+./tools/dv/run_dv.py --waves ...
+...
+```
+
+We use https://surfer-project.org/[Surfer] for viewing wave traces, but if you prefer a
+different program, the program suggested may be overridden with `--wave-viewer-binary`.
+
+To automatically open your chosen viewer on test completion, use the `--open-waves` flag.
+
+The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wave traces for failing tests.
+
+=== References
+
+* https://www.veripool.org/verilator[Verilator documents]
+* https://www.cocotb.org[cocotb]
+* https://github.com/antmicro/coverview[Coverview]
+* https://surfer-project.org[Surfer project website]
+* https://ics.jku.at/files/2024RISCVSummit_Surfer.pdf[RISC-V Summit paper on Surfer]
+
+== Synthesis
+
+OCAH is designed around open-source workflows. For this reason, we have chosen to
+provide a synthesis flow using Yosys.
+
+`make ocah-synth-yosys-all` requires `yosys` on `PATH`. If it is not installed, Make
+prints a hint to use the container instead:
+
+```bash
+# Native (yosys must be on PATH)
+make ocah-synth-yosys-all
+
+# Via the container
+./scripts/docker-run.sh run-here make ocah-synth-yosys-all
+```
+
+The PDK (`ihp-sg13g2` by default) is downloaded automatically by `ciel` on first
+run. To pre-download all supported PDKs:
+
+```bash
+make ocah-synth-pdks
+```
+
+This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
+used for synthesis may be selected with `TECH`. `BLOCK` is a `flow.mk` top
+(`dtp`, `sep`, `smc`, `smu`, `aou`), not an IP name. Discovery and `TECH=` are
+in https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/README.md[`flows/synth/yosys/README.md`].
+
+[WARNING]
+====
+The yosys flow is still WIP, as timing constraints are not yet integrated/pipe cleaned.
+====
+
+[[linting]]
+== Linting
+
+We use linters within the development of OCAH to perform static analysis
+on the codebase. The below rules will check code for errors and poor
+formatting. They also enforce a consistent code style.
+
+[WARNING]
+====
+Some linting workflows are still WIP, the code has not yet been cleaned up.
+====
+
+Slang and Verilator use the same `flow.mk` tops as synthesis. Verible walks
+hand-authored files under `hw/`, including leaf IP. To restrict slang or
+Verilator output to one IP directory, lint the parent system:
+
+```bash
+make lint-slang-all BLOCK=smu SLANG_LINT_PATH=hw/ip/gpio
+make lint-verilator-all BLOCK=smu VERILATOR_LINT_PATH=hw/ip/gpio
+```
+
+=== Verilog
+
+==== Style and Lint checking with Verible
+
+To run the verible linter on all SystemVerilog files, use the following command:
+
+```bash
+make lint-sv-verible
+```
+
+To apply the verible formatter, use the following:
+
+```bash
+make format-sv
+```
+
+The need for the above may be checked with `make format-sv-check`.
+
+To run the linter only on a single block, use the `BLOCK` variable. The paths to
+search for files may be further constrained with `LINT_PATH` and `FORMAT_PATH`
+respectively, for each rule.
+
+==== Linting with Verilator
+
+Verilator structurally lints each discovered hardware block as its own top:
+
+```bash
+make lint-verilator-all
+```
+
+To run the linter only on a single block, use the `BLOCK` environment variable. To
+further constrain the printed warnings, also use `VERILATOR_LINT_PATH`.
+
+Verilator centrally loads
+`hw/common/regs/lint/peakrdl.verilator.vlt` for one generator-owned exception.
+It suppresses only `MULTIDRIVEN` reports naming the `field_combo` or
+`field_storage` aggregate in PeakRDL register modules and the copied SPI
+register module. PeakRDL emits separate processes for disjoint aggregate
+members, but Verilator reports the enclosing aggregate. The exception does not
+cover member names or width diagnostics.
+
+Audit the exception against the integrated SMU before changing its paths or
+messages. Run without the common waiver and confirm that every generated match
+names a `field_combo` or `field_storage` aggregate, while hand-authored
+`MULTIDRIVEN` findings remain visible:
+
+```bash
+make lint-verilator-all BLOCK=smu \
+  OCAH_LINT_VERILATOR_COMMON_WAIVERS= \
+  OCAH_LINT_VERILATOR_EXTRA_FLAGS="-Wall -Wpedantic" \
+  2>&1 | tee "$TMPDIR/verilator-smu-unwaived.log"
+```
+
+==== Style and Lint checking with Slang
+
+To run the slang linter on each `flow.mk` top, use the following command:
+
+```bash
+make lint-slang-all
+```
+
+To run the linter only on a single block, use the `BLOCK` environment variable. To
+further constrain the printed warnings, also use `SLANG_LINT_PATH`.
+
+=== C/C++
+
+==== Style and Format with Clang-Format
+
+The C/C++ Firmware files included in each component are checked and formatted with
+`clang-format`. This may be managed by `uv`, or `OCAH_CLANG_FORMAT_SKIP_UV=1`
+may be set to use a system installation - detected in the usual way from `PATH`.
+
+```bash
+make format-c
+```
+
+To check for errors without modifying files, use `make format-c-check`.
+
+To run the linter only on a single block, use the `BLOCK` environment variable. The
+path for files to check and format may be alternatively constrained with `FORMAT_C_PATH`.
+
+=== Python
+
+==== Lint and Format with `ruff`
+
+Ruff checks first-party Python under tools/, scripts/, hw/, and .github/. Generated register models, vendored sources, submodules, nonfree/, and build output are excluded.
+
+```bash
+make lint-python
+make format-python-check
+```
+
+To apply safe lint fixes and formatting locally, run:
+
+```bash
+make lint-python-fix
+make format-python
+```
+
+Pass `PYTHON_PATH=<path>` to restrict any command to part of the tree.
+
+CI uses only the non-modifying `lint-python` and `format-python-check` commands.
+
+==== Lint with `mypy`
+
+MyPy also lints first-party Python while excluding generated register
+models, vendored sources, submodules, `nonfree/`, and build output. It starts
+from a lenient config (see `pyproject.toml`) with hundreds of pre-existing findings
+across the tree.
+
+```bash
+make lint-python-mypy
+```
+
+Pass `MYPY_PATH=<path>` to restrict to part of the tree.
+
+=== Build System and Helper Scripts
+
+==== Makefile Lint with `checkmake`
+
+To lint all `Makefile` and `.mk` files used within OCAH, run
+
+```bash
+make lint-make
+```
+
+To constrain the output to a single file/subdirectory, use `MAKEFILE_PATH`.
+
+[NOTE]
+====
+Checkmake's `maxbodylength`/`phonydeclared`/`uniquetargets` rules have
+false-positive modes against conventions this repo relies on deliberately
+(long multi-step recipe bodies, the deferred `OCAH_PHONY +=` accumulator, and
+legitimate pattern-rule/`ifeq` target overloads) -- see `checkmake.ini` and
+`flows/lint/checkmake.mk`. Treat both as read-and-judge, not fix-on-sight.
+====
+
+==== Shell Script Lint and Format with `shellcheck`
+
+To lint all shell scripts used within OCAH, run
+
+```bash
+make lint-shell
+```
+
+To format files, run the below
+
+```bash
+make format-shell
+
+# Or to check formatting without modification
+make format-shell-check
+```
+
+In all cases, `SHELL_PATH` may be used to constrain the above.
+
+==== Format Nix with `nix fmt`
+
+Nix files (`*.nix`) are formatted with https://github.com/kamadorueda/alejandra[alejandra].
+To check formatting without modifying files:
+
+```bash
+make format-nix-check
+```
+
+To apply formatting in place:
+
+```bash
+make format-nix
+```
+
+Both commands invoke `nix fmt` under the hood via `scripts/docker-run.sh nix-fmt[-check]`,
+which runs in the nix environment rather than the firmware toolchain container.
+On hosts without nix installed, a NixOS container provides it automatically.
+
+CI runs `format-nix-check` on every pull request and push to `main`, reporting
+inline diff annotations through reviewdog.
+
+=== Configuration Files
+
+==== TOML file Lint with `tomllint`
+
+TOML File syntax may be checked by running
+
+```bash
+make lint-toml
+```
+
+The variable `TOML_PATH` may be used to limit the files checked.
+
+[NOTE]
+====
+`lint-toml` (tomllint) checks TOML syntax only -- it carries no style rules
+and no autofix, unlike yamllint/markdownlint. It mainly guards the DV
+testlists and sim configs under `hw/**/dv/**/*.toml`, catching a malformed
+file before the runner that reads it fails with a less legible error.
+====
+
+==== YAML file Lint with `yamllint`
+
+YAML File syntax may be checked by running
+
+```bash
+make lint-yaml
+```
+
+The variable `YAML_PATH` may similarly be used to limit the files checked.
+
+=== Documentation Files
+
+[NOTE]
+====
+`lint-spelling` (codespell) and `lint-markdown` (markdownlint) both offer
+autofix commands (`-fix` suffix); review the diff before committing, since
+either can rewrite a deliberate domain term (see `[tool.codespell]`'s
+`ignore-words-list` in `pyproject.toml`) or mangle non-prose content such as
+math notation or bit-range syntax that only looks like Markdown.
+====
+
+==== Markdown Lint with `markdownlint`
+
+To check the markdown files within the OCAH Directories, run
+
+```bash
+make lint-markdown
+```
+
+Fixes may automatically be applied by running
+
+```bash
+make lint-markdown-fix
+```
+
+In both cases, the directory linted may be constrained with `MARKDOWN_PATH`.
+
+==== Spell-Checking with Codespell
+
+To check the spelling of all documentation files, run the following
+
+```bash
+make lint-spelling
+```
+
+To apply fixes automatically, run
+
+```bash
+make lint-spelling-fix
+```
+
+In both cases, the path of files to be checked may be constrained with `CODESPELL_PATH`.
+
+=== Synthesis Scripts
+
+==== TCL Script Style, Lint and Format with Tclint
+
+To lint the TCL scripts (used to automate the synthesis workflow) in the repository,
+we use the package `tclint`. This may be managed by `uv` - run `uv sync` to install,
+or to use a system installed version, detected in the usual way from `PATH`, set
+`OCAH_TCLINT_SKIP_UV=1`.
+
+To lint, use the following command:
+
+```bash
+make lint-tcl
+```
+
+To then run the formatter and style checker, use the following, whose changes may first
+be checked with `make format-tcl-check`:
+
+```bash
+make format-tcl
+```
+
+The search path for script files may be overridden with `TCL_PATH`.
+
+=== Optional Pre-Commit Checks
+
+The repository provides optional, check-only hooks for staged Python, C/C++,
+Tcl, YAML, TOML, and shell files, plus a repo-wide spelling check. They run
+Ruff, clang-format, tclfmt, tclint, codespell, yamllint, tomllint, shellcheck,
+and shfmt from the locked uv environment, plus Git's whitespace/conflict-marker
+check. The hooks do not modify or stage files. `mypy`, `markdownlint`, and
+`checkmake` are deliberately left out of this bundle -- they are slow, need a
+separate Node.js toolchain, or ship as a standalone binary rather than a
+uv-managed package -- and stay CI-only; see the CI job table above for their
+local commands.
+
+```bash
+make hooks-install    # explicit opt-in for this clone
+make hooks-run        # check currently staged files without installing
+make hooks-run-all    # check every eligible tracked file
+make hooks-uninstall
+```
+
+Installation uses pre-commit's standard local `.git/hooks/pre-commit`
+launcher. It does not change `core.hooksPath`, and no setup or checkout command
+installs it automatically. CI remains authoritative whether or not a
+contributor enables the hook.
+
+=== Linting and CI
+
+`.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
+`lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
+`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`,
+`regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
+(`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
+Verilator, and reviewdog artifacts; jobs report through
+`.github/actions/reviewdog-report`.
+
+Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
+or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
+child. The required `verilator-smoke (dtp)` / `(sep)` and GitLab checks still
+report success. `scripts/ci/diff_class.py --self-test` checks the classifier.
+Scheduled and manually dispatched pipelines always run in full.
+
+[cols="1,1,2",options="header"]
+|===
+| CI job | Reviewdog check(s) | Local command
+
+| `lint-sv-slang`
+| `lint-sv-slang/smu`, `lint-sv-slang/aou`
+| `make lint-slang-all BLOCK=smu` / `BLOCK=aou`
+
+| `lint-sv-verilator`
+| `lint-sv-verilator/<block>` for `aou`, `dtp`, `sep`, `smc`, and `smu`
+| `make lint-verilator-all [BLOCK=<block>]`
+
+| `lint-sv-verible` (disabled in CI)
+| `lint-sv-verible`
+| `make lint-sv-verible`
+
+| `lint-python`
+| `lint-python`
+| `make lint-python` and `make format-python-check`
+
+| `lint-python-mypy`
+| `lint-python-mypy` (report-only)
+| `make ocah-lint-python-mypy`
+
+| `format-c`
+| `format-c`
+| `make format-c-check`
+
+| `lint-tcl`
+| `lint-tcl`
+| `make lint-tcl` and `make format-tcl-check`
+
+| `lint-spelling`
+| `lint-spelling`
+| `make ocah-lint-spelling` and `make ocah-lint-spelling-fix`
+
+| `lint-yaml`
+| `lint-yaml`
+| `make ocah-lint-yaml`
+
+| `lint-toml`
+| `lint-toml`
+| `make ocah-lint-toml`
+
+| `lint-markdown`
+| `lint-markdown`
+| `make ocah-lint-markdown` and `make ocah-lint-markdown-fix`
+
+| `lint-make`
+| `lint-make` (report-only)
+| `make ocah-lint-make`
+
+| `lint-shell`
+| `lint-shell`
+| `make ocah-lint-shell`, `make ocah-format-shell`, and `make ocah-format-shell-check`
+
+| `regen-regs`
+| — (job fails on a dirty tree)
+| `make regen-regs regen-regs-adoc regen-regs-html`
+
+| `vendor-diff`
+| — (job fails when committed `upstream/` drifts)
+| `bender vendor diff --err_on_diff`
+|===
+
+The `regen-regs` gate regenerates every register block's collateral from the RDLs
+and fails if the working tree changes, so the committed `**/regs/gen/` outputs
+(SystemVerilog, C headers, Python, RAL, IP-XACT, AsciiDoc, HTML) always match a
+fresh run. It is peakrdl-only (no bender or `nonfree/`), so a plain checkout
+reproduces it. To fix a failure, run the local command above and commit the
+result:
+
+```
+make regen-regs regen-regs-adoc regen-regs-html
+git status --porcelain   # expect no output
+```
+
+The `vendor-diff` gate re-clones every `vendor_package` remote, applies
+`patches/`, and fails if the committed `upstream/` tree does not match. To
+fix a failure, refresh the tree and commit:
+
+```
+bender vendor init
+git status --porcelain   # expect only intended vendor/ changes
+```
+
+==== References
+
+* https://github.com/chipsalliance/verible[Verible GitHub]
+* https://www.chipsalliance.org/news/integrating-language-server-protocol-in-verible[Verible
+LSP guide]

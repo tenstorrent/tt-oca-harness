@@ -13,14 +13,18 @@ from seq_lib.dtp_dbg_disable_jtag2axi_matrix_test_seq import (
 @pyuvm.test()
 class dtp_jtag2axi_dbg_disable_matrix_test(dtp_base_test):
     # Shared AXI checker: passive bus monitors + reference model compare every
-    # observed transaction; the required evidence IDs and per-stream minimum
-    # compared-transaction counts below make a silent no-op run fail at
-    # finalization.
+    # observed transaction; every gated attempt must leave the request
+    # counters flat from before its TDR write and put no transaction inside
+    # the blocked window held across the release; the required evidence IDs
+    # and per-stream minimum compared-transaction counts below make a silent
+    # no-op run fail at finalization.
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-RDATA",
         "CHK-AXI-STRB",
+        "CHK-AXI-NOACT",
+        "CHK-AXI-BLOCKED",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
     )
@@ -30,8 +34,9 @@ class dtp_jtag2axi_dbg_disable_matrix_test(dtp_base_test):
         seq = dtp_dbg_disable_jtag2axi_matrix_test_seq(
             "dbg_disable_jtag2axi_matrix",
             scenario_seed=self.base_seed(),
-            # 1 all_clear + 3 one-hot + 11 multi-hot + 1 all_disabled = 16 rows,
-            # so one matrix pass meets the 16-iteration floor with seeded rows.
+            # The matrix runs once: its rows (all_clear, one one-hot per bridge
+            # gate field, multi_hot_rows multi-hot, all_disabled) are the seeded
+            # iterations.
             multi_hot_rows=OcahKnobs.get_int_min("DTP_DBG_DISABLE_MULTI_HOT_ROWS", 11, 1),
         )
         await self.start_seq(seq)

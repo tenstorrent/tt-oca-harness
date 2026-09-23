@@ -32,10 +32,7 @@ static inline uint32_t get_ss_complete_bit(uint32_t ss_idx) {
 /* Bound for each half of the handshake.
  *
  * `ss_reset_complete_i` is a TB pin, not something the SMC wrapper drives, so
- * an absent or misbehaving peer responder is a normal outcome here and has to
- * be reported rather than waited on. Both waits below are bounded and both
- * expiries raise, so the verdict distinguishes "peer answered" from "peer never
- * did".
+ * an absent peer responder must be reported rather than waited on.
  */
 #define SS_COMPLETE_BOUND 200000u
 
@@ -103,7 +100,7 @@ int main(void) {
     // Ensure warm reset is deasserted for all subsystems before starting.
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, 0xFFFFFFFFu);
 
-    // Repeat for multiple subsystems (per requirement).
+    // Run the handshake on two subsystems.
     warm_reset_handshake(hartid, 0);
     warm_reset_handshake(hartid, 1);
 

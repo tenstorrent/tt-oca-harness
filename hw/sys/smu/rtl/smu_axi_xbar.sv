@@ -144,7 +144,7 @@ module smu_axi_xbar
     .mst_req_t    (xbar_mst_req_t),
     .mst_resp_t   (xbar_mst_resp_t),
     .rule_t       (addr_rule_t)
-  ) i_axi_xbar (
+  ) u_axi_xbar (
     .clk_i                 (clk_i),
     .rst_ni                (rst_ni),
     .test_i                (test_i),

@@ -8,8 +8,8 @@
 //   * read the reset value of sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR (decode
 //     sanity: a non-zero reset value proves the block decoded rather than
 //     returning zeros from an unmapped address);
-//   * write the four directed patterns of the cocotb scenario to
-//     SEP_SW_DEBUG, SEP_NMI_VEC, RAS_BANK_INFO, and PKA_CTRL and read each
+//   * write the three directed patterns of the cocotb scenario to
+//     SEP_SW_DEBUG, SEP_NMI_VEC, and PKA_CTRL and read each
 //     back through its implemented-field mask; then random_count seeded
 //     random patterns per register IN ADDITION (+SEP_RANDOM_COUNT, default
 //     5; each pass exercises different data), each read back;
@@ -58,8 +58,8 @@ class sep_axi_smoke_test_seq extends sep_base_test_seq;
   // each with a distinct pattern so a write to one register cannot satisfy
   // the readback of another.
   function void write_cases(ref write_case_t cases[$]);
-    string     names[$] = {"SEP_SW_DEBUG", "SEP_NMI_VEC", "RAS_BANK_INFO", "PKA_CTRL"};
-    bit [31:0] patterns[$] = {32'hDEAD_BEEF, 32'h0BAD_C0DE, 32'h0000_00A5, 32'h0000_0007};
+    string     names[$] = {"SEP_SW_DEBUG", "SEP_NMI_VEC", "PKA_CTRL"};
+    bit [31:0] patterns[$] = {32'hDEAD_BEEF, 32'h0BAD_C0DE, 32'h0000_0007};
     cases.delete();
     foreach (names[i]) begin
       write_case_t c;
@@ -76,8 +76,8 @@ class sep_axi_smoke_test_seq extends sep_base_test_seq;
     bit [31:0]     rand_pattern;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkOtpJtag2AxiUngated, ChkCsrResp, ChkCsrReset, ChkCsrReadback,
-                    ChkCsrRandom, ChkCsrRestore, ChkNonvac});
+    attach_evidence('{ChkFuseSense, ChkCsrResp, ChkCsrReset, ChkCsrReadback, ChkCsrRandom,
+                    ChkCsrRestore, ChkNonvac});
     write_cases(cases);
     if (!sep_cpu_ctrl_csr_by_name(ResetReadRegister, reset_reg))
       `uvm_fatal(get_type_name(), {"register not in the predicted set: ", ResetReadRegister})

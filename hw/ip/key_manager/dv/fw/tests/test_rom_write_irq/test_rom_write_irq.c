@@ -211,10 +211,10 @@ int main(void) {
     /* Test 3: Verify W1C clear functionality */
     TEST_SUBTEST_START("ROM write interrupt W1C clear functionality");
     {
-        /* Reset ISR count to check that ISR doesn't run when interrupt is disabled */
+        /* Snapshot the ISR count; it must not change while the interrupt is disabled */
         uint32_t irq_count_before = external_irq_count;
 
-        /* Disable interrupt so ISR doesn't run - we'll test manual W1C clearing */
+        /* Disable the interrupt so the ISR does not run; the W1C clear below is done by hand */
         KMCSR_IRQ_ENABLE_REG.w = 0;
         TEST_LOG("  Disabled ROM write interrupt for manual W1C test");
         __asm__ volatile("fence" ::: "memory");

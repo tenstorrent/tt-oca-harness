@@ -41,7 +41,8 @@ module smc_dfd_wrap #(
   input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
 
   // DFT
-  input  logic test_en_i
+  input  logic test_en_i,
+  input  logic scan_rst_ni
 );
 
   /////////////////////////
@@ -72,7 +73,7 @@ module smc_dfd_wrap #(
   generic_ccg #(
     .HYST_EN(0),
     .HYST_CYC(0)
-  ) dfd_clk_gate (
+  ) u_dfd_clk_gate (
     .out_clk(clk_gated_i),
     .clk(clk_smc_i),
     .rst_n(rst_primary_ni),
@@ -200,29 +201,30 @@ module smc_dfd_wrap #(
     .i_sink_mem_rsp                         (trace_mem_resp_i),
     .i_mem_tsel_settings                    ('0),
 
-    // Power / fuse controls: 0 = enabled. clk_dis_ctrl = 0 leaves the functional
-    // clock enable under the block's own MMRs.
+    // Power / fuse controls: 0 = enabled. clk_dis_ctrl = ~rst_primary_ni leaves the functional
+    // clock enable under the block's own MMRs except when primary reset is applied, which in
+    // that case will force clock gates to all ungate
     .i_cla_fuse_dis                         ('0),
     .i_cla_clk_dis                          ('0),
-    .i_cla_clk_dis_ctrl                     ('0),
+    .i_cla_clk_dis_ctrl                     (~rst_primary_ni),
     .i_cla_func_clamp                       ('0),
     .i_dst_fuse_dis                         ('0),
     .i_dst_clk_dis                          ('0),
-    .i_dst_clk_dis_ctrl                     ('0),
+    .i_dst_clk_dis_ctrl                     (~rst_primary_ni),
     .i_dst_func_clamp                       ('0),
     .i_dst_sink_fuse_dis                    ('0),
     .i_dst_sink_clk_dis                     ('0),
-    .i_dst_sink_clk_dis_ctrl                ('0),
+    .i_dst_sink_clk_dis_ctrl                (~rst_primary_ni),
     .i_dst_sink_func_clamp                  ('0),
     .i_funnel_fuse_dis                      ('0),
     .i_funnel_clk_dis                       ('0),
-    .i_funnel_clk_dis_ctrl                  ('0),
+    .i_funnel_clk_dis_ctrl                  (~rst_primary_ni),
     .i_funnel_func_clamp                    ('0),
 
     // DFT
     .i_test_icg_en                          (test_en_i),
-    .i_test_reset_en                        (1'b0),
-    .i_test_reset_n                         (rst_primary_ni),
+    .i_test_reset_en                        (test_en_i),
+    .i_test_reset_n                         (scan_rst_ni),
 
     // Trace-to-memory AXI master (was TR_EXT_SlvReq / EXT_TR_SlvResp) - unused
     .m_trc_axi_awready                      ('0),
@@ -290,11 +292,11 @@ module smc_dfd_wrap #(
   prim_sync_reset #(
     .WIDTH(3)
   ) u_ref_rst_sync (
-    .clk            (clk_ref_i),
-    .rst_n          (rst_primary_ni),
-    .test_mode      (test_en_i),
-    .scan_rst_n     (rst_primary_ni),
-    .sync_rst_n     (rst_ref_n)
+    .clk_i       (clk_ref_i),
+    .rst_ni      (rst_primary_ni),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (rst_ref_n)
   );
 
   always_ff @(posedge clk_ref_i) begin
@@ -310,24 +312,24 @@ module smc_dfd_wrap #(
   prim_bin2gray #(
     .N(REF_CNT_W)
   ) u_ref_cnt_bin2gray (
-    .A(ref_cnt),
-    .Z(ref_cnt_gray)
+    .a_i(ref_cnt),
+    .z_o(ref_cnt_gray)
   );
 
   prim_sync3r #(
     .WIDTH(REF_CNT_W)
   ) u_ref_cnt_sync (
-    .i_clk      (clk_gated_i),
-    .i_reset_n  (rst_primary_ni),
-    .i_d        (ref_cnt_gray_q),
-    .o_q        (ref_cnt_gray_sync)
+    .clk_i  (clk_gated_i),
+    .rst_ni (rst_primary_ni),
+    .d_i    (ref_cnt_gray_q),
+    .q_o    (ref_cnt_gray_sync)
   );
 
   prim_gray2bin #(
     .N(REF_CNT_W)
   ) u_ref_cnt_gray2bin (
-    .A(ref_cnt_gray_sync),
-    .Z(ref_cnt_sync)
+    .a_i(ref_cnt_gray_sync),
+    .z_o(ref_cnt_sync)
   );
 
   assign time_tick = (tick_cnt != ref_cnt_sync);

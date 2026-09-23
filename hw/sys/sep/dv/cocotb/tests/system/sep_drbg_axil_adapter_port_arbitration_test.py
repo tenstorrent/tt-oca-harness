@@ -3,11 +3,9 @@
 """Every legal AW/W/AR ordering at a drbg_axil64_lane_adapter port.
 
 no_cpu / +skip_fuse_sense. AW, W and AR are independent AXI channels
-(IHI 0022 A3.3) and a master may not deassert a VALID before its handshake
-completes (A3.2.1). An adapter that gates its write side on `ar_valid` while
-gating its read side on `aw_valid`/`w_valid` can therefore hold all three
-readys low with no way out: neither side can back off, and the port stays held
-until reset.
+(IHI 0022 A3.3). In idle the adapter accepts each write half independently
+until that half is pending, and accepts a read only when neither write half
+is pending. Both accesses must retire under every ordering.
 
 The fabric-driven leaves (`sep_drbg_axil_concurrent_*`) reach the DUT's own
 adapters but can present only one of the three orderings -- the crossbar
@@ -15,9 +13,9 @@ delivers W a cycle after AW and re-serializes to that order whatever the
 master does, which `CHK-CONCURRENT-CAL` measures on both sides. This leaf
 drives a TB-owned second instance of the same module at its port, so all
 three orderings are presentable to the cycle, and the vehicle's own reset
-clears a wedge between cells so each verdict is independent.
+keeps cells independent.
 
-Division of labour, deliberately: this leaf grades the MODULE's arbitration,
+Division of labour: this leaf grades the MODULE's arbitration,
 the fabric-driven leaves grade the SEP integration. Neither substitutes for
 the other, and this one does not claim the integration.
 
@@ -29,24 +27,21 @@ fed from the AXI agent -- would see no transaction and refuse a pass at all.
 CHK-PORT-CONTROL: a lone write, a lone read, and a write whose AW and W are
 separated by the same gap the overlap cells use, all retire AND answer OKAY.
 The gapped leg is what excludes the channel separation itself as the cause of
-an overlap cell's stall; without it that exclusion would rest on reading the
-RTL, which is taking the answer from the design under test. Both
-halves matter: an access the adapter rejects as unsupported is answered SLVERR
-straight out of StIdle with nothing forwarded, and retires just as promptly as
-a real one, so the response code is what shows the forwarding leg is alive. With no channel
-overlap nothing in the adapter gates them, so this is what makes a stall below
-attributable to the overlap rather than to the vehicle or to the responder
-behind the adapter. Without it every ordering would report as stalled on a
-broken driver and imitate the defect.
+an overlap-cell failure; without it that exclusion would rest on reading the
+RTL. Both halves matter: an access the adapter rejects as unsupported is
+answered SLVERR straight out of StIdle with nothing forwarded, and retires
+just as promptly as a real one, so the response code is what shows the
+forwarding leg is alive. Without the controls every ordering would report as
+stalled on a broken driver.
 
 CHK-PORT-STIM: the ordering the port actually presented, read off
 `tbadp_chan_o`, not the offsets requested. A cell whose presentation does not
 match is a stimulus failure and is reported as one, not scored as coverage.
 
-CHK-PORT-PROGRESS: both accesses retire -- BVALID and RVALID both seen. A
-stall here is a stable, legal `1'b0` on all three readys, which no X-check and
-no protocol assertion sees, so the check is a bounded cycle count plus the
-longest run of held-valids-with-no-ready, which is the stall signature itself.
+CHK-PORT-PROGRESS: both accesses retire -- BVALID and RVALID both seen.
+The check is a bounded cycle count plus the longest run of
+held-valids-with-no-ready, so a hang that `ASSERT_KNOWN` would miss still
+fails the leaf.
 """
 
 from __future__ import annotations
@@ -169,9 +164,21 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 )
                 self.logger.error("CHK-PORT-PROGRESS FAIL: %s", fails[-1])
                 continue
+            if obs["b_resp"] != RESP_OKAY or obs["r_resp"] != RESP_OKAY:
+                fails.append(
+                    f"[{order}] both accesses retired but a response was not "
+                    f"OKAY (b_resp={obs['b_resp']} r_resp={obs['r_resp']}); "
+                    f"{summary}"
+                )
+                self.logger.error("CHK-PORT-PROGRESS FAIL: %s", fails[-1])
+                continue
 
             covered.append(order)
-            self.logger.info("CHK-PORT-PROGRESS OK: %s retired both accesses; %s", order, summary)
+            self.logger.info(
+                "CHK-PORT-PROGRESS OK: %s retired both accesses with OKAY; %s",
+                order,
+                summary,
+            )
 
         # A stimulus miss is reported before a DUT verdict: a cell that never
         # presented its ordering says nothing about the arbitration either way,
@@ -190,11 +197,15 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
         if fails:
             raise AssertionError(
                 f"CHK-PORT-PROGRESS FAIL: {len(fails)} of {len(ORDER_NAMES)} "
-                f"legal channel ordering(s) stalled the adapter with no channel "
-                f"able to retire: {'; '.join(fails)}"
+                f"legal channel ordering(s) stalled the adapter or answered "
+                f"non-OKAY: {'; '.join(fails)}"
             )
+        assert len(covered) == len(ORDER_NAMES), (
+            f"CHK-PORT-PROGRESS FAIL: covered {len(covered)} of "
+            f"{len(ORDER_NAMES)} ordering(s): {covered}"
+        )
         self.logger.info(
-            "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses (%s)",
+            "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses with OKAY (%s)",
             len(covered),
             len(ORDER_NAMES),
             ", ".join(covered),

@@ -22,56 +22,31 @@ def _kv_rows(data: dict, keys: list[tuple[str, str]]) -> str:
 def _test_detail_rows(result: dict) -> str:
     rows = []
     for test in result.get("tests_detail") or []:
-        tags = ", ".join(test.get("tags") or [])
-        junit = test.get("junit_xml", "")
-        junit_cell = link(junit, "results.xml") if junit else "--"
-        log = test.get("log", "")
-        log_cell = link(log, "log") if log else "--"
         rows.append(
             "<tr>"
             f"<td>{fmt(test.get('name'))}</td>"
             f"<td>{fmt(test.get('category'))}</td>"
-            f"<td>{fmt(tags)}</td>"
-            f"<td>{fmt(test.get('target'))}</td>"
             f"<td>{fmt(test.get('seed'))}</td>"
             f"<td>{fmt(test.get('attempt'))}</td>"
             f'<td class="{fmt(test.get("status"))}">{fmt(test.get("status"))}</td>'
             f"<td>{fmt(test.get('duration_sec'))}</td>"
             f"<td>{fmt(test.get('reason'))}</td>"
-            f"<td>{junit_cell}</td>"
-            f"<td>{log_cell}</td>"
             "</tr>"
         )
-    return "\n".join(rows) or '<tr><td colspan="11">No detailed test records collected.</td></tr>'
-
-
-def _junit_rows(result: dict) -> str:
-    rows = []
-    for entry in result.get("junit_xml") or []:
-        path = entry.get("path", "")
-        rows.append(
-            "<tr>"
-            f"<td>{fmt(entry.get('item'))}</td>"
-            f"<td>{fmt(entry.get('seed'))}</td>"
-            f"<td>{fmt(entry.get('attempt'))}</td>"
-            f"<td>{link(path, path) if path else '--'}</td>"
-            f"<td>{fmt(entry.get('exists'))}</td>"
-            "</tr>"
-        )
-    return "\n".join(rows) or '<tr><td colspan="5">No JUnit XML artifacts collected.</td></tr>'
+    return "\n".join(rows) or '<tr><td colspan="7">No detailed test records collected.</td></tr>'
 
 
 def _regression_failure_rows(regression: dict, key: str) -> str:
     rows = []
     for entry in regression.get(key) or []:
-        log = entry.get("log", "")
+        status = entry.get("status") or entry.get("final_status")
         rows.append(
             "<tr>"
             f"<td>{fmt(entry.get('item'))}</td>"
             f"<td>{fmt(entry.get('seed'))}</td>"
-            f'<td class="{fmt(entry.get("status") or entry.get("final_status"))}">{fmt(entry.get("status") or entry.get("final_status"))}</td>'
-            f"<td>{fmt(entry.get('reason') or entry.get('flaky_reason'))}</td>"
-            f"<td>{link(log, 'log') if log else '--'}</td>"
+            f'<td class="{fmt(status)}">{fmt(status)}</td>'
+            f"<td>{fmt(entry.get('reason') or entry.get('attempt_count'))}</td>"
+            f"<td>{fmt(entry.get('rerun'))}</td>"
             "</tr>"
         )
     return "\n".join(rows) or '<tr><td colspan="5">None recorded.</td></tr>'
@@ -104,39 +79,6 @@ def _coverage_threshold_rows(coverage: dict) -> str:
     )
 
 
-def _coverage_hole_rows(coverage: dict) -> str:
-    holes = coverage.get("holes_summary", {})
-    details_href = coverage.get("coverage_details") or ""
-    rows = []
-    for hole in holes.get("samples") or []:
-        issue_cells = (
-            ", ".join(link(url, f"#{url.rsplit('/', 1)[-1]}") for url in hole.get("issues") or [])
-            or "--"
-        )
-        location = hole.get("source") or hole.get("hierarchy") or ""
-        if location and hole.get("line"):
-            location = f"{location}:{hole.get('line')}"
-        hole_id = hole.get("policy_id") or hole.get("id")
-        hole_cell = link(details_href, str(hole_id)) if details_href else fmt(hole_id)
-        rows.append(
-            "<tr>"
-            f"<td>{hole_cell}</td>"
-            f"<td>{fmt(hole.get('category'))}</td>"
-            f"<td>{fmt(hole.get('metric_family'))}</td>"
-            f"<td>{fmt(location)}</td>"
-            f'<td class="{fmt(hole.get("disposition"))}">{fmt(hole.get("disposition"))}</td>'
-            f'<td class="{fmt(hole.get("status"))}">{fmt(hole.get("status"))}</td>'
-            f"<td>{fmt(hole.get('owner'))}</td>"
-            f"<td>{fmt(hole.get('reviewer'))}</td>"
-            f"<td>{fmt(hole.get('rationale'))}</td>"
-            f"<td>{issue_cells}</td>"
-            "</tr>"
-        )
-    return "\n".join(rows) or (
-        '<tr><td colspan="10">No detailed coverage holes collected.</td></tr>'
-    )
-
-
 def render_report(result: dict) -> str:
     tests = result.get("tests", {})
     coverage = result.get("coverage", {})
@@ -147,6 +89,7 @@ def render_report(result: dict) -> str:
     status = result.get("status", "UNKNOWN")
     run_metadata = result.get("run_metadata", {})
     regression = result.get("regression", {}) if isinstance(result.get("regression"), dict) else {}
+    junit = result.get("junit_xml", {}) if isinstance(result.get("junit_xml"), dict) else {}
     warnings = result.get("warnings", [])
 
     artifact_rows = (
@@ -170,12 +113,10 @@ def render_report(result: dict) -> str:
             [
                 ("run_dir", "Run Directory"),
                 ("result_json", "Result JSON"),
-                ("run_json", "Run JSON"),
                 ("label", "Label"),
                 ("executor", "Executor"),
                 ("tool_version", "Tool Version"),
                 ("generated_at", "Generated At"),
-                ("dry_run", "Dry Run"),
             ],
         )
         or '<tr><td colspan="2">No run metadata collected.</td></tr>'
@@ -206,7 +147,7 @@ def render_report(result: dict) -> str:
   <tr>
     <td>{fmt(tests.get("passing"))}</td>
     <td>{fmt(tests.get("total"))}</td>
-    <td>{fmt(tests.get("pass_rate"))}</td>
+    <td>{"incomplete run" if tests.get("completed") is False else fmt(tests.get("pass_rate"))}</td>
     <td>{fmt(coverage.get("total_percent"))}</td>
   </tr>
 </table>
@@ -238,12 +179,6 @@ def render_report(result: dict) -> str:
   {_coverage_threshold_rows(coverage)}
 </table>
 
-<h2>Coverage Holes And Waivers</h2>
-<table>
-  <tr><th>Hole ID</th><th>Category</th><th>Metric</th><th>Location</th><th>Disposition</th><th>Status</th><th>Owner</th><th>Reviewer</th><th>Rationale</th><th>Issues</th></tr>
-  {_coverage_hole_rows(coverage)}
-</table>
-
 <h2>Artifacts</h2>
 <table>
   <tr><th>Name</th><th>Path</th></tr>
@@ -257,32 +192,26 @@ def render_report(result: dict) -> str:
 
 <h2>Test Details</h2>
 <table>
-  <tr><th>Name</th><th>Category</th><th>Tags</th><th>Target</th><th>Seed</th><th>Attempt</th><th>Status</th><th>Duration</th><th>Reason</th><th>JUnit XML</th><th>Log</th></tr>
+  <tr><th>Name</th><th>Category</th><th>Seed</th><th>Attempt</th><th>Status</th><th>Duration</th><th>Reason</th></tr>
   {_test_detail_rows(result)}
 </table>
 
 <h2>JUnit XML Artifacts</h2>
 <table>
-  <tr><th>Item</th><th>Seed</th><th>Attempt</th><th>Path</th><th>Exists</th></tr>
-  {_junit_rows(result)}
+  <tr><th>Recorded</th><th>Missing</th></tr>
+  <tr><td>{fmt(junit.get("total"))}</td><td>{fmt(junit.get("missing"))}</td></tr>
 </table>
 
 <h2>Regression Failed Tests</h2>
 <table>
-  <tr><th>Item</th><th>Seed</th><th>Status</th><th>Reason</th><th>Log</th></tr>
+  <tr><th>Item</th><th>Seed</th><th>Status</th><th>Reason</th><th>Rerun</th></tr>
   {_regression_failure_rows(regression, "failed_tests")}
 </table>
 
 <h2>Regression Flaky Tests</h2>
 <table>
-  <tr><th>Item</th><th>Seed</th><th>Status</th><th>Reason</th><th>Log</th></tr>
+  <tr><th>Item</th><th>Seed</th><th>Final Status</th><th>Attempts</th><th>Rerun</th></tr>
   {_regression_failure_rows(regression, "flaky_tests")}
-</table>
-
-<h2>Rerun Commands</h2>
-<table>
-  <tr><th>Command</th></tr>
-  {_list_rows(regression.get("rerun_commands") or [], "rerun commands")}
 </table>
 
 <h2>Collector Warnings</h2>

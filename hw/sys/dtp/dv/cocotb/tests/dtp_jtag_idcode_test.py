@@ -3,7 +3,7 @@
 """DTP open-source JTAG IDCODE field test.
 
 Reads and verifies the IEEE 1149.1 IDCODE register on the primary TAP through
-the unified OCAH JTAG BFM.
+the shared ocah_jtag_vip BFM.
 """
 
 import pyuvm

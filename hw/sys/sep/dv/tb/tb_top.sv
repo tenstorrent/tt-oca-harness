@@ -18,7 +18,7 @@
 // port to a benign idle value. Stimulus is injected on the SEP CPU's own LSU AXI
 // master bus: the core (VeeR EL2) is held off (`mpc_reset_run_req=0`) and an
 // external cocotbext-axi AxiMaster is spliced onto the CPU's LSU AXI master
-// ``SEP_CORE.sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
+// ``SEP_CORE.u_sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
 // (addr32/data64/id3/user12). The stub build (`SEP_CPU_STUB`) is the sole
 // driver of that bus and drives lsu_axi_req from the tb's assembled request
 // (`assign`, no `force`; see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS
@@ -44,14 +44,15 @@
 //   * CPU firmware boot (+cpu_boot): runs on the full-CPU build, the core owns all of
 //     its master buses, fetches firmware out of the wrapper's real TCM macros, and
 //     runs. The boot test backdoor-loads the TCM (tb_backdoor_mem, on tcm_load_i),
-//     passes the desired reset vector to this top, which programs the EL2
-//     reset-vector TDR through JTAG, asserts mpc_reset_run_req, and observes PC
-//     advance (sep_cpu_trace) plus the firmware console/PASS magic on the outbound
-//     mailbox responder (sep_outbound_mbx).
+//     passes the desired reset vector to this top, which drives the wrapper's
+//     direct reset-vector input before reset releases, asserts mpc_reset_run_req,
+//     and observes PC advance (sep_cpu_trace) plus the firmware console/PASS
+//     magic on the outbound mailbox responder (sep_outbound_mbx).
 //
 // Boot/reset invariants:
 //   * ext_boot_seq_done_i = 1   (DUT port, driven by cocotb)
 //   * +skip_fuse_sense          (RTL plusarg, set by tests that bypass real sense)
+//   * smc_fuse_sense_done_i     (TB-modelled; +sep_smc_fuse_sense_hold holds it low)
 //   * mpc_reset_run_req         (0 = hold the CPU off [no_cpu]; 1 = run [cpu])
 //
 // The CPU LSU req/resp struct (deps/axi AXI_TYPEDEF_ALL) is bridged to flat
@@ -111,8 +112,8 @@ module sep_uvm_top
     // The entropy complex sits below sep_crypto inside sep_trng, which owns the
     // shared TRNG reset. Naming that level once means a hierarchy change is made
     // here rather than at every entropy probe and assertion scope below.
-    `define SEP_ESRC `SEP_CORE.sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
-    `define SEP_DRBG `SEP_CORE.sep_crypto.u_sep_trng.u_drbg_s3c_scan
+    `define SEP_ESRC `SEP_CORE.u_sep_crypto.u_sep_trng.u_entropy_source_s3c_scan
+    `define SEP_DRBG `SEP_CORE.u_sep_crypto.u_sep_trng.u_drbg_s3c_scan
 
     // ------------------------------------------------------------------
     // Idle / benign tie-off nets for the unused external ports.
@@ -124,8 +125,8 @@ module sep_uvm_top
     sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_req_drive;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_resp_w;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t ext_to_smc_resp_idle   = '0;
-    // SEP->SMC external AXI. Tied idle by default; with SEP_SMC_MEM_MODEL a
-    // behavioral axi_sim_mem responds (real R/W to SMC scratch + SRAM) so the
+    // SEP->SMC external AXI. Tied idle by default; with SEP_SMC_MEM_MODEL the
+    // shared AXI slave agent responds (real R/W to SMC scratch + SRAM) so the
     // Boot ROM can run its SMC scratch round-trip + non-SPI manifest fetch.
     sep_pkg::sep_system_peripherals_internal_axi_req_t  ext_to_smc_req_w;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t ext_to_smc_resp_w;
@@ -146,6 +147,8 @@ module sep_uvm_top
             (jtag_kmac_rst_hold_i === 1'b1);
         jtag_sep_reset_ctrl_drive.ovrd.trng_jtag_rst_n_ovrd =
             (jtag_trng_rst_hold_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.ovrd.abr_jtag_rst_n_ovrd =
+            (jtag_abr_rst_hold_i === 1'b1);
     end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
@@ -178,34 +181,64 @@ module sep_uvm_top
 
     // Assertion classes held off, and why each is not a DUT contract here.
     //
-    // AssertConnected_A: 408 instances across three subtrees (403 entropy_source,
-    // 4 axis_edn_crypto, 1 axis_edn_pool). It asks whether a hardened counter's
-    // err_o reaches an OpenTitan alert, so it cannot fail on DUT behaviour. It is
+    // AssertConnected_A (every hardened counter under entropy_source,
+    // axis_edn_crypto and axis_edn_pool) asks whether the counter's err_o reaches
+    // an OpenTitan alert, so it cannot fail on DUT behaviour. It is
     // ASSERT_INIT_NET -- an immediate assert in `initial #1ps`, with no clock and
     // no reset -- so `disable iff` cannot gate it and the scope is the only knob.
     //
-    // ~23 do not apply: their err_o is wired and reaches escalation and irq_o, and
-    // SEP's entropy_source has no alert output for the OT convention to test. The
-    // declarative escape is EnableAlertTriggerSVA(0) at those instantiations.
+    // Where err_o is wired it reaches escalation and irq_o, and SEP's
+    // entropy_source has no alert output for the OT convention to test; the
+    // declarative escape there is EnableAlertTriggerSVA(0) at the instantiation.
     //
-    // The other 385 are a real defect: the counters raise err_o into a net
-    // nothing reads. A green run is therefore NOT evidence that a glitched
-    // health-test counter would be reported. The SPI assertions in this subtree
-    // are armed only during reset, so they judge nothing after it.
+    // The remaining counters raise err_o into a net nothing reads, so a green run
+    // is NOT evidence that a glitched health-test counter would be reported. The
+    // SPI assertions in this subtree are armed only during reset, so they judge
+    // nothing after it.
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
-    // blocks -- so the one OCAH contract in the set is re-armed by name below.
+    // blocks. The contracts re-armed by name are the crypto EDN arbiter
+    // hold-until-grant assume, its lock assert, and FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
-        // Remove these three once the counters are wired and the alert
-        // convention is settled for this block. Re-arm by an assertion's own
-        // hierarchical name, never by re-enabling a parent instance.
+        // Scope-level $assertoff: these instances have no clock or reset for
+        // `disable iff` to gate. Re-arm by an assertion's own hierarchical
+        // name, never by re-enabling a parent instance.
         $assertoff(0, `SEP_ESRC);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan);
+        // req_chk_i gates these two. The adapter scope stays off because
+        // AxisEdnEndpointCount_A is an immediate assert with no reset.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .u_arbiter.ReqStaysHighUntilGranted0_M);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .u_arbiter.LockArbDecision_A);
+        // The adapter's own contracts for the shared clear. Without these the
+        // scope-level $assertoff above would leave the clear unpoliced: an ack
+        // leaking through it, or an ack state machine driven to Error by the
+        // one-cycle disable, would both pass silently.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .AxisEdnAllAckSmHealthy_A);
+        // Unrolled: a generate-block index must resolve at elaboration, so a
+        // procedural loop variable cannot select gen_ep[]. One line per
+        // endpoint of SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT (AES, KMAC, OTBN RND,
+        // OTBN URND).
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnNoAckDuringClear_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnNoAckDuringClear_A);
+        // req_chk_i changed on this instance too, so its arbiter contracts
+        // must be live for the same reason.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+            .u_arbiter.ReqStaysHighUntilGranted0_M);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
+            .u_arbiter.LockArbDecision_A);
         // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
-        // The only OCAH assertion under those subtrees, and reachable stimulus:
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
         $asserton(0, `SEP_ESRC.FipsWindowFloor_A);
@@ -221,27 +254,27 @@ module sep_uvm_top
         $assertoff(0, `SEP_ESRC
             .u_sha256_whitener.u_sha2.gen_sha256_logic.u_prim_sha2_256.u_pad
             .ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_sip_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_sip_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_chiplet_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_rma_chiplet_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_sec_disable_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.ValidDigestModeFlag_A);
-        $assertoff(0, `SEP_CORE.sep_crypto.u_sep_efuse_wrapper
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper
             .u_efuse_interface_controller.gen_mmr_reg.u_efuse_token_processing
             .u_sha256_sec_disable_token.u_prim_sha2_32.gen_sha256_logic
             .u_prim_sha2_256.u_pad.ValidDigestModeFlag_A);
@@ -251,24 +284,21 @@ module sep_uvm_top
     // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
     // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
     // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
-    // asserts OTBN's reset ON a clk_i edge, because otbn_gated_rst_n is a flop
-    // output of hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv, so at that edge the
-    // guard sees reset active and arms an attempt whose body still sees the
-    // pre-reset value and therefore demands seed_en_q be high. It fires on every
-    // software reset whatever the DUT does.
+    // asserts OTBN's reset ON a clk_i edge: the reset is a posedge clk_i flop
+    // output (sep_isolate_rst_seq.sv gated_rst_n_q), routed through the JTAG
+    // override mux u_otbn_rst_ovrd_mux in sep_reset_ctrl.sv to
+    // gated_rst_ni.otbn at sep_crypto.sv. At that edge the guard sees reset
+    // active and arms an attempt whose body still sees the pre-reset value and
+    // therefore demands seed_en_q be high. It fires on every software reset
+    // whatever the DUT does.
     //
     // This holds the property off for the WHOLE RUN, not just that edge, so no
-    // in-reset cycle is checked in any test. Little is lost because of the flop at
-    // otbn_rnd.sv:205-213: seed_en_q is asynchronously cleared by the same rst_ni
-    // the property checks it against, and that flop is what stops a reseed request
-    // -- held high through reset by design -- from starting one. A reseed cannot
-    // begin mid-reset unless that flop's reset is broken, and its declaration is
-    // what guarantees it is not.
-    //
-    // The repair is upstream: the guard should sample as the body does. It belongs
-    // to a vendor bump, not to this tree.
+    // in-reset cycle is checked in any test. The flop at otbn_rnd.sv:205-213
+    // covers the same contract: seed_en_q is asynchronously cleared by the same
+    // rst_ni the property checks it against, which is what stops a reseed
+    // request held high through reset from starting one mid-reset.
     initial begin
-        $assertoff(0, `SEP_CORE.sep_crypto.sep_crypto_otbn_wrapper_s3c_scan
+        $assertoff(0, `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan
             .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
     end
 `endif
@@ -278,9 +308,18 @@ module sep_uvm_top
     sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i = '0;
     sep_pkg::sep_lockstep_status_t lockstep_status_o;
     sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_w;
-    assign dbg_disable_smc_otp_jtag2axi_o = dbg_disable_w.smc_otp_jtag2axi;
-    assign dbg_disable_sep_otp_jtag2axi_o = dbg_disable_w.sep_otp_jtag2axi;
-    assign dbg_disable_all_o              = dbg_disable_w;
+    assign dbg_disable_stap_io_o            = dbg_disable_w.stap_io;
+    assign dbg_disable_stap_smc_o           = dbg_disable_w.stap_smc;
+    assign dbg_disable_stap_sep_o           = dbg_disable_w.stap_sep;
+    assign dbg_disable_stap_extra_o         = dbg_disable_w.stap_extra;
+    assign dbg_disable_stap_host_o          = dbg_disable_w.stap_host;
+    assign dbg_disable_dft_secure_o         = dbg_disable_w.dft_secure;
+    assign dbg_disable_dft_nonsecure_o      = dbg_disable_w.dft_nonsecure;
+    assign dbg_disable_dfd_o                = dbg_disable_w.dfd;
+    assign dbg_disable_smc_jtag2axi_o       = dbg_disable_w.smc_jtag2axi;
+    assign dbg_disable_smc_otp_jtag2axi_o   = dbg_disable_w.smc_otp_jtag2axi;
+    assign dbg_disable_sep_otp_jtag2axi_o   = dbg_disable_w.sep_otp_jtag2axi;
+    assign dbg_disable_all_o                = dbg_disable_w;
 
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.
@@ -356,7 +395,7 @@ module sep_uvm_top
     // could fire late (after reset release) and latch a stale/zero vector. Program
     // exactly once on the first clock where reset is asserted and rst_vec_i is a
     // known non-zero entry (clocks start while rst_ni is still low, so the window is
-    // always seen). Bit math unchanged: RSTVEC stores PC[31:1] = rst_vec_i.
+    // always seen). RSTVEC stores PC[31:1] = rst_vec_i.
     initial begin : init_reset_vector_tdr
         if ($test$plusargs("cpu_boot")) begin
             forever begin
@@ -391,8 +430,8 @@ module sep_uvm_top
     // genbits blocks and a single seed serves several Generate commands. That is
     // why the CHK4 golden is demand-driven (sep_entropy_golden.genbits_block() /
     // genbits_gen_last()): a fixed glen-blocks-per-seed model desynchronises at
-    // the first extra Generate. Truncating to 2 to dodge that is not an option
-    // either -- it left the dropped leg's inputs X-driven.
+    // the first extra Generate. Truncating to 2 endpoints leaves the third leg's
+    // inputs X-driven.
     //
     // SEP_SEC_DISABLE_TOKEN is the metal expected digest, not an AXI register.
     // Product RTL defaults it to 0, which no SHA-256 output matches. Bind the
@@ -401,6 +440,42 @@ module sep_uvm_top
     // force security_disable.
     localparam bit [255:0] SEC_DIS_TB_DIGEST =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+    // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
+    // stands in for what the SoC provides: the SMC finishes sensing its eFuse array
+    // after reset and holds the indication high afterwards. Cold reset re-senses;
+    // wdt_rst_ni does not, which is why this tracks rst_n_int and not the warm reset.
+    //
+    // The ROM polls this to completion in [S08] before reading any fuse shadow, so a
+    // top that never asserts it hangs every boot. The same invariant is checked from
+    // the firmware side as CHK-SEP-HOLD-RELEASE
+    // (dv/fw/tests/common/smc_sep_xbar_protocol.h). +sep_smc_fuse_sense_hold keeps it
+    // low, which is the stimulus for proving the ROM refuses to advance without it.
+    // No declaration initializers: VCS rejects a variable that has both an
+    // initializer and a procedural driver (ICPD_INIT). Each of these has exactly
+    // one driver, the block that follows it.
+    localparam int SmcFuseSenseCycles = 64;
+    logic smc_fuse_sense_hold;
+    logic smc_fuse_sense_done_model;
+    int   smc_fuse_sense_count;
+    initial begin
+        smc_fuse_sense_hold = $test$plusargs("sep_smc_fuse_sense_hold");
+        if (smc_fuse_sense_hold) begin
+            $display("[tb] smc_fuse_sense_done held low (+sep_smc_fuse_sense_hold)");
+        end
+    end
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            smc_fuse_sense_count      <= 0;
+            smc_fuse_sense_done_model <= 1'b0;
+        end else if (smc_fuse_sense_hold) begin
+            smc_fuse_sense_done_model <= 1'b0;
+        end else if (smc_fuse_sense_count < SmcFuseSenseCycles) begin
+            smc_fuse_sense_count <= smc_fuse_sense_count + 1;
+        end else begin
+            smc_fuse_sense_done_model <= 1'b1;
+        end
+    end
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
@@ -412,15 +487,16 @@ module sep_uvm_top
         .dbg_rstb_i                   (dbg_rstb_i),
         .wdt_rst_ni                   (wdt_rst_ni_i),
         .entropy_rosc_sample_clk_i    (entropy_rosc_sample_clk_i),
+        .clk_ref_i                    (clk_ref_i),
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
         // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
-        .jtag_tck                     (jtag_tck),
-        .jtag_tms                     (jtag_tms),
-        .jtag_tdi                     (jtag_tdi),
-        .jtag_trst_n                  (jtag_trst_n),
-        .jtag_tdo                     (),
-        .jtag_tdoEn                   (),
+        .jtag_tck_i                   (jtag_tck),
+        .jtag_tms_i                   (jtag_tms),
+        .jtag_tdi_i                   (jtag_tdi),
+        .jtag_trst_ni                 (jtag_trst_n),
+        .jtag_tdo_o                   (),
+        .jtag_tdoEn_o                 (),
         .jtag_sep_reset_ctrl_i        (jtag_sep_reset_ctrl_drive),
 
 `ifdef SEP_JTAG_AXIL_LIVE
@@ -431,11 +507,11 @@ module sep_uvm_top
         .axil_sep_otp_jtag_resp_o     (j_axil_resp_w),
 
         // MPC halt/run + CPU run (CPU held off; LSU master driven by the stub)
-        .mpc_debug_halt_req           (1'b0),
-        .mpc_debug_run_req            (1'b0),
-        .mpc_reset_run_req            (mpc_reset_run_req),
-        .i_cpu_halt_req               (1'b0),
-        .i_cpu_run_req                (i_cpu_run_req_i),
+        .mpc_debug_halt_req_i         (1'b0),
+        .mpc_debug_run_req_i          (1'b0),
+        .mpc_reset_run_req_i          (mpc_reset_run_req),
+        .cpu_halt_req_i               (1'b0),
+        .cpu_run_req_i                (i_cpu_run_req_i),
 
         // DFT: functional mode (see the bare-sep note below on test_en_i).
         .test_en_i                    (1'b0),
@@ -460,7 +536,7 @@ module sep_uvm_top
         // Interrupts (idle)
         .timer_int                    (1'b0),
         .soft_int                     (1'b0),
-        .extintsrc_req                ('0),
+        .sep_ext_interrupts_i         ('0),
 
         // SMN external AXI (outbound captured by the mailbox responder; inbound
         // driven by the flat m_axi_* master when live).
@@ -482,27 +558,28 @@ module sep_uvm_top
 
         // SPI: quad-lane struct boundary, bridged below to the
         // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
-        // MISO returns on rsp.sd[1]). The SPI block IRQ loops back into the
-        // wrapper's interrupt aggregator input.
+        // MISO returns on rsp.sd[1]).
         .sep_io_spi_req_o             (sep_io_spi_req_w),
         .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
-        .spi_irq_i                    (sep_io_spi_req_w.irq),
 
-        // New wrapper status/debug outputs: observability only, left open.
+        // Wrapper status/debug outputs. Unconnected ports have no consumer
+        // in this TB; the rest are real DUT outputs brought to tb ports.
         .lc_state_o                   (),
         .dbg_disable_o                (dbg_disable_w),
+        .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
+        .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
         .km_unrecoverable_err_o       (),
         .km_recoverable_err_o         (),
-        .efuse_debug_bus_o            (),
+        .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
-        .smc_mailbox_interrupt_o      (),
+        .smc_mailbox_interrupt_o      (smc_mailbox_interrupt_o),
 
         // eFuse status
-        .smc_fuse_sense_done_i        (1'b0),
+        .smc_fuse_sense_done_i        (smc_fuse_sense_done_model),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
         .secure_tm_req_i              (test_en_strap_i),
@@ -510,8 +587,8 @@ module sep_uvm_top
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
         // Route the SMC region (scratch 0x4003_9080+, straps 0x4040_5800, SMC SRAM
-        // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the behavioral
-        // axi_sim_mem. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
+        // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the TB's SMC
+        // responder. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
         .smc_global_base_addr_i       (56'h4000_0000),
         .smc_region_size_i            (56'h0100_0000),
@@ -537,70 +614,42 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // SEP->SMC external AXI responder (real-ROM boot only).
     // The Boot ROM accesses the SMC scratch registers (0x4003_9080+) and SMC
-    // SRAM (0x4006_0000, manifest+BL1) over sep_ext_to_smc_axi. A behavioral
-    // axi_sim_mem gives those a real memory (R/W), so the ROM's scratch
-    // round-trip passes and its non-SPI manifest fetch works. The backing
-    // memory is preloaded via +sep_smc_mem_hex=<file> ($readmemh into u_smc_mem.mem).
+    // SRAM (0x4006_0000, manifest+BL1) over sep_ext_to_smc_axi. The shared AXI
+    // slave agent answers on u_smc_axi_if; the bridge places the wrapper's
+    // struct port on it. The agent's memory gives those addresses real R/W, so
+    // the ROM's scratch round-trip passes and its non-SPI manifest fetch
+    // works. Preload (scratch, status, straps, the +sep_smc_mem_hex image) and
+    // fault programming go through the agent's slave sequence
+    // (cocotb/env/sep_smc_mem.py).
     // ------------------------------------------------------------------
 `ifdef SEP_SMC_MEM_MODEL
-    sep_pkg::sep_system_peripherals_internal_axi_req_t  [0:0] smc_mem_req_arr;
-    sep_pkg::sep_system_peripherals_internal_axi_resp_t [0:0] smc_mem_rsp_arr;
-    assign smc_mem_req_arr[0] = ext_to_smc_req_w;
-    assign ext_to_smc_resp_w  = smc_mem_rsp_arr[0];
+    ocah_axi_if u_smc_axi_if (
+        .aclk    (clk_i),
+        .aresetn (rst_n_int)
+    );
 
-    axi_sim_mem #(
-        .AddrWidth         (56),
-        .DataWidth         (64),
-        .IdWidth           (6),
-        .UserWidth         (12),
-        .NumPorts          (1),
-        .axi_req_t         (sep_pkg::sep_system_peripherals_internal_axi_req_t),
-        .axi_rsp_t         (sep_pkg::sep_system_peripherals_internal_axi_resp_t),
-        .WarnUninitialized (1'b0),
-        .UninitializedData ("zeros"),
-        .ClearErrOnAccess  (1'b1),
-        // axi_sim_mem drives each AXI handshake as "apply outputs at #ApplDelay
-        // after posedge, sample the master's valid/ready at #AcqDelay". The pulp
-        // defaults are 0ps/0ps, which collapse both to `#0` and make the model
-        // rely on VCS event-region (`#0` inactive-region) ordering to sample the
-        // master AFTER its NBA update. Verilator's --timing scheduler resolves
-        // `#0` differently, so the model samples valid/ready in the wrong delta
-        // and the SMC AXI handshake never completes -> the ROM's SMC scratch
-        // round-trip read stalls forever (no SMC_MEM_OK). The pulp driver family
-        // asserts ApplDelay>0 && AcqDelay>ApplDelay for exactly this reason.
-        // Required: 0 < ApplDelay < AcqDelay < min(sys_clk_period). These are
-        // elaboration-time params but sys_clk_period_ns is chosen at runtime by
-        // sep_env_cfg.randomize_timing() = rng.randint(4,20)ns, so they must fit
-        // the 4ns floor (NOT the seed=1 8ns period). Use 1ns/3ns: valid for the
-        // whole [4,20]ns range on both VCS and Verilator; still samples well after
-        // the master's NBA-driven valid.
-        .ApplDelay         (1ns),
-        .AcqDelay          (3ns)
-    ) u_smc_mem (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_n_int),
-        .axi_req_i (smc_mem_req_arr),
-        .axi_rsp_o (smc_mem_rsp_arr)
+    ocah_axi_struct_bridge #(
+        .axi_req_t  (sep_pkg::sep_system_peripherals_internal_axi_req_t),
+        .axi_resp_t (sep_pkg::sep_system_peripherals_internal_axi_resp_t)
+    ) u_smc_bridge (
+        .axi_req_i  (ext_to_smc_req_w),
+        .axi_resp_o (ext_to_smc_resp_w),
+        .axi_if     (u_smc_axi_if)
     );
 
     // ------------------------------------------------------------------
     // SMC address decode check.
     //
-    // WHY THIS EXISTS. u_smc_mem is a FLAT axi_sim_mem: it answers at whatever
-    // address the ROM presents, so a wrong SEP<->SMC offset is invisible -- the
-    // testbench simply seeds the wrong address too and every test stays green.
-    // That is exactly how four offsets in sep_smc_interface.h drifted out of
-    // agreement with this design's generated map (smc_addr.h) without a single
-    // test failing: SCRATCH_BASE, DFX_CTRL_STATUS_SMU and both FUSE_MAP entries
-    // all pointed into unmapped holes.
-    //
-    // This checker restores the one property the flat model threw away: an
-    // access outside a register window that actually exists is an ERROR. The
-    // windows below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen
-    // as 0x4000_XXXX from SEP, the identity mapping this tb configures via
-    // smc_global_base_addr_i). Keep them in step with that header; if the ROM
-    // legitimately needs a new block, add its authoritative base/size here
-    // rather than widening an existing window.
+    // The SMC responder is a flat memory: it answers at whatever address the
+    // ROM presents, so a wrong SEP<->SMC offset is invisible to the boot flow
+    // -- the testbench seeds the wrong address too and every test stays
+    // green. This checker supplies the one property a flat memory lacks: an
+    // access outside a register window that exists is an ERROR. The windows
+    // below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen as
+    // 0x4000_XXXX from SEP, the identity mapping this tb configures via
+    // smc_global_base_addr_i). Keep them in step with that header; when the
+    // ROM needs a new block, add its authoritative base/size here rather than
+    // widening an existing window.
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
@@ -660,173 +709,8 @@ module sep_uvm_top
         end
     end
 
-    // Preload the SMC memory so the Boot ROM's non-SPI manifest path proceeds:
-    //   scratch[9] (0x4003_90C8) = SMC_SEP_STATUS_MANIFEST_READY (bit1) so the
-    //   ROM's manifest-ready poll breaks; scratch[8] (0x4003_90C0) = manifest
-    //   offset 0. The manifest+BL1 image is loaded from +sep_smc_mem_hex if given.
-    string smc_mem_image;
-    logic [31:0] dft_status_ovr;
-    logic [31:0] straps_hi_ovr;
-    logic [31:0] straps_lo_ovr;
-    initial begin
-        #1;
-        // scratch[9] status: SRAM_INIT|MANIFEST_READY|BUFFER_READY|SRAM_PROTECTED
-        u_smc_mem.mem[56'h4003_90C8] = 8'h0F;
-        // scratch[8] manifest offset = 0x1000 (TBL1 manifest at that offset in the
-        // packed SMC image -> manifest_addr = 0x4006_0000 + 0x1000). No primary
-        // strap -> boot_from_spi()=false -> non-SPI (SMC-SRAM) manifest path.
-        u_smc_mem.mem[56'h4003_90C0] = 8'h00;
-        u_smc_mem.mem[56'h4003_90C1] = 8'h10;
-        // DFX_CTRL_STATUS_SMU (smc_base+0xB800) = 0x00000113, the healthy part:
-        //   bit 0  mem_repair_done     bit 1 mem_repair_success
-        //   bit 4  mbist_done          bit 8 mbist_pass
-        // The ROM's boot gate checks BOTH arms (vector.S), so the MBIST bits are
-        // not decoration: without mbist_done the gate polls for it, times out
-        // after MBIST_DONE_WAIT_ITERS and halts. Every rom_fw test that does not
-        // pass +sep_dft_status inherits this word, so it must represent a part
-        // that boots. It was 0x03 while the gate only read mem_repair_success.
-        u_smc_mem.mem[56'h4000_B800] = 8'h13;
-        u_smc_mem.mem[56'h4000_B801] = 8'h01;
-        // STRAPS_LO and STRAPS_HI in the SMC external supplementary window,
-        // explicitly zero.
-        // REQUIRED, not tidiness: u_smc_mem.mem is an associative array, so
-        // reading a key that was never written yields X. Both halves are now read
-        // by the ROM's pre-C boot gate -- STRAPS_LO[13] BYPASS_SRAM_REPAIR and
-        // STRAPS_HI[22] MBIST_BYPASS (vector.S) -- and an X there makes the gate
-        // branch on an undefined bit. STRAPS_LO additionally needs it because
-        // +sep_boot_from_spi and +sep_straps_lo read-modify-write these bytes so
-        // that they can be combined, and the OR would propagate the X.
-        //
-        // Zeroing the HIGH half matters only on a 4-state simulator. Verilator is
-        // 2-state, so an unwritten key reads 0 there and the tests pass either
-        // way; sep_sim_cfg.toml also lists vcs and xcelium, where without this the
-        // MBIST arm would branch on X for every test that does not pass
-        // +sep_straps_hi. Do not remove it because the Verilator runs are green.
-        u_smc_mem.mem[SmcStrapsLoAddr + 0] = 8'h00;
-        u_smc_mem.mem[SmcStrapsLoAddr + 1] = 8'h00;
-        u_smc_mem.mem[SmcStrapsLoAddr + 2] = 8'h00;
-        u_smc_mem.mem[SmcStrapsLoAddr + 3] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 0] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 1] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 2] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 3] = 8'h00;
-        if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin
-            $readmemh(smc_mem_image, u_smc_mem.mem);
-            $display("[tb] SMC mem preloaded from %s", smc_mem_image);
-        end
-        // ---- Explicit per-test injections. -------------------------------
-        // All three sit BELOW the $readmemh above, so an explicit request always
-        // wins over whatever a +sep_smc_mem_hex image happens to cover. Keeping
-        // them together is not cosmetic: they run after the $readmemh so an SMC image that covers
-        // the straps window cannot silently clear an explicit stimulus.
-        //
-        // +sep_boot_from_spi sets STRAPS_LO[25] (primary_chiplet) at
-        // smc_base+0x405800. Bit 25 is byte 3 of the word, bit 1. It is a strap
-        // value, NOT a boot-path selector: boot_from_spi() is
-        // `primary_chiplet && !boot_recovery` (boot_straps.h), so with
-        // +sep_straps_lo also asserting boot_recovery the ROM takes its RECOVERY
-        // branch instead -- which is exactly what sep_boot_recovery_test needs.
-        // Default off: without it the ROM keeps taking the SMC-SRAM secondary
-        // branch, so sep_rom_non_secure_boot_test is unaffected.
-        if ($test$plusargs("sep_boot_from_spi")) begin
-            u_smc_mem.mem[SmcStrapsLoAddr + 3] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 3] | 8'h02;
-            $display("[tb] STRAPS_LO[25] primary_chiplet=1");
-        end
-        // STRAPS_LO (smc_base+0x405800) whole-word override, the twin of
-        // +sep_straps_hi below. sep_smc_interface.h: [13] bypass_sram_repair,
-        // [19] boot_recovery, [21] status_rpt_disable, [25] primary_chiplet.
-        //
-        // Needed because the ROM's boot gate reads bit 13: OCAH-MAS makes
-        // BYPASS_SRAM_REPAIR (GPIO pin 13) mean repair never ran, and the gate
-        // skips its repair check entirely in that case rather than reading a 0
-        // status as a failure. Nothing could drive bit 13 before this: the only
-        // STRAPS_LO stimulus was +sep_boot_from_spi, which writes byte 3 alone,
-        // so bit 13 (byte 1) was permanently 0 and that branch was unreachable.
-        //
-        // Ordering with +sep_boot_from_spi is deliberate and both may be used
-        // together. This runs AFTER it and ORs rather than assigns, and the
-        // convenience flag above was changed to OR as well, so neither clobbers
-        // the other whichever bits each sets. Both sit after the $readmemh for
-        // the reason given above.
-        if ($value$plusargs("sep_straps_lo=%h", straps_lo_ovr)) begin
-            u_smc_mem.mem[SmcStrapsLoAddr + 0] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 0] | straps_lo_ovr[7:0];
-            u_smc_mem.mem[SmcStrapsLoAddr + 1] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 1] | straps_lo_ovr[15:8];
-            u_smc_mem.mem[SmcStrapsLoAddr + 2] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 2] | straps_lo_ovr[23:16];
-            u_smc_mem.mem[SmcStrapsLoAddr + 3] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 3] | straps_lo_ovr[31:24];
-            $display("[tb] STRAPS_LO or'd with 0x%08x (+sep_straps_lo): bypass_sram_repair=%0d recovery=%0d",
-                     straps_lo_ovr, straps_lo_ovr[13], straps_lo_ovr[19]);
-        end
-        // MEM_REPAIR / MBIST gate injection.
-        //
-        // Writes the whole 32-bit word rather than just clearing bit 1, because
-        // the point of the failure case is to prove the ROM gates on
-        // mem_repair_success specifically: a test that injects 0x0 cannot tell
-        // "checks bit 1" from "checks any bit" from "checks a non-zero word". The
-        // useful stimulus is every bit set EXCEPT bit 1 (0xFFFFFFFD).
-        // Little-endian byte order: byte 0 holds bits [7:0].
-        if ($value$plusargs("sep_dft_status=%h", dft_status_ovr)) begin
-            u_smc_mem.mem[56'h4000_B800] = dft_status_ovr[7:0];
-            u_smc_mem.mem[56'h4000_B801] = dft_status_ovr[15:8];
-            u_smc_mem.mem[56'h4000_B802] = dft_status_ovr[23:16];
-            u_smc_mem.mem[56'h4000_B803] = dft_status_ovr[31:24];
-            $display("[tb] DFX_CTRL_STATUS_SMU overridden to 0x%08x (+sep_dft_status)",
-                     dft_status_ovr);
-        end
-        // STRAPS_HI (smc_base+0x405804) = bits [63:32] of the 64-bit strap word.
-        // sep_smc_interface.h: [22] mbist_bypass, [26] rotate_update.
-        //
-        // Whole-word, like +sep_dft_status: a per-bit flag would need one plusarg
-        // per strap and could not express a combination, and the ROM reads the
-        // word once (boot_straps.c) so partial writes would be the odd case
-        // rather than the normal one. Little-endian: byte 0 holds bits [7:0].
-        if ($value$plusargs("sep_straps_hi=%h", straps_hi_ovr)) begin
-            u_smc_mem.mem[SmcStrapsHiAddr + 0] = straps_hi_ovr[7:0];
-            u_smc_mem.mem[SmcStrapsHiAddr + 1] = straps_hi_ovr[15:8];
-            u_smc_mem.mem[SmcStrapsHiAddr + 2] = straps_hi_ovr[23:16];
-            u_smc_mem.mem[SmcStrapsHiAddr + 3] = straps_hi_ovr[31:24];
-            $display("[tb] STRAPS_HI set to 0x%08x (+sep_straps_hi): mbist_bypass=%0d rotate=%0d",
-                     straps_hi_ovr, straps_hi_ovr[22], straps_hi_ovr[26]);
-        end
-    end
-
-    // SMC scratch[10] mirror for the MEM_REPAIR-gate test. exists() guards keep an
-    // unwritten slot reading 0 instead of relying on assoc-array default-read
-    // behaviour, so "ROM never published it" and "ROM published 0" stay distinct
-    // only because the injected status is non-zero -- which is why the test
-    // injects 0xFFFFFFFD and not 0.
-    logic [31:0] smc_scratch10_q;
-    always @(posedge clk_i) begin
-        smc_scratch10_q <= {
-            u_smc_mem.mem.exists(56'h4003_90D3) ? u_smc_mem.mem[56'h4003_90D3] : 8'h00,
-            u_smc_mem.mem.exists(56'h4003_90D2) ? u_smc_mem.mem[56'h4003_90D2] : 8'h00,
-            u_smc_mem.mem.exists(56'h4003_90D1) ? u_smc_mem.mem[56'h4003_90D1] : 8'h00,
-            u_smc_mem.mem.exists(56'h4003_90D0) ? u_smc_mem.mem[56'h4003_90D0] : 8'h00
-        };
-    end
-    assign smc_scratch10_probe_o = smc_scratch10_q;
-
-    // DFX_CTRL_STATUS_SMU mirror, same sampling pattern and same reason as the
-    // scratch[10] mirror above (associative array, so no continuous assign).
-    logic [31:0] smc_dft_status_q;
-    always @(posedge clk_i) begin
-        smc_dft_status_q <= {
-            u_smc_mem.mem.exists(56'h4000_B803) ? u_smc_mem.mem[56'h4000_B803] : 8'h00,
-            u_smc_mem.mem.exists(56'h4000_B802) ? u_smc_mem.mem[56'h4000_B802] : 8'h00,
-            u_smc_mem.mem.exists(56'h4000_B801) ? u_smc_mem.mem[56'h4000_B801] : 8'h00,
-            u_smc_mem.mem.exists(56'h4000_B800) ? u_smc_mem.mem[56'h4000_B800] : 8'h00
-        };
-    end
-    assign smc_dft_status_probe_o = smc_dft_status_q;
-
 `else
     assign ext_to_smc_resp_w = ext_to_smc_resp_idle;
-    assign smc_scratch10_probe_o = '0;
-    assign smc_dft_status_probe_o = '0;
     // No SMC model, so no SEP->SMC traffic to decode. 0 rather than X: a test
     // asserting "no address violations" must not pass on an undriven port, and
     // must not fail on a build that never had an SMC to address.
@@ -863,8 +747,8 @@ module sep_uvm_top
 
     localparam logic [38:0] BD_OTBN_ZERO = prim_secded_pkg::SecdedInv3932ZeroWord;
 
-`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.ram.ram_core
-`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.ram.ram_core
+`define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.u_ram.ram_core
+`define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.u_ram.ram_core
 
     // Non-zero valid power-up patterns (both tools: Verilator 0-init and VCS X are
     // both invalid here -> spurious KM SRAM_PARITY / OTBN SECDED faults otherwise).
@@ -1075,8 +959,8 @@ module sep_uvm_top
         $fatal(1, "no_cpu test on the full-CPU Verilator build: select target=lsu_stub_all_live or pass +cpu_boot");
     `else
     initial if (!$test$plusargs("cpu_boot")) begin
-        force `SEP_CORE.sep_cpu.lsu_axi_req      = lsu_req_drive;
-        force `SEP_CORE.sep_cpu.lsu_axi_resp_raw = '0;
+        force `SEP_CORE.u_sep_cpu.lsu_axi_req      = lsu_req_drive;
+        force `SEP_CORE.u_sep_cpu.lsu_axi_resp_raw = '0;
         $display("[tb] no_cpu on full-CPU build: LSU VIP force-splice active");
     end
     `endif
@@ -1176,7 +1060,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // CPU firmware-boot responders + observables.
     // ------------------------------------------------------------------
-    // PC advance: surface the EL2 retired-instruction trace. o_cpu_run_ack is not
+    // PC advance: surface the EL2 retired-instruction trace. cpu_run_ack_o is not
     // a port on bare `sep` (and ext_debug_bus_o is only [383:0]), so tap it by XMR
     // from the CPU wrapper — the same hierarchical-read style used for the LSU
     // response above.
@@ -1189,7 +1073,7 @@ module sep_uvm_top
     assign cpu_trace_ecause_o    = cpu_trace_w.trace_rv_i_ecause_ip;
     assign cpu_trace_interrupt_o = cpu_trace_w.trace_rv_i_interrupt_ip;
     assign cpu_trace_tval_o      = cpu_trace_w.trace_rv_i_tval_ip;
-    assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.o_cpu_run_ack;
+    assign o_cpu_run_ack_o   = `SEP_CORE.u_sep_cpu.cpu_run_ack_o;
 
     // SEP resets (internal nets): the reset-independence and wdt-reset-path
     // tests read them. Same XMR-probe style as above.
@@ -1198,25 +1082,56 @@ module sep_uvm_top
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
-    // map to bits [21:24], EDN to [25:26] (sep.sv).
+    // map to bits [23:26], EDN to [27:28] (sep.sv:548-553).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
+    assign trng_reset_active_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_trng.trng_reset_active_o;
     assign trng_axi_isolated_probe_o = {
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_edn,
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
-        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_edn,
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
+
+    // HMAC per-IP gated reset and the two isolate-completion bits that domain
+    // depends on. The reset sequencer holds the domain until every AXI-Lite
+    // path it depends on reports isolated, so the drain-before-reset checks
+    // read the reset and both paths.
+    assign hmac_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.hmac;
+    assign hmac_host_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
+    assign hmac_km_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+
+    // KMAC per-IP gated reset and its two isolate-completion bits.
+    assign kmac_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.kmac;
+    assign kmac_host_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
+    assign kmac_km_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
+
+    // Adams Bridge per-IP gated reset and the two isolate-completion bits its
+    // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
+    // the Key Manager domain and an ABR reset request alone must raise it.
+    assign abr_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.abr;
+    assign abr_host_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
+    assign abr_km_isolated_probe_o =
+        `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
     // programmed. These leaf fields sit outside the AXI ready/valid combinational
     // cones and retain whether firmware wrote each lock.
     assign lcc_demote_lock_1_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
+        `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
     assign lcc_demote_lock_2_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
+        `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.demote_reg_2.lock;
 
     // Boot bring-up debug taps: did the core start fetching from the TCM? The TCM
     // req is a wrapper-internal net (u_sep -> ip_integration).
@@ -1228,32 +1143,32 @@ module sep_uvm_top
     // Flatten the sensed shadow array (efuse_map_t, NumEfuseBits wide) to the
     // top-level probe port; word i occupies bits [32*i +: 32], matching values[i].
     assign efuse_shadow_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
+        `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
 
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the
-    // ESRC decorrelator-SR probe above). The EL2 coexist firmware mirrors its
+    // ESRC decorrelator-SR probe below). The EL2 coexist firmware mirrors its
     // measured summary into these; the cocotb test reads them back as the observer.
 `define SCRATCH_COLD(i) \
     assign scratch_cold_probe_o[32*(i) +: 32] = \
-        `SEP_CORE.sep_system_peripherals.u_sep_system_csr.u_sep_scratch_reg_cold.field_storage.SCRATCH[i].data.value
+        `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr.u_sep_scratch_reg_cold.field_storage.SCRATCH[i].data.value
     `SCRATCH_COLD(0); `SCRATCH_COLD(1); `SCRATCH_COLD(2); `SCRATCH_COLD(3);
     `SCRATCH_COLD(4); `SCRATCH_COLD(5); `SCRATCH_COLD(6); `SCRATCH_COLD(7);
 `undef SCRATCH_COLD
 
     // System-CSR AXI-Lite after u_system_csr_a2l_1. See port comment.
     assign sys_csr_axil_arvalid_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar_valid;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.ar_valid;
     assign sys_csr_axil_arready_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.ar_ready;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_resp.ar_ready;
     assign sys_csr_axil_araddr_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.ar.addr[31:0];
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.ar.addr[31:0];
     assign sys_csr_axil_awvalid_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw_valid;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw_valid;
     assign sys_csr_axil_awready_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_resp.aw_ready;
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_resp.aw_ready;
     assign sys_csr_axil_awaddr_o =
-        `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
+        `SEP_CORE.u_sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
 
     // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
     // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
@@ -1295,13 +1210,13 @@ module sep_uvm_top
             wait (sep_cpu_reset_n_o === 1'b1);
             repeat (4) @(posedge clk_i);
 `ifdef VERILATOR
-            `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+            `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
                 .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value = cold_scratch7_seed;
 `else
-            force `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+            force `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
                 .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value = cold_scratch7_seed;
             @(posedge clk_i);
-            release `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+            release `SEP_CORE.u_sep_system_peripherals.u_sep_system_csr
                 .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value;
 `endif
             $display("[tb] cold_scratch[7] seeded 0x%08x (+sep_cold_scratch7)",
@@ -1311,7 +1226,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // LC differential-integrity error inject.
-    // SIGNED OFF 2026-08-20 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the
     // sense FSM regenerates the pair from the raw nibble. The specification's
@@ -1323,7 +1237,7 @@ module sep_uvm_top
     // Re-issue every clock (Verilator snapshots a force RHS). Release when the
     // port drops so the legal pair returns. Default 0; outside AXI cones.
 `define LCC_DEC_DATA \
-    `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
+    `SEP_CORE.u_sep_crypto.u_sep_lifecycle_ctrl.u_lc_state_dec.data_i
     always @(posedge clk_i) begin
         if (lc_sigint_inject_i === 1'b1) begin
             force `LCC_DEC_DATA = '0;
@@ -1335,7 +1249,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // Token-comparator redundancy fault inject.
-    // SIGNED OFF 2026-08-24 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // The three digest comparators see the same inputs. A legal token write
     // can only produce a unanimous legal pair (match or mismatch). Collapse
@@ -1347,11 +1260,12 @@ module sep_uvm_top
     // check; outside the AXI ready/valid cones. Re-issue every clock
     // (Verilator snapshots a force RHS).
 `define TOKEN_PROC \
-    `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
+    `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
         .gen_mmr_reg.u_efuse_token_processing
 `define CMP_SIP  `TOKEN_PROC.u_triple_redundant_comparator_rma_sip_token
 `define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
 `define CMP_SEC  `TOKEN_PROC.u_triple_redundant_comparator_sec_disable_token
+`define DIGEST_SIP `TOKEN_PROC.u_sha256_rma_sip_token
     logic [2:0] token_cmp_force_p, token_cmp_force_n;
     logic       token_cmp_do_force;
     always_comb begin
@@ -1407,6 +1321,92 @@ module sep_uvm_top
             release `CMP_SEC.match_n;
         end
     end
+    // The production DFT input is tied low at this TB boundary. Use the same
+    // clock-reissued force/release convention as the comparator hook above to
+    // reach the digest latch's scan-freeze gate. Token commands and
+    // digest capture remain frontdoor; only this otherwise unreachable input
+    // is forced.
+    assign token_digest_sticky_o = `DIGEST_SIP.sha_digest_sticky_n0_scan;
+    assign token_digest_valid_o = `DIGEST_SIP.digest_vld_sticky_n0_scan;
+    assign token_digest_test_en_o = `DIGEST_SIP.test_en_i;
+    assign token_digest_latch_en_pre_o = `DIGEST_SIP.digest_latch_en_pre;
+    assign token_digest_valid_en_pre_o = `DIGEST_SIP.vld_latch_en_pre;
+    assign token_digest_latch_en_o = `DIGEST_SIP.digest_latch_en;
+    assign token_digest_valid_en_o = `DIGEST_SIP.vld_latch_en;
+    always @(posedge clk_i) begin
+        if (token_digest_test_en_inject_i === 1'b1) begin
+            force `DIGEST_SIP.test_en_i = 1'b1;
+        end else begin
+            release `DIGEST_SIP.test_en_i;
+        end
+    end
+    // ------------------------------------------------------------------
+    // eFuse read/program FSM fail-closed observability and fault injection.
+    //
+    // Forcing an illegal FSM encoding is the only way to provoke the
+    // fail-closed behaviour `efuse_read_interface` and
+    // `efuse_program_interface` assert on it. Both states are two bits whose
+    // legal encodings are 2'b01 and 2'b10, and no frontdoor stimulus can
+    // produce 2'b00 or 2'b11 -- the design is what guarantees that. The force
+    // targets the state register only, for one cycle. Seeing the injected
+    // encoding on *_state_o confirms the force landed. After release the
+    // recovered encoding must be a legal idle/wait value. Command withdraw
+    // and the error/done/busy/data terms are claimed only on the in-flight
+    // leg. Same clock-reissued force/release convention as the digest hook
+    // above.
+    // ------------------------------------------------------------------
+`define EFUSE_CTRL `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
+`define EFUSE_RD `EFUSE_CTRL.u_efuse_read_interface
+`define EFUSE_PG `EFUSE_CTRL.u_efuse_program_interface
+    assign efuse_read_state_o = `EFUSE_RD.read_state_q;
+    assign efuse_program_state_o = `EFUSE_PG.program_state_q;
+    assign efuse_read_error_o = `EFUSE_RD.read_error_o;
+    assign efuse_read_done_o = `EFUSE_RD.read_done_o;
+    assign efuse_read_busy_o = `EFUSE_RD.read_busy_o;
+    assign efuse_read_back_data_o = `EFUSE_RD.read_back_data_o;
+    assign efuse_read_cmd_req_valid_o = `EFUSE_RD.fuse_command_req_o.valid;
+    assign efuse_program_cmd_req_valid_o = `EFUSE_PG.fuse_command_req_o.valid;
+    assign efuse_program_error_o = `EFUSE_PG.program_error_o;
+    assign efuse_program_done_o = `EFUSE_PG.program_done_o;
+    assign efuse_program_busy_o = `EFUSE_PG.program_busy_o;
+    assign efuse_program_read_back_data_o = `EFUSE_PG.program_read_back_data_o;
+    // SIGNED OFF 2026-09-11 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // Only legal encodings of these two FSMs are 2'b01 and 2'b10, and the
+    // sense and frontdoor paths can never present another, so the fail-closed
+    // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
+    // stimulus. Scope: the two state registers named below, for one cycle at
+    // a time. Seeing the injected encoding on *_state_o confirms the force
+    // landed; it is not fail-closed evidence. After release the recovered
+    // encoding must be a legal idle/wait value (DUT-driven). Command
+    // withdraw and the error/done/busy/data terms are claimed only on the
+    // in-flight leg. Owner: sep_efuse_illegal_state_fail_closed_test. Review
+    // at the next change to the state encoding in efuse_read_interface.sv or
+    // efuse_program_interface.sv.
+    //
+    // The registers are enum-typed and the injected encodings are, by
+    // construction, not members of those enums -- that is the property under
+    // test. The conversion is therefore deliberate and scoped to these two
+    // forces rather than waived file-wide.
+    /* verilator lint_off ENUMVALUE */
+    always @(posedge clk_i) begin
+        if (efuse_read_state_inject_en_i === 1'b1) begin
+            force `EFUSE_RD.read_state_q = efuse_read_state_inject_i;
+        end else begin
+            release `EFUSE_RD.read_state_q;
+        end
+        if (efuse_program_state_inject_en_i === 1'b1) begin
+            force `EFUSE_PG.program_state_q = efuse_program_state_inject_i;
+        end else begin
+            release `EFUSE_PG.program_state_q;
+        end
+    end
+    /* verilator lint_on ENUMVALUE */
+`undef EFUSE_RD
+`undef EFUSE_PG
+`undef EFUSE_CTRL
+
+`undef DIGEST_SIP
 `undef CMP_SIP
 `undef CMP_CHIP
 `undef CMP_SEC
@@ -1414,7 +1414,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // DMA host-path command-integrity inject.
-    // SIGNED OFF 2026-09-01 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // host_path_err is the OR of a fabric non-OKAY on a DMA transfer and a
     // TL-UL command-integrity fail on a DMA-issued command. A legal
@@ -1423,7 +1422,7 @@ module sep_uvm_top
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
     // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the signed-off aggregate probe. Re-issue every clock
+    // frontdoor or the aggregate interrupt probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
@@ -1469,11 +1468,9 @@ module sep_uvm_top
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
 `define ESRC_NOISE_FORCE(i) \
     force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
-    // Plain `always` (NOT always_ff): `force` is a procedural continuous override,
-    // not a flop assignment, so always_ff semantics do not apply.
-    // No explicit `release` is needed: the force is gated by `+esrc_noise_force` (only
-    // active in noise-injection runs) and each test is its own elaboration, so the force
-    // cannot leak into another test; it is simply torn down when the sim ends.
+    // `force` is a procedural continuous override, so a plain `always` carries it.
+    // The force is gated by `+esrc_noise_force` and each test is its own
+    // elaboration, so it ends with the sim and needs no `release`.
     always @(negedge clk_i) begin
         if ($test$plusargs("esrc_noise_force")) begin
             `ESRC_NOISE_FORCE(0);  `ESRC_NOISE_FORCE(1);  `ESRC_NOISE_FORCE(2);
@@ -1484,19 +1481,27 @@ module sep_uvm_top
     end
 `undef ESRC_NOISE_FORCE
 
-    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants the crypto
-    // blocks' EDN handshakes directly so they can leave their reseed states and
-    // run; the real entropy_source -> CSRNG -> EDN path is bypassed and NOT
-    // exercised. Covers OTBN (RND/URND) and AES; AES is a separate EDN client
-    // and stalls in its masking-PRNG reseed without a client-0 grant.
-    localparam logic [31:0] AesEdnWord = 32'hA5A5_5A5A;
+    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
+    // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
+    // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
+    //
+    // Prefer +esrc_noise_force. The SEP boot ROM brings the real entropy chain up
+    // itself (src/sep_entropy.c), so a crypto test needs only raw noise injected
+    // -- the ring oscillators do not self-oscillate in simulation -- and the
+    // DRBG/CSRNG/EDN handshakes stay real. This force cannot do that: forcing
+    // edn_ack violates the EDN req/ack data-hold protocol and trips
+    // prim_sync_reqack_data's SyncReqAckDataHold* assertions. Testlist entries
+    // still passing it are being migrated.
+    //
+    // Kept for now as a debug lever only. It is a candidate for deletion once
+    // the real-entropy path has some mileage.
     logic edn_force_on;
-    logic otbn_rnd_ack_q, otbn_urnd_ack_q, aes_ack_q;
+    logic otbn_rnd_ack_q, otbn_urnd_ack_q;
     initial begin
         edn_force_on = $test$plusargs("sep_crypto_edn_force");
         if (edn_force_on) begin
-            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN and AES EDN grants");
-            $display("[tb] *** are forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
+            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN EDN grants are");
+            $display("[tb] *** forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
         end
     end
 
@@ -1504,28 +1509,22 @@ module sep_uvm_top
 // port -- a `force` on a module instance input is rejected (ASSIGNIN).
 // Client indices from sep_crypto.sv: 0 = AES, 1 = KMAC, 2 = OTBN RND,
 // 3 = OTBN URND. KMAC is not forced -- the ROM's SHA-256 goes through HMAC.
-`define OTBN_RND_RSP  `SEP_CORE.sep_crypto.crypto_edn_rsp[2]
-`define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
-`define OTBN_RND_REQ  `SEP_CORE.sep_crypto.crypto_edn_req[2]
-`define OTBN_URND_REQ `SEP_CORE.sep_crypto.crypto_edn_req[3]
-`define AES_RSP       `SEP_CORE.sep_crypto.crypto_edn_rsp[0]
-`define AES_REQ       `SEP_CORE.sep_crypto.crypto_edn_req[0]
+`define OTBN_RND_RSP  `SEP_CORE.u_sep_crypto.crypto_edn_rsp[2]
+`define OTBN_URND_RSP `SEP_CORE.u_sep_crypto.crypto_edn_rsp[3]
+`define OTBN_RND_REQ  `SEP_CORE.u_sep_crypto.crypto_edn_req[2]
+`define OTBN_URND_REQ `SEP_CORE.u_sep_crypto.crypto_edn_req[3]
     // ack pulses for one cycle per request rather than sitting high, so a
     // multi-word reseed is delivered as a sequence of beats like the real EDN.
     always @(posedge clk_i) begin
         if (edn_force_on) begin
             otbn_rnd_ack_q  <= `OTBN_RND_REQ.edn_req  & ~otbn_rnd_ack_q;
             otbn_urnd_ack_q <= `OTBN_URND_REQ.edn_req & ~otbn_urnd_ack_q;
-            aes_ack_q       <= `AES_REQ.edn_req       & ~aes_ack_q;
             force `OTBN_RND_RSP.edn_ack   = otbn_rnd_ack_q;
             force `OTBN_RND_RSP.edn_fips  = 1'b1;
             force `OTBN_RND_RSP.edn_bus   = $urandom();
             force `OTBN_URND_RSP.edn_ack  = otbn_urnd_ack_q;
             force `OTBN_URND_RSP.edn_fips = 1'b1;
             force `OTBN_URND_RSP.edn_bus  = $urandom();
-            force `AES_RSP.edn_ack        = aes_ack_q;
-            force `AES_RSP.edn_fips       = 1'b1;
-            force `AES_RSP.edn_bus        = AesEdnWord;
         end
     end
 `undef AES_RSP
@@ -1572,7 +1571,7 @@ module sep_uvm_top
     // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
     // own AXI-Lite-64 port:
     // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
-    // Observation-only (SIGNED OFF 2026-09-07 by yenhenglai). No CSR mirrors
+    // Observation-only. No CSR mirrors
     // the three-ready interlock, and a frontdoor timeout names only that the
     // access did not retire. Outside the tb s_axi / m_axi ready/valid cones.
     assign drbg_csrng_axil_chan_o = {
@@ -1646,7 +1645,7 @@ module sep_uvm_top
     assign tbadp_r_resp_o  = tbadp_rsp.r.resp;
 
     // Always-ready axil32 responder: every ready is an unconditional 1'b1.
-    // Deliberately NOT gated on the peer channel's valid -- cross-gating the
+    // Not gated on the peer channel's valid: cross-gating the
     // readys is the exact shape this vehicle exists to catch, and putting it
     // one hop downstream would make a stall ambiguous about which side
     // produced it.
@@ -1693,35 +1692,35 @@ module sep_uvm_top
     // Post-EXT_TRNG_SRC_SEL-mux: the entropy actually presented to the KM (proves
     // the internal-DRBG leg was selected, not ext_trng). tvalid && tready = the KM
     // consumed a genbits word.
-    assign km_entropy_tvalid_o  = `SEP_CORE.sep_crypto.entropy_muxed_req[0].tvalid;
-    assign km_entropy_tdata_o   = `SEP_CORE.sep_crypto.entropy_muxed_req[0].tdata;
+    assign km_entropy_tvalid_o  = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tvalid;
+    assign km_entropy_tdata_o   = `SEP_CORE.u_sep_crypto.entropy_muxed_req[0].tdata;
     // CHK5 per-sink routing golden: the crypto-leg (mux endpoint [1]) AXIS word
     // stream feeding drbg_axis_edn_adapter. tvalid && tready = one word handed to a
     // crypto endpoint (in `sep_drbg_real_sink_multi_km_aes_test` only AES
     // requests, so this equals AES's post-adapter beats in order). Each word is
     // also a CHK4 genbits-golden word (chained).
-    assign axis1_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tvalid;
-    assign axis1_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[1].tready;
-    assign axis1_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[1].tdata;
-    assign km_entropy_tready_o  = `SEP_CORE.sep_crypto.entropy_muxed_rsp[0].tready;
+    assign axis1_tvalid_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_req[1].tvalid;
+    assign axis1_tready_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[1].tready;
+    assign axis1_tdata_o        = `SEP_CORE.u_sep_crypto.entropy_muxed_req[1].tdata;
+    assign km_entropy_tready_o  = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[0].tready;
     // CHK5 pool (mux endpoint [2]): pre-adapter AXIS2 + post-adapter native EDN.
-    assign axis2_tvalid_o       = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tvalid;
-    assign axis2_tready_o       = `SEP_CORE.sep_crypto.entropy_muxed_rsp[2].tready;
-    assign axis2_tdata_o        = `SEP_CORE.sep_crypto.entropy_muxed_req[2].tdata;
-    assign pool_edn_req_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_req_i.edn_req;
-    assign pool_edn_ack_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_ack;
-    assign pool_edn_bus_o       = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_bus;
-    assign pool_edn_fips_o      = `SEP_CORE.sep_crypto.entropy_pool_edn_rsp_o.edn_fips;
+    assign axis2_tvalid_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_req[2].tvalid;
+    assign axis2_tready_o       = `SEP_CORE.u_sep_crypto.entropy_muxed_rsp[2].tready;
+    assign axis2_tdata_o        = `SEP_CORE.u_sep_crypto.entropy_muxed_req[2].tdata;
+    assign pool_edn_req_o       = `SEP_CORE.u_sep_crypto.entropy_pool_edn_req_i.edn_req;
+    assign pool_edn_ack_o       = `SEP_CORE.u_sep_crypto.entropy_pool_edn_rsp_o.edn_ack;
+    assign pool_edn_bus_o       = `SEP_CORE.u_sep_crypto.entropy_pool_edn_rsp_o.edn_bus;
+    assign pool_edn_fips_o      = `SEP_CORE.u_sep_crypto.entropy_pool_edn_rsp_o.edn_fips;
 
     // Per-client crypto EDN taps (post drbg_axis_edn_adapter). edn_req is the
     // client's request, edn_ack the adapter's grant pulse, edn_bus the delivered
     // 32b entropy word. Explicit per-index assigns avoid a cross-hierarchy
     // genvar-indexed XMR (same style as the ESRC decorrelator-SR probe above).
 `define CRYPTO_EDN_TAP(i) \
-    assign crypto_edn_req_o[i]              = `SEP_CORE.sep_crypto.crypto_edn_req[i].edn_req;  \
-    assign crypto_edn_ack_o[i]              = `SEP_CORE.sep_crypto.crypto_edn_rsp[i].edn_ack;  \
-    assign crypto_edn_bus_o[32*(i) +: 32]   = `SEP_CORE.sep_crypto.crypto_edn_rsp[i].edn_bus;  \
-    assign crypto_edn_fips_o[i]             = `SEP_CORE.sep_crypto.crypto_edn_rsp[i].edn_fips
+    assign crypto_edn_req_o[i]              = `SEP_CORE.u_sep_crypto.crypto_edn_req[i].edn_req;  \
+    assign crypto_edn_ack_o[i]              = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_ack;  \
+    assign crypto_edn_bus_o[32*(i) +: 32]   = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_bus;  \
+    assign crypto_edn_fips_o[i]             = `SEP_CORE.u_sep_crypto.crypto_edn_rsp[i].edn_fips
     `CRYPTO_EDN_TAP(0); `CRYPTO_EDN_TAP(1); `CRYPTO_EDN_TAP(2); `CRYPTO_EDN_TAP(3);
 `undef CRYPTO_EDN_TAP
 
@@ -1767,8 +1766,11 @@ module sep_uvm_top
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
     // KM SRAM word 0: peek the real macro array. The KM SRAM is one unscrambled
     // prim_ram_1p_adv (sep_ip_integration.u_km_sram) addressed by word index
-    // within the 32 KB km_intf_pkg SRAM window, so km_intf_pkg::SRAM_BASE_ADDR
-    // (0x0000_8000) + 0 is mem[0]. Both KM ROM images store their word there.
+    // within the 32 KB SRAM window the Key Manager specification places at
+    // 0x0000_8000, so base + 0 is mem[0]. Both KM ROM images store their word
+    // there. The index is a hierarchical path and does not depend on that base:
+    // a firmware store to the wrong window leaves mem[0] untouched and the
+    // word0 compare in sep_km_mem_smoke_test fails.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
 
@@ -1785,19 +1787,19 @@ module sep_uvm_top
     );
 
     // Response: present the CPU LSU demux slave response back to the cocotb master.
-    assign s_axi_awready = `SEP_CORE.sep_cpu.lsu_axi_resp.aw_ready;
-    assign s_axi_wready  = `SEP_CORE.sep_cpu.lsu_axi_resp.w_ready;
-    assign s_axi_bid     = `SEP_CORE.sep_cpu.lsu_axi_resp.b.id;
-    assign s_axi_bresp   = `SEP_CORE.sep_cpu.lsu_axi_resp.b.resp;
-    assign s_axi_buser   = `SEP_CORE.sep_cpu.lsu_axi_resp.b.user;
-    assign s_axi_bvalid  = `SEP_CORE.sep_cpu.lsu_axi_resp.b_valid;
-    assign s_axi_arready = `SEP_CORE.sep_cpu.lsu_axi_resp.ar_ready;
-    assign s_axi_rid     = `SEP_CORE.sep_cpu.lsu_axi_resp.r.id;
-    assign s_axi_rdata   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.data;
-    assign s_axi_rresp   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.resp;
-    assign s_axi_rlast   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.last;
-    assign s_axi_ruser   = `SEP_CORE.sep_cpu.lsu_axi_resp.r.user;
-    assign s_axi_rvalid  = `SEP_CORE.sep_cpu.lsu_axi_resp.r_valid;
+    assign s_axi_awready = `SEP_CORE.u_sep_cpu.lsu_axi_resp.aw_ready;
+    assign s_axi_wready  = `SEP_CORE.u_sep_cpu.lsu_axi_resp.w_ready;
+    assign s_axi_bid     = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b.id;
+    assign s_axi_bresp   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b.resp;
+    assign s_axi_buser   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b.user;
+    assign s_axi_bvalid  = `SEP_CORE.u_sep_cpu.lsu_axi_resp.b_valid;
+    assign s_axi_arready = `SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready;
+    assign s_axi_rid     = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.id;
+    assign s_axi_rdata   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data;
+    assign s_axi_rresp   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp;
+    assign s_axi_rlast   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last;
+    assign s_axi_ruser   = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r.user;
+    assign s_axi_rvalid  = `SEP_CORE.u_sep_cpu.lsu_axi_resp.r_valid;
 
     // ------------------------------------------------------------------
     // AXI protocol checkers (hw/common/dv/vip/ocah_axi_vip/sva).
@@ -1924,8 +1926,8 @@ module sep_uvm_top
     );
 
     // ------------------------------------------------------------------
-    // Key Manager internal AXI-Lite, CPU side. SIGNED OFF 2026-08-30 by
-    // yenhenglai. Every access KM firmware makes to KPV, KMCSR, the DRBG
+    // Key Manager internal AXI-Lite, CPU side. Every access KM firmware makes
+    // to KPV, KMCSR, the DRBG
     // sampler and the mailbox crosses this one port: the KM crossbar has a
     // single slave port wired to the internal picorv32, so no testbench
     // master can reach it.
@@ -2006,18 +2008,20 @@ module sep_uvm_top
 
     sep_tb_if u_tb_if ();
 
-    // Three free-running clocks with the periods the env publishes on
+    // Four free-running clocks with the periods the env publishes on
     // sep_tb_if from the seeded test cfg (cocotb SepEnvCfg parity: sys
-    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns).
+    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns, reference 40 ns).
     initial begin
         clk_i                     = 1'b0;
         clk_wdt_i                 = 1'b0;
         entropy_rosc_sample_clk_i = 1'b0;
+        clk_ref_i                 = 1'b0;
     end
     always #(u_tb_if.sys_clk_period_ns * 0.5ns) clk_i = ~clk_i;
     always #(u_tb_if.wdt_clk_period_ns * 0.5ns) clk_wdt_i = ~clk_wdt_i;
     always #(u_tb_if.entropy_clk_period_ns * 0.5ns)
         entropy_rosc_sample_clk_i = ~entropy_rosc_sample_clk_i;
+    always #(u_tb_if.ref_clk_period_ns * 0.5ns) clk_ref_i = ~clk_ref_i;
 
     // The primary reset and the boot/run controls are test-sequenced through
     // sep_tb_if; the fabric-release and reset observables are mirrored back
@@ -2210,6 +2214,7 @@ module sep_uvm_top
     assign lc_sigint_inject_i       = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
+    assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
@@ -2226,6 +2231,110 @@ module sep_uvm_top
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "lsu_axi_vif", u_lsu_axi_if);
         run_test();
     end
+`endif
+
+    // ------------------------------------------------------------------
+    // Functional-coverage sampler (docs/SEP_FCOV.adoc).
+    //
+    // Passive: it drives nothing and has no output. VCS only -- Verilator does
+    // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
+    // so there is no module to bind on the Verilator targets.
+    //
+    // The response side (`lsu_axi_resp`) is mirrored to the flat s_axi_* outputs
+    // above; the REQUEST side (`lsu_axi_req` AW/W/AR and B/R ready) is read only
+    // here and is not one of the named probe ports in sep_tb_signal_list.svh.
+    //
+    // The flat s_axi_* inputs carry TB stimulus only: under +cpu_boot the EL2 owns
+    // this bus and the input ports sit idle, so a port-side sampler scores nothing
+    // on any firmware test -- no DMA, SPI-DMA, boot-ROM LSU, mailbox or NMI cell
+    // could ever fill. The request bus is the same node the no-CPU builds
+    // force-splice (see the CPU-LSU AXI splice above), read-only, with no force
+    // and no new hierarchy depth.
+    // ------------------------------------------------------------------
+`ifndef VERILATOR
+    sep_fcov u_sep_fcov (
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_int),
+
+        .lsu_aw_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.aw.addr),
+        .lsu_aw_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.aw_valid),
+        .lsu_aw_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.aw_ready),
+        .lsu_w_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_req.w.data),
+        .lsu_w_strb_i          (`SEP_CORE.u_sep_cpu.lsu_axi_req.w.strb),
+        .lsu_w_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.w_valid),
+        .lsu_w_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.w_ready),
+        .lsu_b_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b.resp),
+        .lsu_b_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.b_valid),
+        .lsu_b_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.b_ready),
+        .lsu_ar_addr_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar.addr),
+        .lsu_ar_valid_i        (`SEP_CORE.u_sep_cpu.lsu_axi_req.ar_valid),
+        .lsu_ar_ready_i        (`SEP_CORE.u_sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_r_data_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.data),
+        .lsu_r_resp_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.resp),
+        .lsu_r_last_i          (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r.last),
+        .lsu_r_valid_i         (`SEP_CORE.u_sep_cpu.lsu_axi_resp.r_valid),
+        .lsu_r_ready_i         (`SEP_CORE.u_sep_cpu.lsu_axi_req.r_ready),
+
+        .m_axi_awaddr_i        (m_axi_awaddr),
+        .m_axi_awvalid_i       (m_axi_awvalid),
+        .m_axi_awready_i       (m_axi_awready),
+        .m_axi_bresp_i         (m_axi_bresp),
+        .m_axi_bvalid_i        (m_axi_bvalid),
+        .m_axi_bready_i        (m_axi_bready),
+        .m_axi_araddr_i        (m_axi_araddr),
+        .m_axi_arvalid_i       (m_axi_arvalid),
+        .m_axi_arready_i       (m_axi_arready),
+        .m_axi_rresp_i         (m_axi_rresp),
+        .m_axi_rlast_i         (m_axi_rlast),
+        .m_axi_rvalid_i        (m_axi_rvalid),
+        .m_axi_rready_i        (m_axi_rready),
+
+        .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
+        .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
+        .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
+        .abr_host_isolated_i   (abr_host_isolated_probe_o),
+        .abr_km_isolated_i     (abr_km_isolated_probe_o),
+
+        .cpu_trace_valid_i     (cpu_trace_valid_o),
+        .cpu_trace_addr_i      (cpu_trace_addr_o),
+        .cpu_trace_interrupt_i (cpu_trace_interrupt_o),
+        .cpu_trace_exc_i       (dbg_cpu_trace_exc_o),
+        .fw_done_i             (fw_done_o),
+        .fw_pass_i             (fw_pass_o),
+        .fw_char_valid_i       (fw_char_valid_o),
+        .fuse_sense_done_i     (sep_fuse_sense_done_o),
+        .drbg_seed_valid_i     (drbg_seed_valid_o),
+        .drbg_genbits_vld_i    (drbg_genbits_vld_o),
+        .axis1_tvalid_i        (axis1_tvalid_o),
+        .axis1_tready_i        (axis1_tready_o),
+        .crypto_edn_ack_i      (crypto_edn_ack_o),
+        .km_entropy_tvalid_i   (km_entropy_tvalid_o),
+        .km_entropy_tready_i   (km_entropy_tready_o),
+        // sep.sv:534 assembles the SEP AXI mailbox onto
+        // sep_internal_interrupts[7:0] and km_mbox_irq onto [14]. They are
+        // different sources with different owning tests, so both are wired.
+        .irq_mailbox_i         (sep_internal_interrupts_probe_o[7:0]),
+        .irq_km_mbox_i         (sep_internal_interrupts_probe_o[14]),
+        // sep.sv:535 intr_dma_done. dma_hash_test completes through the ISR,
+        // which clears STATUS.done before software reads it.
+        .irq_dma_done_i        (sep_internal_interrupts_probe_o[8]),
+        // Sensed LC nibble out of the shadow probe. The W1S leaves verify
+        // their start state through this probe and never read LC_STATE
+        // frontdoor first, so the frontdoor path cannot observe RMA_SIP_0 /
+        // RMA_CHIP_0 at all.
+        .efuse_lc_raw_i        (efuse_shadow_probe_o[
+            32 * efuse_pkg::SHADOW_IDX_LC_STATE +: 4]),
+        .efuse_read_state_i    (efuse_read_state_o),
+        .efuse_program_state_i  (efuse_program_state_o),
+        .secure_tm_i           (secure_tm_o),
+        .sec_dis_i             (lcc_security_disable_probe_o),
+        .demote_1_i            (lcc_demote_state_1_probe_o),
+        .demote_2_i            (lcc_demote_state_2_probe_o),
+        .cpu_reset_n_i         (sep_cpu_reset_n_o),
+        .spi_cs_n_i            (spi_cs_n_o),
+        .spi_sck_i             (spi_sck_o)
+    );
 `endif
 
 `undef SEP_ESRC

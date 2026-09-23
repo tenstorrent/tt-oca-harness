@@ -5,7 +5,7 @@
  * OCCP Validate and Boot Invalid Region Test
  *
  * This test verifies that the VALIDATE_AND_BOOT command properly handles
- * addresses outside the valid region (0xC0060000 to 0xC00B0000).
+ * addresses outside the valid region (OCCP_TEST_BASE_ADDR to OCCP_TEST_UPPER_ADDR).
  * The ROM should log an error for invalid addresses and not jump to them.
  * After the invalid command, additional commands are sent to verify the ROM
  * is still responsive and in the OCCP processing loop.

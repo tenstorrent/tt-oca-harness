@@ -14,10 +14,10 @@
  * that a single-shot transfer cannot is FIFO and state recovery *between*
  * transactions.
  *
- * The FIFO levels stay far from full by design: each transaction carries 4 data
- * bytes against a target RX FIFO depth of 268 and an FMT depth of 64, and no
- * overflow or error path is reached. FIFO-depth and overflow behaviour belong to
- * a separate test; nothing in this suite covers them yet.
+ * The FIFO levels stay far from full: each transaction carries 4 data bytes
+ * against a target RX FIFO depth of 268 and an FMT depth of 64, and no
+ * overflow or error path is reached. FIFO-depth and overflow behaviour are
+ * outside this test's scope.
  *
  * Expected Result:
  * - All 8 transactions complete successfully
@@ -196,33 +196,123 @@ int main(void) {
     // Step 4.2: Wait for ACQ FIFO to have data (target received data from controller)
     write_scratch(1, 0x00000043);
     simputs("  [4.2] Waiting for ACQ FIFO data...\n");
-    ret = i2c_target_wait_acq_fifo_data(TARGET_IDX, 1, 1000);
-    if (ret != I2C_OK) {
-        simputs("  [ERROR] ACQ FIFO wait failed\n");
-        write_scratch(0, 0xBAD00041);
-        test_fail(0);
+    /* Synchronise on the target's own end-of-transaction event.
+     *
+     * The count of ACQ entries is not derivable from the number of FMT pushes:
+     * CTRL.ACQ_START_STOP_EN is at its reset value of 0 (i2c.rdl:580), so the
+     * target writes no START/RESTART/STOP entry, and a write of N bytes leaves
+     * fewer than N+1 entries. Waiting on a count computed that way cannot be
+     * relied on to return.
+     *
+     * STOP_DETECT is the DUT telling us the transaction is over, so wait for
+     * that and then drain whatever it produced. Bounded, and the bound fails.
+     */
+    {
+        uint32_t i;
+        int stopped = 0;
+        for (i = 0; i < 200000u; i++) {
+            if (i2c_get_target_events(TARGET_IDX) & (1u << 4)) { /* STOP_DETECT */
+                stopped = 1;
+                break;
+            }
+        }
+        if (!stopped) {
+            uint32_t tx_lvl = 0, acq_lvl = 0;
+            i2c_target_get_fifo_status(TARGET_IDX, &tx_lvl, &acq_lvl);
+            simputs("  [ERROR] target never reported STOP_DETECT; ACQLVL=0x");
+            simputshex32("", acq_lvl);
+            simputs("\n");
+            write_scratch(0, 0xBAD00041);
+            test_fail(0);
+        }
     }
     write_scratch(1, 0x00000044);
-    simputs("  [4.2] ACQ FIFO has data, ready to receive\n");
+    simputs("  [4.2] STOP detected; draining ACQ FIFO\n");
 
-    // Step 4.3: Target receive the transaction
+    /* Drain every entry and reconcile the payload.
+     *
+     * Entries are itemised in the log so the transaction inventory is evidence
+     * rather than an assumption. The length header is the first data byte
+     * (i2c_controller_write_with_header_nonblock sends len before the payload);
+     * START/STOP entries are framing.
+     */
     write_scratch(1, 0x00000045);
-    simputs("  [4.3] Target receive START\n");
-    ret = i2c_target_receive_transaction(TARGET_IDX, recv_buffer, sizeof(recv_buffer),
-                                         &received_len, 1000);
-    if (ret != I2C_OK) {
-        simputs("  [ERROR] Target receive failed\n");
-        write_scratch(0, 0xBAD00042);
+    {
+        uint32_t seen_data = 0;
+        int header_taken = 0;
+        received_len = 0;
+        while (!i2c_target_acq_fifo_empty(TARGET_IDX)) {
+            i2c_acq_entry_t e;
+            if (i2c_target_receive_entry(TARGET_IDX, &e) != I2C_OK) {
+                simputs("  [ERROR] ACQ entry read failed\n");
+                write_scratch(0, 0xBAD00042);
+                test_fail(0);
+            }
+            simputs("    ACQ signal=0x");
+            simputshex32("", e.signal);
+            simputs(" data=0x");
+            simputshex32("", e.data);
+            simputs("\n");
+            seen_data++;
+            /* A NACKed byte is not payload.
+             *
+             * is_start/is_stop alone do not exclude it: the entry classifier
+             * maps NACK and NACK_START onto its default leg, which leaves both
+             * flags false, so without is_nack this filter would accept a byte
+             * the target NACKed and copy it into recv_buffer as ordinary data.
+             * A NACK means the transfer did not carry
+             * what the comparison below assumes, so it fails rather than being
+             * silently folded into the payload. */
+            if (e.is_nack) {
+                simputs("  ERROR: NACKed ACQ entry in payload stream, signal=0x");
+                simputshex32("", e.signal);
+                simputs(" data=0x");
+                simputshex32("", e.data);
+                simputs("\n");
+                test_fail(0);
+            }
+            if (e.is_start || e.is_stop) {
+                continue;
+            }
+            if (!header_taken) {
+                header_taken = 1; /* length header, not payload */
+                continue;
+            }
+            if (received_len < sizeof(recv_buffer)) {
+                recv_buffer[received_len++] = e.data;
+            }
+        }
+        simputs("  [4.3] ACQ entries drained: 0x");
+        simputshex32("", seen_data);
+        simputs(" payload bytes: 0x");
+        simputshex32("", received_len);
+        simputs("\n");
+    }
+
+    /* The payload count and every byte are reconciled against the stimulus. */
+    if (received_len != sizeof(data_buf)) {
+        simputs("  [ERROR] payload count mismatch: expected 0x");
+        simputshex32("", (uint32_t)sizeof(data_buf));
+        simputs(", got 0x");
+        simputshex32("", received_len);
+        simputs("\n");
+        write_scratch(0, 0xBAD00043);
         test_fail(0);
     }
-    write_scratch(1, 0x00000046);
-    simputs("  [4.3] Target received 0x");
-    for (size_t k = 0; k < received_len; k++) {
-        uint8_t hex = (recv_buffer[k] >> 4) & 0xF;
-        simputs(hex < 10 ? "0" : "");
-        simputs("0");
+    for (size_t k = 0; k < sizeof(data_buf); k++) {
+        if (recv_buffer[k] != data_buf[k]) {
+            simputs("  [ERROR] data mismatch at index 0x");
+            simputshex32("", (uint32_t)k);
+            simputs(": expected 0x");
+            simputshex32("", data_buf[k]);
+            simputs(", got 0x");
+            simputshex32("", recv_buffer[k]);
+            simputs("\n");
+            write_scratch(0, 0xBAD00044);
+            test_fail(0);
+        }
     }
-    simputs(" bytes\n");
+    simputs("  [4.3] payload matched {0xAA,0xBB,0xCC,0xDD}\n");
 
     write_scratch(1, 0x00000047);
 

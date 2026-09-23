@@ -16,14 +16,9 @@ This directory contains files for logic synthesis of the entropy_source componen
 - **`entropy_source.sdc`** - Synopsys Design Constraints file
   - Clock definitions and timing requirements
   - False path constraints for ring oscillators
-  - False path constraints for ripple dividers (NEW)
+  - False path constraints for ripple dividers
   - Multi-cycle path definitions
   - Special handling for metastable sampling
-
-### Documentation
-
-- **`README_RIPPLE_DIVIDER_CONSTRAINTS.md`** - Detailed ripple divider constraint strategy
-- **`SYNTHESIS_CHECKLIST.md`** - Complete pre-synthesis through sign-off checklist
 
 ### Verification
 
@@ -107,13 +102,12 @@ The entropy source contains **asynchronous ring oscillators** that require speci
    - See `entropy_source.sdc` for complete constraints
 
 3. **Metastability**
-   - Sampler flip-flops deliberately operate in metastable region
-   - This is intentional for entropy generation
+   - Sampler flip-flops operate in the metastable region; those events are the entropy source
    - Dual-rank synchronizers handle metastability
 
-### Ripple Divider Constraints (NEW)
+### Ripple Divider Constraints
 
-The entropy source now contains **asynchronous ripple dividers** for programmable sample clock division:
+The entropy source contains **asynchronous ripple dividers** for programmable sample clock division:
 
 1. **Do not optimize ripple divider cells**
    - Use `set_dont_touch` on instances in `entropy_ripple_divider`
@@ -124,13 +118,12 @@ The entropy source now contains **asynchronous ripple dividers** for programmabl
    - Ripple divider feedback paths are marked as false paths
    - Ripple chain connections (Q→CLK) are marked as false paths
    - Divided outputs are not part of clock tree
-   - See `entropy_source.sdc` lines 106-145 for complete constraints
+   - See the RIPPLE DIVIDER CONSTRAINTS section of `entropy_source.sdc`
 
-3. **Intentional asynchronous design**
+3. **Asynchronous structure**
    - Each stage clocks the next stage (ripple chain)
-   - Creates combinational feedback loops (D=QB for toggle)
-   - These are NOT synthesis errors - they are by design
-   - See `README_RIPPLE_DIVIDER_CONSTRAINTS.md` for detailed explanation
+   - Each toggle flip-flop feeds D from QB, a combinational feedback loop
+   - Synthesis and lint report these loops; the false-path constraints above cover them
 
 ### Security Considerations
 
@@ -140,20 +133,6 @@ This is a security-critical component for true random number generation:
 - **Preserve module boundaries** for health test modules
 - Consider using `set_dont_touch` selectively on entropy paths
 - Verify that optimization doesn't inadvertently correlate noise sources
-
-## File Count
-
-**Total RTL files: 20**
-
-- 2 register files (auto-generated)
-- 18 design files (hand-written, including new entropy_ripple_divider.sv)
-
-Run `./check_rtl_files.sh` to verify all files are present.
-
-**New modules since last release:**
-
-- `entropy_ripple_divider.sv` - Programmable sample clock divider
-- `entropy_generator_test_wrapper.sv` - Test wrapper (testbench only, not for synthesis)
 
 ## Troubleshooting
 
@@ -185,7 +164,7 @@ If synthesis reports timing violations or unexpected behavior:
 1. **Check ring oscillator constraints** in `entropy_source.sdc`
 2. **Verify false paths** are properly applied
 3. **Review optimization settings** - may need to disable for ring oscillators
-4. **Check for metastability warnings** - some are expected and intentional
+4. **Check for metastability warnings** - warnings on the sampler flip-flops are expected
 
 ## References
 

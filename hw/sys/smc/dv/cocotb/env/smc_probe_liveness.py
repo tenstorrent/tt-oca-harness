@@ -45,14 +45,11 @@ checked evidence; its value is logged as a diagnostic and declared as such.
   the DTP CSR window would wedge rather than complete, and the DTP CSR boundary
   is a recorded TB-policy deferral (``hw/sys/smc/dv/README.md``).
 * ``gpio_core2pad_any`` / ``gpio_core2pad_en_any`` / ``gpio_pad2core_en_any`` --
-  unbackable *at 0*.  ``tb_top.sv:1306-1308`` defines all three as OR-reductions
-  over the **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends).  A
-  one-off bench reading at reset (no kept artifact; re-measure if the pad
-  map moves) showed ``core2pad_en_o`` with exactly bits 49 and 50 set and
-  ``core2pad_o`` with 28, 30, 32, 34, 36, 49, 50 and 64; bits 49/50 are the
-  AVSBus clock and mdata pads (``tb_top.sv:727-728``).  One frontdoor write of
-  ``CLOCK_GATE_CONTROL.AVS_CG_EN`` was tried and did not move them, so every
-  retained run reads all three reductions at 1 from reset onward and this TB has
+  unbackable *at 0*.  ``tb_top.sv`` defines all three as OR-reductions over the
+  **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends).  The AVSBus
+  clock and mdata pads (bits 49/50, ``tb_top.sv``) are output-enabled from
+  reset and no frontdoor CSR write (including ``CLOCK_GATE_CONTROL.AVS_CG_EN``)
+  clears them, so all three reductions read 1 from reset onward and this TB has
   no frontdoor path that drives any of them to 0.  A net tied to constant 1 is
   therefore indistinguishable from the real aggregate, which is exactly what
   ``[NEGATIVE-NEEDS-POSITIVE-CONTROL]`` forbids presenting as evidence -- so
@@ -272,7 +269,7 @@ async def watch_probe_liveness(dut=None) -> None:
                 credit_probe(
                     probe,
                     f"{sig} observed at 1 at "
-                    f"{int(get_sim_time(units='ns'))}ns by the passive "
+                    f"{int(get_sim_time(unit='ns'))}ns by the passive "
                     f"probe-liveness watcher",
                 )
             else:

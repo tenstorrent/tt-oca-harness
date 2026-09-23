@@ -3,8 +3,9 @@
 //
 // SMC environment configuration, derived from smc_test_cfg and read by
 // smc_env: the chosen clock periods, the SEP_IN master watchdog, the
-// scoreboard features that must compare, and the negative-validation
-// switch the scoreboard predictor honors. The env fills the VIP configs from
+// scoreboard features that must compare, the negative-validation switch
+// the scoreboard predictor honors, and the memory footprint of the SYS_OUT
+// responder. The env fills the VIP configs from
 // this object and publishes the clock periods on smc_tb_if. Never
 // randomized. The cocotb twin is env/smc_env_cfg.py.
 
@@ -16,8 +17,15 @@ class smc_env_cfg extends ocah_env_cfg;
   int unsigned periph_clk_period_ns = 10;
   // SEP_IN master handshake watchdog (smc-clock cycles per wait).
   int unsigned axi_timeout_cycles = 10_000;
-  // Scoreboard negative hook: corrupt the predicted scratch readback.
+  // Scoreboard negative hooks, one per feature predictor: corrupt the
+  // predicted scratch readback / the predicted catalogued default.
   bit csr_scoreboard_negative;
+  bit default_reg_scoreboard_negative;
+  bit lock_scoreboard_negative;
+  bit mutex_scoreboard_negative;
+  bit spm_mem_scoreboard_negative;
+  // Backing memory of the SYS_OUT responder, in bytes (addresses wrap).
+  int unsigned sys_out_mem_bytes = 32'h8000_0000;
 
   function new(string name = "smc_env_cfg");
     super.new(name);
@@ -30,6 +38,10 @@ class smc_env_cfg extends ocah_env_cfg;
     c.periph_clk_period_ns    = t.periph_clk_period_ns;
     c.axi_timeout_cycles      = t.axi_timeout_cycles;
     c.csr_scoreboard_negative = t.csr_scoreboard_negative;
+    c.default_reg_scoreboard_negative = t.default_reg_scoreboard_negative;
+    c.lock_scoreboard_negative = t.lock_scoreboard_negative;
+    c.mutex_scoreboard_negative = t.mutex_scoreboard_negative;
+    c.spm_mem_scoreboard_negative = t.spm_mem_scoreboard_negative;
     c.required_features       = t.required_features;
     return c;
   endfunction

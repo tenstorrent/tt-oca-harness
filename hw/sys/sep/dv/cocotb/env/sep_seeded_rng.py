@@ -9,16 +9,14 @@ express that contract.
 
 This is SHA-256 in counter mode over the seed. It is deterministic across
 hosts, Python builds, and interpreter runs -- unlike ``random.Random``, whose
-stream is only guaranteed stable within a Python major version -- and it does
-not go through the ``random`` module, which SAST scanners flag on sight.
+stream is only guaranteed stable within a Python major version.
 
 Not a CSPRNG substitute. The stream is fully predictable from the seed, which
 is the entire point. Never use it for a key, token, nonce, or any value that
 leaves the simulation.
 
-Converting a call site changes its seed->value mapping, so a seed recorded as
-reproducing a past failure must be re-derived, and a per-seed value must never
-be quoted as verification-plan evidence.
+A per-seed value is a function of this generator's stream, so it must never be
+quoted as verification-plan evidence.
 """
 
 import hashlib
@@ -31,9 +29,8 @@ _BLOCK = 32  # SHA-256 digest size
 class SepSeededRng:
     """Deterministic byte stream with the ``random.Random`` methods DV uses.
 
-    Method semantics match ``random.Random`` so call sites read the same, but
-    the values differ: a seed that reproduced a failure under ``random.Random``
-    will not reproduce it here.
+    Method semantics match ``random.Random`` so call sites read the same; the
+    streams differ.
     """
 
     def __init__(self, seed: int) -> None:

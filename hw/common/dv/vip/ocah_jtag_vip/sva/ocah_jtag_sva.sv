@@ -5,13 +5,21 @@
 //
 // Rule provenance: every rule below is implemented from the public IEEE Std
 // 1149.1 clause DESCRIPTIONS. No third-party protocol checker source was
-// consulted or copied; all rule names are OCAH-original. Reviewers: verify
-// additions cite an IEEE Std 1149.1 clause, never another checker
-// implementation.
+// consulted or copied; all rule names are OCAH-original. Additions cite an
+// IEEE Std 1149.1 clause, never another checker implementation.
 //
 // Shape: a module with explicit flat ports so it can be instantiated at TB
 // scope next to flattened DUT nets or bound into a hierarchy. `en_i` is a
 // runtime suppress knob (tie to 1'b1, or drive from a TB interface bit).
+// Each concurrent rule belongs to the side that drives its signals: the
+// master (the host) drives TMS and TDI, the slave (the TAP) drives TDO, its
+// enable and the state. ASSUME_MASTER_RULES and ASSUME_SLAVE_RULES emit that
+// side's concurrent rules as assumptions, so a formal backend that binds one
+// instance asserts the design's side and assumes the environment's; both
+// default to assertions, which is the simulation shape. Each such rule sits
+// in a generate block named gen_<rule> (`OCAH_SVA_RULE, `OCAH_RULE). The
+// event-driven TDO-timing checks stay assertions: no formal model elaborates
+// them, and a simulator treats both kinds alike.
 // `trst_n` is the controller's effective asynchronous reset: AND every
 // source that resets the TAP (TRST, a power-on reset) so a DUT-side reset
 // is not read as an illegal state transition.
@@ -31,17 +39,24 @@
 //               Test-Logic-Reset from any state (§6.1.1.1); TDO driver
 //               active only while shifting (§4.5.1)
 //
-// Two simulation trees. The TDO-timing and state rules use `OCAH_SVA_ASSERT /
+// Two simulation trees. The TDO-timing and state rules use `OCAH_SVA_RULE /
 // `OCAH_SVA_ASSERT_I (ocah_sva_macros.svh): live on every SIMULATION compile,
-// evaluated by Verilator under --assert. The X-hygiene rules and the covers use
-// `OCAH_ASSERT / `OCAH_COVER (ocah_assert.svh): live only where
-// OCAH_INC_ASSERT is defined, i.e. on a four-state simulator.
+// evaluated by Verilator under --assert, and on every FORMAL elaboration of a
+// licensed backend. The X-hygiene rules and the covers use `OCAH_RULE
+// (ocah_sva_macros.svh) / `OCAH_COVER (ocah_assert.svh): live only where
+// OCAH_INC_ASSERT is defined, i.e. on a four-state simulator or a licensed
+// backend. The open-source
+// formal frontend reads none of the concurrent operators here;
+// ocah_jtag_fv.sv beside this file carries the boolean-subset rules for
+// that path.
 
 `include "ocah_assert.svh"
 `include "ocah_sva_macros.svh"
 
 module ocah_jtag_sva #(
-  parameter bit EN_STATE_RULES = 1'b1
+  parameter bit EN_STATE_RULES      = 1'b1,
+  parameter bit ASSUME_MASTER_RULES = 1'b0,
+  parameter bit ASSUME_SLAVE_RULES  = 1'b0
 ) (
   input wire logic        tck,
   input wire logic        tms,
@@ -87,10 +102,10 @@ module ocah_jtag_sva #(
   // on the rising TCK edge (§4.3.1, §4.4.1), so they must be resolved
   // there; TDO must be resolved whenever its driver is active (§4.5.1).
   // ------------------------------------------------------------------
-  `OCAH_ASSERT(OCAH_JTAG_TMS_KNOWN, en_i |-> !$isunknown(tms), tck, !trst_n)
-  `OCAH_ASSERT(OCAH_JTAG_TDI_KNOWN, en_i |-> !$isunknown(tdi), tck, !trst_n)
-  `OCAH_ASSERT(OCAH_JTAG_TDO_KNOWN_WHEN_DRIVEN, (en_i && tdo_oen === 1'b1) |-> !$isunknown(tdo),
-               tck, !trst_n)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_JTAG_TMS_KNOWN, en_i |-> !$isunknown(tms), tck, !trst_n)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_JTAG_TDI_KNOWN, en_i |-> !$isunknown(tdi), tck, !trst_n)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TDO_KNOWN_WHEN_DRIVEN,
+             (en_i && tdo_oen === 1'b1) |-> !$isunknown(tdo), tck, !trst_n)
 
   `OCAH_COVER(OCAH_JTAG_C_TRST_ASSERTED, en_i && (trst_n === 1'b0), tck, 1'b0)
   `OCAH_COVER(OCAH_JTAG_C_OEN_ACTIVE, en_i && (tdo_oen === 1'b1), tck, !trst_n)
@@ -127,29 +142,29 @@ module ocah_jtag_sva #(
         else trst_seen_q <= 1'b0;
       end
 
-      `OCAH_SVA_ASSERT(OCAH_JTAG_STATE_ONEHOT,
-                       en_i |-> (!$isunknown(
-                           tap_state_i
-                       ) && ($countones(
-                           tap_state_i
-                       ) == 1) && (jtag_next_onehot(
-                           tap_state_i, 1'b0
-                       ) != '0)),
-                       tck, !trst_n)
-      `OCAH_SVA_ASSERT(OCAH_JTAG_STATE_NEXT_LEGAL,
-                       en_i |=> (tap_state_i == (trst_seen_q ? TlrOnehot : jtag_next_onehot(
-                           $past(tap_state_i), $past(tms)
-                       ))),
-                       tck, !trst_n)
+      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_STATE_ONEHOT,
+                     en_i |-> (!$isunknown(
+                         tap_state_i
+                     ) && ($countones(
+                         tap_state_i
+                     ) == 1) && (jtag_next_onehot(
+                         tap_state_i, 1'b0
+                     ) != '0)),
+                     tck, !trst_n)
+      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_STATE_NEXT_LEGAL,
+                     en_i |=> (tap_state_i == (trst_seen_q ? TlrOnehot : jtag_next_onehot(
+                         $past(tap_state_i), $past(tms)
+                     ))),
+                     tck, !trst_n)
 
       // TRST forces Test-Logic-Reset (§6.1.1). Not reset-disabled (the rule
       // checks reset itself); qualified on a resolved-low trst_n.
-      `OCAH_SVA_ASSERT(OCAH_JTAG_TRST_TLR,
-                       (en_i && (trst_n === 1'b0)) |-> (tap_state_i == TlrOnehot), tck, 1'b0)
+      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TRST_TLR,
+                     (en_i && (trst_n === 1'b0)) |-> (tap_state_i == TlrOnehot), tck, 1'b0)
 
       // Five TMS-high rising edges reach TLR from any state (§6.1.1.1).
-      `OCAH_SVA_ASSERT(OCAH_JTAG_TLR_TMS5, ((en_i && tms) [* 5]) |=> (tap_state_i == TlrOnehot),
-                       tck, !trst_n)
+      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_JTAG_TLR_TMS5,
+                     ((en_i && tms) [* 5]) |=> (tap_state_i == TlrOnehot), tck, !trst_n)
 
       // TDO driver active only while shifting (§4.5.1): the enable,
       // re-registered on the falling edge, tracks Shift-DR/Shift-IR

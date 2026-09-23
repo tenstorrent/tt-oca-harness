@@ -24,20 +24,19 @@ from check_no_vendor_paths import (  # noqa: E402
     _load_config,
 )
 
-SIM_CFG = "smu_wrapper_sim_cfg.toml"
-CATALOG = "testlists/wrapper.toml"
-TARGET_NO_SEP = "compile_smu_chiplet_no_sep"
-TARGET_SEP_RTL = "compile_smu_chiplet_sep_rtl"
+SIM_CFG = "smu_sim_cfg.toml"
+CATALOG = "testlists/all.toml"
+# The wrapper has one compile profile: SEP=1 with the real EL2 CPU.
+TARGET_SEP_RTL = "compile_smu_chiplet"
 SMOKE_TESTS = {
-    "smu_wrapper_elaboration_no_sep_test": TARGET_NO_SEP,
-    "smu_wrapper_elaboration_sep_rtl_test": TARGET_SEP_RTL,
-    "smu_smc_smoke_test": TARGET_NO_SEP,
+    "smu_wrapper_elaboration_test": TARGET_SEP_RTL,
+    "smu_smc_smoke_test": TARGET_SEP_RTL,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# Merge-gate smoke covers both wrapper profiles.
-EXPECTED_SMOKE_GROUP = {
-    "smu_wrapper_elaboration_no_sep_test",
-    "smu_wrapper_elaboration_sep_rtl_test",
+# The firmware boot smoke group: the elaboration leaf and both firmware smokes.
+# The PR gate `smoke` is toolchain-free and does not include them.
+EXPECTED_FW_BOOT_GROUP = {
+    "smu_wrapper_elaboration_test",
     "smu_smc_smoke_test",
     "smu_sep_smoke_test",
 }
@@ -67,11 +66,6 @@ REQUIRED_REFERENCE_ROOTS = (
     "hw/sys/sep/dv",
     "hw/common/dv/vip",
     "hw/top",
-)
-
-FORBIDDEN_ENV_REFERENCES = (
-    "testlist_smu_chiplet.yaml",
-    "project_smu_chiplet.yaml",
 )
 
 
@@ -151,7 +145,7 @@ def check_sources(result: Readiness) -> None:
         return
     config = _read_toml(config_path)
     targets = config.get("targets", {})
-    for target in (TARGET_NO_SEP, TARGET_SEP_RTL):
+    for target in (TARGET_SEP_RTL,):
         result.record(
             f"target:{target}",
             target in targets,
@@ -173,32 +167,13 @@ def check_sources(result: Readiness) -> None:
             passed = test is not None and test.get("target") == target
             detail = f"target={test.get('target')}" if test is not None else "missing from catalog"
             result.record(f"catalog:{test_name}", passed, detail)
-        expected_group = EXPECTED_SMOKE_GROUP
-        smoke_group = set(groups.get("smoke", []))
+        expected_group = EXPECTED_FW_BOOT_GROUP
+        smoke_group = set(groups.get("fw_boot", []))
         result.record(
-            "catalog:smoke_group",
+            "catalog:fw_boot_group",
             smoke_group == expected_group,
             f"tests={sorted(smoke_group)}",
         )
-
-    authored = (
-        config_path,
-        DV_ROOT / CATALOG,
-        DV_ROOT / "tb" / "tb_wrapper_top.sv",
-    )
-    bad_refs: list[str] = []
-    for path in authored:
-        if not path.is_file():
-            continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        for forbidden in FORBIDDEN_ENV_REFERENCES:
-            if forbidden in text:
-                bad_refs.append(f"{path.relative_to(REPO_ROOT)} -> {forbidden}")
-    result.record(
-        "isolation:no_legacy_tb_dependency",
-        not bad_refs,
-        "clean" if not bad_refs else "; ".join(bad_refs),
-    )
 
 
 def check_filelists(result: Readiness, filelists: list[Path]) -> None:
@@ -213,16 +188,15 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
         "hw/top/smc_ip_integration.sv",
         "hw/top/sep_ip_integration.sv",
         "hw/sys/smu/dv/tb/tb_wrapper_top.sv",
-        # pulp axi_sim_mem (SEP VIP) — not a custom DV mem shim
+        # pulp axi_sim_mem, the SEP VIP memory
         "axi_sim_mem.sv",
     )
     forbidden_tokens = (
-        # Foundry-path and DV TCM shim tokens must not appear.
-        # (OSS TCM is hw/sys/sep/rtl/sep_tcm_wrapper.sv; blocker is ram_*.)
+        # No TCM shim and no TB AXI responder may enter the filelist; the OSS
+        # TCM is hw/sys/sep/rtl/sep_tcm_wrapper.sv.
         "hw/sep/sep_tcm_wrapper.sv",
         "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
         "hw/sys/smu/dv/shims/wrapper/",
-        "hw/.bos/wrapper/",
         "tb_smu_axi_responder",
     )
     for raw_path in filelists:

@@ -10,7 +10,7 @@ weaker test, because something else would also catch it.
 
 The signature field is at manifest offset 744, outside the TBS region the hash
 covers, so this needs neither a re-hash nor a re-sign. The ROM's verdict is
-``RSA_VERIFY_FAIL`` -> ``MANIFEST_ERR_SIG_FAILED``.
+``RSA_PKCS1_FAIL`` -> ``MANIFEST_ERR_SIG_FAILED``.
 """
 
 from __future__ import annotations
@@ -37,25 +37,25 @@ _EFUSE_PRELOAD = (
 class sep_firmware_backup_invalid_signature_test(sep_backup_manifest_fail_base):
     """Primary BAD_MAGIC -> failover -> backup signature fails RSA -> terminal."""
 
-    # manifest_crypto.c, reached only when rsa_3072_verify() returns non-zero
-    # (:244). Requiring this specific marker rather than any failure is what
-    # distinguishes "the signature was checked and rejected" from "something else
-    # went wrong first".
-    backup_defect_marker = "RSA_VERIFY_FAIL"
+    # The verifier's own verdict, reached only when the modexp result fails to
+    # reconstruct the expected padding. Requiring this specific marker rather than
+    # any failure is what distinguishes "the signature was checked and rejected"
+    # from "something else went wrong first".
+    backup_defect_marker = "RSA_PKCS1_FAIL"
     expected_error = MANIFEST_ERR_SIG_FAILED
     efuse_preload = _EFUSE_PRELOAD
     # RSA must actually have been driven, and must not have succeeded.
     #
-    # BAD_SIG_TYPE= is NOT needed to tell this testcase apart from
+    # PUBK_ALGO_UNSUPPORTED is NOT needed to tell this testcase apart from
     # sep_firmware_backup_invalid_signature_type_test: a run that died at the type
-    # check never prints RSA_VERIFY_FAIL, and that marker is this testcase's
+    # check never prints RSA_PKCS1_FAIL, and that marker is this testcase's
     # required backup_defect_marker, so such a run already fails here. What this
     # forbid actually closes is the degenerate case where the two slots are
     # rejected by DIFFERENT arms within one run -- an unsupported signature type
     # somewhere in the run would then coexist with a genuine RSA failure, and the
-    # terminal error code (0x0003000c, shared by six arms of validate_signature)
+    # terminal error code (shared by six arms of the signature path)
     # could not say which one converged the boot.
-    extra_forbidden = ("SIG_VALID", "CRYPTO_VALIDATE_OK", "BAD_SIG_TYPE=")
+    extra_forbidden = ("RSA_VERIFY_OK", "MANIFEST_OK", "PUBK_ALGO_UNSUPPORTED")
 
     def corrupt_backup(self, buf: bytearray) -> None:
         before = bytes(buf[mm.BACKUP_MANIFEST_OFFSET + mm.OFF_SIGNATURE :][:8])
@@ -75,7 +75,7 @@ class sep_firmware_backup_invalid_signature_test(sep_backup_manifest_fail_base):
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
-        # check_security_version (manifest_crypto.c) and the revocation check
+        # the anti-rollback check and the revocation check
         # (:369 ->) both run BEFORE rsa_3072_verify (:244), so either of these
         # being non-zero would terminate the run earlier with a different error and
         # the signature would never be reached.

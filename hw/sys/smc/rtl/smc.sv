@@ -9,10 +9,8 @@ module smc #(
   // The open smc_external map is one opaque region, so this is a literal here and
   // is overridden by an integration that models the block.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h44,
-  parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_4CORE,
 
-  // based on what the CPU config is, change internal defines
-  // - types cannot use ternary operators so this has to be a parameter
+  // Memory-interface types (cannot be localparams)
   parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,
   parameter  type         rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,
   parameter  type         scratch_ram_req_t     = chipyard_4core_mem_pkg::scratch_ram_req_t,
@@ -26,15 +24,15 @@ module smc #(
   parameter  type         l1_dcache_data_req_t  = chipyard_4core_mem_pkg::l1_dcache_data_req_t,
   parameter  type         l1_dcache_data_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,
 
-  localparam int unsigned NUM_CPU_CORES         = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES              : smc_1core_cpu_pkg::NUM_CPU_CORES,
-  localparam int unsigned NUM_CPU_INTERRUPTS    = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS         : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
-  localparam int unsigned NUM_EXT_INTERRUPTS    = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS         : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS,
+  localparam int unsigned NUM_CPU_CORES         = smc_4core_cpu_pkg::NUM_CPU_CORES,
+  localparam int unsigned NUM_CPU_INTERRUPTS    = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,
+  localparam int unsigned NUM_EXT_INTERRUPTS    = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS,
 
-  localparam int unsigned NUM_SRAM_BANKS        = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_SRAM_BANKS        : chipyard_1core_mem_pkg::NUM_SRAM_BANKS,
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_ICACHE_TAG_BANKS,
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_ICACHE_DATA_BANKS,
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_DCACHE_TAG_BANKS,
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_DCACHE_DATA_BANKS
+  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,
+  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,
+  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS
 ) (
   // Clocks from PLLs
   input logic clk_smc_i,
@@ -138,23 +136,23 @@ module smc #(
   input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afready_i,
 
   // DED
-  output logic cluster_ded_o,
+  output logic smc_cluster_ded_o,
 
   // WDT
-  output logic wdt_first_timeout_o,
-  output logic wdt_second_timeout_o,
+  output logic smc_wdt_first_timeout_o,
+  output logic smc_wdt_second_timeout_o,
 
   // Region size
   output smc_pkg::smc_axi_addr_t        smc_global_base_o,
   output logic [31:0]                   smc_region_size_o,
 
   // External interrupts
-  input logic [NUM_EXT_INTERRUPTS-1:0] ext_interrupts_i,
+  input logic [NUM_EXT_INTERRUPTS-1:0] smc_ext_interrupts_i,
   input logic [7:0]                    sep_mailbox_interrupts_i,
   input logic                          sep_wdt_reset_n_i,
 
-  output logic fuse_sense_done_o,
-  output logic fuse_reset_n_delayed_o,
+  output logic smc_fuse_sense_done_o,
+  output logic smc_fuse_reset_n_delayed_o,
 
   // External boot / memory-repair signals
   output logic skip_mem_repair_o,
@@ -163,23 +161,16 @@ module smc #(
   // SEP security disable
   input logic sep_security_disable_i,
 
-  // PVT
-  input logic temp_interrupt_i,
-
   // Lifecycle state
   input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,
   output logic                                 lc_sigint_err_o,
 
-  // RAS bank settings
-  output logic [3:0] ras_bank_chip_o,
-  output logic [3:0] ras_bank_instance_o,
-
   // NDM reset
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0] ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0] ndmreset_process_o,
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0] smc_ndmreset_request_i,
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0] smc_ndmreset_process_o,
 
   // Mailbox interrupts
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NUM_MAILBOXES-1:0] smc_ext_mailbox_interrupts_o,
 
   // Reset Unit signals
   input  logic        cfg_flr_pf_active_i,
@@ -192,21 +183,21 @@ module smc #(
   output logic sync_irq_o,
 
   // CPU Memory Signals
-  output rom_req_t            rom_intf_req_o,
-  input  rom_rsp_t            rom_intf_rsp_i,
-  output scratch_ram_req_t    scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],
-  input  scratch_ram_rsp_t    scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],
-  output l1_icache_tag_req_t  l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],
-  input  l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],
-  output l1_icache_data_req_t l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],
-  input  l1_icache_data_rsp_t l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],
-  output l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],
-  input  l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],
-  output l1_dcache_data_req_t l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],
-  input  l1_dcache_data_rsp_t l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],
+  output rom_req_t            smc_rom_intf_req_o,
+  input  rom_rsp_t            smc_rom_intf_rsp_i,
+  output scratch_ram_req_t    smc_scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],
+  input  scratch_ram_rsp_t    smc_scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],
+  output l1_icache_tag_req_t  smc_l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],
+  input  l1_icache_tag_rsp_t  smc_l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],
+  output l1_icache_data_req_t smc_l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],
+  input  l1_icache_data_rsp_t smc_l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],
+  output l1_dcache_tag_req_t  smc_l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],
+  input  l1_dcache_tag_rsp_t  smc_l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],
+  output l1_dcache_data_req_t smc_l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],
+  input  l1_dcache_data_rsp_t smc_l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],
 
-  input  logic disable_sram_auto_init_i,
-  output logic init_mem_done_o,
+  input  logic smc_disable_sram_auto_init_i,
+  output logic smc_init_mem_done_o,
 
   // System Timer OCTS Interface
   input  logic        chiplet_is_primary_i,
@@ -324,8 +315,7 @@ module smc #(
   logic [NUM_CPU_CORES-1:0]                   cpu_wdt_timeout_cluster;
 
   smc_base #(
-    .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),           // Enable address remap in the output fabric
-    .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG)
+    .NO_ADDR_REMAP(smc_config_pkg::NO_ADDR_REMAP)  // Enable address remap in the output fabric
   ) u_smc_base (
     // Clocks from PLLs
     .clk_smc_i                              (clk_smc_i),
@@ -359,14 +349,14 @@ module smc #(
     .axil_peripherals_resp_i                (axil_peripherals_resp),
 
     // WDT
-    .wdt_first_timeout_o                    (wdt_first_timeout_o),
+    .wdt_first_timeout_o                    (smc_wdt_first_timeout_o),
 
     // External interrupts
-    .ext_interrupts_i                       (ext_interrupts_i),
+    .ext_interrupts_i                       (smc_ext_interrupts_i),
     .peripheral_interrupts_i                (peripheral_interrupts),
 
     // Mailbox interrupts
-    .ext_mailbox_interrupts_o               (ext_mailbox_interrupts_o),
+    .ext_mailbox_interrupts_o               (smc_ext_mailbox_interrupts_o),
 
     // CPU wrapper bridge ports (outputs to smc_cpu_wrapper)
     .cpu_axi_front_port_req_o               (cpu_axi_front_port_req),
@@ -378,8 +368,8 @@ module smc #(
     .cpu_axi_mmio_port_resp_o               (cpu_axi_mmio_port_resp),
     .cpu_wb_reg_pc_i                        (cpu_wb_reg_pc),
     .cpu_wdt_timeout_cluster_i              (cpu_wdt_timeout_cluster),
-    .cpu_cluster_ded_i                      (cluster_ded_o),
-    .wdt_second_timeout_i                   (wdt_second_timeout_o),
+    .cpu_cluster_ded_i                      (smc_cluster_ded_o),
+    .wdt_second_timeout_i                   (smc_wdt_second_timeout_o),
 
     // SMC address window from smc_base_config (in u_smc_base)
     .smc_global_base_o                      (smc_global_base_o),
@@ -423,7 +413,7 @@ module smc #(
     .mbist_abort_i                          (mbist_abort_i),
 
     // AXI hang detector fault output.
-    // The OR'd fault is routed into smc_peripherals peripheral_interrupts[31] so PLIC can see it.
+    // The OR'd fault is routed into smc_peripherals peripheral_interrupts[30] so PLIC can see it.
     .axi_hang_irq_o                         (axi_hang_irq)
   );
 
@@ -434,7 +424,6 @@ module smc #(
 
   smc_cpu_wrapper #(
     .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),
-    .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG),
     .rom_req_t                          (rom_req_t),
     .rom_rsp_t                          (rom_rsp_t),
     .scratch_ram_req_t                  (scratch_ram_req_t),
@@ -468,26 +457,26 @@ module smc #(
     .axi_mmio_port_resp_i               (cpu_axi_mmio_port_resp),
     .wb_reg_pc_o                        (cpu_wb_reg_pc),
     .wdt_timeout_cluster_o              (cpu_wdt_timeout_cluster),
-    .wdt_second_timeout_o               (wdt_second_timeout_o),
+    .wdt_second_timeout_o               (smc_wdt_second_timeout_o),
 
     // DED output (goes to smc top-level port and smc_base debug bus)
-    .cluster_ded_o                      (cluster_ded_o),
+    .cluster_ded_o                      (smc_cluster_ded_o),
 
     // CPU Memory Signals
-    .rom_intf_req_o                     (rom_intf_req_o),
-    .rom_intf_rsp_i                     (rom_intf_rsp_i),
-    .scratch_ram_intf_req_o             (scratch_ram_intf_req_o),
-    .scratch_ram_intf_rsp_i             (scratch_ram_intf_rsp_i),
-    .l1_icache_tag_intf_req_o           (l1_icache_tag_intf_req_o),
-    .l1_icache_tag_intf_rsp_i           (l1_icache_tag_intf_rsp_i),
-    .l1_icache_data_intf_req_o          (l1_icache_data_intf_req_o),
-    .l1_icache_data_intf_rsp_i          (l1_icache_data_intf_rsp_i),
-    .l1_dcache_tag_intf_req_o           (l1_dcache_tag_intf_req_o),
-    .l1_dcache_tag_intf_rsp_i           (l1_dcache_tag_intf_rsp_i),
-    .l1_dcache_data_intf_req_o          (l1_dcache_data_intf_req_o),
-    .l1_dcache_data_intf_rsp_i          (l1_dcache_data_intf_rsp_i),
-    .disable_sram_auto_init_i           (disable_sram_auto_init_i),
-    .init_mem_done_o                    (init_mem_done_o),
+    .rom_intf_req_o                     (smc_rom_intf_req_o),
+    .rom_intf_rsp_i                     (smc_rom_intf_rsp_i),
+    .scratch_ram_intf_req_o             (smc_scratch_ram_intf_req_o),
+    .scratch_ram_intf_rsp_i             (smc_scratch_ram_intf_rsp_i),
+    .l1_icache_tag_intf_req_o           (smc_l1_icache_tag_intf_req_o),
+    .l1_icache_tag_intf_rsp_i          (smc_l1_icache_tag_intf_rsp_i),
+    .l1_icache_data_intf_req_o          (smc_l1_icache_data_intf_req_o),
+    .l1_icache_data_intf_rsp_i         (smc_l1_icache_data_intf_rsp_i),
+    .l1_dcache_tag_intf_req_o           (smc_l1_dcache_tag_intf_req_o),
+    .l1_dcache_tag_intf_rsp_i          (smc_l1_dcache_tag_intf_rsp_i),
+    .l1_dcache_data_intf_req_o          (smc_l1_dcache_data_intf_req_o),
+    .l1_dcache_data_intf_rsp_i         (smc_l1_dcache_data_intf_rsp_i),
+    .disable_sram_auto_init_i           (smc_disable_sram_auto_init_i),
+    .init_mem_done_o                    (smc_init_mem_done_o),
 
     // ROM Flip Endianness
     .rom_flip_endianness_i              (rom_flip_endianness),
@@ -610,21 +599,14 @@ module smc #(
     .sep_security_disable_i                (sep_security_disable_i),
 
     .fuse_reset_n_o                        (fuse_reset_n),
-    .fuse_reset_n_delayed_o                (fuse_reset_n_delayed_o),
-    .fuse_sense_done_o                     (fuse_sense_done_o),      // Use this for signaling mbist & memory repair logic
+    .fuse_reset_n_delayed_o                (smc_fuse_reset_n_delayed_o),
+    .fuse_sense_done_o                     (smc_fuse_sense_done_o),  // Use this for signaling mbist & memory repair logic
 
     // Efuse Shadow Regs
     .shadow_regs_o                         (shadow_regs_o),
 
-    // PVT
-    .temp_interrupt_i                      (temp_interrupt_i),
-
-    // SMC Misc Wrap Signals
-    .ras_bank_chip_o                       (ras_bank_chip_o),
-    .ras_bank_instance_o                   (ras_bank_instance_o),
-
-    .ndmreset_request_i                    (ndmreset_request_i),
-    .ndmreset_process_o                    (ndmreset_process_o),
+    .ndmreset_request_i                    (smc_ndmreset_request_i),
+    .ndmreset_process_o                    (smc_ndmreset_process_o),
 
     // SMC Reset Unit Signals
     .powergood_i                           (powergood_i),
@@ -633,8 +615,8 @@ module smc #(
     .rst_cold_stable_ref_clk_no            (rst_cold_stable_ref_clk_no),
     .powergood_stable_o                    (powergood_stable_o),
     .rst_ext_wdt_ni                        (sep_wdt_reset_n_i),
-    .smc_wdt_first_timeout_i               (wdt_first_timeout_o),
-    .smc_wdt_second_timeout_i              (wdt_second_timeout_o),
+    .smc_wdt_first_timeout_i               (smc_wdt_first_timeout_o),
+    .smc_wdt_second_timeout_i              (smc_wdt_second_timeout_o),
     .cfg_flr_pf_active_i                   (cfg_flr_pf_active_i),
     .isolate_req_o                         (isolate_req_o),
     .skip_mem_repair_o                     (skip_mem_repair_o),
@@ -680,6 +662,6 @@ module smc #(
     // Efuse debug
     .efuse_debug_o                         (efuse_debug)
   );
-  assign rom_flip_endianness = shadow_regs_o.fields.reserved[smc_efuse_pkg::ROM_CTRL_REG_INDEX][smc_efuse_pkg::ROM_FLIP_ENDIANNESS_START_BIT];
+  assign rom_flip_endianness = shadow_regs_o.fields.smc_config.rom_flip_endianness;
 
 endmodule

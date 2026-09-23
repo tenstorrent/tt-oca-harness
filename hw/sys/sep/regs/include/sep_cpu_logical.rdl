@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+mem sep_cpu_region #(
+    longint unsigned NUM_WORDS = 1
+) {
+    memwidth = 32;
+    mementries = NUM_WORDS;
+
+    reg {
+        field {
+            sw = rw;
+            hw = rw;
+        } data[31:0];
+    } word;
+};
+
+addrmap sep_cpu_logical {
+    name = "SEP CPU Logical Address Space";
+    desc = "Top-level address routing visible to the SEP CPU.";
+
+    external sep_cpu_region #(.NUM_WORDS(0x04000000)) external_region
+        @0x00000000;
+    external sep_cpu_region #(.NUM_WORDS(0x04000000)) sep_local
+        @0x10000000;
+    external sep_cpu_region #(.NUM_WORDS(0x08000000)) sep_external
+        @0x20000000;
+    external sep_cpu_region #(.NUM_WORDS(0x10000000)) smc
+        @0x40000000;
+    external sep_cpu_region #(.NUM_WORDS(0x10000000)) smu
+        @0x80000000;
+    external sep_cpu_region #(.NUM_WORDS(0x04000000)) sep_cpu_resources
+        @0xC0000000;
+    external sep_cpu_region #(.NUM_WORDS(0x0C000000)) sep_local_alias
+        @0xD0000000;
+
+    external_region->name = "External";
+    external_region->desc = "External to the chiplet but outside SMU.";
+    sep_local->name = "SEP Local";
+    sep_local->desc = "Direct SEP-local resources.";
+    sep_external->name = "SEP External";
+    sep_external->desc = "Reserved adopter extension aperture.";
+    smc->name = "SMC";
+    smc->desc = "SMC resources.";
+    smu->name = "SMU";
+    smu->desc = "SMU resources, including DTP.";
+    sep_cpu_resources->name = "SEP CPU Resources";
+    sep_cpu_resources->desc = "EL2 ICCM, DCCM, and interrupt-controller resources.";
+    sep_local_alias->name = "SEP Local Alias";
+    sep_local_alias->desc =
+        "CPU-local alias of the direct 0x10000000–0x3FFFFFFF range.";
+};
