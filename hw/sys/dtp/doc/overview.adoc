@@ -30,8 +30,12 @@ The JTAG Interface Unit (JIU) is the top-level JTAG control module. It contains:
   five external JTAG pins (TCK, TDI, TDO, TMS, TRST_n).
 * A configurable set of Secondary TAPs (STAPs) — for I/O chiplet-to-chiplet
   JTAG, SMC CPU debug, SEP CPU debug, and optional extra TAPs.
-* An iJTAG network with SIB-based chains for DFT secure, DFT non-secure, DFD,
-  SMC fabric debug (JTAG2AXI), SMC OTP (JTAG2AXIL), and SEP OTP (JTAG2AXIL).
+* An iJTAG network selected by `SELECT_IJTAG`, with a serial cascade of
+  secure DFT, non-secure DFT, and DFD SIBs. Each SIB inserts or bypasses its
+  associated external scan segment.
+* Independent instruction-selected PTAP TDRs for SMC fabric debug
+  (JTAG2AXI), SMC OTP (JTAG2AXIL), and SEP OTP (JTAG2AXIL). These bridges
+  are outside the iJTAG SIB cascade.
 
 == Cross Trigger Network
 
