@@ -1,5 +1,90 @@
 {
-  "categories": [],
+  "categories": [
+    {
+      "category": "all",
+      "failing": 8,
+      "flows": [
+        "smu"
+      ],
+      "pass_rate": 0.0,
+      "passing": 0,
+      "skipped": 0,
+      "total": 8,
+      "unknown": 0
+    },
+    {
+      "category": "dtp_under_smu",
+      "failing": 29,
+      "flows": [
+        "smu"
+      ],
+      "pass_rate": 0.0,
+      "passing": 0,
+      "skipped": 0,
+      "total": 29,
+      "unknown": 0
+    },
+    {
+      "category": "fabric",
+      "failing": 14,
+      "flows": [
+        "smu"
+      ],
+      "pass_rate": 0.0,
+      "passing": 0,
+      "skipped": 0,
+      "total": 14,
+      "unknown": 0
+    },
+    {
+      "category": "firmware",
+      "failing": 21,
+      "flows": [
+        "smu"
+      ],
+      "pass_rate": 0.0,
+      "passing": 0,
+      "skipped": 0,
+      "total": 21,
+      "unknown": 0
+    },
+    {
+      "category": "hosted",
+      "failing": 5,
+      "flows": [
+        "smu"
+      ],
+      "pass_rate": 0.0,
+      "passing": 0,
+      "skipped": 0,
+      "total": 5,
+      "unknown": 0
+    },
+    {
+      "category": "smc_under_smu",
+      "failing": 21,
+      "flows": [
+        "smu"
+      ],
+      "pass_rate": 0.0,
+      "passing": 0,
+      "skipped": 0,
+      "total": 21,
+      "unknown": 0
+    },
+    {
+      "category": "smoke",
+      "failing": 4,
+      "flows": [
+        "smu"
+      ],
+      "pass_rate": 0.0,
+      "passing": 0,
+      "skipped": 0,
+      "total": 4,
+      "unknown": 0
+    }
+  ],
   "coverage": {
     "available": 0,
     "average_total_percent": null,
@@ -29,31 +114,39 @@
   },
   "dut_status": [
     {
-      "categories": [],
-      "category_count": 0,
+      "categories": [
+        "all",
+        "dtp_under_smu",
+        "fabric",
+        "firmware",
+        "hosted",
+        "smc_under_smu",
+        "smoke"
+      ],
+      "category_count": 7,
       "coverage_accepted_holes": null,
       "coverage_comparison_key": null,
       "coverage_details_available": null,
       "coverage_open_holes": null,
-      "coverage_status": "SKIP",
+      "coverage_status": "ERROR",
       "coverage_threshold": null,
       "coverage_threshold_met": null,
       "coverage_total_percent": null,
       "coverage_unclassified_holes": null,
-      "failed_tests": 0,
+      "failed_tests": 102,
       "flaky_tests": 0,
       "flow": "smu",
       "framework": "cocotb",
       "kind": "dv",
-      "pass_rate": null,
+      "pass_rate": 0.0,
       "report": "",
-      "run_dir": "jenkins-out/runs/smu",
+      "run_dir": "vcs/smu_cocotb/runs",
       "status": "FAIL",
-      "tests_completed": false,
-      "tests_failing": 0,
+      "tests_completed": true,
+      "tests_failing": 102,
       "tests_passing": 0,
       "tests_skipped": 0,
-      "tests_total": 0,
+      "tests_total": 102,
       "tests_unknown": 0,
       "tool": "vcs"
     }
@@ -61,9 +154,19 @@
   "failure_buckets": [
     {
       "affected": [],
+      "count": 204,
+      "examples": [],
+      "flows": [
+        "smu"
+      ],
+      "kind": "dependency_blocked",
+      "signature": "hdl_compile default"
+    },
+    {
+      "affected": [],
       "count": 26,
       "examples": [
-        "jenkins-out/runs/smu/stages/c_compile/logs/smu_smc_smoke_test.log"
+        "vcs/smu_cocotb/runs/stages/c_compile/logs/smu_smc_smoke_test.log"
       ],
       "flows": [
         "smu"
@@ -75,13 +178,37 @@
       "affected": [],
       "count": 1,
       "examples": [
-        "jenkins-out/runs/smu/stages/hdl_compile/logs/hdl_compile.log"
+        "vcs/smu_cocotb/runs/stages/hdl_compile/logs/hdl_compile.log"
       ],
       "flows": [
         "smu"
       ],
       "kind": "compile_error",
       "signature": "VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/c"
+    },
+    {
+      "affected": [],
+      "count": 1,
+      "examples": [
+        "vcs/smu_cocotb/runs/stages/cov_report/logs/cov_report.log"
+      ],
+      "flows": [
+        "smu"
+      ],
+      "kind": "tool_error",
+      "signature": "coverage manifest is missing or malformed: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/vcs/smu_cocotb/run"
+    },
+    {
+      "affected": [],
+      "count": 1,
+      "examples": [
+        "vcs/smu_cocotb/runs/stages/cov_merge/logs/cov_merge.log"
+      ],
+      "flows": [
+        "smu"
+      ],
+      "kind": "tool_error",
+      "signature": "coverage was requested but no usable inputs were found under vcs/smu_cocotb/runs"
     }
   ],
   "flows": {
@@ -91,49 +218,37 @@
     "total": 1,
     "unknown": 0
   },
-  "generated_at": "2026-09-22T11:31:11+00:00",
+  "generated_at": "2026-09-23T07:56:21+00:00",
   "junit_xml": {
     "missing": 0,
     "total": 0
   },
   "regression": {
-    "failed_tests": 0,
+    "failed_tests": 102,
     "flaky_tests": 0
   },
   "results": [
     {
       "artifacts": {
-        "regression_json": "jenkins-out/runs/smu/stages/regress/regression.json",
-        "result_json": "jenkins-out/runs/smu/result.json",
-        "run_dir": "jenkins-out/runs/smu"
+        "coverage_report": "vcs/smu_cocotb/runs/cov/report",
+        "regression_json": "vcs/smu_cocotb/runs/stages/regress/regression.json",
+        "result_json": "vcs/smu_cocotb/runs/result.json",
+        "run_dir": "vcs/smu_cocotb/runs"
       },
       "coverage": {
-        "backend": null,
-        "build_fingerprint": null,
         "comparison_key": null,
-        "coverage_details": null,
-        "coverage_details_raw": null,
-        "coverage_tool_version": null,
         "details_available": null,
         "effective_metrics": {},
-        "enabled": true,
         "holes_summary": {
           "details_available": false
         },
-        "inputs": [],
         "manifest": null,
-        "merged": null,
-        "metrics": {},
-        "parser": null,
         "policy_application": null,
-        "policy_fingerprint": null,
         "policy_thresholds": [],
         "raw_metrics": {},
-        "report": null,
-        "scope_fingerprint": null,
-        "status": "SKIP",
+        "report": "vcs/smu_cocotb/runs/cov/report",
+        "status": "ERROR",
         "summary": null,
-        "supported_metrics": [],
         "target": null,
         "threshold": null,
         "threshold_met": null,
@@ -143,7 +258,7 @@
         {
           "count": 26,
           "examples": [
-            "jenkins-out/runs/smu/stages/c_compile/logs/smu_smc_smoke_test.log"
+            "vcs/smu_cocotb/runs/stages/c_compile/logs/smu_smc_smoke_test.log"
           ],
           "kind": "compile_error",
           "signature": "process exited 1"
@@ -151,607 +266,780 @@
         {
           "count": 1,
           "examples": [
-            "jenkins-out/runs/smu/stages/hdl_compile/logs/hdl_compile.log"
+            "vcs/smu_cocotb/runs/stages/hdl_compile/logs/hdl_compile.log"
           ],
           "kind": "compile_error",
           "signature": "VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/c"
+        },
+        {
+          "count": 204,
+          "kind": "dependency_blocked",
+          "signature": "hdl_compile default"
+        },
+        {
+          "count": 1,
+          "examples": [
+            "vcs/smu_cocotb/runs/stages/cov_merge/logs/cov_merge.log"
+          ],
+          "kind": "tool_error",
+          "signature": "coverage was requested but no usable inputs were found under vcs/smu_cocotb/runs"
+        },
+        {
+          "count": 1,
+          "examples": [
+            "vcs/smu_cocotb/runs/stages/cov_report/logs/cov_report.log"
+          ],
+          "kind": "tool_error",
+          "signature": "coverage manifest is missing or malformed: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/vcs/smu_cocotb/run"
         }
       ],
       "flow": "smu",
       "framework": "cocotb",
-      "generated_at": "2026-09-22T11:31:11+00:00",
+      "generated_at": "2026-09-23T07:56:21+00:00",
       "git": {
         "branch": "HEAD",
-        "sha": "7f2ea3e59fc8e81e29b613492017703c825e16dd",
-        "short_sha": "7f2ea3e59"
+        "sha": "7a3d0d14165c3bb8df44bfb76246e9a9798de751",
+        "short_sha": "7a3d0d141"
       },
-      "junit_xml": [],
+      "junit_xml": {
+        "missing": 0,
+        "total": 0
+      },
       "kind": "dv",
       "regression": {
-        "artifact_root": "jenkins-out/runs/smu",
-        "artifacts": {
-          "regression_json": "jenkins-out/runs/smu/stages/regress/regression.json",
-          "result_json": "jenkins-out/runs/smu/result.json"
-        },
-        "coverage": {
-          "backend": null,
-          "build_fingerprint": null,
-          "comparison_key": null,
-          "coverage_backend": "urg",
-          "coverage_class": "commercial_regression",
-          "coverage_details": null,
-          "coverage_details_raw": null,
-          "coverage_tool_version": null,
-          "details_available": null,
-          "effective_metrics": {},
-          "enabled": true,
-          "holes_summary": {
-            "details_available": false
+        "failed_tests": [
+          {
+            "item": "smu_wrapper_elaboration_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_wrapper_elaboration_test --stage sim --tool vcs --seed 234299407 --target default --cov",
+            "seed": 234299407,
+            "status": "ERROR"
           },
-          "inputs": [],
-          "manifest": null,
-          "merged": null,
-          "metrics": {},
-          "overall_percent": null,
-          "parser": null,
-          "policy_application": null,
-          "policy_fingerprint": null,
-          "policy_thresholds": [],
-          "raw_metrics": {},
-          "report": null,
-          "report_dir": null,
-          "requested": true,
-          "scope_fingerprint": null,
-          "signoff_quality": false,
-          "simulator": "vcs",
-          "status": "SKIP",
-          "summary": null,
-          "summary_json": null,
-          "supported_metrics": [],
-          "target": null,
-          "threshold": null,
-          "threshold_met": null,
-          "total_percent": null
-        },
-        "duration_sec": 60864.82,
-        "executor": "local",
-        "exit_code": 2,
-        "failed_tests": [],
-        "failure_buckets": [],
-        "flaky_tests": [],
-        "flow": "smu",
-        "framework": "cocotb",
-        "generated_at": "2026-09-22T11:31:10.761306+00:00",
-        "git": {
-          "branch": "HEAD",
-          "commit": "7f2ea3e59fc8e81e29b613492017703c825e16dd",
-          "dirty": "false"
-        },
-        "jobs": [],
-        "kind": "dv",
-        "license": "none",
-        "overrides": {
-          "cli": {
-            "build_jobs": 4,
-            "cov": true,
-            "dut": "smu",
-            "items": [
-              "all"
-            ],
-            "regress": true,
-            "reseed": 1,
-            "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/jenkins-out/runs/smu",
-            "sim_jobs": 4,
-            "target": "default",
-            "tool": "vcs",
-            "ui": "plain"
+          {
+            "item": "smu_smc_smoke_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_smoke_test --stage sim --tool vcs --seed 822216980 --target default --cov",
+            "seed": 822216980,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_smoke_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test --stage sim --tool vcs --seed 429636230 --target default --cov",
+            "seed": 429636230,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_boot_health_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_boot_health_test --stage sim --tool vcs --seed 1497549844 --target default --cov",
+            "seed": 1497549844,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_sanity_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_sanity_test --stage sim --tool vcs --seed 1256752853 --target default --cov",
+            "seed": 1256752853,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_modules_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_modules_test --stage sim --tool vcs --seed 2119736345 --target default --cov",
+            "seed": 2119736345,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_aes_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_aes_test --stage sim --tool vcs --seed 1001862324 --target default --cov",
+            "seed": 1001862324,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_otbn_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_otbn_test --stage sim --tool vcs --seed 2030443469 --target default --cov",
+            "seed": 2030443469,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_efuse_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_efuse_test --stage sim --tool vcs --seed 92915856 --target default --cov",
+            "seed": 92915856,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_wdt_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_wdt_test --stage sim --tool vcs --seed 951047921 --target default --cov",
+            "seed": 951047921,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_dma_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_dma_test --stage sim --tool vcs --seed 2103110703 --target default --cov",
+            "seed": 2103110703,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_bidirect_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_bidirect_test --stage sim --tool vcs --seed 1287428506 --target default --cov",
+            "seed": 1287428506,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_remap_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_remap_test --stage sim --tool vcs --seed 1702072665 --target default --cov",
+            "seed": 1702072665,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_rom_tcm_load_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_rom_tcm_load_test --stage sim --tool vcs --seed 348101450 --target default --cov",
+            "seed": 348101450,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_spi_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_spi_test --stage sim --tool vcs --seed 1016133554 --target default --cov",
+            "seed": 1016133554,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_smc_notify_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_smc_notify_test --stage sim --tool vcs --seed 1228375630 --target default --cov",
+            "seed": 1228375630,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_wrapper_jtag_ptap_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_wrapper_jtag_ptap_test --stage sim --tool vcs --seed 1830859274 --target default --cov",
+            "seed": 1830859274,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_lcc_flow_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_lcc_flow_test --stage sim --tool vcs --seed 363771799 --target default --cov",
+            "seed": 363771799,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_lcc_state_test_dev_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_lcc_state_test_dev_test --stage sim --tool vcs --seed 439233555 --target default --cov",
+            "seed": 439233555,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_lcc_state_prod_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_lcc_state_prod_test --stage sim --tool vcs --seed 1012952917 --target default --cov",
+            "seed": 1012952917,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_lcc_state_prod_end_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_lcc_state_prod_end_test --stage sim --tool vcs --seed 449788617 --target default --cov",
+            "seed": 449788617,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_lcc_state_rma_chiplet_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_lcc_state_rma_chiplet_test --stage sim --tool vcs --seed 1569934530 --target default --cov",
+            "seed": 1569934530,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_dbg_gating_test_dev_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_dbg_gating_test_dev_test --stage sim --tool vcs --seed 2012689664 --target default --cov",
+            "seed": 2012689664,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_dbg_gating_prod_end_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_dbg_gating_prod_end_test --stage sim --tool vcs --seed 553525469 --target default --cov",
+            "seed": 553525469,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_sep_smc_chain_prod_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_sep_smc_chain_prod_test --stage sim --tool vcs --seed 893488174 --target default --cov",
+            "seed": 893488174,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_sep_smc_chain_prod_end_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_sep_smc_chain_prod_end_test --stage sim --tool vcs --seed 1308520199 --target default --cov",
+            "seed": 1308520199,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_entropy_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_entropy_test --stage sim --tool vcs --seed 2073173325 --target default --cov",
+            "seed": 2073173325,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_alias_remap_manager_scope_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_alias_remap_manager_scope_test --stage sim --tool vcs --seed 196324501 --target default --cov",
+            "seed": 196324501,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_atomic_operation_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_atomic_operation_test --stage sim --tool vcs --seed 309005701 --target default --cov",
+            "seed": 309005701,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_crossbar_error_handling_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_crossbar_error_handling_test --stage sim --tool vcs --seed 1956017814 --target default --cov",
+            "seed": 1956017814,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_filter_allow_ns_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_filter_allow_ns_test --stage sim --tool vcs --seed 855115956 --target default --cov",
+            "seed": 855115956,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_filter_in_instance_matrix_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_filter_in_instance_matrix_test --stage sim --tool vcs --seed 549329230 --target default --cov",
+            "seed": 549329230,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_filter_out_instance_matrix_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_filter_out_instance_matrix_test --stage sim --tool vcs --seed 1821987110 --target default --cov",
+            "seed": 1821987110,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_id_width_conversion_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_id_width_conversion_test --stage sim --tool vcs --seed 1728935868 --target default --cov",
+            "seed": 1728935868,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_prot_encoding_decode_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_prot_encoding_decode_test --stage sim --tool vcs --seed 1476368298 --target default --cov",
+            "seed": 1476368298,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_boot_stall_jtag_cold_reset_matrix_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_boot_stall_jtag_cold_reset_matrix_test --stage sim --tool vcs --seed 976018237 --target default --cov",
+            "seed": 976018237,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_boot_stall_vs_ic_reset_priority_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_boot_stall_vs_ic_reset_priority_test --stage sim --tool vcs --seed 4834457 --target default --cov",
+            "seed": 4834457,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_clock_stop_coordination_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_clock_stop_coordination_test --stage sim --tool vcs --seed 250988783 --target default --cov",
+            "seed": 250988783,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dft_dtp_boot_stall_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dft_dtp_boot_stall_test --stage sim --tool vcs --seed 2050187377 --target default --cov",
+            "seed": 2050187377,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dft_gpio_boot_stall_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dft_gpio_boot_stall_test --stage sim --tool vcs --seed 1592976995 --target default --cov",
+            "seed": 1592976995,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_bsr_extest_loopback_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_bsr_extest_loopback_test --stage sim --tool vcs --seed 449751484 --target default --cov",
+            "seed": 449751484,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_bsr_ijtag_scan_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_bsr_ijtag_scan_test --stage sim --tool vcs --seed 1541701243 --target default --cov",
+            "seed": 1541701243,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_io_stap_smoke_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_io_stap_smoke_test --stage sim --tool vcs --seed 187865632 --target default --cov",
+            "seed": 187865632,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_jtag2axi_back_to_back_error_ok_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag2axi_back_to_back_error_ok_test --stage sim --tool vcs --seed 572788522 --target default --cov",
+            "seed": 572788522,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_jtag2axi_smc_error_path_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag2axi_smc_error_path_test --stage sim --tool vcs --seed 1270702301 --target default --cov",
+            "seed": 1270702301,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_jtag2axi_smc_rw_matrix_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag2axi_smc_rw_matrix_test --stage sim --tool vcs --seed 965095396 --target default --cov",
+            "seed": 965095396,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag2axi_wstrb_partial_sticky_test --stage sim --tool vcs --seed 595071221 --target default --cov",
+            "seed": 595071221,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_jtag_smc_cpu_register_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smc_cpu_register_test --stage sim --tool vcs --seed 462883878 --target default --cov",
+            "seed": 462883878,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_jtag_smoke_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test --stage sim --tool vcs --seed 1908526971 --target default --cov",
+            "seed": 1908526971,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_otp_smc_complete_rw_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_otp_smc_complete_rw_test --stage sim --tool vcs --seed 1793995403 --target default --cov",
+            "seed": 1793995403,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_otp_smc_map_rw_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_otp_smc_map_rw_test --stage sim --tool vcs --seed 35995414 --target default --cov",
+            "seed": 35995414,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_otp_smc_series_error_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_otp_smc_series_error_test --stage sim --tool vcs --seed 288895490 --target default --cov",
+            "seed": 288895490,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_sep_dm_dmi_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_sep_dm_dmi_test --stage sim --tool vcs --seed 564385121 --target default --cov",
+            "seed": 564385121,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_smc_stap_smoke_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_smc_stap_smoke_test --stage sim --tool vcs --seed 1442635865 --target default --cov",
+            "seed": 1442635865,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_ext_boot_seq_gate_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_ext_boot_seq_gate_test --stage sim --tool vcs --seed 1081810739 --target default --cov",
+            "seed": 1081810739,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_fabric_reg_bar_wr_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_fabric_reg_bar_wr_test --stage sim --tool vcs --seed 1762361506 --target default --cov",
+            "seed": 1762361506,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_i3c_mem_port_connectivity_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_i3c_mem_port_connectivity_test --stage sim --tool vcs --seed 875875478 --target default --cov",
+            "seed": 875875478,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_ic_reset_dual_domain_illegal_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_ic_reset_dual_domain_illegal_test --stage sim --tool vcs --seed 523133071 --target default --cov",
+            "seed": 523133071,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_ic_reset_smc_multi_domain_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_ic_reset_smc_multi_domain_test --stage sim --tool vcs --seed 967133598 --target default --cov",
+            "seed": 967133598,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_ic_reset_ss_domain_matrix_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_ic_reset_ss_domain_matrix_test --stage sim --tool vcs --seed 926160701 --target default --cov",
+            "seed": 926160701,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_jtag2axi_vs_smn_same_csr_race_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_jtag2axi_vs_smn_same_csr_race_test --stage sim --tool vcs --seed 1200192513 --target default --cov",
+            "seed": 1200192513,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_jtag_chain_enhanced_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_jtag_chain_enhanced_test --stage sim --tool vcs --seed 482174989 --target default --cov",
+            "seed": 482174989,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_jtag_reset_override_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_jtag_reset_override_test --stage sim --tool vcs --seed 392621439 --target default --cov",
+            "seed": 392621439,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_otp_bridges_under_dbg_disable_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_otp_bridges_under_dbg_disable_test --stage sim --tool vcs --seed 2006673853 --target default --cov",
+            "seed": 2006673853,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_otp_vs_fabric_map_race_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_otp_vs_fabric_map_race_test --stage sim --tool vcs --seed 1161671282 --target default --cov",
+            "seed": 1161671282,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_dtp_jtag2axi_smoke_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_dtp_jtag2axi_smoke_test --stage sim --tool vcs --seed 1050414301 --target default --cov",
+            "seed": 1050414301,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_mailbox_int_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_mailbox_int_test --stage sim --tool vcs --seed 837384422 --target default --cov",
+            "seed": 837384422,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_mailbox_sanity_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_mailbox_sanity_test --stage sim --tool vcs --seed 2104311086 --target default --cov",
+            "seed": 2104311086,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_rom_boot_min_pass_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_rom_boot_min_pass_test --stage sim --tool vcs --seed 60901957 --target default --cov",
+            "seed": 60901957,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_reset_ctrl_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_reset_ctrl_test --stage sim --tool vcs --seed 1672768798 --target default --cov",
+            "seed": 1672768798,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_wdt_sanity_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_wdt_sanity_test --stage sim --tool vcs --seed 1735197980 --target default --cov",
+            "seed": 1735197980,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_wdt_timeout_irq_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_wdt_timeout_irq_test --stage sim --tool vcs --seed 492737570 --target default --cov",
+            "seed": 492737570,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sys_in_filter_program_jtag_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sys_in_filter_program_jtag_test --stage sim --tool vcs --seed 851237695 --target default --cov",
+            "seed": 851237695,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sys_in_filter_reprogram_shrink_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sys_in_filter_reprogram_shrink_test --stage sim --tool vcs --seed 734687366 --target default --cov",
+            "seed": 734687366,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sys_in_filter_window_edge_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sys_in_filter_window_edge_test --stage sim --tool vcs --seed 795281855 --target default --cov",
+            "seed": 795281855,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_system_timer_octs_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_system_timer_octs_test --stage sim --tool vcs --seed 1340536429 --target default --cov",
+            "seed": 1340536429,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_xtrig_ctm_illegal_phase_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_xtrig_ctm_illegal_phase_test --stage sim --tool vcs --seed 1562864562 --target default --cov",
+            "seed": 1562864562,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_xtrig_ctm_remap_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_xtrig_ctm_remap_test --stage sim --tool vcs --seed 1144857295 --target default --cov",
+            "seed": 1144857295,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_boundary_port_composition_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_boundary_port_composition_test --stage sim --tool vcs --seed 209413272 --target default --cov",
+            "seed": 209413272,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_composition_parameter_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_composition_parameter_test --stage sim --tool vcs --seed 1675210559 --target default --cov",
+            "seed": 1675210559,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_xbar_connectivity_matrix_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_xbar_connectivity_matrix_test --stage sim --tool vcs --seed 1213850234 --target default --cov",
+            "seed": 1213850234,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_clock_domain_composition_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_clock_domain_composition_test --stage sim --tool vcs --seed 1652077142 --target default --cov",
+            "seed": 1652077142,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_xtrig_mode_composition_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_xtrig_mode_composition_test --stage sim --tool vcs --seed 1777414765 --target default --cov",
+            "seed": 1777414765,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_reset_release_sync_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_reset_release_sync_test --stage sim --tool vcs --seed 803407907 --target default --cov",
+            "seed": 803407907,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sram_auto_init_done_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sram_auto_init_done_test --stage sim --tool vcs --seed 2054783397 --target default --cov",
+            "seed": 2054783397,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_fuse_sense_sequence_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_fuse_sense_sequence_test --stage sim --tool vcs --seed 1801564608 --target default --cov",
+            "seed": 1801564608,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_fuse_sense_done_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_fuse_sense_done_test --stage sim --tool vcs --seed 1500664600 --target default --cov",
+            "seed": 1500664600,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_in_burst_outstanding_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_in_burst_outstanding_test --stage sim --tool vcs --seed 40589577 --target default --cov",
+            "seed": 40589577,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_periph_ext_window_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_periph_ext_window_test --stage sim --tool vcs --seed 119544981 --target default --cov",
+            "seed": 119544981,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_boundary_io_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_boundary_io_test --stage sim --tool vcs --seed 620742144 --target default --cov",
+            "seed": 620742144,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_ss_reset_ctrl_sweep_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_ss_reset_ctrl_sweep_test --stage sim --tool vcs --seed 1363642335 --target default --cov",
+            "seed": 1363642335,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_boundary_lane_sweep_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_boundary_lane_sweep_test --stage sim --tool vcs --seed 556677404 --target default --cov",
+            "seed": 556677404,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_efuse_shadow_sense_reset_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_efuse_shadow_sense_reset_test --stage sim --tool vcs --seed 821101599 --target default --cov",
+            "seed": 821101599,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_cool_reset_pin_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_cool_reset_pin_test --stage sim --tool vcs --seed 1398398402 --target default --cov",
+            "seed": 1398398402,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_dtp_scan_chain_boundary_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_dtp_scan_chain_boundary_test --stage sim --tool vcs --seed 1523336149 --target default --cov",
+            "seed": 1523336149,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_telemetry_atb_capture_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_telemetry_atb_capture_test --stage sim --tool vcs --seed 1547884485 --target default --cov",
+            "seed": 1547884485,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_xtrig_ctp_pad_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_xtrig_ctp_pad_test --stage sim --tool vcs --seed 2121954416 --target default --cov",
+            "seed": 2121954416,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sram_auto_init_disabled_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sram_auto_init_disabled_test --stage sim --tool vcs --seed 661815736 --target default --cov",
+            "seed": 661815736,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_wdt_boundary_timeout_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_wdt_boundary_timeout_test --stage sim --tool vcs --seed 516015376 --target default --cov",
+            "seed": 516015376,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_smc_peripheral_irq_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_smc_peripheral_irq_test --stage sim --tool vcs --seed 195218708 --target default --cov",
+            "seed": 195218708,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_sep_secure_tm_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_sep_secure_tm_test --stage sim --tool vcs --seed 150675333 --target default --cov",
+            "seed": 150675333,
+            "status": "ERROR"
+          },
+          {
+            "item": "smu_axi_in_attribute_sweep_test",
+            "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+            "rerun": "python3 tools/dv/run_dv.py --dut smu --items smu_axi_in_attribute_sweep_test --stage sim --tool vcs --seed 1754382381 --target default --cov",
+            "seed": 1754382381,
+            "status": "ERROR"
           }
-        },
-        "producer": "run_dv.py",
-        "rerun_commands": [],
-        "run_dir": "jenkins-out/runs/smu",
-        "runnability": "contributor",
-        "schema_version": 1,
-        "selection": {
-          "allow_duplicates": false,
-          "expanded_count": 100,
-          "expanded_items": [
-            "smu_wrapper_elaboration_test",
-            "smu_smc_smoke_test",
-            "smu_sep_smoke_test",
-            "smu_sep_boot_health_test",
-            "smu_sep_sanity_test",
-            "smu_sep_modules_test",
-            "smu_sep_aes_test",
-            "smu_sep_otbn_test",
-            "smu_sep_efuse_test",
-            "smu_sep_wdt_test",
-            "smu_sep_dma_test",
-            "smu_sep_bidirect_test",
-            "smu_sep_remap_test",
-            "smu_sep_rom_tcm_load_test",
-            "smu_sep_spi_test",
-            "smu_sep_smc_notify_test",
-            "smu_wrapper_jtag_ptap_test",
-            "smu_sep_lcc_flow_test",
-            "smu_sep_lcc_state_test_dev_test",
-            "smu_sep_lcc_state_prod_test",
-            "smu_sep_lcc_state_prod_end_test",
-            "smu_sep_lcc_state_rma_chiplet_test",
-            "smu_sep_dbg_gating_test_dev_test",
-            "smu_sep_dbg_gating_prod_end_test",
-            "smu_dtp_sep_smc_chain_prod_test",
-            "smu_dtp_sep_smc_chain_prod_end_test",
-            "smu_sep_entropy_test",
-            "smu_axi_alias_remap_manager_scope_test",
-            "smu_axi_atomic_operation_test",
-            "smu_axi_crossbar_error_handling_test",
-            "smu_axi_filter_allow_ns_test",
-            "smu_axi_filter_in_instance_matrix_test",
-            "smu_axi_filter_out_instance_matrix_test",
-            "smu_axi_id_width_conversion_test",
-            "smu_axi_prot_encoding_decode_test",
-            "smu_boot_stall_jtag_cold_reset_matrix_test",
-            "smu_boot_stall_vs_ic_reset_priority_test",
-            "smu_clock_stop_coordination_test",
-            "smu_dft_dtp_boot_stall_test",
-            "smu_dft_gpio_boot_stall_test",
-            "smu_dtp_bsr_extest_loopback_test",
-            "smu_dtp_bsr_ijtag_scan_test",
-            "smu_dtp_io_stap_smoke_test",
-            "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-            "smu_dtp_jtag2axi_smc_error_path_test",
-            "smu_dtp_jtag2axi_smc_rw_matrix_test",
-            "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-            "smu_dtp_jtag_smc_cpu_register_test",
-            "smu_dtp_jtag_smoke_test",
-            "smu_dtp_otp_smc_complete_rw_test",
-            "smu_dtp_otp_smc_map_rw_test",
-            "smu_dtp_otp_smc_series_error_test",
-            "smu_dtp_smc_stap_smoke_test",
-            "smu_ext_boot_seq_gate_test",
-            "smu_fabric_reg_bar_wr_test",
-            "smu_i3c_mem_port_connectivity_test",
-            "smu_ic_reset_dual_domain_illegal_test",
-            "smu_ic_reset_smc_multi_domain_test",
-            "smu_ic_reset_ss_domain_matrix_test",
-            "smu_jtag2axi_vs_smn_same_csr_race_test",
-            "smu_jtag_chain_enhanced_test",
-            "smu_jtag_reset_override_test",
-            "smu_otp_bridges_under_dbg_disable_test",
-            "smu_otp_vs_fabric_map_race_test",
-            "smu_smc_dtp_jtag2axi_smoke_test",
-            "smu_smc_mailbox_int_test",
-            "smu_smc_mailbox_sanity_test",
-            "smu_smc_rom_boot_min_pass_test",
-            "smu_smc_reset_ctrl_test",
-            "smu_smc_wdt_sanity_test",
-            "smu_smc_wdt_timeout_irq_test",
-            "smu_sys_in_filter_program_jtag_test",
-            "smu_sys_in_filter_reprogram_shrink_test",
-            "smu_sys_in_filter_window_edge_test",
-            "smu_system_timer_octs_test",
-            "smu_xtrig_ctm_illegal_phase_test",
-            "smu_xtrig_ctm_remap_test",
-            "smu_boundary_port_composition_test",
-            "smu_composition_parameter_test",
-            "smu_xbar_connectivity_matrix_test",
-            "smu_clock_domain_composition_test",
-            "smu_xtrig_mode_composition_test",
-            "smu_reset_release_sync_test",
-            "smu_sram_auto_init_done_test",
-            "smu_smc_fuse_sense_sequence_test",
-            "smu_sep_fuse_sense_done_test",
-            "smu_axi_in_burst_outstanding_test",
-            "smu_periph_ext_window_test",
-            "smu_smc_boundary_io_test",
-            "smu_smc_ss_reset_ctrl_sweep_test",
-            "smu_smc_boundary_lane_sweep_test",
-            "smu_smc_efuse_shadow_sense_reset_test",
-            "smu_smc_cool_reset_pin_test",
-            "smu_dtp_scan_chain_boundary_test",
-            "smu_telemetry_atb_capture_test",
-            "smu_xtrig_ctp_pad_test",
-            "smu_sram_auto_init_disabled_test",
-            "smu_smc_wdt_boundary_timeout_test",
-            "smu_smc_peripheral_irq_test",
-            "smu_sep_secure_tm_test"
-          ],
-          "max_failures": null,
-          "requested_items": [
-            "all"
-          ],
-          "reseed": 1,
-          "retry": 0,
-          "run_mode": null,
-          "stages": [],
-          "tags": []
-        },
-        "status": "ERROR",
-        "tests": {
-          "completed": false,
-          "expected_failing": 0,
-          "failing": 0,
-          "flaky": 0,
-          "leaves_planned": 100,
-          "leaves_run": 0,
-          "pass_rate": null,
-          "passing": 0,
-          "skipped": 0,
-          "total": 0
-        },
-        "tool": "vcs",
-        "tool_version": "vcs script version : X-2025.06",
-        "tool_versions": {
-          "bender": "bender 0.28.1+tenstorrent8",
-          "python": "3.11.11",
-          "vcs": "vcs script version : X-2025.06"
-        },
-        "visibility": "public"
+        ],
+        "flaky_tests": []
       },
       "run_metadata": {
-        "dry_run": false,
-        "executor": "local",
-        "generated_at": "2026-09-22T11:31:10.783498+00:00",
+        "executor": "lsf",
+        "generated_at": "2026-09-23T07:56:21.525011+00:00",
         "git": {
           "branch": "HEAD",
-          "commit": "7f2ea3e59fc8e81e29b613492017703c825e16dd",
+          "commit": "7a3d0d14165c3bb8df44bfb76246e9a9798de751",
           "dirty": "false"
         },
-        "interruption": {},
-        "invocation": {},
-        "items": [
-          "smu_wrapper_elaboration_test",
-          "smu_smc_smoke_test",
-          "smu_sep_smoke_test",
-          "smu_sep_boot_health_test",
-          "smu_sep_sanity_test",
-          "smu_sep_modules_test",
-          "smu_sep_aes_test",
-          "smu_sep_otbn_test",
-          "smu_sep_efuse_test",
-          "smu_sep_wdt_test",
-          "smu_sep_dma_test",
-          "smu_sep_bidirect_test",
-          "smu_sep_remap_test",
-          "smu_sep_rom_tcm_load_test",
-          "smu_sep_spi_test",
-          "smu_sep_smc_notify_test",
-          "smu_wrapper_jtag_ptap_test",
-          "smu_sep_lcc_flow_test",
-          "smu_sep_lcc_state_test_dev_test",
-          "smu_sep_lcc_state_prod_test",
-          "smu_sep_lcc_state_prod_end_test",
-          "smu_sep_lcc_state_rma_chiplet_test",
-          "smu_sep_dbg_gating_test_dev_test",
-          "smu_sep_dbg_gating_prod_end_test",
-          "smu_dtp_sep_smc_chain_prod_test",
-          "smu_dtp_sep_smc_chain_prod_end_test",
-          "smu_sep_entropy_test",
-          "smu_axi_alias_remap_manager_scope_test",
-          "smu_axi_atomic_operation_test",
-          "smu_axi_crossbar_error_handling_test",
-          "smu_axi_filter_allow_ns_test",
-          "smu_axi_filter_in_instance_matrix_test",
-          "smu_axi_filter_out_instance_matrix_test",
-          "smu_axi_id_width_conversion_test",
-          "smu_axi_prot_encoding_decode_test",
-          "smu_boot_stall_jtag_cold_reset_matrix_test",
-          "smu_boot_stall_vs_ic_reset_priority_test",
-          "smu_clock_stop_coordination_test",
-          "smu_dft_dtp_boot_stall_test",
-          "smu_dft_gpio_boot_stall_test",
-          "smu_dtp_bsr_extest_loopback_test",
-          "smu_dtp_bsr_ijtag_scan_test",
-          "smu_dtp_io_stap_smoke_test",
-          "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-          "smu_dtp_jtag2axi_smc_error_path_test",
-          "smu_dtp_jtag2axi_smc_rw_matrix_test",
-          "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-          "smu_dtp_jtag_smc_cpu_register_test",
-          "smu_dtp_jtag_smoke_test",
-          "smu_dtp_otp_smc_complete_rw_test",
-          "smu_dtp_otp_smc_map_rw_test",
-          "smu_dtp_otp_smc_series_error_test",
-          "smu_dtp_smc_stap_smoke_test",
-          "smu_ext_boot_seq_gate_test",
-          "smu_fabric_reg_bar_wr_test",
-          "smu_i3c_mem_port_connectivity_test",
-          "smu_ic_reset_dual_domain_illegal_test",
-          "smu_ic_reset_smc_multi_domain_test",
-          "smu_ic_reset_ss_domain_matrix_test",
-          "smu_jtag2axi_vs_smn_same_csr_race_test",
-          "smu_jtag_chain_enhanced_test",
-          "smu_jtag_reset_override_test",
-          "smu_otp_bridges_under_dbg_disable_test",
-          "smu_otp_vs_fabric_map_race_test",
-          "smu_smc_dtp_jtag2axi_smoke_test",
-          "smu_smc_mailbox_int_test",
-          "smu_smc_mailbox_sanity_test",
-          "smu_smc_rom_boot_min_pass_test",
-          "smu_smc_reset_ctrl_test",
-          "smu_smc_wdt_sanity_test",
-          "smu_smc_wdt_timeout_irq_test",
-          "smu_sys_in_filter_program_jtag_test",
-          "smu_sys_in_filter_reprogram_shrink_test",
-          "smu_sys_in_filter_window_edge_test",
-          "smu_system_timer_octs_test",
-          "smu_xtrig_ctm_illegal_phase_test",
-          "smu_xtrig_ctm_remap_test",
-          "smu_boundary_port_composition_test",
-          "smu_composition_parameter_test",
-          "smu_xbar_connectivity_matrix_test",
-          "smu_clock_domain_composition_test",
-          "smu_xtrig_mode_composition_test",
-          "smu_reset_release_sync_test",
-          "smu_sram_auto_init_done_test",
-          "smu_smc_fuse_sense_sequence_test",
-          "smu_sep_fuse_sense_done_test",
-          "smu_axi_in_burst_outstanding_test",
-          "smu_periph_ext_window_test",
-          "smu_smc_boundary_io_test",
-          "smu_smc_ss_reset_ctrl_sweep_test",
-          "smu_smc_boundary_lane_sweep_test",
-          "smu_smc_efuse_shadow_sense_reset_test",
-          "smu_smc_cool_reset_pin_test",
-          "smu_dtp_scan_chain_boundary_test",
-          "smu_telemetry_atb_capture_test",
-          "smu_xtrig_ctp_pad_test",
-          "smu_sram_auto_init_disabled_test",
-          "smu_smc_wdt_boundary_timeout_test",
-          "smu_smc_peripheral_irq_test",
-          "smu_sep_secure_tm_test"
-        ],
         "label": "all",
-        "overrides": {
-          "cli": {
-            "build_jobs": 4,
-            "cov": true,
-            "dut": "smu",
-            "items": [
-              "all"
-            ],
-            "regress": true,
-            "reseed": 1,
-            "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/jenkins-out/runs/smu",
-            "sim_jobs": 4,
-            "target": "default",
-            "tool": "vcs",
-            "ui": "plain"
-          }
-        },
-        "progress": {},
-        "result_json": "jenkins-out/runs/smu/result.json",
-        "run_dir": "jenkins-out/runs/smu",
-        "run_json": "",
-        "selection": {
-          "allow_duplicates": false,
-          "expanded_count": 100,
-          "expanded_items": [
-            "smu_wrapper_elaboration_test",
-            "smu_smc_smoke_test",
-            "smu_sep_smoke_test",
-            "smu_sep_boot_health_test",
-            "smu_sep_sanity_test",
-            "smu_sep_modules_test",
-            "smu_sep_aes_test",
-            "smu_sep_otbn_test",
-            "smu_sep_efuse_test",
-            "smu_sep_wdt_test",
-            "smu_sep_dma_test",
-            "smu_sep_bidirect_test",
-            "smu_sep_remap_test",
-            "smu_sep_rom_tcm_load_test",
-            "smu_sep_spi_test",
-            "smu_sep_smc_notify_test",
-            "smu_wrapper_jtag_ptap_test",
-            "smu_sep_lcc_flow_test",
-            "smu_sep_lcc_state_test_dev_test",
-            "smu_sep_lcc_state_prod_test",
-            "smu_sep_lcc_state_prod_end_test",
-            "smu_sep_lcc_state_rma_chiplet_test",
-            "smu_sep_dbg_gating_test_dev_test",
-            "smu_sep_dbg_gating_prod_end_test",
-            "smu_dtp_sep_smc_chain_prod_test",
-            "smu_dtp_sep_smc_chain_prod_end_test",
-            "smu_sep_entropy_test",
-            "smu_axi_alias_remap_manager_scope_test",
-            "smu_axi_atomic_operation_test",
-            "smu_axi_crossbar_error_handling_test",
-            "smu_axi_filter_allow_ns_test",
-            "smu_axi_filter_in_instance_matrix_test",
-            "smu_axi_filter_out_instance_matrix_test",
-            "smu_axi_id_width_conversion_test",
-            "smu_axi_prot_encoding_decode_test",
-            "smu_boot_stall_jtag_cold_reset_matrix_test",
-            "smu_boot_stall_vs_ic_reset_priority_test",
-            "smu_clock_stop_coordination_test",
-            "smu_dft_dtp_boot_stall_test",
-            "smu_dft_gpio_boot_stall_test",
-            "smu_dtp_bsr_extest_loopback_test",
-            "smu_dtp_bsr_ijtag_scan_test",
-            "smu_dtp_io_stap_smoke_test",
-            "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-            "smu_dtp_jtag2axi_smc_error_path_test",
-            "smu_dtp_jtag2axi_smc_rw_matrix_test",
-            "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-            "smu_dtp_jtag_smc_cpu_register_test",
-            "smu_dtp_jtag_smoke_test",
-            "smu_dtp_otp_smc_complete_rw_test",
-            "smu_dtp_otp_smc_map_rw_test",
-            "smu_dtp_otp_smc_series_error_test",
-            "smu_dtp_smc_stap_smoke_test",
-            "smu_ext_boot_seq_gate_test",
-            "smu_fabric_reg_bar_wr_test",
-            "smu_i3c_mem_port_connectivity_test",
-            "smu_ic_reset_dual_domain_illegal_test",
-            "smu_ic_reset_smc_multi_domain_test",
-            "smu_ic_reset_ss_domain_matrix_test",
-            "smu_jtag2axi_vs_smn_same_csr_race_test",
-            "smu_jtag_chain_enhanced_test",
-            "smu_jtag_reset_override_test",
-            "smu_otp_bridges_under_dbg_disable_test",
-            "smu_otp_vs_fabric_map_race_test",
-            "smu_smc_dtp_jtag2axi_smoke_test",
-            "smu_smc_mailbox_int_test",
-            "smu_smc_mailbox_sanity_test",
-            "smu_smc_rom_boot_min_pass_test",
-            "smu_smc_reset_ctrl_test",
-            "smu_smc_wdt_sanity_test",
-            "smu_smc_wdt_timeout_irq_test",
-            "smu_sys_in_filter_program_jtag_test",
-            "smu_sys_in_filter_reprogram_shrink_test",
-            "smu_sys_in_filter_window_edge_test",
-            "smu_system_timer_octs_test",
-            "smu_xtrig_ctm_illegal_phase_test",
-            "smu_xtrig_ctm_remap_test",
-            "smu_boundary_port_composition_test",
-            "smu_composition_parameter_test",
-            "smu_xbar_connectivity_matrix_test",
-            "smu_clock_domain_composition_test",
-            "smu_xtrig_mode_composition_test",
-            "smu_reset_release_sync_test",
-            "smu_sram_auto_init_done_test",
-            "smu_smc_fuse_sense_sequence_test",
-            "smu_sep_fuse_sense_done_test",
-            "smu_axi_in_burst_outstanding_test",
-            "smu_periph_ext_window_test",
-            "smu_smc_boundary_io_test",
-            "smu_smc_ss_reset_ctrl_sweep_test",
-            "smu_smc_boundary_lane_sweep_test",
-            "smu_smc_efuse_shadow_sense_reset_test",
-            "smu_smc_cool_reset_pin_test",
-            "smu_dtp_scan_chain_boundary_test",
-            "smu_telemetry_atb_capture_test",
-            "smu_xtrig_ctp_pad_test",
-            "smu_sram_auto_init_disabled_test",
-            "smu_smc_wdt_boundary_timeout_test",
-            "smu_smc_peripheral_irq_test",
-            "smu_sep_secure_tm_test"
-          ],
-          "max_failures": null,
-          "requested_items": [
-            "all"
-          ],
-          "reseed": 1,
-          "retry": 0,
-          "run_mode": null,
-          "stages": [],
-          "tags": []
-        },
-        "stages": [
-          "flist",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "c_compile",
-          "hdl_compile"
-        ],
+        "result_json": "vcs/smu_cocotb/runs/result.json",
+        "run_dir": "vcs/smu_cocotb/runs",
         "tool": "vcs",
-        "tool_version": "vcs script version : X-2025.06",
-        "tool_versions": {
-          "bender": "bender 0.28.1+tenstorrent8",
-          "python": "3.11.11",
-          "vcs": "vcs script version : X-2025.06"
-        }
+        "tool_version": "vcs script version : X-2025.06"
       },
-      "schema_version": "0.1",
+      "schema_version": "0.2",
       "source": {
         "collector": "run_dv-result",
         "label": "all",
@@ -759,32 +1047,1157 @@
       },
       "status": "FAIL",
       "tests": {
-        "completed": false,
-        "failing": 0,
-        "pass_rate": null,
+        "completed": true,
+        "failing": 102,
+        "pass_rate": 0.0,
         "passing": 0,
-        "total": 0
+        "total": 102
       },
-      "tests_detail": [],
+      "tests_detail": [
+        {
+          "attempt": 0,
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "smu_wrapper_elaboration_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 234299407,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "smu_smc_smoke_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 822216980,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "smu_sep_smoke_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 429636230,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_boot_health_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1497549844,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_sanity_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1256752853,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_modules_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2119736345,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_aes_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1001862324,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_otbn_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2030443469,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_efuse_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 92915856,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_wdt_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 951047921,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_dma_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2103110703,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_bidirect_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1287428506,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_remap_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1702072665,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_rom_tcm_load_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 348101450,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_spi_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1016133554,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_smc_notify_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1228375630,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_wrapper_jtag_ptap_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1830859274,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_lcc_flow_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 363771799,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_lcc_state_test_dev_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 439233555,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_lcc_state_prod_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1012952917,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_lcc_state_prod_end_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 449788617,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_lcc_state_rma_chiplet_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1569934530,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_sep_dbg_gating_test_dev_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2012689664,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_sep_dbg_gating_prod_end_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 553525469,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_sep_smc_chain_prod_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 893488174,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_sep_smc_chain_prod_end_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1308520199,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "firmware",
+          "duration_sec": 0.0,
+          "name": "smu_sep_entropy_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2073173325,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_alias_remap_manager_scope_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 196324501,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_atomic_operation_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 309005701,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_crossbar_error_handling_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1956017814,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_filter_allow_ns_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 855115956,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_filter_in_instance_matrix_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 549329230,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_filter_out_instance_matrix_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1821987110,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_id_width_conversion_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1728935868,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_prot_encoding_decode_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1476368298,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_boot_stall_jtag_cold_reset_matrix_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 976018237,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_boot_stall_vs_ic_reset_priority_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 4834457,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_clock_stop_coordination_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 250988783,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dft_dtp_boot_stall_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2050187377,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dft_gpio_boot_stall_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1592976995,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_bsr_extest_loopback_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 449751484,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_bsr_ijtag_scan_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1541701243,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_io_stap_smoke_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 187865632,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_jtag2axi_back_to_back_error_ok_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 572788522,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_jtag2axi_smc_error_path_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1270702301,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_jtag2axi_smc_rw_matrix_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 965095396,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 595071221,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_jtag_smc_cpu_register_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 462883878,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smoke",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_jtag_smoke_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1908526971,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_otp_smc_complete_rw_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1793995403,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_otp_smc_map_rw_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 35995414,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_otp_smc_series_error_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 288895490,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_sep_dm_dmi_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 564385121,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_smc_stap_smoke_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1442635865,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_ext_boot_seq_gate_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1081810739,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_fabric_reg_bar_wr_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1762361506,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_i3c_mem_port_connectivity_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 875875478,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_ic_reset_dual_domain_illegal_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 523133071,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_ic_reset_smc_multi_domain_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 967133598,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_ic_reset_ss_domain_matrix_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 926160701,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_jtag2axi_vs_smn_same_csr_race_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1200192513,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_jtag_chain_enhanced_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 482174989,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_jtag_reset_override_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 392621439,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_otp_bridges_under_dbg_disable_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2006673853,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_otp_vs_fabric_map_race_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1161671282,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_dtp_jtag2axi_smoke_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1050414301,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_mailbox_int_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 837384422,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_mailbox_sanity_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2104311086,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_rom_boot_min_pass_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 60901957,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_reset_ctrl_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1672768798,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_wdt_sanity_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1735197980,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_wdt_timeout_irq_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 492737570,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_sys_in_filter_program_jtag_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 851237695,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_sys_in_filter_reprogram_shrink_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 734687366,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_sys_in_filter_window_edge_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 795281855,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_system_timer_octs_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1340536429,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_xtrig_ctm_illegal_phase_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1562864562,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_xtrig_ctm_remap_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1144857295,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_boundary_port_composition_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 209413272,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_composition_parameter_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1675210559,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_xbar_connectivity_matrix_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1213850234,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_clock_domain_composition_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1652077142,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "hosted",
+          "duration_sec": 0.0,
+          "name": "smu_xtrig_mode_composition_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1777414765,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "hosted",
+          "duration_sec": 0.0,
+          "name": "smu_reset_release_sync_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 803407907,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "hosted",
+          "duration_sec": 0.0,
+          "name": "smu_sram_auto_init_done_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2054783397,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "hosted",
+          "duration_sec": 0.0,
+          "name": "smu_smc_fuse_sense_sequence_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1801564608,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "all",
+          "duration_sec": 0.0,
+          "name": "smu_sep_fuse_sense_done_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1500664600,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_in_burst_outstanding_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 40589577,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_periph_ext_window_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 119544981,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_boundary_io_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 620742144,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_ss_reset_ctrl_sweep_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1363642335,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_boundary_lane_sweep_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 556677404,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_efuse_shadow_sense_reset_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 821101599,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_cool_reset_pin_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1398398402,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_dtp_scan_chain_boundary_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1523336149,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_telemetry_atb_capture_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1547884485,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "dtp_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_xtrig_ctp_pad_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 2121954416,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_sram_auto_init_disabled_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 661815736,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_wdt_boundary_timeout_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 516015376,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "smc_under_smu",
+          "duration_sec": 0.0,
+          "name": "smu_smc_peripheral_irq_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 195218708,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "hosted",
+          "duration_sec": 0.0,
+          "name": "smu_sep_secure_tm_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 150675333,
+          "stage": "sim",
+          "status": "ERROR"
+        },
+        {
+          "attempt": 0,
+          "category": "fabric",
+          "duration_sec": 0.0,
+          "name": "smu_axi_in_attribute_sweep_test",
+          "reason": "dependency_blocked: hdl_compile of target default ERROR (job 11555741): VCS build completed without the expected design coverage database: /proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/hw/sys/smu/dv/hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb",
+          "seed": 1754382381,
+          "stage": "sim",
+          "status": "ERROR"
+        }
+      ],
       "timing": {
-        "duration_sec": 60855.771,
-        "end_time": "2026-09-22T11:31:10.751302+00:00",
-        "start_time": "2026-09-21T18:36:45.994656+00:00"
+        "duration_sec": 48023.801,
+        "end_time": "2026-09-23T07:56:21.077993+00:00",
+        "start_time": "2026-09-22T18:35:45.335021+00:00"
       },
-      "tool": "vcs"
+      "tool": "vcs",
+      "warnings": [
+        "JUnit XML not recorded for smu_wrapper_elaboration_test",
+        "JUnit XML not recorded for smu_smc_smoke_test",
+        "JUnit XML not recorded for smu_sep_smoke_test",
+        "JUnit XML not recorded for smu_sep_boot_health_test",
+        "JUnit XML not recorded for smu_sep_sanity_test",
+        "JUnit XML not recorded for smu_sep_modules_test",
+        "JUnit XML not recorded for smu_sep_aes_test",
+        "JUnit XML not recorded for smu_sep_otbn_test",
+        "JUnit XML not recorded for smu_sep_efuse_test",
+        "JUnit XML not recorded for smu_sep_wdt_test",
+        "JUnit XML not recorded for smu_sep_dma_test",
+        "JUnit XML not recorded for smu_sep_bidirect_test",
+        "JUnit XML not recorded for smu_sep_remap_test",
+        "JUnit XML not recorded for smu_sep_rom_tcm_load_test",
+        "JUnit XML not recorded for smu_sep_spi_test",
+        "JUnit XML not recorded for smu_sep_smc_notify_test",
+        "JUnit XML not recorded for smu_wrapper_jtag_ptap_test",
+        "JUnit XML not recorded for smu_sep_lcc_flow_test",
+        "JUnit XML not recorded for smu_sep_lcc_state_test_dev_test",
+        "JUnit XML not recorded for smu_sep_lcc_state_prod_test",
+        "JUnit XML not recorded for smu_sep_lcc_state_prod_end_test",
+        "JUnit XML not recorded for smu_sep_lcc_state_rma_chiplet_test",
+        "JUnit XML not recorded for smu_sep_dbg_gating_test_dev_test",
+        "JUnit XML not recorded for smu_sep_dbg_gating_prod_end_test",
+        "JUnit XML not recorded for smu_dtp_sep_smc_chain_prod_test",
+        "JUnit XML not recorded for smu_dtp_sep_smc_chain_prod_end_test",
+        "JUnit XML not recorded for smu_sep_entropy_test",
+        "JUnit XML not recorded for smu_axi_alias_remap_manager_scope_test",
+        "JUnit XML not recorded for smu_axi_atomic_operation_test",
+        "JUnit XML not recorded for smu_axi_crossbar_error_handling_test",
+        "JUnit XML not recorded for smu_axi_filter_allow_ns_test",
+        "JUnit XML not recorded for smu_axi_filter_in_instance_matrix_test",
+        "JUnit XML not recorded for smu_axi_filter_out_instance_matrix_test",
+        "JUnit XML not recorded for smu_axi_id_width_conversion_test",
+        "JUnit XML not recorded for smu_axi_prot_encoding_decode_test",
+        "JUnit XML not recorded for smu_boot_stall_jtag_cold_reset_matrix_test",
+        "JUnit XML not recorded for smu_boot_stall_vs_ic_reset_priority_test",
+        "JUnit XML not recorded for smu_clock_stop_coordination_test",
+        "JUnit XML not recorded for smu_dft_dtp_boot_stall_test",
+        "JUnit XML not recorded for smu_dft_gpio_boot_stall_test",
+        "JUnit XML not recorded for smu_dtp_bsr_extest_loopback_test",
+        "JUnit XML not recorded for smu_dtp_bsr_ijtag_scan_test",
+        "JUnit XML not recorded for smu_dtp_io_stap_smoke_test",
+        "JUnit XML not recorded for smu_dtp_jtag2axi_back_to_back_error_ok_test",
+        "JUnit XML not recorded for smu_dtp_jtag2axi_smc_error_path_test",
+        "JUnit XML not recorded for smu_dtp_jtag2axi_smc_rw_matrix_test",
+        "JUnit XML not recorded for smu_dtp_jtag2axi_wstrb_partial_sticky_test",
+        "JUnit XML not recorded for smu_dtp_jtag_smc_cpu_register_test",
+        "JUnit XML not recorded for smu_dtp_jtag_smoke_test",
+        "JUnit XML not recorded for smu_dtp_otp_smc_complete_rw_test",
+        "JUnit XML not recorded for smu_dtp_otp_smc_map_rw_test",
+        "JUnit XML not recorded for smu_dtp_otp_smc_series_error_test",
+        "JUnit XML not recorded for smu_dtp_sep_dm_dmi_test",
+        "JUnit XML not recorded for smu_dtp_smc_stap_smoke_test",
+        "JUnit XML not recorded for smu_ext_boot_seq_gate_test",
+        "JUnit XML not recorded for smu_fabric_reg_bar_wr_test",
+        "JUnit XML not recorded for smu_i3c_mem_port_connectivity_test",
+        "JUnit XML not recorded for smu_ic_reset_dual_domain_illegal_test",
+        "JUnit XML not recorded for smu_ic_reset_smc_multi_domain_test",
+        "JUnit XML not recorded for smu_ic_reset_ss_domain_matrix_test",
+        "JUnit XML not recorded for smu_jtag2axi_vs_smn_same_csr_race_test",
+        "JUnit XML not recorded for smu_jtag_chain_enhanced_test",
+        "JUnit XML not recorded for smu_jtag_reset_override_test",
+        "JUnit XML not recorded for smu_otp_bridges_under_dbg_disable_test",
+        "JUnit XML not recorded for smu_otp_vs_fabric_map_race_test",
+        "JUnit XML not recorded for smu_smc_dtp_jtag2axi_smoke_test",
+        "JUnit XML not recorded for smu_smc_mailbox_int_test",
+        "JUnit XML not recorded for smu_smc_mailbox_sanity_test",
+        "JUnit XML not recorded for smu_smc_rom_boot_min_pass_test",
+        "JUnit XML not recorded for smu_smc_reset_ctrl_test",
+        "JUnit XML not recorded for smu_smc_wdt_sanity_test",
+        "JUnit XML not recorded for smu_smc_wdt_timeout_irq_test",
+        "JUnit XML not recorded for smu_sys_in_filter_program_jtag_test",
+        "JUnit XML not recorded for smu_sys_in_filter_reprogram_shrink_test",
+        "JUnit XML not recorded for smu_sys_in_filter_window_edge_test",
+        "JUnit XML not recorded for smu_system_timer_octs_test",
+        "JUnit XML not recorded for smu_xtrig_ctm_illegal_phase_test",
+        "JUnit XML not recorded for smu_xtrig_ctm_remap_test",
+        "JUnit XML not recorded for smu_boundary_port_composition_test",
+        "JUnit XML not recorded for smu_composition_parameter_test",
+        "JUnit XML not recorded for smu_xbar_connectivity_matrix_test",
+        "JUnit XML not recorded for smu_clock_domain_composition_test",
+        "JUnit XML not recorded for smu_xtrig_mode_composition_test",
+        "JUnit XML not recorded for smu_reset_release_sync_test",
+        "JUnit XML not recorded for smu_sram_auto_init_done_test",
+        "JUnit XML not recorded for smu_smc_fuse_sense_sequence_test",
+        "JUnit XML not recorded for smu_sep_fuse_sense_done_test",
+        "JUnit XML not recorded for smu_axi_in_burst_outstanding_test",
+        "JUnit XML not recorded for smu_periph_ext_window_test",
+        "JUnit XML not recorded for smu_smc_boundary_io_test",
+        "JUnit XML not recorded for smu_smc_ss_reset_ctrl_sweep_test",
+        "JUnit XML not recorded for smu_smc_boundary_lane_sweep_test",
+        "JUnit XML not recorded for smu_smc_efuse_shadow_sense_reset_test",
+        "JUnit XML not recorded for smu_smc_cool_reset_pin_test",
+        "JUnit XML not recorded for smu_dtp_scan_chain_boundary_test",
+        "JUnit XML not recorded for smu_telemetry_atb_capture_test",
+        "JUnit XML not recorded for smu_xtrig_ctp_pad_test",
+        "JUnit XML not recorded for smu_sram_auto_init_disabled_test",
+        "JUnit XML not recorded for smu_smc_wdt_boundary_timeout_test",
+        "JUnit XML not recorded for smu_smc_peripheral_irq_test",
+        "JUnit XML not recorded for smu_sep_secure_tm_test",
+        "JUnit XML not recorded for smu_axi_in_attribute_sweep_test"
+      ]
     }
   ],
-  "schema_version": "0.1",
+  "schema_version": "0.2",
   "tests": {
-    "failing": 0,
-    "incomplete_runs": 1,
-    "pass_rate": null,
+    "failing": 102,
+    "incomplete_runs": 0,
+    "pass_rate": 0.0,
     "passing": 0,
     "skipped": 0,
-    "total": 0,
+    "total": 102,
     "unknown": 0
   },
   "warnings": {
-    "total": 0
+    "total": 102
   }
 }
