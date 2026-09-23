@@ -210,6 +210,9 @@ vendored packages in this repo (generated regs, waivers, etc.) - see
 
 ## Provenance
 
+This flow was adapted from the
+[Croc Yosys synthesis flow](https://github.com/pulp-platform/croc/tree/main/yosys).
+
 The Tcl scripts and IHP SG13G2 tech data follow a common open-source
 Yosys + `yosys-slang` + ABC synthesis pattern, generalized here to be
 env-driven and PDK-parametrized rather than hardcoded to one design/PDK.
