@@ -22,6 +22,7 @@ elements:
 * Entropy source
 * Entropy extractor, debiaser and whitener
 * Statistical health online testing and reporting
+* Deterministic random bit generator (DRBG)
 * Entropy distributor
 
 The entropy source is typically a digital circuit employing ring
