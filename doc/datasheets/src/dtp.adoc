@@ -162,18 +162,6 @@ clock-stop requests and output
 reset-control output types, trigger protocol modes, AXI type parameters
 !===
 
-[.datasheet-small]
-Build-time parameters select the boundary and internal feature set. Optional
-JTAG instructions are individually enabled (`JTAG_BSR_ENABLE`,
-`JTAG_INTEST_ENABLE`, `JTAG_CLAMP_ENABLE`, `JTAG_HIGHZ_ENABLE`,
-`JTAG_RUNBIST_ENABLE`, `JTAG_TMP_ENABLE`, and the `EXTEST_PULSE`/`EXTEST_TRAIN`
-enables); bridge and STAP paths are enabled per target (`JTAG_SMC_DBG_ENABLE`,
-`JTAG_SEP_DBG_ENABLE`, `JTAG_STAP_IO_ENABLE`, `JTAG_NUM_EXTRA_STAPS`);
-reset-control slices are enabled per domain (`JTAG_IC_RESET_SMC_ENABLE`,
-`JTAG_IC_RESET_SEP_ENABLE`, `JTAG_IC_RESET_EXT_ENABLE`); and identity, trigger
-protocol, and AXI types are set through the IDCODE, `XTRIG_INT_CT_MODE`, and AXI
-type parameters.
-
 // datasheet-section: document-control
 [.datasheet-section]
 DOCUMENT CONTROL
