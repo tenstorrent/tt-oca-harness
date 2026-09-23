@@ -224,6 +224,8 @@ feature rows.
 |===
 |Testcase |Objective
 |`smc_avsbus_clock_config_proxy_test` |AVS_CFG answers with AVS_CG_EN cleared and stops answering when set.
+|`smc_avsbus_frame_transaction_test` |Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each.
+|`smc_avsbus_retry_exhaust_test` |Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
 |`smc_avsbus_sanity_test` |Run the AVSBus sideband CSR precheck (alias of `smc_sideband_protocol_smoke_test_seq`).
 |`smc_avsbus_status_depth_test` |Run AVSBus status-side decode checks.
 |`smc_dma_reserved_stream_banks_test` |All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`; reserved banks read their `dma.adoc` value and launch nothing.
@@ -231,6 +233,7 @@ feature rows.
 |`smc_octs_dual_sync_test` |U4-5: SECONDARY pad inject + PRIMARY sync/credit pad edges.
 |`smc_octs_sanity_test` |AVSBus status-CSR decode plus the sideband observability probe, a recorded SUBSTITUTE for a pad-level OCTS checker; touches no OCTS register or pad.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
+|`smc_telemetry_atb_capture_test` |One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
 |`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 |`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
 |`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
@@ -444,6 +447,12 @@ feature rows.
 |`smc_i2c_p0_stretch_test` |I2C0 target TX clock stretch and recovery on the shared I2C pads: an I2C1 host READ stalls on TX_PENDING until TXDATA is supplied, then completes with that byte.
 |`smc_i2c_p0_timeout_test` |I2C1 stretch timeout measured against an I2C0 target proven live on the same shared bus.
 |`smc_i2c_p1_rdwr_protocol_test` |U4-2 alias: DUT I2C0 host write proof (same sequence as master_target).
+|`smc_i2c_bus_monitor_idle_test` |The I2C bus monitor's idle-with-SCL-high state entered and left on every instance, witnessed by the host-timeout interrupt.
+|`smc_i2c_target_acq_stretch_test` |The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
+|`smc_i2c_protocol_interruption_test` |Transactions cut short by a STOP, a repeated START or a cleared enable at every phase, on all three instances.
+|`smc_i2c2_controller_rdwr_test` |I2C2 driving the shared bus as controller for a write and a two-byte read against I2C1.
+|`smc_i2c_target_bus_timeout_test` |The programmable bus timeout expiring at every slot of an addressed target transaction, and against the target's own stretch, on all three instances.
+|`smc_i2c_target_multi_instance_stretch_test` |I2C1 and I2C2 as targets: the transmit path, an unmatched address, and both the transmit-FIFO and acquisition-FIFO stretches.
 |`smc_i2c_target_smbus_test` |VIP ARA + external SMBSUS# into DUT I2C0 SMBus target.
 |`smc_smbus_alert_ara_test` |U4-2: DUT SMBALERT# pad39 + VIP ARA @0x0C (TB CSR stands in for FW).
 |`smc_smbus_alert_suspend_test` |I2C0 target SMBALERT + I2C1 ARA/IRQ + SMBSUS sideband.
@@ -7983,6 +7992,25 @@ Drive `smc_cpu_mmio_write_wedge_test_seq`. Each checker below is a named compare
 
 Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
+[[sec-220-smc_avsbus_frame_transaction_test]]
+===== 220 `smc_avsbus_frame_transaction_test`
+
+*Source Module*: `smc_avsbus_frame_transaction_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at the responding level by the bench
+
+*Objective*: Three queued AVS_CMD words walk the AVSBus command path against a responding pad and land one readback entry each.
+
+
+* `AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE` routes the first launch through a slave resync, so the command path is entered the same way on every run.
+* Three commands queued back to back exercise the first, mid and last subframe shapes in one burst.
+* The sdata pad is held low, which `interface.adoc` "AVSBus Slave Subframe" makes a valid frame with slave acknowledgment 0, so the controller takes the accept path rather than the retry path.
+* The single-cycle end-of-subframe and post-resync launch states are not directly observable: `cur_state_debug_o` reaches the bench through two handshake data synchronizers, which forward the value they hold when a transfer opens. Their effect is checked instead.
+* The slave response word is not compared: the readback register reads 0 both for the all-zero subframe and for an empty FIFO.
+
+
+Drive `smc_avsbus_frame_transaction_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -8017,6 +8045,34 @@ Drive `smc_gpio_intf_regblock_sweep_test_seq`. Each checker below is a named com
 
 Drive `smc_filter_config_field_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
+|`CHK-AVS-FRAME-FSM-MAIN-PATH` |`tb_avsbus_cur_state_debug` held each of AVS_IDLE, AVS_SLAVE_RESYNC, AVS_SHIFT_1ST_SUBFRAME, AVS_SHIFT_MID_SUBFRAME and AVS_SHIFT_LAST_SUBFRAME over two consecutive `clk_periph_i` samples; the one-hot bit order is transcribed from `architecture.adoc` "Protocol State Machine"
+|`CHK-AVS-MASTER-SUBFRAME` |Every master subframe captured on `avs_mdata_o` over the DUT's own AVS clock equals the queued AVS_CMD word in wire order -- `2'b01` preamble in [31:30] and the generated-header AVS_CMD fields in [29:3]; the hardware CRC-3 is excluded because no source in this tree publishes the polynomial
+|`CHK-AVS-CMD-FIFO-DRAIN` |After all three responses, AVS_FIFOS_STATUS reports the command FIFO at 0 occupied and the full generated depth vacant, with AVS_NORMAL_STATUS CMD_FIFO_EMPTY and AVS_BUS_IS_IDLE set
+|`CHK-AVS-READBACK-FIFO-FILL` |AVS_FIFOS_STATUS reports exactly one readback entry per command and the matching vacant count, with AVS_NORMAL_STATUS READBACK_HAS_DATA set
+|`CHK-AVS-READBACK-POP` |Each AVS_READBACK read returned OKAY on a non-empty FIFO and advanced the occupancy by exactly one, ending at 0 with READBACK_HAS_DATA clear
+|`CHK-AVS-VALID-ACK-NO-RETRY` |TOTAL_RETRIES is 0, AVS_MASTER_IS_RETRYING is clear, and neither SLAVE_UNRESPONSIVE_INT nor MAX_RETRIES_ATTEMPTED_INT is raised; `smc_avsbus_retry_exhaust_test` drives all three to 1 on the same registers
+
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+[[sec-221-smc_avsbus_retry_exhaust_test]]
+===== 221 `smc_avsbus_retry_exhaust_test`
+
+*Source Module*: `smc_avsbus_retry_exhaust_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad held at its idle level by the bench
+
+*Objective*: Two unanswered AVS_CMD words walk the AVSBus retry states and exhaust the programmed retry budget.
+
+
+* The sdata pad idles high, which `interface.adoc` "AVSBus Slave Subframe" makes a frame whose Frame Valid bit says the target did not respond.
+* `AVS_CFG_0.MAX_RETRIES` is programmed to 2, so the retry countdown is walked rather than stepped straight to zero.
+* Two commands queued back to back separate the retry shapes: the reply to the first arrives while the second is on the wire, so the controller retries while still receiving before alternating transmit-only and receive-only retries.
+* The single-cycle end-of-subframe and buffered-reply retry states are not directly observable through the handshake-synchronised debug bus; the interrupt and retry-count checks stand in for them.
+
+
+Drive `smc_avsbus_retry_exhaust_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -8049,6 +8105,32 @@ Drive `smc_filter_config_field_sweep_test_seq`. Each checker below is a named co
 *Test Procedure*:
 
 Drive `smc_i2c_intr_reg_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+|`CHK-AVS-RETRY-FSM-PATH` |`tb_avsbus_cur_state_debug` held each of AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME, AVS_RETRY_SHIFT_XMIT_SUBFRAME and AVS_RETRY_SHIFT_RECV_SUBFRAME over two consecutive `clk_periph_i` samples
+|`CHK-AVS-RETRY-IN-PROGRESS` |AVS_NORMAL_STATUS.AVS_MASTER_IS_RETRYING read back set on at least one poll taken while the burst was in flight, a register-path witness independent of the debug bus
+|`CHK-AVS-RETRY-BUDGET-EXHAUSTED` |AVS_NORMAL_STATUS.TOTAL_RETRIES reached at least the programmed budget and AVS_INTERRUPT carries both SLAVE_UNRESPONSIVE_INT and MAX_RETRIES_ATTEMPTED_INT
+|`CHK-AVS-RETRY-INT-W1C` |On an idle bus, AVS_INTERRUPT_CLEAR with both clear bits returned AVS_INTERRUPT to neither flag raised
+
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+[[sec-222-smc_telemetry_atb_capture_test]]
+===== 222 `smc_telemetry_atb_capture_test`
+
+*Source Module*: `smc_telemetry_atb_capture_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the bench ATB beat driver on the receiver 0 pins
+
+*Objective*: One ATB message captured on telemetry receiver 0, read back through its registers, then the receiver and transmitter flush paths.
+
+
+* Follows the three procedures in `hw/ip/telemetry_receiver/doc/programming.adoc`: reading a message, receiver flush and transmitter flush.
+* Each ATB beat requires the `atready_o` handshake; expiry is a failure, because a truncated frame can still clear STATUS.BUFFER_EMPTY and still match the probe id.
+* Which 9-bit block a counter byte lands in has no documented source, so every block below the header is filled valid and all-ones. `doc/index.adoc` supplies the rest: seven blocks per packet, four consecutive blocks per counter, and a counter valid only when all four of its blocks are.
+* The flush-acknowledge pins exist for receiver 0 only, so the transmitter-flush leg is not repeated on receivers 1 and 2.
+
+
+Drive `smc_telemetry_atb_capture_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 *Checkers*:
 
@@ -8122,6 +8204,34 @@ Drive `smc_uart_log_engine_field_sweep_test_seq`. Each checker below is a named 
 
 Drive `smc_log_engine_transfer_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
+|`CHK-TELEMETRY-ATB-MESSAGE-CAPTURE` |A complete last-flagged message cleared STATUS.BUFFER_EMPTY, TELEMETRY_PROBE_ID read back the framed probe id, TELEMETRY_COUNTER_VLDS read exactly one valid counter, TELEMETRY_COUNTER[0] read the all-ones value reassembled from four valid blocks while TELEMETRY_COUNTER[1] stayed at its generated reset, and CTRL.BUFFER_POP returned the buffer to empty
+|`CHK-TELEMETRY-RX-FLUSH` |With a message buffered, CTRL.TELEMETRY_RX_FLUSH returned STATUS.BUFFER_EMPTY to 1 within the poll bound and clearing the request read CTRL back at 0
+|`CHK-TELEMETRY-TX-FLUSH-HANDSHAKE` |`afvalid_o` idled at 0 with `afready_i` low, rose after CTRL.TELEMETRY_TX_FLUSH was written and stayed asserted while `afready_i` was low, then retired once `afready_i` went high with CTRL.TELEMETRY_TX_FLUSH self-cleared
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+
+[[sec-223-smc_i2c_target_acq_stretch_test]]
+===== 223 `smc_i2c_target_acq_stretch_test`
+
+*Source Module*: `smc_i2c_target_acq_stretch_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the open-drain I2C0 pads
+
+*Objective*: The I2C0 target holds SCL low once its acquisition FIFO has no room, and releases it when software drains ACQDATA.
+
+
+* The DUT's own I2C0 block is the addressed target; the bench is the controller on the pads, so the whole transaction crosses the SMC boundary.
+* The controller writes more payload bytes than the acquisition FIFO holds and nothing drains ACQDATA, which is the only way to reach the full condition from outside.
+* The acquisition FIFO depth is measured from TARGET_FIFO_STATUS.ACQLVL rather than assumed.
+* The hold is measured, not inferred: only the samples where the resolved SCL net is low while the bench has released its own pull are counted, and nothing but the target can pull SCL low then.
+* `CTRL.ACQ_START_STOP_EN` stays at its reset, so the acquisition FIFO carries the payload bytes with no start or stop entry around them.
+* Holding SCL through the address phase of a later transaction is not driven: it needs the acquisition FIFO to still be full when that transaction starts, and this bench can only end the current transaction by freeing the room.
+
+
+Drive `smc_i2c_target_acq_stretch_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -8191,6 +8301,34 @@ Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare t
 *Test Procedure*:
 
 Drive `smc_cool_reset_zero_delay_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+|`CHK-I2C-TGT-ACQ-STRETCH` |With the controller writing and nothing draining, I2C0 STATUS.ACQFULL set with a non-zero TARGET_FIFO_STATUS.ACQLVL, and the resolved SCL net was low on at least the minimum number of samples taken while the bench had released its own pull
+|`CHK-I2C-TGT-ACQ-DRAIN` |Reading ACQDATA released the hold and let the controller's write finish with every byte acknowledged -- the bench controller raises on a NACK of the address or of any data byte -- and the acquired entries are exactly the payload bytes in order, leaving STATUS.ACQFULL clear and STATUS.ACQEMPTY set
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+
+[[sec-224-smc_i2c_target_multi_instance_stretch_test]]
+===== 224 `smc_i2c_target_multi_instance_stretch_test`
+
+*Source Module*: `smc_i2c_target_multi_instance_stretch_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); one DUT I2C instance as the controller and another as the target, on the shared open-drain bus
+
+*Objective*: I2C1 and I2C2 as targets: the transmit path, an unmatched address, and both the transmit-FIFO and acquisition-FIFO stretches.
+
+
+* `+smc_i2c_shared_bus` puts all three instances on one open-drain bus, so the enabled controller reaches either target by address. Both ends of every check are DUT instances.
+* I2C0 is the controller throughout, which leaves the target-side paths to I2C1 and I2C2 -- the instances that have never seen them. I2C2 in particular has only ever been written to as a target.
+* Each target gets an address of its own and sources a byte of its own, so a readback cannot be satisfied by the other target answering.
+* The transmit leg runs with `CTRL.TX_STRETCH_CTRL_EN` set and the transmit FIFO empty, so the target has to hold the bus and raise `TARGET_EVENTS.TX_PENDING` before software supplies the byte.
+* The acquisition-stretch hold is measured through the controller rather than on the bus: both ends are DUT instances, so a low SCL net does not say which is holding it. `smc_i2c_target_acq_stretch_test` is the bench-controller variant on I2C0, where only the target can be pulling SCL low.
+* The acquisition FIFO depth is read from `TARGET_FIFO_STATUS.ACQLVL` rather than assumed, and the last payload byte carries the STOP so the transaction cannot end while the FIFO is still full.
+* Address-phase stretch (`StretchAddr`, `StretchAddrAck`, `StretchAddrAckSetup`) stays out: it needs the acquisition FIFO still full when a later transaction starts, and `nack_addr_after_timeout` besides, which no register this bench programs reaches.
+
+
+Drive `smc_i2c_target_multi_instance_stretch_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 *Checkers*:
 
@@ -8264,6 +8402,41 @@ Drive `smc_log_engine_abort_test_seq`. Each checker below is a named compare the
 
 Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
+|`CHK-I2C1-TGT-TX-STRETCH` |On a read with `CTRL.TX_STRETCH_CTRL_EN` set and its transmit FIFO empty, I2C1 raised `TARGET_EVENTS.TX_PENDING` and held the transfer until software wrote TXDATA
+|`CHK-I2C1-TGT-READ` |I2C1 sourced the byte written to its TXDATA and the controller read exactly that byte back, then returned idle with its format FIFO drained
+|`CHK-I2C2-TGT-TX-STRETCH` |The same transmit-FIFO hold on I2C2
+|`CHK-I2C2-TGT-READ` |The same sourced-byte readback on I2C2, which is its first target-side transmit
+|`CHK-I2C2-TGT-ADDR-MISMATCH` |An address no enabled target matches left I2C2's acquisition FIFO empty and the controller reporting `CONTROLLER_EVENTS.NACK`; the transmit leg on the same instance is the matching-address control
+|`CHK-I2C1-TGT-ACQ-STRETCH` |With nothing draining ACQDATA, I2C1 set `STATUS.ACQFULL` with a non-zero `TARGET_FIFO_STATUS.ACQLVL`, and on every poll taken while it stayed set the controller was still busy with queued format entries
+|`CHK-I2C1-TGT-ACQ-DRAIN` |Reading ACQDATA released the controller, which then completed the write; I2C1 acquired every payload byte in order and `STATUS.ACQFULL` is clear
+|`CHK-I2C2-TGT-ACQ-STRETCH` |The same acquisition-FIFO hold on I2C2
+|`CHK-I2C2-TGT-ACQ-DRAIN` |The same release and byte-stream compare on I2C2
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+
+[[sec-225-smc_i2c_protocol_interruption_test]]
+===== 225 `smc_i2c_protocol_interruption_test`
+
+*Source Module*: `smc_i2c_protocol_interruption_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the shared open-drain I2C bus
+
+*Objective*: Transactions cut short by a STOP, a repeated START or a cleared enable at every phase, on all three instances.
+
+
+* Nearly every state of the target state machine has an edge back to `Idle`, to `WaitForStop` and to `AcquireStart`, because a STOP, a repeated START or a cleared enable can arrive in any of them. Reaching those edges needs the interruption at a chosen bit slot, which only the bench controller can drive: a DUT controller cannot be told to stop in the middle of a byte.
+* Slots come from the VIP's own bit timing. A slot is one call to its `send_bit`, and the interruption is its own `send_stop` or `send_start` issued from wherever the loop stopped.
+* Address-phase injections land before the target matches, so nothing is acquired; the claim there is that the instance is still able to run a clean transaction.
+* Data-phase injections land after the address was acknowledged, so each leaves a START entry in the acquisition FIFO, checked per injection rather than as a total.
+* The acknowledge slots are injected after rather than during. The target owns SDA while it acknowledges, so a controller physically cannot release SDA for a STOP in the middle of one; attempting it wedges the bus rather than testing anything.
+* Every leg opens and closes with a clean transaction. The opening one is the positive control -- without it a sweep against an unreachable instance would satisfy every "nothing was acquired" check vacuously -- and the closing one is the recovery proof.
+* Each injection waits for the target to report itself between transactions before the next begins, so one transaction's tail cannot land in the next one's acquisition window.
+
+
+Drive `smc_i2c_protocol_interruption_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -8300,6 +8473,37 @@ Drive `smc_periph_regblock_sweep_test_seq`. Each checker below is a named compar
 *Test Procedure*:
 
 Drive `smc_uart_char_loopback_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+|`CHK-I2C0-INTR-ADDR-PHASE` |14 transactions cut short at every address-byte slot, by STOP and by repeated START, left no payload byte acquired on I2C0, which ran a clean write before and after the sweep
+|`CHK-I2C0-INTR-DATA-PHASE` |18 transactions cut short after the address acknowledge, at every payload-byte slot and after the payload acknowledge, each left at least one START entry in I2C0's acquisition FIFO, with a clean write before and after
+|`CHK-I2C0-INTR-TARGET-DISABLE` |Clearing `CTRL` target enable at each of six delays spread across the address byte, the acknowledge slot and the payload byte left I2C0 reporting TARGETIDLE, and it ran a clean write again after each
+|`CHK-I2C1-INTR-ADDR-PHASE` |The address-phase sweep on I2C1
+|`CHK-I2C1-INTR-DATA-PHASE` |The data-phase sweep on I2C1
+|`CHK-I2C1-INTR-TARGET-DISABLE` |The target-disable sweep on I2C1
+|`CHK-I2C2-INTR-ADDR-PHASE` |The address-phase sweep on I2C2
+|`CHK-I2C2-INTR-DATA-PHASE` |The data-phase sweep on I2C2
+|`CHK-I2C2-INTR-TARGET-DISABLE` |The target-disable sweep on I2C2
+|`CHK-I2C0-INTR-HOST-DISABLE` |Clearing `CTRL` host enable while a queued format-FIFO transaction was on the wire returned controller I2C0 to idle, and it then drove a clean write that the target acquired
+
+*Pass Criteria*: all ten checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+[[sec-226-smc_i2c2_controller_rdwr_test]]
+===== 226 `smc_i2c2_controller_rdwr_test`
+
+*Source Module*: `smc_i2c2_controller_rdwr_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); I2C2 as the bus controller and I2C1 as the target
+
+*Objective*: I2C2 driving the shared bus as controller for a write and a two-byte read against I2C1.
+
+
+* Instance 2 has only ever been a target, so its controller state machine has never acknowledged a byte and never clocked one in. Which instance is the controller is a matter of which one gets `CTRL.ENABLEHOST`, so no new bench plumbing is needed.
+* The read asks for two bytes rather than one. A controller reading a single byte only ever NACKs it, so the acknowledge phase is entered only when a byte is followed by another.
+* Both legs are checked at the far end: the write against the bytes the target acquired, the read against the bytes the target was told to source.
+
+
+Drive `smc_i2c2_controller_rdwr_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 *Checkers*:
 
@@ -8338,6 +8542,33 @@ Drive `smc_uart_char_loopback_test_seq`. Each checker below is a named compare t
 
 Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
+|`CHK-I2C2-CTRL-WRITE` |Controller I2C2 drove the bus and target I2C1 acquired every payload byte in order, with no NACK reported in `CONTROLLER_EVENTS`
+|`CHK-I2C2-CTRL-READ` |Controller I2C2 clocked two bytes out of target I2C1 and read back exactly the bytes written to the target's TXDATA, acknowledging every byte but the last, then returned idle
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+
+[[sec-227-smc_i2c_target_bus_timeout_test]]
+===== 227 `smc_i2c_target_bus_timeout_test`
+
+*Source Module*: `smc_i2c_target_bus_timeout_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the shared open-drain I2C bus
+
+*Objective*: The programmable bus timeout expiring at every slot of an addressed target transaction, and against the target's own stretch, on all three instances.
+
+
+* `hw/ip/i2c/regs/i2c.rdl` describes `TIMEOUT_CTRL.MODE` 1 as a bus timeout that fires "if SCL is LOW for more time than `TIMEOUT_CTRL.VAL`", and `doc/architecture.adoc` adds that the count "accumulates across all sources" and that "the counter resets when SCL goes high, so this count only accumulates during a single bit transfer". Parking SCL low is therefore what makes it expire.
+* Unlike a STOP or a repeated START, the timeout is a counter rather than a bus event, so it lands in states where no control symbol can be driven -- the acknowledge slots, and the states the target reaches while stretching.
+* The timeout value sits well above the VIP's per-bit SCL low time and the deliberate park sits well above the value, so the timeout fires only where this leaf puts it and never on ordinary bit timing.
+* The stretch leg drives nothing on the bus at all: the target is holding SCL low itself because its acquisition FIFO is full, and the timeout counts that hold.
+* The address-stretch leg then starts a transaction while the acquisition FIFO is still full, so the address cannot be deposited. The filling write is abandoned first: it and the new transaction share one VIP and cannot be in flight together.
+* `doc/architecture.adoc` states that a bus timeout while the target was addressed adds an entry to the ACQ FIFO, and the RDL defines `SIGNAL` 6 for a transaction that "ended abnormally, for example, due to ... a Bus or Stretch Timeout". That entry is the observable.
+
+
+Drive `smc_i2c_target_bus_timeout_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -8373,6 +8604,38 @@ Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the
 
 Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
+|`CHK-I2C0-BUSTO-SLOT-SWEEP` |The bus timeout expired at each of nine slots of an addressed transaction on I2C0, every one recorded as an abnormal ending in the acquisition FIFO, with a clean write before and after
+|`CHK-I2C0-BUSTO-STRETCH` |With its acquisition FIFO full, I2C0 held SCL low itself and the timeout counted that hold and returned the instance to idle, with nothing driven on the bus
+|`CHK-I2C0-BUSTO-ADDR-STRETCH` |A transaction started while I2C0's acquisition FIFO was still full drove the address phase against a target with nowhere to deposit it, and the instance ran a clean write afterwards
+|`CHK-I2C1-BUSTO-SLOT-SWEEP` |The slot sweep on I2C1
+|`CHK-I2C1-BUSTO-STRETCH` |The stretch timeout on I2C1
+|`CHK-I2C1-BUSTO-ADDR-STRETCH` |The address-phase stretch on I2C1
+|`CHK-I2C2-BUSTO-SLOT-SWEEP` |The slot sweep on I2C2
+|`CHK-I2C2-BUSTO-STRETCH` |The stretch timeout on I2C2
+|`CHK-I2C2-BUSTO-ADDR-STRETCH` |The address-phase stretch on I2C2
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
+
+[[sec-228-smc_i2c_bus_monitor_idle_test]]
+===== 228 `smc_i2c_bus_monitor_idle_test`
+
+*Source Module*: `smc_i2c_bus_monitor_idle_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `SmcI2cMasterVip` bit-banging the shared open-drain I2C bus
+
+*Objective*: The I2C bus monitor's idle-with-SCL-high state entered and left on every instance, witnessed by the host-timeout interrupt.
+
+
+* `HOST_TIMEOUT_CTRL.VAL` arms the bus monitor's inactive timeout, and the RDL calls the resulting interrupt a "Target Mode interrupt: asserted when the controller stops generating the clock longer than `HOST_TIMEOUT_CTRL.VAL`". Nothing else in this package programs that register.
+* `INTR_STATE.HOST_TIMEOUT` is what makes the state observable rather than inferred: only the idling state counts that timeout down, so the interrupt firing is a witness that the monitor was in it.
+* `TIMING4.T_BUF` is programmed long for this leaf, so the bus-free window after a STOP is wide enough for the bench to drive the bus low inside it; at the default of a few cycles it is shorter than a round trip from the sequence.
+* The enable-with-multi-controller leg drives the monitor's other entry into the idling state, but asserts only that a clean transaction follows: the inactive counter is not reloaded on that path, so the host-timeout witness does not fire there, and no register reports the monitor's state directly. That entry is stimulus, not a claim.
+
+
+Drive `smc_i2c_bus_monitor_idle_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -8385,6 +8648,20 @@ Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named com
 *Pass Criteria*: `CHK-CPU-CTRL-READ-ONLY-WRITE`, `CHK-CPU-CTRL-WDT-ZERO-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
+
+|`CHK-I2C0-BUSMON-IDLE-TIMEOUT` |With the bus busy and the bench holding SCL released mid-transaction, I2C0's monitor counted `HOST_TIMEOUT_CTRL.VAL` down and raised `INTR_STATE.HOST_TIMEOUT`, with a clean write before and after
+|`CHK-I2C0-BUSMON-RESUME` |I2C0's monitor left the idling state both ways -- SCL taken low again, and a STOP driven out of it followed by the bus pulled low inside the bus-free window -- and the instance ran a clean write after
+|`CHK-I2C0-BUSMON-MULTI-ENABLE` |I2C0 enabled with `CTRL.MULTI_CONTROLLER_MONITOR_EN` set on a quiet bus then ran a clean write that was acquired byte for byte
+|`CHK-I2C1-BUSMON-IDLE-TIMEOUT` |The idle timeout on I2C1
+|`CHK-I2C1-BUSMON-RESUME` |The resume and stop legs on I2C1
+|`CHK-I2C1-BUSMON-MULTI-ENABLE` |The multi-controller enable on I2C1
+|`CHK-I2C2-BUSMON-IDLE-TIMEOUT` |The idle timeout on I2C2
+|`CHK-I2C2-BUSMON-RESUME` |The resume and stop legs on I2C2
+|`CHK-I2C2-BUSMON-MULTI-ENABLE` |The multi-controller enable on I2C2
+
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan

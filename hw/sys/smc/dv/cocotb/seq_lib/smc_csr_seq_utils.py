@@ -358,8 +358,13 @@ class SmcCsrSeq(smc_base_test_seq):
     _I2C0_SCL_PAD = 37
     _GPIO_LSIO_SELECT = 1 << 17
 
-    async def _arm_i2c0_gpio_lsio(self, label: str) -> None:
-        """Force I2C0 pad mux onto LSIO via GPIO DATA_CTRL.lsio_select.
+    # Pads per I2C instance in the padring: SCL, SDA, SMBALERT#, SMBSUS#, with
+    # instance `i` starting at `_I2C0_SCL_PAD + 4 * i` (tb_top.sv records the
+    # same 37 + 4*i mapping over its I2C pad localparams).
+    _I2C_PADS_PER_INSTANCE = 4
+
+    async def arm_i2c_gpio_lsio(self, idx: int, label: str) -> None:
+        """Force the I2C``idx`` pad group onto LSIO via GPIO DATA_CTRL.lsio_select.
 
         Verilator codegen of ``i2c_wrap``'s ``MAX_NUM_I2CS`` always_comb writes
         OOB and then zeros ``i2c_en_o`` / ``i2c_controller_mode_en_o``, so the
@@ -367,7 +372,8 @@ class SmcCsrSeq(smc_base_test_seq):
         at 0. Software ``lsio_select`` is the supported override (same as
         gpio_intf.rdl) and restores pad sense without touching RTL.
         """
-        for pad in range(self._I2C0_SCL_PAD, self._I2C0_SCL_PAD + 4):
+        first = self._I2C0_SCL_PAD + idx * self._I2C_PADS_PER_INSTANCE
+        for pad in range(first, first + self._I2C_PADS_PER_INSTANCE):
             addr = self._GPIO_INTF0_DATA_CTRL + pad * self._GPIO_INTF_STRIDE
             cur = await self.csr_read(f"{label}_GPIO{pad}_SAVE", addr)
             await self.csr_write(
@@ -375,6 +381,28 @@ class SmcCsrSeq(smc_base_test_seq):
                 addr,
                 cur | self._GPIO_LSIO_SELECT,
             )
+
+    async def _arm_i2c0_gpio_lsio(self, label: str) -> None:
+        await self.arm_i2c_gpio_lsio(0, label)
+
+    async def wait_i2c_bus_released(self, label: str = "I2C_BUS", max_polls: int = 2000) -> None:
+        """Wait until the shared open-drain I2C bus reads high on both lines.
+
+        Under ``+smc_i2c_shared_bus`` every instance resolves onto the one net
+        the bench observes, so a released bus is the state every enabled
+        instance agrees on. Expiry is a failure, never a pass.
+        """
+        dut = cocotb.top
+        for _ in range(max_polls):
+            scl = dut.tb_i2c0_scl.value
+            sda = dut.tb_i2c0_sda.value
+            if scl.is_resolvable and sda.is_resolvable and int(scl) == 1 and int(sda) == 1:
+                return
+            await ClockCycles(dut.clk_smc_i, 4)
+        raise AssertionError(
+            f"{label}: the shared I2C bus never released "
+            f"(scl={dut.tb_i2c0_scl.value}, sda={dut.tb_i2c0_sda.value})"
+        )
 
     async def wait_i2c0_lsio_ready(self, label: str = "I2C0_LSIO") -> None:
         """Wait until I2C0 pad sense tracks the OD bus (host can leave idle).

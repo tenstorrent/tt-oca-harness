@@ -52,7 +52,7 @@ includes = [
 # sep are: the loader errors when this list and the count diverge, so a leaf
 # cannot be added to a feature testlist and silently miss the regression.
 name = "all"
-expected_count = 215
+expected_count = 224
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -60,6 +60,8 @@ tests = [
     "smc_address_window_top_decode_test",
     "smc_alias_remap_spare_block_decode_test",
     "smc_avsbus_clock_config_proxy_test",
+    "smc_avsbus_frame_transaction_test",
+    "smc_avsbus_retry_exhaust_test",
     "smc_avsbus_sanity_test",
     "smc_avsbus_status_depth_test",
     "smc_axi_error_response_depth_test",
@@ -171,6 +173,8 @@ tests = [
     "smc_i2c_fifo_full_test",
     "smc_i2c_intr_mask_test",
     "smc_i2c_intr_reg_sweep_test",
+
+    "smc_i2c_bus_monitor_idle_test",
     "smc_i2c_master_target_test",
     "smc_i2c_multi_instance_test",
     "smc_i2c_multi_sample_test",
@@ -183,6 +187,11 @@ tests = [
     "smc_i2c_p0_stretch_test",
     "smc_i2c_p0_timeout_test",
     "smc_i2c_p1_rdwr_protocol_test",
+    "smc_i2c_target_acq_stretch_test",
+    "smc_i2c2_controller_rdwr_test",
+    "smc_i2c_protocol_interruption_test",
+    "smc_i2c_target_bus_timeout_test",
+    "smc_i2c_target_multi_instance_stretch_test",
     "smc_i2c_target_smbus_test",
     "smc_i3c_to_fabric_test",
     "smc_ijtag_basic_test",
@@ -246,6 +255,7 @@ tests = [
     "smc_static_cg_sanity_test",
     "smc_sys_axi_in_port_test",
     "smc_sys_out_aw_w_split_test",
+    "smc_telemetry_atb_capture_test",
     "smc_telemetry_receiver_csr_test",
     "smc_temp_interrupt_test",
     "smc_uart_baud_word_parity_format_test",
@@ -278,7 +288,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 196
+expected_count = 205
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -286,6 +296,8 @@ tests = [
     "smc_address_window_top_decode_test",
     "smc_alias_remap_spare_block_decode_test",
     "smc_avsbus_clock_config_proxy_test",
+    "smc_avsbus_frame_transaction_test",
+    "smc_avsbus_retry_exhaust_test",
     "smc_avsbus_sanity_test",
     "smc_avsbus_status_depth_test",
     "smc_axi_error_response_depth_test",
@@ -379,6 +391,8 @@ tests = [
     "smc_i2c_fifo_full_test",
     "smc_i2c_intr_mask_test",
     "smc_i2c_intr_reg_sweep_test",
+
+    "smc_i2c_bus_monitor_idle_test",
     "smc_i2c_master_target_test",
     "smc_i2c_multi_instance_test",
     "smc_i2c_multi_sample_test",
@@ -391,6 +405,11 @@ tests = [
     "smc_i2c_p0_stretch_test",
     "smc_i2c_p0_timeout_test",
     "smc_i2c_p1_rdwr_protocol_test",
+    "smc_i2c_target_acq_stretch_test",
+    "smc_i2c2_controller_rdwr_test",
+    "smc_i2c_protocol_interruption_test",
+    "smc_i2c_target_bus_timeout_test",
+    "smc_i2c_target_multi_instance_stretch_test",
     "smc_i2c_target_smbus_test",
     "smc_i3c_to_fabric_test",
     "smc_ijtag_basic_test",
@@ -453,6 +472,7 @@ tests = [
     "smc_static_cg_sanity_test",
     "smc_sys_axi_in_port_test",
     "smc_sys_out_aw_w_split_test",
+    "smc_telemetry_atb_capture_test",
     "smc_telemetry_receiver_csr_test",
     "smc_temp_interrupt_test",
     "smc_uart_baud_word_parity_format_test",

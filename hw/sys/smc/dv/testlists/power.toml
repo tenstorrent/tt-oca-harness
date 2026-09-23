@@ -20,6 +20,22 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_avsbus_frame_transaction_test"
+module = "smc_avsbus_frame_transaction_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_avsbus_retry_exhaust_test"
+module = "smc_avsbus_retry_exhaust_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_avsbus_status_depth_test"
 module = "smc_avsbus_status_depth_test"
 seed = 1
@@ -38,6 +54,14 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_octs_dual_sync_test"
 module = "smc_octs_dual_sync_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_telemetry_atb_capture_test"
+module = "smc_telemetry_atb_capture_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
