@@ -441,6 +441,7 @@ feature rows.
 |`smc_i2c_fifo_full_test` |FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only).
 |`smc_i2c_master_target_test` |U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads.
 |`smc_i2c_intr_reg_sweep_test` |I2C interrupt and event registers cycled on all three instances, with the INTR_TEST to INTR_STATE round trip and the two unread read-mux rows.
+|`smc_i2c_config_regblock_sweep_test` |I2C configuration registers -- control, timing, FIFO thresholds, timeouts, target identity, override and SMBus control -- cycled on all three instances with both engines held disabled.
 |`smc_i2c_multi_instance_test` |I2C_1/2 + I2C_CTRL CSR sweep.
 |`smc_i2c_multi_sample_test` |Run the SMC OSS I2C multi-sample observability scenario.
 |`smc_i2c_p0_cfifo_test` |Controller FMT FIFO empty-threshold interrupt.
@@ -8575,6 +8576,42 @@ Drive `smc_uart_core_mode_select_test_seq`. Each checker below is a named compar
 |===
 
 *Pass Criteria*: `CHK-UART-RBR-PATH`, `CHK-UART-DMA-MODE-1`, `CHK-UART-RX-TIMEOUT`, `CHK-UART-LINE-LOOPBACK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-212-smc_i2c_config_regblock_sweep_test]]
+===== 212 `smc_i2c_config_regblock_sweep_test`
+
+*Source Module*: `smc_i2c_config_regblock_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the I2C block left idle, neither engine enabled
+
+*Objective*: Cycle every I2C configuration register on every instance with the block held idle.
+
+*Test Coverage*:
+
+* `smc_i2c_intr_reg_sweep_test` drives the interrupt and event registers and the protocol leaves drive the bus, but nothing writes the block's configuration. The control register, the five timing registers, both FIFO threshold registers, the three timeout controls, the NACK handler timeout, the target identity, the bus override and the SMBus control have never been written on any of the three instances, so their write enables and the read mux behind them have never been exercised.
+* Each is driven to all-ones and all-zeros over the fields the generated contract pins, through half-register writes whose byte lanes over the other half are deasserted, and restored to its RDL reset. Every readback checks the whole register, so each half write also proves the untouched half kept its value.
+* **The block stays idle.** `CTRL.ENABLEHOST` and `CTRL.ENABLETARGET` are the two fields that start the controller and the target, and both are held at their reset for the whole cycle. Every other CTRL field only shapes how a running block behaves. The bus monitor `CTRL.MULTI_CONTROLLER_MONITOR_EN` selects is a monitor whose outputs are detect and event strobes, nothing that drives SCL or SDA, and CTRL is cycled first so it is back at its reset before the timeout registers are given values.
+* **The override never pulls a line down.** `i2c.rdl` gives `OVRD.SCLVAL` and `OVRD.SDAVAL` the sense "0 - Pull the line low, 1 - Release the line", and `TXOVRDEN` enables both. All three sit in one byte, so a single write moves them together: the ones pattern releases both lines while enabling the override, and the zero pattern clears `TXOVRDEN` in the same write that clears the values.
+* **No zero the sweep writes is a value the reset does not already hold.** `i2c.rdl` says of `TIMING0.THIGH` and `TIMING0.TLOW` that each "Must be `>= 2`". Every register in the set resets to zero over the fields the cycle drives, so the all-zeros leg only restores what reset already put there; the constraint is a programming rule for a running controller, and this leaf never enables one.
+* All three guarantees are checked as assertions over every word the cycle would leave resident -- the halves between the two writes of a leg included -- and they run before the sequence issues a single access, so a contract that changed under the sweep stops it rather than starting an engine or pulling a bus line low.
+* `FIFO_CTRL` is not in the set: the generated contract gives it no software-writable field with a pinned readback, because `RXRST`, `FMTRST`, `ACQRST` and `TXRST` are every one of them self-clearing. The FIFO data ports and the status registers are excluded for the same reason, the engine writing only fields the contract pins exactly.
+
+*Test Procedure*:
+
+Drive `smc_i2c_config_regblock_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CONFIG-REG-SWEEP` |All three I2C instances drove all fifteen configuration registers to all-ones and all-zeros over the fields their RDL pins, through half-register writes whose byte lanes over the other half were deasserted, and every register was restored to its reset and read back
+|`CHK-I2C-CONFIG-IDLE-GUARD` |Every register cycle was checked before any access that the words it would leave resident hold CTRL.ENABLEHOST and CTRL.ENABLETARGET at their reset, never enable the bus override with SCLVAL or SDAVAL clear, and are zero over the driven fields wherever the reset is
+|===
+
+*Pass Criteria*: `CHK-I2C-CONFIG-IDLE-GUARD`, `CHK-I2C-CONFIG-REG-SWEEP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

@@ -221,13 +221,18 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
 [[tests]]
+[[tests]]
 name = "smc_i2c_target_acq_stretch_test"
 module = "smc_i2c_target_acq_stretch_test"
+
+[[tests]]
+name = "smc_i2c_config_regblock_sweep_test"
+module = "smc_i2c_config_regblock_sweep_test"
+
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
-
 [[tests]]
 name = "smc_i2c_target_multi_instance_stretch_test"
 module = "smc_i2c_target_multi_instance_stretch_test"
@@ -281,3 +286,4 @@ timeout_sec = 3600
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
+
