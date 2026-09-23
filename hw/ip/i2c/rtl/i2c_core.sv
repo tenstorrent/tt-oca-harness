@@ -408,7 +408,7 @@ module i2c_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)
-  ) controller_tx_fifo (
+  ) u_controller_tx_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (i2c_fifo_fmtrst),
@@ -430,7 +430,7 @@ module i2c_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)
-  ) controller_rx_fifo (
+  ) u_controller_rx_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (i2c_fifo_rxrst),
@@ -452,7 +452,7 @@ module i2c_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)
-  ) target_tx_fifo (
+  ) u_target_tx_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (i2c_fifo_txrst),
@@ -474,7 +474,7 @@ module i2c_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)
-  ) target_rx_fifo (
+  ) u_target_rx_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (i2c_fifo_acqrst),
@@ -494,7 +494,7 @@ module i2c_core
   prim_alert_sender #(
     .AsyncOn       (1'b1),
     .IsFatal       (1'b0)
-  ) prim_alert_sender (
+  ) u_prim_alert_sender (
     .clk_i,
     .rst_ni,
     .alert_test_i  (1'b0),
@@ -510,28 +510,28 @@ module i2c_core
 
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       ControllerTxFifoWptrErrTriggerAlert_A,
-      controller_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
+      u_controller_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       ControllerTxFifoRptrErrTriggerAlert_A,
-      controller_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
+      u_controller_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       ControllerRxFifoWptrErrTriggerAlert_A,
-      controller_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
+      u_controller_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       ControllerRxFifoRptrErrTriggerAlert_A,
-      controller_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
+      u_controller_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       TargetTxFifoWptrErrTriggerAlert_A,
-      target_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
+      u_target_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       TargetTxFifoRptrErrTriggerAlert_A,
-      target_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
+      u_target_tx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       TargetRxFifoWptrErrTriggerAlert_A,
-      target_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
+      u_target_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_wptr, unused_alert_tx)
   `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT(
       TargetRxFifoRptrErrTriggerAlert_A,
-      target_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
+      u_target_rx_fifo.gen_normal_fifo.u_fifo_cnt.gen_secure_ptrs.u_rptr, unused_alert_tx)
 
   assign reg_in_o.RDATA.rd_ack = reg_out_i.RDATA.req && !reg_out_i.RDATA.req_is_wr;
   assign rx_fifo_rready        = reg_out_i.RDATA.req && !reg_out_i.RDATA.req_is_wr;
@@ -1082,7 +1082,7 @@ module i2c_core
     .Width             (1),
     .ResetValue        (1'b1),
     .EnablePrimCdcRand (1'b1)
-  ) flop_2sync_smbsus (
+  ) u_flop_2sync_smbsus (
     .clk_i,
     .rst_ni,
     .d_i               (smbsus_ni),
@@ -1097,7 +1097,7 @@ module i2c_core
     .Width             (1),
     .ResetValue        (1'b1),
     .EnablePrimCdcRand (1'b1)
-  ) flop_2sync_smbalert (
+  ) u_flop_2sync_smbalert (
     .clk_i,
     .rst_ni,
     .d_i               (smbalert_ni | ~smbus_en_i),

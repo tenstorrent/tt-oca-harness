@@ -95,11 +95,15 @@ token value is considered practically infeasible so even if the secret
 digest is extracted from OTP or gates, the token will remain unknown to
 the attacker.
 
-As just stated, the _SEC_DIS secret is stored_ only in gates, not in
-OTP. The reason for this is that SEC_DIS is an emergency feature used to
-unlock the chip when the OTP fuse sensing logic is non-functional but we
-still need to unlock the chip. If we were to rely on the non-functioning
-OTP, we would be unable to unlock the chip.
+The SEC_DIS secret is stored only in gates and not in OTP. SEC_DIS is an
+emergency feature to unlock when the OTP is not functional so that the chip can
+still be unlocked. See
+ifdef::backend-html5[]
+xref:sep:security_disable.adoc#security-disable-sec_dis[Security Disable (SEC_DIS)].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<security-disable-sec_dis,Security Disable (SEC_DIS)>>.
+endif::backend-pdf[]
 
 [[token-match-sequence]]
 == Token Match Sequence
@@ -126,9 +130,8 @@ broken.
 == Matching Logic Countermeasures
 
 The actual matching logic is a vulnerable attack point via FIB or fault
-injection. We protect this by using triple-redundant matching logic on
-fully differential signals resulting in a 6-bit output as illustrated
-below.
+injection. This is protected by using triple-redundant matching logic on fully
+differential signals resulting in a 6-bit output as illustrated below.
 
 This is not a majority vote scheme. While a comparison is in flight two
 invariants must both hold: every comparator must drive a genuine

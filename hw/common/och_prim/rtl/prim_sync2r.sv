@@ -22,7 +22,7 @@ module prim_sync2r #(
     .WIDTH             (WIDTH),
     .RANDOM_DELAY_RESET(1),
     .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
-  ) rand_del (
+  ) u_rand_del (
     .clk_i        (clk_i),            // input                   Clock
     .d_i          (d_i),              // input    [WIDTH-1:0]    Input Data
     .rst_ni       (rst_ni),           // input                   Active Low Reset, if synchronizer is not resettable tie to 1
@@ -36,7 +36,7 @@ module prim_sync2r #(
   assign d_del = d_i;
 `endif
 
-  prim_flop_2sync_r sync2r[WIDTH-1:0] (
+  prim_flop_2sync_r u_sync2r[WIDTH-1:0] (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .d_i (d_del),

@@ -32,7 +32,7 @@ endif
 # the two conventions per-declaration depending on packed vs. unpacked would
 # be a net readability loss for no functional benefit. plusarg-assignment
 # flags every $test$plusargs call in the tree; each one checks
-# only whether a boolean flag was passed (waves, smc_skip_pll_init,
+# only whether a boolean flag was passed (waves, smc_hold_cpu_boot,
 # sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.

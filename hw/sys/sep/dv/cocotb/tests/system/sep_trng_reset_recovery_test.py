@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles, with_timeout
+from cocotb.triggers import ClockCycles, Timer, with_timeout
 from env.sep_axi_agent import SepAxiOp
 from env.sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, SEP_CPU_CTRL, sym
 from ocah_axi_vip import worst_resp
@@ -252,6 +252,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
                 assert isolated == 0x7, (
                     "shared TRNG reset asserted before all three AXI-Lite paths isolated"
                 )
+                assert int(cocotb.top.trng_reset_active_probe_o.value) == 0, (
+                    "TRNG clear followed the asynchronous reset without synchronization"
+                )
                 assert isolate_seen and outstanding_at_isolate > 0, (
                     "no pre-reset CSR read was still outstanding at the cycle all "
                     "three paths reported isolated"
@@ -266,6 +269,20 @@ class sep_trng_reset_recovery_test(sep_base_test):
             await ClockCycles(cocotb.top.clk_i, 1)
         else:
             raise AssertionError("coordinated TRNG reset did not assert")
+
+        clear_sync_edges = 0
+        while not int(cocotb.top.trng_reset_active_probe_o.value) and clear_sync_edges < 2:
+            await ClockCycles(cocotb.top.clk_i, 1)
+            await Timer(1, units="ps")
+            clear_sync_edges += 1
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 1, (
+            "TRNG clear did not assert after two synchronizer edges"
+        )
+        self.logger.info(
+            "CHK-TRNG-CLEAR-SYNC PASS: reset did not propagate asynchronously and "
+            "reached clear within %d observed clk_i edge(s)",
+            clear_sync_edges,
+        )
 
         await reset_task
         drain_responses = []
@@ -335,13 +352,26 @@ class sep_trng_reset_recovery_test(sep_base_test):
             raise AssertionError("TRNG isolation did not clear during JTAG reset")
 
         jtag_reset.value = 0
-        await ClockCycles(cocotb.top.clk_i, 4)
+        await Timer(1, units="ps")
         assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 1, (
             "TRNG reset did not release after the final JTAG override cleared"
         )
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 1, (
+            "TRNG clear followed the asynchronous reset release without synchronization"
+        )
+        await ClockCycles(cocotb.top.clk_i, 1)
+        await Timer(1, units="ps")
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 1, (
+            "TRNG clear released before the second synchronizer edge"
+        )
+        await ClockCycles(cocotb.top.clk_i, 1)
+        await Timer(1, units="ps")
+        assert int(cocotb.top.trng_reset_active_probe_o.value) == 0, (
+            "TRNG clear did not release after two synchronizer edges"
+        )
         self.logger.info(
             "CHK-TRNG-JTAG PASS: the JTAG override held the coordinated reset through a "
-            "software release, isolation cleared under it, and the reset lifted when it dropped"
+            "software release, isolation cleared under it, and clear released synchronously"
         )
 
         held = await resets.read_back()

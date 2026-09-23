@@ -195,7 +195,7 @@ proc set_cdc_max_delay_prim_sync_reset { inst dst_clk { delay {} } } {
 proc set_cdc_max_delay_prim_sync3_pulse { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync3_pulse $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/i_dest/toggle_i" -quiet]
+        {} [get_pins "$inst/u_dest/toggle_i" -quiet]
 }
 
 ################################################################################
@@ -244,8 +244,8 @@ proc set_cdc_max_delay_avsbus_async_fifo { inst wr_clk rd_clk { delay {} } } {
     cdc_emit "$t data" [cdc_data_delay $rd_clk $delay] from \
         [get_pins "$inst/fifo_array*_reg*/Q*" -quiet] [get_clocks [cdc_clk $rd_clk]]
     # Pointer syncs are prim_sync3 arrays; constrain each wrapper by name.
-    foreach {sync dst} [list wr_ptr_gray_sync_to_rd_clk $rd_clk \
-        rd_ptr_gray_sync_to_wr_clk $wr_clk] {
+    foreach {sync dst} [list u_wr_ptr_gray_sync_to_rd_clk $rd_clk \
+        u_rd_ptr_gray_sync_to_wr_clk $wr_clk] {
         cdc_emit "$t $sync" [cdc_sync_delay $dst $delay] to \
             {} [get_pins "$inst/$sync*/d_i" -quiet]
     }

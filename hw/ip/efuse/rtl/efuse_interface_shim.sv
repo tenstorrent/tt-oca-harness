@@ -112,7 +112,7 @@ module efuse_interface_shim
     .Width(COUNTER_WIDTH),
     .ResetValue(COUNTER_WIDTH'(32)), // 0x20 = 32
     .EnableAlertTriggerSVA(1'b0)
-  ) prim_count_r (
+  ) u_prim_count_r (
     .clk_i                (clk_i),
     .rst_ni               (rst_ni),
     .clr_i                (1'b0),
@@ -283,7 +283,7 @@ module efuse_interface_shim
     .Width(COUNTER_WIDTH),
     .ResetValue(COUNTER_WIDTH'(32)), // 0x20 = 32
     .EnableAlertTriggerSVA(1'b0)
-  ) prim_count_w (
+  ) u_prim_count_w (
     .clk_i                (clk_i),
     .rst_ni               (rst_ni),
     .clr_i                (1'b0),

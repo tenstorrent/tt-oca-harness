@@ -20,7 +20,7 @@
 <li><strong>KEY_SHARE1[8]</strong>: 8 registers, base 0x19020, stride 0x4</li>
 <li><strong>KEY[8]</strong>: 8 registers, base 0x1C400, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x10000</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
@@ -247,7 +247,7 @@
 <tr><td>0x19020 - 0x1903C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x1C400 - 0x1C41C</td><td><a href="#KEY_8_">KEY[8]</a></td><td>R</td><td>One 32-bit word of ML-KEM shared key output. Written by hardware<br>when key is ready; read by KM firmware to consume. Hardware clears<br>all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="KM_WRITE_DATA">KM_WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

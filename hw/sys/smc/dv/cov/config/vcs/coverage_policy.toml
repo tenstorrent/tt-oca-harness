@@ -39,3 +39,14 @@ role = "exclude"
 path = "smc_fsm_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
+
+# Covergroups declared inside vendored RTL. `-cm_hier` does not reach
+# covergroups, so the six I3C controllers' groups would otherwise sit in urg's
+# GROUP score beside SMC's own cov/sv covergroups. Regenerated from urg's group
+# exclusion template by gen_smc_group_exclusions.py; README.md lists the class.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smc_group_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]

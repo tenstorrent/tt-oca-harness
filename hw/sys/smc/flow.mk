@@ -10,6 +10,8 @@ FLOW_DESIGN := smc
 FLOW_BENDER_TARGETS := -t idma_rtl -t smc
 FLOW_INTEGRATION_SIM_FROM_DV := 1
 FLOW_VERILATOR_WAIVERS := hw/sys/smc/lint/smc.verilator.vlt
+FLOW_SYNTH_SLANG_EXPECTED_ERRORS := vendor/tenstorrent/tt-hw-debug/overlay/lint/synthesis.slang.expected-errors
+FLOW_SYNTH_SLANG_COMPAT_FLAGS := --relax-enum-conversions
 
 include $(OCAH_ROOT)/flows/common.mk
 include $(OCAH_ROOT)/flows/lint/slang.mk

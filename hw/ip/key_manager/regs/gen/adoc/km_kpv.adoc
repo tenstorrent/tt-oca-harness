@@ -1,40 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-km_kpv]
+== Address Map: km_kpv
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *WORD[16]*: 16 registers
-  ** Base Address: 0x0
-  ** Address Increment: 0x4 per register
-
-* *CTRL[64]*: 64 registers
-  ** Base Address: 0x1000
-  ** Address Increment: 0x4 per register
-
+* *WORD[16]*: 16 registers, base 0x0, stride 0x4
+* *CTRL[64]*: 64 registers, base 0x1000, stride 0x4
 ======
 
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x3C | WORD[16] | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
-| 0x1000 - 0x10FC | CTRL[64] | RW a| Per-slot control: lock bits (W1S) and the erase trigger
-| 0x1100 | KPV_SCRAMBLER_KEY | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
-| 0x1104 | KPV_SCRAMBLER_CTRL | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
+| 0x0 - 0x3C | <<reg-{regmap-instance}-km_kpv-KEY_ENTRY-0-WORD-0-,WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x1000 - 0x10FC | <<reg-{regmap-instance}-km_kpv-CTRL-0-,CTRL[64]>> | RW a| Per-slot control: lock bits (W1S) and the erase trigger
+| 0x1100 | <<reg-{regmap-instance}-km_kpv-KPV_SCRAMBLER_KEY,KPV_SCRAMBLER_KEY>> | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
+| 0x1104 | <<reg-{regmap-instance}-km_kpv-KPV_SCRAMBLER_CTRL,KPV_SCRAMBLER_CTRL>> | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
 |===
 
+[#reg-{regmap-instance}-km_kpv-KEY_ENTRY-0-WORD-0-]
+=== WORD[16]
+
 [cols="1,3,1,1,6", options="header"]
-.WORD[16] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
 Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 |===
 
+[#reg-{regmap-instance}-km_kpv-CTRL-0-]
+=== CTRL[64]
+
 [cols="1,3,1,1,6", options="header"]
-.CTRL[64] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `rsvd_31_4` | R | 0x0 a| Reserved
@@ -61,15 +63,19 @@ Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
 set, so sealing a slot write-locks it without a separate write here.
 |===
 
+[#reg-{regmap-instance}-km_kpv-KPV_SCRAMBLER_KEY]
+=== KPV_SCRAMBLER_KEY
+
 [cols="1,3,1,1,6", options="header"]
-.KPV_SCRAMBLER_KEY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `key` | RW | - a| Scrambler key. No reset for security. HW clears to 0 on wipe via hwclr.
 |===
 
+[#reg-{regmap-instance}-km_kpv-KPV_SCRAMBLER_CTRL]
+=== KPV_SCRAMBLER_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.KPV_SCRAMBLER_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `rsvd` | R | 0x0 a| Reserved

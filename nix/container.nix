@@ -32,6 +32,8 @@
         mkdir -m 1777 tmp
         mkdir -p usr
         ln -sr bin usr/bin
+        ln -sr lib usr/lib
+        ln -sr include usr/include
       '';
       # Base system tools plus project packages; extraDeps allows callsites to extend the image.
       contents = with pkgs;

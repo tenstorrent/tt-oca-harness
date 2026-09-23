@@ -10,7 +10,7 @@ module OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0 (
 
   wire io_rstbypass, io_rst_synced;
 
-  prim_flop_3sync_r prim_flop_3sync_r (
+  prim_flop_3sync_r u_prim_flop_3sync_r (
     .clk_i(clock),
     .rst_ni(~reset),
     .d_i(io_d),
@@ -19,7 +19,7 @@ module OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0 (
 
   assign io_rstbypass = io_rst_synced & ~reset;
 
-  prim_rstbypass_stdmux2 rstbypass (
+  prim_rstbypass_stdmux2 u_rstbypass (
     .rst_ni(io_rstbypass),
     .test_rst_ni(1'b0),
     .test_mode_i(1'b0),

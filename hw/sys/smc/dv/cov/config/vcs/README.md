@@ -98,9 +98,9 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Exclusion files
 
-`coverage_policy.toml` beside this file names three `-elfile` files the report
+`coverage_policy.toml` beside this file names four `-elfile` files the report
 applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
-All are written by `gen_smc_cov_exclusions.py` from urg's exclusion
+The first three are written by `gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
 exclusion files). The condition, branch and F2 entries list only points that
 report marks uncovered, so a reachable point is never hidden by a pattern;
@@ -123,6 +123,30 @@ F4 a state whose decode arm a parameter leaves unelaborated:
 A regblock whose stall is `external_pending` (it has external registers)
 gets A2 only; a regblock that decodes errors gets neither. `--check` reports
 when the committed files no longer match the templates.
+
+The fourth file is a covergroup exclusion. `-cm_hier` scopes line, condition,
+FSM, toggle and branch, and `-cm_common_hier` extends it to assertions;
+neither reaches a covergroup, so a covergroup declared inside RTL is graded
+wherever the elaboration instantiates it. The six
+`cg_bus_event_fsm_transitions` groups the chipsalliance I3C core declares in
+`i3c_target_fsm.sv` therefore land in urg's GROUP score beside SMC's own
+`cov/sv` covergroups even though the scope file drops the `u_i3ccore_wrapper`
+tree from every code metric. `gen_smc_group_exclusions.py` writes
+`smc_group_exclusions.el` from urg's group template, so the definition
+checksum and every instance path come from urg, and `--check` tells whether
+the committed file is stale. Every covergroup under `u_dut` must fall in a
+class the script names; one that does not stops the script.
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions group -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_group_exclusions.py <dir>/fullexclude.tb_def
+
+| File | Class | Fact |
+| --- | --- | --- |
+| `smc_group_exclusions.el` | VENDORED-I3C | the I3C controllers' internals are graded by `hw/ip/i3ccore_wrap/dv`; SMC reaches them through its own fabric and grades that reach with the `cov/sv` points |
+
+What remains in GROUP is the `u_smc_*_fcov::cg_*` set, the covergroup half of
+SMC's functional coverage; the `cov/sv` cover properties are the other half
+and are read under `assertion`.
 
 ## Why these exclusions
 
