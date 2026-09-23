@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_sep_dm_dmi_test — DTP TAP → SEP DM DMI IR=5'h11."""
+"""smu_dtp_sep_dm_dmi_test — DTP TAP → SEP debug-module dmstatus over DMI."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ class smu_dtp_sep_dm_dmi_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_dtp_sep_dm_dmi_test SEP=1 DTP TAP DMI IR=5'h11")
+        self.logger.info("DUT_TAG=WRAPPER smu_dtp_sep_dm_dmi_test SEP=1 DTP TAP -> SEP TAP dmi")
         seq = smu_dtp_sep_dm_dmi_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (
