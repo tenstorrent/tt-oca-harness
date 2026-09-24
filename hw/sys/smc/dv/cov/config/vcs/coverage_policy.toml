@@ -37,7 +37,7 @@ args = ["-elfile", "{path}"]
 
 
 # FSM facts (F2 DEFAULT, F3 TIEOFF, F4 PARAM-OFF, F5 RESET-EDGE, F6
-# ENABLE-EDGE, F7 SCL-HELD-LOW, F8 NO-INTERFERENCE): the always_comb default read as an edge from every state, the
+# ENABLE-EDGE, F7 SCL-HELD-LOW, F8 NO-INTERFERENCE, F9 LOOP-INDEX-EXTRACTION): the always_comb default read as an edge from every state, the
 # states a write master cannot reach because the integration ties its response
 # inputs to zero, a decode state whose arm a parameter leaves unelaborated, the
 # edges that exist only as a state register's reset assignment, and the one an
@@ -45,7 +45,8 @@ args = ["-elfile", "{path}"]
 # low cannot take, and those a state that never drives the bus cannot. B2
 # UNAIMED-OVERRIDE is the bench's own: the rest of those override edges wait on
 # a bus event or write landing in a chosen sub-bit state, which the bench cannot
-# place.
+# place. F9 is the extraction's: a combinational loop index is not a state. B4
+# is the bench's: it ties the CPU SRAM auto-init bypass high.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -56,7 +57,8 @@ args = ["-elfile", "{path}"]
 # Features the integration leaves out (P1 NTRACE-OFF, P2 SKIP-TIED-OFF, P3
 # WREN-TIED, P4 SINGLE-SOURCE, P5 INSTR-TYPE-CONST, P6 LC-STATE-OFF, P7
 # NO-ERROR-CAP, P8 WREN-TIED-ZERO, P9 DEBUG-WIDTH-64, P10
-# PACKET-SHORTER-THAN-BANK): the trace wrapper is
+# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING): the
+# trace wrapper is
 # instantiated with zero
 # N-trace instances, the AXI filter with its skip input tied to zero, the eFuse
 # without lifecycle state and the iDMA backend without error handling, and the

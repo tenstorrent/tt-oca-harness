@@ -74,6 +74,13 @@ and `kill_i` a constant zero (P7 NO-ERROR-CAP). The legalizer's
 software-writable RDL field the frontend carries into the backend options, so
 that branch stays graded.
 
+Two are UART logic facts. Each holding register and parity FIFO stores its
+data with `~^data` beside it and a redundant pointer count, so the storage
+self-check `~^{parity, data}` reads one only on corrupted storage (P11
+UART-SELF-CHECK); and `break_err` is formed as the framing error of an all-zero
+frame and stored beside that framing error, so it never appears alone (P12
+BREAK-IMPLIES-FRAMING).
+
 One more is the geometry the parameters fix: a bank spans 32 bytes and a VLT
 packet is 10, the header being `8 + DEBUG_SIGNAL_WIDTH/8` bits wide on top of a
 64-bit debug bus, so no single write can start at or below a bank's first byte
@@ -138,6 +145,15 @@ state variable as a transition:
   place a bus event or a write in a chosen sub-bit state retires the class. An
   edge the source state's own case arm assigns, read from the FSM source at
   generation time, stays graded.
+* F9 LOOP-INDEX-EXTRACTION, a property of the extraction: `block_index` is a
+  loop index local to an `always_comb` with no flop behind it, so the values
+  and transitions the extractor records for it are sampled from a
+  combinational loop and none is a state of the design. Only its uncovered
+  points are written.
+* B4 SRAM-AUTOINIT-BYPASSED, the bench's own: the CPU scratch SRAM zeroing is a
+  hardware sequence the SMC testbench top bypasses by tying
+  `smc_disable_sram_auto_init_i` high, so MEM_ZERO_BUSY is never entered. A
+  bench that deasserts the input retires the class.
 * F5 RESET-EDGE: a state register's reset assignment is expanded into a
   transition from every state. Where no case arm assigns the reset state, the
   only way to cover such an edge is to assert the block's reset while the FSM
@@ -280,6 +296,22 @@ B2 = (
     "own case arm assigns is reachable another way and stays graded, and F7 and F8 name the "
     "edges the design itself forbids."
 )
+F9 = (
+    "SMC-FSM-F9-LOOP-INDEX-EXTRACTION: a property of the extraction, not of the design. "
+    "block_index is a loop index local to an always_comb, set at the top of the block and "
+    "walked by the for loop over the message's counters, with no flop behind it. The extractor "
+    "reports it as an FSM because it is state-shaped, and the values and transitions it "
+    "records are whichever it samples from that combinational loop; none of them is a state or "
+    "a transition of the design. Only the points the report marks uncovered are written, so "
+    "the sampled values it did record stay in the score."
+)
+B4 = (
+    "SMC-FSM-B4-SRAM-AUTOINIT-BYPASSED: a property of this bench, not of the design. The CPU "
+    "scratch SRAM is zeroed by a hardware sequence that runs after its reset unless "
+    "smc_disable_sram_auto_init_i is high, and the SMC testbench top ties that input high, so "
+    "the sequence goes from MEM_ZERO_IDLE straight to MEM_ZERO_DONE and MEM_ZERO_BUSY is never "
+    "entered. A bench that deasserts the input runs the sequence and retires the class."
+)
 ARM_LABEL = re.compile(r"^(\s+)([A-Za-z_]\w*)\s*:\s*begin\b")
 STATE_ASSIGN = re.compile(r"\bstate_d\s*=\s*(\w+)")
 _ARMS: dict[tuple[str, str], frozenset[str]] = {}
@@ -319,6 +351,17 @@ def arms_assigning(source: str, dst: str) -> frozenset[str]:
     return _ARMS[key]
 
 
+# The eFuse write sequence states whose own arm does not return to StWriteIdle;
+# only StWriteFinish does, so an edge from these to StWriteIdle is the reset.
+EFUSE_WRITE_MID = (
+    "StWriteInit",
+    "StWriteSetup",
+    "StWriteAccess",
+    "StWriteWait",
+    "StWriteReadBackSetup",
+    "StWriteReadBackAccess",
+    "StWriteReadBackWait",
+)
 # Target states that drive scl_d = 1'b0 for their whole duration, so the bus
 # monitor cannot see a start in them.
 I2C_SCL_LOW = (
@@ -364,8 +407,9 @@ AVS_IDLE_ARMS = ("AVS_IDLE", "AVS_SLAVE_RESYNC", "AVS_END_LAST_SUBFRAME")
 # arms, for where only some of the source's states reach S through a case arm;
 # ("state", S) the state S and the transitions that touch it; ("edges", (...))
 # exactly those transitions; ("override", S) the transitions into S from every
-# state whose own case arm, read from the FSM source, does not assign S. A selector of None takes every point of the FSM and
-# is used by no fact: a fact that cannot name its points is too wide to state.
+# state whose own case arm, read from the FSM source, does not assign S. A
+# selector of None takes every point of the variable, which is right only where
+# the variable is not a state register of the design at all.
 FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" = {
     ("avsbus_controller", "cur_state"): [
         (F2, ("to_default", ("AVS_IDLE", AVS_IDLE_ARMS))),
@@ -383,6 +427,11 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
     ("i2c_bus_monitor", "state_q"): [(F6, ("edges", ("StBusBusyStop->StBusBusyHigh",)))],
     ("smc_cool_reset_wrap", "flr_counter_state"): [(F5, ("edges", ("COUNT_DOWN->IDLE",)))],
     ("accumulator_bank", "bank_status"): [(F5, ("edges", ("BANK_PARTIAL->BANK_EMPTY",)))],
+    ("efuse_interface_shim", "efuse_write_state_q"): [
+        (F5, ("edges", tuple(f"{s}->StWriteIdle" for s in EFUSE_WRITE_MID))),
+    ],
+    ("smc_4core_cpu", "state"): [(B4, ("state", "MEM_ZERO_BUSY"))],
+    ("telemetry_receiver", "block_index"): [(F9, None)],
     ("i2c_target_fsm", "state_q"): [
         (F7, ("edges", tuple(f"{s}->AcquireStart" for s in I2C_SCL_LOW))),
         (F8, ("edges", tuple(f"{s}->WaitForStop" for s in I2C_NO_ARB_LOSS))),
@@ -526,6 +575,20 @@ P10 = (
     "at or below a bank's first byte and end past its last; the term asking whether it does is "
     "false for the life of the design. The two sibling terms of the same condition are "
     "reachable and stay graded."
+)
+P11 = (
+    "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit "
+    "~^data beside it, written together with the valid flag and cleared together with it, and "
+    "each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so "
+    "a valid stored entry always has odd parity and the check ~^{parity, data} reads one only "
+    "on corrupted storage. No access produces that, so the rows that need a self-check error "
+    "at one have no stimulus."
+)
+P12 = (
+    "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame "
+    "whose data is all zeros and stores it in the same entry as that framing error, in the "
+    "FIFO and in the holding register alike, so an entry carrying break_err always carries "
+    "framing_err as well; the row that needs break_err alone has no stimulus."
 )
 # The whole condition, so that a change to the order of its terms stops the
 # vector matching rather than moving it onto a sibling.
@@ -783,6 +846,29 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         (P6, re.compile(r"sim_skip_fuse_sense|security_disable_i"), None, LC_STATE_ARM),
     ],
     "accumulator_bank": [(P10, BANK_RANGE, re.compile(r"^010$"), None)],
+    "uart_core": [
+        (
+            P11,
+            re.compile(r"^\((thr|rbr)_rvalid && \(\(~\^\{\1_parity, \1_rdata\}\)\)\)$"),
+            re.compile(r"^11$"),
+            None,
+        ),
+        (
+            P11,
+            re.compile(r"^\(tx_fifo_thr_err \|\| rx_fifo_rbr_err\)$"),
+            re.compile(r"^(01|10)$"),
+            None,
+        ),
+        (
+            P12,
+            re.compile(
+                r"^\((rx_fifo_rdata|rbr_rdata)\.break_err \|\| \1\.framing_err"
+                r" \|\| \1\.parity_err\)$"
+            ),
+            re.compile(r"^100$"),
+            None,
+        ),
+    ],
     "efuse_guard": [
         (P6, re.compile(r"rma_(sip|chiplet)_token_match_i"), None, None),
         (P6, re.compile(r"pro_read_intf_(wr|rd)_index == '0"), None, None),
@@ -1305,7 +1391,7 @@ def render_fsm(
         if not any(r for r, _ in block):
             continue
         out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (F2, F3, F4, F5, F6, F7, F8, B2):
+        for reason in (F2, F3, F4, F5, F6, F7, F8, F9, B2, B4):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")
@@ -1378,7 +1464,7 @@ def render_feature(
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10):
+        for reason in (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

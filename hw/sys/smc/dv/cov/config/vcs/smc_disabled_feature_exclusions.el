@@ -462,3 +462,14 @@ Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwp
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (1 "011")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (2 "101")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (4 "111")
+
+CHECKSUM: "2535161971 656965095"
+ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. No access produces that, so the rows that need a self-check error at one have no stimulus."
+ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well; the row that needs break_err alone has no stimulus."
+MODULE: uart_core
+Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
+Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
+Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (3 "11")
+Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
+Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
+Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")

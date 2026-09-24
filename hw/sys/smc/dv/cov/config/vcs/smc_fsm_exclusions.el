@@ -66,6 +66,18 @@ Transition EFUSE_MMR_REG_MAP->ERR_DECODE "2->3"
 Transition ERR_DECODE->EFUSE_MMR_REG_MAP "3->2"
 Transition SHADOW_REG_MAP->EFUSE_MMR_REG_MAP "0->2"
 
+CHECKSUM: "1698122930 169493608"
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+MODULE: efuse_interface_shim
+Fsm efuse_write_state_q "4135696745"
+Transition StWriteAccess->StWriteIdle "3->0"
+Transition StWriteInit->StWriteIdle "1->0"
+Transition StWriteReadBackAccess->StWriteIdle "6->0"
+Transition StWriteReadBackSetup->StWriteIdle "5->0"
+Transition StWriteReadBackWait->StWriteIdle "7->0"
+Transition StWriteSetup->StWriteIdle "2->0"
+Transition StWriteWait->StWriteIdle "4->0"
+
 CHECKSUM: "3035079037 1499231322"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: efuse_shadow_regs
@@ -161,11 +173,28 @@ Transition TransmitWait->Idle "7->0"
 Transition TransmitWait->WaitForStop "7->13"
 Transition WaitForStop->AcquireStart "13->1"
 
+CHECKSUM: "3247765750 2698801009"
+ANNOTATION: "SMC-FSM-B4-SRAM-AUTOINIT-BYPASSED: a property of this bench, not of the design. The CPU scratch SRAM is zeroed by a hardware sequence that runs after its reset unless smc_disable_sram_auto_init_i is high, and the SMC testbench top ties that input high, so the sequence goes from MEM_ZERO_IDLE straight to MEM_ZERO_DONE and MEM_ZERO_BUSY is never entered. A bench that deasserts the input runs the sequence and retires the class."
+MODULE: smc_4core_cpu
+Fsm state "2698801009"
+State MEM_ZERO_BUSY "2"
+Transition MEM_ZERO_BUSY->MEM_ZERO_DONE "2->4"
+Transition MEM_ZERO_BUSY->MEM_ZERO_IDLE "2->1"
+Transition MEM_ZERO_IDLE->MEM_ZERO_BUSY "1->2"
+
 CHECKSUM: "194876589 1063748259"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: smc_cool_reset_wrap
 Fsm flr_counter_state "909361475"
 Transition COUNT_DOWN->IDLE "1->0"
+
+CHECKSUM: "3013731324 330493458"
+ANNOTATION: "SMC-FSM-F9-LOOP-INDEX-EXTRACTION: a property of the extraction, not of the design. block_index is a loop index local to an always_comb, set at the top of the block and walked by the for loop over the message's counters, with no flop behind it. The extractor reports it as an FSM because it is state-shaped, and the values and transitions it records are whichever it samples from that combinational loop; none of them is a state or a transition of the design. Only the points the report marks uncovered are written, so the sampled values it did record stay in the score."
+MODULE: telemetry_receiver
+Fsm block_index "330493458"
+State 'h0 "0"
+State 'h1 "1"
+Transition 'h0->'h1 "0->1"
 
 CHECKSUM: "404099673 995141053"
 ANNOTATION: "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so the trace write master never completes a response handshake and cannot pass REQ_HANDSHAKE; the states an aw_ready, w_ready or b_valid is needed to enter, and the edges touching them, have no stimulus. The request the master issues on valid_i is reachable, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded."
