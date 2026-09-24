@@ -241,7 +241,7 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate (`sim.yml`): `smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_register_sanity_test` |
-| `all` | every test the VPLAN grades and the coverage set: `hosted` ∪ `fw` ∪ `dual`; `expected_count` is the membership gate |
+| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `dual`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `dual` elaborates a second build target the coverage merge cannot combine with `default` |
 | `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (three seeds) |
 | `fw` | firmware class: the fourteen CPU-boot leaves whose image `c_compile` builds |
 | `dual` | SMC_DUAL class: the three `target = "dual"` leaves, each loading a ROM or firmware image |

@@ -181,6 +181,11 @@ jobs:
             reseed: 1
             coverage: false
             runner: ubuntu-latest
+          - dut: axi_lite_to_ahb
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -329,6 +334,22 @@ jobs:
             items: all
             reseed: 1
             coverage: true
+            runner: ubuntu-latest
+          - dut: axi_lite_to_ahb
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: axi_lite_to_ahb
+            # The SVA negative control: its one leaf carries `expect_fail` and
+            # fails only when a converter assertion fires, so the row is green
+            # only while the assertions are compiled into the CI Verilator
+            # build. Its own row because a graded expected failure must not
+            # count on the dashboard.
+            items: sva_live
+            label: sva_live
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
     steps:
       - name: Checkout

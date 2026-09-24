@@ -2451,7 +2451,8 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 default tool; tools that need a license, and frameworks that no open-source
 tool serves, are marked `(licensed)`. A DUT with a formal config adds a `fv`
 row with the formal tool set; a site-named formal config that is absent
-shows as `unavailable`. The per-DUT detail view adds the `license` and
+shows as `unavailable`. An `alias_of` name from `duts.toml` gets one
+`alias of <dut>` row. The per-DUT detail view adds the `license` and
 `runnability` fields from the merged config; `--mode formal` selects the
 formal view.
 
@@ -3071,7 +3072,7 @@ so it is not a tier and no pull request runs it.
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
 DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the IP-level
 benches' `all` groups (the three `cross_trigger` benches, the four UART-family
-benches, `system_timer_octs` and `scrambler`). No coverage.
+benches, `system_timer_octs`, `scrambler` and `axi_lite_to_ahb`). No coverage.
 Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
@@ -3079,13 +3080,16 @@ Nightly is not a merge gate; a red nightly run is a triage signal.
 with `tier=weekly`
 |The regression the dashboard publishes, one random seed per test on every
 row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
-and the IP-level benches' `all` groups. A DUT with filed-defect
-reproducers adds a row of its own for them: every leaf carries `expect_fail`
-(<<runner-expected-failures>>), so the row is green while the defects stand
-and red the week one is fixed. `--sim-jobs` follows the runner core count.
-The coverage regression runs on the licensed simulator flow outside hosted
-CI; the coverage-instrumented Verilator models of DTP, SEP, and SMU do not fit
-a hosted job.
+and the IP-level benches' `all` groups. A second SMC row
+(`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
+`expect_fail` (<<runner-expected-failures>>), so the row is green while the
+filed defects stand and red the week one is fixed. A second `axi_lite_to_ahb`
+row (`label: sva_live`) runs the converter's SVA negative control, whose one
+leaf carries `expect_fail` and fails only when an assertion fires, so the row
+is green only while the assertions are compiled in. `--sim-jobs` follows the
+runner core count. The coverage regression runs on the licensed simulator
+flow outside hosted CI; the coverage-instrumented Verilator models of DTP,
+SEP, and SMU do not fit a hosted job.
 |===
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
@@ -3160,7 +3164,8 @@ symlink.
 |`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
 `cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
 `uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
-`system_timer_octs`, `scrambler` + Verilator (regression tiers only)
+`system_timer_octs`, `scrambler`, `axi_lite_to_ahb` + Verilator (regression
+tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted`). Main protection
@@ -3215,7 +3220,9 @@ joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
 — no CI edit. Every entry carries `mode` (`sim` or `formal`) and
 `available`; a formal view whose site-named config is absent is listed with
 `available: false`, its `path`, and a `reason`, so a formal job selects
-`.duts[] | select(.mode == "formal" and .available)`. `--list --dut <dut>
+`.duts[] | select(.mode == "formal" and .available)`. An `alias_of` name
+adds no entry, so a matrix never selects one DUT twice; each entry lists
+the names that select its DUT under `aliases`. `--list --dut <dut>
 --json` additionally carries the per-scenario binding matrix
 (`tests.<name>.bindings`) and per-framework implemented counts for
 dashboards. `--validate-configs` validates every framework view a DUT

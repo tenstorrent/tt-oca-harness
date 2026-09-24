@@ -466,6 +466,16 @@ class smc_cpu_l2_read_wedge_test_seq(_CpuIsolateFlushSeq):
             L2_READ_RECOVERY_DATA,
             length=8,
         )
+        # The wedge reads scratchpad words nothing has written. A four-state
+        # simulator returns X for them, and the L2 does not complete a read
+        # whose data is X, so the response the wedge parks never appears.
+        for word in range(WEDGE_READS * WEDGE_BYTES // 8):
+            await self.csr_write(
+                "L2_WEDGE_READ_PRELOAD",
+                WEDGE_READ_BASE + word * 8,
+                L2_READ_RECOVERY_DATA ^ word,
+                length=8,
+            )
 
         dut.tb_sep_axi_r_drop.value = 0
         dut.tb_sys_axi_r_drop.value = 0

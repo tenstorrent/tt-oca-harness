@@ -49,6 +49,10 @@
     'did not run': '#e6e6e6',
   };
 
+  // The fields that together name one series, and the query parameters a page
+  // selects one with.
+  var IDENTITY = ['flow', 'framework', 'tool'];
+
   // Match to dut_status[] flows
   var CHIP_ROWS = ['chip_ocah'];
   var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'aou'];
@@ -142,6 +146,64 @@
   }
 
   /**
+   * The series a page asked for, read from the query string.
+   *
+   * "?flow=dtp&framework=uvm" gives {flow: 'dtp', framework: 'uvm'}, matching
+   * that block under uvm on any simulator.
+   * @return {!Object} The dimensions given; an absent one matches every value.
+   */
+  function selector() {
+    var params = new URLSearchParams(window.location.search);
+    var wanted = {};
+    IDENTITY.forEach(function (field) {
+      var value = params.get(field);
+      if (value) wanted[field] = value;
+    });
+    return wanted;
+  }
+
+  /**
+   * Whether an entry matches every dimension a selector names.
+   * @param {!Object} entry Any entry carrying the identity fields.
+   * @param {!Object} wanted The dimensions to match.
+   * @return {boolean} True when every named dimension agrees.
+   */
+  function matches(entry, wanted) {
+    return IDENTITY.every(function (field) {
+      return wanted[field] === undefined || entry[field] === wanted[field];
+    });
+  }
+
+  /**
+   * Name one series for a heading, e.g. "dtp (uvm, vcs)".
+   *
+   * Where the framework and simulator are absent, the block name stands alone.
+   * @param {!Object} entry Any entry carrying the identity fields.
+   * @return {string} The block, with the framework and simulator that ran it.
+   */
+  function seriesLabel(entry) {
+    var ran = ['framework', 'tool']
+      .filter(function (field) {
+        return entry[field];
+      })
+      .map(function (field) {
+        return entry[field];
+      });
+    return entry.flow + (ran.length ? ' (' + ran.join(', ') + ')' : '');
+  }
+
+  /**
+   * Add a series' identity to a URL, so a link narrows to exactly that series.
+   * @param {!URL} url The URL to add them to.
+   * @param {!Object} entry Any entry carrying the identity fields.
+   */
+  function addIdentity(url, entry) {
+    IDENTITY.forEach(function (field) {
+      if (entry[field]) url.searchParams.set(field, entry[field]);
+    });
+  }
+
+  /**
    * Produce a coverage object containing coverage data per flow.
    * @param {!Object} summary Parsed summary.json.
    * @return {!Object} Coverage entries keyed by flow name.
@@ -162,6 +224,7 @@
    */
   function failWith(statusEl) {
     return function (reason) {
+      statusEl.hidden = false;
       statusEl.className = 'dashboard-status dashboard-status-error';
       statusEl.textContent = 'Dashboard data unavailable: ' + reason + '.';
     };
@@ -675,15 +738,16 @@
    * dashboard when no block was resolved.
    * @param {?HTMLElement} backEl Paragraph holding the link, if the page has one.
    * @param {string} page Page to return to when a block was resolved.
-   * @param {string} flow The resolved block, or an empty string.
+   * @param {?Object} entry The resolved series, or null when none was.
    * @param {string} label What to call the destination in the link text.
    */
-  function backTo(backEl, page, flow, label) {
-    if (!backEl) return;
+  function backTo(backEl, page, entry, label) {
+    // A failure after the link is drawn reaches here a second time.
+    if (!backEl || backEl.firstChild) return;
     var link = document.createElement('a');
-    if (flow) {
+    if (entry && entry.flow) {
       var url = new URL(page, window.location.href);
-      url.searchParams.set('flow', flow);
+      addIdentity(url, entry);
       link.href = url.href;
       link.textContent = '← Back to ' + label;
     } else {
@@ -709,17 +773,19 @@
 
     fetchJson(TEST_HISTORY_URL)
       .then(function (history) {
-        var runs = history.runs || [];
-        var flows = history.flows || {};
-        var flow = knownName(flows, params.get('flow'));
-        var tests = flow ? flows[flow] : {};
+        var wanted = selector();
+        var series = (history.series || []).filter(function (entry) {
+          return matches(entry, wanted);
+        })[0];
+        var runs = (series && series.runs) || [];
+        var tests = (series && series.tests) || {};
         var test = knownName(tests, params.get('test'));
-        backTo(backEl, 'dashboard-test-history.html', flow, flow + ' test history');
+        backTo(backEl, 'dashboard-test-history.html', series, 'test history');
         if (!test) {
           fail('no such test in the published archives; reach this page from a block’s test history');
           return;
         }
-        nameEl.textContent = test;
+        nameEl.textContent = test + ' — ' + seriesLabel(series);
         document.title = test + ' — Test Detail';
 
         var cells = tests[test];
@@ -755,8 +821,6 @@
 
         statusEl.className = 'dashboard-status';
         statusEl.textContent =
-          flow +
-          ' — ' +
           tally.passed +
           ' passed, ' +
           tally.flaky +
@@ -785,149 +849,195 @@
    */
   function renderTestHistory(statusEl, nameEl, wrapEl, chartEl) {
     var fail = failWith(statusEl);
-    var requested = new URLSearchParams(window.location.search).get('flow');
+    var wanted = selector();
     var backEl = document.getElementById('dashboard-history-back');
+
+    /**
+     * Draw one series' grid, in its own element below any already drawn.
+     * @param {!Object} series One entry of test-history.json's series.
+     * @param {!HTMLElement} host Element to draw the grid into.
+     */
+    function heatmap(series, host) {
+      var runs = series.runs || [];
+      var tests = series.tests || {};
+      var names = Object.keys(tests).sort();
+      if (!runs.length || !names.length) return;
+
+      // One record per cell, carrying the seed counts for the tooltip.
+      var cells = [];
+      names.forEach(function (name, y) {
+        (tests[name] || []).forEach(function (counts, x) {
+          var state = historyState(counts);
+          cells.push({
+            value: [x, y, 1],
+            counts: counts,
+            state: state,
+            itemStyle: { color: HISTORY_COLOURS[state] },
+          });
+        });
+      });
+
+      host.style.height = Math.max(400, names.length * 15 + 140) + 'px';
+
+      var chart = echarts.init(host, null, { renderer: 'svg' });
+      chart.setOption({
+        aria: { enabled: true },
+        animation: false,
+        // ECharts writes its text and axis styling inline, which a
+        // stylesheet cannot override, so both are taken from the theme here.
+        textStyle: {
+          fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+          color: themeValue('--oca-text', '#484848'),
+        },
+        grid: { left: 270, right: 24, top: 56, bottom: 64 },
+        tooltip: {
+          backgroundColor: themeValue('--oca-cream-light', '#f8f4eb'),
+          borderColor: themeValue('--oca-green', '#103525'),
+          textStyle: {
+            color: themeValue('--oca-text', '#484848'),
+            fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+          },
+          // Returned as a node rather than as markup, so a published value
+          // cannot carry HTML into the page.
+          formatter: function (params) {
+            var cell = cells[params.dataIndex];
+            var tip = document.createElement('div');
+
+            var name = document.createElement('div');
+            name.textContent = names[cell.value[1]];
+            tip.appendChild(name);
+
+            var outcome = runs[cell.value[0]].date + ': ' + cell.state;
+            if (cell.counts) {
+              outcome += ' (' + cell.counts.pass + '/' + cell.counts.total + ')';
+            }
+            var detail = document.createElement('div');
+            detail.textContent = outcome;
+            tip.appendChild(detail);
+
+            return tip;
+          },
+        },
+        // The legend is driven by scatter series carrying no data; a heatmap
+        // series has one name and so cannot label four outcomes.
+        legend: {
+          top: 8,
+          data: HISTORY_STATES,
+          // A key, not a control: clicking an entry must not hide its cells.
+          selectedMode: false,
+          textStyle: { color: themeValue('--oca-text', '#484848'), fontSize: 11 },
+        },
+        xAxis: {
+          type: 'category',
+          data: runs.map(function (run) {
+            return run.date.slice(5);
+          }),
+          axisLabel: {
+            rotate: 90,
+            fontSize: 10,
+            color: themeValue('--oca-text', '#484848'),
+          },
+          axisLine: { lineStyle: { color: GRID_LINE } },
+          axisTick: { show: false },
+          splitArea: { show: false },
+        },
+        yAxis: {
+          type: 'category',
+          data: names,
+          // Lets the test names be clicked, not just the cells.
+          triggerEvent: true,
+          // Without interval, ECharts drops every other name to avoid
+          // collisions, leaving half the rows unlabelled.
+          axisLabel: { fontSize: 9, color: LINK_COLOUR, interval: 0 },
+          axisLine: { lineStyle: { color: GRID_LINE } },
+          axisTick: { show: false },
+          splitArea: { show: false },
+        },
+        series: [
+          {
+            type: 'heatmap',
+            data: cells,
+            itemStyle: { borderWidth: 0.5, borderColor: '#ffffff' },
+          },
+        ].concat(
+          HISTORY_STATES.map(function (state) {
+            return {
+              name: state,
+              type: 'scatter',
+              data: [],
+              itemStyle: { color: HISTORY_COLOURS[state] },
+            };
+          })
+        ),
+      });
+
+    chart.on('click', function (params) {
+      if (params.componentType !== 'yAxis') return;
+      var name = knownName(tests, params.value);
+      if (!name) return;
+      var url = new URL('dashboard-test-detail.html', window.location.href);
+      addIdentity(url, series);
+      url.searchParams.set('test', name);
+      window.location.href = url.href;
+    });
+
+    if (window.ResizeObserver) {
+        new ResizeObserver(function () {
+          chart.resize();
+        }).observe(host);
+      }
+
+      return { tests: names.length, runs: runs };
+    }
 
     fetchJson(TEST_HISTORY_URL)
       .then(function (history) {
-        var runs = history.runs || [];
-        var flows = history.flows || {};
-        var flow = knownName(flows, requested);
-        backTo(backEl, 'dashboard-block.html', flow, flow);
-        if (!flow) {
+        var series = (history.series || []).filter(function (entry) {
+          return matches(entry, wanted);
+        });
+        backTo(
+          backEl,
+          'dashboard-block.html',
+          series[0],
+          series.length ? seriesLabel(series[0]) : ''
+        );
+        if (!series.length) {
           fail('no such block in the published archives; reach this page from the dashboard');
           return;
         }
-        nameEl.textContent = flow;
-        document.title = flow + ' — Test History';
 
-        var tests = flows[flow];
-        var names = Object.keys(tests).sort();
-        if (!runs.length || !names.length) {
+        nameEl.textContent = wanted.flow ? seriesLabel(wanted) : 'Test history';
+        document.title = (wanted.flow ? seriesLabel(wanted) : 'Test') + ' — Test History';
+        wrapEl.hidden = false;
+
+        var drawn = [];
+        series.forEach(function (entry) {
+          // Each series gets its own element, so several stack down the page
+          // rather than one overwriting another.
+          var host = chartEl;
+          if (series.length > 1) {
+            var heading = document.createElement('h4');
+            heading.textContent = seriesLabel(entry);
+            chartEl.appendChild(heading);
+            host = document.createElement('div');
+            host.className = 'dashboard-chart';
+            chartEl.appendChild(host);
+          }
+          var shown = heatmap(entry, host);
+          if (shown) drawn.push(shown);
+        });
+
+        if (!drawn.length) {
           fail('the published archives contain no test results');
           return;
         }
 
-        // One record per cell, carrying the seed counts for the tooltip.
-        var cells = [];
-        names.forEach(function (name, y) {
-          (tests[name] || []).forEach(function (counts, x) {
-            var state = historyState(counts);
-            cells.push({
-              value: [x, y, 1],
-              counts: counts,
-              state: state,
-              itemStyle: { color: HISTORY_COLOURS[state] },
-            });
-          });
-        });
-
-        wrapEl.hidden = false;
-        chartEl.style.height = Math.max(400, names.length * 15 + 140) + 'px';
-
-        var chart = echarts.init(chartEl, null, { renderer: 'svg' });
-        chart.setOption({
-          aria: { enabled: true },
-          animation: false,
-          // ECharts writes its text and axis styling inline, which a
-          // stylesheet cannot override, so both are taken from the theme here.
-          textStyle: {
-            fontFamily: themeValue('--oca-font-body', 'sans-serif'),
-            color: themeValue('--oca-text', '#484848'),
-          },
-          grid: { left: 270, right: 24, top: 56, bottom: 64 },
-          tooltip: {
-            backgroundColor: themeValue('--oca-cream-light', '#f8f4eb'),
-            borderColor: themeValue('--oca-green', '#103525'),
-            textStyle: {
-              color: themeValue('--oca-text', '#484848'),
-              fontFamily: themeValue('--oca-font-body', 'sans-serif'),
-            },
-            formatter: function (params) {
-              var cell = cells[params.dataIndex];
-              return (
-                names[cell.value[1]] +
-                '<br>' +
-                runs[cell.value[0]].date +
-                ': ' +
-                cell.state +
-                (cell.counts ? ' (' + cell.counts.pass + '/' + cell.counts.total + ')' : '')
-              );
-            },
-          },
-          // The legend is driven by scatter series carrying no data; a heatmap
-          // series has one name and so cannot label four outcomes.
-          legend: {
-            top: 8,
-            data: HISTORY_STATES,
-            // The entries label the colours rather than toggling anything, so
-            // the series they name stay shown.
-            selectedMode: false,
-            textStyle: { color: themeValue('--oca-text', '#484848'), fontSize: 11 },
-          },
-          xAxis: {
-            type: 'category',
-            data: runs.map(function (run) {
-              return run.date.slice(5);
-            }),
-            axisLabel: {
-              rotate: 90,
-              fontSize: 10,
-              color: themeValue('--oca-text', '#484848'),
-            },
-            axisLine: { lineStyle: { color: GRID_LINE } },
-            axisTick: { show: false },
-            splitArea: { show: false },
-          },
-          yAxis: {
-            type: 'category',
-            data: names,
-            // Lets the test names be clicked, not just the cells.
-            triggerEvent: true,
-            // Without interval, ECharts drops every other name to avoid
-            // collisions, leaving half the rows unlabelled.
-            axisLabel: { fontSize: 9, color: LINK_COLOUR, interval: 0 },
-            axisLine: { lineStyle: { color: GRID_LINE } },
-            axisTick: { show: false },
-            splitArea: { show: false },
-          },
-          series: [
-            {
-              type: 'heatmap',
-              data: cells,
-              itemStyle: { borderWidth: 0.5, borderColor: '#ffffff' },
-            },
-          ].concat(
-            HISTORY_STATES.map(function (state) {
-              return {
-                name: state,
-                type: 'scatter',
-                data: [],
-                itemStyle: { color: HISTORY_COLOURS[state] },
-              };
-            })
-          ),
-        });
-
-        chart.on('click', function (params) {
-          if (params.componentType !== 'yAxis') return;
-          var name = knownName(tests, params.value);
-          if (!name) return;
-          var url = new URL('dashboard-test-detail.html', window.location.href);
-          url.searchParams.set('flow', flow);
-          url.searchParams.set('test', name);
-          window.location.href = url.href;
-        });
-
-        if (window.ResizeObserver) {
-          new ResizeObserver(function () {
-            chart.resize();
-          }).observe(chartEl);
-        }
-
+        var runs = drawn[0].runs;
         statusEl.className = 'dashboard-status';
         statusEl.textContent =
-          names.length +
+          drawn.length +
+          (drawn.length === 1 ? ' series, ' : ' series, up to ') +
+          Math.max.apply(null, drawn.map(function (d) { return d.tests; })) +
           ' tests across ' +
           runs.length +
           ' runs, ' +
@@ -937,7 +1047,7 @@
           '.';
       })
       .catch(function (error) {
-        backTo(backEl, 'dashboard-block.html', '', '');
+        backTo(backEl, 'dashboard-block.html', null, '');
         fail(error.message);
       });
   }

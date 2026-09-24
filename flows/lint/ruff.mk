@@ -35,7 +35,8 @@ ocah-lint-python:
 .PHONY: ocah-lint-python-fix
 ocah-lint-python-fix:
 	$(ocah_python_check_paths)
-	$(RUFF) check --fix $(PYTHON_PATH)
+	$(RUFF) check $(OCAH_LINT_RUFF_EXTRA_FLAGS) --fix $(PYTHON_PATH)
+
 
 ## @section Format (ruff)
 
@@ -44,14 +45,14 @@ ocah-lint-python-fix:
 .PHONY: ocah-format-python
 ocah-format-python:
 	$(ocah_python_check_paths)
-	$(RUFF) format $(PYTHON_PATH)
+	$(RUFF) format $(OCAH_FORMAT_RUFF_EXTRA_FLAGS) $(PYTHON_PATH)
 
 ## Check Python formatting without modifying files.
 ## @param PYTHON_PATH=tools Optional space-separated paths; default tools scripts hw .github
 .PHONY: ocah-format-python-check
 ocah-format-python-check:
 	$(ocah_python_check_paths)
-	$(RUFF) format --check $(PYTHON_PATH)
+	$(RUFF) format $(OCAH_FORMAT_RUFF_EXTRA_FLAGS) --check $(PYTHON_PATH)
 
 OCAH_PHONY += ocah-lint-python ocah-lint-python-fix
 OCAH_PHONY += ocah-format-python ocah-format-python-check

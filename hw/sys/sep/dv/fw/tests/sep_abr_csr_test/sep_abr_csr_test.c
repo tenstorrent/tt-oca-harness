@@ -5,8 +5,8 @@
  * SEP Adams Bridge CSR identity test.
  *
  * Reachability + identity smoke: reads the ML-DSA NAME/VERSION CSRs through the
- * SEP local fabric (AXI -> axi4_to_ahb -> AB AHB) at the ABR aperture and checks
- * NAME == "MLDSA-87". No crypto operation, so it is fast.
+ * SEP local fabric (AXI -> AXI4-Lite -> axi_lite_to_ahb -> AB AHB) at the ABR
+ * aperture and checks NAME == "MLDSA-87". No crypto operation, so it is fast.
  */
 
 #include <stdint.h>

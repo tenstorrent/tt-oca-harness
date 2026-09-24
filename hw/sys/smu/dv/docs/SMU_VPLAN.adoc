@@ -4231,6 +4231,7 @@ Two things are worth reading before the entries:
 * Every step reconciles its cell count against the AR and AW handshakes the port accepted, counted on the `ext_in_*` pins rather than in the master.
 * AxATOP is not driven. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package carries no ATOP driver, so this leaf makes no ATOP claim, as `smu_axi_atomic_operation_test` records for the same reason.
 * Shrinking BASE_CONFIG.REGION_SIZE so the local aperture ends at the adopter external window puts that window outside the chiplet, and a JTAG2AXI write to it crosses `smu_axi_out`. The outbound write count moves by exactly one, the boundary carries the address the SMC was given with `w.last` and an OKAY `b.resp`, and the bench responder's memory holds the word.
+* Regrowing REGION_SIZE to its reset value is the reprogram state of the SMC aperture map (`smu_xbar_fcov` `c_map_smc_size_reprogrammed`). The zero-window state (`c_map_smc_size_zero`) is not driven: `smu_axi_xbar` forms the crossbar rule as `end = base + size`, so a zero size gives `start == end`, which the decoder's own map check (`addr_decode_dync` `check_start`) rejects; on VCS that assertion fails the leaf, and on the wrapper boundary the closed aperture routes even BASE_CONFIG writes out on `smu_axi_out`, so the aperture would reopen only by reset. Whether zero is a legal state is open with the SMU owner and carried in the coverage policy.
 
 *Test Procedure*:
 
@@ -4240,6 +4241,7 @@ Two things are worth reading before the entries:
 . Reprogram entries 0 and 1 as single-beat granules at VERSION_LO and SCRATCH_COLD with `allow_burst = 0`, and require DECERR for AxLEN `0xFF`, `0xAA`, `0x55` and for four-beat FIXED, INCR and WRAP on both channels, with the AxLEN 0 transfer at the same address still admitted.
 . Disable both entries, shrink BASE_CONFIG.REGION_SIZE to end the local aperture at the external window, and check the shrunk value reaches `smc_region_size_o`.
 . Write one word over JTAG2AXI to the external window base, wait for the outbound write count to move, and compare the boundary address, `w.last`, `b.resp` and the responder's memory against the contract.
+. Write REGION_SIZE back to its reset value and check `smc_region_size_o` and the JTAG2AXI readback carry it.
 
 *Checkers*:
 
@@ -4252,6 +4254,7 @@ Two things are worth reading before the entries:
 |`CHK-AXIIN-ATTR-LEN` |with `allow_burst = 0` the AxLEN `0xFF`, `0xAA` and `0x55` transfers are refused with DECERR on both channels while AxLEN 0 at the same address is admitted and carries the VERSION_LO reset value
 |`CHK-AXIIN-ATTR-BURST` |the same entries refuse a four-beat FIXED, INCR and WRAP transfer with DECERR on both channels
 |`CHK-AXIOUT-WRITE` |one SMC write above the shrunk local aperture moves the outbound write count by exactly one, raises `aw_valid`, `w_valid`, `w.last` and `b_valid` on `smu_axi_out`, returns OKAY on `b.resp` at the address the SMC was given, and leaves the written word in the bench responder
+|`CHK-SMCMAP-SIZE` |REGION_SIZE regrown to its reset value reaches `smc_region_size_o` within 64 `clk_smu` cycles and reads back over JTAG2AXI
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.

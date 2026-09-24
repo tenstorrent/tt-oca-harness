@@ -60,6 +60,46 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_filter_config_field_sweep_test"
+module = "smc_filter_config_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_region_span_test"
+module = "smc_filter_region_span_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_decouple_rw_test"
+module = "smc_dma_decouple_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_data_ctrl_field_test"
+module = "smc_gpio_data_ctrl_field_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_region_attrs_test"
+module = "smc_alias_remap_region_attrs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_filter_field_sweep_test"
 module = "smc_filter_field_sweep_test"
 seed = 1

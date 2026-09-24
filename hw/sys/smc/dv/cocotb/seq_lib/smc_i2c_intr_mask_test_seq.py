@@ -47,6 +47,41 @@ CMD_COMPLETE_STATE = _field_mask(_I2C_H, "I2C__INTR_STATE__CMD_COMPLETE_bm")
 CMD_COMPLETE_ENABLE = _field_mask(_I2C_H, "I2C__INTR_ENABLE__CMD_COMPLETE_bm")
 CMD_COMPLETE_TEST = _field_mask(_I2C_H, "I2C__INTR_TEST__CMD_COMPLETE_bm")
 
+# The twenty interrupt sources, split by how `i2c_core.sv` drives them, as
+# `i2c.rdl` declares them. A latched source has `INTR_STATE` `sw = rw` with
+# `woclr` and an `INTR_TEST` field that is `sw = w` with `singlepulse`: one
+# write raises it and only a W1C clears it. A level source has `INTR_STATE`
+# `sw = r` and an `INTR_TEST` field that is plain `rw`, so it follows that
+# field and is released by writing it back to 0.
+_LATCHED_SOURCES = (
+    "RX_OVERFLOW",
+    "SCL_INTERFERENCE",
+    "SDA_INTERFERENCE",
+    "STRETCH_TIMEOUT",
+    "SDA_UNSTABLE",
+    "CMD_COMPLETE",
+    "UNEXP_STOP",
+    "HOST_TIMEOUT",
+    "SMBALERT",
+    "CONTROLLER_TX_FIFO_ERROR",
+    "CONTROLLER_RX_FIFO_ERROR",
+    "TARGET_TX_FIFO_ERROR",
+    "TARGET_RX_FIFO_ERROR",
+)
+_LEVEL_SOURCES = (
+    "FMT_THRESHOLD",
+    "RX_THRESHOLD",
+    "ACQ_THRESHOLD",
+    "CONTROLLER_HALT",
+    "TX_STRETCH",
+    "TX_THRESHOLD",
+    "ACQ_STRETCH",
+)
+# Every source must reach the output on its own. A source the bench holds
+# asserted cannot be swept from a measured clear, so it is reported and
+# skipped; the sweep still has to carry most of the map.
+_MIN_SWEPT_SOURCES = 16
+
 # The IRQ crosses smc_peripherals_cdc's flop plus a synchroniser, so a sample
 # taken immediately after a CSR write would read the pre-write value. Bounded:
 # expiry is a failure and reports the last value seen.
@@ -96,6 +131,63 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
             f"{label}: tb_i2c_irq[{_I2C0}] left {want} after {broke[0]} of "
             f"{_HOLD} hold cycles (read {broke[1]})"
         )
+
+    async def _sweep_source(self, dut, name: str, latched: bool) -> str | None:
+        """Raise one source alone and require the output to follow it.
+
+        Returns a failure description, or None when the source rose with its
+        own enable set and fell again when it was released.
+        """
+        state_bm = _field_mask(_I2C_H, f"I2C__INTR_STATE__{name}_bm")
+        enable_bm = _field_mask(_I2C_H, f"I2C__INTR_ENABLE__{name}_bm")
+        test_bm = _field_mask(_I2C_H, f"I2C__INTR_TEST__{name}_bm")
+
+        # Only this source is enabled, so the output carries this term of the
+        # reduction and no other.
+        await self.csr_write(f"I2C_INTR_ENABLE_{name}", I2C_INTR_ENABLE, enable_bm)
+        await self._wait_irq(dut, 0, f"{name} quiet")
+
+        await self.csr_write(f"I2C_INTR_TEST_{name}", I2C_INTR_TEST, test_bm)
+        raised = await self.csr_read(f"I2C_INTR_STATE_{name}", I2C_INTR_STATE)
+        if (raised & state_bm) != state_bm:
+            return (
+                f"{name}: INTR_TEST 0x{test_bm:x} did not set INTR_STATE "
+                f"(0x{raised:x}, wanted 0x{state_bm:x} set)"
+            )
+        try:
+            await self._wait_irq(dut, 1, f"{name} rise")
+        except AssertionError as exc:
+            return f"{name}: {exc}"
+
+        if latched:
+            await self.csr_write(f"I2C_INTR_STATE_W1C_{name}", I2C_INTR_STATE, state_bm)
+        else:
+            await self.csr_write(f"I2C_INTR_TEST_OFF_{name}", I2C_INTR_TEST, 0)
+        try:
+            await self._wait_irq(dut, 0, f"{name} fall")
+        except AssertionError as exc:
+            return f"{name}: {exc}"
+        cleared = await self.csr_read(f"I2C_INTR_STATE_CLR_{name}", I2C_INTR_STATE)
+        if (cleared & state_bm) != 0:
+            return (
+                f"{name}: the output fell but INTR_STATE keeps the bit "
+                f"(0x{cleared:x}); the release must clear the source, not the "
+                f"output alone"
+            )
+        return None
+
+    async def _clear_source(self, dut, name: str, latched: bool) -> bool:
+        """True when the source reads clear, after a W1C if it needs one."""
+        state_bm = _field_mask(_I2C_H, f"I2C__INTR_STATE__{name}_bm")
+        state = await self.csr_read(f"I2C_INTR_STATE_PRE_{name}", I2C_INTR_STATE)
+        if (state & state_bm) == 0:
+            return True
+        if latched:
+            await self.csr_write(f"I2C_INTR_STATE_PREW1C_{name}", I2C_INTR_STATE, state_bm)
+        else:
+            await self.csr_write(f"I2C_INTR_TEST_PREOFF_{name}", I2C_INTR_TEST, 0)
+        state = await self.csr_read(f"I2C_INTR_STATE_PRE2_{name}", I2C_INTR_STATE)
+        return (state & state_bm) == 0
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -221,6 +313,44 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
             )
 
         await self.csr_write("I2C_INTR_STATE_W1C_POST", I2C_INTR_STATE, CMD_COMPLETE_STATE)
+
+        # ---- Sweep: every source reaches the output through its own term ----
+        # The legs above exercise one source. `irq_o` is a twenty-term
+        # reduction, and a term is only proved by a source that is the sole
+        # enabled one when the output moves.
+        swept: list[str] = []
+        held: list[str] = []
+        for name, latched in [(n, True) for n in _LATCHED_SOURCES] + [
+            (n, False) for n in _LEVEL_SOURCES
+        ]:
+            if not await self._clear_source(dut, name, latched):
+                held.append(name)
+                continue
+            failure = await self._sweep_source(dut, name, latched)
+            if failure is None:
+                swept.append(name)
+            else:
+                failures.append(f"CHK-I2C-INTR-MASK-EVERY-SOURCE: {failure}")
+        await self.csr_write("I2C_INTR_ENABLE_SWEPT_OFF", I2C_INTR_ENABLE, 0)
+        if len(swept) < _MIN_SWEPT_SOURCES:
+            failures.append(
+                f"CHK-I2C-INTR-MASK-EVERY-SOURCE: only {len(swept)} of "
+                f"{len(_LATCHED_SOURCES) + len(_LEVEL_SOURCES)} sources were swept from a "
+                f"measured clear, below the {_MIN_SWEPT_SOURCES} this leg requires "
+                f"(held by the bench: {', '.join(held) or 'none'})"
+            )
+        elif not failures:
+            cocotb.log.info(
+                "CHK-I2C-INTR-MASK-EVERY-SOURCE: %d of %d interrupt sources each raised "
+                "tb_i2c_irq[%d] as the only enabled source and released it again: %s "
+                "(held asserted by the bench and skipped: %s)",
+                len(swept),
+                len(_LATCHED_SOURCES) + len(_LEVEL_SOURCES),
+                _I2C0,
+                ", ".join(swept),
+                ", ".join(held) or "none",
+            )
+
         await self.csr_write("I2C_CG_RESTORE", CLOCK_GATE_CONTROL, cg)
 
         assert not failures, "\n".join(failures)

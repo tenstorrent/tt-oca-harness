@@ -34,11 +34,33 @@ combined classical + PQC signing is deferred to a later release.
 * AXI4 control/status bus slave interface, bridged to the core's native AHB-lite
 
 ABR is the one accelerator in the subsystem that is not an OpenTitan TL-UL
-design, so it does not use the standard three-stage bus pipeline.
-`sep_crypto_abr_wrapper` bridges its 64-bit AXI4 slave port straight to AHB-lite
-with the same `axi4_to_ahb` bridge that `sep_cpu` instantiates, and drives
-`abr_top`. The wrapper occupies a 64 kB aperture at `0x1094_0000`, decoded as
-port `SepCryptoAxiAbr` of the crypto demux.
+design, so its bus pipeline ends in AHB-lite rather than TL-UL.
+`sep_crypto_abr_wrapper` narrows its 64-bit AXI4 slave port to 32 bits,
+converts it to AXI4-lite, and drives `abr_top` through `axi_lite_to_ahb`, which
+issues one single AHB transfer at a time and returns its response before it
+accepts the next access. The wrapper occupies a 64 kB aperture at
+`0x1094_0000`, decoded as port `SepCryptoAxiAbr` of the crypto demux.
+
+[[abr-access-size,ABR access size]]
+Every ABR register is 32 bits wide, and the aperture is accessed in words:
+
+* A 32-bit access reads or writes one register.
+* A 64-bit access at an 8-byte-aligned address is carried out as two 32-bit
+  accesses to the two registers it covers, low address first. A 64-bit access
+  whose address has bit 2 set reaches only the upper register.
+* Each word of a write is taken by its own strobe. A word whose strobe is empty
+  is not written, so a 64-bit write that strobes one word writes that word
+  alone, with OKAY. A word whose strobe is partial is not written, and the
+  access is answered with SLVERR; in a 64-bit write the other word is still
+  written when its strobe is full. `abr_top` ties the register block's byte
+  enables high and the AHB slave zero-extends a narrow write, so a partial
+  write would otherwise overwrite the rest of the register.
+* A narrow read is performed as a read of the whole register that contains it.
+  Only the bytes it names are returned; the other byte lanes read as zero.
+
+Any number of reads and writes may be outstanding on the aperture from any mix
+of masters. They are performed one at a time, and each returns the value of the
+address it names.
 
 [[abr-aperture-decode]]
 Inside that aperture there is no further decode. The vendored register block
@@ -49,9 +71,11 @@ them unused -- most on a 4 kB boundary, the interrupt block at `0x8100`,
 `MLKEM_MSG` at `0x9080` and `MLKEM_CIPHERTEXT` at `0xB800` -- and the map ends
 at `0xC018`, leaving the last 16,360 bytes undefined.
 
-An access to any unpopulated offset completes with `OKAY`. A write is discarded;
-a read returns `0x0000_0000`. ABR never drives `hresp` to error, so the AHB error
-response its slave interface implements is unreachable. This is narrower than
+A word access to any unpopulated offset completes with `OKAY`: a write is
+discarded and a read returns `0x0000_0000`. A partial-word write is answered
+with SLVERR wherever it lands (<<abr-access-size>>). ABR never drives `hresp`
+to error, so the AHB error response its slave interface implements is
+unreachable. This is narrower than
 every other answer in the subsystem: an address outside the aperture, or any
 ifdef::backend-html5[]
 burst, is answered with DECERR by the demux (xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]), and
