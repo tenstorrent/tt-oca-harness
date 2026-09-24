@@ -27,7 +27,3 @@ voltage regulator control and firmware-driven Performance State (P-State)
 management. At the RTL level, the SMU accepts a `powergood_i` input that
 indicates supply stability and exposes `isolate_req_o[31:0]` to request
 isolation of individual subsystem domains before power transitions.
-
-NOTE: The annotated power-domain diagram is pending from Tenstorrent.
-The domain relationships described above remain the reference until that
-figure is available.
