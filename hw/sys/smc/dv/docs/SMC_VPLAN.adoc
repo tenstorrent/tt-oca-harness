@@ -8458,6 +8458,44 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-238-smc_i2c_controller_control_symbol_test]]
+===== 238 `smc_i2c_controller_control_symbol_test`
+
+*Source Module*: `smc_i2c_controller_control_symbol_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that makes the edge; observation on `INTR_STATE.SDA_UNSTABLE` and `STATUS.HOSTIDLE`
+
+*Objective*: An SDA edge inside an SCL high window is a START or a STOP, and the controller must report it and drop the transfer.
+
+*Test Coverage*:
+
+* The control-symbol check the controller makes in every state where it holds SCL released. `smc_i2c_controller_sda_interference_test` pulls SDA low at time offsets measured in bit periods, which lands the edge wherever it falls -- with this controller's timing usually while SCL is low, where it is a different event. This leaf counts SCL rising edges from the START on the bus and pulls inside the high window of a chosen one, so the edge is a control symbol by construction and lands in a chosen slot.
+* The two slots where the line is high because it is released: the acknowledge of an address nobody answers, and a one bit of a byte the target is returning.
+* The pull is released inside the same high window, because one that outlasts the slot reaches a state where the controller drives the line and is interference there instead.
+* The slot numbering is anchored on the START seen on the pads, not on a status read: a poll returns some cycles after the controller leaves idle, by which time bits have already been clocked, which a first version of this leaf measured as a slot two positions out.
+
+*Known limitation*: the other two slots where the controller holds SCL released -- a bit it is transmitting, and the not-acknowledge it drives after a read -- are high only because the controller is driving them. An external pull there is interference, which the design detects from the level alone and acts on a cycle before the control-symbol check, which needs two consecutive samples. Both are left uncovered rather than claimed.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads, and run one uninterrupted write.
+. For each slot: re-enable the controller from scratch, arm the injector, queue the transfer, wait for the START on the bus, count SCL rises and pull SDA low inside the chosen one.
+. Require `INTR_STATE.SDA_UNSTABLE` and a return to idle.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-SYMBOL-CLEAN` |An uninterrupted write reached the target and left `SDA_UNSTABLE` clear
+|`CHK-I2C-CTRL-SYMBOL-UNSTABLE` |An edge made inside a chosen SCL high window raised `SDA_UNSTABLE` and returned the controller to idle, at both slots
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Nothing is asserted about the transfer after an injection: on this DUT the next transaction from the same controller is NACKed even once the events are cleared, so each leg re-enables the controller from scratch. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan

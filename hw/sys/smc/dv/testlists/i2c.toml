@@ -221,6 +221,14 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_i2c_controller_control_symbol_test"
+module = "smc_i2c_controller_control_symbol_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_i2c_controller_stretch_test"
 module = "smc_i2c_controller_stretch_test"
 seed = 1
