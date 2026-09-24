@@ -8,15 +8,15 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/dashboard-data/history.json",
-    "history_points": 6,
+    "history_points": 7,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/dashboard-data/summary.json",
     "tests": {
-      "failing": 3,
+      "failing": 17,
       "incomplete_runs": 0,
-      "pass_rate": 98.2,
-      "passing": 164,
+      "pass_rate": 89.94,
+      "passing": 152,
       "skipped": 0,
-      "total": 167,
+      "total": 169,
       "unknown": 0
     }
   },
@@ -25,14 +25,14 @@
     "sep: native status=ERROR",
     "sep: normalized status=FAIL"
   ],
-  "generated_at": "2026-09-23T13:52:14.287967+00:00",
+  "generated_at": "2026-09-24T00:26:55.390267+00:00",
   "git": {
-    "commit": "f0f803ac84e70a0ba84ca8677803cc9380395a36",
-    "requested_ref": "f0f803ac84e70a0ba84ca8677803cc9380395a36"
+    "commit": "e3ee969741c5aa492c79bfab8623e79904572b9d",
+    "requested_ref": "e3ee969741c5aa492c79bfab8623e79904572b9d"
   },
   "jenkins": {
-    "build_number": "30",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/cocotb/30/",
+    "build_number": "31",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/cocotb/31/",
     "job_name": "tt-oca-harness/sep/cocotb",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/cocotb/"
   },
