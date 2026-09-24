@@ -36,7 +36,10 @@ partial read costs far more time than a full one.
 | `doc/starting/` | Getting Started/Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
 | `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
-| `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
+| `scripts/docker-run.sh` | Container subcommands — read the script header for env vars |
+| `scripts/docker.md` | Container subcommands, all environment variables, bubblewrap backend, GID fixup |
+| `nix/nix-infrastructure.md` | Nix flake structure, dev shell and container variants, adding packages, reproducibility |
+| `nix/glossary.md` | Plain-English definitions of Nix concepts (flake, derivation, overlay, dev shell) |
 | A testbench's own `README` — `hw/<ip\|sys>/<block>/dv/<tb dir>/README.md` or `.adoc` | Testbench usage, regression mechanics, log file locations |
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
@@ -45,6 +48,12 @@ partial read costs far more time than a full one.
 products included, since the TRM links to their pages. Its Make dependencies
 and container equivalent are defined in `doc/trm/doc.mk` and
 `scripts/docker-run.sh`; `antora-trm-playbook.yml` selects the content.
+
+The TRM PDF includes every generated map in the open register inventory.
+`doc/trm/doc.mk` passes that inventory to `tools/doc/register_map_coverage.rb`,
+which rejects missing maps, incomplete register sections and sections below the
+contents or bookmark depth. Include new maps beneath their owning block and
+identify integration reference models explicitly.
 
 ## Environment Setup
 
@@ -85,14 +94,13 @@ Provide the equivalents yourself:
   testbench expects.
 - Python 3 for cocotb and the register/DV tooling.
 - A container engine — Docker or Podman — for the firmware toolchain image, which
-  `scripts/docker-run.sh build` builds locally from `tools/docker/Dockerfile`.
+  `scripts/docker-run.sh build` builds locally from the Nix flake (`nix/container.nix`).
 - `TMPDIR` pointed at a large local scratch directory (see below).
 
 Nothing here is exotic. `scripts/docker-run.sh` documents its own environment variables in its
 header, and with the optional ones unset — notably `OCAH_DOCKER_CACHE_DIR` and
-`OCAH_TOOLCHAIN_ROOTFS` — it builds and runs the image itself, which is the behaviour
-`tools/docker/README.md` documents as the default. Doc builds, register generation, lint and
-format targets need no site tooling at all.
+`OCAH_TOOLCHAIN_ROOTFS` — it builds and runs the image itself. Doc builds, register generation,
+lint and format targets need no site tooling at all.
 
 ### Work from the physical path if your checkout is reached through a symlink
 
@@ -105,6 +113,10 @@ Error: workdir "<symlinked path>" does not exist on container …
 ```
 
 Use `cd -P` (or `pwd -P`) so both agree. Harmless if your checkout is not symlinked.
+
+A linked worktree works with the same commands. Its `.git` file points at the main
+checkout, so `scripts/docker-run.sh` uses the worktree's real path and bind-mounts
+the main git directory. See `scripts/docker.md`.
 
 ### Scratch/temp space: honour `$TMPDIR`, never `/tmp`
 
@@ -157,20 +169,71 @@ like the wrapper. Confirm the result with `podman info | grep -i graphroot`.
 Cleaning up Podman directories needs `podman unshare rm -rf …`; plain `rm -rf` fails with
 permission errors because the files are user-namespace mapped.
 
-## Containers and the firmware toolchain
+## Nix environment and the firmware toolchain
 
-The RISC-V DV firmware toolchain normally comes from the `ocah-toolchain` container image.
+The project uses Nix to provide a reproducible, identical environment for every contributor
+without system-wide installs. If Nix concepts are unfamiliar, read `nix/glossary.md` first.
+`nix/nix-infrastructure.md` describes the flake structure in full.
+
+### Dev shell
+
+`nix develop` puts all project tools (`bender`, `verilator`, `uv`, formatters, linters, …)
+on `PATH` for the current terminal session without touching the system. Closing the shell
+restores the original environment exactly.
+
+```bash
+nix develop                   # default (without_uv_deps)
+nix develop .#with_uv_deps    # with pre-built Python venv (needed on NixOS)
+```
+
+With [direnv](https://github.com/direnv/direnv) installed, `direnv allow` in the repo root
+activates the dev shell automatically on `cd`. This is the most convenient setup for users
+who will run many commands: they do not need to prefix anything with `nix develop --command`.
+
+The dev shell and the container image draw from the same package set (`ocah_deps.nix`). The
+container is used specifically for the RISC-V firmware toolchain when targeting a block's DV
+firmware — not for most other tasks.
+
+### Two container variants
+
+The Nix flake builds two OCI images. `scripts/docker-run.sh` selects between them:
+
+| Image | `OCAH_IMAGE_WITH_UV` | When to use |
+|---|---|---|
+| `ocah-container` (`without_uv_deps`) | `false` (default) | Normal use; `uv` is present and syncs packages on demand |
+| `ocah-uv-container` (`with_uv_deps`) | `true` | Air-gapped hosts or NixOS where the venv cannot sync from the network |
+
+Both images include `uv`. The `with_uv_deps` image additionally pre-builds the full Python
+venv so no network access is needed at runtime.
+
+### No package manager inside the container
+
+`apt`, `yum`, and similar tools are absent. The container has no package manager. To add a
+package, edit `ocah_deps.nix` (for packages that should also appear in the dev shell) or
+`nix/container.nix` (container-only), then rebuild with `./scripts/docker-run.sh build`.
+Read `nix/nix-infrastructure.md` before editing either file.
+
+### New `.nix` files must be staged before Nix can see them
+
+Nix flakes only operate on files Git knows about. A new `nix/packages/foo.nix` that has not
+been `git add`-ed does not exist as far as `nix build` or `nix develop` is concerned — there
+is no error, the file is simply invisible. Stage every new `.nix` file before evaluating or
+building.
+
+### The firmware toolchain container
+
+The RISC-V DV firmware toolchain comes from the container image.
 All subsystems compile with `--specs=picolibc.specs`, and a stock or site RISC-V toolchain
 often lacks picolibc, so a native build fails with a message pointing you back at the
 container. A host toolchain that does provide it works too — point `RISCV_TOOLCHAIN` at it.
 
 ```bash
-./scripts/docker-run.sh build     # build the image once
+./scripts/docker-run.sh build     # build the image once (via Nix)
 ./scripts/docker-run.sh verify    # prints the compiler version and multilib list
 ```
 
 With the companion's `OCAH_DOCKER_CACHE_DIR` set, `docker-run.sh` loads the image from that
-shared cache instead of building it; otherwise it builds locally from the Dockerfile.
+shared cache instead of building it; otherwise it builds locally via Nix.
 
 A testbench that builds firmware as part of its own flow dispatches those builds through
 `scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
@@ -189,23 +252,11 @@ bwrap: Can't mkdir parents for <repository path>: Read-only file system
 
 `unset OCAH_TOOLCHAIN_ROOTFS` to fall back to the container engine.
 
-### The toolchain sandbox carries no Python packages
-
-The image and the extracted rootfs both provide a bare `python3` with only the packages
-`tools/docker/Dockerfile` installs. Any build step importing `cryptography`,
-`ruamel.yaml` or similar fails there with `ModuleNotFoundError`.
-
-Keep such steps on the host, run the compile in the sandbox, and order the two so the
-host half produces what the compile consumes — as the SEP boot ROM does with
-`key-digests` and `oca-images` (`hw/sys/sep/bootrom/prod/README.md`). Adding a package
-to the Dockerfile does not reach the bwrap rootfs, which is extracted separately.
-
 ### Rebuilding the image invalidates existing firmware objects
 
-Only the Dockerfile's base image is digest-pinned; the packages installed on top of it
-float with its upstream distribution (`tools/docker/README.md` says so explicitly). A
-rebuilt image can therefore carry a different compiler and C library than the image that
-produced the objects already sitting in `hw/**/dv/fw/build/`.
+The Nix-built image pins every package, but updating the flake lock (`nix flake update`) or
+changing `nix/container.nix` produces a new image with a different compiler or C library than
+the one that built the objects already sitting in `hw/**/dv/fw/build/`.
 
 Make tracks source timestamps, not toolchain identity, so unchanged drivers are **not**
 recompiled and the link silently mixes old objects with the new C library. The resulting
@@ -532,6 +583,7 @@ open files to compensate.
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every `flow.mk` top (`dtp`, `sep`, `smc`, `smu`, `aou` today). `flows/common.mk` also globs `hw/ip/*/flow.mk`; none exist. `BLOCK=` is a top, not an IP. `make lint-slang` from a block's own flow lints that block alone |
 | SystemVerilog lint (Verilator) | `make lint-verilator-all` lints each discovered top the same way; add `BLOCK=<block…>` to restrict it |
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
+| Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
@@ -557,12 +609,12 @@ lifetime, case completeness and hierarchy labels as manual changes requiring own
 Parameter naming remains deferred to issue #1051 and is disabled in this pass.
 
 Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
-owner's `lint/` directory: `*.verible.waiver` and `*.verilator.vlt`. Central Makefiles only
-discover or pass those files, and each block `flow.mk` declares the Verilator waivers relevant
-to its elaborated top. Use the narrowest diagnostic/path/hierarchy/source match and a
-constraint-focused rationale. The CI-pinned Slang v11.0 has no native external-waiver support;
-keep its findings visible rather than substituting whole-file suppression until a release with
-TOML `--waiver-file` support is pinned.
+owner's `lint/` directory: `*.verible.waiver`, `*.verilator.vlt`, and synthesis-only
+`*.slang.expected-errors`. Central Makefiles only discover or pass those files, and each block
+`flow.mk` declares the exceptions relevant to its elaborated top. Use the narrowest
+diagnostic/path/hierarchy/source match and a constraint-focused rationale. Slang expected-error
+patterns must identify the path and message; the flow must fail if a pattern is unused or an
+additional error appears. Never replace a site-specific rule with whole-file suppression.
 
 The register generator owns `hw/common/regs/lint/peakrdl.verilator.vlt`, which the shared
 Verilator flow loads for every block. Its exact path and message matches cover only PeakRDL's

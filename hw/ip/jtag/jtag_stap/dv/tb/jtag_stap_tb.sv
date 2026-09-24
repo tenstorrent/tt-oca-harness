@@ -69,7 +69,7 @@ module jtag_stap_tb;
     .SCAN_IN_PIPE(SCAN_IN_PIPE),
     .TDI_LOCKUP(TDI_LOCKUP),
     .SCAN_OUT_LOCKUP(SCAN_OUT_LOCKUP)
-  ) dut (
+  ) u_dut (
     .client_scan_ctrl_i(client_scan_ctrl),
     .client_scan_in_i(client_scan_in),
     .client_scan_out_o(client_scan_out),

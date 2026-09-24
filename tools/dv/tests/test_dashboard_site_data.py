@@ -124,6 +124,9 @@ COVERAGE_MANIFEST = {
 }
 EFFECTIVE_METRICS = {"line": 60.0, "branch": 40.0}
 
+# The flow, framework and tool that together name one series on the site.
+SERIES = {"flow": "fixture", "framework": "cocotb", "tool": TOOL}
+
 
 def leaf_result(leaf: Leaf) -> StageResult:
     """The stage result of one attempt, as the sim stage grades it."""
@@ -189,7 +192,7 @@ def stage_result(name: str) -> StageResult:
 
 
 def normalised(document: Any) -> Any:
-    """The document with every timestamp replaced by one sentinel."""
+    """The document with one sentinel in place of every timestamp."""
     if isinstance(document, dict):
         return {
             key: GENERATED_AT if key == "generated_at" else normalised(value)
@@ -228,8 +231,8 @@ def expected_site_data(
     return {
         "summary": {
             "generated_at": GENERATED_AT,
-            "dut_status": [{"flow": "fixture", "tests_total": tests_total, "pass_rate": pass_rate}],
-            "results": [{"flow": "fixture", "coverage": {"effective_metrics": effective_metrics}}],
+            "dut_status": [{**SERIES, "tests_total": tests_total, "pass_rate": pass_rate}],
+            "results": [{**SERIES, "coverage": {"effective_metrics": effective_metrics}}],
         },
         "tests": {
             "generated_at": GENERATED_AT,
@@ -245,7 +248,7 @@ def expected_site_data(
                     "flaky_tests": flaky_tests,
                     "per_dut": [
                         {
-                            "flow": "fixture",
+                            **SERIES,
                             "coverage_status": coverage_status,
                             "effective_metrics": effective_metrics,
                         }
@@ -435,9 +438,10 @@ class SiblingStagingReaders(SiteDataCase):
         self.write_run(PASSING, coverage=True)
         record, summary, _, _ = self.publish()
         badges = render_badges.badges_for(summary["dut_status"][0], record["coverage"])
-        self.assertEqual(badges["status"][:2], ("fixture", "passing"))
-        self.assertEqual(badges["tests"][:2], ("tests", "100.0 %"))
-        self.assertEqual(badges["coverage"][:2], ("coverage", "47.5 %"))
+        series = f" ({SERIES['framework']}, {SERIES['tool']})"
+        self.assertEqual(badges["status"][:2], (f"fixture{series}", "passing"))
+        self.assertEqual(badges["tests"][:2], (f"tests{series}", "100.0 %"))
+        self.assertEqual(badges["coverage"][:2], (f"coverage{series}", "47.5 %"))
 
     def test_test_history_reads_every_attempt_with_its_reason(self):
         self.write_run(RETRIED)

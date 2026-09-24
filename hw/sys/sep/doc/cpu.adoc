@@ -99,7 +99,7 @@ first code running on the SEP host upon power on. It has the following
 features:
 
 * 64 kB capacity
-* SECDED Error Correction - single error detect double error correct
+* SECDED error correction - single-error correction, double-error detection
 ** 32-bit data + 7-bit ECC tag
 
 See {sep-rom-reference} for the hardware and firmware-image layout.
@@ -120,9 +120,8 @@ The complete boot flow is specified by the production ROM documentation under
 fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
 manifest and payload validation, secure boot, demotion, attestation and
 hand-off, with requirement identifiers and an implementation-status matrix.
-The summary below exists to place the ROM in the context of this chapter; it is
-deliberately not a second description of the same flow, because two would
-drift.
+The summary below places the ROM in the context of this chapter, the definitive
+description is in  the production ROM documentation
 
 * SEP initialization -- read configuration straps, determine boot options
 * Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)

@@ -149,7 +149,7 @@ module sep_cpu (
 
   el2_veer_wrapper #(
     .RESET_VEC(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
-  ) el2_veer_wrapper (
+  ) u_el2_veer_wrapper (
     .clk       (clk_i),
     .rst_l     (rst_ni),
     .dbg_rst_l (dbg_rstb_i),

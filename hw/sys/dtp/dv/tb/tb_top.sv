@@ -143,7 +143,7 @@ module dtp_uvm_top
   logic jtag_stap_extra0_ds_en;
 
   // DEBUG_CONTROL / IC_RESET observables and CLA clock-stop stimulus.
-  logic [DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req;
+  logic [dtp_dv_cfg_pkg::NumClkStopReq-1:0] xtrig_clk_stop_req;
   logic stop_clks;
   logic cla_clock_stop_en;
   logic jtag_boot_stall_ovrd;
@@ -237,26 +237,26 @@ module dtp_uvm_top
   logic [31:0] xtrig_axil_ar_stall_count;
 
   // XTRIG CTM and CTP GPIO stimulus and observables, from dtp_xtrig_if.
-  logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
-  logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_ack;
-  logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_req;
-  logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_ack;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_dout;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_dout_en;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_din;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_out_din_en;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_dout;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_dout_en;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_din;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_req_in_din_en;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_dout;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_dout_en;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_din;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_in_din_en;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_dout;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_dout_en;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_din;
-  logic [DEFAULT_NUM_CTP-1:0] xtrig_ctp_ack_out_din_en;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_src_req;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_src_ack;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_dst_req;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_ctm_dst_ack;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_out_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_out_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_out_din;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_out_din_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_in_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_in_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_in_din;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_req_in_din_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_in_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_in_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_in_din;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_in_din_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_out_dout;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_out_dout_en;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_out_din;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_out_din_en;
 
   // ------------------------------------------------------------------
   // TB interfaces: both frameworks bind to these instances (SV-UVM through
@@ -409,11 +409,11 @@ module dtp_uvm_top
   assign stap_sep_host_tdi     = jtag_stap_sep_ds_en    ? jtag_stap_sep_tdi    : stap_sep_tdo;
   assign stap_extra_host_tdi[0] = jtag_stap_extra0_ds_en ? jtag_stap_extra0_tdi : stap_extra_tdo[0];
 
-  // IC_RESET default slice structs are one `{ovrd, val}` pair per slice in
-  // this standalone OSS DTP instantiation. Flatten them for sampling.
-  jtag_ic_reset_default_t jtag_ic_reset_smc;
-  jtag_ic_reset_default_t jtag_ic_reset_sep;
-  jtag_ic_reset_default_t jtag_ic_reset_ext;
+  // IC_RESET slice structs: the bench's one `{ovrd, val}` pair per slice
+  // (dtp_dv_cfg_pkg), flattened for sampling.
+  dtp_dv_cfg_pkg::ic_reset_smc_t jtag_ic_reset_smc;
+  dtp_dv_cfg_pkg::ic_reset_sep_t jtag_ic_reset_sep;
+  dtp_dv_cfg_pkg::ic_reset_ext_t jtag_ic_reset_ext;
   sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable;
 
   assign jtag_bsr_select     = jtag_bsr_host_scan_ctrl.select;
@@ -719,9 +719,37 @@ module dtp_uvm_top
   end
 
   // ------------------------------------------------------------------
-  // DTP DUT: default parameters; the type parameters come from jtag_tap_pkg and dtp_pkg
+  // DTP DUT, elaborated from the bench configuration (dtp_dv_cfg_pkg); the
+  // TAP-control and AXI struct types are the design packages'.
   // ------------------------------------------------------------------
-  dtp u_dut (
+  dtp #(
+    .JTAG_BSR_ENABLE          (dtp_dv_cfg_pkg::BsrEnable),
+    .JTAG_EXTEST_TRAIN_ENABLE (dtp_dv_cfg_pkg::ExtestTrainEnable),
+    .JTAG_EXTEST_PULSE_ENABLE (dtp_dv_cfg_pkg::ExtestPulseEnable),
+    .JTAG_INTEST_ENABLE       (dtp_dv_cfg_pkg::IntestEnable),
+    .JTAG_CLAMP_ENABLE        (dtp_dv_cfg_pkg::ClampEnable),
+    .JTAG_HIGHZ_ENABLE        (dtp_dv_cfg_pkg::HighzEnable),
+    .JTAG_RUNBIST_ENABLE      (dtp_dv_cfg_pkg::RunbistEnable),
+    .JTAG_TMP_ENABLE          (dtp_dv_cfg_pkg::TmpEnable),
+    .JTAG_IC_RESET_SMC_ENABLE (dtp_dv_cfg_pkg::IcResetSmcEnable),
+    .JTAG_IC_RESET_EXT_ENABLE (dtp_dv_cfg_pkg::IcResetExtEnable),
+    .JTAG_SMC_DBG_ENABLE      (dtp_dv_cfg_pkg::SmcDbgEnable),
+    .JTAG_STAP_IO_ENABLE      (dtp_dv_cfg_pkg::StapIoEnable),
+    .JTAG_IC_RESET_SEP_ENABLE (dtp_dv_cfg_pkg::IcResetSepEnable),
+    .JTAG_SEP_DBG_ENABLE      (dtp_dv_cfg_pkg::SepDbgEnable),
+    .JTAG_NUM_EXTRA_STAPS     (dtp_dv_cfg_pkg::NumExtraStaps),
+    .JTAG_IDCODE_MFR_ID       (dtp_dv_cfg_pkg::IdcodeMfrId),
+    .JTAG_IDCODE_PART_NUM     (dtp_dv_cfg_pkg::IdcodePartNum),
+    .JTAG_IDCODE_SI_REV       (dtp_dv_cfg_pkg::IdcodeSiRev),
+    .JTAG_OCH_VER             (dtp_dv_cfg_pkg::OchVer),
+    .XTRIG_NUM_CTP            (dtp_dv_cfg_pkg::NumCtp),
+    .XTRIG_NUM_INT_CT         (dtp_dv_cfg_pkg::NumIntCt),
+    .XTRIG_NUM_CLK_STOP_REQ   (dtp_dv_cfg_pkg::NumClkStopReq),
+    .XTRIG_INT_CT_MODE        (dtp_dv_cfg_pkg::IntCtMode),
+    .ic_reset_smc_t           (dtp_dv_cfg_pkg::ic_reset_smc_t),
+    .ic_reset_sep_t           (dtp_dv_cfg_pkg::ic_reset_sep_t),
+    .ic_reset_ext_t           (dtp_dv_cfg_pkg::ic_reset_ext_t)
+  ) u_dut (
     .clk_i                            (clk_i),
     .rst_n_i                          (rst_n_i),
     .pwr_on_rst_ni                    (pwr_on_rst_ni),
@@ -1438,9 +1466,22 @@ module dtp_uvm_top
   assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
   assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
 
-  // JTAG2AXI bridge state for the reset-abort scenarios, through the same
-  // hierarchical references the coverage instance uses. The sticky flags
+  // JTAG2AXI bridge state for the stall and reset-abort scenarios, through
+  // the same hierarchical references the coverage instance uses. Each
+  // bridge's AXI state machine is decoded by state name, inside the bridge's
+  // own scope, into idle, write-path (address, data, response wait), and
+  // read-path (address, data wait) flags by the bound dtp_j2a_state_flags
+  // instance; the pending register rides beside them. The sticky flags
   // catch the CDC's TCK-side isolate-and-clear on the system clock.
+  bind jtag2axi dtp_j2a_state_flags u_dv_state_flags (
+    .idle_i       (axi_state_q_tclk == AXI_IDLE),
+    .write_path_i ((axi_state_q_tclk == AXI_SEND_ADDR_W) || (axi_state_q_tclk == AXI_SEND_DATA_W) ||
+                   (axi_state_q_tclk == AXI_WAIT_BRESP)),
+    .read_path_i  ((axi_state_q_tclk == AXI_SEND_ADDR_R) || (axi_state_q_tclk == AXI_WAIT_RDATA)),
+    .idle_o       (),
+    .write_path_o (),
+    .read_path_o  ()
+  );
   logic smc_axi_cdc_clear_seen;
   logic smc_otp_cdc_clear_seen;
   logic sep_otp_cdc_clear_seen;
@@ -1458,13 +1499,19 @@ module dtp_uvm_top
         sep_otp_cdc_clear_seen <= 1'b1;
     end
   end
-  assign u_tb_if.smc_axi_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_axi_fsm_idle       = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_dv_state_flags.idle_o;
+  assign u_tb_if.smc_axi_fsm_write_path = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_dv_state_flags.write_path_o;
+  assign u_tb_if.smc_axi_fsm_read_path  = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_dv_state_flags.read_path_o;
   assign u_tb_if.smc_axi_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.smc_axi_cdc_clear_seen = smc_axi_cdc_clear_seen;
-  assign u_tb_if.smc_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_otp_fsm_idle       = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_dv_state_flags.idle_o;
+  assign u_tb_if.smc_otp_fsm_write_path = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_dv_state_flags.write_path_o;
+  assign u_tb_if.smc_otp_fsm_read_path  = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_dv_state_flags.read_path_o;
   assign u_tb_if.smc_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.smc_otp_cdc_clear_seen = smc_otp_cdc_clear_seen;
-  assign u_tb_if.sep_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.sep_otp_fsm_idle       = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_dv_state_flags.idle_o;
+  assign u_tb_if.sep_otp_fsm_write_path = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_dv_state_flags.write_path_o;
+  assign u_tb_if.sep_otp_fsm_read_path  = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_dv_state_flags.read_path_o;
   assign u_tb_if.sep_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk;
   assign u_tb_if.sep_otp_cdc_clear_seen = sep_otp_cdc_clear_seen;
 
@@ -1557,7 +1604,7 @@ module dtp_uvm_top
   // demux) and the external CTP busy flops, sampled from the DUT.
   assign u_tb_if.xtrig_demux_aw_lock   = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
   assign u_tb_if.xtrig_demux_w_pending = ~u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.w_fifo_empty;
-  for (genvar ctp = 0; ctp < DEFAULT_NUM_CTP; ctp++) begin : gen_xtrig_ctp_busy
+  for (genvar ctp = 0; ctp < dtp_dv_cfg_pkg::NumCtp; ctp++) begin : gen_xtrig_ctp_busy
     assign u_tb_if.xtrig_ctp_busy[ctp] = u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.busy_o;
   end
 

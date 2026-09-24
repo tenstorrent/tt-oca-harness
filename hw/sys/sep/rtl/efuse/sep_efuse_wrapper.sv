@@ -162,7 +162,7 @@ module sep_efuse_wrapper #(
     .full_resp_t    (sep_efuse_axi32_resp_t),
     .lite_req_t     (sep_efuse_pkg::efuse_axil_req_t),
     .lite_resp_t    (sep_efuse_pkg::efuse_axil_resp_t)
-  ) sep_efuse_axi_to_axi_lite (
+  ) u_sep_efuse_axi_to_axi_lite (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),

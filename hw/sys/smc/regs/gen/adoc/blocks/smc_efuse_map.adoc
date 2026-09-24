@@ -1,40 +1,40 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-smc_efuse_map]
+== Address Map: smc_efuse_map
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *I2C_I3C_ID[9]*: 9 registers
-  ** Base Address: 0x28
-  ** Address Increment: 0x8 per register
-
-* *SPARE[28]*: 28 registers
-  ** Base Address: 0x80
-  ** Address Increment: 0x20 per register
-
+* *I2C_I3C_ID[9]*: 9 registers, base 0x28, stride 0x8
+* *SPARE[28]*: 28 registers, base 0x80, stride 0x20
 ======
 
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | LOCKS | RW a| Lock controls for each fuse field. When write locked, the corresponding field is not
+| 0x0 | <<reg-{regmap-instance}-smc_efuse_map-LOCKS,LOCKS>> | RW a| Lock controls for each fuse field. When write locked, the corresponding field is not
 programmable. When read locked, the shadow register is not readable.
-| 0x8 | JTAG_PUBLIC_IDENTITY | RW a| JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
+| 0x8 | <<reg-{regmap-instance}-smc_efuse_map-JTAG_PUBLIC_IDENTITY,JTAG_PUBLIC_IDENTITY>> | RW a| JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
 are admitted while JTAG access to every other fuse field is blocked. Encoding
 is adopter-defined; the harness does not interpret or consume the value. The
 slot-0 read lock still hides the bits when set.
-| 0x28 - 0x68 | I2C_I3C_ID[9] | RW a| I2C/I3C interface ID
-| 0x70 | SMC_CONFIG | RW a| SMC boot and configuration controls sourced from fuse. Only the low word carries
+| 0x28 - 0x68 | <<reg-{regmap-instance}-smc_efuse_map-I2C_I3C_ID-0-,I2C_I3C_ID[9]>> | RW a| I2C/I3C interface ID
+| 0x70 | <<reg-{regmap-instance}-smc_efuse_map-SMC_CONFIG,SMC_CONFIG>> | RW a| SMC boot and configuration controls sourced from fuse. Only the low word carries
 assigned bits, so firmware reads it as a single 32-bit access.
-| 0x78 | OCCP_TRANSPORT_TIMEOUT | RW a| OCCP transport timeout in the low word; upper word reserved.
-| 0x80 - 0x3E0 | SPARE[28] | RW a| Individually lockable 256-bit spare region, reserved for fields assigned after the
+| 0x78 | <<reg-{regmap-instance}-smc_efuse_map-OCCP_TRANSPORT_TIMEOUT,OCCP_TRANSPORT_TIMEOUT>> | RW a| OCCP transport timeout in the low word; upper word reserved.
+| 0x80 - 0x3E0 | <<reg-{regmap-instance}-smc_efuse_map-SPARE-0-,SPARE[28]>> | RW a| Individually lockable 256-bit spare region, reserved for fields assigned after the
 RTL is frozen. Each element has its own write/read lock pair in LOCKS.
 |===
 
+[#reg-{regmap-instance}-smc_efuse_map-LOCKS]
+=== LOCKS
+
 [cols="1,3,1,1,6", options="header"]
-.LOCKS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63 | `spare27_read_lock` | RW | 0x0 a| Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.
@@ -103,16 +103,20 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.
 | 0 | `jtag_public_identity_write_lock` | RW | 0x0 a| JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.
 |===
 
+[#reg-{regmap-instance}-smc_efuse_map-JTAG_PUBLIC_IDENTITY]
+=== JTAG_PUBLIC_IDENTITY
+
 [cols="1,3,1,1,6", options="header"]
-.JTAG_PUBLIC_IDENTITY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `value` | RW | 0x0 a| Opaque payload. Encoding is adopter-defined; the harness does not interpret
 it.
 |===
 
+[#reg-{regmap-instance}-smc_efuse_map-I2C_I3C_ID-0-]
+=== I2C_I3C_ID[9]
+
 [cols="1,3,1,1,6", options="header"]
-.I2C_I3C_ID[9] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `interface_id` | RW | 0x0 a| I2C or I3C ID configuration:
@@ -120,8 +124,10 @@ it.
 * Provisional ID mode: [63:0] full ID
 |===
 
+[#reg-{regmap-instance}-smc_efuse_map-SMC_CONFIG]
+=== SMC_CONFIG
+
 [cols="1,3,1,1,6", options="header"]
-.SMC_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:16 | `config_rsvd_high` | RW | 0x0 a| Reserved for future configuration bits.
@@ -132,16 +138,20 @@ it.
 | 0 | `rom_flip_endianness` | RW | 0x0 a| When set, the ROM interface swaps byte order on instruction fetch.
 |===
 
+[#reg-{regmap-instance}-smc_efuse_map-OCCP_TRANSPORT_TIMEOUT]
+=== OCCP_TRANSPORT_TIMEOUT
+
 [cols="1,3,1,1,6", options="header"]
-.OCCP_TRANSPORT_TIMEOUT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:32 | `timeout_rsvd` | RW | 0x0 a| Reserved for extension of the timeout encoding.
 | 31:0 | `timeout` | RW | 0x0 a| Transport timeout value consumed by the boot ROM OCCP driver.
 |===
 
+[#reg-{regmap-instance}-smc_efuse_map-SPARE-0-]
+=== SPARE[28]
+
 [cols="1,3,1,1,6", options="header"]
-.SPARE[28] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | RW | 0x0 a| Spare fuse bits for future use.

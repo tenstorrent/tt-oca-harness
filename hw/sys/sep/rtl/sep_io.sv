@@ -60,7 +60,7 @@ module sep_io #(
     .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),          // 32-bit master (input)
     .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),           // 64-bit slave (input)
     .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)           // 64-bit slave (output)
-  ) axi_dw_converter (
+  ) u_axi_dw_converter (
     .clk_i,
     .rst_ni,
     .slv_req_i           (sep_io_axi_req_i),
@@ -87,7 +87,7 @@ module sep_io #(
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_io_pkg::axil_req_t),
     .lite_resp_t     (sep_io_pkg::axil_resp_t)
-  ) axi_to_axi_lite (
+  ) u_axi_to_axi_lite (
     .clk_i,
     .rst_ni,
     .test_i          (test_en_i),
@@ -134,7 +134,7 @@ module sep_io #(
     .SpillB          (1'b0),
     .SpillAr         (1'b1), // Pipeline AR to ease timing and area
     .SpillR          (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (test_en_i),
@@ -176,12 +176,16 @@ module sep_io #(
     .lsio_trigger_o (sep_io_spi_req_o.lsio_trigger)
   );
 
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (sep_io_pkg::ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
     .axil_req_t     (sep_io_pkg::axil_req_t),
-    .axil_resp_t    (sep_io_pkg::axil_resp_t)
-  ) axil_err_slv (
+    .axil_resp_t    (sep_io_pkg::axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (sep_io_pkg::DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
+  ) u_axil_err_slv (
     .clk_i,
     .rst_ni,
     .axil_req_i  (axil_reqs [NUM_SLAVES-1]),

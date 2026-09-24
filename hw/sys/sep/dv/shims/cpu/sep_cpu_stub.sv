@@ -9,7 +9,7 @@
 // CPU's LSU master, it drives the LSU request net directly from the tb's
 // assembled cocotb-AXI struct (sep_uvm_top.lsu_req_drive, an upward reference)
 // and the tb reads back the LSU response net by hierarchical name
-// (u_dut.sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
+// (u_dut.u_sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
 // request is single-driven, so it is driven, not forced.
 //
 // This stub removes el2_veer_wrapper, the IFU demux, the debug/DMI logic, and

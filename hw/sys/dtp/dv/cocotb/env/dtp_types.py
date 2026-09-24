@@ -286,18 +286,6 @@ class DtpJtag2AxiStatus(IntEnum):
     BUSY_OR_FULL = 3
 
 
-class DtpJtag2AxiFsmState(IntEnum):
-    """Bridge AXI FSM state as the TB interface samples it (``jtag2axi.sv`` ``axi_state_e``)."""
-
-    IDLE = 0
-    SEND_ADDR_W = 1
-    SEND_DATA_W = 2
-    WAIT_BRESP = 3
-    SEND_ADDR_R = 4
-    WAIT_RDATA = 5
-    UPDATE_STATUS = 6
-
-
 class DtpScanCtrlExpect(Enum):
     """What a window over one host chain's scan controls shows across a DR scan.
 
@@ -324,6 +312,12 @@ ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
 # stalled path and the first status poll reads BUSY_OR_FULL.
 STALL_FSM_CHECK_ID = "CHK-J2A-STALL-FSM"
 STALL_BUSY_CHECK_ID = "CHK-J2A-STALL-BUSY"
+# The op-status or SERIES_CTRL status carries the injected error code, and the
+# WITH_ERROR_STATUS bit follows the faulted beat.
+FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
+# Random-ops end state: every byte lane a stream wrote holds its last word and
+# every untouched lane of a touched word holds its prior value.
+MEM_IMAGE_CHECK_ID = "CHK-J2A-MEM-IMAGE"
 
 
 def size_field_bits(data_width: int) -> int:

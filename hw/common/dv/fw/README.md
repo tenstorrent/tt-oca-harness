@@ -81,7 +81,7 @@ macros from the generated address headers).
   modeled with open CSRs:
   - *PLL wrap* — placeholder footprint; no generated `SMC_PLL_WRAP_*` / `PLL_CNTL_*`
     / `CGM_*` / `AWM_*` definitions.
-  - *I3C wrap* — open surface is `oca_i3c_wrap`; the vendor controller's wrap
+  - *I3C wrap* — open surface is `oca_i3c_wrap`; the third-party controller's wrap
     names are not emitted.
 
   Adopter overlay headers can be force-included locally without committing them:
@@ -90,5 +90,5 @@ macros from the generated address headers).
   make ocah-dv-fw-libs TARGET=smc FW_EXTRA_CFLAGS="-include /path/to/smc_rename_stub.h"
   ```
 
-This tree does not fetch a toolchain, vendor picolibc, or generate ROM
+This tree does not fetch a toolchain, bundle picolibc, or generate ROM
 images.

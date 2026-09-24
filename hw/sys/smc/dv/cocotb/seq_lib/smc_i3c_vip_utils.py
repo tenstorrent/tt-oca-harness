@@ -54,6 +54,11 @@ from cocotb.triggers import ClockCycles, RisingEdge
 # last-state diagnostics ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]); the
 # property under check is the level, not the latency.
 _PAD_FOLLOW_TIMEOUT_CYCLES = 200
+# clk_periph_i cycles each forced pad level is held once the pad has followed
+# it. The I3C0 pad observers in cov/sv/smc_periph_fcov.sv sample on
+# clk_periph_i, whose period the bench randomises (8, 10 or 12 ns), so a level
+# that lasts one clk_smc_i cycle is seen on some seeds and missed on others.
+_PAD_HOLD_PERIPH_CYCLES = 4
 
 _I3C0_NETS = (
     "tb_i3c0_scl",
@@ -146,12 +151,14 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
     await ClockCycles(dut.clk_smc_i, 1)
     await _settle_tb_resolved_pad(dut, "tb_i3c0_scl", 1, "release")
     await _settle_tb_resolved_pad(dut, "tb_i3c0_sda", 1, "release")
+    await ClockCycles(dut.clk_periph_i, _PAD_HOLD_PERIPH_CYCLES)
     samples["release"] = _sample_step(dut, "release")
 
     # Step 2: external SCL pull-low.
     dut.tb_i3c0_scl_ext_low.value = 1
     await ClockCycles(dut.clk_smc_i, 1)
     await _settle_tb_resolved_pad(dut, "tb_i3c0_scl", 0, "scl_low")
+    await ClockCycles(dut.clk_periph_i, _PAD_HOLD_PERIPH_CYCLES)
     samples["scl_low"] = _sample_step(dut, "scl_low")
 
     # Step 3: swap -- external SDA pull-low, SCL released.
@@ -160,12 +167,14 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
     await ClockCycles(dut.clk_smc_i, 1)
     await _settle_tb_resolved_pad(dut, "tb_i3c0_sda", 0, "sda_low")
     await _settle_tb_resolved_pad(dut, "tb_i3c0_scl", 1, "sda_low")
+    await ClockCycles(dut.clk_periph_i, _PAD_HOLD_PERIPH_CYCLES)
     samples["sda_low"] = _sample_step(dut, "sda_low")
 
     # Step 4: release again.
     dut.tb_i3c0_sda_ext_low.value = 0
     await ClockCycles(dut.clk_smc_i, 1)
     await _settle_tb_resolved_pad(dut, "tb_i3c0_sda", 1, "release_restore")
+    await ClockCycles(dut.clk_periph_i, _PAD_HOLD_PERIPH_CYCLES)
     samples["release_restore"] = _sample_step(dut, "release_restore")
 
     observed = "; ".join(
@@ -174,12 +183,14 @@ async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
         f"scl={s['tb_i3c0_scl']} sda={s['tb_i3c0_sda']}"
         for step, s in samples.items()
     )
-    # Positive evidence token: covers ONLY the property that was actually
-    # asserted (resolvability of every net at every sample).
+    # Not a CHK- token: `is_resolvable` cannot be false on a two-state
+    # simulator, so a Verilator run would carry a checker that cannot fail.
+    # The resolvability asserts above stay as X-guards on the samples; the
+    # record below is diagnostic only.
     cocotb.log.info(
-        "CHK-I3C0-PADS-RESOLVABLE: 4 external-pull steps driven with the I3C "
-        "host controller %s; all %d I3C0 nets resolvable (no X/Z) at every one "
-        "of the %d sample points",
+        "OBSERVED-ONLY-I3C0-PADS-RESOLVABLE (not a check on a two-state simulator): 4 "
+        "external-pull steps driven with the I3C host controller %s; all %d I3C0 nets "
+        "sampled resolvable at every one of the %d sample points",
         "ENABLED (HC_CONTROL.BUS_ENABLE=1)" if core_enabled else "left disabled",
         len(_I3C0_NETS),
         len(samples) * len(_I3C0_NETS),

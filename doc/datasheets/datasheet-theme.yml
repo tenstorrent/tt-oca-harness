@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+extends: default
+page:
+  layout: portrait
+  size: Letter
+  margin: [0.42in, 0.45in, 0.45in, 0.45in]
+base:
+  font_size: 8
+  font_color: 484848
+  line_height_length: 10.5
+  align: left
+vertical_rhythm: 5
+heading:
+  font_color: 103525
+  font_style: bold
+  h1_font_size: 25
+  h2_font_size: 11
+  h3_font_size: 9
+  margin_top: 5
+  margin_bottom: 3
+link:
+  font_color: 006f93
+list:
+  indent: 12
+  item_spacing: 2
+table:
+  font_size: 7
+  cell_padding: 4
+  border_color: d6d2c8
+  head:
+    background_color: 103525
+    font_color: ffffff
+    font_style: bold
+footer:
+  height: 0.28in
+  font_size: 6.5
+  line_height: 1
+  recto:
+    left:
+      content: '© {copyright-year} {copyright-holder} · Apache 2.0'
+    center:
+      content: 'OCAH | {datasheet-status}'
+    right:
+      content: '{page-number} / {page-count}'
+  verso:
+    left:
+      content: '© {copyright-year} {copyright-holder} · Apache 2.0'
+    center:
+      content: 'OCAH | {datasheet-status}'
+    right:
+      content: '{page-number} / {page-count}'
+role:
+  datasheet-brand:
+    font_color: 103525
+    font_size: 8
+    font_style: bold
+  datasheet-title:
+    font_color: 103525
+    font_size: 25
+    font_style: bold
+  datasheet-subtitle:
+    font_color: 484848
+    font_size: 12
+    font_style: bold
+  datasheet-status:
+    font_color: 937027
+    font_size: 8
+    font_style: bold
+  datasheet-section:
+    font_color: 103525
+    font_size: 10
+    font_style: bold
+  datasheet-small:
+    font_size: 6.5
+  beta-note:
+    background_color: f8f4eb
+    border_color: f6bc42
+    border_width: 1
+    padding: [5, 6, 5, 6]

@@ -50,6 +50,8 @@ module entropy_sampler_clocks #(
 
   logic [NRINGS-1:0]      selected_clk;
   logic [NRINGS-1:0][5:0] sample_clk_divided;
+  logic [NRINGS-1:0]      div_lo_clk;
+  logic [NRINGS-1:0]      div_hi_clk;
 
   /////////////////
   // Combinational
@@ -71,8 +73,19 @@ module entropy_sampler_clocks #(
     .noise_o  (shared_ring_osc_clk)
   );
 
+  // Clock-cell selects are not glitch-free. sample_clk_select_i[i] and
+  // sample_clk_divide_i[i] change only while enable_i[i] is low.
   for (genvar i = 0; i < NRINGS; i++) begin : gen_sampler_clk
-    assign selected_clk[i] = sample_clk_select_i[i] ? shared_ring_osc_clk : sample_clk_i;
+    logic       div_hi_en;
+    logic       div_hi_sel;
+    logic [1:0] div_lo_sel;
+
+    prim_clock_mux2 u_sample_clk_src_mux (
+      .clk0_i(sample_clk_i),
+      .clk1_i(shared_ring_osc_clk),
+      .sel_i (sample_clk_select_i[i]),
+      .clk_o (selected_clk[i])
+    );
 
     entropy_ripple_divider #(
       .NUM_STAGES(5)
@@ -83,16 +96,39 @@ module entropy_sampler_clocks #(
     );
 
     always_comb begin
+      div_hi_en  = 1'b0;
+      div_hi_sel = 1'b0;
+      div_lo_sel = 2'd2;
       unique case (sample_clk_divide_i[i])
-        5'd0:    sample_clk_o[i] = sample_clk_divided[i][0];
-        5'd1:    sample_clk_o[i] = sample_clk_divided[i][1];
-        5'd2:    sample_clk_o[i] = sample_clk_divided[i][2];
-        5'd3:    sample_clk_o[i] = sample_clk_divided[i][3];
-        5'd4:    sample_clk_o[i] = sample_clk_divided[i][4];
-        5'd5:    sample_clk_o[i] = sample_clk_divided[i][5];
-        default: sample_clk_o[i] = sample_clk_divided[i][2];
+        5'd0, 5'd1, 5'd2, 5'd3: div_lo_sel = sample_clk_divide_i[i][1:0];
+        5'd4: div_hi_en = 1'b1;
+        5'd5: begin
+          div_hi_en  = 1'b1;
+          div_hi_sel = 1'b1;
+        end
+        default: div_lo_sel = 2'd2;
       endcase
     end
+
+    prim_clkmux4 u_sample_clk_div_lo (
+      .clk_i   (sample_clk_divided[i][3:0]),
+      .clksel_i(div_lo_sel),
+      .clk_o   (div_lo_clk[i])
+    );
+
+    prim_clock_mux2 u_sample_clk_div_hi (
+      .clk0_i(sample_clk_divided[i][4]),
+      .clk1_i(sample_clk_divided[i][5]),
+      .sel_i (div_hi_sel),
+      .clk_o (div_hi_clk[i])
+    );
+
+    prim_clock_mux2 u_sample_clk_div_mux (
+      .clk0_i(div_lo_clk[i]),
+      .clk1_i(div_hi_clk[i]),
+      .sel_i (div_hi_en),
+      .clk_o (sample_clk_o[i])
+    );
   end : gen_sampler_clk
 
 endmodule
