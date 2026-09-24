@@ -108,7 +108,7 @@ def module_ports(path: Path, module: str) -> set[str]:
         j += 1
     ports: set[str] = set()
     depth, cur = 0, ""
-    for c in text[start + 1:j] + ",":
+    for c in text[start + 1 : j] + ",":
         if c in "([{":
             depth += 1
         elif c in ")]}":

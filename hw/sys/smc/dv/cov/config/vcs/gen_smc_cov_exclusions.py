@@ -391,6 +391,7 @@ def in_region(src: str, region: "tuple[str, int, int] | None") -> bool:
     name, first, last = region
     return path.endswith(name) and first <= int(line) <= last
 
+
 # Identifiers the NUM_NTRACE_INST(0) / NTRACE_SUPPORT(0) instantiation leaves
 # without a source. trace_wrapper.sv drives Core_fuse_enable_Ntrace from a
 # ternary on the parameter and gives it '0 at zero instances, so each of these
@@ -447,9 +448,7 @@ def term_identifiers(term: str) -> "list[str]":
 def is_ntrace_term(term: str) -> bool:
     """Whether every signal the term reads is one the tie-off leaves at zero."""
     ids = term_identifiers(term)
-    return bool(ids) and all(
-        NTRACE_NAME.search(i) and not SHARED_NAME.search(i) for i in ids
-    )
+    return bool(ids) and all(NTRACE_NAME.search(i) and not SHARED_NAME.search(i) for i in ids)
 
 
 def _numeric(term: str) -> "int | None":
@@ -494,8 +493,16 @@ def tied_value(term: str) -> "int | None":
         left, op, right = _numeric(m.group(1)), m.group(2), _numeric(m.group(3))
         if left is None or right is None:
             return None
-        return int({"==": left == right, "!=": left != right, ">": left > right,
-                    "<": left < right, ">=": left >= right, "<=": left <= right}[op])
+        return int(
+            {
+                "==": left == right,
+                "!=": left != right,
+                ">": left > right,
+                "<": left < right,
+                ">=": left >= right,
+                "<=": left <= right,
+            }[op]
+        )
     return None
 
 
@@ -545,7 +552,7 @@ def expression_terms(modinfo: Path) -> "dict[tuple[str, str], list[str]]":
         if not spans:
             continue
         numbered = sorted(
-            (int(re.sub(r"\D", "", tok)), expr[max(0, s - col):e - col].strip())
+            (int(re.sub(r"\D", "", tok)), expr[max(0, s - col) : e - col].strip())
             for s, e, tok in spans
         )
         out[(module, expr.strip())] = [term for _, term in numbered]
