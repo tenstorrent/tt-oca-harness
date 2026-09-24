@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-24T13:42:06+00:00",
+  "generated_at": "2026-09-24T18:09:01+00:00",
   "points": [
     {
       "failed_tests": 1,
@@ -812,6 +812,67 @@
             "line": 93.99,
             "toggle": 57.89,
             "user": 96.1864
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": false,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 97.35
+    },
+    {
+      "failed_tests": 4,
+      "flaky_tests": 4,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-24T18:09:01+00:00",
+      "id": "26ef3b66e74ed19f",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-700fb50465b62e9d",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 92.6,
+            "branch": 91.7,
+            "condition": 87.64,
+            "fsm_state": 71.58,
+            "functional": 98.38,
+            "line": 96.31,
+            "toggle": 82.44,
+            "user": 93.8559
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 29
+            },
+            "by_disposition": {
+              "cover": 29
+            },
+            "by_metric": {
+              "user": 29
+            },
+            "by_status": {
+              "open": 29
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 29,
+            "observations_complete": false,
+            "open": 29,
+            "unclassified": 29
+          },
+          "raw_metrics": {
+            "assertion": 92.6,
+            "branch": 87.06,
+            "condition": 85.16,
+            "fsm_state": 52.77,
+            "functional": 98.38,
+            "line": 94.09,
+            "toggle": 57.91,
+            "user": 93.8559
           },
           "status": "FAIL",
           "target": "default",
