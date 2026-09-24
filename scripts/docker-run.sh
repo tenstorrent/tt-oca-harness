@@ -37,7 +37,11 @@
 #                               primary group for rootless podman (see below)
 #      OCAH_TOOLCHAIN_ROOTFS   rootfs extracted from the nix container image;
 #                               when set (and bwrap is present) `run`/`run-here`
-#                               use bubblewrap instead of podman/docker (see below)
+#                               use bubblewrap instead of podman/docker (see below).
+#                               The sandbox drops the caller's UV, VIRTUAL_ENV,
+#                               PYTHONHOME and PYTHONPATH and keeps uv's project
+#                               environment, cache and interpreters under local/,
+#                               never the repo's .venv or the shared /tmp
 #      OCAH_BWRAP_EXTRA_BINDS  extra host paths to bind into the bwrap sandbox
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
@@ -424,15 +428,27 @@ bwrap_run() {
     fi
   fi
   # HOME may sit outside the bound trees; give it a writable stand-in.
-  # PYTHONHOME/PYTHONPATH are dropped for the same reason PATH is replaced: the
-  # sandbox runs its own interpreter, and a caller's values point at host trees
-  # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
-  # can import 'encodings', which the firmware post-process steps run into.
+  # PYTHONHOME, PYTHONPATH, UV and VIRTUAL_ENV are dropped for the same reason
+  # PATH is replaced: the sandbox runs its own interpreter and its own uv, and a
+  # caller's values point at host trees that are not bound here. A leaked
+  # PYTHONHOME makes python3 abort before it can import 'encodings'; a leaked UV
+  # names a host uv binary the sandbox cannot execute.
+  #
+  # uv's project environment, cache and managed interpreters live under the
+  # checkout's local/ rather than in the repo's .venv and under HOME. The sandbox
+  # interpreter is not the host's, so `uv run --locked` pointed at the host .venv
+  # would replace it; and HOME is the shared host /tmp, where uv would otherwise
+  # store, and pick up, other accounts' interpreters.
   bwrap "${binds[@]}" --chdir "$workdir" \
     --setenv PATH "$sandbox_path" \
     --setenv HOME /tmp \
+    --setenv UV_PROJECT_ENVIRONMENT "$ROOT/local/bwrap-venv" \
+    --setenv UV_CACHE_DIR "$ROOT/local/bwrap-uv-cache" \
+    --setenv UV_PYTHON_INSTALL_DIR "$ROOT/local/bwrap-uv-python" \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
+    --unsetenv UV \
+    --unsetenv VIRTUAL_ENV \
     "$@"
 }
 
