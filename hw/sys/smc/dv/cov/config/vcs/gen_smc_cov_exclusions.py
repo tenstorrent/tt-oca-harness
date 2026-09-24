@@ -959,6 +959,13 @@ C15 = (
     "from a base of 0xC0003000, so an address below the base wraps to at least 0x3FFFD000 and "
     "its index is far above the 65 GPIO wraps; the in-window test never passes below the base."
 )
+P31 = (
+    "SMC-P31-OCTS-CREDIT-SPEC: the system timer's register specification requires CREDIT_VAL to "
+    "exceed PULSE_WIDTH, and a PULSE_WIDTH of zero counts as one, so CREDIT_VAL is at least two. "
+    "The timer's enable only ever sets, and until it does the credit counter is held at zero, "
+    "so the counter never meets CREDIT_VAL minus one with the enable low. A specification that "
+    "admits a CREDIT_VAL of one retires the class."
+)
 P30 = (
     "SMC-P30-CCG-HYST-OFF: both generic_ccg instances, the DFD clock gate and the debug-bus mux "
     "gate, set HYST_EN to zero, so hyst_on is a constant zero and the row that needs it high "
@@ -1895,6 +1902,15 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                     "(axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR)",
                 )
                 and vector == "01"
+            ),
+        )
+    ],
+    "system_timer_octs_core": [
+        (
+            P31,
+            lambda terms, vector: (
+                terms == ("is_primary_i", "enable", "(credit_counter_q == (reg_credit_val_i - 1))")
+                and vector == "101"
             ),
         )
     ],
@@ -3578,6 +3594,7 @@ FEATURE_CLASSES = (
     P28,
     P29,
     P30,
+    P31,
     A2,
     A11,
     C4,
