@@ -42,10 +42,13 @@ property of the design:
 
 * B1 PARTIAL-LANE-WRITE: a field that keeps its value between writes does take
   that same retain row when a write leaves one lane disabled while it holds a
-  one. The SMC AXI agent derives WSTRB from the data range and writes whole
-  registers, so it never issues such a write, and the row is uncovered for want
-  of an agent rather than for want of a path. It is taken for every field of a
-  generated register block that a class above has not already named. The
+  one. The SMC AXI agent writes whole 32-bit words, so on a block whose cpuif
+  is no wider than that every write covers the whole register and the row is
+  uncovered for want of an agent rather than for want of a path. On a block
+  with a wider cpuif the same agent issues a half-word write, which does leave
+  lanes disabled, so those rows are reachable and stay graded. It is taken for
+  every field of a narrow-enough register block that a class above has not
+  already named. The
   clear-on-write row of a W1C field is a different expression and a leaf covers
   it.
 
@@ -356,12 +359,31 @@ A6 = (
 
 B1 = (
     "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC "
-    "AXI agent derives WSTRB from the data range and writes whole registers, so no access it "
-    "generates leaves one lane disabled while the field holds a one, which is what the retain "
-    "row of the write-data ternary needs. The field keeps its value and the design takes that "
-    "row under a partial write; an agent that issues one covers it. The clear-on-write row of "
-    "a W1C field is a different expression and a leaf covers it."
+    "AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more "
+    "than that, every write it issues covers the whole register and none leaves a lane disabled "
+    "while the field holds a one, which is what the retain row of the write-data ternary needs. "
+    "The field keeps its value and the design takes that row under a partial write; an agent "
+    "that issues one covers it. A block whose cpuif is wider takes a half-word write from this "
+    "same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a "
+    "W1C field is a different expression and a leaf covers it."
 )
+# The width of the write the bench's AXI agent issues. A register block whose
+# cpuif is no wider than this cannot be written a part at a time, and PeakRDL
+# never builds a register wider than the cpuif, so the block's width settles it
+# for every register in it.
+AGENT_WRITE_BITS = 32
+CPUIF_WIDTH = re.compile(r"logic \[(\d+):0\] cpuif_wr_data;")
+
+
+def cpuif_data_width(source: str) -> "int | None":
+    """The cpuif write-data width of a generated register block, from its source."""
+    path = Path(source.split(":")[0])
+    if not is_regblock_source(source) or not path.is_file():
+        return None
+    m = CPUIF_WIDTH.search(path.read_text(errors="replace"))
+    return int(m.group(1)) + 1 if m else None
+
+
 # The retain-or-write ternary PeakRDL builds for a software-writable field. The
 # clear-on-write form a W1C field gets, `value & ( ~ (wr_data & biten) )`, has no
 # such tail and is not matched.
@@ -1067,6 +1089,9 @@ def render_regblock(
         section = templates["cond"].get(module)
         for src, entry in section.entries if section else []:
             if entry in taken or not is_regblock_source(src):
+                continue
+            width = cpuif_data_width(src)
+            if width is None or width > AGENT_WRITE_BITS:
                 continue
             m = COND_ROW_RE.match(entry)
             if m is None or not B1_RETAIN.match(m.group(2)):
