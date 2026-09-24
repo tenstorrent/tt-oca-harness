@@ -10698,8 +10698,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 
 '''''
 
-[[sec-255-smc_output_remap_window_test]]
-===== 255 `smc_output_remap_window_test`
+[[sec-260-smc_output_remap_window_test]]
+===== 260 `smc_output_remap_window_test`
 
 *Source Module*: `smc_output_remap_window_test`
 
