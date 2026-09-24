@@ -380,7 +380,7 @@ feature rows.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
 |`smc_dfd_sink_mmr_sweep_test` |Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
 |`smc_dfd_ro_mmr_write_test` |Every read-only DFD MMR written, with the write required to be ignored.
-|`smc_dfd_mmr_lane_test` |Every DST, DST-sink and funnel MMR written one byte at a time, and unmapped offsets of each block read and written.
+|`smc_dfd_mmr_lane_test` |Every DST, DST-sink and funnel MMR written one byte at a time, unmapped offsets of each block read and written, and the DFD port accessed past the RDL window.
 |`smc_dfd_cla_live_bus_test` |The CLA's signal event generators, counters and actions driven on a debug bus that moves between two measured states.
 |`smc_dfd_dbm_mode_lock_test` |Every debug-bus mux mode programmed on every mux, then the CLA lock latched and held.
 |`smc_dfd_cla_snapshot_capture_test` |Every CLA pair driven over its whole action range on its own node, with the snapshot registers read.
@@ -4721,12 +4721,14 @@ Drive `smc_dfd_ro_mmr_write_test_seq`. Each checker below is a named compare the
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Every DST, DST-sink and funnel MMR written one byte at a time, and unmapped offsets of each block read and written.
+*Objective*: Every DST, DST-sink and funnel MMR written one byte at a time, unmapped offsets of each block read and written, and the DFD port accessed past the RDL window.
 
 *Test Coverage*:
 
 * The other DFD MMR leaves write whole registers. Here every register of the `dst`, `dst_sink` and `funnel` sub-blocks other than the sink's RAM data port (23 in the current map, derived on every run) takes a one-byte store of its low byte's complement, which covers only part of the register's 4-byte lane. The register may ignore the store or take it in its software-writable bits; no other byte may move. It is then written back whole and read back.
 * Offsets inside each block's register hole are read and written: offset 0x40 of the DST block, which is also the sink's RAM data port offset in its own block, so the read has to be decoded as an ordinary register access; offset 0x8 of the sink block; and offsets 0x10, 0x14, 0x18 and 0x1C of the funnel block, the offsets the sink block gives its window start and limit registers. Each access has to complete, a read that completes without error has to return 0 in every bit, as any bit no field occupies does, and the registers on either side of the hole have to hold their values across an all-ones write.
+
+* The SMC local crossbar forwards 0xC0160000 up to 0xC0260000 to the DFD port, 1 MB, while the RDL's SMC_CLA window and the four MMR blocks cover 0x4000. A read and an all-ones write go to the first word past the RDL window (the window's base plus its size from the generated header, 0xC0164000) and to the last word of the forwarded range (0xC025FFFC, an integration fact the map does not describe). Each has to complete, a read that completes OKAY has to return 0, and none of the swept registers may move across them. The RDL says nothing about the response; the DFD MMR bridge completes these accesses with SLVERR.
 
 *Test Procedure*:
 
@@ -4739,15 +4741,16 @@ Drive `smc_dfd_mmr_lane_test_seq`. Each checker below is a named compare the DUT
 |===
 |Checker |Description
 |`CHK-DFD-MMR-BYTE` |Every swept register took a one-byte store of the low byte's complement, no other byte moved, the writable bits in the low byte took either their old or their new value, and the whole write-back read back exactly; a moved byte, a partial or corrupted low byte, or a failed write-back fails it
+|`CHK-DFD-MMR-PAST-WINDOW` |The reads and writes past the RDL window completed, a read that completed OKAY returned 0, and every swept register read the same value before and after; a hang, a non-zero OKAY read or a moved register fails it
 |`CHK-DFD-MMR-UNMAPPED` |The read and the write to each unmapped offset completed, the read returned 0 when it completed without error, and the neighbouring registers held their values; a hang, a non-zero read or a moved neighbour fails it
 |===
 
-*Measured*: every one of the 23 byte stores was ignored, and every unmapped access completed with an OKAY response.
+*Measured*: every one of the 23 byte stores was ignored, every unmapped access inside a block completed with an OKAY response, and every access past the RDL window completed with SLVERR.
 
 *Design note*: with no N-trace sink block, the MMR fabric's window-limit legality check for that block decodes on the block index the funnel occupies, so it acts on writes to the funnel's unmapped offsets 0x10 to 0x1C. Those offsets hold no funnel register, so the observable effect is nil; the funnel accesses above are what exercise that check.
 
 
-*Pass Criteria*: `CHK-DFD-MMR-BYTE`, `CHK-DFD-MMR-UNMAPPED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DFD-MMR-BYTE`, `CHK-DFD-MMR-PAST-WINDOW`, `CHK-DFD-MMR-UNMAPPED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-222-smc_dfd_dbm_mode_lock_test]]

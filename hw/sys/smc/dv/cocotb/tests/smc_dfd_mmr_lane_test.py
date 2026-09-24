@@ -24,9 +24,11 @@ from smc_base_test import smc_base_test
 #     read after it, the whole write-back and its readback)                 115
 #   6 unmapped offsets x (2 neighbour reads, the hole read, the hole write,
 #     2 neighbour reads)                                                     36
+#   past the window: 23 register reads, 2 addresses x (read and write), 23
+#     register reads                                                         50
 #                                                                         ------
-#                                                                            151
-MMR_LANE_MIN_CSR_ACCESSES = 151
+#                                                                            201
+MMR_LANE_MIN_CSR_ACCESSES = 201
 
 
 @pyuvm.test()
@@ -35,9 +37,10 @@ class smc_dfd_mmr_lane_test(smc_base_test):
 
     required_evidence = (
         "CHK-DFD-MMR-BYTE",
+        "CHK-DFD-MMR-PAST-WINDOW",
         "CHK-DFD-MMR-UNMAPPED",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     auto_protocol_vip = False
 

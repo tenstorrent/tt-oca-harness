@@ -20,12 +20,17 @@ exercised:
 * **Unmapped offsets.** The RDL leaves holes inside each block's register
   range. Offsets in each block's hole are read and written: one each in the DST
   and sink blocks, and in the funnel block the four words at the offsets the
-  sink block gives its window start and limit registers. the access has
+  sink block gives its window start and limit registers. Each access has
   to complete, a read of an unmapped offset has to return 0 in every bit, as
   any bit no field occupies does, and the registers on either side of the hole
   have to hold their values across the write. The DST offset chosen is the
   offset of the sink's RAM data port in its own block, so a read there has to
   be decoded as an ordinary register read rather than a RAM read.
+* **Past the window.** The SMC's crossbar forwards a 1 MB range to the DFD port,
+  far more than the RDL's SMC_CLA window. A read and a write at the first word
+  past that window and at the last word of the forwarded range have to
+  complete, a read that completes OKAY has to return 0, and none of the swept
+  registers may move.
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ from functools import lru_cache
 import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import RdlReg, rdl_registers_under
 
@@ -52,6 +58,11 @@ _NOT_SWEPT = ("Trdstramdata",)
 # port offset.
 _UNMAPPED = {"dst": (0x40,), "dst_sink": (0x8,), "funnel": (0x10, 0x14, 0x18, 0x1C)}
 _BYTE_MASK = 0xFF
+# The SMC local crossbar forwards 0xC0160000 up to 0xC0260000 to the DFD port,
+# an integration fact the register map does not describe; the RDL's SMC_CLA
+# window ends 0x4000 above its base. Accesses past the RDL window but inside
+# the forwarded range reach the DFD MMR bridge with no MMR block to select.
+_XBAR_DFD_WINDOW_END = 0xC0260000
 
 
 def _writable_mask(reg: RdlReg) -> int:
@@ -97,6 +108,7 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         self.byte_dropped = 0
         self.byte_taken = 0
         self.unmapped: dict[str, tuple[int, int, int]] = {}
+        self.past_window: dict[int, tuple[int, int]] = {}
         self.value_checks = 0
 
     @staticmethod
@@ -176,6 +188,28 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         self.unmapped[f"{block}+0x{offset:x}"] = (addr, rd.resp_code, wr.resp_code)
         self.value_checks += 3
 
+    async def _snapshot_blocks(self, label: str) -> dict[str, int]:
+        return {r.path: await self._read(r, label) for r in _swept()}
+
+    async def _past_window(self) -> None:
+        """Read and write past the RDL window, inside the crossbar's DFD range."""
+        base = smc_addr("SMC_TOP_SMC_CLA_BASE_ADDR")
+        end = base + smc_addr("SMC_TOP_SMC_CLA_SIZE")
+        before = await self._snapshot_blocks("past_before")
+        for addr in (end, _XBAR_DFD_WINDOW_END - 4):
+            rd = await self._access(SmcSysAxiOp.READ, f"past_{addr:x}", addr)
+            if rd.resp_code == 0:
+                assert rd.rdata == 0, (
+                    f"a read at 0x{addr:08x}, past the RDL SMC_CLA window, completed OKAY with "
+                    f"0x{rd.rdata:x}; nothing the map declares lives there, so it has to read 0"
+                )
+            wr = await self._access(SmcSysAxiOp.WRITE, f"past_{addr:x}", addr, 0xFFFFFFFF)
+            self.past_window[addr] = (rd.resp_code, wr.resp_code)
+        after = await self._snapshot_blocks("past_after")
+        moved = {p: (hex(before[p]), hex(after[p])) for p in before if before[p] != after[p]}
+        assert not moved, f"registers moved across the accesses past the RDL window: {moved}"
+        self.value_checks += 2
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
@@ -205,4 +239,14 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
             "that completed without error returned 0, and the registers on either side of "
             "each hole held their values across an all-ones write",
             {b: f"0x{a:08x} rd={r} wr={w}" for b, (a, r, w) in self.unmapped.items()},
+        )
+
+        await self._past_window()
+        cocotb.log.info(
+            "CHK-DFD-MMR-PAST-WINDOW: a read and an all-ones write at the first word past the "
+            "RDL SMC_CLA window and at the last word the crossbar forwards to the DFD port "
+            "completed (%s, as read/write response codes); a read that completed OKAY returned "
+            "0, and none of the %d swept registers moved",
+            {f"0x{a:08x}": f"rd={r} wr={w}" for a, (r, w) in self.past_window.items()},
+            len(_swept()),
         )
