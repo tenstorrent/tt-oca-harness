@@ -438,6 +438,8 @@ module smu_wrapper_uvm_top (
   // TB glue: clocks / JTAG / AXI / GPIO / CPU mem / observability
   // ------------------------------------------------------------------
 
+  logic clk_smu, clk_ref, clk_periph;
+
   prim_jtag_pkg::jtag_tap_ctrl_t jtag_ptap_client_tap_ctrl;
   logic jtag_ptap_tdi;
   logic jtag_ptap_tdo;
@@ -460,7 +462,7 @@ module smu_wrapper_uvm_top (
   assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       dtp_smc_dbg_aw_count_o <= '0;
       dtp_smc_dbg_ar_count_o <= '0;
@@ -518,7 +520,7 @@ module smu_wrapper_uvm_top (
         .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[i]             \
         .u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
 
-  always @(posedge clk_smu_o) begin
+  always @(posedge clk_smu) begin
     if ($test$plusargs("esrc_noise_force")) begin
       `SMU_ESRC_NOISE_FORCE(0);
       `SMU_ESRC_NOISE_FORCE(1);
@@ -544,7 +546,7 @@ module smu_wrapper_uvm_top (
         .u_drbg_s3c_scan.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_vld_o;
   // Sticky capture. esrc_noise_took requires a driven 1 that the DUT node
   // actually shows: a match on 0 would also hold with the force absent.
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       drbg_seed_valid_seen_o <= 1'b0;
       drbg_es_ack_seen_o     <= 1'b0;
@@ -818,7 +820,7 @@ module smu_wrapper_uvm_top (
     $assertoff(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $assertoff(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
     wait (rst_primary_smc_clk_n === 1'b1);
-    @(posedge clk_smu_o);
+    @(posedge clk_smu);
     $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
     $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
@@ -834,7 +836,7 @@ module smu_wrapper_uvm_top (
   // error on VCS).
   assign obs_powergood_stable_o = u_dut.u_smu.powergood_stable;
   logic obs_powergood_stable_low_seen_q = 1'b0;
-  always @(posedge clk_ref_o) begin
+  always @(posedge clk_ref) begin
     if (!obs_powergood_stable_o) begin
       obs_powergood_stable_low_seen_q <= 1'b1;
     end
@@ -924,7 +926,7 @@ module smu_wrapper_uvm_top (
   assign sep_mod_rst_ni_o =
         u_dut.u_smu.gen_sep.u_sep.rst_ni;
 
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_boot_rom_req_count_o <= '0;
     end else if (u_dut.sep_boot_rom_req.req) begin
@@ -942,7 +944,7 @@ module smu_wrapper_uvm_top (
 
   // Capture run-gate at the SEP CPU reset 0->1 edge (EL2 samples then).
   logic sep_cpu_rst_ni_q;
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_cpu_rst_ni_q               <= 1'b0;
       sep_rungate_at_release_valid_o <= 1'b0;
@@ -960,7 +962,7 @@ module smu_wrapper_uvm_top (
     end
   end
 
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       smc_rom_read_count_o      <= '0;
       smc_scratch_write_count_o <= '0;
@@ -985,7 +987,7 @@ module smu_wrapper_uvm_top (
   // while the Python sequence is still inside the bring-up settling wait —
   // so the fetch-window evidence must be collected in hardware from the
   // first cycle, not by polling from the sequence loop.
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_boot_rom_fetch_seen_o <= 1'b0;
       sep_iccm_fetch_seen_o     <= 1'b0;
@@ -1159,7 +1161,7 @@ module smu_wrapper_uvm_top (
   // whatever the SEP/SMC aperture rules do not claim (smu_axi_xbar.sv:90) --
   // so the apertures are what decide whether an outbound firmware mailbox
   // write leaves the SMU or is swallowed back into sep_in.
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_ap_csr_aw_count_o  <= '0;
       sep_ap_reg0_aw_count_o <= '0;
@@ -1197,7 +1199,7 @@ module smu_wrapper_uvm_top (
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
   assign sep_xbar_region_size_o = u_dut.u_smu.sep_region_size_o[31:0];
 
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       sep_smn_out_aw_count_o <= '0;
       sep_xbar_in_aw_count_o <= '0;
@@ -1327,7 +1329,7 @@ module smu_wrapper_uvm_top (
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
     .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
   ) u_axi_out_cut (
-    .clk_i      (clk_smu_o),
+    .clk_i      (clk_smu),
     .rst_ni     (rst_cold_n_o),
     .slv_req_i  (smu_axi_out_req),
     .slv_resp_o (smu_axi_out_resp),
@@ -1336,7 +1338,7 @@ module smu_wrapper_uvm_top (
   );
 
   ocah_axi_if u_axi_out_if (
-    .aclk    (clk_smu_o),
+    .aclk    (clk_smu),
     .aresetn (rst_cold_n_o)
   );
 
@@ -1371,7 +1373,7 @@ module smu_wrapper_uvm_top (
             ? smu_axi_out_req.w.data[63:32]
             : smu_axi_out_req.w.data[31:0];
 
-  always_ff @(posedge clk_smu_o or negedge rst_cold_n_o) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_n_o) begin
     if (!rst_cold_n_o) begin
       axi_out_aw_addr_q         <= '0;
       smu_axi_out_aw_valid_seen_o  <= 1'b0;
@@ -1571,7 +1573,7 @@ module smu_wrapper_uvm_top (
     .gpio_pad_io (gpio_pad_io),
     .rst_cool_n_from_pin_i (~tb_cool_reset_pin),
 
-    .clk_telemetry_i (clk_smu_o),
+    .clk_telemetry_i (clk_smu),
     .rst_telemetry_ni (rst_cold_ni),
     .telemetry_atdata_i (tel_atdata_w),
     .telemetry_atid_i (tel_atid_w),
@@ -1646,9 +1648,9 @@ module smu_wrapper_uvm_top (
     .sep_lockstep_status_o (sep_lockstep_status_o)
   );
 
-  assign clk_smu_o    = u_dut.clk_sys;
-  assign clk_ref_o    = u_dut.clk_ref;
-  assign clk_periph_o = u_dut.clk_periph;
+  assign clk_smu    = u_dut.clk_sys;
+  assign clk_ref    = u_dut.clk_ref;
+  assign clk_periph = u_dut.clk_periph;
 
   // ------------------------------------------------------------------
   // Functional coverage (cov/sv/): the same modules tb_top.sv carries, on
@@ -1659,7 +1661,7 @@ module smu_wrapper_uvm_top (
   // ------------------------------------------------------------------
   assign jtag_ptap_state_w = 32'(jtag_ptap_state);
 
-  always_ff @(posedge clk_smu_o or negedge rst_cold_ni) begin
+  always_ff @(posedge clk_smu or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
       smu_axi_in_awvalid_count  <= '0;
       smu_axi_out_awvalid_count <= '0;
@@ -1677,8 +1679,8 @@ module smu_wrapper_uvm_top (
   smu_boot_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_boot_fcov (
-    .clk_ref_i                   (clk_ref_o),
-    .clk_smu_i                   (clk_smu_o),
+    .clk_ref_i                   (clk_ref),
+    .clk_smu_i                   (clk_smu),
     .powergood_i                 (powergood_i),
     .rst_cold_ni                 (rst_cold_ni),
     .ext_boot_seq_done_i         (ext_boot_seq_done_i),
@@ -1709,7 +1711,7 @@ module smu_wrapper_uvm_top (
   smu_xbar_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_xbar_fcov (
-    .clk_smu_i                (clk_smu_o),
+    .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
     .sep_global_base_i        (sep_global_base_o),
     .sep_region_size_i        (sep_region_size_o),
@@ -1738,9 +1740,9 @@ module smu_wrapper_uvm_top (
   smu_rst_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_rst_fcov (
-    .clk_ref_i                   (clk_ref_o),
-    .clk_smu_i                   (clk_smu_o),
-    .clk_periph_i                (clk_periph_o),
+    .clk_ref_i                   (clk_ref),
+    .clk_smu_i                   (clk_smu),
+    .clk_periph_i                (clk_periph),
     .powergood_i                 (powergood_i),
     .rst_cold_ni                 (rst_cold_ni),
     .ext_boot_seq_done_i         (ext_boot_seq_done_i),
@@ -1765,7 +1767,7 @@ module smu_wrapper_uvm_top (
   smu_clk_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_clk_fcov (
-    .clk_smu_i               (clk_smu_o),
+    .clk_smu_i               (clk_smu),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
     .smc_clk_i               (obs_smc_clk_o),
     .dtp_clk_i               (obs_dtp_clk_o),
@@ -1782,7 +1784,7 @@ module smu_wrapper_uvm_top (
   smu_lc_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_lc_fcov (
-    .clk_smu_i                (clk_smu_o),
+    .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
     .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
     .lc_state_i               (lc_state_o),
@@ -1794,7 +1796,7 @@ module smu_wrapper_uvm_top (
   );
 
   smu_dtp_fcov u_smu_dtp_fcov (
-    .clk_smu_i                  (clk_smu_o),
+    .clk_smu_i                  (clk_smu),
     .rst_cold_ni                (rst_cold_ni),
     .rst_primary_smc_clk_ni     (rst_primary_smc_clk_n_o),
     .jtag_ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
@@ -1809,7 +1811,7 @@ module smu_wrapper_uvm_top (
   smu_ext_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_ext_fcov (
-    .clk_smu_i                (clk_smu_o),
+    .clk_smu_i                (clk_smu),
     .rst_cold_ni              (rst_cold_ni),
     .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
     .fuse_sense_done_i        (smc_fuse_sense_done_o),
@@ -1843,7 +1845,7 @@ module smu_wrapper_uvm_top (
   // cov/sv modules take plain wires.
   // ------------------------------------------------------------------
   smu_clkstop_fcov u_smu_clkstop_fcov (
-    .clk_smu_i               (clk_smu_o),
+    .clk_smu_i               (clk_smu),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
     .dtp_clk_stop_req_ext_i  (u_dut.u_smu.dtp_xtrig_clk_stop_req[8:1]),
     .jtag_clock_stop_i       (u_dut.u_smu.u_dtp.jtag_clock_stop),
@@ -1854,7 +1856,7 @@ module smu_wrapper_uvm_top (
   smu_dbg_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_dbg_fcov (
-    .clk_smu_i                   (clk_smu_o),
+    .clk_smu_i                   (clk_smu),
     .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
     .smc_dbg_awvalid_i           (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid),
     .smc_dbg_arvalid_i           (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid),
@@ -1917,7 +1919,7 @@ module smu_wrapper_uvm_top (
   smu_alias_fcov #(
     .SepPresent(SEP_PRESENT)
   ) u_smu_alias_fcov (
-    .clk_smu_i                 (clk_smu_o),
+    .clk_smu_i                 (clk_smu),
     .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),
     .alias_awvalid_i           (alias_awvalid_w),
     .alias_awready_i           (alias_awready_w),
@@ -1939,5 +1941,9 @@ module smu_wrapper_uvm_top (
     .xbar_sep_out_arready_i    (xbar_sep_out_arready_w),
     .xbar_sep_out_araddr_i     (xbar_sep_out_araddr_w)
   );
+
+  assign clk_smu_o    = clk_smu;
+  assign clk_ref_o    = clk_ref;
+  assign clk_periph_o = clk_periph;
 
 endmodule : smu_wrapper_uvm_top

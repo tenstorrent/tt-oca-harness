@@ -24,9 +24,9 @@
 `SMC_TB_IN(logic, rst_cold_ni)
 `SMC_TB_IN(logic, rst_cool_ni)
 
-`SMC_TB_OUT(logic, clk_smc_i)
-`SMC_TB_OUT(logic, clk_ref_i)
-`SMC_TB_OUT(logic, clk_periph_i)
+`SMC_TB_OUT(logic, clk_smc_o)
+`SMC_TB_OUT(logic, clk_ref_o)
+`SMC_TB_OUT(logic, clk_periph_o)
 
 `SMC_TB_OUT(logic, powergood_stable_o)
 `SMC_TB_OUT(logic, rst_cold_stable_ref_clk_no)
