@@ -67,7 +67,7 @@ Rocket `AsyncQueue`.
 
 The bound depends on what protects the crossing:
 
-[options="header"]
+[options="header", cols="3,3,5"]
 |===
 | Kind of path | Bound | Reason
 
