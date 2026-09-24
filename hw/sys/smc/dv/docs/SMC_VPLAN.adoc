@@ -8506,6 +8506,8 @@ Drive `smc_log_engine_transfer_test_seq`. Each checker below is a named compare 
 * The output responder's write-transaction counter has to advance by at least the two bursts the size demands, and `CTRL_STATUS.STATUS` has to leave the level it rests at while the zeroer is idle and return to it. Which level means busy is not asserted, as in `smc_zeroer_sanity_test`.
 * `SIZE` and `DEST_ADDR` are cleared afterwards, so a later write to `CTRL_STATUS` -- the register whose write side effect is the trigger -- cannot start a job over anything.
 
+* `ZEROER_CTRL_STATUS_START` is packed with `int_en = 1`, so the start write above leaves `CTRL_STATUS.INT_EN` holding a one. The field is bit 0 of a 64-bit register, so a four-byte write at the upper half leaves the byte lane it sits in deasserted, and a field that retains has to keep its value across it. Any write of this register is also the zeroer's trigger, so the leg waits the operation out before reading, and then requires the whole word outside the STATUS bit to read back as the armed word -- INT_EN still set and nothing else moved. The half write therefore leaves the register exactly as it found it and there is nothing to restore.
+
 *Test Procedure*:
 
 Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
@@ -8518,9 +8520,10 @@ Drive `smc_zeroer_multi_burst_test_seq`. Each checker below is a named compare t
 |`CHK-ZEROER-MULTI-BURST-PRELOAD` |The four probe words spanning both halves of the job and the witness word past its end were poisoned with distinct values and read back exactly, so the zero readbacks that follow can fail
 |`CHK-ZEROER-MULTI-BURST-STATUS` |`CTRL_STATUS.STATUS` left the level it rests at while the zeroer is idle and returned to it, and the output responder booked at least the two write transactions a 0x1000-byte job needs under AxLEN's 256-transfer cap, so the zeroer took a second address phase after its first data phase
 |`CHK-ZEROER-MULTI-BURST-ZEROED` |All four probe words read 0 after the job, including the first and last word of each half, and the witness word immediately past the end still holds its poison
+|`CHK-ZEROER-INT-EN-HALF-WRITE` |CTRL_STATUS.INT_EN, set by the start write, survived a four-byte write at the half of the 64-bit register it does not occupy, and the register read back the armed word either side of it
 |===
 
-*Pass Criteria*: `CHK-ZEROER-MULTI-BURST-PRELOAD`, `CHK-ZEROER-MULTI-BURST-STATUS`, `CHK-ZEROER-MULTI-BURST-ZEROED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-ZEROER-INT-EN-HALF-WRITE`, `CHK-ZEROER-MULTI-BURST-PRELOAD`, `CHK-ZEROER-MULTI-BURST-STATUS`, `CHK-ZEROER-MULTI-BURST-ZEROED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -8726,6 +8729,8 @@ Drive `smc_efuse_lock_guard_test_seq`. Each checker below is a named compare the
 * `WDT_TIMEOUT_RESET` takes a full-width write of 0, which `smc_rdl_field_sweep_test` never does -- it writes the fields set and then writes 0 only over the half they do not occupy. Its four `reset_cycle_count` fields are `singlepulse`, so nothing is stored either way and the register has to read 0 afterwards. `CORE_RESET_PULSE_COUNT` is read either side as a second, weaker observation -- it carries the configured pulse durations and a bit that reads low while a core reset is in progress -- and does not catch a pulse that began and ended between the two reads.
 * `RESET_CTRL` is not written. It carries the per-core and uncore reset levels and the four core reset-pulse starts, which is why `smc_rdl_field_sweep_test` excludes it, and a write of ones into it would reset the running bench.
 
+* The four `MUTEX` registers are 64 bits wide with the mutex in bit 0, so a four-byte write at the upper half leaves that byte lane deasserted and a field that retains has to keep its value. `cpu_ctrl.rdl` describes the field as "HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register", so a read is the only way to see it and a read takes it. Each mutex is therefore read first and has to come back free -- which fails if anything else holds it -- given straight back, subjected to the half write, and read again: that second read can only return one if the field survived the write, and it is given back as well. Every mutex the leaf takes is released, and all four end the leaf free.
+
 *Test Procedure*:
 
 Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
@@ -8737,9 +8742,10 @@ Drive `smc_cpu_ctrl_read_only_write_test_seq`. Each checker below is a named com
 |Checker |Description
 |`CHK-CPU-CTRL-READ-ONLY-WRITE` |All six CPU_CTRL registers every field of which the RDL makes `sw = r` read the same word after a write of all ones at their address as before it
 |`CHK-CPU-CTRL-WDT-ZERO-WRITE` |A full-width write of 0 into the four singlepulse reset fields of WDT_TIMEOUT_RESET left the register reading 0, so nothing it carried was stored, and CORE_RESET_PULSE_COUNT read the same word either side with no core reset in progress when the second read landed
+|`CHK-CPU-CTRL-MUTEX-HALF-WRITE` |Each of the four CPU_CTRL mutexes was found free, given back, and kept its free state across a four-byte write at the half of the 64-bit register its bit does not occupy, with the read after that write taking the mutex and giving it back
 |===
 
-*Pass Criteria*: `CHK-CPU-CTRL-READ-ONLY-WRITE`, `CHK-CPU-CTRL-WDT-ZERO-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CPU-CTRL-MUTEX-HALF-WRITE`, `CHK-CPU-CTRL-READ-ONLY-WRITE`, `CHK-CPU-CTRL-WDT-ZERO-WRITE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
