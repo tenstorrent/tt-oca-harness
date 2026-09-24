@@ -344,6 +344,7 @@ feature rows.
 |`smc_cluster_beu_test` |Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold.
 |`smc_cpu_ctrl_map_depth_test` |Run CPU-control address-map CSR depth checks.
 |`smc_cpu_ctrl_read_only_write_test` |Writes at every CPU_CTRL address the RDL makes read-only, and a write of 0 into the singlepulse reset fields.
+|`smc_regblock_partial_write_test` |Byte writes that must hold a set field on another lane, W1C events that must survive a write of zero, and writes of zero into a trigger and two status registers.
 |`smc_cpu_ctrl_scratch_window_test` |Run CPU scratch-window write/readback/restore checks.
 |`smc_cpu_ecc_lint_pint_depth_test` |Run RAS/debug CSR reads as the bounded CPU ECC LINT/PINT diagnostic.
 |`smc_cpu_firmware_boot_test` |SMC_002: ROM boot to PASS magic with exact CHK evidence.
@@ -10980,6 +10981,54 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 |Checker |Description
 |`CHK-EFUSE-GUARD-READ-TARGET` |An unlocked read of a SPARE word returned the value just programmed; with its read lock set the read failed with `EFUSE_REQ_ERROR` and did not return it
 |`CHK-EFUSE-GUARD-PROGRAM-TARGET` |A program of a write-locked SPARE field failed with `EFUSE_REQ_ERROR`, and the word still read its asset value
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-261-smc_regblock_partial_write_test]]
+===== 261 `smc_regblock_partial_write_test`
+
+*Source Module*: `smc_regblock_partial_write_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN)
+
+*Objective*: Byte writes that must hold a set field on another lane, W1C events that must survive a write of zero, and writes of zero into a trigger and two status registers.
+
+*Test Coverage*:
+
+* A PeakRDL field updates as `(value & ~biten) | (data & biten)`, and a W1C field clears as `value & ~(data & biten)`. In these 32-bit blocks, the half of each term that keeps a set field had never been driven: a one held while a write strobes other lanes, or a W1C one held across a write that carries a zero. Every field and mask comes from the block's generated header.
+* **Held across a byte write on another lane.** `I2C_CTRL.SMBUS_EN` on all three instances is set by a byte write to its own lane and must hold across a byte write to lane 0. I2C0 `SMBUS_CTRL.SMBALERT` must hold across a byte write to lane 1, which has no field. Each is read back after every step and restored.
+* **W1C held across a zero, then cleared.** Six I2C0 `INTR_STATE` events (`RX_OVERFLOW`, `SDA_UNSTABLE`, `UNEXP_STOP`, `SMBALERT`, `CONTROLLER_RX_FIFO_ERROR`, `TARGET_RX_FIFO_ERROR`) and log-engine `INTR_STATUS.LOG_FETCH_ERR` are raised through `INTR_TEST`. Each must survive a full write of zero and clear on a write of one. Anything already latched, such as I2C0's `SMBALERT` event, which follows the SMBALERT output driven above, is cleared first.
+* **Zero into a trigger or a status.** Full writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` (`singlepulse`) and telemetry-receiver `INTR_STATUS` must leave each reading what it read before.
+* **Rows left, and why.** A one on a lane whose strobe is off cannot come from SEP_IN, whose master zero-fills unstrobed lanes.
+** It cannot come from the CPU into these 32-bit blocks either. A firmware byte store of `0xFF` into the empty top byte of I2C0 `INTR_STATE` arrived at `i2c_reg` as `wdata 0xFF000000`, `wstrb 0x8`, so the path from the cluster zeroes the other lanes. The replication that reaches the 64-bit blocks (`smc_fw_narrow_store_lane_test`) does not reach the 32-bit ones. The `(data & biten)` "1 0" rows of `i2c_reg` (`INTR_STATE`, `CONTROLLER_EVENTS`, `TARGET_EVENTS`), `log_engine_reg` and `telemetry_receiver_reg` are therefore unreachable in this design.
+** In the 64-bit blocks the firmware leaf takes the safe lanes. The rest carry a hazard:
+** `WDT_TIMEOUT_RESET` (`singlepulse` core resets);
+** `FILTER_CONFIG` (write-once `locked`, or a live window);
+** zeroer `INT_EN` (any write starts a job);
+** telemetry `CTRL.TELEMETRY_TX_FLUSH`, which is `hwclr`: it clears before a second write can arrive to find it set;
+** `TARGET_EVENTS.START_DETECT` and `STOP_DETECT` cleared while set, which need target bus traffic.
+* **Design observation: a write queued behind the locking write reaches FILTER_CONFIG.**
+** *What the RDL promises.* `filter_ctrl.rdl` makes `locked` (bit 63) `woset`, "Lock filter configurations. Write once register". No other field carries a write enable, so `filter_ctrl_reg` itself accepts every write. The lock is enforced outside it: `smc_internal_regs.sv:306` (outbound) and `:471` (inbound) set the inner demux's AW select to the error slave when `FILTER_CONFIG.locked.value && (aw_valid || w_valid)`.
+** *Where the bypass comes from.* That demux has `SpillAw(1'b1)`. `axi_lite_demux.sv:206-219` stores `{aw, select}` together in the AW spill register, so the select is the value of `locked` when the AW entered the spill, not when it leaves.
+** *Why the second AW gets there in time.* The outer demux in front of it (`u_outbound_filter_axil_demux`, `MaxTrans 1`) forwards the next AW as soon as the previous write's W has left, because its W FIFO pops on the W transfer (`axi_lite_demux.sv:250-256`, `:311-312`). It does not wait for the B.
+** *The sequence.* Write A sets `locked`; write B, to the same filter, follows directly behind it. B's AW enters the inner spill while A's W is still on its way to `filter_ctrl_reg`, so the select it latches is 0. B then reaches the register after `locked = 1` and takes effect.
+** *Status.* No leaf demonstrates it. Each leaf runs from its own reset, so a leaf that locks a filter would not disturb the others. The timing, though -- how many cycles separate A's W reaching the register from B's AW reaching the inner spill -- has not been confirmed in a waveform. The observation stands on the RTL reading above.
+
+*Test Procedure*:
+
+Drive `smc_regblock_partial_write_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-REGBLOCK-PARTIAL-HOLD` |`SMBUS_EN` on the three `I2C_CTRL` instances and I2C0 `SMBUS_CTRL.SMBALERT` read back set after a byte write to another lane, and each was restored and read back
+|`CHK-REGBLOCK-W1C-HOLD` |The six I2C0 events and `LOG_FETCH_ERR`, raised through `INTR_TEST`, read back set after a write of zero and clear after a write of one
+|`CHK-REGBLOCK-ZERO-WRITE` |Writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` and telemetry `INTR_STATUS` left each reading what it read before
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
