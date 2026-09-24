@@ -877,8 +877,14 @@ C5 = (
     "cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked "
     "value, so they are never high together; and efuse_shadow_reg_access_control raises "
     "write_locked_o only on the arm that forwards no request, so the shadow registers never see "
-    "a forwarded write with it high. The test rewrites the dependent signal in those terms and "
-    "takes a row only when that makes it unsatisfiable."
+    "a forwarded write with it high. The I2C controller ORs its SDA-unstable event into "
+    "arbitration lost, and its halt input is the unmasked OR of the controller event fields that "
+    "drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a "
+    "requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus "
+    "readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA "
+    "N-D midend's first stage is its request valid, which its ready, last and busy all include. "
+    "The test rewrites the dependent signal in those terms and takes a row only when that makes "
+    "it unsatisfiable."
 )
 B9 = (
     "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench "
@@ -1678,6 +1684,31 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         )
     ],
+    "log_engine": [
+        (
+            C5,
+            lambda terms, vector: (
+                any(t == "log_pending" and b == "0" for t, b in zip(terms, vector))
+                and any(
+                    (t, b)
+                    in (
+                        ("(effective_log_len != log_len_t'(0))", "1"),
+                        ("(effective_log_len == log_len_t'(0))", "0"),
+                    )
+                    for t, b in zip(terms, vector)
+                )
+            ),
+        )
+    ],
+    "idma_frontend_wrapper": [
+        (
+            C5,
+            lambda terms, vector: (
+                any(t == "((|f2m_req_valid))" and b == "1" for t, b in zip(terms, vector))
+                and any(t == "((|me_busy))" and b == "0" for t, b in zip(terms, vector))
+            ),
+        )
+    ],
     "core_logic_analyzer": [
         (
             P22,
@@ -1728,6 +1759,20 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         ),
         (C8, lambda terms, vector: terms == ("psel", "penable") and vector == "01"),
+        (
+            C5,
+            lambda terms, vector: (
+                any(
+                    t == "((~R_avs_normal_status_F_readback_fifo_full_AVSCLK))" and b == "0"
+                    for t, b in zip(terms, vector)
+                )
+                and any(
+                    t == "((~(R_avs_fifos_status_F_readback_fifo_vacant_slots_AVSCLK < 4'h2)))"
+                    and b == "1"
+                    for t, b in zip(terms, vector)
+                )
+            ),
+        ),
     ],
     "efuse_shadow_regs": [
         (
@@ -1861,6 +1906,17 @@ SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
         (C5, "compare_equal", "(compare_equal && (~below_compare_int))"),
     ],
     "efuse_shadow_regs": [(C5, "write_locked", "(write_locked && (~apb_req_from_ac.pwrite))")],
+    "i2c_core": [
+        (C5, "event_sda_unstable", "(event_sda_unstable && event_controller_arbitration_lost)"),
+    ],
+    "i2c_controller_fsm": [
+        (C5, "unhandled_unexp_nak_i", "(unhandled_unexp_nak_i && halt_controller_i)"),
+        (C5, "unhandled_nak_timeout_i", "(unhandled_nak_timeout_i && halt_controller_i)"),
+    ],
+    "idma_nd_midend": [
+        (C5, "nd_req_ready_o", "(nd_req_ready_o && nd_req_valid_i)"),
+        (C5, "last", "(last && nd_req_valid_i)"),
+    ],
     "avsbus_controller": [
         (C4, "R_avs_cmd_wr_en", "(R_avs_cmd_wr_en && pwrite)"),
         (C4, "R_avs_readback_rd_en", "(R_avs_readback_rd_en && (~pwrite))"),
@@ -2107,12 +2163,16 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     if identities:
         rewritten = tuple(plain)
         for _, name, meaning in identities:
-            rewritten = tuple(re.sub(rf"\b{re.escape(name)}\b", meaning, t) for t in rewritten)
+            rewritten = tuple(
+                re.sub(rf"(?<![\w.]){re.escape(name)}\b", meaning, t) for t in rewritten
+            )
         held = [(_scoped(forced), value) for _, forced, value in facts]
         if rewritten != tuple(plain) and _row_satisfiable_held(rewritten, vector, held) is False:
             if _row_satisfiable(tuple(plain), vector, None, 0):
                 for reason, name, meaning in identities:
-                    alone = tuple(re.sub(rf"\b{re.escape(name)}\b", meaning, t) for t in plain)
+                    alone = tuple(
+                        re.sub(rf"(?<![\w.]){re.escape(name)}\b", meaning, t) for t in plain
+                    )
                     if (
                         alone != tuple(plain)
                         and _row_satisfiable_held(alone, vector, held) is False
