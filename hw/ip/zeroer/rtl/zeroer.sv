@@ -387,8 +387,9 @@ module zeroer #(
     end
   end
 
+  // Ungated clock: axi_clk stops the cycle busy falls, so it would never sample that edge.
   logic prev_busy;
-  always_ff @(posedge axi_clk) begin
+  always_ff @(posedge clk_i) begin
     if (~rst_ni) begin
       prev_busy <= 1'b0;
       zeroer_intp_o <= 1'b0;
