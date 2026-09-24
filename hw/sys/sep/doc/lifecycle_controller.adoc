@@ -414,16 +414,6 @@ transition from RMA_SIP.
 end-of-life state: the chip is permanently inoperable.
 |=======================================================================
 
-[IMPORTANT]
-====
-The table defines the hardware lifecycle decode. The production ROM currently
-also accepts encodings `0x4` and `0x5` as `RMA_CHIPLET`, whereas the lifecycle
-controller classifies them as INVALID and clears feature enables when
-`SEC_DIS = 0`. The ROM does not require secure boot for these two encodings.
-Do not provision them or rely on the ROM's invalid-state rejection for them;
-valid chiplet RMA encodings are `0x6` and `0x7`.
-====
-
 [[debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors]]
 == Debug and Functional Feature Control
 

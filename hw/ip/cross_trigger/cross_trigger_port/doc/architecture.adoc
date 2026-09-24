@@ -57,17 +57,6 @@ endif::backend-html5[]
 
 === Wire-OR Mode
 
-[IMPORTANT]
-====
-The current receiver detects a rising edge after synchronization and optional
-inversion. For the active-low shared wire, `ct_dst_o` therefore pulses on
-release rather than assertion. Setting `INVERT` changes the output polarity
-as well as the input polarity and still detects release. The edge-history
-register resets to zero, so the idle input can also generate a startup pulse.
-These are implementation limitations relative to the assertion-triggered
-wire-OR protocol described below.
-====
-
 Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
 efficient, as it only requires a single pin per chiplet connected to the
@@ -101,6 +90,9 @@ Note that in wire-OR mode the _CT_Req_out_ signal is connected to an open-drain
 configured I/O pad. For I/O pads that do have explicit open-drain control, the
 request data signal should connect to the output-enable control pin of the I/O
 pad, and the output data signal of the I/O pin should be driven statically low.
+
+The pad input signal must be inverted before reaching the CTP so that an
+assertion of the active-low shared wire produces a rising edge at the receiver.
 
 <<ctp-wire-or-behavior-figure>> shows the open-drain request path and pulse-stretching
 logic used in wire-OR mode.

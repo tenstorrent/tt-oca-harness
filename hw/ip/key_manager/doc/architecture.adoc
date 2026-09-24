@@ -10,19 +10,9 @@ https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key Manager]
 use cases, including deterministic derivation and policy-bound key lifetimes.
 
 [[km-implemented-services]]
-[IMPORTANT]
-====
 The firmware in this tree implements random key generation from the DRBG,
 key loading, KPV storage, explicit revocation, transfer to engines, and engine
-shredding. Its command dispatcher has no derivation or signing command.
-The key registry records slots, lengths, destination masks, and CRCs; it has
-no derivation parents or configuration bindings. OTP changes invoke an
-overridable hook, and no PCR vault or PCR-change interrupt is integrated.
-
-UID-derived roots, configuration/PCR-bound keys, signing metadata, and automatic
-cascading revocation described below are *design targets*, not services supplied
-by this firmware. Software must explicitly manage key lifetime and revocation.
-====
+shredding. Software explicitly manages key lifetime and revocation.
 
 The Key Manager register map is reported in the SEP detailed register map.
 The firmware command reference describes the implemented mailbox interface.
