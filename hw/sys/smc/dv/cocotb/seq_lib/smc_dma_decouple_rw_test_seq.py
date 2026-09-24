@@ -43,13 +43,20 @@ responder's `enable_backpressure` holds READY low in bounded repeating windows.
 
 Each backpressured transfer is a 128-row 2D request of single-beat rows, since
 `CONFIG.ENABLE_ND` is set, so there are more requests than the path to SYS_OUT
-holds. The six transfers stall the read side, the write side and both, first
-coupled and then decoupled.
+holds. The nine transfers stall the read side, the write side and both, in
+three modes: coupled, with the read and write channels decoupled, and with the
+channel coupler sending each AW without waiting for its first read beat
+(`CONFIG.DECOUPLE_AW`).
 
 The bench counts cycles at the SYS_OUT boundary where VALID is high and READY
 is low, and requires a count for every stalled channel. Every row of every
 transfer is compared against its source, and each transfer carries its own
 payload.
+
+**Rows split at a page on one side only.** AXI bursts may not cross a 4 KB
+page, so the legalizer splits a row that does. Two 256-byte rows cross a page
+on one side only -- first the source, then the destination -- so one machine
+has two bursts to issue while the other has one. Both must arrive intact.
 
 `CONFIG` is restored to its reset and read back at the end. The leaf writes no
 other DMA field and touches no fuse.
@@ -63,6 +70,7 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
 from .smc_addr_map import (
+    DMA_CONFIG_DECOUPLE_AW,
     DMA_CONFIG_DECOUPLE_RW,
     DMA_CONFIG_ENABLED_ND,
     DMA_CTRL_CONFIG,
@@ -125,6 +133,20 @@ _BP_SRC = _MODEL_BASE + 0x6000
 _BP_DST = _MODEL_BASE + 0x8000
 _BP_STALL_CYCLES = 64
 _BP_DONE_POLLS = 1000
+# Page-split rows: 256 bytes, one side starting 128 bytes below a 4 KB page.
+_SPLIT_BYTES = 0x100
+_SPLIT_SRC_CROSS = _MODEL_BASE + 0xA000 - 0x80
+_SPLIT_DST_FLAT = _MODEL_BASE + 0xB000
+_SPLIT_SRC_FLAT = _MODEL_BASE + 0xC000
+_SPLIT_DST_CROSS = _MODEL_BASE + 0xE000 - 0x80
+
+# (mode, CONFIG) for the backpressured transfers. DECOUPLE_AW lets the channel
+# coupler send each AW without waiting for the first read beat of its burst.
+_BP_MODES = (
+    ("COUPLED", DMA_CONFIG_ENABLED_ND),
+    ("DECOUPLED", DMA_CONFIG_ENABLED_ND | DMA_CONFIG_DECOUPLE_RW),
+    ("DECOUPLED_AW", DMA_CONFIG_ENABLED_ND | DMA_CONFIG_DECOUPLE_AW),
+)
 # (label, responder channels held not-ready). "ar" stalls the read requests;
 # "aw" and "w" stall the write requests and their data.
 _BP_CASES = (
@@ -184,6 +206,7 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
         self.rows_checked = 0
         self.queued = 0
         self.backpressured: list[tuple[str, dict[str, int]]] = []
+        self.page_splits = 0
 
     # -- primitives ------------------------------------------------------
 
@@ -364,12 +387,30 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
             self.rows_checked += 1
         self.backpressured.append((tag, stalls))
 
+    async def _page_split_transfer(self, tag: str, src: int, dst: int) -> None:
+        """One row whose source and destination cross a 4 KB page at different points."""
+        responder = self.cfg.sys_out_mem
+        assert responder is not None, "SYS_OUT responder not bound"
+        payload = bytes((0x3D + 7 * i) & 0xFF for i in range(_SPLIT_BYTES))
+        responder.write(src, payload)
+        responder.write(dst, bytes(_SPLIT_BYTES))
+        baseline = await self.csr_read(f"DMA_DONE_BASE_{tag}", DMA_CTRL_DONE_0)
+        await self.csr_write(f"DMA_CONFIG_{tag}", DMA_CTRL_CONFIG, DMA_CONFIG_ENABLED_ND)
+        await self._program(
+            tag, src=src, dst=dst, src_stride=0, dst_stride=0, rows=1, length=_SPLIT_BYTES
+        )
+        await self._submit(tag)
+        await self._await_done(baseline + 1, tag)
+        got = responder.read(dst, _SPLIT_BYTES)
+        assert got == payload, (
+            f"[{tag}] {_SPLIT_BYTES} bytes from 0x{src:x} to 0x{dst:x}: the destination "
+            f"differs from the source at byte {next(i for i in range(_SPLIT_BYTES) if got[i] != payload[i])}"
+        )
+        self.page_splits += 1
+
     async def _backpressured_transfers(self) -> None:
         transfer = 0
-        for mode, config in (
-            ("COUPLED", DMA_CONFIG_ENABLED_ND),
-            ("DECOUPLED", DMA_CONFIG_ENABLED_ND | DMA_CONFIG_DECOUPLE_RW),
-        ):
+        for mode, config in _BP_MODES:
             for label, channels in _BP_CASES:
                 await self._backpressured_transfer(f"BP_{mode}_{label}", transfer, channels, config)
                 transfer += 1
@@ -406,6 +447,11 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
         )
         await self._queued_descriptors()
         await self._backpressured_transfers()
+        # AXI bursts may not cross a 4 KB page, so a row whose source crosses one
+        # and whose destination does not is two read bursts against one write
+        # burst, and the other way round.
+        await self._page_split_transfer("SPLIT_SRC", _SPLIT_SRC_CROSS, _SPLIT_DST_FLAT)
+        await self._page_split_transfer("SPLIT_DST", _SPLIT_SRC_FLAT, _SPLIT_DST_CROSS)
 
         await self.csr_write("DMA_CONFIG_RESTORE", DMA_CTRL_CONFIG, 0)
         restored = await self.csr_read("DMA_CONFIG_RESTORE_RB", DMA_CTRL_CONFIG, expected=0)
@@ -418,14 +464,15 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
             f"{self.decoupled_transfers} decoupled transfers, the leaf runs a scatter and a gather"
         )
         assert self.queued == 2, f"{self.queued} queued descriptors, the leaf submits two"
-        assert len(self.backpressured) == 2 * len(_BP_CASES), (
-            f"{len(self.backpressured)} backpressured transfers, the leaf runs {2 * len(_BP_CASES)}"
+        assert len(self.backpressured) == len(_BP_MODES) * len(_BP_CASES), (
+            f"{len(self.backpressured)} backpressured transfers, the leaf runs {len(_BP_MODES) * len(_BP_CASES)}"
         )
-        expected_rows = 2 * len(_ROWS) + 2 + 2 * len(_BP_CASES) * _BP_ROWS
+        expected_rows = 2 * len(_ROWS) + 2 + len(_BP_MODES) * len(_BP_CASES) * _BP_ROWS
         assert self.rows_checked == expected_rows, (
             f"{self.rows_checked} rows compared, {expected_rows} were moved"
         )
-        floor = (4 + 2 * len(_BP_CASES)) * _ACCESSES_PER_DESCRIPTOR
+        assert self.page_splits == 2, f"{self.page_splits} page-split transfers, the leaf runs 2"
+        floor = (6 + len(_BP_MODES) * len(_BP_CASES)) * _ACCESSES_PER_DESCRIPTOR
         assert self.accesses >= floor, (
             f"the sequence issued {self.accesses} SEP_IN accesses; its descriptors cannot "
             f"have issued fewer than {floor}"
@@ -451,9 +498,14 @@ class smc_dma_decouple_rw_test_seq(SmcCsrSeq):
             self.queued,
         )
         cocotb.log.info(
+            "CHK-DMA-PAGE-SPLIT: a 256-byte row whose source crossed a 4 KB page and "
+            "whose destination did not, and one the other way round, each arrived intact"
+        )
+        cocotb.log.info(
             "CHK-DMA-LEGALIZER-BACKPRESSURE: %d multi-row 2D transfers ran with the SYS_OUT "
             "responder holding READY low in %d-cycle windows -- read side, write side and "
-            "both, coupled and decoupled -- each stalled channel showed VALID high with "
+            "both, coupled, decoupled and with DECOUPLE_AW -- each stalled channel showed "
+            "VALID high with "
             "READY low at the boundary, and every row of each transfer matched its own "
             "source (stall cycles ar/aw/w: %s)",
             len(self.backpressured),

@@ -21,6 +21,15 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+# Outbound words through both copies of the M-mode and hypervisor remap windows.
+name = "smc_output_remap_window_test"
+module = "smc_output_remap_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_input_output_fabric_wr_rd_test"
 module = "smc_input_output_fabric_wr_rd_test"
 seed = 1

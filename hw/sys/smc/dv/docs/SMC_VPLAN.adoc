@@ -275,6 +275,7 @@ feature rows.
 |`smc_output_fabric_slverr_inject_test` |OKAY WR/RD, then the responder's one-shot SLVERR and DECERR on both directions carried back to the manager unchanged, and an OKAY recovery.
 |`smc_output_fabric_wr_rd_responder_test` |Drive JTAG AXI through output fabric; scoreboard checks memory golden.
 |`smc_output_filter_remap_security_test` |Verify output filter allows reads and blocks writes at protocol level.
+|`smc_output_remap_window_test` |Outbound words through the M-mode and hypervisor remap windows, at both their LOCAL_BASE and GLOBAL_BASE copies, land in SYS_OUT memory where the programmed entry puts them.
 |`smc_peripheral_instance_decode_test` |Every declared peripheral block reads a non-zero generated reset, multi-instance blocks at their first and last instance.
 |`smc_region_size_plic_clint_beu_decode_test` |At 256 MiB `REGION_SIZE` the PLIC, CLINT and four BEUs decode with co-resident patterns; what the PLIC address answers above the 16 MiB reset aperture is reported, not claimed.
 |`smc_remap_cla_test` |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
@@ -1241,6 +1242,7 @@ Drive `smc_wdt_key_csr_test_seq`. Each checker below is a named compare the DUT 
 * `smc_wdt_first_timeout_o` latched within a bound of arming, with `smc_wdt_second_timeout_o` still 0 on that cycle;
 * `smc_wdt_second_timeout_o` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
 * `rst_warm` still released on the cycle the first timeout latches, asserted after the second timeout, then released; both live pins read 0 afterwards while both sticky latches still read 1.
+* The stage-2 count is kept per core (`smc_cpu_ctrl_wrap.sv`), and only core 0's had ever run. After core 0's pass the same sequence runs on cores 1, 2 and 3 in turn, each after the previous warm reset has released. The sticky latches are already set by then, so each of those passes observes the live pins, which the warm reset clears again.
 
 *Test Procedure*:
 
@@ -1254,9 +1256,10 @@ Drive `smc_wdt_timeout_pin_test_seq`. Each checker below is a bounded observatio
 |`CHK-WDT-TIMEOUT-FIRST` |`tb_wdt_first_timeout_seen` reaches 1 within `FIRST_TIMEOUT_BOUND_CYCLES` of the arming readback, `tb_wdt_second_timeout_seen` still 0 on that cycle
 |`CHK-WDT-TIMEOUT-SECOND` |`tb_wdt_second_timeout_seen` reaches 1 between `WDT_TIMEOUT` and `WDT_TIMEOUT + SECOND_TIMEOUT_SLACK_CYCLES` cycles after the first
 |`CHK-WDT-TIMEOUT-RESET` |`tb_rst_warm_smc_clk_n` reads 1 on the cycle the first timeout latches, falls within `WARM_RESET_BOUND_CYCLES` of the second timeout and rises again; live pins then 0, sticky latches 1
+|`CHK-WDT-TIMEOUT-CORES` |For each of cores 1, 2 and 3: `tb_wdt_first_timeout` rises within the bound of arming with `tb_wdt_second_timeout` still 0, the second rises `WDT_TIMEOUT` cycles later within the slack, and the warm reset asserts, releases and leaves both live pins 0
 |===
 
-*Pass Criteria*: `CHK-WDT-TIMEOUT-FIRST`, `CHK-WDT-TIMEOUT-SECOND`, `CHK-WDT-TIMEOUT-RESET` hold after their observations. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-WDT-TIMEOUT-CORES`, `CHK-WDT-TIMEOUT-FIRST`, `CHK-WDT-TIMEOUT-SECOND`, `CHK-WDT-TIMEOUT-RESET` hold after their observations. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-020-smc_zeroer_dma_timeout_test]]
@@ -7368,6 +7371,7 @@ Drive `smc_uart_extremes_misc_test_seq`. Each checker below is a named compare t
 *Test Coverage*:
 
 * UART0 IER/ITR: FIFO_ERROR > LSR > TIMEOUT > RDR > THRE > MODEM.
+* Each modem-status delta on its own. With `MCR.LOOP` set, the UART programming guide feeds DSR from DTR, RI from OUT1 and DCD from OUT2. The leaf changes one of those outputs at a time and requires the MSR deltas to be exactly DDSR, TERI or DDCD, raising the modem interrupt, which the MSR read clears. TERI marks only RI's trailing edge, so OUT1 is first set, which must raise no delta, and then cleared.
 
 *Test Procedure*:
 
@@ -7393,6 +7397,7 @@ Drive `smc_uart_irq_sources_priority_test_seq`. Each checker below is a named co
 |`CHK-UART-IRQ-PRI-RDR_vs_THRE` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-PRI-THRE_vs_MODEM` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-PRI-TO_vs_RDR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-MSR-SINGLE-DELTA` |In loopback, DTR alone raised only DDSR, OUT1's trailing edge alone only TERI (its rising edge none) and OUT2 alone only DDCD; each raised the modem interrupt and the MSR read cleared it
 |===
 
 
@@ -9009,7 +9014,9 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 * Every destination is seeded with a sentinel that is none of the payload rows, so a transfer that never ran reads as the sentinel and fails.
 * **Transfers into a stalled SYS_OUT.** The legalizer issues a read or write request only while the backend's request ready for that side is high. Those readies come back from SYS_OUT through the AR register, the coupler's AW store, the write last-flag FIFO and the data FIFOs, and an always-ready responder never drops them. The leaf turns on the SYS_OUT responder's `enable_backpressure`, which holds READY low for 64 cycles out of every 65, and runs six 128-row 2D transfers of single-beat rows: the read side stalled (`ar`), the write side (`aw`, `w`), and both, first coupled and then decoupled. `CONFIG.ENABLE_ND` is set, so each row is a burst of its own; with it clear, the midend rejects every request as zero-length.
 * The bench counts cycles at the SYS_OUT boundary with VALID high and READY low, and requires a count on every stalled channel. The rows are seeded and compared in the responder's memory directly, each transfer with rows of its own, and every row must match its source.
-* The read request ready is driven low in both modes. The write request ready stays high. The legalizer loads the next row only when both machines are done and both readies are high, and a stalled write fills the backend's three-beat data buffer, which stops the reads. So the read side saturates before 32 writes are outstanding, whatever channel the responder stalls. Driving the write ready low needs a responder that keeps accepting reads while their data waits, and this bench does not have one.
+* A third mode sets `CONFIG.DECOUPLE_AW` (`dma_ctrl.h`: `DMA_CTRL__CONFIG__DECOUPLE_AW_bm`), so the channel coupler sends each AW without waiting for the first read beat of its burst. The same three stall cases run in it, which gives nine backpressured transfers in all.
+* **Rows split at a page on one side only.** AXI bursts may not cross a 4 KB page, so the legalizer splits a row that does. Two 256-byte rows cross a page on one side only, first the source and then the destination, so one machine has two bursts to issue against the other's one. Each must arrive intact in the responder's memory.
+* The read request ready is driven low in the coupled and decoupled modes (seen in the waveform). The write request ready stays high in all three. The legalizer loads the next row only when both machines are done and both readies are high, and a stalled write fills the backend's three-beat data buffer, which stops the reads. So the read side saturates before 32 writes are outstanding, whatever channel the responder stalls. Driving the write ready low needs a responder that keeps accepting reads while their data waits, and this bench does not have one.
 * `CONFIG` is restored to its reset and read back. The leaf writes no other DMA field, and touches no fuse.
 
 *Test Procedure*:
@@ -9022,11 +9029,12 @@ Drive `smc_dma_decouple_rw_test_seq`. Each checker below is a named compare the 
 |===
 |Checker |Description
 |`CHK-DMA-DECOUPLE-RW` |CONFIG.DECOUPLE_RW read back set from the mask the generated header gives it, and both transfers ran with the channels decoupled -- a scatter whose write side was the fragmented one and a gather whose read side was -- with every row landing where its stride puts it and matching its source; CONFIG was restored to its reset and read back
+|`CHK-DMA-PAGE-SPLIT` |A 256-byte row whose source crossed a 4 KB page and whose destination did not, and one the other way round, each arrived intact
 |`CHK-DMA-QUEUED-DESCRIPTORS` |A second descriptor was programmed and submitted without waiting for the first, both NEXT_ID reads returned a non-zero and rising id rather than the 0 the RDL gives a rejected command, DONE advanced by two, and each destination held its own payload
-|`CHK-DMA-LEGALIZER-BACKPRESSURE` |Six 128-row 2D transfers ran into the backpressured SYS_OUT responder -- read side, write side and both, coupled and decoupled. Every stalled channel showed VALID high with READY low at the boundary, and every row of every transfer matched its own source
+|`CHK-DMA-LEGALIZER-BACKPRESSURE` |Nine 128-row 2D transfers ran into the backpressured SYS_OUT responder -- read side, write side and both, coupled, decoupled and with `DECOUPLE_AW`. Every stalled channel showed VALID high with READY low at the boundary, and every row of every transfer matched its own source
 |===
 
-*Pass Criteria*: `CHK-DMA-DECOUPLE-RW`, `CHK-DMA-LEGALIZER-BACKPRESSURE`, `CHK-DMA-QUEUED-DESCRIPTORS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DMA-DECOUPLE-RW`, `CHK-DMA-LEGALIZER-BACKPRESSURE`, `CHK-DMA-PAGE-SPLIT`, `CHK-DMA-QUEUED-DESCRIPTORS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -10687,6 +10695,37 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 |===
 
 *Pass Criteria*: all seven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-255-smc_output_remap_window_test]]
+===== 255 `smc_output_remap_window_test`
+
+*Source Module*: `smc_output_remap_window_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN for the remap registers and JTAG ingress for the traffic); the SYS_OUT responder's memory
+
+*Objective*: Outbound words through the M-mode and hypervisor remap windows, at both their LOCAL_BASE and GLOBAL_BASE copies, land in SYS_OUT memory where the programmed entry puts them.
+
+*Test Coverage*:
+
+* The output fabric sends an outbound access in the M-mode or hypervisor window to that window's remap table and passes everything else through. Each window is decoded at `LOCAL_BASE` and at `GLOBAL_BASE` plus its offset. The offset is the generated `SMC_TOP_MMODE_REGION_BASE_ADDR` or `SMC_TOP_XVISOR_REGION_BASE_ADDR` less the register window base, and the size is `*_REGION_SIZE`. With the reset bases, the local copies sit just above the SMC's 16 MB aperture, so an inbound master that addresses them is sent out. No leaf had sent anything there: the remap-table leaves write the tables but run no traffic through them.
+* `output_remap.rdl`: an entry's `offset` replaces the upper bits of the address, the entry is selected by the access's 1 MB slot within its window, and the low 20 bits are kept. The leaf programs M-mode entries 0 and 1 and hypervisor entry 0 with distinct offsets in SYS_OUT memory, reading each entry's reset first.
+* Six words go out over the JTAG ingress: through the M-mode window's local copy in slots 0 and 1 and its global copy, through the hypervisor window's local and global copies, and to one address just past the hypervisor window. Each must land in the responder's memory at the address the entry predicts, and the window address itself must keep its sentinel. The address past the window must land unremapped. Each word must read back through the same window. The entries are restored and read back.
+
+*Test Procedure*:
+
+Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OUTPUT-REMAP-WINDOWS` |All six words landed in SYS_OUT memory at the predicted address and nowhere else, and each read back through the window it was written through
+|===
+
+*Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
