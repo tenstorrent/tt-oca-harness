@@ -47,7 +47,7 @@ module sep_reset_ctrl (
   input  logic   test_en_i,
   input  logic   scan_rst_ni,
 
-  // CPU reset after functional gating and scan override
+  // sep_reset_n AND wdt_rst_ni
   output logic   sep_cpu_reset_no,
 
   // Isolation handshake with sep_crypto's AXI interconnect (one per IP)
