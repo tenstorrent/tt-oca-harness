@@ -288,9 +288,9 @@ and runs the pin rules. Its contents:
 
 - `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
   (JTAG pins only; reused by any DUT).
-- `cov/ocah_jtag_cov.sv` — commercial-simulator-only functional-coverage
+- `cov/ocah_jtag_cov.sv` — optional-backend functional-coverage
   collateral.
-- `sva/ocah_jtag_sva.sv` — clean-room SVA protocol rules for the TAP pins.
+- `sva/ocah_jtag_sva.sv` — SVA protocol rules derived from IEEE 1149.1.
   Two trees by simulator capability: the TDO-timing and TAP-state rules use
   `OCAH_SVA_RULE` (`hw/common/assert/ocah_sva_macros.svh`) and run on every
   simulator, Verilator included under `--assert`, and on licensed formal
@@ -308,7 +308,7 @@ and runs the pin rules. Its contents:
   (`hw/common/dv/docs/formal-property-style.adoc`, Shared protocol checkers).
 - `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
   sequencer/agent plus the encoding-agnostic TAP reference model;
-  `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs
+  `ocah_jtag_master_env` is the optional-backend override unit that DUT envs
   instantiate (see the DTP SV-UVM flow for a consuming integration).
 
 ## UVM Env Surface Convention
@@ -353,7 +353,7 @@ python3 tools/dv/run_dv.py --doctor --dut dtp
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_sample_preload_test --tool vcs
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_sample_preload_test --tool verilator
 ```
 
 For broader coverage, run the full `basic_jtag` group:

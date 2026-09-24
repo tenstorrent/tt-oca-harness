@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
-OcahSepSpiFlash — SEP-specific SPI/xSPI flash BFM.
+OcahSepSpiFlash — SEP-specific octal-SPI flash BFM.
 
-Binds the SEP xSPI pad bundle, one cocotb handle per pad:
+Binds the SEP octal-SPI pad bundle, one cocotb handle per pad:
 
     Controller outputs (DUT drives these):
         spi_cs_n_o          — active-low chip-select
