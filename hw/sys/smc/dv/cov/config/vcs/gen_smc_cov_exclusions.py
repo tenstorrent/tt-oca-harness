@@ -71,6 +71,12 @@ and `kill_i` a constant zero (P7 NO-ERROR-CAP). The legalizer's
 software-writable RDL field the frontend carries into the backend options, so
 that branch stays graded.
 
+One more is the geometry the parameters fix: a bank spans 32 bytes and a VLT
+packet is 10, the header being `8 + DEBUG_SIGNAL_WIDTH/8` bits wide on top of a
+64-bit debug bus, so no single write can start at or below a bank's first byte
+and end past its last and `target_write_byte_boundary_crosses_bank_range` is
+false for the life of the design (P10 PACKET-SHORTER-THAN-BANK).
+
 `core_logic_analyzer` derives `DBG_SIGNAL_CONFIG` from
 `DEBUG_SIGNAL_WIDTH == 128` and `smc_dfd_wrap` passes 64, so the
 `cla_snapshot_mmr_hi_blk` generate that drives every snapshot `Hi` write enable
@@ -211,8 +217,8 @@ F4 = (
 
 F5 = (
     "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a "
-    "transition from every state, and no case arm of this FSM assigns the reset state, "
-    "so the edge exists only if the block's reset is asserted while the FSM occupies "
+    "transition from every state, and no case arm of the source state assigns the reset "
+    "state, so the edge exists only if the block's reset is asserted while the FSM occupies "
     "that one state. The DV package grades reset behaviour through its reset leaves."
 )
 
@@ -251,6 +257,7 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
     ("efuse_shadow_regs", "efuse_sense_state_q"): [(F5, ("edges", ("StRead->StIdle",)))],
     ("i2c_bus_monitor", "state_q"): [(F6, ("edges", ("StBusBusyStop->StBusBusyHigh",)))],
     ("smc_cool_reset_wrap", "flr_counter_state"): [(F5, ("edges", ("COUNT_DOWN->IDLE",)))],
+    ("accumulator_bank", "bank_status"): [(F5, ("edges", ("BANK_PARTIAL->BANK_EMPTY",)))],
 }
 
 
@@ -357,6 +364,22 @@ P9 = (
     "the ternary it selects have no stimulus. The Lo halves are assigned outside that generate "
     "and stay graded."
 )
+P10 = (
+    "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_BYTES bytes, 32 at this "
+    "instantiation, and the packetizer is elaborated with PACKET_WIDTH_IN_BYTES = "
+    "VLT_PACKET_WIDTH / 8, which a 64-bit debug bus makes 10, so one write cannot both start "
+    "at or below a bank's first byte and end past its last; the term asking whether it does is "
+    "false for the life of the design. The two sibling terms of the same condition are "
+    "reachable and stay graded."
+)
+# The whole condition, so that a change to the order of its terms stops the
+# vector matching rather than moving it onto a sibling.
+BANK_RANGE = re.compile(
+    r"^\(target_write_byte_boundary_equals_range_end"
+    r" \|\| target_write_byte_boundary_crosses_bank_range"
+    r" \|\| target_write_byte_wraparound\)$"
+)
+
 # The snapshot write enables of the half a 64-bit debug bus does not elaborate.
 WREN_HI = re.compile(r"SignalSnapshotNode\d+Eap\d+Hi_F_Value_WrEn")
 
@@ -604,6 +627,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         ),
         (P6, re.compile(r"sim_skip_fuse_sense|security_disable_i"), None, LC_STATE_ARM),
     ],
+    "accumulator_bank": [(P10, BANK_RANGE, re.compile(r"^010$"), None)],
     "efuse_guard": [
         (P6, re.compile(r"rma_(sip|chiplet)_token_match_i"), None, None),
         (P6, re.compile(r"pro_read_intf_(wr|rd)_index == '0"), None, None),
@@ -1190,7 +1214,7 @@ def render_feature(
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (P1, P2, P3, P4, P5, P6, P7, P8, P9):
+        for reason in (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

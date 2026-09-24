@@ -15,9 +15,15 @@
 // block state the facts.
 //==================================================
 
+CHECKSUM: "3775597833 2717742095"
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+MODULE: accumulator_bank
+Fsm bank_status "2717742095"
+Transition BANK_PARTIAL->BANK_EMPTY "1->0"
+
 CHECKSUM: "3564686069 2272768170"
 ANNOTATION: "SMC-FSM-F2-DEFAULT: next_state = AVS_IDLE is the always_comb default of the protocol FSM, which the extractor lists as a transition from every state; every state has a case arm and every arm assigns next_state, so the default never fires. The three states whose own arm assigns AVS_IDLE reach it in the ordinary sequence and stay graded."
-ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: avsbus_controller
 Fsm cur_state "2272768170"
 Transition AVS_END_1ST_SUBFRAME->AVS_IDLE "32->8"
@@ -60,7 +66,7 @@ Transition ERR_DECODE->EFUSE_MMR_REG_MAP "3->2"
 Transition SHADOW_REG_MAP->EFUSE_MMR_REG_MAP "0->2"
 
 CHECKSUM: "3035079037 1499231322"
-ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: efuse_shadow_regs
 Fsm efuse_sense_state_q "1499231322"
 Transition StRead->StIdle "1->0"
@@ -72,14 +78,14 @@ Fsm state_q "1594583517"
 Transition StBusBusyStop->StBusBusyHigh "3->2"
 
 CHECKSUM: "194876589 1063748259"
-ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: smc_cool_reset_wrap
 Fsm flr_counter_state "909361475"
 Transition COUNT_DOWN->IDLE "1->0"
 
 CHECKSUM: "404099673 995141053"
 ANNOTATION: "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so the trace write master never completes a response handshake and cannot pass REQ_HANDSHAKE; the states an aw_ready, w_ready or b_valid is needed to enter, and the edges touching them, have no stimulus. The request the master issues on valid_i is reachable, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded."
-ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: trace_axi_master
 Fsm state "995141053"
 State AW_HANDSHAKE "2"
@@ -96,7 +102,7 @@ Transition W_HANDSHAKE->RESET_VALUE "3->0"
 Transition W_HANDSHAKE->RESP_HANDSHAKE "3->4"
 
 CHECKSUM: "3138320682 4062283189"
-ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of this FSM assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
+ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: zeroer
 Fsm cur_state "4062283189"
 Transition ST_ISSUE_ADDR->ST_IDLE "2->1"

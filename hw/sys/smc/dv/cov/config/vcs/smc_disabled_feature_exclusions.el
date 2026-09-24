@@ -11,6 +11,11 @@
 // are listed; the ANNOTATION before each block states the fact.
 //==================================================
 
+CHECKSUM: "3775597833 2443394120"
+ANNOTATION: "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_BYTES bytes, 32 at this instantiation, and the packetizer is elaborated with PACKET_WIDTH_IN_BYTES = VLT_PACKET_WIDTH / 8, which a 64-bit debug bus makes 10, so one write cannot both start at or below a bank's first byte and end past its last; the term asking whether it does is false for the life of the design. The two sibling terms of the same condition are reachable and stay graded."
+MODULE: accumulator_bank
+Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
+
 CHECKSUM: "4170061027 684303742"
 ANNOTATION: "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI filter with filter_skip_i tied to zero, so the skip arm of the filter decision never runs and no access can produce a condition over it."
 MODULE: axi_filter_wrap
