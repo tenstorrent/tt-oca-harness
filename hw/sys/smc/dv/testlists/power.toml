@@ -92,6 +92,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_octs_credit_expired_test"
+module = "smc_octs_credit_expired_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_octs_dual_sync_test"
 module = "smc_octs_dual_sync_test"
 seed = 1

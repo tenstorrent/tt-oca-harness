@@ -10893,6 +10893,42 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
+[[sec-283-smc_octs_credit_expired_test]]
+===== 283 `smc_octs_credit_expired_test`
+
+*Source Module*: `smc_octs_credit_expired_test`
+
+*BFM / Model*: the OCTS sync BFM on the sync and credit pads, with the chiplet strapped SECONDARY; observation on `CREDIT_EXPIRED` and `STATUS`
+
+*Objective*: `system_timer_octs.rdl` describes `CREDIT_EXPIRED.MAX_CYCLES_EXPIRED` as the largest number of cycles since a count credit was due, on a secondary. It says: "To reset the value of this register, write anything to it." No leaf had written it.
+
+*Test Coverage*:
+
+* The timer is strapped SECONDARY and given a sync and two credits, as `smc_octs_dual_sync_test` does, then no more credits. `CREDIT_EXPIRED` must grow while the credits stay away.
+* One late credit restarts the live count, and the register must keep its maximum.
+* A write must then bring the register back below that maximum.
+
+*Test Procedure*:
+
+[arabic]
+. Strap SECONDARY, configure the timer, and inject a sync and two credits.
+. Read `CREDIT_EXPIRED` twice with no credits in between.
+. Inject one credit, read it again, write it, and read it once more.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OCTS-CREDIT-EXPIRED` |`CREDIT_EXPIRED` grew while starved, held its maximum through a late credit, and dropped below it on a write
+|===
+
+*Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
