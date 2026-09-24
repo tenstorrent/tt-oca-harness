@@ -680,7 +680,6 @@ sources:
       - hw/common/och_prim/rtl/prim_sync_reset.sv
       - hw/common/och_prim/rtl/prim_updown_counter.sv
       - hw/common/och_prim/rtl/prim_zero_counter.sv
-      - hw/common/och_prim_generic/rtl/prim_and3.sv
       - hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
       - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
       - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
@@ -701,6 +700,7 @@ sources:
       - hw/common/defs/ocah_vendor_defines.svh
   - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
     files:
+      - hw/common/och_prim_generic/rtl/prim_and3.sv
       - hw/common/och_prim_generic/rtl/prim_ao222.sv
       - hw/common/och_prim_generic/rtl/prim_clkgater.sv
       - hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
