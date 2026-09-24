@@ -10815,6 +10815,49 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
+[[sec-281-smc_uart_thr_paths_test]]
+===== 281 `smc_uart_thr_paths_test`
+
+*Source Module*: `smc_uart_thr_paths_test`
+
+*BFM / Model*: UART0 in `MCR.LOOP`, so each character comes back through its own receiver and no pad carries it; observation on `LSR`, `IIR` and `RBR`
+
+*Objective*: UART0 transmit-holding and receive paths that only unusual programming reaches. Every other UART leaf sets a non-zero divisor before writing `THR`, writes whole words, and uses a documented trigger level.
+
+*Test Coverage*:
+
+* A character written with the divisor latches at 0. The baud generator does not run, so the character must wait in `THR`, with `LSR.THRE` clear and nothing received.
+** A second write while it waits finds `THR` occupied.
+** Once the divisor is programmed, exactly one character must arrive. Which one is recorded, because no document says whether the second write replaces the first or is dropped; on this RTL the first is kept.
+** The FIFOs are off for this leg, with `FCR.DMA_MODE_SELECT` set.
+* A byte write that enables only the lane above `THR`'s character carries no character. Nothing may be transmitted, and a following whole write must be.
+* A character left unread in `RBR` with the FIFOs off for four times the reception timeout. It must read back intact, and what `IIR` reports is recorded.
+* Trigger code 0xC (`ECR.RCVR_TRIGGER_MS2B` = 3, `FCR.RCVR_TRIGGER` = 0), past the last level `uart_16550_main.rdl` lists. It is programmed with the FIFOs on; a character must be received intact, and what `IIR` shows is recorded.
+
+*Test Procedure*:
+
+[arabic]
+. Loop UART0 back, set the divisor to 0 with the FIFOs off, write `THR` twice, then set the divisor and receive.
+. With the FIFOs on, write the lane above `THR`, then write `THR` whole.
+. With the FIFOs off, receive a character and leave it unread before reading `IIR` and `RBR`.
+. With trigger code 0xC and the FIFOs on, receive a character and read `IIR` and `RBR`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-THR-HOLD` |With the divisor at 0 the character waited in `THR`, nothing was received, and exactly one of the two written characters arrived once the divisor was set
+|`CHK-UART-THR-LANE` |A write to the lane above `THR`'s character transmitted nothing, and the whole write after it arrived
+|`CHK-UART-RBR-PARKED` |A character left unread with the FIFOs off, and one received with trigger code 0xC, both read back intact, with `IIR` recorded for each
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+
+'''''
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
