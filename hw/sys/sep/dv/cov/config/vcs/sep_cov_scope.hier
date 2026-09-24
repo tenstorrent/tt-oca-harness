@@ -210,24 +210,6 @@
 -module abr_prim_slicer
 -module abr_prim_sparse_fsm_flop
 
-// VeeR EL2 flop and clock-header library (Cores-VeeR-EL2/upstream/design/lib
-// and overlay/prim_shim). These reach the report from u_axi4_to_ahb inside the
-// adams-bridge wrapper, not from the CPU subtree the -tree rule already drops.
-// They are the VeeR spelling of cells excluded above: rvdff*/prim_dffrxq and
-// prim_flop*, rvclkhdr and user_clock_gate/prim_clkgater.
-//
-// axi4_to_ahb itself stays graded: it is a bus bridge, and the ABR keygen and
-// signature tests drive real traffic through it.
--module rvclkhdr
--module rvdff
--module rvdff_fpga
--module rvdffe
--module rvdffs
--module rvdffs_fpga
--module rvdffsc
--module rvdffsc_fpga
--module user_clock_gate
-
 // TCM memory array. Same class as prim_ram_1p and prim_rom above: a RAM array
 // implements no SEP contract. The TT wrapper around it, sep_tcm_wrapper, stays
 // graded, as the DV-model rule above already states.

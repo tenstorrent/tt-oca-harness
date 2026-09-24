@@ -264,3 +264,59 @@ tags = ["crypto", "abr", "mlkem", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge pipelined reads: several in flight, each returns its own word.
+# Concurrent single-beat reads of MLDSA_VERSION1 at depths 1/2/3/4/8, one ARID
+# each, on m_axi (through an inbound-filter read window) and on s_axi; the
+# ML-DSA identity words in several orders and on one ARID; both masters at
+# once. Every R beat is graded by its RID, and the AR/R handshakes on the pins
+# must show the reads overlapped. A bridge that drops HADDR[2:0] on streamed
+# reads fails from depth 3. RAND-NONE: the depths and orders are the cells.
+# no_cpu; +skip_fuse_sense.
+name = "sep_abr_pipelined_read_test"
+module = "crypto.sep_abr_pipelined_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge access sizes and write strobes, the [[abr-access-size]] rules in
+# hw/sys/sep/doc/adams_bridge.adoc. 64-bit reads return {high word, low word}
+# of the two identity registers they cover; AxSIZE=3 at addr[2]=1 and byte /
+# halfword reads return the addressed bytes. On the global_intr_en_r /
+# error_intr_en_r pair and the 32-bit error-interrupt counter: full-strobe
+# 64-bit writes land both words, WSTRB 0x0F / 0xF0 land one word and leave the
+# other, every partial-word strobe answers SLVERR with the register unchanged,
+# and a 64-bit beat with one whole and one partial word writes the whole word
+# and answers SLVERR. RANDCFG: data values from the run seed; every size,
+# offset and strobe is walked. no_cpu; +skip_fuse_sense.
+name = "sep_abr_access_size_test"
+module = "crypto.sep_abr_access_size_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge concurrent reads and writes from s_axi and m_axi at once, several
+# outstanding on each, RREADY and BREADY throttled from the master side. Each
+# read-write register has one writing master on one AWID; reads are graded
+# against the owner's write window, identity words exactly, partial writes must
+# answer SLVERR, and every register must end at its owner's last write.
+# RANDCFG: op mix, data, depths and throttle patterns from the run seed.
+# no_cpu; +skip_fuse_sense.
+name = "sep_abr_concurrent_rw_test"
+module = "crypto.sep_abr_concurrent_rw_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "rand_rep", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
