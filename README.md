@@ -5,13 +5,6 @@
 Open Chiplet Atlas Harness (OCAH) — the open hardware tree for the OCA design:
 RTL, register descriptions, generated collateral, and documentation.
 
-> [!WARNING]
-> **Early stage.** This repository is under active development. Structure, interfaces,
-> and generated collateral may change without notice, and much of the content here is
-> provisional. As the documentation matures, most of the material collected in this
-> README will migrate into the user guide and other doc products under [`doc/`](doc/);
-> for now this file is the landing place for the essentials.
-
 ## Getting Started
 
 For detailed documentation, please refer to the GitHub pages site generated as a
