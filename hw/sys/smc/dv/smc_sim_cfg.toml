@@ -192,7 +192,7 @@ build_jobs = 8
 #
 # Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
 # but still computes the headline score over the whole database, so the only
-# way to keep the CPU cluster and the vendored blocks out of the number is to
+# way to keep the CPU cluster and the library cells out of the number is to
 # keep them out of the database: `-cm_hier` limits what gets instrumented.
 # Edit `smc_cov_scope.hier` then `--rebuild` -- the file is not fingerprinted.
 #
