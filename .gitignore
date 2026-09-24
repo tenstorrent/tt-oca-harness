@@ -58,10 +58,14 @@ doc/*/dist/*
 !doc/*/dist/ocah-*.pdf
 doc/*/assets/*
 doc/*/src/assets
+# Most assets in these directories are automatically copied from the block hw
+# directories - so don't need to be tracked. Add files only stored here to the
+# override filters (.gitignore) in the relevant directories.
+doc/trm/assets/*
 !doc/trm/assets/.gitignore
-!doc/trm/assets/*.png
-!doc/integrator/assets/
-!doc/integrator/assets/*.png
+doc/integrator/assets/*
+!doc/integrator/assets/.gitignore
+# Datasheet assets are separate
 !doc/datasheets/assets/
 !doc/datasheets/assets/*.svg
 doc/*/modules/ROOT/pages/
