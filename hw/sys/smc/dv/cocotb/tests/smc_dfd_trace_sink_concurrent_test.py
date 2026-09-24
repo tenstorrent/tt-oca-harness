@@ -8,8 +8,9 @@ drives the read pointer and the RAM data port underneath it, in both values of
 the sink's destination-mode field. Under a compressed stream it then switches
 the traced bus between two states an odd number of bytes apart. It then stops
 the trace twice, once by clearing the DST enable alone and once through the
-sink's stop-on-wrap setting, and walks the sync-mode field under a running
-stream.
+sink's stop-on-wrap setting, walks the sync-mode field under a running
+stream, and ends by running the trace into the sink's memory mode and
+recovering in RAM mode.
 """
 
 from __future__ import annotations
@@ -50,6 +51,9 @@ from smc_base_test import smc_base_test
 #     write, two mux writes, the empty read), the two pointer reads around
 #     160 mux writes, the closing two-word snapshot and 64 normal-mode
 #     writes                                                                373
+#   memory mode: a sink arm (9), DST control write + readback, 100 held
+#     action writes, the empty read, a RAM-mode sink arm (9), 8 held action
+#     writes and one pointer poll                                            130
 #   software stop: long-frame write + readback, restart write + readback,
 #     16 action writes, short-frame write + readback, 16 action writes, the
 #     running read, the stop write + readback and one empty poll             42
@@ -62,8 +66,8 @@ from smc_base_test import smc_base_test
 #   restore: DST control, DST impl, frame config, EAP, CLA control, CLA
 #     mux, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                   10
 #                                                                         ------
-#                                                                          1408
-TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1408
+#                                                                          1538
+TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1538
 
 
 @pyuvm.test()
@@ -74,13 +78,14 @@ class smc_dfd_trace_sink_concurrent_test(smc_base_test):
         "CHK-DST-CONCURRENT-DRAIN",
         "CHK-DST-CONCURRENT-FRAMEWALK",
         "CHK-DST-CONCURRENT-IDLE",
+        "CHK-DST-CONCURRENT-MEMORY",
         "CHK-DST-CONCURRENT-MODE",
         "CHK-DST-CONCURRENT-ODDBYTES",
         "CHK-DST-CONCURRENT-STOP",
         "CHK-DST-CONCURRENT-STOPWRAP",
         "CHK-DST-CONCURRENT-SYNCWALK",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     auto_protocol_vip = False
 

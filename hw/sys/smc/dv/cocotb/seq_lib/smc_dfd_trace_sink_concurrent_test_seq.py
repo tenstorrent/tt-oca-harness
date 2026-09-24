@@ -60,6 +60,13 @@ Two ways of stopping the trace close the leaf:
 After both, ``Trdstsyncmode`` is walked through every value of its field under
 each timestamp source, on a fresh sink with the uncompressed stream running and
 the restarting action held so the stream runs for many frames under each.
+
+The leaf ends in the sink's memory mode. The memory write-out is never
+accepted in this bench, so the frames the sink stages in its local RAM are
+never drained and it backpressures the DST. The trace is held on well past
+that, and the sink is then re-armed in RAM mode, where the stream has to
+resume. It comes last because a software stop after it does not empty the
+packetizer.
 """
 
 from __future__ import annotations
@@ -115,6 +122,12 @@ _PARKED_SAMPLES = 3
 # run of equal odd-sized packets visits every offset of the 64-byte accumulator
 # within 64 packets, so this leaves room for a frame closing part way.
 _ODD_SWITCHES = 160
+# Writes of the restarting action with the sink in memory mode, each followed
+# by the settle time: several times what the uncompressed stream needs to fill
+# the sink's staging threshold. Then the writes that restart the stream after
+# the sink returns to RAM mode.
+_MEMORY_HOLD_WRITES = 100
+_MEMORY_EXIT_WRITES = 8
 # Writes of the restarting action per sync-mode value, each followed by the
 # settle time: long enough at 64-byte frames to pass the shortest stream length
 # more than once.
@@ -144,6 +157,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.odd_states = (0, 0)
         self.odd_start_action = -1
         self.odd_pointer = (0, 0)
+        self.memory_exit_pointer = 0
 
     # -- register helpers -------------------------------------------------
 
@@ -500,6 +514,67 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             self.odd_pointer[1],
         )
 
+    # -- memory mode ------------------------------------------------------
+
+    async def _memory_backpressure(self, logical_op: int) -> None:
+        """Run the uncompressed trace into the sink's memory mode, then recover in RAM mode.
+
+        In memory mode the sink stages frames in its local RAM for a memory
+        write-out this bench never accepts, so the staged frames are never
+        drained: the sink applies backpressure once they pass its threshold and
+        the DST holds data it cannot hand on. The trace is held on the
+        restarting action well past that point, ``Trdstempty`` has to read 0
+        afterwards, and the sink is then re-armed in RAM mode, where the write
+        pointer has to move within a bounded number of polls. Every wait is
+        bounded, so a sink that never leaves backpressure fails the leaf rather
+        than stalling it.
+        """
+        control = dst_register("Trdstcontrol")
+        empty = reg_field(control, "Trdstempty")
+        eap = cla_register("CDbgNode0Eap0")
+        hold = pack_fields(
+            eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": self.odd_start_action}
+        )
+        await self._open_sink(1, "memory")
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
+            "memory",
+        )
+        for step in range(_MEMORY_HOLD_WRITES):
+            await self._write(eap, hold, f"memory{step}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        held = await self._read(control, "memory_held")
+        assert not held & empty.mask, (
+            f"DST Trdstcontrol reads 0x{held:08x} after {_MEMORY_HOLD_WRITES} writes of the "
+            f"restarting action with the sink in memory mode: Trdstempty is 1, so the DST was "
+            f"not holding back data the sink refused"
+        )
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
+        await self._open_sink(0, "memexit")
+        for step in range(_MEMORY_EXIT_WRITES):
+            await self._write(eap, hold, f"memexit{step}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        for poll in range(_DELIVER_POLLS):
+            self.memory_exit_pointer = await self._read(wp, f"memexit{poll}") & pointer.mask
+            if self.memory_exit_pointer:
+                break
+        assert self.memory_exit_pointer, (
+            f"the sink write pointer stayed at 0 for {_DELIVER_POLLS} polls after the sink was "
+            f"re-armed in RAM mode with the trace held on, so the stream did not resume after "
+            f"the memory-mode backpressure"
+        )
+        self.value_checks += 2
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-MEMORY: with the sink in memory mode and the uncompressed "
+            "trace held on for %d action writes, Trdstempty read 0, the DST holding data the "
+            "sink would not take; re-armed in RAM mode, the stream resumed and moved the "
+            "write pointer to 0x%x",
+            _MEMORY_HOLD_WRITES,
+            self.memory_exit_pointer,
+        )
+
     # -- stopping the trace -----------------------------------------------
 
     async def _stop_in_software(self, logical_op: int) -> None:
@@ -801,6 +876,9 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         await self._stop_in_software(logical_op)
         await self._stop_on_wrap(logical_op)
         await self._walk_sync_modes(logical_op)
+        # A software stop after memory mode does not empty the packetizer, so
+        # nothing may follow that needs it to.
+        await self._memory_backpressure(logical_op)
 
         for reg in (
             dst_register("Trdstcontrol"),
