@@ -1638,7 +1638,7 @@ the filter may not update before your next transaction, causing unexpected behav
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>write_filter_enable</ipxact:name>
-              <ipxact:description>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+              <ipxact:description>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
@@ -1652,7 +1652,7 @@ the filter may not update before your next transaction, causing unexpected behav
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>read_filter_enable</ipxact:name>
-              <ipxact:description>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+              <ipxact:description>Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
@@ -7397,8 +7397,10 @@ registers.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>TELEMETRY_RX_FLUSH</ipxact:name>
-                <ipxact:description>Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and
-all other storage elements in the Telemetry Receiver.</ipxact:description>
+                <ipxact:description>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+pointer. Stored payload bytes are not cleared. In particular, a later short
+message can retain trailing counter values and validity from an earlier
+message. This operation does not erase storage.</ipxact:description>
                 <ipxact:bitOffset>4</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -31540,7 +31542,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31558,7 +31560,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31576,7 +31578,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31594,7 +31596,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31612,7 +31614,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31630,7 +31632,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31648,7 +31650,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31666,7 +31668,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31684,7 +31686,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31702,7 +31704,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31720,7 +31722,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31738,7 +31740,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31756,7 +31758,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31774,7 +31776,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31792,7 +31794,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -31810,7 +31812,7 @@ On write:
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>BUSY</ipxact:name>
-              <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+              <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -41583,7 +41585,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>32</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -41840,7 +41842,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -41875,7 +41877,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -41897,7 +41899,7 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -41915,7 +41917,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -41950,7 +41952,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -41972,7 +41974,7 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -41990,7 +41992,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -42025,7 +42027,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -42047,7 +42049,7 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -42065,7 +42067,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>16</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>Target</ipxact:name>
@@ -42100,7 +42102,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>15</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>UpperTarget</ipxact:name>
@@ -42122,7 +42124,7 @@ reaches termination value.</ipxact:description>
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>1</ipxact:bitWidth>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -46462,7 +46464,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>8</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>TimestampUpper</ipxact:name>
@@ -46475,7 +46477,7 @@ reaches termination value.</ipxact:description>
                 </ipxact:resets>
                 <ipxact:bitWidth>56</ipxact:bitWidth>
                 <ipxact:volatile>true</ipxact:volatile>
-                <ipxact:access>read-only</ipxact:access>
+                <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>
             <ipxact:register>
@@ -48537,11 +48539,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -48748,6 +48750,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -48760,11 +48763,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48772,11 +48776,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48784,6 +48789,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -48796,6 +48802,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -48808,11 +48815,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48820,11 +48828,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48832,11 +48841,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -48844,6 +48854,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -49019,11 +49030,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -49230,6 +49241,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -49242,11 +49254,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49254,11 +49267,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49266,6 +49280,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49278,6 +49293,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49290,11 +49306,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49302,11 +49319,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49314,11 +49332,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49326,6 +49345,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -49501,11 +49521,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -49712,6 +49732,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -49724,11 +49745,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49736,11 +49758,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49748,6 +49771,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49760,6 +49784,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -49772,11 +49797,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49784,11 +49810,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49796,11 +49823,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -49808,6 +49836,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
@@ -49983,11 +50012,11 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>value</ipxact:name>
-              <ipxact:description>Physical address of error event. No reset value</ipxact:description>
+              <ipxact:description>Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -50194,6 +50223,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>ACCRUED_ENABLE</ipxact:name>
+            <ipxact:description>Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -50206,11 +50236,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50218,11 +50249,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>icache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for ICache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for ICache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50230,6 +50262,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -50242,6 +50275,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
@@ -50254,11 +50288,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_tlbus</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache Tilelink bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache Tilelink bus error.</ipxact:description>
               <ipxact:bitOffset>5</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50266,11 +50301,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_correctable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC correctable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC correctable bus error.</ipxact:description>
               <ipxact:bitOffset>6</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50278,11 +50314,12 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>dcache_uncorrectable</ipxact:name>
-              <ipxact:description>Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.</ipxact:description>
+              <ipxact:description>Sticky accrued status for DCache ECC uncorrectable bus error.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -50290,6 +50327,7 @@ Writing the interrupt number back completes the interrupt.</ipxact:description>
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>

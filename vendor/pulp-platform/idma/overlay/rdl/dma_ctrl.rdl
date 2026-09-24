@@ -102,7 +102,7 @@ addrmap dma_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response";
+            desc="Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.";
         } BUSY [9:0] = 0x0;
     };
 
