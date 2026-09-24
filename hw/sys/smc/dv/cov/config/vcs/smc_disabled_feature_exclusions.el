@@ -71,7 +71,7 @@ Condition 4 "1450259898" "(((~below_compare_int)) | compare_equal) 1 -1" (2 "01"
 CHECKSUM: "3897059503 4287847881"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
-ANNOTATION: "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's field alone, with no register-write term beside it, and the CLA gives that structure a zero default and never names the field; the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
+ANNOTATION: "SMC-P8-WREN-TIED-ZERO: the CLA gives this write structure a zero default and never names the field in the SMC's timestamp scheme 0. Where the field is the enable alone, as for the EAP status reserved bits and the timestamp capture, the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus; where a register write is ORed beside it, as for TsCapture, the row that needs the structure's field high cannot occur. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
 ANNOTATION: "SMC-P9-DEBUG-WIDTH-64: core_logic_analyzer derives DBG_SIGNAL_CONFIG from DEBUG_SIGNAL_WIDTH == 128 and smc_dfd_wrap passes 64, so the cla_snapshot_mmr_hi_blk generate that drives every snapshot Hi write enable is not elaborated and each of them holds the zero its write structure defaults to; the enable's true arm and the then arm of the ternary it selects have no stimulus. The Lo halves are assigned outside that generate and stay graded."
 MODULE: cla_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
@@ -118,9 +118,13 @@ Condition 599 "1256653579" "(MMR_CDbgEapStatus_F_Node0Eap2_WrEn ? MMR_CDbgEapSta
 Condition 600 "3792907964" "(MMR_CDbgEapStatus_F_Node0Eap1_WrEn ? MMR_CDbgEapStatus_F_Node0Eap1_Data : MMR_CDbgEapStatus_F_Node0Eap1_Data_prev) 1 -1" (1 "0")
 Condition 601 "3169002358" "(MMR_CDbgEapStatus_F_Node0Eap0_WrEn ? MMR_CDbgEapStatus_F_Node0Eap0_Data : MMR_CDbgEapStatus_F_Node0Eap0_Data_prev) 1 -1" (1 "0")
 Condition 626 "4093029083" "(MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn ? MMR_CDbgClaCtrlStatus_F_CurrentNode_Data : MMR_CDbgClaCtrlStatus_F_CurrentNode_Data_prev) 1 -1" (1 "0")
+Condition 1213 "3237059369" "((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampUpperWrEn) 1 -1" (1 "00")
+Condition 1213 "3237059369" "((reg_write & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampUpperWrEn) 1 -1" (3 "10")
+Condition 1216 "3152756947" "(MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn ? MMR_CDbgClaTimestamp_F_TimestampUpper_Data : MMR_CDbgClaTimestamp_F_TimestampUpper_Data_prev) 1 -1" (1 "0")
 Condition 1220 "2195976364" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampLowerWrEn) 1 -1" (1 "00")
 Condition 1220 "2195976364" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMP)) | ClaMmrCdbgclatimestampWr.TimestampLowerWrEn) 1 -1" (3 "10")
 Condition 1223 "3077930320" "(MMR_CDbgClaTimestamp_F_TimestampLower_WrEn ? MMR_CDbgClaTimestamp_F_TimestampLower_Data : MMR_CDbgClaTimestamp_F_TimestampLower_Data_prev) 1 -1" (1 "0")
+Condition 1239 "199114826" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.TsCaptureWrEn) 1 -1" (2 "01")
 Condition 1249 "4047399831" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.ResyncWrEn) 1 -1" (1 "00")
 Condition 1249 "4047399831" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.ResyncWrEn) 1 -1" (3 "10")
 Condition 1252 "4181707586" "(MMR_CDbgClaTimestampConfig_F_Resync_WrEn ? MMR_CDbgClaTimestampConfig_F_Resync_Data : MMR_CDbgClaTimestampConfig_F_Resync_Data_prev) 1 -1" (1 "0")
@@ -140,11 +144,12 @@ Condition 1427 "1439973091" "(MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_WrEn ? M
 Condition 1431 "1943373933" "(MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_Data_prev) 1 -1" (2 "1")
 Condition 1435 "1102323863" "(MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_Data_prev) 1 -1" (2 "1")
 Condition 1439 "1739953689" "(MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1465 "3962544059" "(MMR_CDbgTimestampCapture_F_Timestamp_WrEn ? MMR_CDbgTimestampCapture_F_Timestamp_Data : MMR_CDbgTimestampCapture_F_Timestamp_Data_prev) 1 -1" (2 "1")
 
 CHECKSUM: "3897059503 370771677"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
-ANNOTATION: "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's field alone, with no register-write term beside it, and the CLA gives that structure a zero default and never names the field; the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
+ANNOTATION: "SMC-P8-WREN-TIED-ZERO: the CLA gives this write structure a zero default and never names the field in the SMC's timestamp scheme 0. Where the field is the enable alone, as for the EAP status reserved bits and the timestamp capture, the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus; where a register write is ORed beside it, as for TsCapture, the row that needs the structure's field high cannot occur. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
 ANNOTATION: "SMC-P9-DEBUG-WIDTH-64: core_logic_analyzer derives DBG_SIGNAL_CONFIG from DEBUG_SIGNAL_WIDTH == 128 and smc_dfd_wrap passes 64, so the cla_snapshot_mmr_hi_blk generate that drives every snapshot Hi write enable is not elaborated and each of them holds the zero its write structure defaults to; the enable's true arm and the then arm of the ternary it selects have no stimulus. The Lo halves are assigned outside that generate and stay graded."
 MODULE: cla_mmr
 Branch 2 "341151317" "MMR_CDbgClaCounter0Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter0Cfg_F_UpperCounter_WrEn 0"
@@ -173,6 +178,7 @@ Branch 202 "3556385403" "MMR_CDbgEapStatus_F_Node0Eap2_WrEn" (1) "MMR_CDbgEapSta
 Branch 203 "3328555665" "MMR_CDbgEapStatus_F_Node0Eap1_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap1_WrEn 0"
 Branch 204 "917489242" "MMR_CDbgEapStatus_F_Node0Eap0_WrEn" (1) "MMR_CDbgEapStatus_F_Node0Eap0_WrEn 0"
 Branch 214 "683882288" "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn" (1) "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn 0"
+Branch 453 "398830690" "MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn" (1) "MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn 0"
 Branch 455 "2128509458" "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn" (1) "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn 0"
 Branch 466 "3498676337" "MMR_CDbgClaTimestampConfig_F_Resync_WrEn" (1) "MMR_CDbgClaTimestampConfig_F_Resync_WrEn 0"
 Branch 525 "705907807" "MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_WrEn 1"
@@ -191,6 +197,7 @@ Branch 561 "2664756155" "MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_WrEn" (0) "MM
 Branch 564 "570626061" "MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn 1"
 Branch 567 "1585902306" "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn 1"
 Branch 570 "3796963668" "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn 1"
+Branch 582 "3784698193" "MMR_CDbgTimestampCapture_F_Timestamp_WrEn" (0) "MMR_CDbgTimestampCapture_F_Timestamp_WrEn 1"
 Branch 636 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 636 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 

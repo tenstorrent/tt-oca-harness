@@ -725,7 +725,8 @@ WREN_TIED = (
     "ClaMmrCdbgclacounter[0-3]CfgWr.(Upper)?CounterWrEn|TrdstcontrolWr.TrdstemptyWrEn|"
     "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn|MMR_CDbgClaTimestamp_F_TimestampLower_WrEn|"
     "MMR_CDbgClaTimestampConfig_F_Resync_WrEn|MMR_CDbgEapStatus_F_Node[0-3]Eap[0-3]_WrEn|"
-    "MMR_CDbgClaCounter[0-3]Cfg_F_(Upper)?Counter_WrEn"
+    "MMR_CDbgClaCounter[0-3]Cfg_F_(Upper)?Counter_WrEn|"
+    "ClatimestampWr.TimestampUpperWrEn|MMR_CDbgClaTimestamp_F_TimestampUpper_WrEn"
 )
 P2 = (
     "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI "
@@ -733,11 +734,13 @@ P2 = (
     "runs and no access can produce a condition over it."
 )
 P8 = (
-    "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's "
-    "field alone, with no register-write term beside it, and the CLA gives that structure a "
-    "zero default and never names the field; the enable holds zero, so its true arm and the "
-    "then arm of the write-data ternary it selects have no stimulus. This is the converse of "
-    "P3, where a constant one leaves the else arm unreachable instead."
+    "SMC-P8-WREN-TIED-ZERO: the CLA gives this write structure a zero default and never names "
+    "the field in the SMC's timestamp scheme 0. Where the field is the enable alone, as for the "
+    "EAP status reserved bits and the timestamp capture, the enable holds zero, so its true arm "
+    "and the then arm of the write-data ternary it selects have no stimulus; where a register "
+    "write is ORed beside it, as for TsCapture, the row that needs the structure's field high "
+    "cannot occur. This is the converse of P3, where a constant one leaves the else arm "
+    "unreachable instead."
 )
 P9 = (
     "SMC-P9-DEBUG-WIDTH-64: core_logic_analyzer derives DBG_SIGNAL_CONFIG from "
@@ -787,7 +790,7 @@ WREN_HI = re.compile(r"SignalSnapshotNode\d+Eap\d+Hi_F_Value_WrEn")
 # The one reserved-field enable the MMR block drives from its write structure
 # alone. Every other MMR_CDbg*_F_Rsvd*_WrEn carries a `reg_write & reg_addr`
 # term, so a software write to that register asserts it.
-WREN_ZERO = r"MMR_CDbgEapStatus_F_Rsvd3116_WrEn"
+WREN_ZERO = r"MMR_CDbgEapStatus_F_Rsvd3116_WrEn|MMR_CDbgTimestampCapture_F_Timestamp_WrEn"
 P6 = (
     "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so "
     "the lifecycle-state arms of the interface controller, the shadow registers, their access "
@@ -1441,6 +1444,15 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "dst_sink_mmr": [(P5, INSTR_TYPE_TEST, re.compile(r"^1$"), None)],
     "funnel_mmr": [(P5, INSTR_TYPE_TEST, re.compile(r"^1$"), None)],
     "cla_mmr": [
+        (
+            P8,
+            re.compile(r"ClaMmrCdbgclatimestampconfigWr\.TsCaptureWrEn"),
+            lambda terms, vector: any(
+                t == "ClaMmrCdbgclatimestampconfigWr.TsCaptureWrEn" and b == "1"
+                for t, b in zip(terms, vector)
+            ),
+            None,
+        ),
         (P3, re.compile(WREN_TIED, re.I), None, None),
         (P8, re.compile(WREN_ZERO), re.compile(r"^1$"), None),
         (P9, WREN_HI, re.compile(r"^1$"), None),
