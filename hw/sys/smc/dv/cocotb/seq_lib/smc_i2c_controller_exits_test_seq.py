@@ -26,12 +26,8 @@ The bench EEPROM target answers the first leg; the second addresses a device
 that is not there.
 
 The controller's third ending, the automatic stop it makes when
-`CTRL.ENABLEHOST` is cleared with a transaction still open, is not driven
-here. `i2c_controller_fsm.sv:291` clears `trans_started` in the same cycle the
-enable drops, so the `trans_started && !host_enable_i` arms in `Idle` and in
-`PopFmtFifo` are each one cycle wide; with the controller parked
-mid-transaction and the queue spent, clearing the enable returned it to idle
-without the bench target seeing a stop.
+`CTRL.ENABLEHOST` is cleared with a transaction still open, is driven by
+`smc_i2c_controller_disable_stop_test`.
 """
 
 from __future__ import annotations
@@ -115,7 +111,7 @@ EVENT_POLLS = 2000
 
 
 class smc_i2c_controller_exits_test_seq(SmcCsrSeq):
-    """A read that continues, an automatic stop, and a NACK left unhandled."""
+    """A read that continues, and a NACK left unhandled."""
 
     def __init__(self, name: str = "smc_i2c_controller_exits_test_seq") -> None:
         super().__init__(name)

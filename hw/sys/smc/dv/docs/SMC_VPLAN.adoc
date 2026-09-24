@@ -9890,7 +9890,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * A read count of zero. `i2c.rdl` gives `FBYTE` of zero with `READB` as a 256-byte read -- one more than any nonzero count can express, and four times the depth of the controller's receive FIFO, so software drains `RDATA` while it runs. The controller's bit period is shortened for this leg so the read costs a few hundred microseconds; the bench target samples on the SMC clock, far faster.
 * `CONTROLLER_EVENTS` clears on a written one, so two writes that must *not* clear it are made first: a word of zeros over a set bit, and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled. The bit is read back set after each, and only a written one clears it. Both set fields are checked this way.
 
-*Known limitation*: the controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is not driven. `i2c_controller_fsm.sv:291` clears `trans_started` in the same cycle the enable drops, so the `trans_started && !host_enable_i` arms in `Idle` and in `PopFmtFifo` are each one cycle wide. With the controller parked mid-transaction -- every entry consumed, no stop given, `STATUS.HOSTIDLE` clear -- clearing the enable returned it to idle without the bench target seeing a stop.
+The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is driven by `smc_i2c_controller_disable_stop_test`.
 
 *Test Procedure*:
 
@@ -10575,6 +10575,43 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 |===
 
 *Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-251-smc_i2c_controller_disable_stop_test]]
+===== 251 `smc_i2c_controller_disable_stop_test`
+
+*Source Module*: `smc_i2c_controller_disable_stop_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a pad watcher counting SCL rises and STOPs, and a second bench pad driver that returns the bus to idle between tries; observation on the pads, `INTR_STATE.CMD_COMPLETE` and `STATUS`
+
+*Objective*: A controller that has started a transaction owns the bus until it gives a STOP; if software clears `CTRL.ENABLEHOST` with the transaction still open, the controller must give that STOP itself.
+
+*Test Coverage*:
+
+* The controller parked mid-transaction. When the format FIFO runs dry without a STOP, the controller waits holding SCL low with `STATUS.HOSTIDLE` clear. Clearing the enable there must put one STOP on the pads, raise `INTR_STATE.CMD_COMPLETE` and return the controller to idle.
+* The enable cleared on the single cycle the controller spends in `PopFmtFifo` between two format entries. Both automatic-stop arms test `trans_started && !host_enable_i`, and `trans_started` clears on the cycle after the enable is seen low; anywhere else in a transfer it is clear before the controller reaches either arm, and the controller goes idle without a STOP. A STOP on the pads is therefore proof the disable landed on that one cycle.
+* The cycle is found on the bus. The transfer is a START and address, an offset byte, and a data byte with a STOP. The disable is written a chosen number of SMC clock cycles after the last address bit's SCL rise, and each try ends one of three ways: a STOP; SCL released after the acknowledge with no STOP (the disable landed before `PopFmtFifo`); or the offset byte clocked out first (it landed after). Bisection between an early and a late offset closes on the cycle between them. The write crosses into the I2C clock, whose phase is not locked to the SMC clock, so the landing cycle of one offset can move by one between tries; the offsets either side of the close are tried again, up to four passes, until one lands.
+* `INTR_STATE.CMD_COMPLETE` is raised only when the controller finishes a STOP or a repeated START (`i2c.rdl`), so it tells a STOP the controller made from any other edge on the pads. Every try without a STOP must leave it clear, and the bench target must count exactly one STOP after each disable that makes one.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads.
+. Queue a START and address and an offset byte with no STOP; wait for the format FIFO to drain and require SCL low and `STATUS.HOSTIDLE` clear. Clear `CTRL.ENABLEHOST` and require a STOP on the pads, `CMD_COMPLETE`, one STOP at the target and an idle controller.
+. With the controller disabled, queue a START and address, an offset byte and a data byte with a STOP. Enable it, count SCL rises to the last address bit, wait the chosen offset and clear the enable. Classify the try by the STOP and the SCL rises that follow, and return the bus to idle when there is no STOP.
+. Try offset 0 (must be early) and the upper end of the range (must be late), then bisect; retry around the close if needed. Require a STOP within the search, with at least one early and one late try beside it.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-DISABLE-STOP-IDLE` |Clearing the enable with the controller parked mid-transaction made one STOP on the pads, raised `CMD_COMPLETE` and returned the controller to idle
+|`CHK-I2C-CTRL-DISABLE-STOP-POP` |Clearing the enable on the `PopFmtFifo` cycle made one STOP and raised `CMD_COMPLETE`, where at least one earlier and one later disable ended the transfer without a STOP
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
