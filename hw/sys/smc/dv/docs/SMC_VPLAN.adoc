@@ -10718,6 +10718,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 ** After one pop, every command must complete with its reply intact.
 * sdata held low while the bus is idle raises `AVS_SLAVE_ISSUED_INTERRUPT` as the only unmasked source, and the clear register clears it.
 * sdata is held low long enough to raise the slave interrupt, and a command queued while it is still low has to launch and read back its reply intact.
+* The readback FIFO is filled to one slot short, and a pair of commands is sent with the first answered unavailable and a retry budget of 1. The retried command's good reply takes the last slot, and the second command's reply, which waited behind the retry, meets a full FIFO. `READBACK_OVERFLOW_INT` must set. The interrupt line must be low with every source masked and high with only that source unmasked. The FIFO must drain the prefill and the retried reply, with the waiting reply the one dropped.
+* The AVS clock duty-cycle numerator is changed on its own. Both divider fields reset to 0, a sentinel that leaves the divider on its hardware defaults (`interface.adoc`), so the defaults (divisor 4, numerator 0x80) are first written as real values. The numerator alone then goes to 0x40 and back. The clock at the pad must read 25% high and then 50% again. `smc_avsbus_clock_divider_test` changes the numerator with the divisor held, but its programming helper first writes back the saved reset `AVS_CFG_1`, divisor 0, under `TURN_OFF_ALL_PREMUX_CLOCKS`, so the divider sees the divisor drop to 0 and return together with the new numerator.
 * Both FIFOs are filled and one `AVS_CMD` write more is made, which is refused. `READBACK_FIFO_FULL`, `CMD_FIFO_FULL` and `CMD_FIFO_OVERFLOW` must all be set. The AVSBus interrupt line, `tb_avsbus_irq`, must be low with every source masked and high with each of the three unmasked on its own, and every reply must then drain intact.
 
 *Test Procedure*:
@@ -10730,6 +10732,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 . Hold sdata low with the bus idle, then clear the slave interrupt.
 . Hold sdata low again and queue a command while it is low.
 . Fill both FIFOs, write one command more, then unmask each FIFO interrupt on its own and drain.
+. Prefill the readback FIFO to one slot short, send a retried pair, unmask the overflow interrupt on its own, and drain.
+. Write the divider defaults as real values, then change only the duty-cycle numerator to a quarter and back, measuring the clock at the pad.
 
 *Checkers*:
 
@@ -10743,11 +10747,13 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 |`CHK-AVS-SLAVE-BUFFERED` |A reply that waited behind a retry was delivered after it: as good when good, and unretried once the budget was cleared
 |`CHK-AVS-SLAVE-STALL` |A full readback FIFO held back further commands, and after a forced resync and a pop every command completed intact
 |`CHK-AVS-SLAVE-INTERRUPT` |sdata low while idle raised `AVS_SLAVE_ISSUED_INTERRUPT` as the only unmasked source, and it cleared
+|`CHK-AVS-SLAVE-RB-OVERFLOW` |A reply that waited behind a retry met a full readback FIFO and raised `READBACK_OVERFLOW_INT`; the line followed the mask for that source alone, and the waiting reply was the one dropped
+|`CHK-AVS-SLAVE-NUMERATOR` |With only the duty-cycle numerator changing, the AVS clock went to 25% high and back to 50%
 |`CHK-AVS-SLAVE-INTERRUPT-LAUNCH` |A command queued during a slave interrupt, with sdata still low, launched and read back its reply intact
 |`CHK-AVS-SLAVE-MASKS` |With both FIFOs full and one command refused, three FIFO interrupts were set; the interrupt line followed the mask for each alone, and every reply drained
 |===
 
-*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all eleven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

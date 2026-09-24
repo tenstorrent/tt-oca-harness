@@ -51,6 +51,13 @@ Reply shapes and what each leg requires:
 * **A command launched during a slave interrupt**: sdata is held low long
   enough to raise the interrupt, and a command queued while it is still low
   has to launch and read back its reply intact.
+* **A readback overflow**: with one readback slot left, a retried pair's
+  good retry reply takes it and the reply that waited behind the retry meets
+  a full FIFO. `READBACK_OVERFLOW_INT` has to set, the interrupt line has to
+  follow its mask alone, and the waiting reply is the one dropped.
+* **The duty-cycle numerator alone**: the divider defaults are written as real
+  values, then only the numerator changes, to a quarter and back, and the
+  clock at the pad has to follow.
 * **Three FIFO interrupts, one at a time**: with both FIFOs full and one
   `AVS_CMD` write more, which is refused, `READBACK_FIFO_FULL`,
   `CMD_FIFO_FULL` and `CMD_FIFO_OVERFLOW` are all set. The AVSBus interrupt
@@ -66,7 +73,8 @@ from __future__ import annotations
 from collections import deque
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge, Timer
+from cocotb.utils import get_sim_time
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr
@@ -141,6 +149,22 @@ DISABLE_CMD_FULL = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD
 DISABLE_CMD_OVERFLOW = avs_field(
     "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_OVERFLOW_INT_bm"
 )
+INT_RB_OVERFLOW = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_OVERFLOW_INT_bm")
+DISABLE_RB_OVERFLOW = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_OVERFLOW_INT_bm"
+)
+NUMERATOR_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bm")
+DIVIDER_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bm")
+DIVIDER_BP = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_VALUE_bp")
+#: The hardware-default divisor `interface.adoc` names for the reset sentinel.
+DEFAULT_DIVISOR = 4
+NUMERATOR_BP = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__CLK_DIVIDER_DUTY_CYCLE_NUMERATOR_bp")
+PREMUX_OFF_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__TURN_OFF_ALL_PREMUX_CLOCKS_bm")
+#: High fraction in 1/256 units (`interface.adoc`): a quarter, and the 50% the
+#: RDL names as the hardware default.
+QUARTER_NUMERATOR = 0x40
+HALF_NUMERATOR = 0x80
+DUTY_PERIODS = 8
 #: The AVSBus interrupt line crosses into the SMC clock domain before the pin.
 IRQ_SETTLE_CYCLES = 40
 #: Commands queued behind a full readback FIFO.
@@ -663,6 +687,131 @@ class smc_avsbus_slave_reply_test_seq(SmcCsrSeq):
             total,
         )
 
+    async def _overflow_leg(self) -> None:
+        """Push a buffered reply into a readback FIFO that the retried one filled."""
+        assert self.driver is not None
+        label = "RB_OVERFLOW"
+        await self._set_retries(label, 1)
+        await self.csr_write(f"{label}_MASK_ALL", AVS_INTERRUPT_MASK, MASK_ALL)
+        await self.csr_write(f"{label}_CLEAR", AVS_INTERRUPT_CLEAR, CLEAR_ALL)
+        good = self._word("GOOD")
+        prefill = RB_FIFO_DEPTH - 1
+        self._send(*([good] * prefill))
+        for index in range(prefill):
+            await self.csr_write(f"{label}_PREFILL{index}", AVS_CMD, CMD_A)
+        await self._await_replies(label, prefill)
+        # The first command of the pair is answered unavailable, so its retry goes out
+        # while the second one's reply waits; the retry's good reply takes the last
+        # slot and the waiting reply then meets a full FIFO.
+        retried = self._word("GOOD_2")
+        self._send(self._word("UNAVAILABLE"), self._word("BAD_DATA"), retried)
+        await self.csr_write(f"{label}_CMD_A", AVS_CMD, CMD_A)
+        await self.csr_write(f"{label}_CMD_B", AVS_CMD, CMD_B)
+        intr = 0
+        for _ in range(POLL_LIMIT):
+            intr = await self.csr_read(f"{label}_INTR", AVS_INTERRUPT)
+            if intr & INT_RB_OVERFLOW:
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        else:
+            raise AssertionError(
+                f"{label}: READBACK_OVERFLOW_INT never set (AVS_INTERRUPT=0x{intr:08x})"
+            )
+        await ClockCycles(cocotb.top.clk_smc_i, IRQ_SETTLE_CYCLES)
+        assert int(cocotb.top.tb_avsbus_irq.value) == 0, (
+            f"{label}: the AVSBus interrupt line is high with every source masked"
+        )
+        await self.csr_write(
+            f"{label}_ONLY_OVERFLOW", AVS_INTERRUPT_MASK, MASK_ALL & ~DISABLE_RB_OVERFLOW
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, IRQ_SETTLE_CYCLES)
+        assert int(cocotb.top.tb_avsbus_irq.value) == 1, (
+            f"{label}: with only READBACK_OVERFLOW unmasked the AVSBus interrupt line stayed low"
+        )
+        await self.csr_write(f"{label}_REMASK", AVS_INTERRUPT_MASK, MASK_ALL)
+        got = [await self._pop(f"{label}_DRAIN{index}") for index in range(RB_FIFO_DEPTH)]
+        await self._await_idle(label)
+        want = [good & READBACK_FIELDS] * prefill + [retried & READBACK_FIELDS]
+        assert [w & READBACK_FIELDS for w in got] == want, (
+            f"{label}: the FIFO drained {[hex(w) for w in got]}; the prefill and the retried "
+            f"command's good reply fill it, and the waiting reply is the one dropped"
+        )
+        await self.csr_write(f"{label}_CLEAR_END", AVS_INTERRUPT_CLEAR, CLEAR_ALL)
+        cocotb.log.info(
+            "CHK-AVS-SLAVE-RB-OVERFLOW: with one readback slot left, a retried command's good "
+            "reply took it and the reply that waited behind the retry raised "
+            "READBACK_OVERFLOW_INT; the interrupt line was low masked and high with only that "
+            "source unmasked, and the FIFO drained the %d replies it held, the waiting one "
+            "dropped",
+            RB_FIFO_DEPTH,
+        )
+
+    async def _numerator_leg(self) -> None:
+        """Change the AVS clock duty-cycle numerator and nothing else."""
+        label = "NUMERATOR"
+        reset_cfg1 = await self.csr_read(f"{label}_CFG1", AVS_CFG_1)
+        # Both divider fields reset to 0, a sentinel that leaves the divider on its
+        # hardware defaults (`interface.adoc`), so those defaults are first written as
+        # real values; after that only the numerator field differs between the
+        # settings written, so the divider sees a numerator change with the divisor
+        # unchanged.
+        cfg1 = (
+            reset_cfg1 & ~(NUMERATOR_BM | DIVIDER_BM)
+            | ((HALF_NUMERATOR << NUMERATOR_BP) & NUMERATOR_BM)
+            | ((DEFAULT_DIVISOR << DIVIDER_BP) & DIVIDER_BM)
+        )
+        await self.csr_write(f"{label}_BASE_OFF", AVS_CFG_1, reset_cfg1 | PREMUX_OFF_BM)
+        await self.csr_write(f"{label}_BASE_SET_OFF", AVS_CFG_1, cfg1 | PREMUX_OFF_BM)
+        await self.csr_write(f"{label}_BASE", AVS_CFG_1, cfg1)
+        await ClockCycles(cocotb.top.clk_smc_i, 200)
+        before = await self._duty(f"{label}_BEFORE")
+        changed = (cfg1 & ~NUMERATOR_BM) | ((QUARTER_NUMERATOR << NUMERATOR_BP) & NUMERATOR_BM)
+        await self.csr_write(f"{label}_OFF", AVS_CFG_1, cfg1 | PREMUX_OFF_BM)
+        await self.csr_write(f"{label}_SET_OFF", AVS_CFG_1, changed | PREMUX_OFF_BM)
+        await self.csr_write(f"{label}_SET", AVS_CFG_1, changed)
+        await self.csr_read(f"{label}_SET_RB", AVS_CFG_1, expected=changed)
+        await ClockCycles(cocotb.top.clk_smc_i, 200)
+        after = await self._duty(f"{label}_AFTER")
+        assert abs(after - QUARTER_NUMERATOR / 256) <= 0.05 and abs(before - 0.5) <= 0.05, (
+            f"{label}: the AVS clock was {100 * before:.1f}% high before and "
+            f"{100 * after:.1f}% after a numerator of 0x{QUARTER_NUMERATOR:02x}"
+        )
+        restored = (changed & ~NUMERATOR_BM) | ((HALF_NUMERATOR << NUMERATOR_BP) & NUMERATOR_BM)
+        await self.csr_write(f"{label}_BACK_OFF", AVS_CFG_1, changed | PREMUX_OFF_BM)
+        await self.csr_write(f"{label}_BACK_SET_OFF", AVS_CFG_1, restored | PREMUX_OFF_BM)
+        await self.csr_write(f"{label}_BACK", AVS_CFG_1, restored)
+        await ClockCycles(cocotb.top.clk_smc_i, 200)
+        back = await self._duty(f"{label}_RESTORED")
+        assert abs(back - 0.5) <= 0.05, (
+            f"{label}: the AVS clock was {100 * back:.1f}% high after the numerator went back "
+            f"to 0x{HALF_NUMERATOR:02x}"
+        )
+        cocotb.log.info(
+            "CHK-AVS-SLAVE-NUMERATOR: with only AVS_CFG_1.CLK_DIVIDER_DUTY_CYCLE_NUMERATOR "
+            "changing, the AVS clock at the pad went from %.1f%% to %.1f%% high and back to "
+            "%.1f%% at 0x%02x",
+            100 * before,
+            100 * after,
+            100 * back,
+            HALF_NUMERATOR,
+        )
+
+    async def _duty(self, label: str) -> float:
+        """The high fraction of the AVS clock at the pad over several periods."""
+        clk = cocotb.top.tb_avs_clk_from_dut
+        for _ in range(4):
+            await RisingEdge(clk)
+        high = 0.0
+        start = get_sim_time("ns")
+        rose = start
+        for _ in range(DUTY_PERIODS):
+            await FallingEdge(clk)
+            high += get_sim_time("ns") - rose
+            await RisingEdge(clk)
+            rose = get_sim_time("ns")
+        assert rose > start, f"{label}: the AVS clock did not run"
+        return high / (rose - start)
+
     async def body(self) -> None:
         self.cfg0 = await self.csr_read("AVS_CFG_0_SAVE", AVS_CFG_0)
         await self.csr_write("MASK_ALL", AVS_INTERRUPT_MASK, MASK_ALL)
@@ -732,5 +881,7 @@ class smc_avsbus_slave_reply_test_seq(SmcCsrSeq):
         await self._slave_interrupt_leg()
         await self._interrupt_launch_leg()
         await self._mask_leg()
+        await self._overflow_leg()
+        await self._numerator_leg()
         self.driver.stop()
         await self.csr_write("AVS_CFG_0_RESTORE", AVS_CFG_0, self.cfg0)
