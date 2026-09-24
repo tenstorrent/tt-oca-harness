@@ -964,6 +964,29 @@ P30 = (
     "gate, set HYST_EN to zero, so hyst_on is a constant zero and the row that needs it high "
     "cannot occur."
 )
+A11 = (
+    "SMC-REGBLOCK-A11-APB-ACK-FIRST-ACTIVE-CYCLE: the APB cpuif raises is_active and its request "
+    "on the same edge, and these blocks ack every request in that cycle: the eFuse interface "
+    "block has no external register and no stall, and the AVSBus block's external registers ack "
+    "from their own request with external_pending never set (A8). is_active is therefore never "
+    "high without an ack."
+)
+D1 = (
+    "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an "
+    "axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R "
+    "FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and "
+    "raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not "
+    "full. The block answers R or B only after the accept that empties its AR or W holding "
+    "register, so each AR and W arrives with the register empty and ready high: the "
+    "valid-without-ready rows of AR and W cannot occur."
+)
+D2 = (
+    "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux "
+    "master port, which raises W valid only once the select its AW pushed is in the W FIFO and "
+    "holds that AW valid until its handshake. The block keeps awready and wready equal except "
+    "while it holds an AW without its W, so a W is never taken before its AW and the W holding "
+    "register is never full with the AW register empty."
+)
 P28 = (
     "SMC-P28-LOG-WRITE-OKAY: uart_log_engine_wrap wires the log engine's write port only to its "
     "own UART, whose demux sends every write to one of three PeakRDL register blocks generated "
@@ -1773,6 +1796,42 @@ EARLIER_ARM_ROWS: "list[tuple[str, tuple[str, ...], frozenset[str]]]" = [
     ),
 ]
 
+# Register blocks wired straight to an axi_lite_demux master port with MaxTrans of one.
+DEMUX_FRONTED_BLOCKS = frozenset(
+    {
+        "output_remap_reg",
+        "alias_remap_reg",
+        "filter_ctrl_reg",
+        "straps_reg",
+        "telemetry_receiver_reg",
+        "uart_log_engine_ctrl_reg",
+        "log_engine_reg",
+        "scratch_reg",
+        "chip_config_reg",
+        "ndm_reset_reg",
+        "i2c_ctrl_reg",
+        "i2c_reg",
+        "uart_16550_main_reg",
+        "uart_16550_main_wo_reg",
+        "uart_16550_dl_reg",
+    }
+)
+
+
+def demux_fronted_row_class(module: str, terms: "tuple[str, ...]", vector: str) -> "str | None":
+    """D1 or D2 for a handshake row of a demux-fronted register block, or None."""
+    if module not in DEMUX_FRONTED_BLOCKS:
+        return None
+    if terms == ("s_axil_arvalid", "s_axil_arready") and module == "uart_16550_main_wo_reg":
+        # A3 already takes the read channel of the write-only map.
+        return None
+    if terms in (("s_axil_arvalid", "s_axil_arready"), ("s_axil_wvalid", "s_axil_wready")):
+        return D1 if vector == "10" else None
+    if terms == ("axil_awvalid", "axil_wvalid"):
+        return D2 if vector == "01" else None
+    return None
+
+
 # Per-module row predicates over the report's own terms: (class, test(terms, vector)).
 NORTH_WAY_NONZERO = re.compile(r"^\(TrRamNorthTraceWrWay_TS0 == [123]\[1:0\]\)$")
 ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
@@ -1785,6 +1844,12 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                 and vector[0] == "0"
             ),
         )
+    ],
+    "efuse_interface_ctrl_reg": [
+        (A11, lambda terms, vector: terms == ("cpuif_rd_ack", "cpuif_wr_ack") and vector == "00")
+    ],
+    "avsbus_controller_reg": [
+        (A11, lambda terms, vector: terms == ("cpuif_rd_ack", "cpuif_wr_ack") and vector == "00")
     ],
     "avsbus_async_fifo": [
         (C12, lambda terms, vector: terms == ("rd_en_i", "((~rd_empty_o))") and vector == "10")
@@ -2375,6 +2440,9 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     for name, arm_terms, vectors in EARLIER_ARM_ROWS:
         if name == module and tuple(terms) == arm_terms and vector in vectors:
             return C6
+    reason = demux_fronted_row_class(module, tuple(terms), vector)
+    if reason:
+        return reason
     facts = path_facts(module)
     ntrace = any(r == P1 for r, _, _ in facts)
     names: dict[str, str] = {}
@@ -3511,6 +3579,7 @@ FEATURE_CLASSES = (
     P29,
     P30,
     A2,
+    A11,
     C4,
     C5,
     C6,
@@ -3523,6 +3592,8 @@ FEATURE_CLASSES = (
     C13,
     C14,
     C15,
+    D1,
+    D2,
     F3,
     B6,
     B8,
@@ -3882,6 +3953,7 @@ def render_feature(
         | set(SIGNAL_IDENTITIES)
         | set(ROW_PREDICATES)
         | {name for name, _, _ in EARLIER_ARM_ROWS}
+        | DEMUX_FRONTED_BLOCKS
         | {k for t in templates.values() for k in t if path_facts(k) or region_facts(k)}
     )
     for module in modules:
@@ -4015,6 +4087,7 @@ def main() -> int:
             or m in SIGNAL_IDENTITIES
             or m in ROW_PREDICATES
             or any(name == m for name, _, _ in EARLIER_ARM_ROWS)
+            or m in DEMUX_FRONTED_BLOCKS
             or any(f[3] is not None for f in FEATURE_FACTS.get(m, []))
         },
     )

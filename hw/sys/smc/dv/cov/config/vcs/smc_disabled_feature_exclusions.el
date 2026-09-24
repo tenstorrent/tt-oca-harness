@@ -16,6 +16,14 @@ ANNOTATION: "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_B
 MODULE: accumulator_bank
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
 
+CHECKSUM: "3869168330 760173647"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: alias_remap_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
 CHECKSUM: "3532153177 2090497106"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
@@ -64,11 +72,24 @@ Branch 1 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr
 Branch 2 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
 Branch 3 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
 
+CHECKSUM: "3896755233 3909592511"
+ANNOTATION: "SMC-REGBLOCK-A11-APB-ACK-FIRST-ACTIVE-CYCLE: the APB cpuif raises is_active and its request on the same edge, and these blocks ack every request in that cycle: the eFuse interface block has no external register and no stall, and the AVSBus block's external registers ack from their own request with external_pending never set (A8). is_active is therefore never high without an ack."
+MODULE: avsbus_controller_reg
+Condition 1 "612230268" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (1 "00")
+
 CHECKSUM: "4170061027 684303742"
 ANNOTATION: "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI filter with filter_skip_i tied to zero, so the skip arm of the filter decision never runs and no access can produce a condition over it."
 MODULE: axi_filter_wrap
 Condition 33 "3026107144" "(filter_skip_i ? 1'b0 : (no_write_filter_matches ? BlockByDefault : ((!allow_write[write_filter_hit_idx])))) 1 -1" (2 "1")
 Condition 35 "1476893936" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? BlockByDefault : ((!allow_read[read_filter_hit_idx])))) 1 -1" (2 "1")
+
+CHECKSUM: "3619095557 1034725017"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: chip_config_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "1977138259 497414737"
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The I2C controller ORs its SDA-unstable event into arbitration lost, and its halt input is the unmasked OR of the controller event fields that drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA N-D midend's first stage is its request valid, which its ready, last and busy all include. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
@@ -409,6 +430,11 @@ Branch 3 "1184457743" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1,-,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,0,1,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,0,0,0,-,-"
 
+CHECKSUM: "2345381840 1625737755"
+ANNOTATION: "SMC-REGBLOCK-A11-APB-ACK-FIRST-ACTIVE-CYCLE: the APB cpuif raises is_active and its request on the same edge, and these blocks ack every request in that cycle: the eFuse interface block has no external register and no stall, and the AVSBus block's external registers ack from their own request with external_pending never set (A8). is_active is therefore never high without an ack."
+MODULE: efuse_interface_ctrl_reg
+Condition 1 "612230268" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (1 "00")
+
 CHECKSUM: "1698122930 1130749731"
 ANNOTATION: "SMC-C7-ENUM-MEMBERS-ONLY: a variable is assigned only members of its enum, so a case default or an arm that needs a non-member never runs. efuse_shadow_regs' sense state resets to StIdle and every assignment names one of its four members, and the fuse command the program, read and sense requesters drive is READ, PROGRAM, PROGRAM_READ_BACK or the all-zero READ default, never the unused 2'b11 that efuse_interface_shim's last arms need."
 ANNOTATION: "SMC-C10-VALID-WITH-COMMAND: efuse_program_interface sets the request's program command and its valid on the same cycle and clears both together to the all-zero default, and the read and sense requesters issue only READ, so efuse_interface_shim never sees a program command without valid."
@@ -594,6 +620,14 @@ Branch 8 "1283278657" "(!rst_ni)" (23) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,
 Branch 8 "1283278657" "(!rst_ni)" (24) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,1,0,0"
 Branch 8 "1283278657" "(!rst_ni)" (25) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,0,-,-"
 
+CHECKSUM: "1147255362 2271730998"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: filter_ctrl_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
 CHECKSUM: "4117541145 44057898"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a zero default and sets only the empty and enable write enables, assigns the RAM read-pointer high write structure a constant zero, and the funnel ties the RAM start and limit write structures and its own control and disable-input write structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and read-pointer-high enables the DST sink MMR ORs with a software write hold zero, as do the funnel MMR's control and disable-input enables, and the hardware-write row of each cannot occur."
@@ -659,6 +693,22 @@ Condition 98 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error
 Condition 99 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 100 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 107 "2301913467" "(event_nak | event_controller_arbitration_lost | event_scl_interference | event_sda_interference | event_stretch_timeout | event_bus_active_timeout | event_sda_unstable | event_unhandled_nak_timeout) 1 -1" (3 "00000010")
+
+CHECKSUM: "1461514841 2927016927"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: i2c_ctrl_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
+CHECKSUM: "1943968615 3380696541"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: i2c_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "66702530 4067735016"
 ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
@@ -739,6 +789,14 @@ Condition 1 "305394200" "(log_pending && (effective_log_len != log_len_t'(0)) &&
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
 Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
 Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
+
+CHECKSUM: "2067798497 84113796"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: log_engine_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "3895468110 949337104"
 ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
@@ -847,6 +905,30 @@ Branch 8 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 9 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 11 "1454664243" "i_jtag_mmr_req_vld" (0) "i_jtag_mmr_req_vld 1"
 
+CHECKSUM: "677483531 442683581"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: ndm_reset_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
+CHECKSUM: "4060298550 1539976365"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: output_remap_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
+CHECKSUM: "2083532214 1989962094"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: scratch_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
 CHECKSUM: "3666106679 2225543826"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 MODULE: smc_cpu_ctrl_wrap
@@ -867,10 +949,26 @@ MODULE: smc_padring
 Condition 1 "1405087489" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
 Condition 2 "2357600340" "((axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
 
+CHECKSUM: "1845094762 2497126651"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: straps_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
 CHECKSUM: "2716617997 3184480883"
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The I2C controller ORs its SDA-unstable event into arbitration lost, and its halt input is the unmasked OR of the controller event fields that drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA N-D midend's first stage is its request valid, which its ready, last and busy all include. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 MODULE: system_timer_octs_core
 Condition 8 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (1 "011")
+
+CHECKSUM: "656852128 1067758899"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: telemetry_receiver_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "4226918805 2330986106"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. With the N-trace read enable at zero the DST read-ready is the OR of the DST read enables, and the read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
@@ -1851,10 +1949,30 @@ Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_M
 Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
 Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
 
+CHECKSUM: "427703398 1889139731"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: uart_16550_dl_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+
 CHECKSUM: "3055559241 4290674178"
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
 MODULE: uart_16550_main_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
+
+CHECKSUM: "2964910200 3918030293"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: uart_16550_main_wo_reg
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "2535161971 656965095"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
@@ -1873,6 +1991,14 @@ Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 17 "2934452335" "(tx_enable || rx_enable) 1 -1" (2 "01")
 Condition 17 "2934452335" "(tx_enable || rx_enable) 1 -1" (3 "10")
 Condition 49 "3934623659" "(fifo_thr_rbr_err || fifo_error_intr_test) 1 -1" (3 "10")
+
+CHECKSUM: "225643378 1423410759"
+ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
+ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+MODULE: uart_log_engine_ctrl_reg
+Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
+Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
+Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 
 CHECKSUM: "243658460 2303570125"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."

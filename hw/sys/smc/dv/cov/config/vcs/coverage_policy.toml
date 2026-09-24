@@ -70,7 +70,8 @@ args = ["-elfile", "{path}"]
 # LOG-WRITE-OKAY, P29 FIELD-MAP-LOCKS, P30 CCG-HYST-OFF, C5 SIGNAL-IDENTITY, C6
 # EARLIER-ARM-TAKES, C7 ENUM-MEMBERS-ONLY, C8 APB-PHASE-ORDER, C9 W2C-PULSE, C10
 # VALID-WITH-COMMAND, C11 AVS-IRQ-DETECT-REARM, C12 POP-ONLY-NONEMPTY, C13
-# COUNTER-VALID-PAIRED, C14 STROBE-MASK-NONZERO, C15 UNSIGNED-WRAP-DECODE, A2 and C4 where a consumer reads a register block, and F3
+# COUNTER-VALID-PAIRED, C14 STROBE-MASK-NONZERO, C15 UNSIGNED-WRAP-DECODE,
+# A11 APB-ACK-FIRST-ACTIVE-CYCLE, D1 SINGLE-OUTSTANDING-DEMUX, D2 W-FOLLOWS-AW, A2 and C4 where a consumer reads a register block, and F3
 # TIEOFF's branch paths; B6 SIM-ONLY-FUSE-BYPASS is the bench's and its
 # policy's, as no leaf passes the simulation-only +skip_fuse_sense plusarg the
 # DV policy forbids, and B8 DFD-BENCH-INPUTS-TIED is the bench's, which ties the
