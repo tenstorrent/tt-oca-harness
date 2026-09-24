@@ -82,6 +82,15 @@ timeout_sec = 1800
 tags = ["ci", "reset", "ndm"]
 run_modes = ["smoke"]
 
+[[tests]]
+# A SEP_IN core-reset pulse, and a withheld level reset under give-up timeout mode.
+name = "smc_cpu_reset_pulse_test"
+module = "smc_cpu_reset_pulse_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset"]
+run_modes = ["smoke"]
+
 # BFM: SW RESET_CTRL.core0 → RESET_TIMEOUT.reset_applied (no Force drain).
 [[tests]]
 name = "smc_cpu_reset_source_test"
@@ -179,6 +188,7 @@ tests = [
     "smc_mixed_boot_stall_test",
     "smc_reset_unit_sanity_test",
     "smc_ndm_reset_test",
+    "smc_cpu_reset_pulse_test",
     "smc_cpu_reset_source_test",
     "smc_cool_reset_from_pcie_test",
     "smc_ss_reset_complete_test",

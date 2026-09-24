@@ -6,7 +6,8 @@
 across a byte write to another lane. Six I2C0 `INTR_STATE` events and the log
 engine's `LOG_FETCH_ERR` are raised through `INTR_TEST`; each must survive a
 write of zero and clear on a one. Zero writes to log-engine `INTR_TEST`, OCTS
-`TIMER_START` and telemetry `INTR_STATUS` must change nothing.
+`TIMER_START` and telemetry `INTR_STATUS` must change nothing. A write resets
+OCTS `CREDIT_EXPIRED`, and I2C0 `TARGET_NACK_COUNT` reads 0 at idle.
 """
 
 from __future__ import annotations
@@ -24,11 +25,12 @@ class smc_regblock_partial_write_test(smc_base_test):
     """Partial and zero writes leave set fields and triggers alone."""
 
     required_evidence = (
+        "CHK-REGBLOCK-DOCUMENTED-WRITE",
         "CHK-REGBLOCK-PARTIAL-HOLD",
         "CHK-REGBLOCK-W1C-HOLD",
         "CHK-REGBLOCK-ZERO-WRITE",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 
@@ -38,3 +40,4 @@ class smc_regblock_partial_write_test(smc_base_test):
         assert seq.held == NUM_I2C_CTRL + 1, f"{seq.held} partial-write holds checked"
         assert seq.w1c_held == 2, f"{seq.w1c_held} W1C holds checked"
         assert seq.zero_writes == 3, f"{seq.zero_writes} zero writes checked"
+        assert seq.documented == 2, f"{seq.documented} documented-effect accesses checked"

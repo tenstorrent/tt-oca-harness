@@ -301,6 +301,7 @@ feature rows.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
 |`smc_cool_reset_zero_delay_test` |FLR cool reset with the pre-reset delay at 0: no cool while the hold counter is 0, cool inside the synchroniser allowance once it is not.
 |`smc_cool_reset_x_cold_reset_test` |FLR×cold interaction; not rst_cool_ni alias or BMC Force cool.
+|`smc_cpu_reset_pulse_test` |A SEP_IN core-reset pulse on core 1, and a withheld level reset whose timeout fires in give-up mode.
 |`smc_cpu_reset_source_test` |SW core0 level reset; no Force drain / no FLR isolate_req_o.
 |`smc_flr_sanity_test` |Run the SMC OSS FLR post-release sanity scenario.
 |`smc_gpio_boot_stall_test` |Pad-57 boot stall hold/release/sticky lockout.
@@ -1896,6 +1897,11 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 * The co-resident shape writes several addresses before any of them is read back, so a decode that collapses two windows onto one physical register returns a neighbour's pattern and fails the exact compare -- which a per-address write-then-read cannot see.
 * Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the DFX block, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
 * The first word past the straps block in the external window (window base plus `0x5800` from `memmap.adoc`, plus the block size from the generated `straps.h`) is claimed by no target of the window's demux. It must reach the external port and be answered DECERR there, and `STRAPS_LO`/`STRAPS_HI` must read the same on both sides of it.
+* **Past the last block, inside a crossbar window.** The peripheral crossbar gives GPIO a 4 KB window and misc_wrap 2 KB, but the generated blocks end at `GPIO_INTF_TOTAL_SIZE` and misc_wrap's `SIZE`. A read and a write at the first word past `GPIO_INTF[64]`, and a write past misc_wrap, must each be refused with an error response, and the last register before each must read the same afterwards.
+* **Design observation: the data-accelerator window aliases past the zeroer block.**
+** The local crossbar gives the data-accelerator control path a 4 KB window (`smc_local_xbar_pkg.sv:296-298`). The zeroer control block ends at `SMC_TOP_ZEROER_CTRL_BASE_ADDR + SIZE`.
+** A write past it matches neither the DMA nor the zeroer range in `smc_data_accelerator_wrap.sv:57-68`, so it takes the default select, DMA (`:58-59`). The DMA register block answers OKAY and stores it at the aliased offset. A probe write of `0x5A5A1234` to `0xC0038318` read back from DMA `LENGTH_LO` at `0xC0038118`.
+** No generated block declares the address, so by the rule the beyond-region probes apply it should be refused. The leaf writes 0 there, which is taken where every aliased DMA descriptor register already holds 0, and it requires those registers and the zeroer's `DEST_ADDR` to still read 0. It does not grade the response.
 * The APB4-fronted blocks are read at their 32-bit generated-map addresses, and 32-bit reads are required to return values with bits above 16 set, so the APB4 data path is exercised beyond a 16-bit window.
 * The regions SEP_IN cannot reach in this bench are named in the log and left open rather than claimed: the PLIC and CLINT/BEU windows fold onto the local base in `smc_local_fabric`, the generated map declares no register in the debug-module region, and the M-mode/Xvisor remap regions are outbound apertures with no inbound decode pinned by the specification.
 
@@ -6070,6 +6076,7 @@ Drive `smc_hang_detector_plic_route_test_seq`. Each checker below is a named com
 
 * Hang-detector CTRL.irq_test on each lifted IRQ.
 * Real bus-stall timeout is not claimed.
+* The `irq_test` gating poison runs three ways: `irq_test` alone, `enable` with `irq_test`, and `irq_en` with `irq_test`. `smc_base_config.rdl` says `irq_test` "is gated by enable and irq_en", so none of them may raise `irq_o`.
 
 *Test Procedure*:
 
@@ -9074,6 +9081,10 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 * The bench counts cycles at the SYS_OUT boundary with VALID high and READY low, and requires a count on every stalled channel. The rows are seeded and compared in the responder's memory directly, each transfer with rows of its own, and every row must match its source.
 * A third mode sets `CONFIG.DECOUPLE_AW` (`dma_ctrl.h`: `DMA_CTRL__CONFIG__DECOUPLE_AW_bm`), so the channel coupler sends each AW without waiting for the first read beat of its burst. The same three stall cases run in it, which gives nine backpressured transfers in all.
 * **Rows split at a page on one side only.** AXI bursts may not cross a 4 KB page, so the legalizer splits a row that does. Two 256-byte rows cross a page on one side only, first the source and then the destination, so one machine has two bursts to issue against the other's one. Each must arrive intact in the responder's memory.
+* **Partial words, a queue behind a stall, and NEXT_ID writes.**
+** A 29-byte row runs from a source 3 bytes into a bus word to a destination 5 bytes in, so both ends of the row are partial. It must arrive intact, and the eight bytes on either side must stay untouched.
+** A second descriptor is offered while a 128-row transfer is held up by the stalled responder. It must get a higher id, and both must complete with their own data.
+** Writes of 0 to the read-triggered `NEXT_ID_2..14` must leave `DONE` and `STATUS` as they were.
 * The read request ready is driven low in the coupled and decoupled modes (seen in the waveform). The write request ready stays high in all three. The legalizer loads the next row only when both machines are done and both readies are high, and a stalled write fills the backend's three-beat data buffer, which stops the reads. So the read side saturates before 32 writes are outstanding, whatever channel the responder stalls. Driving the write ready low needs a responder that keeps accepting reads while their data waits, and this bench does not have one.
 * `CONFIG` is restored to its reset and read back. The leaf writes no other DMA field, and touches no fuse.
 
@@ -9089,10 +9100,11 @@ Drive `smc_dma_decouple_rw_test_seq`. Each checker below is a named compare the 
 |`CHK-DMA-DECOUPLE-RW` |CONFIG.DECOUPLE_RW read back set from the mask the generated header gives it, and both transfers ran with the channels decoupled -- a scatter whose write side was the fragmented one and a gather whose read side was -- with every row landing where its stride puts it and matching its source; CONFIG was restored to its reset and read back
 |`CHK-DMA-PAGE-SPLIT` |A 256-byte row whose source crossed a 4 KB page and whose destination did not, and one the other way round, each arrived intact
 |`CHK-DMA-QUEUED-DESCRIPTORS` |A second descriptor was programmed and submitted without waiting for the first, both NEXT_ID reads returned a non-zero and rising id rather than the 0 the RDL gives a rejected command, DONE advanced by two, and each destination held its own payload
+|`CHK-DMA-UNALIGNED-QUEUED` |The 29-byte partial-word row arrived intact with its neighbours untouched, the descriptor queued behind the stalled transfer got a higher id and both completed with their own data, and the `NEXT_ID_2..14` writes left `DONE` and `STATUS` unchanged
 |`CHK-DMA-LEGALIZER-BACKPRESSURE` |Nine 128-row 2D transfers ran into the backpressured SYS_OUT responder -- read side, write side and both, coupled, decoupled and with `DECOUPLE_AW`. Every stalled channel showed VALID high with READY low at the boundary, and every row of every transfer matched its own source
 |===
 
-*Pass Criteria*: `CHK-DMA-DECOUPLE-RW`, `CHK-DMA-LEGALIZER-BACKPRESSURE`, `CHK-DMA-PAGE-SPLIT`, `CHK-DMA-QUEUED-DESCRIPTORS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DMA-DECOUPLE-RW`, `CHK-DMA-LEGALIZER-BACKPRESSURE`, `CHK-DMA-PAGE-SPLIT`, `CHK-DMA-QUEUED-DESCRIPTORS`, `CHK-DMA-UNALIGNED-QUEUED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -11012,6 +11024,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 * **Held across a byte write on another lane.** `I2C_CTRL.SMBUS_EN` on all three instances is set by a byte write to its own lane and must hold across a byte write to lane 0. I2C0 `SMBUS_CTRL.SMBALERT` must hold across a byte write to lane 1, which has no field. Each is read back after every step and restored.
 * **W1C held across a zero, then cleared.** Six I2C0 `INTR_STATE` events (`RX_OVERFLOW`, `SDA_UNSTABLE`, `UNEXP_STOP`, `SMBALERT`, `CONTROLLER_RX_FIFO_ERROR`, `TARGET_RX_FIFO_ERROR`) and log-engine `INTR_STATUS.LOG_FETCH_ERR` are raised through `INTR_TEST`. Each must survive a full write of zero and clear on a write of one. Anything already latched, such as I2C0's `SMBALERT` event, which follows the SMBALERT output driven above, is cleared first.
 * **Zero into a trigger or a status.** Full writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` (`singlepulse`) and telemetry-receiver `INTR_STATUS` must leave each reading what it read before.
+* **Writes whose only effect is documented.** OCTS `CREDIT_EXPIRED` is an external register that `system_timer_octs.rdl` resets on any write, so a write must leave it reading 0. I2C0 `TARGET_NACK_COUNT` is `rclr` and holds 0 at idle, so a read returns 0.
 * **Rows left, and why.** A one on a lane whose strobe is off cannot come from SEP_IN, whose master zero-fills unstrobed lanes.
 ** It cannot come from the CPU into these 32-bit blocks either. A firmware byte store of `0xFF` into the empty top byte of I2C0 `INTR_STATE` arrived at `i2c_reg` as `wdata 0xFF000000`, `wstrb 0x8`, so the path from the cluster zeroes the other lanes. The replication that reaches the 64-bit blocks (`smc_fw_narrow_store_lane_test`) does not reach the 32-bit ones. The `(data & biten)` "1 0" rows of `i2c_reg` (`INTR_STATE`, `CONTROLLER_EVENTS`, `TARGET_EVENTS`), `log_engine_reg` and `telemetry_receiver_reg` are therefore unreachable in this design.
 ** In the 64-bit blocks the firmware leaf takes the safe lanes. The rest carry a hazard:
@@ -11036,12 +11049,45 @@ Drive `smc_regblock_partial_write_test_seq`. Each checker below is a named compa
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-REGBLOCK-DOCUMENTED-WRITE` |A write reset OCTS `CREDIT_EXPIRED` to 0, and I2C0 `TARGET_NACK_COUNT` read 0 at idle
 |`CHK-REGBLOCK-PARTIAL-HOLD` |`SMBUS_EN` on the three `I2C_CTRL` instances and I2C0 `SMBUS_CTRL.SMBALERT` read back set after a byte write to another lane, and each was restored and read back
 |`CHK-REGBLOCK-W1C-HOLD` |The six I2C0 events and `LOG_FETCH_ERR`, raised through `INTR_TEST`, read back set after a write of zero and clear after a write of one
 |`CHK-REGBLOCK-ZERO-WRITE` |Writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` and telemetry `INTR_STATUS` left each reading what it read before
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-262-smc_cpu_reset_pulse_test]]
+===== 262 `smc_cpu_reset_pulse_test`
+
+*Source Module*: `smc_cpu_reset_pulse_test`
+
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN)
+
+*Objective*: A SEP_IN core-reset pulse on core 1, and a withheld level reset whose timeout fires in give-up mode.
+
+*Test Coverage*:
+
+* **Pulse.** `cpu_ctrl.rdl` gives each core a `RESET_CTRL.coreN_reset_pulse_start` field: a one there starts a reset pulse whose length comes from `CORE_RESET_PULSE_COUNT`, and `core_resets_done` reads low for the core while its pulse runs. The firmware boot contract had been the only writer. From SEP_IN, core 1 is pulsed with every level-reset field high, so the pending pulse and then the running pulse are each the only reset request. Core 1's `core_resets_done` bit must fall and come back, and the other cores' bits must stay high. `RESET_TIMEOUT` is set to force mode for this leg, as the boot contract does, so the pulse is applied whether or not the cluster drains.
+* **Give-up timeout.** Core 1's level reset is requested with `RESET_TIMEOUT` at `timeout_value` 1 and `timeout_mode` 0, and must read `reset_timeout` 1. It is then released, and both status bits must clear. `RESET_TIMEOUT` is restored and read back.
+* **Design observation: mode 0 applies the reset after the timeout.** `cpu_ctrl.rdl` describes `timeout_mode` 0 as "give up and report error (stay withheld, do not apply)". The run read `RESET_TIMEOUT` `0x1100000001` 16 cycles after the request: `reset_timeout` 1 and `reset_applied` 1. `smc_cpu_ctrl_wrap.sv` computes `withhold = pending & ~force_apply` with `pending = sw_reset_req & ~drained_i`, so once the drain completes the request is applied in either mode. Mode 0 withholds only until the drain; it does not "stay withheld". The leaf reports `reset_applied` and does not grade it until the intended behaviour is settled.
+
+*Test Procedure*:
+
+Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-RST-GIVEUP` |Core 1's level reset under `timeout_mode` 0 and `timeout_value` 1 read `reset_timeout` 1, and both status bits cleared after the release
+|`CHK-CPU-RST-PULSE` |Core 1's `core_resets_done` bit fell and returned after the pulse write, with the other cores' bits high throughout
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `reset`.
 
 '''''
 

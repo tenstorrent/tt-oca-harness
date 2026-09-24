@@ -19,6 +19,10 @@ field and mask here comes from the block's generated header.
 * **Zero into a trigger or a status.** A full write of zero to log-engine
   `INTR_TEST`, OCTS `TIMER_START` (`singlepulse`) and telemetry-receiver
   `INTR_STATUS` changes nothing that reads back.
+* **Writes whose only effect is documented.** OCTS `CREDIT_EXPIRED` is an
+  external register that `system_timer_octs.rdl` resets on any write, so a
+  write must leave it reading 0. I2C0 `TARGET_NACK_COUNT` is `rclr` and holds 0
+  at idle, so a read returns 0.
 """
 
 from __future__ import annotations
@@ -52,6 +56,7 @@ for _name in _I2C_EVENTS:
 LOG_FETCH_ERR = _field_mask(_LOG_H, "LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm")
 assert LOG_FETCH_ERR == _field_mask(_LOG_H, "LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm")
 MISSING_LAST = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bm")
+CREDIT_EXPIRED = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR")
 
 NUM_I2C_CTRL = smc_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_NUM")
 
@@ -88,6 +93,7 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
         self.held = 0
         self.w1c_held = 0
         self.zero_writes = 0
+        self.documented = 0
 
     async def _smbus_en(self, i: int) -> None:
         addr = i2c_ctrl(i)
@@ -142,6 +148,13 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
         await self.csr_read(f"{tag}_AFTER", addr, expected=before)
         self.zero_writes += 1
 
+    async def _documented_writes(self) -> None:
+        await self.csr_write("OCTS_CREDIT_EXPIRED_WRITE", CREDIT_EXPIRED, 0)
+        await self.csr_read("OCTS_CREDIT_EXPIRED_RB", CREDIT_EXPIRED, expected=0)
+        await self.csr_read("I2C0_TARGET_NACK_COUNT", i2c("TARGET_NACK_COUNT"), expected=0)
+
+        self.documented += 2
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
@@ -176,4 +189,10 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-REGBLOCK-ZERO-WRITE: full writes of zero to log-engine INTR_TEST, OCTS "
             "TIMER_START and telemetry INTR_STATUS left each reading what it read before"
+        )
+
+        await self._documented_writes()
+        cocotb.log.info(
+            "CHK-REGBLOCK-DOCUMENTED-WRITE: a write reset OCTS CREDIT_EXPIRED to 0 and I2C0 "
+            "TARGET_NACK_COUNT read 0 at idle"
         )

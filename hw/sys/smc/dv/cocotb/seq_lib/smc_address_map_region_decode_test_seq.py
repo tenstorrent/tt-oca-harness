@@ -91,6 +91,20 @@ GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
     "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
 )
 
+# --- Words inside a crossbar window but past its last generated block ----------------------
+# Each target's own demux sends these to its error slave. The windows are the
+# generated block extents: GPIO_INTF instances end at GPIO_INTF_TOTAL_SIZE,
+# misc_wrap at its SIZE, and the zeroer control block at its SIZE.
+GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
+    "SMC_TOP_GPIO_INTF_TOTAL_SIZE"
+)
+MISC_PAST_LAST = MISC_WRAP_BASE + MISC_WRAP_SIZE + 4
+DMA_DESC_FIRST = smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")
+DMA_DESC_WORDS = 12
+ZEROER_PAST_LAST = (
+    smc_addr("SMC_TOP_ZEROER_CTRL_BASE_ADDR") + smc_addr("SMC_TOP_ZEROER_CTRL_SIZE") + 0x100
+)
+
 # --- I3C: six CSR windows -----------------------------------------------------------------
 I3C_NUM = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
 I3C0_HCI_VERSION = (
@@ -186,7 +200,7 @@ _SPM_PATTERN_HI = 0x5A5A_A5A5_FFFF_FFF8
 # Exact-value compares this body issues (reads carrying ``expected=``). A
 # literal, so a table edit that silently dropped an expectation fails here
 # rather than shrinking the floor with it.
-EXPECTED_VALUE_CHECKS = 41
+EXPECTED_VALUE_CHECKS = 56
 EXPECTED_DECERR_CHECKS = 4
 
 
@@ -415,6 +429,40 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"@0x{CLA_FUNNEL_SCRATCHLO:08x} held distinct co-resident patterns",
         )
 
+    async def _past_last_block(self) -> None:
+        """Words inside a crossbar window past its last block are refused, with no side effect."""
+        corners = (
+            ("GPIO_PAST_LAST", GPIO_PAST_LAST, GPIO_LAST_ACCESS_FILTER, True),
+            ("MISC_PAST_LAST", MISC_PAST_LAST, MISC_LAST, False),
+        )
+        for label, addr, neighbour, read_too in corners:
+            before = await self.csr_read(f"{label}_NEIGHBOUR_BEFORE", neighbour)
+            if read_too:
+                await self.csr_read_expect_error(f"{label}_RD", addr)
+            await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
+            await self.csr_read(f"{label}_NEIGHBOUR_AFTER", neighbour, expected=before)
+        # Past the zeroer control block the data-accelerator demux defaults to the
+        # DMA block, which answers OKAY and takes the write at the aliased offset
+        # (card 179, design observation). A write of 0 there is taken where every
+        # aliased DMA descriptor register already holds 0, so nothing may change.
+        snapshot = [
+            await self.csr_read(f"DMA_DESC_BEFORE_{i}", DMA_DESC_FIRST + 4 * i)
+            for i in range(DMA_DESC_WORDS)
+        ]
+        assert not any(snapshot), f"DMA descriptor registers not idle: {snapshot}"
+        await self.csr_write("ZEROER_PAST_LAST_WR", ZEROER_PAST_LAST, 0)
+        for i in range(DMA_DESC_WORDS):
+            await self.csr_read(f"DMA_DESC_AFTER_{i}", DMA_DESC_FIRST + 4 * i, expected=0)
+        await self.csr_read("ZEROER_DEST_AFTER", ZEROER_DEST_ADDR, expected=0)
+        self.close_cell(
+            "past-last-block-refused",
+            f"0x{GPIO_PAST_LAST:08x} (past GPIO_INTF[{GPIO_NUM - 1}], read and write) and "
+            f"0x{MISC_PAST_LAST:08x} (past misc_wrap) were refused with an error response, "
+            f"the last register before each unchanged; a write of 0 at "
+            f"0x{ZEROER_PAST_LAST:08x} (past the zeroer control block) left the DMA "
+            f"descriptor and zeroer registers at 0",
+        )
+
     async def _region_external(self) -> None:
         # Mandatory region base: the eFuse SHIM CSR at window offset 0, which
         # the peripheral crossbar hands to the eFuse controller before the
@@ -482,6 +530,8 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
                 FABRIC_CTRL_BEYOND,
                 EXTERNAL_SUPPLEMENTARY_BASE,
                 STRAPS_BEYOND,
+                GPIO_PAST_LAST,
+                MISC_PAST_LAST,
             }
         )
 
@@ -497,6 +547,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         await self._region_memory()
         await self._region_cla()
         await self._region_external()
+        await self._past_last_block()
 
         self.close_cell(
             "region-base-decodes",

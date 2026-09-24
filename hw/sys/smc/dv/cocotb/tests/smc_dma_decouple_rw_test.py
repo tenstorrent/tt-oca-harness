@@ -9,7 +9,9 @@ descriptor without waiting for the first and requires both to complete with
 their own payload. Nine 128-row 2D transfers then run into a SYS_OUT responder
 holding READY low on the read side, the write side and both -- coupled,
 decoupled, and with DECOUPLE_AW -- with the stall counted at the boundary and
-every row compared. Two rows that cross a 4 KB page on one side only follow.
+every row compared. Two rows that cross a 4 KB page on one side only follow,
+then an unaligned row, a descriptor queued behind a stalled transfer, and
+writes to the read-triggered NEXT_ID registers.
 CONFIG is restored to its reset and read back.
 """
 
@@ -25,10 +27,10 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses. CSR accesses only; the row
 # seeding and the readbacks go through the JTAG agent.
 #
-# Fifteen descriptors, at least 16 SEP_IN AXI accesses each: the CONFIG write,
+# Eighteen descriptors, at least 16 SEP_IN AXI accesses each: the CONFIG write,
 # twelve descriptor writes, the NEXT_ID read that submits it, and at least one
 # DONE poll.
-DMA_DECOUPLE_RW_MIN_CSR_ACCESSES = 15 * 16
+DMA_DECOUPLE_RW_MIN_CSR_ACCESSES = 18 * 16
 
 
 @pyuvm.test()
@@ -40,8 +42,9 @@ class smc_dma_decouple_rw_test(smc_base_test):
         "CHK-DMA-LEGALIZER-BACKPRESSURE",
         "CHK-DMA-PAGE-SPLIT",
         "CHK-DMA-QUEUED-DESCRIPTORS",
+        "CHK-DMA-UNALIGNED-QUEUED",
     )
-    min_evidence = 4
+    min_evidence = 5
 
     auto_protocol_vip = False
 
