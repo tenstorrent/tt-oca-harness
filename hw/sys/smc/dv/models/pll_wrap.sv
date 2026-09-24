@@ -42,8 +42,7 @@ module pll_wrap
   import smc_pkg::*;
 #(
   parameter type         axil_req_t     = smc_axil_32_32_req_t,
-  parameter type         axil_resp_t    = smc_axil_32_32_resp_t,
-  parameter int unsigned SysClkPeriodPs = 1_250
+  parameter type         axil_resp_t    = smc_axil_32_32_resp_t
 ) (
   input  logic       clk_i,
   input  logic       rst_ni,
@@ -72,7 +71,7 @@ module pll_wrap
   initial begin : gen_clk_sys
     real period_ns;
     real period_ps;
-    period_ns = SysClkPeriodPs / 1000.0;
+    period_ns = 1.25;
     void'($value$plusargs("pll_sys_period_ns=%f", period_ns));
     if (period_ns != 1.25 && period_ns != 10.0)
       $fatal(1, "pll_wrap +pll_sys_period_ns must be 1.25 or 10, got %g", period_ns);
