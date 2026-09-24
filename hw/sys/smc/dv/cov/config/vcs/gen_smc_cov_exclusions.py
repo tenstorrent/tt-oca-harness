@@ -870,6 +870,17 @@ B12 = (
     "data, which the read-back mismatch term still grades. A bank model or macro that can "
     "return SLVERR retires the class."
 )
+B13 = (
+    "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit "
+    "peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which "
+    "starts each narrow beat at zero and copies only the lanes inside the transfer size. Within "
+    "that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes "
+    "every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer "
+    "writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes "
+    "with every other lane zero. A write-data bit high with its enable low therefore never "
+    "arrives. A master that drives data on an unstrobed lane inside its transfer size retires "
+    "the class."
+)
 B8 = (
     "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The "
     "testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both "
@@ -1839,6 +1850,21 @@ def demux_fronted_row_class(module: str, terms: "tuple[str, ...]", vector: str) 
     return None
 
 
+LANE_DATA = re.compile(r"^(?:decoded_wr_data\[\d+\]|reg_out_i\.\w+\.wr_data\.\w+)$")
+LANE_ENABLE = re.compile(r"^(?:decoded_wr_biten\[\d+\]|reg_out_i\.\w+\.wr_biten\.\w+)$")
+
+
+def lane_zero_fill_row(terms: "tuple[str, ...]", vector: str) -> bool:
+    """A write-data bit high with its own write enable low (B13)."""
+    return (
+        len(terms) == 2
+        and vector == "10"
+        and bool(LANE_DATA.match(terms[0]))
+        and bool(LANE_ENABLE.match(terms[1]))
+        and terms[0].rsplit("wr_data", 1)[-1] == terms[1].rsplit("wr_biten", 1)[-1]
+    )
+
+
 # Per-module row predicates over the report's own terms: (class, test(terms, vector)).
 NORTH_WAY_NONZERO = re.compile(r"^\(TrRamNorthTraceWrWay_TS0 == [123]\[1:0\]\)$")
 ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
@@ -1914,6 +1940,10 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         )
     ],
+    "i2c_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
+    "i2c_core": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
+    "log_engine_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
+    "telemetry_receiver_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
     "generic_ccg": [
         (
             P30,
@@ -3616,6 +3646,7 @@ FEATURE_CLASSES = (
     B8,
     B9,
     B12,
+    B13,
 )
 
 
@@ -3944,7 +3975,9 @@ def render_feature(
     terms: dict[tuple[str, str], list[str]],
     paths: "dict[str, list[tuple[BranchConstruct, tuple[str, ...], str]]]",
     points: "dict[str, list[tuple[TemplatePoint, Point]]]",
+    written: "frozenset[tuple[str, str]]" = frozenset(),
 ) -> tuple[str, int]:
+    """The feature file; an entry another file already writes is left to that file."""
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
@@ -4053,11 +4086,24 @@ def render_feature(
                 if reason:
                     block.append((reason, entry))
                     taken.add(entry)
+        block = [(r, e) for r, e in block if (module, e) not in written]
         if not block:
             continue
         out += metric_blocks(templates, module, block, FEATURE_CLASSES)
         count += len(block)
     return "\n".join(out) + "\n", count
+
+
+def written_entries(text: str) -> "frozenset[tuple[str, str]]":
+    """(module key, entry) for every entry an exclusion file's text writes."""
+    out = set()
+    module = ""
+    for line in text.splitlines():
+        if line.startswith("MODULE: "):
+            module = line[len("MODULE: ") :].rstrip()
+        elif line.startswith(("Condition ", "Branch ")):
+            out.add((module, line))
+    return frozenset(out)
 
 
 def main() -> int:
@@ -4107,6 +4153,7 @@ def main() -> int:
             or m in DEMUX_FRONTED_BLOCKS
             or any(f[3] is not None for f in FEATURE_FACTS.get(m, []))
         },
+        written_entries(reg_text),
     )
     outputs = (
         (REGBLOCK_OUT, reg_text),

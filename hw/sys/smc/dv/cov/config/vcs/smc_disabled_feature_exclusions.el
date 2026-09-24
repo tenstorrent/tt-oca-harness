@@ -683,11 +683,17 @@ Branch 0 "3901164169" "load_tcount" (10) "load_tcount 1,default,-"
 CHECKSUM: "3754834557 640076495"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The I2C controller ORs its SDA-unstable event into arbitration lost, and its halt input is the unmasked OR of the controller event fields that drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA N-D midend's first stage is its request valid, which its ready, last and busy all include. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
+ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
 MODULE: i2c_core
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
 Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
+Condition 25 "1393178295" "(reg_out_i.FDATA.wr_data.START && reg_out_i.FDATA.wr_biten.START) 1 -1" (2 "10")
+Condition 26 "4170824193" "(reg_out_i.FDATA.wr_data.STOP && reg_out_i.FDATA.wr_biten.STOP) 1 -1" (2 "10")
+Condition 27 "1794860990" "(reg_out_i.FDATA.wr_data.READB && reg_out_i.FDATA.wr_biten.READB) 1 -1" (2 "10")
+Condition 28 "2424853549" "(reg_out_i.FDATA.wr_data.RCONT && reg_out_i.FDATA.wr_biten.RCONT) 1 -1" (2 "10")
+Condition 29 "3573619060" "(reg_out_i.FDATA.wr_data.NAKOK && reg_out_i.FDATA.wr_biten.NAKOK) 1 -1" (2 "10")
 Condition 97 "715861344" "(controller_tx_fifo_error || controller_tx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 98 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error_intr_test) 1 -1" (3 "10")
 Condition 99 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
@@ -705,10 +711,33 @@ Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
 CHECKSUM: "1943968615 3380696541"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
 MODULE: i2c_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 95 "2276508257" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 99 "1128493295" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 103 "1224326023" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 107 "2115782588" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 111 "69220702" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 115 "1682807252" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 119 "1886808406" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
+Condition 123 "3393166423" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
+Condition 127 "1229207760" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
+Condition 131 "3262839527" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 135 "972124682" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 139 "3992516998" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
+Condition 143 "376664427" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
+Condition 420 "3491568449" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 424 "3725185032" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 428 "1340228895" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 432 "1802705221" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 436 "222494775" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 440 "3170630447" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 444 "1513541481" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 448 "2545097252" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 452 "2691227685" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
 CHECKSUM: "66702530 4067735016"
 ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
@@ -793,10 +822,13 @@ Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.val
 CHECKSUM: "2067798497 84113796"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
 MODULE: log_engine_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 43 "3120704077" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 47 "4158049255" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
 CHECKSUM: "3895468110 949337104"
 ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
@@ -967,10 +999,12 @@ Condition 14 "2786861643" "(is_primary_i && enable && (credit_counter_q == (reg_
 CHECKSUM: "656852128 1067758899"
 ANNOTATION: "SMC-D1-SINGLE-OUTSTANDING-DEMUX: each of these register blocks sits directly behind an axi_lite_demux with MaxTrans of one. The demux raises a port's AR valid only while its R FIFO is not full, pushes that FIFO at the AR handshake and pops it at the R handshake, and raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not full. The block answers R or B only after the accept that empties its AR or W holding register, so each AR and W arrives with the register empty and ready high: the valid-without-ready rows of AR and W cannot occur."
 ANNOTATION: "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux master port, which raises W valid only once the select its AW pushed is in the W FIFO and holds that AW valid until its handshake. The block keeps awready and wready equal except while it holds an AW without its W, so a W is never taken before its AW and the W holding register is never full with the AW register empty."
+ANNOTATION: "SMC-B13-LANE-ZERO-FILL: a property of this bench, not of the design alone. These 32-bit peripheral blocks are reached only through the local crossbar's 64-to-32 downsizer, which starts each narrow beat at zero and copies only the lanes inside the transfer size. Within that size no master of this bench leaves a one on an unstrobed lane: a CPU store strobes every lane of its size, the iDMA is built to mask unstrobed lanes to zero, the zeroer writes zero, and the cocotb AXI masters on the system and SEP ports write contiguous bytes with every other lane zero. A write-data bit high with its enable low therefore never arrives. A master that drives data on an unstrobed lane inside its transfer size retires the class."
 MODULE: telemetry_receiver_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 13 "2222823787" "(axil_awvalid && axil_wvalid) 1 -1" (1 "01")
+Condition 46 "206586213" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
 CHECKSUM: "4226918805 2330986106"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save five the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and its delayed copy, which a write count held at zero keeps at one. With the N-trace read enable at zero the DST read-ready is the OR of the DST read enables, and the read and write interleave flops, enabled only on an N-trace term, hold their reset value of zero. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block index is the funnel's."
