@@ -18,6 +18,13 @@ the line also carries the 16550's own interrupt, so the UART is left with its
 interrupts disabled -- and the status bit then clears on its written one and
 the line drops.
 
+The error does not stop the engine: the fetched word is still handed to the
+write side and the log runs to its end, and only then does the engine clear the
+element's `LOG_CTRL` length and retire its arbiter request. The engine is
+disabled only after that clear. The vendored arbiter's `ReqStaysHighUntilGranted`
+assumption forbids withdrawing an ungranted request, which disabling the
+engine or zeroing the length mid-log would do.
+
 The companion `LOG_WRITE_ERR` has no bus to come from: the engine's write port
 reaches only its own wrapper's UART register blocks, which answer every
 address without error.
@@ -34,6 +41,9 @@ from .smc_log_engine_utils import (
     CTRL_EN,
     LOG_CTRL_PATH,
     LOG_CTRL_PY,
+    LOG_LEN,
+    LSR_DR,
+    LSR_TEMT,
     THR_OFFSET,
     WRAP_STRIDE_SYMBOL,
     arm_uart,
@@ -41,6 +51,7 @@ from .smc_log_engine_utils import (
     log_engine_u32,
     restore_uart,
     uart_base,
+    uart_reg,
 )
 from .smc_regblock_field_sweep_utils import array_reg_instances
 
@@ -60,6 +71,10 @@ POLL_CYCLES = 50
 
 class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
     """Point the log engine's fetch at an address that refuses it."""
+
+    def __init__(self, name: str = "smc_log_engine_fetch_error_test_seq") -> None:
+        super().__init__(name)
+        self.written = 0
 
     def _irq(self) -> int:
         raw = cocotb.top.tb_uart_irq_combined.value
@@ -101,6 +116,20 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
         assert self._irq() == 0, f"{label}: tb_uart_irq_combined[0] is high before the error"
         await self.csr_write(f"{label}_ON", engine_reg(WRAP, "CTRL"), CTRL_EN)
 
+    async def _drain_uart(self, label: str) -> int:
+        """Read out whatever the engine wrote into the looped-back UART."""
+        received = 0
+        for _ in range(POLL_LIMIT):
+            lsr = await self.csr_read(f"{label}_LSR", uart_reg(WRAP, "LSR"))
+            if lsr & LSR_DR:
+                await self.csr_read(f"{label}_RBR", uart_reg(WRAP, "RBR"))
+                received += 1
+                continue
+            if lsr & LSR_TEMT:
+                return received
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        raise AssertionError(f"{label}: the UART never went idle after the engine's write")
+
     async def _leg(
         self, label: str, region: int, write_addr: int, want: int, other: int, enable: int
     ) -> None:
@@ -112,8 +141,22 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
             f"{label}: INTR_STATUS=0x{status:08x}; only the one error this leg provokes may set"
         )
         await self._await_irq(f"{label}_RAISE", 1)
+        # The engine carries an errored fetch through to its write and clears the
+        # element's length when the log is done, which retires the arbiter request.
+        # Disabling the engine or zeroing the length before that withdraws a request
+        # the arbiter has not granted, so the leaf waits for the hardware clear.
+        remaining = LOG_BYTES
+        for _ in range(POLL_LIMIT):
+            remaining = (await self.csr_read(f"{label}_HWCLR", element.addr)) & LOG_LEN
+            if remaining == 0:
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        assert remaining == 0, (
+            f"{label}: LOG_CTRL[0] still holds {remaining} byte(s) after the errored fetch; "
+            f"the engine has to finish the log and clear the length"
+        )
+        self.written = await self._drain_uart(label)
         await self.csr_write(f"{label}_STOP", engine_reg(WRAP, "CTRL"), 0)
-        await self.csr_write(f"{label}_LEN_OFF", element.addr, 0)
         await self.csr_write(f"{label}_W1C", engine_reg(WRAP, "INTR_STATUS"), want)
         cleared = await self.csr_read(f"{label}_CLEARED", engine_reg(WRAP, "INTR_STATUS"))
         assert not cleared & want, f"{label}: the written one left 0x{cleared:08x}"
@@ -142,8 +185,11 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-LOG-ENGINE-FETCH-ERR: a log region at 0x%08x, which refuses the access, set "
             "INTR_STATUS.LOG_FETCH_ERR alone and raised tb_uart_irq_combined[0] with the "
-            "interrupt enabled; its written one cleared it and the line dropped",
+            "interrupt enabled; the engine still finished the log (%d byte(s) reached the "
+            "UART) and cleared LOG_CTRL[0], and the status cleared on its written one with "
+            "the line dropping",
             REFUSING_ADDR,
+            self.written,
         )
 
         await self.csr_write("WRITE_ADDR_CLR", engine_reg(WRAP, "LOG_WRITE_ADDR"), 0)
