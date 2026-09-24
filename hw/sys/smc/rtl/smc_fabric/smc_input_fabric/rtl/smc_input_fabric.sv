@@ -243,11 +243,10 @@ module smc_input_fabric #(
 
   // Takes the bounds as arguments: a continuous assign is not sensitive to module signals a
   // function reads implicitly.
-  function automatic logic in_smc_region(smc_pkg::smc_axi_addr_t           addr,
-                                         smc_pkg::smc_axi_addr_t           local_base,
-                                         logic [smc_pkg::AXI_ADDR_WIDTH:0] local_end,
-                                         smc_pkg::smc_axi_addr_t           global_base,
-                                         logic [smc_pkg::AXI_ADDR_WIDTH:0] global_end);
+  function automatic logic in_smc_region(
+      smc_pkg::smc_axi_addr_t addr, smc_pkg::smc_axi_addr_t local_base,
+      logic [smc_pkg::AXI_ADDR_WIDTH:0] local_end, smc_pkg::smc_axi_addr_t global_base,
+      logic [smc_pkg::AXI_ADDR_WIDTH:0] global_end);
     return (addr >= local_base)  && ({1'b0, addr} < local_end) ||
            (addr >= global_base) && ({1'b0, addr} < global_end);
   endfunction
