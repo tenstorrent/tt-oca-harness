@@ -169,6 +169,11 @@ JTAG-MMR-TIED); the eFuse's secure test mode input is tied to zero (P15
 SECURE-TM-TIED); `mmrs` derives its NTR and DST sink enables from parameters
 (P16 SINK-ENABLE-CONST); and the trace sink has one core (P17 ONE-TRACE-CORE), and the AVS controller ties its own TDR post-divider
 override to zero (P18 TDR-OVERRIDE-TIED).
+
+One more belongs to the bench and its policy: the eFuse's simulation-only
+`+skip_fuse_sense` bypass replaces the sensed fuse image, the DV policy forbids
+it as evidence, and no SMC leaf passes it (B6 SIM-ONLY-FUSE-BYPASS). A policy
+change admitting the plusarg retires the class.
 P1, P4, P6, F3 and A1 read branch paths as well as rows, by the same signals.
 
 Two regblock facts are PeakRDL's own. A field the RDL declares singlepulse sets
@@ -675,6 +680,15 @@ P17 = (
     "NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so "
     "NUM_CORES > 1 is false and its then arm never executes."
 )
+B6 = (
+    "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
+    "efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and "
+    "ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow "
+    "registers take a preload file or zeros in place of the sensed fuse image. The DV policy "
+    "(section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes "
+    "the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high "
+    "never run here. A policy change admitting the plusarg retires the class."
+)
 P18 = (
     "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override "
     "i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects "
@@ -698,6 +712,10 @@ C1 = (
 # (file suffix, first line, last line) of the source region a fact covers, for
 # where one file carries the same expression text inside and outside the region.
 LC_STATE_ARM = ("efuse_shadow_regs.sv", 290, 347)
+
+# The eFuse's simulation-only fuse-sense bypass: the flag and the plusarg test
+# that sets it, as the path reader names a plusarg test.
+SIM_SKIP = re.compile(r"^(?:sim_skip_fuse_sense|plusarg_skip_fuse_sense)$")
 
 
 def in_region(src: str, region: "tuple[str, int, int] | None") -> bool:
@@ -1000,6 +1018,12 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
             None,
         ),
         (P6, re.compile(r"sim_skip_fuse_sense|security_disable_i"), None, LC_STATE_ARM),
+        (
+            B6,
+            re.compile(r"sim_skip_fuse_sense"),
+            lambda t, v: needs_forced_away(t, v, SIM_SKIP, 0),
+            None,
+        ),
     ],
     "accumulator_bank": [(P10, BANK_RANGE, re.compile(r"^010$"), None)],
     "uart_core": [
@@ -1056,7 +1080,7 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     "efuse_guard": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
     "efuse_interface_controller": [(P6, LC_STATE_OFF, 0)],
     "efuse_shadow_reg_access_control": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
-    "efuse_shadow_regs": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
+    "efuse_shadow_regs": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0), (B6, SIM_SKIP, 0)],
     "trace_sink": [(P1, NTRACE_SIGNAL, 0), (P4, SINGLE_SOURCE_DEAD, 0)],
     "mmr_req_ctrl": [
         (P14, re.compile(r"^gnt_is_jtag$"), 0),
@@ -1689,6 +1713,12 @@ def _bare(condition: "str | None") -> str:
     return text
 
 
+def _construct_key(condition: "str | None") -> str:
+    """A first decision as both sides print it: the template escapes quotes and
+    parenthesises each operand, the annotated source does neither."""
+    return re.sub(r"[()]", "", _bare((condition or "").replace('\\"', '"')))
+
+
 def align_branches(
     report: list[BranchConstruct], template: list[BranchTemplate]
 ) -> list[tuple[BranchTemplate, BranchConstruct]]:
@@ -1712,7 +1742,11 @@ def align_branches(
         seen[t.line] = n + 1
         candidates = by_line.get(t.line, [])
         c = candidates[n] if n < len(candidates) else None
-        if c is not None and c.decisions and _bare(c.decisions[0][1]) == _bare(t.condition):
+        if (
+            c is not None
+            and c.decisions
+            and _construct_key(c.decisions[0][1]) == _construct_key(t.condition)
+        ):
             out.append((t, c))
             used.add(id(c))
         else:
@@ -1720,10 +1754,10 @@ def align_branches(
     rest: dict[str, list[BranchConstruct]] = {}
     for c in report:
         if id(c) not in used and c.decisions:
-            rest.setdefault(_bare(c.decisions[0][1]), []).append(c)
+            rest.setdefault(_construct_key(c.decisions[0][1]), []).append(c)
     wanted: dict[str, list[BranchTemplate]] = {}
     for t in left:
-        wanted.setdefault(_bare(t.condition), []).append(t)
+        wanted.setdefault(_construct_key(t.condition), []).append(t)
     for key, ts in wanted.items():
         cs = rest.get(key, [])
         if len(cs) != len(ts):
@@ -1787,10 +1821,27 @@ def path_needs_forced_away(
     for (kind, condition), taken in zip(construct.decisions, values):
         if taken not in ("0", "1") or kind not in ("if", "?") or not condition:
             continue
-        term = _opaque(condition, {})
+        term = _opaque(_one_bit(condition), {})
         if term is not None and needs_forced_away([term], taken, forced, value):
             return True
     return False
+
+
+def _one_bit(condition: str) -> str:
+    """A condition with plusarg tests named and one-bit literal compares read as the bit.
+
+    `X == 1'b1` holds exactly when X is one wherever X is held at zero or one,
+    which is all a forced-signal test asks of it.
+    """
+    condition = re.sub(r'\$test\$plusargs\("(\w+)"\)', r"plusarg_\1", condition)
+    names: dict[str, str] = {}
+    condition = re.sub(
+        r"\$value\$plusargs\([^()]*\)",
+        lambda m: names.setdefault(m.group(0), f"value_plusarg{len(names)}"),
+        condition,
+    )
+    condition = re.sub(r"\b([A-Za-z_]\w*)\s*==\s*1'b1\b", r"\1", condition)
+    return re.sub(r"\b([A-Za-z_]\w*)\s*==\s*1'b0\b", r"!\1", condition)
 
 
 def singlepulse_load_fields(source: str) -> frozenset[str]:
@@ -1973,6 +2024,7 @@ FEATURE_CLASSES = (
     P17,
     P18,
     F3,
+    B6,
 )
 
 

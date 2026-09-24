@@ -231,7 +231,10 @@ Branch 2 "2952040438" "(HAS_LC_STATE && (field_index == '0))" (0) "(HAS_LC_STATE
 
 CHECKSUM: "3035079037 1696817153"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
+ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high never run here. A policy change admitting the plusarg retires the class."
 MODULE: efuse_shadow_regs
+Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (2 "10")
+Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (3 "11")
 Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (1 "01")
 Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (2 "10")
 Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (3 "11")
@@ -269,6 +272,8 @@ Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" 
 Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
 Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
 Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 26 "3258283642" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (2 "10")
+Condition 26 "3258283642" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (3 "11")
 Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (1 "0")
 Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (2 "1")
 Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (1 "01")
@@ -285,10 +290,14 @@ Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "
 CHECKSUM: "3035079037 2392609755"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute. The program-lock and read-lock arms beside them stay graded."
+ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high never run here. A policy change admitting the plusarg retires the class."
 MODULE: efuse_shadow_regs
 Branch 0 "372284962" "secure_tm_i" (0) "secure_tm_i 1"
+Branch 1 "3274679000" "$test$plusargs(\"skip_fuse_sense\")" (0) "$test$plusargs(\"skip_fuse_sense\") 1"
 Branch 2 "3908413232" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
 Branch 2 "3908413232" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,-"
+Branch 2 "3908413232" "HAS_LC_STATE" (2) "HAS_LC_STATE 0,-,1"
+Branch 3 "1280424184" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0))" (0) "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1"
 Branch 4 "712423355" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-,-,-,-,-,-,-,-,-,-,-"
 Branch 4 "712423355" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1,1,-,-,-,-,-,-,-,-,-"
 Branch 4 "712423355" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,1,0,-,-,-,-,-,-,-,-,-"
@@ -303,6 +312,9 @@ Branch 4 "712423355" "HAS_LC_STATE" (10) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,1,-
 Branch 4 "712423355" "HAS_LC_STATE" (11) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,0,1"
 Branch 4 "712423355" "HAS_LC_STATE" (12) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,1,0,0,0"
 Branch 4 "712423355" "HAS_LC_STATE" (13) "HAS_LC_STATE 1,0,0,-,0,0,-,-,-,0,-,-,-"
+Branch 7 "4076424298" "(!rst_ni)" (1) "(!rst_ni) 0,1,-"
+Branch 8 "1283278657" "(!rst_ni)" (1) "(!rst_ni) 0,1,1,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
+Branch 8 "1283278657" "(!rst_ni)" (2) "(!rst_ni) 0,1,0,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-,-"
 Branch 8 "1283278657" "(!rst_ni)" (13) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,1,1,-,-,-,-,-,-,-"
 Branch 8 "1283278657" "(!rst_ni)" (14) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,1,0,-,-,-,-,-,-,-"
 Branch 8 "1283278657" "(!rst_ni)" (15) "(!rst_ni) 0,0,-,0,-,-,-,-,-,1,0,1,0,-,1,0,-,-,-,-,-,-,-,-"
