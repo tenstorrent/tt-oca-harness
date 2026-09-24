@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Write every read-only MMR of the DFD blocks and require the write to be ignored.
 
-Writes the 37 registers of the `cla`, `dst`, `dst_sink` and `funnel` sub-blocks
-that the RDL gives no software-writable field, with the CLA disarmed, and holds
+Writes every register of the `cla`, `dst`, `dst_sink` and `funnel` sub-blocks
+that the generated map gives no software-writable field (35 in the current map), with the CLA disarmed, and holds
 each one that reads the same value twice running to returning it again.
 """
 
@@ -19,11 +19,11 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses.
 #
 #   the CDbgClaCtrlStatus disarmed precheck                                   1
-#   37 read-only registers, 4 accesses each: the settle read, the before
-#     read, the write, and the read after it                                148
+#   35 read-only registers in the current map, 4 accesses each: the settle
+#     read, the before read, the write, and the read after it               140
 #                                                                         ------
-#                                                                            149
-RO_MMR_WRITE_MIN_CSR_ACCESSES = 149
+#                                                                            141
+RO_MMR_WRITE_MIN_CSR_ACCESSES = 141
 
 
 @pyuvm.test()

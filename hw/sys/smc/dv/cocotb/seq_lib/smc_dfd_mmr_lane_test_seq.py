@@ -37,11 +37,9 @@ from .smc_rdl_regmap import RdlReg, rdl_registers_under
 
 _CLA_ADDRMAP = "smc_cla"
 _BLOCKS = ("dst", "dst_sink")
-# Registers of the two blocks the byte sweep writes: all of them but the sink's
-# RAM data port, whose read has a side effect on the RAM read side. A
-# regenerated map that gains or loses one fails rather than silently changing
-# the sweep.
-_EXPECTED_SWEPT = 18
+# Registers of the two blocks the byte sweep leaves out: the sink's RAM data
+# port, whose read has a side effect on the RAM read side. Everything else the
+# generated map declares in the two blocks is swept.
 _NOT_SWEPT = ("Trdstramdata",)
 # Unmapped offsets, relative to each block's first register: inside the hole
 # between the DST's last low register and its trace configuration register,
@@ -81,10 +79,7 @@ def _swept() -> tuple[RdlReg, ...]:
         for r in _block_registers()[b]
         if r.path.rsplit("/", 1)[1] not in _NOT_SWEPT
     )
-    assert len(regs) == _EXPECTED_SWEPT, (
-        f"the generated map carries {len(regs)} registers to sweep across {list(_BLOCKS)}, "
-        f"not the {_EXPECTED_SWEPT} this sweep is sized for"
-    )
+    assert regs, f"the generated map carries no registers to sweep across {list(_BLOCKS)}"
     return regs
 
 

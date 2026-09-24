@@ -4297,10 +4297,11 @@ Drive `smc_jtag_dmi_smoke_test_seq`. Each checker below is a named compare the D
 
 *Test Coverage*:
 
-* 77 of the 78 software-writable registers of the `smc_cla/cla` block, each written with the ones pattern its RDL software-access type allows and then restored to its RDL reset.
+* Every software-writable register of the `smc_cla/cla` block in the generated map less the one named exclusion (77 of 78 in the current map), each written with the ones pattern its RDL software-access type allows and then restored to its RDL reset. The register lists are derived from the map on every run.
 * Each write goes out as two narrower half-register accesses, so the byte lanes over the other half are deasserted and each readback also proves the untouched half held its value.
 * `CDbgClaCtrlStatus` is excluded: `ClaLock` latches `enable_cla` forever and `EnableEap` arms the action bus of all 16 EAPs, so it is driven by `smc_dfd_cla_node_eap_sweep_test` instead.
-* The 35 registers of the block with no software-writable field are hardware-driven status and carry no write expectation; their reset content is read by `smc_remap_cla_test`.
+* The registers of the block with no software-writable field (35 in the current map) are hardware-driven status and carry no write expectation; their reset content is read by `smc_remap_cla_test`.
+* *Map and design disagree*: the generated map declares `Rsvd` (bit 63) of `CDbgClaCounter0Cfg` to `CDbgClaCounter3Cfg` plain read-write, while the vendored MMR specification (`cla_mmrs.yml`) gives it a single legal value of 0 under a WARL register, and the design reads 0 after a write of 1. The generation of `dfd_cla.rdl` from that specification drops the legal-value constraint. The leaf holds those bits to the specified value 0 rather than the map's contract and fails if one reads back the written value or the map stops declaring it read-write, so the entry is revisited either way.
 
 *Test Procedure*:
 
@@ -4312,7 +4313,7 @@ Drive `smc_dfd_cla_mmr_sweep_test_seq`. Each checker below is a named compare th
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CLA-MMR-WRITE-SWEEP` |Every swept CLA MMR register read its generated RDL reset, returned exactly the software-writable bits written by each half-register access while the other half kept its value, drove 0 in every bit no field occupies, and read its RDL reset back after the two restore writes; a wrong readback, a half-write that spilled into the other half, or a driven undeclared bit fails it
+|`CHK-CLA-MMR-WRITE-SWEEP` |Every swept CLA MMR register read its generated RDL reset, returned exactly the software-writable bits written by each half-register access (the legal-value-pinned counter `Rsvd` bits read their specified value 0 instead) while the other half kept its value, drove 0 in every bit no field occupies, and read its RDL reset back after the two restore writes; a wrong readback, a half-write that spilled into the other half, or a driven undeclared bit fails it
 |===
 
 
@@ -4685,7 +4686,7 @@ Drive `smc_dfd_sink_mmr_sweep_test_seq`. Each checker below is a named compare t
 
 *Test Coverage*:
 
-* The 37 registers of the `cla`, `dst`, `dst_sink` and `funnel` sub-blocks that the RDL gives no software-writable field -- the signal snapshots, the timestamps, the counters' hardware-driven halves, the sink data port and write pointer. The MMR write sweeps drive only registers that have a writable field, so the write decode of these addresses is otherwise never exercised.
+* Every register of the `cla`, `dst`, `dst_sink` and `funnel` sub-blocks that the generated map gives no software-writable field (35 in the current map, derived on every run) -- the signal snapshots, the timestamps, the counters' hardware-driven halves, the sink data port and write pointer. The MMR write sweeps drive only registers that have a writable field, so the write decode of these addresses is otherwise never exercised.
 * Each register is read twice before the write, so a register that is moving on its own is measured rather than assumed, and only the ones that held still are required to hold their value across the write. The rest are still written, because the decode is what is exercised.
 * The CLA is checked disarmed before the sweep starts, so the hardware-driven registers are quiescent.
 
@@ -4703,7 +4704,7 @@ Drive `smc_dfd_ro_mmr_write_test_seq`. Each checker below is a named compare the
 |`CHK-DFD-RO-MMR-UNDECLARED` |Every read of every written register drove 0 in each bit no field of the register occupies, before and after the write; a driven undeclared bit fails it
 |===
 
-*Known deviation*: `dst_sink/Trdstramwphigh` is declared `sw = r; hw = w` by `dfd_dst_sink.rdl` but takes a software write of all ones and reads it back. The leaf pins that behaviour rather than skipping the register, so correcting either the design or the map fails this leaf and the entry is revisited.
+*Note*: `dst_sink/Trdstramwphigh` takes a software write and reads it back, and the map declares it `sw = rw; hw = rw`, so it is not on the read-only list. Every register that is on the list has to ignore the write.
 
 
 *Pass Criteria*: `CHK-DFD-RO-MMR-HELD`, `CHK-DFD-RO-MMR-UNDECLARED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
@@ -4720,7 +4721,7 @@ Drive `smc_dfd_ro_mmr_write_test_seq`. Each checker below is a named compare the
 
 *Test Coverage*:
 
-* The other DFD MMR leaves write whole registers. Here each of the 18 registers of the `dst` and `dst_sink` sub-blocks other than the sink's RAM data port takes a one-byte store of its low byte's complement, which covers only part of the register's 4-byte lane. The register may ignore the store or take it in its software-writable bits; no other byte may move. It is then written back whole and read back.
+* The other DFD MMR leaves write whole registers. Here every register of the `dst` and `dst_sink` sub-blocks other than the sink's RAM data port (18 in the current map, derived on every run) takes a one-byte store of its low byte's complement, which covers only part of the register's 4-byte lane. The register may ignore the store or take it in its software-writable bits; no other byte may move. It is then written back whole and read back.
 * One offset inside each block's register hole is read and written: offset 0x40 of the DST block, which is also the sink's RAM data port offset in its own block, so the read has to be decoded as an ordinary register access, and offset 0x8 of the sink block. Each access has to complete, a read that completes without error has to return 0 in every bit, as any bit no field occupies does, and the registers on either side of the hole have to hold their values across an all-ones write.
 
 *Test Procedure*:
