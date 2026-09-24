@@ -8540,6 +8540,45 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-240-smc_i2c_controller_exits_test]]
+===== 240 `smc_i2c_controller_exits_test`
+
+*Source Module*: `smc_i2c_controller_exits_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads for the first leg; an address no device answers for the second
+
+*Objective*: Two endings of a controller transaction no leaf had produced, and `CONTROLLER_EVENTS` as a register rather than a flag.
+
+*Test Coverage*:
+
+* A read whose last byte carries no stop. The controller returns to the format FIFO for the entries queued behind it instead of stopping, which is the only way it leaves the read acknowledge into `PopFmtFifo`. The target has to see a single stop for the whole sequence, not one per entry.
+* A NACK left unhandled. `i2c.rdl` describes `HOST_NACK_HANDLER_TIMEOUT` as the limit on how long software may leave the controller halted on an unexpected NACK; past it `CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT` is raised beside the NACK. Every other leaf clears a NACK as soon as it sees one.
+* `CONTROLLER_EVENTS` clears on a written one, so two writes that must *not* clear it are made first: a word of zeros over a set bit, and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled. The bit is read back set after each, and only a written one clears it. Both set fields are checked this way.
+
+*Known limitation*: the controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is not driven. `i2c_controller_fsm.sv:291` clears `trans_started` in the same cycle the enable drops, so the `trans_started && !host_enable_i` arms in `Idle` and in `PopFmtFifo` are each one cycle wide. With the controller parked mid-transaction -- every entry consumed, no stop given, `STATUS.HOSTIDLE` clear -- clearing the enable returned it to idle without the bench target seeing a stop.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads.
+. Queue a write of an offset, a repeated start and a one-byte read *without* a stop, then a further write with a stop. Require the byte read back, the later write at the target, and one stop.
+. Arm `HOST_NACK_HANDLER_TIMEOUT`, queue a write to an address no device answers, and wait for `CONTROLLER_EVENTS.NACK` and then `UNHANDLED_NACK_TIMEOUT`.
+. For each set field: write zeros, read it back set; write a byte to the far end of the register, read it back set; write a one, read it back clear.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-READ-CONTINUES` |A read whose last byte carried no stop returned to the format FIFO, the entry behind it reached the target, and the target saw a single stop
+|`CHK-I2C-CTRL-NACK-TIMEOUT` |A NACK left unhandled past the programmed limit raised `UNHANDLED_NACK_TIMEOUT` beside it
+|`CHK-I2C-CTRL-EVENTS-RETAIN` |Both set fields survived a word of zeros and a byte write that left their lane disabled, and cleared only on a written one
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
