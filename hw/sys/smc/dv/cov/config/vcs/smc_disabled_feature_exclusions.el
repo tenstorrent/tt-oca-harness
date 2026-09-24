@@ -19,14 +19,9 @@ Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target
 CHECKSUM: "3564686069 3785605357"
 ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
 ANNOTATION: "SMC-P24-DIVIDER-INIT-NEVER-SET: avsbus_controller assigns do_initial_divider_setting only 1'b0, under reset and on a divider update, so it is zero for the life of the design and a row that needs it high cannot occur."
-ANNOTATION: "SMC-B10-AVS-NO-SLAVE-MODEL: a property of this bench, not of the design. The SMC bench has no AVSBus slave that answers a frame: the sequences hold the sdata pad at one level for each leg, so every bit the controller shifts into its slave subframe capture is that level, and the slave acknowledge (capture bits 31:30) is 00 or 11, never ResourceUnavailable (01) or BadCRC (10). A row that needs either code cannot occur here. A slave responder in the sequence library that returns framed replies retires the class."
 MODULE: avsbus_controller
 Condition 3 "2211674544" "((do_initial_divider_setting == 1'b1) || (R_avs_cfg_1_F_clk_divider_value_resync != previous_clk_divider_value_q) || (R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync != previous_clk_divider_duty_cycle_numerator_q)) 1 -1" (4 "100")
 Condition 4 "30701402" "(do_initial_divider_setting == 1'b1) 1 -1" (2 "1")
-Condition 65 "2555310947" "(((~crc_check_good)) || (slave_ack == SlaveAckResourceUnavailable) || (slave_ack == SlaveAckBadCRC) || (avs_sdata_capture[SdataValidFrameBit] == 1'b1)) 1 -1" (3 "0010")
-Condition 65 "2555310947" "(((~crc_check_good)) || (slave_ack == SlaveAckResourceUnavailable) || (slave_ack == SlaveAckBadCRC) || (avs_sdata_capture[SdataValidFrameBit] == 1'b1)) 1 -1" (4 "0100")
-Condition 66 "351871361" "(slave_ack == SlaveAckResourceUnavailable) 1 -1" (2 "1")
-Condition 67 "212978562" "(slave_ack == SlaveAckBadCRC) 1 -1" (2 "1")
 Condition 73 "2122482897" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_update_clk_divider_value : update_clk_divider_value) 1 -1" (2 "1")
 Condition 74 "1200842655" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_R_avs_cfg_1_F_clk_divider_value_resync : R_avs_cfg_1_F_clk_divider_value_resync) 1 -1" (2 "1")
 Condition 75 "1242591211" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync : R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync) 1 -1" (2 "1")

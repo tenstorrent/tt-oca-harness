@@ -235,6 +235,9 @@ Claims examined and not held, so their points stay graded:
   the cycle that sets the flag carries it into the next transaction.
 * `trans_started && !host_enable_i` in the I2C controller: the flop clears a
   cycle after the enable falls, so the term holds for one cycle.
+* An AVSBus slave acknowledge of ResourceUnavailable or BadCRC: a responder in
+  the sequence library answers each subframe bit by bit with every acknowledge
+  code, frame-not-valid and every CRC code.
 
 Input is the set of templates urg writes for the merged database::
 
@@ -872,14 +875,6 @@ P26 = (
     "CLA muxes at 0. In each section the comparisons on the parameter are constant, so the "
     "row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode "
     "arm that tests it at 0 never executes."
-)
-B10 = (
-    "SMC-B10-AVS-NO-SLAVE-MODEL: a property of this bench, not of the design. The SMC bench "
-    "has no AVSBus slave that answers a frame: the sequences hold the sdata pad at one level "
-    "for each leg, so every bit the controller shifts into its slave subframe capture is that "
-    "level, and the slave acknowledge (capture bits 31:30) is 00 or 11, never "
-    "ResourceUnavailable (01) or BadCRC (10). A row that needs either code cannot occur here. "
-    "A slave responder in the sequence library that returns framed replies retires the class."
 )
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
@@ -1548,7 +1543,6 @@ BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
 
 # Per-module row predicates over the report's own terms: (class, test(terms, vector)).
 NORTH_WAY_NONZERO = re.compile(r"^\(TrRamNorthTraceWrWay_TS0 == [123]\[1:0\]\)$")
-AVS_MIXED_ACK = re.compile(r"^\(slave_ack == SlaveAck(?:ResourceUnavailable|BadCRC)\)$")
 ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
     # The north write way is the staged OR of each valid core's pointer, staged on
     # the same clock as the valid, so a non-zero way comes with a staged valid, and
@@ -1587,14 +1581,6 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                 )
                 or (re.fullmatch(r"\(prev_gnt == tnifState_e'\(DST_GNT\)\)", t) and b == "1")
                 for t, b in zip(terms, vector)
-            ),
-        )
-    ],
-    "avsbus_controller": [
-        (
-            B10,
-            lambda terms, vector: any(
-                AVS_MIXED_ACK.match(t) and b == "1" for t, b in zip(terms, vector)
             ),
         )
     ],
@@ -2921,7 +2907,6 @@ FEATURE_CLASSES = (
     B6,
     B8,
     B9,
-    B10,
 )
 
 
