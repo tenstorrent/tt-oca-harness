@@ -39,9 +39,9 @@ addrmap bus_error_unit {
         accesswidth = 64;
 
         field {
-            sw=r; 
-            hw=w;
-            desc="Physical address of error event. No reset value";
+            sw=rw;
+            hw=rw;
+            desc="Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value";
         } value [55:0];
     };
 
@@ -152,55 +152,56 @@ addrmap bus_error_unit {
     };
 
     reg ACCRUED_ENABLE {
+        desc = "Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.";
         regwidth = 64;
         accesswidth = 64;
 
         field {
             sw=rw; 
-            hw=r;
+            hw=rw;
             desc="Reserved";
         } rsvd0[0:0] = 0x0;
 
         field {
             sw=rw; 
-            hw=r;
-            desc="Coarse grain interrupt enable mask for ICache Tilelink bus error.";
+            hw=rw;
+            desc="Sticky accrued status for ICache Tilelink bus error.";
         } icache_tlbus [1:1] = 0x0;
 
         field {
             sw=rw; 
-            hw=r;
-            desc="Coarse grain interrupt enable mask for ICache ECC correctable bus error.";
+            hw=rw;
+            desc="Sticky accrued status for ICache ECC correctable bus error.";
         } icache_correctable [2:2] = 0x0;
 
         field {
             sw=rw; 
-            hw=r;
+            hw=rw;
             desc="Reserved";
         } rsvd3[3:3] = 0x0;
 
         field {
             sw=rw; 
-            hw=r;
+            hw=rw;
             desc="Reserved";
         } rsvd4[4:4] = 0x0;
 
         field {
             sw=rw; 
-            hw=r;
-            desc="Coarse grain interrupt enable mask for DCache Tilelink bus error.";
+            hw=rw;
+            desc="Sticky accrued status for DCache Tilelink bus error.";
         } dcache_tlbus [5:5] = 0x0;
 
         field {
             sw=rw; 
-            hw=r;
-            desc="Coarse grain interrupt enable mask for DCache ECC correctable bus error.";
+            hw=rw;
+            desc="Sticky accrued status for DCache ECC correctable bus error.";
         } dcache_correctable [6:6] = 0x0;
 
         field {
             sw=rw; 
-            hw=r;
-            desc="Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.";
+            hw=rw;
+            desc="Sticky accrued status for DCache ECC uncorrectable bus error.";
         } dcache_uncorrectable [7:7] = 0x0;
     };
 

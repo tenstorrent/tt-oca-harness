@@ -31,7 +31,12 @@ The scrambler IP consists of a generic top-level module (`scrambler`) and a set 
 
 The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.
 
+<<sram-scrambler-parameters-table>> lists the address width, data width, and byte-wise
+permutation parameters.
+
+[[sram-scrambler-parameters-table]]
 [cols="<25%,<15%,<15%,<45%",options="header"]
+.SRAM scrambler parameters
 |===
 |Parameter |Type |Default |Description
 |`ADDR_WIDTH` |`int unsigned` |10 |Address width of the target SRAM. Determines which address scramble function is selected (6 through 13). Values outside this range fall through to a pass-through assignment.
@@ -43,7 +48,12 @@ The scrambler module accepts three parameters. Only 32-bit data widths are suppo
 
 The scrambler is purely combinational. It has no clock or reset ports.
 
+<<sram-scrambler-ports-table>> lists the combinational address, data, key, and enable
+interfaces.
+
+[[sram-scrambler-ports-table]]
 [cols="<25%,<10%,<20%,<45%",options="header"]
+.SRAM scrambler ports
 |===
 |Port |Dir |Width |Description
 |`addr_i` |in |`ADDR_WIDTH` |Memory address input.
@@ -65,9 +75,11 @@ blocks, while this scrambler works on 32-bit blocks. PRESENT operates on
 The player (permutation function) is also altered to accommodate the
 reduced block size i.e. word length.
 
-The data path implements the PRESENT 4-bit S-box (`sbox4`) from `scrambler_pkg`. Eight parallel S-box instances process the 32-bit word one nibble at a time. The S-box mapping is shown in the table below.
+The data path implements the PRESENT 4-bit S-box (`sbox4`) from `scrambler_pkg`. Eight parallel S-box instances process the 32-bit word one nibble at a time. The S-box mapping is shown in <<sram-scrambler-s-box-table>>.
 
+[[sram-scrambler-s-box-table]]
 [cols="<,<,<,<,<,<,<,<,<,<,<,<,<,<,<,<,<",options="header",]
+.SRAM scrambler S-box
 |======================================================
 |x |0 |1 |2 |3 |4 |5 |6 |7 |8 |9 |A |B |C |D |E |F
 |*S(x)* |C |5 |6 |B |9 |0 |A |D |3 |E |F |8 |4 |7 |1 |2
@@ -77,13 +89,23 @@ The inverse S-box (`ibox4`) reverses the mapping and is used on the descramble p
 
 The permutation layer follows the PRESENT structure with progressive offsets of 8 bits rather than 16. Index _i_ indicates the input bit position and _P(i)_ indicates the output bit position.
 
+<<sram-scrambler-permutation-for-bits-31-to-16-table>> maps input bits 31 through 16 to
+their output positions.
+
+[[sram-scrambler-permutation-for-bits-31-to-16-table]]
 [cols="<,<,<,<,<,<,<,<,<,<,<,<,<,<,<,<,<",options="header",]
+.SRAM scrambler permutation for bits 31 to 16
 |=================================================================
 |i |31 |30 |29 |28 |27 |26 |25 |24 |23 |22 |21 |20 |19 |18 |17 |16
 |*P(i)* |0 |8 |16 |24 |1 |9 |17 |25 |2 |10 |18 |26 |3 |11 |19 |27
 |=================================================================
 
+<<sram-scrambler-permutation-for-bits-15-to-0-table>> maps input bits 15 through 0 to
+their output positions.
+
+[[sram-scrambler-permutation-for-bits-15-to-0-table]]
 [cols="<,<,<,<,<,<,<,<,<,<,<,<,<,<,<,<,<",options="header",]
+.SRAM scrambler permutation for bits 15 to 0
 |==================================================================
 |i |15 |14 |13 |12 |11 |10 |9 |8 |7 |6 |5 |4 |3 |2 |1 |0
 |*P(i)* |4 |12 |20 |28 |5 |13 |21 |29 |6 |14 |22 |30 |7 |15 |23 |31
@@ -148,9 +170,11 @@ to form the round key. If the address is less than 32 bits wide, then we
 just repeatedly concatenate the address with itself until we have 32
 bits, truncating any excess bits.
 
-The `scrambler_addr_tweak` submodule implements this expansion. For power-of-two-aligned widths (8 and 16), the address is replicated exactly to fill 32 bits. For non-power-of-two widths, the address is concatenated three times and the upper portion of the third copy is truncated to produce exactly 32 bits. The table below lists the expansion formula used for each supported width.
+The `scrambler_addr_tweak` submodule implements this expansion. For power-of-two-aligned widths (8 and 16), the address is replicated exactly to fill 32 bits. For non-power-of-two widths, the address is concatenated three times and the upper portion of the third copy is truncated to produce exactly 32 bits. <<sram-scrambler-address-expansion-table>> lists the expansion formula used for each supported width.
 
+[[sram-scrambler-address-expansion-table]]
 [cols="<15%,<85%",options="header"]
+.SRAM scrambler address expansion
 |===
 |ADDR_WIDTH |Expansion to 32 bits
 |8 |`{addr, addr, addr, addr}`
@@ -177,7 +201,12 @@ address_, only scrambling.
 
 Each supported address width has a dedicated `addr_scrambleN` function in `scrambler_pkg`. These functions partition the address-key-XOR result into lanes of 3 or 4 bits, apply `sbox3` (Pyjamask) or `sbox4` (PRESENT) to each lane, concatenate the S-box outputs, and pass the result through the corresponding `permN` fixed permutation. The lane partitioning varies by width to ensure the full address is covered without padding.
 
+<<sram-scrambler-address-lanes-table>> identifies the S-box lanes and permutation used
+at each address width.
+
+[[sram-scrambler-address-lanes-table]]
 [cols="<15%,<35%,<20%,<30%",options="header"]
+.SRAM scrambler address lanes
 |===
 |Width |S-box Lane Partition |S-box Types |Permutation
 |6 |`[5:3], [2:0]` |`sbox3`, `sbox3` |`perm6`
@@ -200,7 +229,12 @@ This mode is used in the Key Manager SRAM interface where byte-level write strob
 
 Five pre-configured modules are provided, each fixing the `ADDR_WIDTH` parameter for a specific SRAM depth. All variants default to `DATA_WIDTH` = 32 and `BYTE_WISE` = 0, though the `BYTE_WISE` parameter can be overridden at instantiation.
 
+<<sram-scrambler-module-variants-table>> relates each preconfigured module to its SRAM
+depth and address-scramble function.
+
+[[sram-scrambler-module-variants-table]]
 [cols="<25%,<15%,<20%,<40%",options="header"]
+.SRAM scrambler module variants
 |===
 |Module |ADDR_WIDTH |SRAM Depth |Address Scramble Function
 |`scrambler_512x32` |9 |512 words |`addr_scramble9`
@@ -218,4 +252,9 @@ The scrambler is controlled through the `SCRAMBLER_KEY` and `SCRAMBLER_CTRL` reg
 
 A bypass multiplexer gates the scrambled data path. When `scrambler_en_i` is deasserted, addresses and data pass through unmodified. Parity is always computed on the plaintext data before scrambling, ensuring that the parity check on the read path operates on the descrambled value.
 
+<<sram-scrambler-datapath-figure>> shows the address and data scrambling paths at the
+SRAM interface.
+
+[[sram-scrambler-datapath-figure]]
+.SRAM scrambler datapath
 image::SEP_SRAM_Scrambler.png[SEP_SRAM_Scrambler,scaledwidth=90.0%]

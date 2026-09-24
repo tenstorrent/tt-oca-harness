@@ -9,13 +9,18 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.
 
 === Configuration Parameters
 
+<<telemetry-receiver-configuration-parameters-table>> lists the telemetry buffer
+dimensions and configuration parameters.
+
 ifdef::backend-html5[]
 ++++
 <div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver configuration parameters" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[telemetry-receiver-configuration-parameters-table]]
 [width="100%",cols="32%,12%,56%",options="header",role="telemetry-table"]
+.Telemetry receiver configuration parameters
 |====================================================================================
 |Parameter |Default |Description
 |NUM_BUFFERS |2 |Number of telemetry buffers (dual-buffer architecture)
@@ -39,13 +44,17 @@ endif::backend-html5[]
 The global interface provides fundamental clock and reset signals
 required for basic operation.
 
+<<telemetry-receiver-global-interface-signals-table>> defines the receiver clock and
+reset interface.
+
 ifdef::backend-html5[]
 ++++
 <div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver global signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.Global Interface Signals
+[[telemetry-receiver-global-interface-signals-table]]
+.Telemetry receiver Global Interface Signals
 [width="100%",cols="18%,10%,16%,12%,44%",options="header",role="telemetry-table"]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -76,13 +85,17 @@ reset deassertion
 The ATB (Advanced Trace Bus) interface receives telemetry data using standard
 ATB protocol.
 
+<<telemetry-receiver-atb-interface-signals-table>> defines the incoming ATB data and
+handshake signals.
+
 ifdef::backend-html5[]
 ++++
 <div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver ATB signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.ATB Interface Signals
+[[telemetry-receiver-atb-interface-signals-table]]
+.Telemetry receiver ATB Interface Signals
 [width="100%",cols="20%,10%,16%,54%",options="header",role="telemetry-table"]
 |=================================================================================
 |Signal Name |Width |Direction |Description
@@ -116,13 +129,17 @@ back-pressure
 The interrupt interface provides a single interrupt output for event
 notification.
 
+<<telemetry-receiver-interrupt-interface-signals-table>> defines the telemetry interrupt
+output.
+
 ifdef::backend-html5[]
 ++++
 <div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver interrupt signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.Interrupt Interface Signals
+[[telemetry-receiver-interrupt-interface-signals-table]]
+.Telemetry receiver Interrupt Interface Signals
 [width="100%",cols="20%,10%,16%,54%",options="header",role="telemetry-table"]
 |=====================================================================
 |Signal Name |Width |Direction |Description
@@ -140,7 +157,8 @@ endif::backend-html5[]
 * *Polarity*: Active high (asserted when high)
 * *Duration*: Level-sensitive, remains asserted until cleared
 * *Sources*: Buffer threshold and error condition interrupts
-* *Clearing*: Cleared by writing appropriate bits in interrupt status
-registers
+* *Clearing*: `MISSING_LAST` is write-one-to-clear. The read-only
+`BUFFER_THRESHOLD` source remains asserted while occupancy exceeds the configured
+threshold or its test bit is set; it cannot be cleared by writing status.
 * *Latency*: Interrupt assertion within 2 clock cycles of triggering
 condition

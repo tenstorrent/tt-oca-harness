@@ -11,13 +11,18 @@ system clock.
 
 === Configuration Parameters
 
+<<octs-configuration-parameters-table>> lists the timer configuration parameters and
+defaults.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS configuration parameters" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[octs-configuration-parameters-table]]
 [cols="30,16,54",options="header",role="port-reference"]
+.OCTS configuration parameters
 |=======================================================================
 |Parameter |Default |Description
 |BUS_PROTOCOL |AXI4-Lite |Register interface protocol (AXI4-Lite or
@@ -39,13 +44,17 @@ via the `is_primary_i` input signal, not through a compile-time parameter.
 
 === Global Interface
 
+<<octs-global-interface-signals-table>> defines the timer clock, reset, and global
+interface signals.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS global interface signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.Global Interface Signals
+[[octs-global-interface-signals-table]]
+.OCTS Global Interface Signals
 [cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
 |=======================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -71,13 +80,16 @@ endif::backend-html5[]
 
 === Test Interface
 
+<<octs-test-interface-signals-table>> defines the timer test controls.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS test interface signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.Test Interface Signals
+[[octs-test-interface-signals-table]]
+.OCTS Test Interface Signals
 [cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
 |=======================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -97,12 +109,16 @@ endif::backend-html5[]
 
 === OCTS Synchronization Interface
 
+<<octs-synchronization-interface-signals-table>> defines the synchronization inputs and
+outputs.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS synchronization interface signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[octs-synchronization-interface-signals-table]]
 .OCTS Synchronization Interface Signals
 [cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
 |=======================================================================
@@ -139,13 +155,17 @@ inactive.
 
 === Timer Counter Interface
 
+<<octs-timer-counter-interface-signals-table>> defines the counter-step and
+counter-value interfaces.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS timer counter interface signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.Timer Counter Interface Signals
+[[octs-timer-counter-interface-signals-table]]
+.OCTS Timer Counter Interface Signals
 [cols="28,9,13,50",options="header",role="port-reference"]
 |=======================================================================
 |Signal Name |Width |Direction |Description
@@ -179,13 +199,17 @@ COUNT_HI registers.
 All input signals are required to meet setup and hold times with respect
 to the rising edge of clk_i.
 
+<<octs-timing-requirements-table>> lists the stated setup and hold requirements by
+signal group.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.Timing Requirements
+[[octs-timing-requirements-table]]
+.OCTS Timing Requirements
 [cols="30,15,15,40",options="header",role="port-reference"]
 |=======================================================================
 |Signal Group |Setup Time |Hold Time |Notes

@@ -24,8 +24,6 @@ ifdef::backend-html5[]
 
 * xref:fabric.adoc[SEP Interconnect] -- internal and external transaction paths.
 * xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter] -- shared SEP and SMC filter decode.
-* xref:memory_map.adoc[Memory Map and Register Reference] -- address regions and
-  generated register tables.
 * xref:cpu.adoc[CPU Subsystem] -- VeeR EL2 configuration, boot, DMA, and alarms.
 * xref:rom.adoc[Boot ROM] -- immutable boot firmware and ROM architecture.
 * xref:interrupts.adoc[Interrupts] -- PIC assignments and non-PIC interrupt paths.
@@ -43,4 +41,9 @@ ifdef::backend-html5[]
 * xref:lifecycle_controller.adoc[Life Cycle Controller] -- lifecycle states,
   demotion, and feature control.
 * xref:test_mode.adoc[Test Mode Entry] -- secure test-mode qualification.
+
+== Register Reference
+
+* xref:memory_map.adoc[Memory Map and Register Reference] -- address regions and
+  generated register tables.
 endif::backend-html5[]

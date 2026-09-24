@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= List of Figures
+
+Select a figure to open its topic. Figure numbers are local to each HTML
+topic; the PDF numbers figures consecutively across the book.

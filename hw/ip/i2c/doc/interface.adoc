@@ -10,7 +10,11 @@ integration.
 
 === Configuration Parameters
 
+<<i2c-configuration-parameters-table>> lists the FIFO depths and interface dimensions.
+
+[[i2c-configuration-parameters-table]]
 [width="100%",cols="30%,20%,50%",options="header",]
+.I2C configuration parameters
 |===========================================================================
 |Parameter |Default |Description
 |CTRL_TX_FIFO_DEPTH |64 |Controller mode TX FIFO depth (entries)
@@ -25,7 +29,10 @@ integration.
 
 === Global Interface
 
-.Global Interface Signals
+<<i2c-global-interface-signals-table>> defines the controller clock and reset interface.
+
+[[i2c-global-interface-signals-table]]
+.I2C Global Interface Signals
 [width="100%",cols="20%,10%,10%,10%,50%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -40,7 +47,11 @@ logic to known states.
 
 === Memory Configuration Interface
 
-.Memory Configuration Interface Signals
+<<i2c-memory-configuration-interface-signals-table>> defines the RAM configuration
+inputs.
+
+[[i2c-memory-configuration-interface-signals-table]]
+.I2C Memory Configuration Interface Signals
 [width="100%",cols="20%,10%,10%,60%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Description
@@ -62,6 +73,10 @@ correction enable, threshold settings (when available)
 The I2C physical interface implements true open-drain signaling with
 proper electrical characteristics.
 
+<<i2c-physical-interface-signals-table>> defines the SCL and SDA input, output, and
+output-enable signals.
+
+[[i2c-physical-interface-signals-table]]
 .I2C Physical Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
 |=====================================================================================
@@ -128,7 +143,11 @@ resistors
 SMBus-specific signals support System Management Bus protocol
 extensions.
 
-.SMBus Extension Interface Signals
+<<i2c-smbus-extension-interface-signals-table>> defines the SMBus suspend and alert
+signals.
+
+[[i2c-smbus-extension-interface-signals-table]]
+.I2C SMBus Extension Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -169,7 +188,11 @@ deassertion
 DMA interface signals provide efficient data transfer support for
 high-throughput applications.
 
-.DMA Interface Signals
+<<i2c-dma-interface-signals-table>> defines the FIFO-ready handshake signals for DMA
+transfers.
+
+[[i2c-dma-interface-signals-table]]
+.I2C DMA Interface Signals
 [width="100%",cols="20%,10%,10%,10%,50%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -209,7 +232,10 @@ polling-only operation
 
 Comprehensive interrupt interface aggregates all interrupt sources.
 
-.Interrupt Interface Signals
+<<i2c-interrupt-interface-signals-table>> defines the combined I2C interrupt request.
+
+[[i2c-interrupt-interface-signals-table]]
+.I2C Interrupt Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description

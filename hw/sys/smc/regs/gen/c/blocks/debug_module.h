@@ -456,35 +456,31 @@ typedef union {
 #define DEBUG_MODULE__SBCS__SBACCESS8_bm 0x1
 #define DEBUG_MODULE__SBCS__SBACCESS8_bp 0
 #define DEBUG_MODULE__SBCS__SBACCESS8_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS8_reset 0x0
+#define DEBUG_MODULE__SBCS__SBACCESS8_reset 0x1
 #define DEBUG_MODULE__SBCS__SBACCESS16_bm 0x2
 #define DEBUG_MODULE__SBCS__SBACCESS16_bp 1
 #define DEBUG_MODULE__SBCS__SBACCESS16_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS16_reset 0x0
+#define DEBUG_MODULE__SBCS__SBACCESS16_reset 0x1
 #define DEBUG_MODULE__SBCS__SBACCESS32_bm 0x4
 #define DEBUG_MODULE__SBCS__SBACCESS32_bp 2
 #define DEBUG_MODULE__SBCS__SBACCESS32_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS32_reset 0x0
+#define DEBUG_MODULE__SBCS__SBACCESS32_reset 0x1
 #define DEBUG_MODULE__SBCS__SBACCESS64_bm 0x8
 #define DEBUG_MODULE__SBCS__SBACCESS64_bp 3
 #define DEBUG_MODULE__SBCS__SBACCESS64_bw 1
-#define DEBUG_MODULE__SBCS__SBACCESS64_reset 0x0
+#define DEBUG_MODULE__SBCS__SBACCESS64_reset 0x1
 #define DEBUG_MODULE__SBCS__SBACCESS128_bm 0x10
 #define DEBUG_MODULE__SBCS__SBACCESS128_bp 4
 #define DEBUG_MODULE__SBCS__SBACCESS128_bw 1
 #define DEBUG_MODULE__SBCS__SBACCESS128_reset 0x0
-#define DEBUG_MODULE__SBCS__SBASIZE_bm 0x1e0
+#define DEBUG_MODULE__SBCS__SBASIZE_bm 0xfe0
 #define DEBUG_MODULE__SBCS__SBASIZE_bp 5
-#define DEBUG_MODULE__SBCS__SBASIZE_bw 4
-#define DEBUG_MODULE__SBCS__SBASIZE_reset 0x0
-#define DEBUG_MODULE__SBCS__SBERROR_bm 0xe00
-#define DEBUG_MODULE__SBCS__SBERROR_bp 9
+#define DEBUG_MODULE__SBCS__SBASIZE_bw 7
+#define DEBUG_MODULE__SBCS__SBASIZE_reset 0x38
+#define DEBUG_MODULE__SBCS__SBERROR_bm 0x7000
+#define DEBUG_MODULE__SBCS__SBERROR_bp 12
 #define DEBUG_MODULE__SBCS__SBERROR_bw 3
 #define DEBUG_MODULE__SBCS__SBERROR_reset 0x0
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_bm 0x7000
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_bp 12
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_bw 3
-#define DEBUG_MODULE__SBCS___RESERVED_14_12_reset 0x0
 #define DEBUG_MODULE__SBCS__SBREADONDATA_bm 0x8000
 #define DEBUG_MODULE__SBCS__SBREADONDATA_bp 15
 #define DEBUG_MODULE__SBCS__SBREADONDATA_bw 1
@@ -524,9 +520,8 @@ typedef union {
         uint32_t sbaccess32 :1;
         uint32_t sbaccess64 :1;
         uint32_t sbaccess128 :1;
-        uint32_t sbasize :4;
+        uint32_t sbasize :7;
         uint32_t sberror :3;
-        uint32_t _reserved_14_12 :3;
         uint32_t sbreadondata :1;
         uint32_t sbautoincrement :1;
         uint32_t sbaccess :3;
