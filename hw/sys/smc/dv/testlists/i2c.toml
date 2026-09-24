@@ -235,3 +235,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_intr_status_partial_clear_test"
+module = "smc_intr_status_partial_clear_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
