@@ -4,7 +4,8 @@
 
 The third inbound manager of the input fabric is held to the burst and
 error-response behaviour the SEP_IN and SYS_IN shape leaves establish: INCR
-bursts of three lengths into the SPM read back in order, an unimplemented
+bursts of three lengths into the SPM read back in order, outstanding accesses
+under a BREADY/RREADY hold stall the port and still read back, an unimplemented
 region answers DECERR, and the GPIO access filter refuses an unprivileged JTAG
 access the same way it refuses one from SEP_IN.
 
@@ -31,11 +32,12 @@ class smc_jtag_axi_shape_test(smc_base_test):
     """Bursts of three lengths and both error responses on the JTAG AXI port."""
 
     required_evidence = (
+        "CHK-JTAG-AXI-BACKPRESSURE",
         "CHK-JTAG-AXI-BURSTS",
         "CHK-JTAG-AXI-ERRORS",
         "CHK-JTAG-AXI-PORT",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

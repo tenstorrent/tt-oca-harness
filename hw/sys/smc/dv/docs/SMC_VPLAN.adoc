@@ -2067,6 +2067,7 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 * The inbound filter decides each direction from its own request, with block-by-default when nothing matches, so the write and read channels of the port are driven together: four interleaved passes go out as one outstanding group, SEP_IN seeds the read sources and reads the write targets back, and the filter is observed admitting both directions in the same cycle.
 * Every inbound port of this bench carries an agent, so the "unused port tied idle" cell cannot be driven here.
 * Through the admitted entry a 2-beat and a 16-beat INCR burst of full-width beats are written into the SPM and each read back in order as one burst, and a read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR, so the port carries bursts and decode errors, not only single-beat register accesses.
+* The write channel of the unimplemented region answers DECERR too; with GPIO0 ACCESS_FILTER armed over SEP_IN, an unprivileged `sys_axi_in` write is refused with an error response (reported) and took no effect, and an unprivileged read answers DECERR with the error-slave signature, and a read of the empty inbound mailbox answers SLVERR. Three passes of outstanding writes and then of reads over the eight scratch registers under a 64-cycle BREADY/RREADY hold stall the port's response channels and, with that many addresses queued, its address channels, measured per channel, and every read still returns the word its last write carried.
 
 *Test Procedure*:
 
@@ -2081,11 +2082,13 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 |`CHK-SYS-AXI-IN-WRITE` |A `sys_axi_in` write of the scratch pattern was read back exactly over SEP_IN and over `sys_axi_in`, and the scoreboard had completed exactly the expected number of SYS_IN and SEP_IN accesses
 |`CHK-SYS-AXI-IN-NOT-CLOSED` |A recorded gap, not a compare: the unused-port-tied-idle cell, with the reason -- every inbound port of this bench carries an agent and none is tied to zero. Logged unconditionally
 |`CHK-SYS-AXI-IN-PORT` |Ledger line in the leaf: the SYS_IN read value, the scratch readback and the SEP_IN access count, logged after the leaf requires both SYS_IN reads to have been captured. The compares are the sequence's and the scoreboard's
+|`CHK-SYS-AXI-IN-BACKPRESSURE` |The BREADY/RREADY hold stalled the B and R channels for a non-zero number of cycles, measured by the sequence, and every read of the outstanding group is an exact scoreboard compare
+|`CHK-SYS-AXI-IN-ERRORS` |The unimplemented-region write and the refused filter read are compared against DECERR, the refused read against the error-slave signature, the refused write against an error response, the empty-mailbox read against SLVERR, and the armed filter reads back unchanged
 |`CHK-SYS-AXI-IN-BURST` |The AxLEN=1 and AxLEN=15 INCR bursts written over `sys_axi_in` read back as exact scoreboard compares, and the unimplemented-region read is compared against DECERR by the sequence; the run fails if either mismatches
 |`CHK-SYS-AXI-IN-DUPLEX` |The interleaved write/read group over `sys_axi_in`: every read returned the word SEP_IN seeded and the write targets held the last pass, and the inbound filter was observed admitting both directions in at least one cycle -- both filter hits set with neither isolate -- so a run whose two channels never overlapped fails
 |===
 
-*Pass Criteria*: the admitted `sys_axi_in` read matches the generated reset, the scratch write reads back exactly over both ports, the filter entry and the scratch register are restored, and the measured SEP_IN and SYS_IN access counts equal the expected ones. The pre-admit response and the tied-idle cell are recorded, not claimed. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: the admitted `sys_axi_in` read matches the generated reset, the scratch write reads back exactly over both ports, the filter entry and the scratch register are restored, and the measured SEP_IN and SYS_IN access counts equal the expected ones. The pre-admit response and the tied-idle cell are recorded, not claimed, the write-channel error responses and the backpressure stalls hold. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -2106,6 +2109,7 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 * An AxLEN=1 INCR burst is split into consecutive single-beat accesses: the two beats land in two consecutive scratch registers, are read back individually and again as one two-beat burst read, so a beat dropped, merged or reordered fails an exact compare.
 * FIXED and WRAP multi-beat bursts: `fabric.adoc` does not state how the SEP_IN path answers a burst type it does not support, so the expectation is the DV-owned one for a refused write -- an AXI error response of either kind, never OKAY and never a wedge -- and both target registers must still hold the values the INCR burst left, so a path that errored the response while still writing is caught. The error code returned is reported, not asserted. Spec gap for the plan owner: a fabric statement fixing the response to an unsupported burst would let this leg hold an exact code.
 * A 16-beat INCR burst of full-width beats into the SPM: every beat lands at its own address, read back at both ends and as one 16-beat read, so a splitter that drops, repeats or reorders beats past the first few is caught. A 2-beat FIXED burst of full-width beats to the scratch registers carries the words they already hold, so whether the path stores or refuses it the readbacks still test the INCR result; its response is reported, not asserted.
+* A write to the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR, so the write channel of the error slave is shown on SEP_IN as the read channel already is.
 * Both scratch registers are restored to zero before the sequence ends.
 
 *Test Procedure*:
@@ -2120,10 +2124,11 @@ Drive `smc_sep_in_axi_shape_test_seq` on the SEP_IN AXI sequencer: seed a scratc
 |`CHK-SEP-IN-NARROW-STROBES` |The seeded word, the word after the one-byte write and the word after the two-byte write are exact scoreboard compares, as are the narrow reads of the same lanes; a strobe the fabric ignored or widened fails one of them
 |`CHK-SEP-IN-BURST-INCR` |The two beats of the AxLEN=1 INCR write are read back from their own registers and again as one AxLEN=1 read, all exact compares
 |`CHK-SEP-IN-BURST-UNSUPPORTED` |The FIXED and the WRAP burst each answered an AXI error response -- the scoreboard fails an OKAY or a timed-out access marked expect-error -- and both registers still read the values the INCR burst left; the error code is reported, not asserted
+|`CHK-SEP-IN-DECERR-WRITE` |The write to the unimplemented page is compared against DECERR by the sequence; the run fails if it mismatches
 |`CHK-SEP-IN-BURST-LONG` |The first and last beat of the AxLEN=15 INCR write are read back from their own SPM addresses and the AxLEN=15 read returns every beat in order, all as exact scoreboard compares; the response of the 8-byte FIXED burst is reported
 |===
 
-*Pass Criteria*: every narrow and burst readback matches its exact expectation, the two rejected burst types answer an error response without changing either register, the 16-beat burst reads back in order, and the scoreboard books at least the expected number of value compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: every narrow and burst readback matches its exact expectation, the two rejected burst types answer an error response without changing either register, the 16-beat burst reads back in order, and the scoreboard books at least the expected number of value compares, the unimplemented-page write answers DECERR. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -3599,6 +3604,7 @@ Drive `smc_cluster_beu_test_seq`. Each checker below is a named compare the DUT 
 * No row addresses `0xC001_0050`.
 * It is not "reserved/open-bus space within the block window": `SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR` is `0xC0010000` and `SMC_TOP_SMC_BASE_CONFIG_SIZE` is `0x0000004C` (`hw/sys/smc/regs/gen/c/smc_addr.h:108-109`), so the window ends at `0xC001004B` and `0xC0010050` is outside it.
 * Undecoded space reads back `0x00000000`, which is exactly what the row expected, so it could not fail on any RTL while logging a register-shaped name that names no register (`[ADDRESS-FROM-AUTHORITATIVE-MAP]`).
+* `LOCAL_BASE` (`sw=r` in the RDL) is written with a non-reset word and read back: the write completes and the readback still carries the generated reset, so the base-config alias the CPU uses cannot be moved from the bus.
 * The sweep reads `REGION_SIZE` instead: a real register of the same block with a non-zero generated reset, so the row fails if the fabric ever stops decoding it.
 
 *Test Procedure*:
@@ -3614,10 +3620,11 @@ Drive `smc_cpu_ctrl_map_depth_test_seq`. Each checker below is a named compare t
 |`CHK-CPU-BFM-OBSERVABILITY` |Named compare in `smc_cpu_vip_utils.py`; the run fails if it mismatches
 |`CHK-CPU-CTRL-MAP-DEPTH` |Named compare in `smc_cpu_ctrl_map_depth_test_seq.py`; the run fails if it mismatches
 |`CHK-CPU-CTRL-MAP-LIVE` |Named compare in `smc_cpu_ctrl_map_depth_test_seq.py`; the run fails if it mismatches
+|`CHK-CPU-CTRL-MAP-LOCAL-BASE-RO` |`LOCAL_BASE` accepts a write of a non-reset word and its readback is an exact scoreboard compare against the generated reset, so the field is read-only on the single-base bench
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE`, `CHK-CPU-CTRL-MAP-LOCAL-BASE-RO` hold after their compares. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-071-smc_cpu_ctrl_scratch_window_test]]
@@ -9940,6 +9947,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * INCR bursts of 2, 8 and 32 full-width beats into the SPM, each read back as one burst of the same length, so a splitter that drops, repeats or reorders beats on the JTAG port is caught on the data.
 * A read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR.
 * GPIO0 ACCESS_FILTER is armed over SEP_IN with a privileged write; an unprivileged JTAG read of the register is refused with DECERR and the error-slave signature 0xBADCAB1E, as `hw/ip/gpio/doc/programming.adoc` ("Filter Configuration") specifies, and an unprivileged JTAG write of the disarm value is refused with an error response whose code is reported, not asserted, since no document fixes how the fabric forwards a write-channel refusal; a privileged readback shows the refused write took no effect.
+* A write to the unimplemented `ecam_region` page answers DECERR and a read of the empty inbound mailbox answers SLVERR, so both error codes are shown on both channels of this port.
+* Three passes of outstanding writes and then of reads over the eight scratch registers under a 64-cycle BREADY/RREADY hold stall the port's response channels and, with that many addresses queued behind the register path, its address channels, measured per channel, and every read still returns the word its last write carried.
 * The filter is restored to its generated reset and the access counts are measured: the sequence requires its own SEP_IN count and the scoreboard's JTAG AXI count to equal the expected numbers.
 
 *Test Procedure*:
@@ -9952,13 +9961,14 @@ Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs g
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-JTAG-AXI-BACKPRESSURE` |The BREADY/RREADY hold stalled the B and R channels for a non-zero number of cycles, measured by the sequence, and every read of the outstanding group is an exact scoreboard compare
 |`CHK-JTAG-AXI-BURSTS` |Each burst readback is an exact scoreboard compare of every beat against the payload written; a dropped, repeated or misplaced beat fails
-|`CHK-JTAG-AXI-ERRORS` |The unimplemented-region read and the refused filter read are compared against DECERR and the refused read against the error-slave signature by the sequence; the refused write must answer an error response and the privileged readback must still show the armed filter
+|`CHK-JTAG-AXI-ERRORS` |The unimplemented-region read and write and the refused filter read are compared against DECERR, the refused read against the error-slave signature and the empty-mailbox read against SLVERR by the sequence; the refused write must answer an error response and the privileged readback must still show the armed filter
 |`CHK-JTAG-AXI-PORT` |Ledger line in the leaf: the completed JTAG AXI and SEP_IN access counts and the two reported response codes, logged after the sequence has recorded both error legs
 |===
 
 
-*Pass Criteria*: `CHK-JTAG-AXI-BURSTS`, `CHK-JTAG-AXI-ERRORS` and `CHK-JTAG-AXI-PORT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-JTAG-AXI-BACKPRESSURE`, `CHK-JTAG-AXI-BURSTS`, `CHK-JTAG-AXI-ERRORS` and `CHK-JTAG-AXI-PORT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[smc-formal-plan]]
