@@ -9267,6 +9267,7 @@ Drive `smc_i2c_target_multi_instance_stretch_test_seq`. Each checker below is a 
 * Address-phase injections land before the target matches, so nothing is acquired; the claim there is that the instance is still able to run a clean transaction.
 * Data-phase injections land after the address was acknowledged, so each leaves a START entry in the acquisition FIFO, checked per injection rather than as a total.
 * The acknowledge slots are injected after rather than during. The target owns SDA while it acknowledges, so a controller physically cannot release SDA for a STOP in the middle of one; attempting it wedges the bus rather than testing anything.
+* The target-disable leg holds the target in a named state before it clears the enable, rather than waiting a number of bit periods from a poll. The bench stops clocking at a chosen payload bit, so the target waits for the next bit for as long as the bench chooses, and the ACK Control Mode leg leaves it stretching until software answers. A delay measured from a poll of `STATUS` returns some cycles after the event it waits for, and how many depends on the traffic of the run, so the disable used to land in a different state from seed to seed.
 * Every leg opens and closes with a clean transaction. The opening one is the positive control -- without it a sweep against an unreachable instance would satisfy every "nothing was acquired" check vacuously -- and the closing one is the recovery proof.
 * Each injection waits for the target to report itself between transactions before the next begins, so one transaction's tail cannot land in the next one's acquisition window.
 
@@ -9281,13 +9282,13 @@ Drive `smc_i2c_protocol_interruption_test_seq`. Each checker below is a named co
 |Checker |Description
 |`CHK-I2C0-INTR-ADDR-PHASE` |14 transactions cut short at every address-byte slot, by STOP and by repeated START, left no payload byte acquired on I2C0, which ran a clean write before and after the sweep
 |`CHK-I2C0-INTR-DATA-PHASE` |18 transactions cut short after the address acknowledge, at every payload-byte slot and after the payload acknowledge, each left at least one START entry in I2C0's acquisition FIFO, with a clean write before and after
-|`CHK-I2C0-INTR-TARGET-DISABLE` |Clearing `CTRL` target enable at each of six delays spread across the address byte, the acknowledge slot and the payload byte left I2C0 reporting TARGETIDLE, and it ran a clean write again after each
+|`CHK-I2C0-INTR-TARGET-DISABLE` |Clearing `CTRL` target enable from each of four states the bus holds the target in -- three payload-bit slots the bench stops clocking at, and the stretch it takes under ACK Control Mode -- left I2C0 reporting TARGETIDLE, and it ran a clean write again after each
 |`CHK-I2C1-INTR-ADDR-PHASE` |The address-phase sweep on I2C1
 |`CHK-I2C1-INTR-DATA-PHASE` |The data-phase sweep on I2C1
-|`CHK-I2C1-INTR-TARGET-DISABLE` |The target-disable sweep on I2C1
+|`CHK-I2C1-INTR-TARGET-DISABLE` |The same states on I2C1
 |`CHK-I2C2-INTR-ADDR-PHASE` |The address-phase sweep on I2C2
 |`CHK-I2C2-INTR-DATA-PHASE` |The data-phase sweep on I2C2
-|`CHK-I2C2-INTR-TARGET-DISABLE` |The target-disable sweep on I2C2
+|`CHK-I2C2-INTR-TARGET-DISABLE` |The same states on I2C2
 |`CHK-I2C0-INTR-HOST-DISABLE` |Clearing `CTRL` host enable while a queued format-FIFO transaction was on the wire returned controller I2C0 to idle, and it then drove a clean write that the target acquired
 |===
 
@@ -9427,8 +9428,8 @@ Drive `smc_i2c_bus_monitor_idle_test_seq`. Each checker below is a named compare
 
 * `doc/architecture.adoc` Bus Arbitration describes the bus monitor detecting a controller that "attempts to transmit a logic high, but another device is pulling SDA low", and the RDL gives `INTR_STATE.SDA_INTERFERENCE` for the controller side. That condition is a global override on the controller state machine, so it returns the controller to idle from whatever state it was in -- unlike clearing the host enable, which is only acted on in particular states.
 * Every payload byte is 0xFF, so the controller drives a logic high in every data slot and the pull-down is a genuine conflict rather than a bit that happened to agree.
-* The injection is anchored to the controller leaving idle, so the delay is measured from something the DUT did, and is expressed in the bit period this leaf programmed into `TIMING0`.
-* **One injection point per instance, not a sweep.** Where the pull-down lands decides which of two things the controller reports: at this point it reports the interference under test, while at a half-bit offset and at other whole-bit offsets the byte is corrupted early enough that the target NACKs first and the controller halts on the NACK instead. A longer pull-down did not change that, and the delay is only as accurate as the poll that observes the controller leaving idle, so a finer sweep would not place the conflict where it claimed to.
+* The injection is anchored on the bus, not on a poll: the leaf waits for the START on the pads, counts SCL rising edges, and pulls SDA low inside the high window of a chosen one. The pull-down is released inside that same window, since one that outlasts it reaches a bit the controller may be driving low. The level the controller was driving is read immediately before the pull and required to be a high, so the conflict is measured rather than assumed.
+* **One injection point per instance, not a sweep.** Where the pull-down lands decides which of two things the controller reports: at this point it reports the interference under test, while at other points the byte is corrupted early enough that the target NACKs first and the controller halts on the NACK instead. The anchor is what makes that choice repeatable -- a delay measured in bit periods from a poll of `STATUS` landed in a different part of the bit loop from seed to seed.
 * **Recovery is not asserted.** After an interference event on this DUT the next transaction from the same controller is NACKed even when, measured immediately beforehand, the controller's events read 0 and it reports idle, the interrupted transaction has been ended with a STOP the target acknowledges by reporting itself idle, the target has been through disable and a full re-enable, and the bus reads released. The identical transaction succeeds as the opening control. Rather than encode an expectation around behaviour that is not understood, both instances are hard reset between injections and nothing is claimed about the transaction that follows an event.
 * The opening clean transaction of each instance is the positive control: it shows the pair works, so an injection that reports nothing is a real absence rather than a bench that never reached the DUT.
 
