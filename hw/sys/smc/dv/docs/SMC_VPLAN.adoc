@@ -124,7 +124,6 @@ Executable membership is resolved from the testlists; the groups and their
 |Group |Role
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly (`regress.yml`): `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
-|`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
 |`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
 |===
 
@@ -1451,6 +1450,42 @@ Drive `smc_cpu_to_sep_axi_test_seq`. Each checker below is a named compare the D
 '''''
 
 
+[[sec-026-smc_deadspace_decode_test]]
+===== 26 `smc_deadspace_decode_test`
+
+*Source Module*: `smc_deadspace_decode_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Offsets past a register block's decoded extent are refused by the fabric and never reach a live register.
+
+*Test Coverage*:
+
+* Nine probes, one per register window (system timer, reset unit, base config, outbound filter 0, alias remap 0, DFX control, AVSBus controller, Zeroer, I2C 0). Each pairs a live register with the offset one wrap period past the block's PeakRDL `SIZE` / `TOTAL_SIZE`, read by symbol from `smc_addr.h` (`_block_extent` + `DeadspaceProbe.__post_init__`), never from the crossbar rule and never hand-copied. The crossbars are sized from the same generated parameters, so a regenerated map moves the decode and the probe definitions together.
+* Contract: `hw/sys/smc/doc/memmap.adoc` -- the fabric refuses an address between unit apertures or past a unit's decoded extent. The dead read and both dead writes (`0xA5A5A5A5`, then `0x00000000`) of every probe must answer non-OKAY with the live register unchanged. An OKAY answer is booked ACCEPTED, a live change WRAP-TO-LIVE, and a dead read returning the seeded live value READ-ALIAS; each fails the leaf.
+* The i2c probe lands in the SIZE-to-stride hole between two I2C instances, inside the I2C_WRAP aperture the fabric decodes; the refusal there is the i2c_wrap's own SIZE range-check and is held to the same verdict.
+* Positive control: before its dead offsets are touched, each live register is seeded with a value drawn from its generated field layout (`regs/gen/py/smc_reg.py`) that raises at least one field bit -- so a 1-bit register takes a seed too -- and the readback must show the bit raised. A probe whose seed does not take keeps running, but its negative conclusions are booked `alias_not_checkable` / `change_not_proven` and fail the leaf.
+
+*Test Procedure*:
+
+Drive `smc_deadspace_decode_test_seq` on the SEP_IN AXI sequencer. The sequence records the bystander `CLOCK_GATE_CONTROL` value, then for each probe reads the live register, seeds it, reads it back, reads the dead offset, writes the two dead payloads reading the live register after each, and restores the live register; it then re-reads the bystander with the baseline as the scoreboard's expected value. The leaf books a protocol-VIP record with the measured access count against a floor of 45.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DEADSPACE-SEED` |One line per probe, logged only after the seeded readback shows at least one field bit raised from the pre-seed value; it names the field mask, the value written and the bits raised. This is the positive control the two refusal compares rest on
+|`CHK-DEADSPACE-READ-REFUSED` |One line per probe, logged only when the dead read answered non-OKAY. An OKAY dead read that returns the seeded live value is READ-ALIAS; an OKAY dead read of anything else is ACCEPTED; both fail the leaf
+|`CHK-DEADSPACE-WRITE-REFUSED` |One line per probe, logged only when both dead writes answered non-OKAY, the live register read back unchanged after each, and the probe's seed took. A live change is WRAP-TO-LIVE, an OKAY write is ACCEPTED; both fail the leaf
+|`CHK-DEADSPACE-BYSTANDER` |`CLOCK_GATE_CONTROL` reads back its baseline after the sweep; the recovery read carries the baseline as the scoreboard's expected value, so the exact compare fails on collateral damage
+|`CHK-DEADSPACE-SWEEP` |Summary line, logged only after the final gate held: no WRAP-TO-LIVE, READ-ALIAS or ACCEPTED entry, no unproven negative, and the refused-read and refused-write counts both equal the probe count
+|===
+
+*Pass Criteria*: every probe's seed takes, its dead read and both dead writes are refused with the live register unchanged, and the bystander is unchanged. Enrolled in: `all`, `hosted`.
+'''''
+
+
 [[sec-027-smc_filter_field_sweep_test]]
 ===== 27 `smc_filter_field_sweep_test`
 
@@ -1865,17 +1900,17 @@ Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The 
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP)
 
-*Objective*: The last word of every SEP_IN-reachable window `memmap.adoc` pins -- through the table the register generator writes from the RDL address map -- answers, and answers from its own block: a window sized short bus-errors there and one sized long is answered by the next block.
+*Objective*: The last word of every SEP_IN-reachable window `memmap.adoc` pins -- through the table the register generator writes from the RDL address map -- answers, and answers from its own block: a window sized short bus-errors there and one sized long is answered by the next block. Where the table gives a unit an aperture (`Size`) larger than its `Decoded Extent`, the extent's last word is the top that must answer and the aperture's last word must be refused (`memmap.adoc`: the fabric refuses an address past a unit's decoded extent).
 
 *Test Coverage*:
 
 * Every window top is derived from the generated memory-map table (`regs/gen/adoc/memory_map.adoc`, included into `memmap.adoc`) and `LOCAL_BASE` from the generated `SMC_BASE_CONFIG.LOCAL_BASE` reset; no window extent is hand-copied.
 * Scratchpad memory: the first and the last 64-bit word of the 1 MiB `spm_memory` window hold distinct co-resident patterns and each reads back exactly, so the window reaches its last word without aliasing.
 * Boot ROM: the last word of the 128 KiB `spm_rom_memory` window (the extent `rom.adoc` states) answers OKAY, returns neither resident scratchpad pattern, refuses a write with an error response, and still holds the same word afterwards -- which is what read-only means at this boundary. No specification pins the word an unprogrammed ROM offset holds, so that value is reported, not compared.
-* DMA controller and memory zeroer: with distinct patterns resident in `DMA_CTRL.DST_ADDRESS_LO` and `ZEROER_CTRL.DEST_ADDR`, the last word of the 512 B `dma_ctrl` window and of the 256 B `zeroer_ctrl` window answers OKAY and returns neither pattern. Both words lie past the registers each unit implements and no specification pins them, so their values are reported, not compared.
+* DMA controller and memory zeroer: with distinct patterns resident in `DMA_CTRL.DST_ADDRESS_LO` and `ZEROER_CTRL.DEST_ADDR`, the last word of the 312 B `dma_ctrl` decoded extent and of the 24 B `zeroer_ctrl` decoded extent answers OKAY and returns neither pattern (an in-extent word without a register has no specified value, so it is reported, not compared), and the last word of the 512 B and 256 B apertures, past the decoded extent, is refused with DECERR. Both extents are cross-checked between the generated table and the generated `smc_addr.h` sizes.
 * DMA stream banks: `NEXT_ID_1` through `NEXT_ID_15` each answer OKAY with exactly 0 as `dma.adoc` states for a reserved bank, each checked to sit at the 8-byte stream-bank stride from `NEXT_ID_0`. `NEXT_ID_0` is read last and for an OKAY response only, because reading it is the one access that launches a transfer. The reserved banks hold no writable state (`STATUS` and `DONE` are tied to 0 too), so this leg proves that every reserved bank address answers as specified and does not claim to tell one reserved bank from another.
 * CLA: the trace-sink `TRDSTRAMIMPL` identification word, in the first 8 bytes of the 16 KiB `smc_cla` window, reads its generated reset, and the window's last 8-byte word -- the trace destination's `ScratchLo`/`ScratchHi` pair -- holds distinct co-resident patterns and reads them back.
-* One window top is not a register: the miscellaneous wrapper's 2 KiB window carries 524 B of registers, so its last word is an in-window offset past the register file. It is read with the error response tolerated and left open with its measured response -- a recorded gap, not a claim.
+* The miscellaneous wrapper's 2 KiB aperture carries a 524 B decoded extent and is driven the same way: the extent's last word answers OKAY (value reported) and the aperture's last word is refused with DECERR.
 
 *Test Procedure*:
 
@@ -1886,12 +1921,12 @@ Drive `smc_address_window_top_decode_test_seq` on the SEP_IN AXI sequencer, then
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ADDRESS-WINDOW-TOP` |The cell ledger: one line per window top closed with the measured evidence, plus one line for the top left NOT closed with the response it actually gave. Cells are entered only after their compare passed; the NOT-closed line is a recorded gap
-|`CHK-ADDRESS-WINDOW-TOP-DECODE` |Summary line: window tops closed, the scoreboard exact-value compare count against its floor, the access count, and how many tops are in-window offsets past their unit's registers. Logged after the per-window compares and the floor have held
+|`CHK-ADDRESS-WINDOW-TOP` |The cell ledger: one line per window top closed with the measured evidence. Cells are entered only after their compare passed; for the three apertures larger than their decoded extent the cell names both the extent top that answered and the aperture top that was refused
+|`CHK-ADDRESS-WINDOW-TOP-DECODE` |Summary line: window tops closed, the scoreboard exact-value compare count against its floor, the access count, and how many apertures were driven at both tops. Logged after the per-window compares and the floor have held
 |`CHK-ADDRESS-WINDOW-TOP-FLOOR` |The leaf requires `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
-*Pass Criteria*: every closed window top answered OKAY; the scratchpad, CLA and stream-bank tops matched their co-resident pattern, generated reset or specified 0 exactly; the ROM, DMA and zeroer tops returned neither resident pattern and have no specified value to compare; the ROM write was refused and left the word unchanged; and the scoreboard booked at least `EXPECTED_VALUE_CHECKS` compares. The miscellaneous-wrapper top is reported, not claimed. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: every closed window top answered OKAY; the scratchpad, CLA and stream-bank tops matched their co-resident pattern, generated reset or specified 0 exactly; the ROM, DMA, zeroer and miscellaneous-wrapper extent tops returned neither resident pattern and have no specified value to compare; the DMA, zeroer and miscellaneous-wrapper aperture tops were refused with DECERR; the ROM write was refused and left the word unchanged; and the scoreboard booked at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -1977,9 +2012,9 @@ Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REG
 
 * `REGION_SIZE` reads its generated reset and `WDT0.CMP` inside the reset aperture reads its generated reset. The PLIC priority word at the same window offset is read above the reset aperture with the response tolerated: `fabric.adoc` and `memmap.adoc` size the aperture but do not say what an inbound access above it returns, so the answer is recorded in the cell ledger and not compared. The proof that the aperture widened is the PLIC, CLINT and BEU legs themselves: co-resident patterns and generated resets at addresses that are outside the aperture at reset.
 * 256 MiB is the smallest legal power of two whose aperture contains the whole documented map up to BASE + 0x801_3FFF; the sequence asserts that relation against the generated reset size rather than hard-coding a verdict.
-* PLIC: the priority and per-core enable words hold distinct co-resident patterns, are then written to the priority-0 / disabled state `interrupts.adoc` requires of firmware and read back exactly; the top word of the 4 MiB window and the first word above it must answer without returning either pattern.
-* CLINT: `MSIP_0` and `MTIMECMP_0` hold distinct co-resident patterns, and the top word of the 64 KiB window must not return them.
-* BEU: the four `ENABLE` registers read their generated reset, are each checked against the specified 0x1000 stride, and then hold four distinct co-resident patterns, so the per-core instances are proven separate registers rather than one alias.
+* PLIC: the priority and per-core enable words hold distinct co-resident patterns, are then written to the priority-0 / disabled state `interrupts.adoc` requires of firmware and read back exactly; the last word of the PLIC's decoded extent (generated memory map, `Decoded Extent`, cross-checked against the generated `smc_addr.h` size) must answer without returning either pattern, and the top word of the 4 MiB window and the first word above it, both past the decoded extent, must be refused with DECERR (`memmap.adoc`: the fabric refuses an address past a unit's decoded extent).
+* CLINT: `MSIP_0` and `MTIMECMP_0` hold distinct co-resident patterns; the last word of the 48 KiB decoded extent must not return them, and the top word of the 64 KiB aperture must be refused.
+* BEU: the four `ENABLE` registers read their generated reset, are each checked against the specified 0x1000 stride, and then hold four distinct co-resident patterns, so the per-core instances are proven separate registers rather than one alias; the last word of core 3's decoded extent answers and the top word of the 80 KiB timer / bus-error region, past it, is refused.
 * `REGION_SIZE` is restored to its generated reset and a local-window register is read afterwards, so the aperture is left as the rest of the suite expects.
 
 *Test Procedure*:
@@ -1996,7 +2031,7 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 |`CHK-REGION-SIZE-PLIC-CLINT-BEU-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
-*Pass Criteria*: `REGION_SIZE` and `WDT0.CMP` read their generated resets at the reset aperture, every PLIC, CLINT and BEU co-resident pattern reads back exactly at 256 MiB, the window-edge reads return neither resident pattern, `REGION_SIZE` is restored and the local-window register reads its reset afterwards, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `REGION_SIZE` and `WDT0.CMP` read their generated resets at the reset aperture, every PLIC, CLINT and BEU co-resident pattern reads back exactly at 256 MiB, the decoded-extent tops answer without returning a resident pattern, the aperture tops past those extents are refused with DECERR, `REGION_SIZE` is restored and the local-window register reads its reset afterwards, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -3511,6 +3546,7 @@ Drive `smc_clock_domain_connectivity_test_seq` on the SEP_IN AXI sequencer: unga
 
 * **Read aliasing.** Each documented BEU address and the `0xC001_xxxx` address `local_fabric_masked_addr` maps it to are read in the same run and must return the SAME word. Only the mapped read carries an `expected=`, and only where the register behind it has a generated RDL reset; the BEU-address read is pinned by nothing except the pair compare, so that compare is the sole check on it and fails if the fold is repaired.
 * **Write co-residency.** A distinguishing hysteresis value is written to `0xC801_0018` and read back at `0xC001_0018`. One register cannot be two registers, so this is positive evidence of a single physical location behind both addresses -- a property no read-side `expected=` restates, and one that temporal isolation cannot manufacture, because the write and the readback address different words of the address space.
+* **Refused pairs.** Core 1 folds onto `0xC001_1xxx`, past `SMC_BASE_CONFIG`'s decoded extent and inside no other unit's, so the fabric refuses it (`memmap.adoc`); both sides of each core-1 pair must answer an error response, which still discriminates because an unfolded `0xC801_1010` would be BEU 1's `ENABLE` and answer OKAY with its non-zero reset. Which folded addresses lie inside a decoded extent is read from the generated memory map, and the refused count is asserted against it.
 
 *Test Procedure*:
 
@@ -7782,7 +7818,6 @@ checked by inverting one assertion. `--validate-configs` then lists
 |`fw` |Firmware class of `all`: the fourteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
 |`dual` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
 |`axil`, `clock`, `combined`, `cpu`, `gpio`, `i2c`, `irq`, `reset`, `uart` |Feature subsets of `all` for a local run of one area; each lives in its feature testlist
-|`rtl_issue` |Filed-defect reproducers, expected to fail; the weekly tier's own row. Not in `all` (`testlists/holdout.toml`)
 |`occp_boot`, `occp_dual` |Runtime hold-outs run on demand: the production ROM to its OCCP loop, and the dual-SMC unsecure boot. Not in `all`
 |`held_out` |Leaves waiting on an RTL fix or ruling, run on demand to re-measure. Not in `all`
 |===
@@ -7811,8 +7846,8 @@ The runner's grading, record and CI contracts are in `tools/dv/doc/run-dv.adoc`.
 ==== SMC release regression matrix
 
 This chapter defines the mandatory qualification set: the *live* CI matrix on
-Verilator — `smoke` per PR, `hosted` nightly and weekly, `rtl_issue` weekly
-on its own row. It is not narrowed to a smaller tier. The leaves no tier
+Verilator — `smoke` per PR, `hosted` nightly and weekly. It is not narrowed
+to a smaller tier. The leaves no tier
 runs, and why, are recorded in <<smc-deferred-disposition>>.
 
 `--dut smc` already instantiates `smc_wrapper`. There is no separate
@@ -7827,12 +7862,10 @@ runs, and why, are recorded in <<smc-deferred-disposition>>.
 |PR |`--dut smc --tool verilator --items smoke` |1 |PR merge (`sim.yml`)
 |Nightly |`--dut smc --tool verilator --items hosted` |3 |Release qualification (`regress.yml`)
 |Weekly |`--dut smc --tool verilator --items hosted` |3 |Coverage / dashboard; same group
-|Weekly |`--dut smc --tool verilator --items rtl_issue` |1 |Defect reproducers graded under `expect_fail` (`regress.yml` `rtl_issue` row); red on `expected_fail_passed` when a defect is fixed. Not qualification credit
 |===
 
 Group sizes are the `expected_count` guards: `all` and `hosted` in
-`hw/sys/smc/dv/testlists/all.toml`, `rtl_issue` in
-`hw/sys/smc/dv/testlists/holdout.toml`.
+`hw/sys/smc/dv/testlists/all.toml`.
 
 [[smc-release-credit]]
 ===== Credit versus the CI group
@@ -7869,7 +7902,6 @@ the `expected_count` guards in `hw/sys/smc/dv/testlists/all.toml`.
 |Group |Role
 |`smoke` |PR gate: canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly: `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
-|`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no bring-up credit
 |`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
 |===
 
@@ -8007,7 +8039,6 @@ in <<smc-deferred-disposition>>.
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in <<smc-deferred-disposition>>; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
-|`smc_deadspace_decode_test` measures wrap-to-live aliasing: dead offsets in seven register windows wrap onto live registers with an OKAY response |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`, so the defect has a graded measurement and the row goes red when the decode changes |Resolve the wrap-to-live aliasing decode contract (#585); the leaf then moves to its feature testlist with the `ci` tag
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |Thirteen test modules written against this bench are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in <<smc-deferred-disposition>> names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
@@ -8022,61 +8053,20 @@ in <<smc-deferred-disposition>>.
 
 Every leaf defined in `testlists/holdout.toml`. None is a member of `all`;
 each card below states what a run of the leaf must show and records no pass.
-The reproducers are the `rtl_issue` group:
 
-Tests whose job is to fail. Each holds the runnable evidence for one RTL
-defect, so the defect has a measurement rather than a description alone. All
-are enrolled through `rtl_issue` in `testlists/holdout.toml` -- no `ci` tag, not
-in `smoke`, `hosted` or `all`. Every `[[tests]]` entry carries `expect_fail` naming the issue and
-`expect_fail_match` pinned to the assertion it raises; the weekly tier runs
-the group on its own `regress.yml` row and grades the recorded failure as
-PASS, so the row goes red (`expected_fail_passed`) the week a defect is
-fixed and the leaf moves to its feature testlist. The member is
-`smc_deadspace_decode_test` (#585); its card follows, with the other held-out
-leaves.
-
-Every one carries an arm leg that must pass before its defect leg is scored.
-Without that, a stuck-at field or a dead probe would satisfy the defect leg for
-the wrong reason.
-
-[[sec-026-smc_deadspace_decode_test]]
-===== 26 `smc_deadspace_decode_test`
-
-*Source Module*: `smc_deadspace_decode_test`
-
-*BFM / Model*: ocah_axi_vip (AXI)
-
-*Objective*: Probe wrap-period offsets past PeakRDL SIZE and watch live CSRs.
-
-*Test Coverage*:
-
-* Prove whether SMC register windows alias unmapped offsets onto live CSRs.
-* Golden legality is PeakRDL `SIZE` / `TOTAL_SIZE` read by symbol from `smc_addr.h` (`_block_extent` + `DeadspaceProbe.__post_init__`), never the xbar window and never a hand-copied literal.
-* A dead write that wraps onto a live register is the defect under test.
-* SCOPE -- OKAY-into-void: a write into unmapped space that returns OKAY and leaves the live register alone is tallied as ACCEPTED and is OUT OF SCOPE for eight of the nine probes; only `i2c0_intr_enable` carries `expect_refuse` and asserts on it, because the i2c_wrap SIZE range-check is a decode contract this testcase can hold the DUT to.
-* For the other eight no authority establishes that the SMC xbar must DECERR an unmapped offset rather than silently accept it, so `accepted=N` in the summary is a reported tally and not a verdict.
-* No document in the tree fixes that contract for the whole map; this testcase does not decide it.
-
-*Test Procedure*:
-
-Drive `smc_deadspace_decode_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
-|===
-
-
-*Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing (dead offsets in seven register windows wrap onto live registers with an OKAY response) and runs weekly in `rtl_issue` under `expect_fail`, with `expect_fail_match` pinned to the `wrap_to_live` / `read_alias` assertion; the observed failure grades PASS and an observed PASS grades `expected_fail_passed`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `rtl_issue` only -- an `rtl_issue` reproducer graded as an expected failure on the weekly tier (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
-'''''
-
-
-
-
+Filed-defect reproducers, when one exists, form the `rtl_issue` group: tests
+whose job is to fail, each holding the runnable evidence for one RTL defect so
+the defect has a measurement rather than a description alone. Such a leaf is
+enrolled through `rtl_issue` in `testlists/holdout.toml` -- no `ci` tag, not in
+`smoke`, `hosted` or `all` -- with `expect_fail` naming the issue and
+`expect_fail_match` pinned to the assertion it raises; the weekly tier runs the
+group on a `regress.yml` row of its own and grades the recorded failure as
+PASS, so the row goes red (`expected_fail_passed`) the week a defect is fixed
+and the leaf moves to its feature testlist. Each carries an arm leg that must
+pass before its defect leg is scored, so a stuck-at field or a dead probe
+cannot satisfy the defect leg for the wrong reason. The group has no member at
+present: `smc_deadspace_decode_test` left it when #585 closed and runs from
+`fabric.toml` in `all` and `hosted`.
 
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`
@@ -8653,8 +8643,8 @@ any RTL behind it, including none. The catalog-only PLL names
 ===== Leaves no scheduled tier runs
 
 Every SMC leaf either runs on a scheduled tier -- `smoke` per PR (`sim.yml`),
-`hosted` nightly and weekly, `rtl_issue` weekly on its own row
-(`regress.yml`) -- or has its hold-out recorded here with the reason and the
+`hosted` nightly and weekly (`regress.yml`) -- or has its hold-out recorded
+here with the reason and the
 closing condition. The hosted runners carry Verilator, bender and uv only.
 The `ocah-toolchain` image (`tools/docker/Dockerfile`: `gcc-riscv64-unknown-elf`
 and `picolibc-riscv64-unknown-elf`) is built locally and published to no
@@ -8695,14 +8685,14 @@ to make, and waits on a ruling.
 bucket: all four of its leaves declare `firmware`. `dual` is the class group of the three leaves in `all`;
 `--items occp_dual` selects the unsecure-boot leaf.
 
-The `rtl_issue` reproducers are not hold-outs. Every entry carries
+`rtl_issue` reproducers are not hold-outs. Such an entry carries
 `expect_fail` and `expect_fail_match` (`hw/sys/smc/dv/testlists/holdout.toml`),
-the weekly tier runs the group on its own `regress.yml` row (artifact
-`dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
-and the runner grades the recorded failure as PASS; an observed PASS grades
-`expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Member: `smc_deadspace_decode_test` (#585).
-`smc_efuse_read_timeout_status_test` is not a member: a read that hits
+the weekly tier runs the group on a `regress.yml` row of its own, which the
+dashboard does not read, and the runner grades the recorded failure as PASS;
+an observed PASS grades `expected_fail_passed`, the signal to move the leaf
+into its feature testlist. The group has no member at present:
+`smc_deadspace_decode_test` left it when #585 closed.
+`smc_efuse_read_timeout_status_test` is not a member either: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in
 `all` and `hosted`.
@@ -8958,7 +8948,7 @@ point at it. SMU's record of the tests that stage SMC images is
 |Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_spi_log_engine_test` and `smc_default_reg_rd_test`; CSR-only, reachable over SEP_IN. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |uart_log_engine_decode_err
 |external-consumer
-|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's leaf for the objective: `smc_deadspace_decode_test` (`testlists/holdout.toml`), held out of `all` because the DUT aliases deadspace onto live registers (`testlists/all.toml`), so the decode-guard objective is open in this tree; CSR-only. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_deadspace_decode_test` (`testlists/fabric.toml`), which holds every probed window to the `memmap.adoc` refusal contract; CSR-only. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |uart_sanity
 |external-consumer
 |Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_sanity_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.

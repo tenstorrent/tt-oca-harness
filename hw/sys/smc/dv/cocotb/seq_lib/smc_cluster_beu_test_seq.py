@@ -37,13 +37,17 @@ WHAT IT PROVES. Two things about the decode, both asserted rather than assumed:
    one that temporal isolation cannot manufacture, because the write and the
    readback address different words of the address space.
 
-Cores 0 and 1 return identical triples because ``0xC001_1xxx`` is RDL deadspace
-between ``SMC_BASE_CONFIG`` and ``SMC_ALIAS_REMAP`` that the DUT answers with
-the ``SMC_BASE_CONFIG`` words (the aliasing ``smc_deadspace_decode_test``
-tracks); cores 2 and 3 map onto ``alias_remap`` / ``mmode_remap``, which are
-reset-zero. Those six pairs are 0 == 0 and carry no discrimination on their own;
-they are swept and counted separately from the discriminating pairs, and the
-evidence token says which is which.
+Core 0 folds onto the three ``SMC_BASE_CONFIG`` words. Core 1 folds onto
+``0xC001_1xxx``, which lies past ``SMC_BASE_CONFIG``'s decoded extent and inside
+no other unit's, so the fabric refuses it (``memmap.adoc``: an address past a
+unit's decoded extent is refused); both sides of each core-1 pair must answer
+the same error response, which still discriminates, because an unfolded
+``0xC801_1010`` would be BEU 1's ``ENABLE`` and answer OKAY with its non-zero
+reset. Which folded addresses lie inside a decoded extent is read from the
+generated memory map (``generated_unit_at``), not hand-listed. Cores 2 and 3
+map onto ``alias_remap`` / ``mmode_remap``, which are reset-zero; those six
+pairs are 0 == 0 and carry no discrimination on their own. The three kinds are
+counted separately and the evidence token says which is which.
 """
 
 from __future__ import annotations
@@ -57,6 +61,7 @@ from .smc_addr_map import (
     GLOBAL_BASE_RESET,
     LOCAL_BASE_RESET,
     REGION_SIZE_RESET,
+    generated_unit_at,
     local_fabric_masked_addr,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
@@ -90,8 +95,25 @@ _BASE_CONFIG_RESETS = {
 }
 MAPPED_GOLDEN: dict[int, dict[str, int]] = {
     0: dict(_BASE_CONFIG_RESETS),
-    1: dict(_BASE_CONFIG_RESETS),
 }
+
+
+def _folded_unit(beu_addr: int) -> str | None:
+    """Unit whose decoded extent the fold lands ``beu_addr`` in; None where it is refused."""
+    return generated_unit_at(local_fabric_masked_addr(beu_addr) - LOCAL_BASE_RESET)
+
+
+# (core, register) pairs whose folded address no decoded extent contains, from
+# the generated memory map. Core 1's three registers fold onto 0xC001_1xxx,
+# past SMC_BASE_CONFIG's extent.
+EXPECTED_REFUSED_PAIRS = sum(
+    1
+    for core in range(BEU_CORES)
+    for _label, off in _OFFSETS
+    if _folded_unit(BEU_CORE_BASE + core * BEU_CORE_STRIDE + off) is None
+)
+assert EXPECTED_REFUSED_PAIRS == len(_OFFSETS), EXPECTED_REFUSED_PAIRS
+assert all(_folded_unit(BEU_CORE_BASE + off) == "smc_base_config" for _label, off in _OFFSETS)
 
 # Co-residency probe: CLOCK_GATE_CONTROL's hysteresis field set to a value the
 # reset does not carry. Every CG_EN bit stays at its reset 0, so no clock gate is
@@ -113,12 +135,25 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
         self.alias_pairs: list[tuple[int, int, int]] = []
         #: subset of `alias_pairs` whose common word is non-zero
         self.discriminating_pairs: list[tuple[int, int, int]] = []
+        #: (beu_addr, mapped_addr) pairs the fabric refused on both sides
+        self.refused_pairs: list[tuple[int, int]] = []
         #: word read back at the mapped address after writing the BEU address
         self.coresidency_word: int | None = None
         #: word the mapped address holds once the probe has been restored
         self.restored_word: int | None = None
 
     async def body(self) -> None:
+        refused_addrs = {
+            addr
+            for core in range(BEU_CORES)
+            for _label, off in _OFFSETS
+            for addr in (
+                BEU_CORE_BASE + core * BEU_CORE_STRIDE + off,
+                local_fabric_masked_addr(BEU_CORE_BASE + core * BEU_CORE_STRIDE + off),
+            )
+            if _folded_unit(BEU_CORE_BASE + core * BEU_CORE_STRIDE + off) is None
+        }
+        self.env.axi_monitor.expected_decerr_addrs.update(refused_addrs)
         for core in range(BEU_CORES):
             base = BEU_CORE_BASE + core * BEU_CORE_STRIDE
             golden = MAPPED_GOLDEN.get(core, {})
@@ -129,6 +164,22 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
                     f"core{core} {label}: the fold maps 0x{beu_addr:08x} onto "
                     f"itself, so this pair cannot demonstrate aliasing"
                 )
+                if _folded_unit(beu_addr) is None:
+                    # Past every decoded extent: the fabric must refuse both
+                    # addresses. An unfolded BEU address would answer OKAY here.
+                    via_mapped = await self.csr_read_expect_error(
+                        f"CORE{core}_MAPPED_{label}", mapped
+                    )
+                    via_beu = await self.csr_read_expect_error(
+                        f"CORE{core}_BEU_WINDOW_{label}", beu_addr
+                    )
+                    assert via_beu == via_mapped, (
+                        f"core{core} {label}: refused reads at 0x{beu_addr:08x} and "
+                        f"0x{mapped:08x} returned different words (0x{via_beu:08x} vs "
+                        f"0x{via_mapped:08x})"
+                    )
+                    self.refused_pairs.append((beu_addr, mapped))
+                    continue
                 # The mapped read is the pinned side. The BEU-address read
                 # carries NO `expected=`, so the pair compare below is the only
                 # check on it and is fail-capable rather than a restatement of an
@@ -152,20 +203,23 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
 
         await self._write_coresidency()
 
-        assert len(self.alias_pairs) == BEU_CORES * len(_OFFSETS), (
-            f"aliasing read for {len(self.alias_pairs)} of "
+        assert len(self.alias_pairs) + len(self.refused_pairs) == BEU_CORES * len(_OFFSETS), (
+            f"aliasing read for {len(self.alias_pairs)} + {len(self.refused_pairs)} of "
             f"{BEU_CORES * len(_OFFSETS)} (core, register) pairs"
+        )
+        assert len(self.refused_pairs) == EXPECTED_REFUSED_PAIRS, (
+            f"{len(self.refused_pairs)} pairs were refused on both sides, the generated map "
+            f"places {EXPECTED_REFUSED_PAIRS} folded addresses outside every decoded extent"
         )
         # Six of the twelve pairs fold onto reset-zero remap tables. A 0 == 0
         # pair is satisfied by any dead, gated or unmapped responder, so the
         # count of pairs whose common word is non-zero is asserted separately;
         # a fold that started answering zero everywhere fails here even though
         # every pair compare above would still hold.
-        assert len(self.discriminating_pairs) == 6, (
-            f"{len(self.discriminating_pairs)} of 12 alias pairs returned a "
-            f"non-zero word; cores 0 and 1 fold into SMC_BASE_CONFIG and must "
-            f"contribute six non-zero pairs "
-            f"({[hex(w) for _b, _m, w in self.alias_pairs]})"
+        assert len(self.discriminating_pairs) == len(_OFFSETS), (
+            f"{len(self.discriminating_pairs)} of {len(self.alias_pairs)} answered alias pairs "
+            f"returned a non-zero word; core 0 folds into SMC_BASE_CONFIG and must contribute "
+            f"{len(_OFFSETS)} non-zero pairs ({[hex(w) for _b, _m, w in self.alias_pairs]})"
         )
         # `self.accesses` is bumped by this sequence's own csr_* calls, so
         # asserting it against a literal only restates the loops above and cannot
@@ -177,13 +231,17 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
             "CHK-BEU-WINDOW-ALIASED: %d (core, register) pairs read at BOTH the "
             "documented BEU address and the 0xC001_xxxx address "
             "the local-alias fold maps it to (LOCAL_BASE reset 0x%08x); "
-            "each pair returned the same word, %d of them a non-zero one. "
+            "%d pairs returned the same word, %d of them a non-zero one, and %d pairs "
+            "were refused on both sides because the folded address lies past every "
+            "decoded extent. "
             "Write co-residency: hysteresis 0x%x written at 0x%08x read back as "
             "0x%08x at 0x%08x. This testcase locks the local-fabric fold aliasing; "
             "it proves NO BEU property, because no access reaches a BEU.",
-            len(self.alias_pairs),
+            len(self.alias_pairs) + len(self.refused_pairs),
             LOCAL_BASE_RESET,
+            len(self.alias_pairs),
             len(self.discriminating_pairs),
+            len(self.refused_pairs),
             _CG_HYST_PROBE,
             _CORESIDENCY_BEU_ADDR,
             self.coresidency_word,

@@ -3079,13 +3079,13 @@ Nightly is not a merge gate; a red nightly run is a triage signal.
 with `tier=weekly`
 |The regression the dashboard publishes, one random seed per test on every
 row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
-and the IP-level benches' `all` groups. A second SMC row
-(`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
-`expect_fail` (<<runner-expected-failures>>), so the row is green while the
-filed defects stand and red the week one is fixed. `--sim-jobs` follows the
-runner core count. The coverage regression runs on the licensed simulator
-flow outside hosted CI; the coverage-instrumented Verilator models of DTP,
-SEP, and SMU do not fit a hosted job.
+and the IP-level benches' `all` groups. A DUT with filed-defect
+reproducers adds a row of its own for them: every leaf carries `expect_fail`
+(<<runner-expected-failures>>), so the row is green while the defects stand
+and red the week one is fixed. `--sim-jobs` follows the runner core count.
+The coverage regression runs on the licensed simulator flow outside hosted
+CI; the coverage-instrumented Verilator models of DTP, SEP, and SMU do not fit
+a hosted job.
 |===
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
@@ -3163,8 +3163,7 @@ symlink.
 `system_timer_octs`, `scrambler` + Verilator (regression tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
-row). Main protection
+regression group (`all` / `cpu_stub` / `hosted`). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke

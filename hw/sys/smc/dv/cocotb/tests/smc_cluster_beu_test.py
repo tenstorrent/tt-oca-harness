@@ -52,7 +52,8 @@ class smc_cluster_beu_test(smc_base_test):
                 "Documented BEU window 0xC801_0000+ folds onto SMC_BASE_CONFIG "
                 f"/ the remap tables: {len(seq.alias_pairs)} address pairs "
                 f"returned the same word ({len(seq.discriminating_pairs)} of "
-                f"them non-zero) and a write via the BEU address read back as "
+                f"them non-zero), {len(seq.refused_pairs)} pairs were refused on "
+                f"both sides, and a write via the BEU address read back as "
                 f"0x{seq.coresidency_word:08x} at the folded address. No BEU "
                 "property is covered by this testcase."
             ),

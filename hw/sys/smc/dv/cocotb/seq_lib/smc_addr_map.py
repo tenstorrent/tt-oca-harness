@@ -243,6 +243,39 @@ def generated_window(unit: str) -> tuple[int, int]:
     raise KeyError(f"{unit} has no window row in {_MEMORY_MAP_ADOC}")
 
 
+# Component rows carry the decoded extent too:
+# `|BASE + <lo> - BASE + <hi> |<size> |<decoded extent> |<unit> |...`. The
+# fabric refuses an offset past the decoded extent (memmap.adoc), so the
+# decoded extent, not the aperture, bounds the addresses a unit answers.
+_COMPONENT_ROW = re.compile(
+    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|([^|]*)\|([^|]+)\|"
+)
+_EXTENT_UNIT_BYTES = {"B": 1, "KiB": 1 << 10, "MiB": 1 << 20, "GiB": 1 << 30}
+
+
+def generated_decoded_extent(unit: str) -> int:
+    """Return the byte count of the ``Decoded Extent`` the generated memory map gives ``unit``."""
+    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
+        m = _COMPONENT_ROW.match(line)
+        if m and m.group(4).strip() == unit:
+            count, suffix = m.group(3).split()
+            return int(count) * _EXTENT_UNIT_BYTES[suffix]
+    raise KeyError(f"{unit} has no component row in {_MEMORY_MAP_ADOC}")
+
+
+def generated_unit_at(offset: int) -> str | None:
+    """Unit whose decoded extent contains ``offset`` (from BASE), or None if the fabric refuses it."""
+    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
+        m = _COMPONENT_ROW.match(line)
+        if not m:
+            continue
+        first = int(m.group(1), 16)
+        count, suffix = m.group(3).split()
+        if first <= offset < first + int(count) * _EXTENT_UNIT_BYTES[suffix]:
+            return m.group(4).strip()
+    return None
+
+
 REGION_SIZE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "REGION_SIZE")
 CLOCK_GATE_CONTROL_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "CLOCK_GATE_CONTROL")
 

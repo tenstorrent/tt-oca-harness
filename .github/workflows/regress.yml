@@ -275,17 +275,6 @@ jobs:
             reseed: 1
             coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
-          - dut: smc
-            # The `rtl_issue` reproducers: every leaf carries `expect_fail`, so
-            # the row is green while the filed defects stand and goes red the
-            # week one is fixed and its test has to move. Its own row because
-            # `hosted` feeds the dashboard and a graded expected failure must
-            # not count there.
-            items: rtl_issue
-            label: rtl_issue
-            reseed: 1
-            coverage: false
-            runner: ubuntu-latest
           - dut: cross_trigger_port
             items: all
             reseed: 1
