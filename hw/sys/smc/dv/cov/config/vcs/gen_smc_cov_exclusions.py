@@ -212,6 +212,27 @@ runs (A7 SINGLEPULSE-LOADS); and the response logic tests each ack alone inside
 a test of the two ORed, so the path with the OR true and both acks false is a
 contradiction urg lists as a path (C1 CONTRADICTORY-PATH).
 
+Claims examined and not held, so their points stay graded:
+
+* A valid-without-ready handshake row in a no-stall register block: the cpuif
+  stops accepting at two requests in flight and drops ready, and the
+  measurement covers the rows. `hw/sys/sep/dv/cov/config/vcs/
+  sep_regblock_exclusions.el` still carries this claim under A1; it is SEP's
+  to correct.
+* One AXI transaction outstanding at a time: the bench's agent pipelines
+  groups, skews AW against W and delays BREADY.
+* A data bit on an unstrobed lane of a 64-bit register block: the SMC CPU
+  replicates a narrow store's data across the whole 64-bit bus.
+* A write at the UART's RBR or IIR offsets: an unaligned write to THR+1..3 or
+  FCR+1..3 is not routed to the write-only map and decodes there.
+* The trace sink's DST lap-distance and memory-mode flush rows: the RAM start
+  register is a plain DST sink field outside the N-trace WARL clamp, and the
+  flush follows a software threshold.
+* The I2C target entering AcquireAckWait with its nack flag set: a START in
+  the cycle that sets the flag carries it into the next transaction.
+* `trans_started && !host_enable_i` in the I2C controller: the flop clears a
+  cycle after the enable falls, so the term holds for one cycle.
+
 Input is the set of templates urg writes for the merged database::
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions cond+branch+fsm -report <dir>
