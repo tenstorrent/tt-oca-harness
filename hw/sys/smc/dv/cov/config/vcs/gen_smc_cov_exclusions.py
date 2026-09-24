@@ -850,7 +850,7 @@ def tied_value(term: str) -> "int | None":
         return 1
     if re.fullmatch(r"[|&^]?\s*" + TERM_IDENT.pattern + r"(\[[^\]]*\])?", t):
         return 0
-    for op, fold in (("|", max), ("&", min)):
+    for op, fold in (("|", max), ("&", min), ("^", lambda v: sum(v) % 2)):
         parts = _split_top(t, op)
         if len(parts) > 1:
             vals = [tied_value(p) if is_ntrace_term(p) else None for p in parts]
@@ -1684,12 +1684,25 @@ def _decision(source_line: str, column: int) -> "tuple[str, str | None]":
     return ("", None)
 
 
+def _continued_selector(source_line: str) -> "str | None":
+    """The right-hand side of an assignment line, when it is one balanced term."""
+    body = re.sub(r"^\d+\s+", "", source_line).strip()
+    m = re.match(r"^(?:assign\s+)?[\w.\[\]]+\s*=\s*(.+)$", body)
+    if m is None:
+        return None
+    rhs = m.group(1).strip()
+    if rhs.startswith("(") and _parenthesised(rhs, 0) == rhs:
+        return rhs
+    return None
+
+
 def branch_constructs(modinfo: Path) -> dict[str, list[BranchConstruct]]:
     """module -> every branch construct of the report, in report order, all paths included."""
     out: dict[str, list[BranchConstruct]] = {}
     lines = modinfo.read_text(errors="replace").splitlines()
     module = None
     last: "tuple[int, str] | None" = None
+    previous: "tuple[int, str] | None" = None
     decisions: dict[int, tuple[str, str | None]] = {}
     first: "int | None" = None
     i = 0
@@ -1727,6 +1740,7 @@ def branch_constructs(modinfo: Path) -> dict[str, list[BranchConstruct]]:
         m = REPORT_SOURCE_LINE.match(line)
         listed = UNANNOTATED_DECISION.match(line)
         if m:
+            previous = last
             last = (int(m.group(1)), line)
         elif listed and last is not None:
             # The report lists the decisions of a construct it cannot annotate
@@ -1742,6 +1756,10 @@ def branch_constructs(modinfo: Path) -> dict[str, list[BranchConstruct]]:
             for mark in DECISION_MARK.finditer(line):
                 n = int(mark.group(1))
                 decisions[n] = _decision(last[1], mark.start())
+                if decisions[n] == ("?", None) and previous is not None:
+                    # A ternary whose `?` opens its own line takes its
+                    # selector from the right-hand side of the line above.
+                    decisions[n] = ("?", _continued_selector(previous[1]))
                 if n == 1:
                     first = last[0]
         i += 1

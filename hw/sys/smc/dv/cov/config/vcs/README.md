@@ -122,7 +122,8 @@ source line. A
 branch arm is read from the table of the construct at its source line. Where
 the report scores a construct as paths through several decisions, as it does
 for a case statement or an else-if chain, each path is read whole: its decision
-columns come from the annotated source, it is paired with its template entry by
+columns come from the annotated source (a ternary whose `?` opens its own line takes
+its selector from the line above), it is paired with its template entry by
 its column values, and it is written only when one of its own decisions is out
 of reach under a class's fact, or when its decisions have no common solution
 (C1). A comparison is one opaque truth value to that test. Condition and
