@@ -17,10 +17,21 @@ writes, and each class below states that fact and what would retire it:
 * RTL-CONSTANT, UNION-ALIAS, SEP-OWNED: the facts
   `smu_wrapper_toggle_exclusions.el` states for the wrapper's ports, where
   the same nets recur as ports of `smu`.
+* LC-SIGINT-ENCODED: the lifecycle integrity error, which the SEP eFuse shadow
+  registers make unreachable by re-encoding the word they export; its
+  condition rows in `smu.sv` go with it.
+* ATOP-DISABLED: AWATOP, which the crossbar is built not to carry.
+* FIXED-OUTBOUND-ATTRIBUTES: the AXI attributes on the SMC's outbound path
+  that both SMC masters a bench can drive hold constant.
+* APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
+* SEP-INITIATED: the SEP aperture, the SEP's outbound channels and the alias
+  remap, including its conditions and branches, which only SEP firmware
+  drives.
 
-No class takes an address, id, length, size, burst, cache, protection, QoS,
-region, lock or atomic field, nor a valid, ready or enable: those are decode
-and handshake, and a hole in one is a stimulus gap.
+Apart from those last five classes, whose facts name them, no class takes an
+address, id, length, size, burst, cache, protection, QoS, region, lock or
+atomic field, nor a valid, ready or enable: those are decode and handshake,
+and a hole in one is a stimulus gap.
 
 An entry names only what the raw report marks uncovered. A field every bit of
 which is uncovered in both directions is excluded whole; otherwise each
@@ -28,16 +39,20 @@ uncovered range is excluded, in the direction the report marks missing. A
 multi-dimensional range that is only partly uncovered stays graded, because
 the exclusion format addresses one dimension.
 
-The inputs are the template urg writes for the merged database and the raw
+A condition row or branch arm is taken only where the raw report marks it
+Not Covered.
+
+The inputs are the templates urg writes for the merged database and the raw
 report the runner writes beside it::
 
-    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
-    python3 gen_smu_cov_toggle_exclusions.py <dir>/../fullexclude_module.tgl \\
-        <run dir>/cov/report_raw/modinfo.txt [--check]
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+cond+branch -report <dir>
+    python3 gen_smu_cov_toggle_exclusions.py fullexclude_module.tgl \\
+        <run dir>/cov/report_raw/modinfo.txt \\
+        --cond fullexclude_module.cond --branch fullexclude_module.branch [--check]
 
-The template leaves `fullexclude_module.tgl` in urg's working directory. It
-carries each module checksum and one signature per field, so no field name or
-signature below is typed by hand. `--check` exits 1 when the committed file is
+The templates land in urg's working directory. They carry each module
+checksum and every signature, so no field name, expression or signature below
+is typed by hand. `--check` exits 1 when the committed file is
 out of date instead of rewriting it.
 """
 
@@ -64,8 +79,10 @@ MEM_DATA = (
     r"bank_dout|bank_ecc)"
 )
 
-# (class, matcher over the full field name, fact, what would retire it).
-CLASSES: list[tuple[str, re.Pattern[str], str, str]] = [
+# (class, matcher over the full field name, fact, what would retire it,
+#  modules the class applies to or None for all four, bit windows (lo, hi) a
+#  range must fall in or None for any bit).
+CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tuple | None]] = [
     (
         "MEM-MACRO",
         re.compile(rf"^{MEM_IF}\.({MEM_DATA}|[a-z0-9_]+\.{MEM_DATA})$"),
@@ -76,6 +93,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str]] = [
         "writes the words; the SMC and SEP benches grade the memories. Address, enable "
         "and write-enable fields stay graded.",
         "an SMU process that reads or drives these words, or the macros moving under u_smu",
+        None,
+        None,
     ),
     (
         "AXI-USER",
@@ -83,6 +102,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str]] = [
         "AXI user sideband words. The pulp crossbar, the ID converters and "
         "axi_window_remap copy them beside the channel, and no SMU logic reads them.",
         "an SMU decode or remap that reads the user field",
+        None,
+        None,
     ),
     (
         "AXI-DATA",
@@ -92,6 +113,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str]] = [
         "bits measure the payload the SMC, SEP, DTP and bench masters chose, which "
         "their benches grade.",
         "an SMU unit that inspects or rewrites data or strobe",
+        None,
+        None,
     ),
     (
         "RTL-CONSTANT",
@@ -100,6 +123,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str]] = [
         "states are tied low and the LSIO interface select follows the SPI enable, "
         "which smu.sv assigns 1 when SEP is present.",
         "the demote states or the SPI enable becoming programmable",
+        None,
+        None,
     ),
     (
         "UNION-ALIAS",
@@ -108,6 +133,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str]] = [
         "union, so urg lists the same flops three times; the `values` view stays graded "
         "and carries every bit once.",
         "efuse_map_t ceasing to be a union",
+        None,
+        None,
     ),
     (
         "SEP-OWNED",
@@ -118,10 +145,97 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str]] = [
         "SEP passthroughs smu.sv only routes: the SEP SPI host and CPU trace need SEP "
         "firmware, the lockstep pair is inert without RV_LOCKSTEP_ENABLE, and the SEP "
         "external interrupts and entropy sample clock terminate inside the SEP. The "
-        "SEP bench grades each of them. The SEP aperture base and size feed the "
-        "crossbar address map and stay graded, as does the lifecycle integrity error, "
-        "which smu.sv ORs with the SMC eFuse one.",
+        "SEP bench grades each of them.",
         "SMU logic consuming one of these nets",
+        None,
+        None,
+    ),
+    (
+        "LC-SIGINT-ENCODED",
+        re.compile(r"^(lc_sigint_err_o|sep_lc_sigint_err|efuse_lc_sigint_err)$"),
+        "the lifecycle signal-integrity error. efuse_shadow_regs.sv (282-285, 350) keeps "
+        "the raw 4-bit LC_STATE and re-encodes it with prim_diff_encode_multi, so the "
+        "word the SEP exports is always a valid differential pair and the decoders in "
+        "sep_lifecycle_ctrl.sv and smc_efuse_wrapper.sv fire only on corruption in flight.",
+        "a fault-injection bench that corrupts the exported pair",
+        ("smu",),
+        None,
+    ),
+    (
+        "ATOP-DISABLED",
+        re.compile(r"\.aw\.atop$"),
+        "AXI atomic operations. smu_axi_xbar.sv (131) builds the crossbar with ATOPs(1'b0), "
+        "and tb_wrapper_top.sv ties the inbound AWATOP to 0.",
+        "a crossbar built with ATOPs enabled",
+        None,
+        None,
+    ),
+    (
+        "FIXED-OUTBOUND-ATTRIBUTES",
+        re.compile(
+            r"^(smu_axi_out_req_o|smc_output_axi_req|gen_sep\.smc_out_xbar_req|smc_out_req_i|"
+            r"ext_out_req_o|xbar_slv_req\[1\]|xbar_mst_req\[2\])\.(aw|ar)\."
+            r"(cache|prot|qos|region|lock|burst)$"
+        ),
+        "AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on the SMC's outbound path. "
+        "The two SMC masters a toolchain-free leaf drives hold them constant: "
+        "jtag2axi.sv (1184-1216) and the iDMA register frontend (idma_reg.sv.tpl, "
+        "155-159).",
+        "outbound traffic from SMC CPU or SEP firmware",
+        None,
+        None,
+    ),
+    (
+        "APERTURE-ALIGNMENT",
+        re.compile(
+            r"^(addr_map\[1\]\.(start|end)_addr|smc_end|smc_global_base_addr_i|smc_global_base_o)$"
+        ),
+        "SMC aperture bits no programmable setting reaches. smc_base_config.rdl (38) "
+        "requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI "
+        "reaches BASE_CONFIG through the local window, so no size below 128 KiB can be "
+        "followed by another setting and base and end bits [16:0] stay 0; LOCAL_BASE is "
+        "fixed at 0xC000_0000, so REGION_SIZE[31] is never legal.",
+        "a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window",
+        None,
+        ((0, 16),),
+    ),
+    (
+        "APERTURE-ALIGNMENT",
+        re.compile(r"^(smc_region_size_i|smc_region_size_o)$"),
+        "SMC aperture bits no programmable setting reaches. smc_base_config.rdl (38) "
+        "requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI "
+        "reaches BASE_CONFIG through the local window, so no size below 128 KiB can be "
+        "followed by another setting and base and end bits [16:0] stay 0; LOCAL_BASE is "
+        "fixed at 0xC000_0000, so REGION_SIZE[31] is never legal.",
+        "a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window",
+        None,
+        ((0, 16), (31, 31)),
+    ),
+    (
+        "SEP-INITIATED",
+        re.compile(
+            r"^(addr_map\[0\]\.|sep_end$|sep_global_base_addr_i$|sep_region_size_i$|"
+            r"sep_global_base_o$|sep_region_size_o$|sep_out_(req_i|resp_o)\.|"
+            r"xbar_slv_(req|resp)\[0\]\.|gen_sep\.sep_out_xbar_(req|resp)\.|"
+            r"sep_smn_outbound_axi_(req|resp)\.|sep_ext_to_smc_axi_(req|resp)(_local)?\.)"
+        ),
+        "the SEP aperture, the SEP's outbound channels and the alias remap. "
+        "sep_cpu_ctrl SEP_GLOBAL_BASE_ADDR and the SEP region size are programmed by SEP "
+        "firmware, the alias window is fixed by smu_pkg (smu.sv 992-994), and only "
+        "SEP-issued traffic enters these channels; the package's coverage set carries no "
+        "SEP firmware image that programs the aperture or uses the alias.",
+        "a SEP DV firmware image that programs the SEP aperture and issues alias accesses",
+        ("smu", "smu_axi_xbar"),
+        None,
+    ),
+    (
+        "SEP-INITIATED",
+        re.compile(r"."),
+        "the alias remap, which sits on the SEP's dedicated SMC channel only (smu.sv "
+        "987-994): every net of axi_window_remap carries SEP-issued traffic.",
+        "a SEP DV firmware image that issues alias accesses",
+        ("axi_window_remap",),
+        None,
     ),
 ]
 
@@ -177,11 +291,37 @@ def wrapper_excluded() -> set[str]:
     }
 
 
-def entries(field: str, sig: str, rows: list[tuple[str, str, str]]) -> list[str]:
-    """Exclusion lines for the uncovered part of one field."""
+def _span(rng: str, sig: str) -> tuple[int, int] | None:
+    """(lo, hi) bits of a one-dimensional row, or of the whole field when rng is empty."""
+    m = re.fullmatch(r"\[(\d+)(?::(\d+))?\]", rng)
+    if m:
+        a, b = int(m.group(1)), int(m.group(2) or m.group(1))
+        return min(a, b), max(a, b)
+    if rng:
+        return None
+    m = re.search(r"\[(\d+):(\d+)\]\"?$", sig.strip('"'))
+    if m:
+        a, b = int(m.group(1)), int(m.group(2))
+        return min(a, b), max(a, b)
+    return 0, 0
+
+
+def _clip(span: tuple[int, int], bits) -> list[tuple[int, int]]:
+    if bits is None:
+        return [span]
+    out = []
+    for lo, hi in bits:
+        a, b = max(lo, span[0]), min(hi, span[1])
+        if a <= b:
+            out.append((a, b))
+    return out
+
+
+def entries(field: str, sig: str, rows: list[tuple[str, str, str]], bits=None) -> list[str]:
+    """Exclusion lines for the uncovered part of one field, inside ``bits`` if given."""
     if not rows or all(r[1] == "Yes" and r[2] == "Yes" for r in rows):
         return []
-    if all(r[1] == "No" and r[2] == "No" for r in rows):
+    if bits is None and all(r[1] == "No" and r[2] == "No" for r in rows):
         return [f'Toggle {field} "{sig}"']
     out = []
     for name, t10, t01 in rows:
@@ -190,32 +330,140 @@ def entries(field: str, sig: str, rows: list[tuple[str, str, str]]) -> list[str]
         rng = name[len(field) :]
         if rng.count("[") > 1:
             continue
-        sel = f" {rng}" if rng else ""
-        if t10 == "No" and t01 == "No":
-            out.append(f'Toggle {field}{sel} "{sig}"')
+        if bits is None:
+            sels = [f" {rng}" if rng else ""]
         else:
-            direction = "0to1" if t01 == "No" else "1to0"
-            out.append(f'Toggle {direction} {field}{sel} "{sig}"')
+            span = _span(rng, sig)
+            if span is None:
+                continue
+            whole = not rng and span == (0, 0) and "[" not in sig
+            sels = [
+                "" if whole else (f" [{hi}:{lo}]" if hi != lo else f" [{lo}]")
+                for lo, hi in _clip(span, bits)
+            ]
+        for sel in sels:
+            if t10 == "No" and t01 == "No":
+                out.append(f'Toggle {field}{sel} "{sig}"')
+            else:
+                direction = "0to1" if t01 == "No" else "1to0"
+                out.append(f'Toggle {direction} {field}{sel} "{sig}"')
     return out
 
 
-def render(template: Path, modinfo: Path) -> tuple[str, dict[str, int]]:
+# Condition rows and branch arms, by class: (class, module, source lines or None).
+# The fact and the retiring condition are the toggle class's of the same name.
+POINT_CLASSES: list[tuple[str, str, frozenset[int] | None]] = [
+    ("LC-SIGINT-ENCODED", "smu", frozenset({1100})),
+    ("SEP-INITIATED", "axi_window_remap", None),
+]
+POINT_RE = re.compile(r"^// (Condition|Branch) ")
+LINE_RE = re.compile(r"LineNumber: (\d+)")
+
+
+def _point_template(path: Path) -> dict[str, tuple[str, list[tuple[int, str]]]]:
+    """{module: (checksum line, [(source line, point line)])} for one metric template."""
+    out: dict[str, tuple[str, list[tuple[int, str]]]] = {}
+    checksum, module, line_no = "", None, 0
+    for line in path.read_text().splitlines():
+        if line.startswith("// CHECKSUM: "):
+            checksum = line[3:]
+        elif line.startswith("// MODULE: "):
+            module = line[len("// MODULE: ") :].strip()
+            out[module] = (checksum, [])
+        elif module and (m := LINE_RE.search(line)):
+            line_no = int(m.group(1))
+        elif module and POINT_RE.match(line):
+            out[module][1].append((line_no, line[3:]))
+    return out
+
+
+def _module_section(modinfo: str, module: str, metric: str) -> str:
+    for sec in re.split(r"\n=+\nModule : ", "\n" + modinfo)[1:]:
+        if sec.split("\n", 1)[0].strip() == module and f"{metric} Coverage for Module" in sec:
+            body = sec.split(f"{metric} Coverage for Module", 1)[1]
+            return body.split("\n-------", 1)[0]
+    return ""
+
+
+def uncovered_conditions(modinfo: str, module: str) -> set[tuple[int, str]]:
+    """(source line, row values) the raw report marks Not Covered."""
+    out, line_no = set(), 0
+    for line in _module_section(modinfo, module, "Cond").splitlines():
+        if m := re.match(r"\s*LINE\s+(\d+)", line):
+            line_no = int(m.group(1))
+        elif m := re.match(r"^\s*([01](?:\s+[01])*)\s+Not Covered", line):
+            out.add((line_no, "".join(m.group(1).split())))
+    return out
+
+
+def uncovered_branches(modinfo: str, module: str) -> set[tuple[int, str]]:
+    """(source line, arm value) the raw report marks Not Covered."""
+    out, line_no = set(), 0
+    for line in _module_section(modinfo, module, "Branch").splitlines():
+        if m := re.match(r"^(\d+)\s+\S", line):
+            line_no = int(m.group(1))
+        elif m := re.match(r"^([01])\s+Not Covered", line):
+            out.add((line_no, m.group(1)))
+    return out
+
+
+def point_blocks(cond: Path | None, branch: Path | None, modinfo: Path, counts) -> list[str]:
+    text = modinfo.read_text()
+    facts = {name: (fact, retire) for name, _, fact, retire, _, _ in CLASSES}
+    out: list[str] = []
+    for path, kind in ((cond, "Condition"), (branch, "Branch")):
+        if path is None:
+            continue
+        template = _point_template(path)
+        for cls, module, lines in POINT_CLASSES:
+            if module not in template:
+                continue
+            checksum, points = template[module]
+            holes = (
+                uncovered_conditions(text, module)
+                if kind == "Condition"
+                else uncovered_branches(text, module)
+            )
+            picked = []
+            for line_no, point in points:
+                if lines is not None and line_no not in lines:
+                    continue
+                if kind == "Condition":
+                    m = re.search(r'\(\d+ "([01]+)"\)$', point)
+                    key = m.group(1) if m else None
+                else:
+                    m = re.search(r'\(\d+\) "\S+ ([01])"$', point)
+                    key = m.group(1) if m else None
+                if key is not None and (line_no, key) in holes:
+                    picked.append(point)
+            if picked:
+                fact, retire = facts[cls]
+                counts[cls] += len(picked)
+                out += ["", checksum, f"MODULE: {module}", ""]
+                out.append(f'ANNOTATION: "SMU-{kind.upper()}-{cls}: {fact} Retired by {retire}."')
+                out += picked
+    return out
+
+
+def render(
+    template: Path, modinfo: Path, cond: Path | None = None, branch: Path | None = None
+) -> tuple[str, dict[str, int]]:
     sections = template_sections(template)
     reports = report_rows(modinfo)
     skip = {"smu_wrapper": wrapper_excluded()}
-    counts: dict[str, int] = {name: 0 for name, _, _, _ in CLASSES}
+    counts: dict[str, int] = {c[0]: 0 for c in CLASSES}
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
         "//==================================================",
-        "// SMU VCS toggle exclusions, applied with -elfile at report time.",
+        "// SMU VCS exclusions, applied with -elfile at report time.",
         "// Format Version: 2",
         "// ExclMode: default",
         "//",
         "// Generated by gen_smu_cov_toggle_exclusions.py from urg's",
-        "// `-dump full_exclusions tgl` template of the merged database and the raw",
-        "// report; regenerate rather than edit. README.md beside this file states",
-        "// each class's fact; the ANNOTATION before each class repeats it.",
+        "// `-dump full_exclusions tgl+cond+branch` templates of the merged database",
+        "// and the raw report; regenerate rather than edit. README.md beside this",
+        "// file states each class's fact; the ANNOTATION before each class repeats it.",
         "//==================================================",
     ]
     for module in MODULES:
@@ -231,24 +479,32 @@ def render(template: Path, modinfo: Path) -> tuple[str, dict[str, int]]:
                 name = name[: m.start()]
             if name in by_field:
                 by_field[name].append(row)
+        applicable = [c for c in CLASSES if c[4] is None or module in c[4]]
+        claimed: dict[str, tuple] = {}
+        for field, _ in fields:
+            if field in skip.get(module, set()):
+                continue
+            for c in applicable:
+                if c[1].search(field):
+                    claimed[field] = c
+                    break
         block: list[str] = []
-        for cls, pattern, fact, retire in CLASSES:
+        emitted: set[tuple[str, str]] = set()
+        for c in applicable:
+            cls, _, fact, retire, _, bits = c
             lines: list[str] = []
             for field, sig in fields:
-                if field in skip.get(module, set()) or not pattern.search(field):
-                    continue
-                if any(
-                    p.search(field)
-                    for c, p, _, _ in CLASSES[: CLASSES.index((cls, pattern, fact, retire))]
-                ):
-                    continue
-                lines += entries(field, sig, by_field[field])
+                if claimed.get(field) is c:
+                    lines += entries(field, sig, by_field[field], bits)
             if lines:
                 counts[cls] += len(lines)
-                block += ["", f'ANNOTATION: "SMU-TGL-{cls}: {fact} Retired by {retire}."']
+                if (cls, fact) not in emitted:
+                    block += ["", f'ANNOTATION: "SMU-TGL-{cls}: {fact} Retired by {retire}."']
+                    emitted.add((cls, fact))
                 block += lines
         if block:
             out += ["", checksum, f"MODULE: {module}", *block]
+    out += point_blocks(cond, branch, modinfo, counts)
     return "\n".join(out) + "\n", counts
 
 
@@ -256,9 +512,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("template", type=Path, help="urg fullexclude_module.tgl")
     ap.add_argument("modinfo", type=Path, help="the run's cov/report_raw/modinfo.txt")
+    ap.add_argument("--cond", type=Path, help="urg fullexclude_module.cond")
+    ap.add_argument("--branch", type=Path, help="urg fullexclude_module.branch")
     ap.add_argument("--check", action="store_true", help="fail if the file is stale")
     args = ap.parse_args()
-    text, counts = render(args.template, args.modinfo)
+    text, counts = render(args.template, args.modinfo, args.cond, args.branch)
     if args.check:
         if OUTPUT.read_text() != text:
             print(f"{OUTPUT} is stale; rerun without --check", file=sys.stderr)

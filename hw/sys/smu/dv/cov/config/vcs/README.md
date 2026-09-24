@@ -96,23 +96,29 @@ whether the committed file is stale.
 Everything else on the port list is graded per field, both directions, and a
 field that stays uncovered is a stimulus gap for a leaf on this bench.
 
-## Block toggle exclusions
+## Block exclusions
 
 `smu_toggle_exclusions.el` (`-elfile`, named by the policy's `[[native_files]]`)
-leaves out nets of `smu`, `smu_wrapper`, `smu_axi_xbar` and `axi_window_remap`
-that carry bits no SMU logic reads or writes. `gen_smu_cov_toggle_exclusions.py`
-writes it from urg's `-dump full_exclusions tgl` template of the merged
-database and the run's raw report, so every checksum and signature comes from
-urg, and `--check` tells whether the committed file is stale:
+leaves out toggle points of `smu`, `smu_wrapper`, `smu_axi_xbar` and
+`axi_window_remap`, and the condition rows and branch arms two of the classes
+below name, each for a stated fact. `gen_smu_cov_toggle_exclusions.py` writes
+it from urg's `-dump full_exclusions` templates of the merged database and the
+run's raw report, so every checksum and signature comes from urg, and
+`--check` tells whether the committed file is stale:
 
-    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+cond+branch -report <dir>
     python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
-        fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt
+        fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt \
+        --cond fullexclude_module.cond --branch fullexclude_module.branch
 
-An entry names only what the raw report marks uncovered: a field wholly
+The file is generated from an `all` run, the coverage set: a point `all`
+leaves uncovered is uncovered in `hosted` too, so the file holds for both.
+An entry names only what the raw report marks uncovered: a toggle field wholly
 uncovered is excluded whole, otherwise each uncovered range in the direction
-the report marks missing; a partly uncovered multi-dimensional range stays
-graded. Fields `smu_wrapper_toggle_exclusions.el` already names are skipped.
+the report marks missing, clipped to the bits a class names; a partly
+uncovered multi-dimensional range stays graded; a condition row or branch arm
+is taken only where the report says Not Covered. Fields
+`smu_wrapper_toggle_exclusions.el` already names are skipped.
 
 | Class | Fact | Retired by |
 |---|---|---|
@@ -122,13 +128,30 @@ graded. Fields `smu_wrapper_toggle_exclusions.el` already names are skipped.
 | `RTL-CONSTANT` | `lcc_demote_state_*_o` tied low and `lsio_interface_select_o` following the SPI enable `smu.sv` assigns 1 with SEP present | either becoming programmable |
 | `UNION-ALIAS` | the `locks` and `fields` views of the packed-union eFuse shadow map; `values` stays graded | `efuse_map_t` ceasing to be a union |
 | `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, the lockstep pair, `sep_ext_interrupts_i` and `entropy_rosc_sample_clk_i`, which `smu.sv` only routes and the SEP bench grades | SMU logic consuming one of them |
+| `LC-SIGINT-ENCODED` | design fact: `efuse_shadow_regs.sv` (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with `prim_diff_encode_multi`, so the word the SEP exports is always a valid differential pair and the decoders in `sep_lifecycle_ctrl.sv` and `smc_efuse_wrapper.sv` fire only on corruption in flight. Takes `lc_sigint_err_o`, `sep_lc_sigint_err` and `efuse_lc_sigint_err` in `smu`, and the uncovered rows of `smu.sv` 1100 | a fault-injection bench that corrupts the exported pair |
+| `ATOP-DISABLED` | `smu_axi_xbar.sv` (131) builds the crossbar with `ATOPs(1'b0)` and `tb_wrapper_top.sv` ties the inbound AWATOP to 0; takes every `aw.atop` field | a crossbar built with ATOPs enabled |
+| `FIXED-OUTBOUND-ATTRIBUTES` | AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smu_axi_out`, `smc_output_axi_req` and the crossbar's `smc_out` and `ext_out` channels; both SMC masters a toolchain-free leaf drives hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159) | outbound traffic from SMC CPU or SEP firmware |
+| `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
+| `SEP-INITIATED` | bench fact of this package's coverage set: the SEP aperture (`sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR and region size), the crossbar's `sep_out` port, the SEP's SMN outbound and dedicated SMC channels, and every net, condition and branch of `axi_window_remap`, whose window `smu_pkg` fixes (`smu.sv` 987-994), are driven only by SEP firmware, and no image in `all` programs the aperture or issues alias accesses | a SEP DV firmware image that programs the SEP aperture and issues alias accesses |
 
-No class takes an address, id, length, size, burst, cache, protection, QoS,
-region, lock or atomic field, nor a valid, ready or enable: those are decode
-and handshake, and a hole in one is a stimulus gap. The SEP aperture base and
-size feed the crossbar address map and the lifecycle integrity error is an OR
-in `smu.sv`, so both stay graded inside `smu` although the wrapper file names
-them at its ports.
+Not waived, and why:
+
+* `c_map_smc_size_zero` and `g_sep.c_map_sep_size_zero`: whether a zero
+  window is a legal state is the open design question carried from #2224
+  (the rule it forms has `start == end`, which `addr_decode_dync` rejects).
+* `c_cold_reset_async_assert_without_clock`: `smc_reset_ctrl.sv` (63-80)
+  passes cold reset downstream only after 32 `clk_ref` cycles of its
+  deglitcher while powergood is stable, and its only asynchronous path is
+  powergood falling, which the monitor's `not_powered` disable excludes; the
+  monitor's premise is for its owner to settle.
+* `c_axi_in_bresp_exokay` and `c_axi_in_rresp_exokay`: a bench fact for the
+  cover-property policy, which is owned with the functional coverage, not
+  here. No exclusive monitor sits behind the inbound port, and
+  `smu_axi_in_attribute_sweep_test` checks that an AxLOCK=1 access is answered
+  OKAY.
+
+Address, id and handshake fields outside the classes that name them stay
+graded, and a hole in one is a stimulus gap.
 
 ## Covergroups from vendored RTL
 
