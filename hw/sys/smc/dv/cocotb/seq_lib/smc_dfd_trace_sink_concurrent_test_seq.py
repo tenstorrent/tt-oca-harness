@@ -132,6 +132,10 @@ _ODD_SWITCHES = 160
 # the sink returns to RAM mode.
 _MEMORY_HOLD_WRITES = 100
 _MEMORY_EXIT_WRITES = 8
+# Sink control reads in memory mode after the stop, each after the settle time,
+# and action writes after the recovery, each followed by four data-port reads.
+_MEMORY_STOP_READS = 8
+_MEMORY_EXIT_READS = 8
 # A RAM-mode window start one trace RAM size (16 KB) up: a legal value for the
 # byte-address field, out of the RAM's range by construction.
 _HIGH_START_BYTES = 0x4000
@@ -613,6 +617,35 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"restarting action with the sink in memory mode: Trdstempty is 1, so the DST was "
             f"not holding back data the sink refused"
         )
+        # Still in memory mode: the sink enable is cleared with the sink active and
+        # its stop-on-wrap setting on, and the trace is stopped the same way, so the
+        # sink's memory-mode stop terms and its empty computation see staged
+        # frames with nothing arriving. Nothing is claimed about the empty flag
+        # here: the reads only carry the sink through those states.
+        sink_control = sink_register("Trdstramcontrol")
+        await self._write_check(
+            sink_control,
+            {
+                "Trdstramactive": 1,
+                "Trdstramenable": 0,
+                "Trdstrammode": 1,
+                "Trdstramstoponwrap": 1,
+            },
+            "memory_stop",
+        )
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_NONE},
+            "memory_stop",
+        )
+        for poll in range(_MEMORY_STOP_READS):
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+            await self._read(sink_control, f"memory_stop{poll}")
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
+            "memory_restart",
+        )
         wp = sink_register("Trdstramwplow")
         pointer = reg_field(wp, "Trdstramwplow")
         await self._open_sink(0, "memexit")
@@ -628,6 +661,14 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"re-armed in RAM mode with the trace held on, so the stream did not resume after "
             f"the memory-mode backpressure"
         )
+        # The RAM data port read back to back while the resumed stream is still
+        # writing, so reads meet the sink's RAM writes. Only the pointer's first
+        # word has been written for certain, so the read pointer stays on it.
+        data = sink_register("Trdstramdata")
+        for step in range(_MEMORY_EXIT_READS):
+            await self._write(eap, hold, f"memread{step}")
+            for burst in range(4):
+                await self._read(data, f"memread{step}_{burst}")
         self.value_checks += 2
         cocotb.log.info(
             "CHK-DST-CONCURRENT-MEMORY: with the sink in memory mode and the uncompressed "
