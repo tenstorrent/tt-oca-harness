@@ -71,7 +71,8 @@ args = ["-elfile", "{path}"]
 # policy's, as no leaf passes the simulation-only +skip_fuse_sense plusarg the
 # DV policy forbids, and B8 DFD-BENCH-INPUTS-TIED is the bench's, which ties the
 # CLA crosstrigger and TDR clock-stop inputs, as B9 SECURITY-DISABLE-TIED
-# is for the eFuse security-disable input): the
+# is for the eFuse security-disable input, and B10 AVS-NO-SLAVE-MODEL is the
+# bench's, which has no AVSBus slave that answers a frame): the
 # DFD clamps, JTAG MMR requester, eFuse secure test mode and AVS TDR override
 # are tied off, the sink enables and trace
 # core count are fixed by parameters, and the

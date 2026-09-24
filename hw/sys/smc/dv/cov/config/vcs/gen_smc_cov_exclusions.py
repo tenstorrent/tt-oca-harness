@@ -838,6 +838,14 @@ P26 = (
     "row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode "
     "arm that tests it at 0 never executes."
 )
+B10 = (
+    "SMC-B10-AVS-NO-SLAVE-MODEL: a property of this bench, not of the design. The SMC bench "
+    "has no AVSBus slave that answers a frame: the sequences hold the sdata pad at one level "
+    "for each leg, so every bit the controller shifts into its slave subframe capture is that "
+    "level, and the slave acknowledge (capture bits 31:30) is 00 or 11, never "
+    "ResourceUnavailable (01) or BadCRC (10). A row that needs either code cannot occur here. "
+    "A slave responder in the sequence library that returns framed replies retires the class."
+)
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
     "efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and "
@@ -1406,6 +1414,19 @@ BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
 }
 
 
+# Per-module row predicates over the report's own terms: (class, test(terms, vector)).
+AVS_MIXED_ACK = re.compile(r"^\(slave_ack == SlaveAck(?:ResourceUnavailable|BadCRC)\)$")
+ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
+    "avsbus_controller": [
+        (
+            B10,
+            lambda terms, vector: any(
+                AVS_MIXED_ACK.match(t) and b == "1" for t, b in zip(terms, vector)
+            ),
+        )
+    ],
+}
+
 # Signals the source defines from others: (class, name, what it stands for).
 SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
     "uart_core": [(C5, "rx_enable", "tx_enable")],
@@ -1486,6 +1507,9 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     """
     if not terms:
         return None
+    for reason, test in ROW_PREDICATES.get(module, []):
+        if len(terms) == len(vector) and test(terms, vector):
+            return reason
     facts = path_facts(module)
     ntrace = any(r == P1 for r, _, _ in facts)
     names: dict[str, str] = {}
@@ -2601,6 +2625,7 @@ FEATURE_CLASSES = (
     B6,
     B8,
     B9,
+    B10,
 )
 
 
@@ -2950,6 +2975,7 @@ def render_feature(
         | set(BRANCH_DEAD_ITEMS)
         | set(BRANCH_DEAD_CASE_ITEMS)
         | set(SIGNAL_IDENTITIES)
+        | set(ROW_PREDICATES)
         | {k for t in templates.values() for k in t if path_facts(k) or region_facts(k)}
     )
     for module in modules:
@@ -3059,7 +3085,7 @@ def main() -> int:
         {
             m: align_points(report_points_by_module.get(m, []), tps)
             for m, tps in template_points_by_module.items()
-            if path_facts(m) or m in SIGNAL_IDENTITIES
+            if path_facts(m) or m in SIGNAL_IDENTITIES or m in ROW_PREDICATES
         },
     )
     outputs = (
