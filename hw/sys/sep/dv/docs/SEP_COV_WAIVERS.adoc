@@ -718,8 +718,11 @@ front of them.
 `20260922_172031__vcs__all`, 29% of every uncovered FSM transition in the
 design and the largest single block of it. Most of that is unreachable by
 construction, for two separate reasons, and the rest is a stimulus gap that
-stays in the score. Nine instances carry the metric: eight inside `sep_crypto`
-and `u_sep_dma_wrap.u_axi_dw_downsizer_reg` outside it.
+stays in the score. Ten instances carry the metric: nine inside `sep_crypto`
+and `u_sep_dma_wrap.u_axi_dw_downsizer_reg` outside it. The waivers below are
+recorded for eight of the nine crypto instances; the Adams Bridge wrapper's
+`u_abr_axi_dw_converter` sits behind the same burst filter but carries no
+waiver yet, so its whole score stays in the denominator.
 
 === SEP-CRYPTO-SINGLE-BEAT: no burst reaches a crypto aperture
 
@@ -742,7 +745,7 @@ were refused identically from the CPU-LSU master.
 the converted length `(len+1) * conv_ratio - align_adj - 1` exceeds 255
 (`vendor/pulp-platform/axi/upstream/src/axi_dw_downsizer.sv:426`, taking the
 split branch at `:430`), which on this bus needs `ARLEN >= 128`. `len` is
-pinned to zero at all eight crypto instances, so that arm and its return to
+pinned to zero at all nine crypto instances, so that arm and its return to
 `R_IDLE` cannot be entered.
 
 *NOT waived, deliberately.* Three things stay in the denominator:

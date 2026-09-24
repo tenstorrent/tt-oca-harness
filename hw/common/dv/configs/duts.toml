@@ -57,6 +57,12 @@ root = "hw/common/dv/vip/ocah_spi_vip/dv"
 [duts.ocah_uart_vip]
 root = "hw/common/dv/vip/ocah_uart_vip/dv"
 
+# AXI4-Lite to AHB-Lite converter unit bench. The shared AXI RTL under
+# hw/common/axi sits outside the directory convention, so it is registered
+# here.
+[duts.axi_lite_to_ahb]
+root = "hw/common/axi/dv"
+
 # Cross-trigger IP-level benches: the family nests one level below the
 # hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
 # registered here.

@@ -857,6 +857,8 @@ hw/sys/smu/rtl/smu_pkg.sv
 // Package(tt-oca-harness) Target(any(entropy_source, sep, smc))
 hw/common/axi/axi4lite_intf.sv
 hw/common/axi/axi_cg_snoop.sv
+// Package(tt-oca-harness) Target(any(axi_lite_to_ahb, sep))
+hw/common/axi/axi_lite_to_ahb.sv
 // Package(tt-oca-harness) Target(sep)
 hw/common/axi/axi_lite_to_tlul.sv
 hw/common/axi/tlul_to_axi_lite.sv
@@ -1376,7 +1378,6 @@ vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_seq.sv
 vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl.sv
 vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_top.sv
 vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv
-vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/axi4_to_ahb.sv
 hw/sys/sep/rtl/sep_abr_kv_shim.sv
 hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv
 // Package(tt-oca-harness) Target(smc)
