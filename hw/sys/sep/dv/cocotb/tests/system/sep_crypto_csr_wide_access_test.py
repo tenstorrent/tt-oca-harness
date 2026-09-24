@@ -68,9 +68,9 @@ from __future__ import annotations
 import pyuvm
 from cocotb.triggers import with_timeout
 from env.sep_axi_agent import SepAxiOp
-from sep_base_test import sep_base_test
 from env.sep_spec_tables import CRYPTO_CONCURRENT_READS
 from ocah_axi_vip import worst_resp
+from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
