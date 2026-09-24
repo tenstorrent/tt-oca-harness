@@ -5,9 +5,11 @@
 The readout leaf stops the trace before reading the sink back, so the sink's
 read and write sides never move together. This one keeps the trace running and
 drives the read pointer and the RAM data port underneath it, in both values of
-the sink's destination-mode field. It then stops the trace twice, once by
-clearing the DST enable alone and once through the sink's stop-on-wrap setting,
-and walks the sync-mode field under a running stream.
+the sink's destination-mode field. Under a compressed stream it then switches
+the traced bus between two states an odd number of bytes apart. It then stops
+the trace twice, once by clearing the DST enable alone and once through the
+sink's stop-on-wrap setting, and walks the sync-mode field under a running
+stream.
 """
 
 from __future__ import annotations
@@ -21,9 +23,10 @@ from smc_base_test import smc_base_test
 
 # Directed stimulus floor, written out here rather than read back from
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
-# sequence that silently stopped issuing accesses. The two polls (the window
-# fill and the wait for the DST to empty) are counted at one iteration each,
-# which is the shortest either can finish in.
+# sequence that silently stopped issuing accesses. Every poll and discovery
+# loop (the window fill, the waits for the DST to empty, the sampled-mux and
+# restart-action searches) is counted at one iteration, which is the shortest
+# each can finish in.
 #
 #   DEBUG_CTRL force_clk_en write + readback                                  2
 #   64 mux identifiers in normal debug mode                                  64
@@ -40,6 +43,13 @@ from smc_base_test import smc_base_test
 #     then per closure mode the frame-config write and its readback (2)
 #     and per frame length a write, a readback and 4 action writes, so
 #     2 x (2 + 16 x 6)                                                      198
+#   odd offsets: long-frame write + readback, the EAP write, 64 CLA mux
+#     writes, 64 identifier-mode writes, the two-word snapshot, one probe
+#     (write and two-word snapshot), the emptying stop write + readback and
+#     one empty poll, the restart write + readback, one restart try (action
+#     write, two mux writes, the empty read), the two pointer reads around
+#     160 mux writes, the closing two-word snapshot and 64 normal-mode
+#     writes                                                                373
 #   software stop: long-frame write + readback, restart write + readback,
 #     16 action writes, short-frame write + readback, 16 action writes, the
 #     running read, the stop write + readback and one empty poll             42
@@ -48,11 +58,11 @@ from smc_base_test import smc_base_test
 #     and the closing write-pointer read                                    145
 #   sync-mode walk: 2 timestamp sources x (impl write + readback, then
 #     4 x (control write + readback and 8 action writes))                     84
-#   restore: DST control, DST impl, frame config, EAP, CLA control,
-#     funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                         9
+#   restore: DST control, DST impl, frame config, EAP, CLA control, CLA
+#     mux, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                   10
 #                                                                         ------
-#                                                                           842
-TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 842
+#                                                                          1216
+TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1216
 
 
 @pyuvm.test()
@@ -64,11 +74,12 @@ class smc_dfd_trace_sink_concurrent_test(smc_base_test):
         "CHK-DST-CONCURRENT-FRAMEWALK",
         "CHK-DST-CONCURRENT-IDLE",
         "CHK-DST-CONCURRENT-MODE",
+        "CHK-DST-CONCURRENT-ODDBYTES",
         "CHK-DST-CONCURRENT-STOP",
         "CHK-DST-CONCURRENT-STOPWRAP",
         "CHK-DST-CONCURRENT-SYNCWALK",
     )
-    min_evidence = 7
+    min_evidence = 8
 
     auto_protocol_vip = False
 

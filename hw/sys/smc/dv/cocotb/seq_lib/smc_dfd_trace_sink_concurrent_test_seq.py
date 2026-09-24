@@ -36,6 +36,13 @@ The sink's pointer fields sit above two reserved bits and hardware also writes
 them, so they are programmed through each field's own mask rather than the
 register's plain read-write mask, which leaves them out.
 
+The compressed phase ends with the traced bus switched between two states an
+odd number of bytes apart, so compressed packets are odd-sized and walk the
+accumulator's write offset through the odd positions an uncompressed stream
+never reaches. The CLA's own debug-bus mux, the last stage in front of the
+trace, resets to its off mode and is put in normal mode for this; see
+``_walk_odd_offsets``.
+
 Two ways of stopping the trace close the leaf:
 
 * **Clearing ``Trdstenable`` alone.** The DST is kept active, so its clock keeps
@@ -98,6 +105,15 @@ _DELIVER_POLLS = 32
 # Write-pointer samples that have to agree for the pointer to count as parked.
 _PARKED_SAMPLES = 3
 
+# dfx_ctrl_status.rdl Dbmmode, the values its description names as normal debug
+# mode and the mux identifier output mode.
+_DBM_MODE_NORMAL = 1
+_DBM_MODE_IDENTIFIER = 2
+# Mode switches in the odd-offset walk: each makes one compressed packet, and a
+# run of equal odd-sized packets visits every offset of the 64-byte accumulator
+# within 64 packets, so this leaves room for a frame closing part way.
+_ODD_SWITCHES = 160
+
 
 class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
     """Drive the sink's read side while the trace is still writing into it."""
@@ -117,6 +133,11 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.sync_modes: list[tuple[int, int]] = []
         self.stop_polls = 0
         self.wrap_samples: list[int] = []
+        self.sampled_mux = -1
+        self.odd_bytes = 0
+        self.odd_states = (0, 0)
+        self.odd_start_action = -1
+        self.odd_pointer = (0, 0)
 
     # -- register helpers -------------------------------------------------
 
@@ -328,6 +349,177 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
                     self.nonzero_words += 1
                 self.wp_samples.append(await self._read(wp, f"wp{offset:x}"))
         await self._write(eap, eap.reset_word, "quiet")
+
+    # -- odd write offsets --------------------------------------------------
+
+    async def _snapshot(self, label: str) -> int:
+        lo = cla_register("CDbgSignalSnapshotNode0Eap0Lo")
+        hi = cla_register("CDbgSignalSnapshotNode0Eap0Hi")
+        low = await self._read(lo, f"{label}_lo")
+        high = await self._read(hi, f"{label}_hi")
+        return (high << 32) | low
+
+    async def _set_mux_mode(self, identity: int, mode: int, label: str) -> None:
+        mux = dfd_register("dfx_ctrl/DEBUG_BUS_MUX")
+        await self._write(mux, pack_fields(mux, {"Dbmmode": mode, "Dbmid": identity}), label)
+
+    async def _restart_compressed(self, logical_op: int, modes: tuple[int, int]) -> None:
+        """Empty the DST, re-enable it compressed, and find an action that restarts the trace.
+
+        Clearing the enable alone with the DST active empties the packetizer, so
+        ``Trdstempty`` reads 1 before the restart. Which action code starts a trace
+        is not published, so the action field is walked, the bus switched twice
+        under each value, and the first value that makes ``Trdstempty`` read 0 is
+        held: packets are arriving, so the trace is running.
+        """
+        control = dst_register("Trdstcontrol")
+        empty = reg_field(control, "Trdstempty")
+        stopped = {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_XOR_VLT}
+        await self._write_check(control, stopped, "oddflush")
+        for poll in range(_DELIVER_POLLS):
+            if await self._read(control, f"oddflush{poll}") & empty.mask:
+                break
+        else:
+            raise AssertionError(
+                f"DST Trdstempty stayed 0 for {_DELIVER_POLLS} polls after the enable was "
+                f"cleared with the DST active, so the odd-offset run cannot start empty"
+            )
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_XOR_VLT},
+            "oddrun",
+        )
+        eap = cla_register("CDbgNode0Eap0")
+        action = cla_field(eap, "Action0")
+        for value in range(1 << action.width):
+            await self._write(
+                eap,
+                pack_fields(eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": value}),
+                f"oddstart{value}",
+            )
+            for mode in modes:
+                await self._set_mux_mode(self.sampled_mux, mode, f"oddstart{value}_{mode}")
+                await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+            if not await self._read(control, f"oddstart{value}") & empty.mask:
+                self.odd_start_action = value
+                self.value_checks += 1
+                return
+        raise AssertionError(
+            f"Trdstempty stayed 1 under every value of the {action.width}-bit Action0 field "
+            f"with the bus switching between the two measured states, so no action restarts "
+            f"the compressed trace"
+        )
+
+    async def _walk_odd_offsets(self, logical_op: int) -> None:
+        """Switch the compressed stream between two bus states an odd number of bytes apart.
+
+        An uncompressed packet is a fixed size, so it only lands the accumulator's
+        write offset on even positions. A compressed packet carries the bytes that
+        changed since the last sample, so a bus that alternates between two
+        states differing in an odd number of bytes makes odd-sized packets, and a
+        long run of them walks the offset through every position of a frame.
+
+        Two mux arrays sit in front of the trace. The CLA's own mux, programmed
+        through ``CDbgMuxSelLo``, is the last stage and resets to its off mode, so
+        it is put in normal debug mode first; it takes the mode only while the
+        programmed identifier is its own, so the mode is written once per
+        identifier value. The DEBUG_BUS_MUX array feeds it. Its description gives
+        two modes to work with: normal debug mode, and an identifier output mode
+        in which a mux drives its own identifier. Every DEBUG_BUS_MUX identifier is
+        put in the identifier mode, then each in turn is put back in normal mode
+        until the debug-signal snapshot of the active pair changes. That mux is
+        one whose output the trace samples, found by measurement rather than
+        named. Its two modes give the two bus states, both read through the
+        snapshot, and the leaf requires them to differ in an odd number of bytes
+        before switching between them.
+        """
+        dbmid = reg_field(dfd_register("dfx_ctrl/DEBUG_BUS_MUX"), "Dbmid")
+        impl = dst_register("Trdstimpl")
+        length = reg_field(impl, "Trdstvendorframelength")
+        stream = reg_field(impl, "Trdstvendorstreamlength")
+        await self._write_check(
+            impl,
+            {
+                "Trdstvendorframelength": (1 << length.width) - 1,
+                "Trdstvendorstreamlength": (impl.reset_word & stream.mask) >> stream.offset,
+                "Trdsttimestampconfig": 0,
+            },
+            "oddframe",
+        )
+        eap = cla_register("CDbgNode0Eap0")
+        await self._write(eap, pack_fields(eap, {"LogicalOp": logical_op, "DestNode": 0}), "odd")
+        cla_mux = cla_register("CDbgMuxSelLo")
+        for identity in range(1 << dbmid.width):
+            await self._write(
+                cla_mux,
+                pack_fields(cla_mux, {"Dbmmode": _DBM_MODE_NORMAL, "Dbmid": identity}),
+                f"clamux{identity}",
+            )
+        for identity in range(1 << dbmid.width):
+            await self._set_mux_mode(identity, _DBM_MODE_IDENTIFIER, f"ident{identity}")
+        await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        identifier_state = await self._snapshot("ident")
+        for identity in range(1 << dbmid.width):
+            await self._set_mux_mode(identity, _DBM_MODE_NORMAL, f"probe{identity}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+            normal_state = await self._snapshot(f"probe{identity}")
+            if normal_state != identifier_state:
+                self.sampled_mux = identity
+                break
+        else:
+            raise AssertionError(
+                f"the Node0Eap0 debug-signal snapshot stayed 0x{identifier_state:016x} as each "
+                f"of the {1 << dbmid.width} mux identifiers was returned to normal mode, so no "
+                f"mux mode change reaches the bus the trace samples"
+            )
+        diff = identifier_state ^ normal_state
+        self.odd_bytes = sum(1 for b in range(8) if (diff >> (8 * b)) & 0xFF)
+        self.odd_states = (identifier_state, normal_state)
+        assert self.odd_bytes % 2 == 1, (
+            f"the two bus states 0x{identifier_state:016x} and 0x{normal_state:016x} differ in "
+            f"{self.odd_bytes} bytes, an even count, so switching between them makes packets "
+            f"no different in parity from the uncompressed ones"
+        )
+        modes = (_DBM_MODE_IDENTIFIER, _DBM_MODE_NORMAL)
+        await self._restart_compressed(logical_op, modes)
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
+        before = await self._read(wp, "odd_before") & pointer.mask
+        for step in range(_ODD_SWITCHES):
+            await self._set_mux_mode(self.sampled_mux, modes[step % 2], f"odd{step}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        after = await self._read(wp, "odd_after") & pointer.mask
+        assert after != before, (
+            f"the sink write pointer stayed at 0x{before:x} across {_ODD_SWITCHES} bus switches "
+            f"with the trace running, so the odd-sized packets never reached the sink"
+        )
+        self.odd_pointer = (before, after)
+        # The last switch left the mux in normal mode; the snapshot must say so.
+        final = await self._snapshot("odd_end")
+        assert final == normal_state, (
+            f"after {_ODD_SWITCHES} switches ending in normal mode the snapshot reads "
+            f"0x{final:016x}, not the normal-mode state 0x{normal_state:016x}, so the "
+            f"switching did not move the bus between the two measured states"
+        )
+        for identity in range(1 << dbmid.width):
+            await self._set_mux_mode(identity, _DBM_MODE_NORMAL, f"renormal{identity}")
+        self.value_checks += 4
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-ODDBYTES: with the CLA mux in normal mode, DEBUG_BUS_MUX "
+            "identifier %d was measured as one the trace samples; its identifier and normal "
+            "modes put 0x%016x and 0x%016x on the bus, %d byte(s) apart. After an emptying "
+            "stop, action %d restarted the compressed trace at the longest frame length, and "
+            "%d switches between the two states moved the sink write pointer from 0x%x to "
+            "0x%x, ending on the normal-mode state",
+            self.sampled_mux,
+            identifier_state,
+            normal_state,
+            self.odd_bytes,
+            self.odd_start_action,
+            _ODD_SWITCHES,
+            self.odd_pointer[0],
+            self.odd_pointer[1],
+        )
 
     # -- stopping the trace -----------------------------------------------
 
@@ -607,6 +799,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             len(expected),
         )
 
+        await self._walk_odd_offsets(logical_op)
         await self._stop_in_software(logical_op)
         await self._stop_on_wrap(logical_op)
         await self._walk_sync_modes(logical_op)
@@ -617,6 +810,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             dst_register("CDbgDebugTraceCfg"),
             cla_register("CDbgNode0Eap0"),
             cla_register("CDbgClaCtrlStatus"),
+            cla_register("CDbgMuxSelLo"),
             funnel_register("Trfunnelcontrol"),
             sink_register("Trdstramcontrol"),
             dfd_register("dfx_ctrl/DEBUG_BUS_MUX"),
