@@ -123,7 +123,7 @@ Executable membership is resolved from the testlists; the groups and their
 |===
 |Group |Role
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
-|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
 |`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
 |===
@@ -569,6 +569,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
 |`smc_fw_uart_log_engine_disable_during_xfer_test` |CTRL.EN cleared mid-transfer halts the engine, measured as at least one but fewer bytes than the entry reaching the UART and none after it goes idle; a re-trigger delivers exactly its bytes; four entries triggered together all hwclr; the same halt measurement on an abort from WAIT; replica 1 runs an entry.
 |`smc_fw_uart_log_engine_fetch_err_test` |A log-engine fetch from an unmapped address latches INTR_STATUS.LOG_FETCH_ERR: INTR_TEST self-test, INTR_ENABLE gating, LOG_FETCH_ERR as an event (with the engine stopped a W1C holds) and a good fetch then running from a cleared status, sustained DECERR with LOG_CTRL not hwclr, WRITE_ERR staying clear, and the fault on replica 1.
+|`smc_fw_narrow_store_lane_test` |CPU word stores into one half of a 64-bit register word, which put the word on the other half's byte lanes with their strobes clear, leave the other half's fields unchanged.
 |===
 
 === Test Procedures
@@ -10327,6 +10328,46 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 
 '''''
 
+[[sec-252-smc_fw_narrow_store_lane_test]]
+===== 252 `smc_fw_narrow_store_lane_test`
+
+*Source Module*: `smc_fw_narrow_store_lane_test`
+
+*BFM / Model*: the SMC C image `fw/tests/narrow_store_lane`, executed by hart 0 of the CPU cluster; verdict and target registers read over SEP_IN AXI
+
+*Objective*: CPU word stores into one half of a 64-bit register word, which put the word on the other half's byte lanes with their strobes clear, leave the other half's fields unchanged.
+
+*Test Coverage*:
+
+* The register blocks with a 64-bit CPU interface (`smc_base_config`, `dfx_ctrl_status`, `cpu_ctrl`, `alias_remap`) write each field bit only where its byte strobe is set. The core replicates a 32-bit store across both halves of its 64-bit data bus and strobes only the addressed half, so a store of all ones to one half carries ones on every lane of the other half with its strobe clear. The bench's SEP_IN master zero-fills unstrobed lanes and cannot make this case; only a CPU store can.
+* Six registers keep all their writable fields in the half the store does not address: `CLOCK_GATE_CONTROL`, `HANG_DET_SYS_AXI_CTRL`, `HANG_DET_SEP_AXI_CTRL`, `HANG_DET_DATA_ACCEL_CTRL`, `DEBUG_CTRL` and `RESET_TIMEOUT`. Each is stored to while every field holds its reset value, which differs from all ones, so a leak through a clear strobe would show on the read-back. In the first five, the stored half has no field and must still read 0. In `RESET_TIMEOUT` the stored half is read-only status. The boot contract leaves `timeout_mode` set before release, where a leak of ones would not show, so the image writes the reset value first and puts the boot value back afterwards.
+* The four `CPU_CTRL` `MUTEX` registers are stored to in their upper half, first while free and then while held. The RDL makes any write a release, whichever half it selects, so each store must leave the mutex free, and a read must take it after each store.
+* Alias-remap `region_attrs` region 0 is stored to in its lower half. That store takes `offset[31:12]`; `cacheable`, `valid` and `offset[55:32]` in the upper half carry ones on clear strobes and must stay 0. The region stays invalid, so the new offset remaps nothing, and the bench restores it.
+* Not driven, because the other half holds a field whose write has an effect the test cannot undo: `WDT_TIMEOUT_RESET`, which pulses core resets; the filter `FILTER_CONFIG` pair, whose `locked` bit is write-once-set; and the zeroer `INT_EN`, where any write starts a job at `DEST_ADDR`.
+* CI: no hosted runner builds firmware, so this leaf runs on demand like the other `fw` leaves (<<smc-scheduled-holdouts>>). The image builds through `[c_build.default]` with the same path and post-process as `hello_world`, so the build needs nothing the other `fw` images do not.
+
+*Test Procedure*:
+
+[arabic]
+. Build `narrow_store_lane` through `[c_build.default]`, stage `narrow_store_lane.ecc.hex` beside the simulator, and hold `boot_stall` from t=0 (`+smc_hold_cpu_boot`).
+. With the cores held, read every target over SEP_IN. The six registers must show their RDL reset word under their writable mask, each mutex must be taken by a read and then released, and `region_attrs` must read its reset word.
+. Clear CPU_CTRL SCRATCH_0, program the reset vector, and release the cores and `boot_stall`. The image reads each field half, stores all ones to the other half, fences, and reads the field half again, failing on any change or on a non-zero empty half. Each mutex must be free after its store while free and released by its store while held. The image then stores to `region_attrs` and requires `0xFFFFF000` in the lower half and the upper half unchanged. It prints each stage's result on the virtual console.
+. Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+. Read every target over SEP_IN again, with `RESET_TIMEOUT` expected at the boot contract's value, then restore `region_attrs` and read the restore back.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-NARROW-STORE-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start. The image posts it only when every target held across its store
+|`CHK-FW-NARROW-STORE-HELD` |After PASS, over SEP_IN: the writable fields of five registers still hold their RDL reset word and `RESET_TIMEOUT` holds the boot contract's value, every mutex is still free, and `region_attrs` reads `offset[31:12]` all ones with the upper half at reset
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
@@ -10367,7 +10408,7 @@ checked by inverting one assertion. `--validate-configs` then lists
 |`smoke` |CI gate on every pull request and push (`sim.yml`): three toolchain-free bring-up leaves
 |`all` |Every test this plan grades and the coverage set: `hosted` + `fw` + `dual`, no overlap, nothing left over; `expected_count` is the membership gate
 |`hosted` |Toolchain-free class of `all`, single-instance model; the nightly and weekly tiers on the hosted runners, three seeds per leaf
-|`fw` |Firmware class of `all`: the fourteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
+|`fw` |Firmware class of `all`: the fifteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
 |`dual` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
 |`axil`, `clock`, `combined`, `cpu`, `gpio`, `i2c`, `irq`, `reset`, `uart` |Feature subsets of `all` for a local run of one area; each lives in its feature testlist
 |`rtl_issue` |Filed-defect reproducers, expected to fail; the weekly tier's own row. Not in `all` (`testlists/holdout.toml`)
@@ -10456,7 +10497,7 @@ the `expected_count` guards in `hw/sys/smc/dv/testlists/all.toml`.
 |===
 |Group |Role
 |`smoke` |PR gate: canonical bring-up, cold reset, and a CSR frontdoor read
-|`hosted` |Nightly and weekly: `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
+|`hosted` |Nightly and weekly: `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no bring-up credit
 |`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
 |===
@@ -11201,7 +11242,7 @@ Not in the control run; they take the next VCS control.
 |Leaf |Crossing on the proof path |Verdict reads
 |`smc_canonical_smoke_test` |none on the reset matrix; the six `*_cg_en_sync` carry `tb_i2c_cg_en` away |upstream
 |`smc_fw_plic_claim_test` |`u_ext_interrupts_sync3`; `u_boot_stall_combined_sync` (it releases the pad-57 boot stall like the firmware leaves below) |downstream: PLIC gateway, enable and priority, MEIP, the claim ID the CPU reads back
-|`smc_cpu_firmware_boot_test`, `smc_fw_hello_world_test`, `smc_fw_hello_world_multicore_test`, `smc_fw_octs_p0_primary_test`, `smc_fw_i2c_sanity_test`, `smc_fw_i2c_target_sanity_test`, `smc_fw_i2c_acq_fifo_stretch_reset_test`, `smc_fw_i2c_p1_fifo_depth_xfer_test`, `smc_fw_i2c_tx_stretch_timeout_recovery_test`, `smc_fw_i2c_fifo_full_test`, `smc_fw_uart_log_engine_single_entry_test`, `smc_fw_uart_log_engine_boundary_backpressure_test`, `smc_fw_uart_log_engine_disable_during_xfer_test`, `smc_fw_uart_log_engine_fetch_err_test`, `smc_prod_rom_occp_ready_test`, `smc_occp_sanity_test`, `smc_occp_dual_unsecure_boot_test`, `smc_dual_elaboration_test`, `smc_dual_axi_sram_probe_test`, `smc_ecc_fault_inject_test` |`u_boot_stall_combined_sync` (each releases the pad-57 boot stall) |downstream: the CPU fetches and the firmware or ROM observables follow
+|`smc_cpu_firmware_boot_test`, `smc_fw_hello_world_test`, `smc_fw_hello_world_multicore_test`, `smc_fw_octs_p0_primary_test`, `smc_fw_i2c_sanity_test`, `smc_fw_i2c_target_sanity_test`, `smc_fw_i2c_acq_fifo_stretch_reset_test`, `smc_fw_i2c_p1_fifo_depth_xfer_test`, `smc_fw_i2c_tx_stretch_timeout_recovery_test`, `smc_fw_i2c_fifo_full_test`, `smc_fw_uart_log_engine_single_entry_test`, `smc_fw_uart_log_engine_boundary_backpressure_test`, `smc_fw_uart_log_engine_disable_during_xfer_test`, `smc_fw_uart_log_engine_fetch_err_test`, `smc_fw_narrow_store_lane_test`, `smc_prod_rom_occp_ready_test`, `smc_occp_sanity_test`, `smc_occp_dual_unsecure_boot_test`, `smc_dual_elaboration_test`, `smc_dual_axi_sram_probe_test`, `smc_ecc_fault_inject_test` |`u_boot_stall_combined_sync` (each releases the pad-57 boot stall) |downstream: the CPU fetches and the firmware or ROM observables follow
 |`smc_ecc_dfd_dbs_sanity_test` |`u_ndmreset_request_sync` |downstream: `NDMRESET_PROCESS` default and cluster count with no request driven
 |`smc_i2c_intr_mask_test` |`u_i2c_irq_sync` |reads the crossing: `tb_i2c_irq` is `peripheral_interrupts[25:23]`
 |`smc_reference_counter_test` |`prim_refclk_count_w_cdc` (two `prim_sync3`) |downstream: `REFERENCE_COUNTER` value handshake
@@ -11269,6 +11310,7 @@ to make, and waits on a ruling.
 |`smc_fw_uart_log_engine_boundary_backpressure_test` |`fw`, `all` |`firmware = "uart_log_engine_boundary_backpressure"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |`smc_fw_uart_log_engine_disable_during_xfer_test` |`fw`, `all` |`firmware = "uart_log_engine_disable_during_xfer"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |`smc_fw_uart_log_engine_fetch_err_test` |`fw`, `all` |`firmware = "uart_log_engine_fetch_err"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
+|`smc_fw_narrow_store_lane_test` |`fw`, `all` |`firmware = "narrow_store_lane"`, same build path |SMC DV |2026-12-15 |As above
 |`smc_prod_rom_occp_ready_test` |`occp_boot` |`firmware = { name = "prod_rom", mode = "bootrom" }` builds `hw/sys/smc/bootrom/prod` with RISC-V GCC; `run_modes = ["prod_rom"]`, 3600 s |minshaoho (`9282d8c14`) |2026-12-15 |As above, plus a weekly `items: occp_boot` row (one seed, about one hour)
 |`smc_dual_elaboration_test` |`all`, `dual` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`dual.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` (undeclared nets in the dual harness) |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and #1802 (the dual-harness net declarations) merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
 |`smc_dual_axi_sram_probe_test` |`all`, `dual` |`target = "dual"` and `firmware = prod_rom` |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
@@ -11381,6 +11423,9 @@ point at it. SMU's record of the tests that stage SMC images is
 |uart_log_engine_fetch_err
 |enrolled
 |`smc_fw_uart_log_engine_fetch_err_test` (`testlists/fw.toml`, `[c_build.default]`); the bench probes the unmapped fetch address from SEP_IN for DECERR and reads the engines' final programming.
+|narrow_store_lane
+|enrolled
+|`smc_fw_narrow_store_lane_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads every target register over SEP_IN before the cores are released and after PASS.
 |===
 
 ===== External-consumer images
