@@ -1,347 +1,185 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Pipelined reads of the Adams Bridge aperture each return their own address.
+"""Pipelined reads of an ABR register from the SMN inbound master must return it.
 
-no_cpu / +skip_fuse_sense.
+Reproducer for issue #2253. It FAILS while the RTL carries that defect, and
+passes when it is fixed.
 
-An AXI-to-AHB bridge that streams reads can present the later transfers of a
-stream with a truncated HADDR. Every read still answers OKAY, so a lone read
-cannot show the defect; it takes several reads in flight at once, each graded
-against the value of the address it named. Through such a bridge
-MLDSA_VERSION1 at 0x1094_000c (0x0000_3100) reads back 0x0000_0000 from the
-third read of a pipeline onward, because HADDR[2:0] is dropped.
+Driven from `m_axi`, the SoC-facing inbound port (`hw/sys/sep/rtl/sep.sv:98`),
+because that is a real master rather than a stand-in. The CPU-LSU splice is not
+used: `s_axi` exists only to present what the VeeR LSU would present, and the
+LSU serialises MMIO loads -- a firmware run of the same four reads keeps one
+transaction in flight and never enters the bridge's streaming state. Driving
+several reads at once on that port would be stimulus the port cannot carry in
+the real design, so it proves nothing.
 
-Legs, all run before the verdict so one run names every leg that fails:
+The inbound path has no such limit. It reaches the ABR aperture through the
+local crossbar (`sep.sv:415`, `ext_axi_req_i`) and the crypto interconnect, and
+an SoC master may legitimately hold several reads outstanding with distinct
+`ARID`s -- AXI places no restriction on that, and no SEP document places one on
+this aperture.
 
-1. One read of MLDSA_VERSION1 on each master: the control.
-2. Concurrent single-beat reads of MLDSA_VERSION1 at depths 1, 2, 3, 4 and 8,
-   one ARID each, first on m_axi (the SMN inbound master, through an
-   inbound-filter read window over the ABR aperture) and then on s_axi.
-3. The four ML-DSA identity words in several orders, each read graded against
-   its own word, on both masters, plus one order on a single ARID.
-4. Both masters pipelining at once.
+Single-beat reads only (`ARLEN = 0`): the crypto demux routes any `AxLEN != 0`
+to its error slave (`sep_crypto_axi_interconnect.sv:111-112`, `:175`, `:205`),
+which `hw/sys/sep/doc/crypto.adoc` states to software.
 
-Each leg records the AR and R handshakes on the TB pins. Concurrency is graded
-from that record: on a distinct-ID leg every request must have been accepted
-before the first response came back, and on the single-ARID leg at least
-three. Each R beat is graded by the RID it carried as well as through the VIP's
-result, so a response that comes back under the wrong ID fails even when every
-request named the same address.
+The comparand is `MLDSA_VERSION1`, a plain read-only register with unconditional
+combinational readback, so it holds one value and zero is not that value.
+
+Checkers:
+  CHK-ABR-CONTROL  the control read answers OKAY and returns the generated
+                   golden. It is the comparand for everything below, so a
+                   control of zero would let every pipelined read compare
+                   equal and turn the sweep vacuous
+  CHK-ABR-PIPELINED-READ  every read, at every depth, returns that same value
+                   and an OKAY response; a timeout counts as a failure
+
+Pass Criteria: every named checker PASSes. UVM_ERROR == 0.
 """
 
 from __future__ import annotations
 
 import pyuvm
+from cocotb.triggers import with_timeout
+from env.sep_axi_agent import SepAxiOp
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from seq_lib.sep_abr_bus_seq import (
-    ID_WIDTH,
-    IDENTITY,
-    RESP_OKAY,
-    AbrAccess,
-    AbrBusWatch,
-    SepAbrBus,
-    lane_value,
-)
-from seq_lib.sep_abr_keygen_seq import ABR_NAME0, ABR_NAME1, ABR_VERSION0, ABR_VERSION1
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_inbound_filter_rule_seq import SepInboundFilter, SepInboundFilterCfg
 
+from seq_lib.sep_abr_keygen_seq import ABR_BASE, ABR_VERSION1, VER1_EXP
+
+SIZE_4B = 2
+RESP_OKAY = 0
+# Address and expected word both come from the generated map via
+# sep_abr_keygen_seq, never a literal. The control read is held against
+# VER1_EXP so the golden for the sweep cannot silently become zero.
+A_VERSION1 = ABR_VERSION1
 DEPTHS = (1, 2, 3, 4, 8)
-
-# Reads on one ARID that must be accepted before the first response. The
-# fabric bounds how many transactions of a single ID it holds, which is a
-# different limit from the distinct-ID legs, where every read must be accepted
-# first. Three is the shallowest pipeline at which a bridge that drops
-# HADDR[2:0] on its streamed transfers returns a wrong word.
-SAME_ID_FLOOR = 3
-
-N0, N1, V0, V1 = ABR_NAME0, ABR_NAME1, ABR_VERSION0, ABR_VERSION1
-MIXED_ORDERS: tuple[tuple[str, tuple[int, ...]], ...] = (
-    ("ascending", (N0, N1, V0, V1)),
-    ("descending", (V1, V0, N1, N0)),
-    ("even-words-first", (N0, V0, N1, V1)),
-    ("interleaved-8", (V1, N0, N1, V1, V0, N1, N0, V1)),
-)
-SAME_ID_ORDER = (N0, V0, V1, N1)
-
-_NAMES = {N0: "NAME0", N1: "NAME1", V0: "VERSION0", V1: "VERSION1"}
+READ_TIMEOUT_NS = 20_000
 
 
-def _selftest() -> None:
-    assert V1 - N0 == 0xC, "MLDSA_VERSION1 is the odd word of the second granule"
-    for _name, order in MIXED_ORDERS + (("same-id", SAME_ID_ORDER),):
-        # A pipeline shorter than three never reaches a streamed transfer.
-        assert len(order) >= 3
-        assert all(a in IDENTITY for a in order)
-        # Dropping HADDR[2:0] only changes an odd word, so each order puts one
-        # at the third position or later.
-        assert any(a & 0x4 for a in order[2:]), _name
-    # Depth 8 needs eight distinct IDs on the narrower of the two ports.
-    assert max(DEPTHS) <= 1 << min(ID_WIDTH.values())
-    assert SAME_ID_FLOOR <= len(SAME_ID_ORDER)
-
-
-_selftest()
+def word(raw, addr: int) -> int:
+    if isinstance(raw, (bytes, bytearray)):
+        b = bytes(raw)
+        if len(b) >= 8:
+            off = 4 if (addr & 4) else 0
+            return int.from_bytes(b[off : off + 4], "little")
+        return int.from_bytes(b[:4], "little")
+    return int(raw) & 0xFFFF_FFFF
 
 
 @pyuvm.test()
 class sep_abr_pipelined_read_test(sep_base_test):
-    """Concurrent ABR reads, on each master and both, return their own words."""
-
-    required_evidence = (
-        "CHK-ABR-PIPE-CTRL",
-        "CHK-ABR-PIPE-DEPTH-M-AXI",
-        "CHK-ABR-PIPE-DEPTH-S-AXI",
-        "CHK-ABR-PIPE-MIXED",
-        "CHK-ABR-PIPE-SAME-ID",
-        "CHK-ABR-PIPE-DUAL",
-        "CHK-ABR-PIPE-RID",
-        "CHK-ABR-PIPE-OVERLAP",
-    )
+    """ABR reads at increasing depth from the inbound master."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        self.abr = SepAbrBus(self)
-        await self.abr.open_m_axi_window(write=False)
 
-        self.failures: list[str] = []
-        self.rid_problems: list[str] = []
-        self.overlap_problems: list[str] = []
+        # The inbound filter denies by default, so the window is opened first.
+        # Programmed from the CPU-LSU side, which is how every inbound test
+        # reaches these CSRs.
+        filt = SepInboundFilter(self)
+        cfg = SepInboundFilterCfg(entry=0, allow_addr=ABR_BASE)
+        await filt.program_rule(
+            cfg,
+            read_allowed=True,
+            write_allowed=True,
+            allow_burst=False,
+            end_addr=ABR_BASE + 0x1000,
+        )
+        self.logger.info("inbound entry 0 allows 0x%08x..0x%08x", ABR_BASE, ABR_BASE + 0x1000)
 
-        # --- CHK-ABR-PIPE-CTRL ----------------------------------------------
-        # One read at a time is the case every bridge gets right, so a failure
-        # here is a path or decode problem and not the pipelining under test.
-        for bus in ("m_axi", "s_axi"):
-            acc = await self.abr.read(bus, V1)
-            self.logger.info("ABR-PIPE control: %s", acc.describe())
-            assert acc.resp == RESP_OKAY and acc.data == IDENTITY[V1].value, (
-                f"CHK-ABR-PIPE-CTRL FAIL: lone read of MLDSA_VERSION1 on {bus} returned "
-                f"{acc.resp_name} 0x{acc.data:08x}, expected OKAY "
-                f"0x{IDENTITY[V1].value:08x}; the pipelined legs need a working single read"
-            )
+        # Control: one read on its own, through the sequencer, so the value the
+        # aperture holds is established before anything is pipelined.
+        seq = SepAxiAccessSeq(
+            "abr_ctrl_rd", op=SepAxiOp.READ, addr=A_VERSION1, length=4, size=SIZE_4B
+        )
+        await self.start_ext_seq(seq)
+        alone = seq.rdata & 0xFFFF_FFFF
         self.logger.info(
-            "CHK-ABR-PIPE-CTRL PASS: a lone read of MLDSA_VERSION1 returns 0x%08x OKAY on "
-            "m_axi and on s_axi",
-            IDENTITY[V1].value,
+            "REPRO m_axi control: 0x%08x read alone -> 0x%08x (resp=%d)",
+            A_VERSION1, alone, seq.resp_code,
         )
 
-        # --- CHK-ABR-PIPE-DEPTH-* ---------------------------------------------
-        for bus, chk in (
-            ("m_axi", "CHK-ABR-PIPE-DEPTH-M-AXI"),
-            ("s_axi", "CHK-ABR-PIPE-DEPTH-S-AXI"),
-        ):
-            ok = True
-            for depth in DEPTHS:
-                ok &= await self._leg(
-                    f"{bus} VERSION1 x{depth}", {bus: [(V1, i) for i in range(depth)]}
-                )
-            if ok:
-                self.logger.info(
-                    "%s PASS: %s depths %s of concurrent MLDSA_VERSION1 reads each "
-                    "returned 0x%08x OKAY",
-                    chk,
-                    bus,
-                    ",".join(str(d) for d in DEPTHS),
-                    IDENTITY[V1].value,
-                )
-
-        # --- CHK-ABR-PIPE-MIXED -----------------------------------------------
-        ok = True
-        for bus in ("m_axi", "s_axi"):
-            for name, order in MIXED_ORDERS:
-                ok &= await self._leg(f"{bus} {name}", {bus: [(a, i) for i, a in enumerate(order)]})
-        if ok:
-            self.logger.info(
-                "CHK-ABR-PIPE-MIXED PASS: %d address orders on each master; every read "
-                "returned the identity word it named",
-                len(MIXED_ORDERS),
-            )
-
-        # --- CHK-ABR-PIPE-SAME-ID ---------------------------------------------
-        # One ID orders the responses, so the k-th response belongs to the
-        # k-th request: a path that reorders same-ID reads hands each request
-        # a neighbour's word.
-        ok = True
-        for bus in ("m_axi", "s_axi"):
-            same = (1 << ID_WIDTH[bus]) - 1
-            ok &= await self._leg(
-                f"{bus} same-id",
-                {bus: [(a, same) for a in SAME_ID_ORDER]},
-                need=SAME_ID_FLOOR,
-            )
-        if ok:
-            self.logger.info(
-                "CHK-ABR-PIPE-SAME-ID PASS: %d reads on one ARID per master returned "
-                "their own words in request order",
-                len(SAME_ID_ORDER),
-            )
-
-        # --- CHK-ABR-PIPE-DUAL ------------------------------------------------
-        order = dict(MIXED_ORDERS)["interleaved-8"]
-        both = {
-            "m_axi": [(a, 8 + i) for i, a in enumerate(order)],
-            "s_axi": [(a, i) for i, a in enumerate(reversed(order))],
-        }
-        if await self._leg("dual interleaved-8", both):
-            self.logger.info(
-                "CHK-ABR-PIPE-DUAL PASS: m_axi and s_axi pipelining %d reads each at the "
-                "same time; every read returned its own word",
-                len(order),
-            )
-
-        if not self.rid_problems:
-            self.logger.info(
-                "CHK-ABR-PIPE-RID PASS: on every leg each R beat carried the RID of an "
-                "outstanding request, once per request"
-            )
-        if not self.overlap_problems:
-            self.logger.info(
-                "CHK-ABR-PIPE-OVERLAP PASS: every read of each distinct-ID leg, and %d "
-                "of each single-ARID leg, was accepted before the first response; both "
-                "masters were in flight together on the dual leg",
-                SAME_ID_FLOOR,
-            )
-
-        problems = self.failures + self.rid_problems + self.overlap_problems
-        assert not problems, (
-            f"ABR-PIPE FAIL: {len(problems)} problem(s) across the pipelined legs: "
-            + " | ".join(problems)
+        # The control read is the golden, so it has to be worth comparing
+        # against. A control that answered zero, or answered at all with an
+        # error, would let every pipelined read compare equal to it and this
+        # leaf would be green over a dead aperture.
+        assert seq.resp_code == RESP_OKAY, (
+            f"CHK-ABR-CONTROL FAIL: the control read of 0x{A_VERSION1:08x} "
+            f"returned resp={seq.resp_code}, expected OKAY. The aperture is not "
+            "readable, so nothing below would mean anything."
         )
-
-    async def _leg(
-        self, leg: str, plan: dict[str, list[tuple[int, int]]], *, need: int | None = None
-    ) -> bool:
-        """Issue every read in ``plan`` at once and grade it. True when clean.
-
-        ``need`` is how many reads per master must be accepted before the first
-        response; all of them when omitted.
-        """
-        accs = {
-            bus: [AbrAccess(bus, "rd", addr, axi_id=axi_id, tag=leg) for addr, axi_id in reqs]
-            for bus, reqs in plan.items()
-        }
-        watch = AbrBusWatch(tuple(accs))
-        watch.start()
-        flat = [a for bus_accs in accs.values() for a in bus_accs]
-        try:
-            await self.abr.all_at_once(flat)
-        finally:
-            watch.stop()
-
-        clean = True
-        for bus, bus_accs in accs.items():
-            rec = watch.rec[bus]
-            data_bad = self._grade_data(leg, bus, bus_accs)
-            data_bad += self._grade_beats(leg, bus, bus_accs, rec)
-            if data_bad:
-                got = ", ".join(f"0x{a.data:08x}" for a in bus_accs)
-                exp = ", ".join(f"0x{IDENTITY[a.addr].value:08x}" for a in bus_accs)
-                self.logger.error(
-                    "ABR-PIPE FAIL [%s] %s: returned [%s], expected [%s]", leg, bus, got, exp
-                )
-                self.failures.append(f"[{leg}] {bus}: {data_bad[0]}")
-                clean = False
-            floor = len(bus_accs) if need is None else min(need, len(bus_accs))
-            self.logger.info(
-                "ABR-PIPE [%s] %s concurrency: %d AR accepted before the first R "
-                "(need %d), max %d outstanding",
-                leg,
-                bus,
-                rec.ar_before_first_r,
-                floor,
-                rec.max_rd_outstanding,
-            )
-            if rec.ar_before_first_r < floor:
-                self.overlap_problems.append(
-                    f"[{leg}] {bus}: only {rec.ar_before_first_r} of {len(bus_accs)} reads "
-                    f"accepted before the first response, need {floor}; the leg did not "
-                    "pipeline and its data compare proves nothing about pipelining"
-                )
-                clean = False
-        if len(accs) > 1:
-            self.logger.info(
-                "ABR-PIPE [%s] cycles with every master outstanding: %d",
-                leg,
-                watch.all_busy_cycles,
-            )
-            if watch.all_busy_cycles == 0:
-                self.overlap_problems.append(
-                    f"[{leg}] the masters were never outstanding in the same cycle"
-                )
-                clean = False
-        return clean
-
-    def _grade_data(self, leg: str, bus: str, accs: list[AbrAccess]) -> list[str]:
-        """What the VIP handed each request against the word it named."""
-        bad: list[str] = []
-        for k, a in enumerate(accs):
-            want = IDENTITY[a.addr].value
-            verdict = "ok" if a.resp == RESP_OKAY and a.data == want else "MISMATCH"
-            self.logger.info(
-                "ABR-PIPE [%s] #%d %s %s expected 0x%08x %s",
-                leg,
-                k,
-                _NAMES.get(a.addr, "?"),
-                a.describe(),
-                want,
-                verdict,
-            )
-            if verdict != "ok":
-                bad.append(
-                    f"#{k} arid={a.axi_id} {_NAMES.get(a.addr, '?')}@0x{a.addr:08x} returned "
-                    f"{a.resp_name} 0x{a.data:08x}, expected OKAY 0x{want:08x}"
-                )
-        return bad
-
-    def _grade_beats(self, leg: str, bus: str, accs: list[AbrAccess], rec) -> list[str]:
-        """Each R beat on the pins against the request whose ID it carried.
-
-        Requests are matched per ID in issue order, which is the AXI ordering
-        rule, so one ID with several reads outstanding is graded too.
-        """
-        bad: list[str] = []
-        pending: dict[int, list[AbrAccess]] = {}
-        for a in accs:
-            pending.setdefault(a.axi_id, []).append(a)
-        ar_ids = sorted(ar_id for _c, ar_id, _addr in rec.ar)
+        assert alone == VER1_EXP, (
+            f"CHK-ABR-CONTROL FAIL: the control read of 0x{A_VERSION1:08x} "
+            f"returned 0x{alone:08x}, expected 0x{VER1_EXP:08x}. This is the "
+            "golden every pipelined read is compared against; a zero or wrong "
+            "control would make that comparison vacuous."
+        )
         self.logger.info(
-            "ABR-PIPE [%s] %s AR order: %s",
-            leg,
-            bus,
-            " ".join(f"id{ar_id}@0x{addr:08x}" for _c, ar_id, addr in rec.ar),
+            "CHK-ABR-CONTROL PASS: 0x%08x reads 0x%08x alone, OKAY -- a non-zero "
+            "golden for the depth sweep",
+            A_VERSION1, alone,
         )
-        for cyc, rid, rresp, rdata in rec.r:
-            queue = pending.get(rid)
-            if not queue:
-                self.rid_problems.append(
-                    f"[{leg}] {bus}: R beat at cycle {cyc} carried RID {rid}, which no "
-                    "outstanding request of this leg used"
-                )
-                continue
-            a = queue.pop(0)
-            got = lane_value(a.addr, 4, rdata if rdata >= 0 else 0)
-            want = IDENTITY[a.addr].value
+
+        axi = self.env.ext_axi_agent.driver.axi
+        wrong: list[tuple[int, int, int | None]] = []
+        bad_resp: list[tuple[int, int, int]] = []
+        for depth in DEPTHS:
+            evs = [
+                axi.init_read(address=A_VERSION1, length=4, size=SIZE_4B, arid=i)
+                for i in range(depth)
+            ]
+            vals, lost = [], 0
+            for ev in evs:
+                try:
+                    await with_timeout(ev.wait(), READ_TIMEOUT_NS, "ns")
+                except Exception:
+                    lost += 1
+                    vals.append(None)
+                    continue
+                # worst_resp, not int(resp or 0): an unreadable response must
+                # not coerce to OKAY. It returns RESP_TIMEOUT instead.
+                code = worst_resp(getattr(ev.data, "resp", None))
+                if code != RESP_OKAY:
+                    # An error response is a different failure from silently
+                    # wrong data, and is recorded as such rather than folded
+                    # into the value compare.
+                    bad_resp.append((depth, len(vals), code))
+                vals.append(word(getattr(ev.data, "data", None), A_VERSION1))
+            shown = ", ".join("timeout" if v is None else f"0x{v:08x}" for v in vals)
             self.logger.info(
-                "ABR-PIPE [%s] %s R beat cycle=%d rid=%d rresp=%d lane(0x%08x)=0x%08x "
-                "expected 0x%08x %s",
-                leg,
-                bus,
-                cyc,
-                rid,
-                rresp,
-                a.addr,
-                got,
-                want,
-                "ok" if rresp == RESP_OKAY and got == want else "MISMATCH",
+                "m_axi depth=%d @0x%08x: %s  [timeouts=%d]",
+                depth, A_VERSION1, shown, lost,
             )
-            if rresp != RESP_OKAY or got != want:
-                bad.append(
-                    f"R beat rid={rid} for {_NAMES.get(a.addr, '?')}@0x{a.addr:08x} carried "
-                    f"rresp={rresp} 0x{got:08x}, expected OKAY 0x{want:08x}"
-                )
-        r_ids = sorted(rid for _c, rid, _resp, _data in rec.r)
-        issued = sorted(a.axi_id for a in accs)
-        if r_ids != issued or ar_ids != issued:
-            self.rid_problems.append(
-                f"[{leg}] {bus}: issued ARIDs {issued}, accepted {ar_ids}, responses "
-                f"carried RIDs {r_ids}"
+            for i, v in enumerate(vals):
+                if v != alone:
+                    wrong.append((depth, i, v))
+
+        assert not bad_resp, (
+            "CHK-ABR-PIPELINED-READ FAIL: "
+            + "; ".join(
+                f"depth {d} read {i} answered resp={c}" for d, i, c in bad_resp
             )
-        return bad
+            + f". Every read is of 0x{A_VERSION1:08x}, which answers OKAY when "
+            "read on its own, so the aperture refused a read it had already "
+            "accepted an AR for. See issue #2253."
+        )
+        assert not wrong, (
+            "CHK-ABR-PIPELINED-READ FAIL: "
+            + "; ".join(
+                f"depth {d} read {i} returned "
+                + ("no response" if v is None else f"0x{v:08x}")
+                for d, i, v in wrong
+            )
+            + f". Every read is of 0x{A_VERSION1:08x}, which returns 0x{alone:08x} when "
+            "read on its own. MLDSA_VERSION1 is read-only with unconditional "
+            "combinational readback, so it holds one value and the response carried "
+            "something else. See issue #2253."
+        )
+        self.logger.info(
+            "CHK-ABR-PIPELINED-READ PASS: every read at depths %s returned 0x%08x",
+            ", ".join(str(d) for d in DEPTHS),
+            alone,
+        )

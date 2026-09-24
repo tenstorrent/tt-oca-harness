@@ -12,10 +12,14 @@
 // instantiates it, and no SEP test states a requirement about one. Grading them
 // puts the score on plumbing the DUT does not own.
 //
-// The discriminator is `/upstream/` in the source path, NOT a `vendor/` prefix.
-// SEP's own SPI controller, TCM wrapper and clock gate live under
-// vendor/.../overlay/ and vendor/.../../../hw/, so a `vendor/` rule would drop
-// TT logic.
+// The discriminator is library CLASS, not authorship and not a path prefix: a
+// cell whose behaviour is the same in every design that instantiates it, and
+// about which no SEP test states a requirement. `/upstream/` in the source path
+// is the common case, not the rule -- the TT-owned och_prim and
+// och_prim_generic cells below are library-class too, and each block states
+// its own reason. A `vendor/` rule would be wrong in the other direction: SEP's
+// own SPI controller, TCM wrapper and clock gate live under
+// vendor/.../overlay/, so it would drop TT logic.
 //
 // Functional third-party IP stays graded regardless of authorship: AES, OTBN,
 // KMAC, CSRNG, EDN, HMAC, aon_timer, entropy_src and adams-bridge each have
@@ -221,3 +225,320 @@
 // denominator. It is DV-model code under hw/ip/efuse/dv/models, states no SEP
 // contract, and belongs out of the number with its parent.
 -module efuse_bank_reg
+
+// ===========================================================================
+// OWNERSHIP SCOPE -- third-party functional IP.
+//
+// Everything below is graded by its own upstream verification, not by SEP. This
+// is an OWNERSHIP decision, not an unreachability claim: the logic can fail, and
+// a hole here is not evidence that it cannot be reached. It follows the
+// precedent already set for the OTBN instruction set.
+//
+// What stays graded: every TT wrapper, interconnect, register block and shim --
+// hw/sys/sep, hw/ip and hw/common -- because that is where SEP states its
+// contracts and where an integration defect is SEP's to fix.
+//
+// The cost, stated plainly: integration defects DO occur inside vendored RTL as
+// TT configures it. Issue #2253 was found exactly that way. Scoping these out
+// means the score no longer points at them; the tests that target them still
+// run and still fail.
+//
+// 249 modules, derived from the graded set of run 20260923_064707. urg writes
+// a `(x)` suffix on a multi-instance module; that suffix is stripped before the
+// name is matched, or modules like kmac(x) and axi_dw_downsizer(x) silently miss
+// their -module line and stay in the score.
+//
+// MEASURED, same 169-leaf regression either side of this block (2026-09-23):
+//
+//              SCORE   LINE   COND  TOGGLE    FSM  BRANCH
+//   before     59.40  56.01  56.55   50.97  39.67   54.63   run 20260923_160542
+//   after      76.58  90.15  62.79   62.46  63.70   81.82   run 20260923_175145
+//
+// The two are NOT a delta: they measure different denominators. Every metric
+// rises because TT-owned logic is better covered than the third-party IP that
+// was dragging it down -- line most of all, 56.01 to 90.15.
+//
+// Both runs keep every elfile active. Waivers are NOT commented out alongside
+// this block: a waiver on an uninstrumented module is inert, and
+// sep_unreachable_exclusions.el also carries INSTANCE blocks on TT-owned
+// sep_dma_wrap that stay graded here. An earlier revision of this change
+// disabled two elfiles on the claim that every target in them had left scope;
+// that was false, and it cost ~12 FSM points by dropping valid waivers on
+// modules still in the denominator.
+// ===========================================================================
+
+// chipsalliance/adams-bridge -- 74 modules.
+// Adams Bridge PQC core. Verified upstream against the ACVP vectors, which SEP's own
+// KAT leaves re-run at the aperture. SEP does not modify the core; the TT wrapper
+// around it stays graded.
+-module abr_add_sub_mod
+-module abr_adder
+-module abr_ahb_slv_sif
+-module abr_ctrl
+-module abr_keccak_2share
+-module abr_keccak_round
+-module abr_msg_buffer
+-module abr_ntt_add_sub_mod
+-module abr_piso_multi
+-module abr_prim_lfsr
+-module abr_rd_lat_buffer
+-module abr_reg
+-module abr_sample_buffer
+-module abr_sampler_top
+-module abr_seq
+-module abr_sha3
+-module abr_sha3pad
+-module abr_splitter
+-module abr_top
+-module barrett_reduction
+-module cbd_sampler
+-module cbd_sampler_ctrl
+-module compress
+-module compress_ctrl
+-module compress_top
+-module decompose
+-module decompose_ctrl
+-module decompose_mod_2gamma2
+-module decompose_r1_lut
+-module decompose_usehint
+-module decompose_w1_encode
+-module decompress
+-module decompress_ctrl
+-module decompress_top
+-module exp_mask
+-module exp_mask_ctrl
+-module hintgen
+-module makehint
+-module norm_check
+-module norm_check_ctrl
+-module norm_check_top
+-module ntt_butterfly
+-module ntt_ctrl
+-module ntt_div2
+-module ntt_hybrid_butterfly_2x2
+-module ntt_karatsuba_pairwm
+-module ntt_mult_dsp
+-module ntt_shuffle_buffer
+-module ntt_top
+-module ntt_twiddle_lookup
+-module pkdecode
+-module power2round_core
+-module power2round_ctrl
+-module power2round_skencode
+-module power2round_top
+-module rej_bounded2
+-module rej_bounded_ctrl
+-module rej_sampler
+-module rej_sampler_ctrl
+-module sample_in_ball
+-module sample_in_ball_ctrl
+-module sample_in_ball_shuffler
+-module sib_mem
+-module sigdecode_h
+-module sigdecode_h_ctrl
+-module sigdecode_z_top
+-module sigdecode_z_unit
+-module sigencode_z_top
+-module sigencode_z_unit
+-module skdecode_ctrl
+-module skdecode_s1s2_unpack
+-module skdecode_t0_unpack
+-module skdecode_top
+-module skencode
+
+// chipsalliance/caliptra-rtl -- 5 modules.
+// Caliptra RTL. Third-party IP with its own upstream verification.
+-module kv_fsm
+-module kv_read_client
+-module kv_read_rule_check
+-module kv_write_client
+-module kv_write_rule_check
+
+// lowRISC/opentitan -- 127 modules.
+// OpenTitan functional IP. Each core ships with lowRISC's own block-level DV and
+// SEP does not modify it. SEP's claim is the integration -- the CSR aperture, the
+// reset and clock domain, the alert and interrupt wiring -- and that logic lives in
+// the TT wrappers, which stay graded.
+-module aes
+-module aes_cipher_control
+-module aes_cipher_control_fsm
+-module aes_cipher_control_fsm_n
+-module aes_cipher_control_fsm_p
+-module aes_cipher_core
+-module aes_control
+-module aes_control_fsm
+-module aes_control_fsm_n
+-module aes_control_fsm_p
+-module aes_core
+-module aes_ctr
+-module aes_ctr_fsm
+-module aes_ctr_fsm_n
+-module aes_ctr_fsm_p
+-module aes_ctrl_gcm_reg_shadowed
+-module aes_ctrl_reg_shadowed
+-module aes_dom_dep_mul_gf2pn
+-module aes_dom_indep_mul_gf2pn
+-module aes_dom_inverse_gf2p4
+-module aes_dom_inverse_gf2p8
+-module aes_ghash
+-module aes_key_expand
+-module aes_mix_columns
+-module aes_mix_single_column
+-module aes_prng_clearing
+-module aes_prng_masking
+-module aes_reg_status
+-module aes_reg_top
+-module aes_sbox
+-module aes_sbox_canright
+-module aes_sbox_dom
+-module aes_sel_buf_chk
+-module aes_shift_rows
+-module aes_sub_bytes
+-module aon_timer
+-module aon_timer_core
+-module aon_timer_reg_top
+-module csrng
+-module csrng_block_encrypt
+-module csrng_cmd_stage
+-module csrng_core
+-module csrng_ctr_drbg
+-module csrng_main_sm
+-module csrng_reg_top
+-module csrng_state_db
+-module edn
+-module edn_ack_sm
+-module edn_core
+-module edn_main_sm
+-module edn_reg_top
+-module entropy_src_adaptp_ht
+-module entropy_src_cntr_reg
+-module entropy_src_main_sm
+-module entropy_src_markov_ht
+-module entropy_src_repcnt_ht
+-module entropy_src_watermark_reg
+-module hmac
+-module hmac_core
+-module hmac_reg_top
+-module keccak_2share
+-module keccak_round
+-module kmac
+-module kmac_app
+-module kmac_core
+-module kmac_entropy
+-module kmac_errchk
+-module kmac_msgfifo
+-module kmac_reg_top
+-module kmac_staterd
+-module otbn
+-module otbn_alu_base
+-module otbn_alu_bignum
+-module otbn_controller
+-module otbn_core
+-module otbn_decoder
+-module otbn_instruction_fetch
+-module otbn_loop_controller
+-module otbn_lsu
+-module otbn_mac_bignum
+-module otbn_mac_bignum_fsm
+-module otbn_mod_result_selector
+-module otbn_predecode
+-module otbn_reg_top
+-module otbn_rf_base
+-module otbn_rf_base_ff
+-module otbn_rf_bignum
+-module otbn_rf_bignum_ff
+-module otbn_rnd
+-module otbn_scramble_ctrl
+-module otbn_stack
+-module otbn_start_stop_control
+-module otbn_vec_adder
+-module otbn_vec_multiplier
+-module otbn_vec_shifter
+-module otbn_vec_transposer
+-module prim_arbiter_ppc
+-module prim_crc32
+-module prim_dom_and_2share
+-module prim_gf_mult
+-module prim_intr_hw
+-module prim_lfsr
+-module prim_prince
+-module prim_reg_cdc
+-module prim_secded_inv_39_32_dec
+-module prim_secded_inv_39_32_enc
+-module prim_secded_inv_64_57_dec
+-module prim_secded_inv_64_57_enc
+-module prim_sha2
+-module prim_sha2_32
+-module prim_sha2_pad
+-module prim_subst_perm
+-module prim_trivium
+-module secure_dma
+-module secure_dma_reg_top
+-module sha3
+-module sha3pad
+-module spi_controller_byte_merge
+-module spi_controller_byte_select
+-module spi_controller_command_queue
+-module spi_controller_core
+-module spi_controller_data_fifos
+-module spi_controller_fsm
+-module spi_controller_shift_register
+-module spi_host
+-module spi_host_reg_top
+-module spi_host_window
+
+// pulp-platform/apb -- 1 modules.
+// pulp-platform APB infrastructure. Same reasoning as the AXI library above.
+-module apb_demux
+
+// pulp-platform/axi -- 36 modules.
+// pulp-platform AXI infrastructure. Third-party fabric IP with its own upstream
+// verification. NOTE the trade: SEP chooses these parameters (AxiMaxReads, the width
+// ratios) and integration defects DO surface inside this RTL. Scoping it out is an
+// ownership decision, not a claim that it cannot fail. The TT wrappers and
+// interconnect stay graded.
+-module axi_atop_filter
+-module axi_burst_splitter
+-module axi_burst_splitter_gran
+-module axi_burst_splitter_gran_ax_chan
+-module axi_burst_splitter_gran_counters
+-module axi_cut
+-module axi_demux
+-module axi_demux_id_counters
+-module axi_demux_simple
+-module axi_dw_converter
+-module axi_dw_downsizer
+-module axi_dw_upsizer
+-module axi_err_slv
+-module axi_id_prepend
+-module axi_id_remap
+-module axi_id_remap_table
+-module axi_isolate
+-module axi_isolate_inner
+-module axi_lite_demux
+-module axi_lite_isolate
+-module axi_lite_mailbox
+-module axi_lite_mailbox_slave
+-module axi_lite_mux
+-module axi_lite_to_apb
+-module axi_lite_to_apb_intf
+-module axi_lite_to_axi
+-module axi_lite_xbar
+-module axi_multicut
+-module axi_mux
+-module axi_to_axi_lite
+-module axi_to_axi_lite_id_reflect
+-module axi_to_detailed_mem
+-module axi_to_mem
+-module axi_xbar
+-module axi_xbar_unmuxed
+-module mem_stream_to_banks_detailed
+
+// tenstorrent/tt-picorv32 -- 5 modules.
+// picorv32 core, vendored upstream and unmodified. TT owns the fork, not the logic;
+// SEP's claim is the CPU integration, which lives in sep_cpu and stays graded.
+-module picorv32
+-module picorv32_axi_adapter
+-module picorv32_pcpi_div
+-module picorv32_pcpi_mul
+-module picorv32_regs

@@ -1,0 +1,252 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+= OCAH DTP Datasheet
+:doctype: article
+:notitle:
+:datasheet-status: Beta
+:product-short-name: DTP
+:product-long-name: Debug and Test Ports
+:revnumber: Initial version
+:revdate: 2026
+:copyright-year: 2026
+:copyright-holder: Tenstorrent USA, Inc.
+:icons: font
+
+[cols="60,40",frame=none,grid=none,stripes=none]
+|===
+a|
+[.datasheet-brand]
+OPEN CHIPLET ATLAS HARNESS
+a|
+image::../../ui-supplemental/img/tt_logo_color-yellow-black.png[Tenstorrent,pdfwidth=1.65in,align=right]
+|===
+
+[.datasheet-title]
+{product-short-name}
+
+[.datasheet-subtitle]
+{product-long-name}
+
+[.datasheet-status]
+{datasheet-status} release | Open-source RTL | Apache 2.0
+
+[cols="35,65",frame=none,grid=none,stripes=none]
+|===
+a|
+// datasheet-section: highlights
+[.datasheet-section]
+HIGHLIGHTS
+
+* JTAG TAP and boundary-scan access implementing IEEE 1149.1-2013; the
+  boundary-scan network and logic are supplied by adopter DFT tooling and pad IP
+* iJTAG instrument networks implementing IEEE 1687-2014
+* Configurable secondary TAP topology, compliant with IEEE 1838, for local and
+  downstream chiplet access
+* JTAG-to-AXI paths for SMC fabric, SMC OTP, and SEP OTP debug access
+* Cross-trigger routing between chiplet-local interfaces and external cross
+  trigger ports (CTPs)
+* Lifecycle-controlled disable inputs for all internal and external debug access
+  ports
+* Integrated debug clock-stop, boot-stall, and multi-target reset controls
+
+// datasheet-section: system-role
+[.datasheet-section]
+SYSTEM ROLE
+
+DTP sits between external debug and test equipment, OCAH management and
+security functions, adopter IP, and neighboring chiplets. It is a component of
+the OCAH SMU, a first-class subsystem delivered as part of OCAH whose reference
+components include the subsystem wrappers and IP-integration modules. DTP can
+also form a subsystem-level boundary when the adopter supplies its lifecycle
+policy, fabric, reset, clock, scan, and pad connections.
+
+a|
+// datasheet-section: overview
+[.datasheet-section]
+OVERVIEW
+
+The Debug and Test Ports (DTP) subsystem combines a JTAG Interface Unit based
+on IEEE 1149.1-2013, IEEE 1687-2014, and IEEE 1838 with a Cross Trigger Network
+for local and inter-chiplet triggers, boot, reset, and clock control. Optional
+JTAG-to-AXI bridges access the SMC fabric and SMC/SEP OTP interfaces; adopter-IP
+access depends on the downstream address map.
+
+Active-high disable inputs are synchronized into the
+scan domain and gate the corresponding paths. In an SMU with SEP, SEP supplies
+the lifecycle-control policy. Without SEP, debug and test paths are open by
+default; protection requires routing and gating all such access through a
+primary chiplet's SEP-controlled DTP path. For standalone DTP, the adopter
+supplies the policy source and permitted address ranges.
+
+// datasheet-section: at-a-glance
+[.datasheet-section]
+AT A GLANCE
+
+[cols="42,58",options="header"]
+!===
+!Feature !Description
+!External / internal triggers !1-32 CTPs / 0-32 internal interfaces
+!Clock-stop request inputs !1-32
+!Cross-trigger CSR port !32-bit address, 32-bit data AXI4-Lite
+!SMC debug manager !56-bit address, 64-bit data AXI4
+!OTP debug managers !32-bit address, 32-bit data AXI4-Lite
+!Primary instruction register !6 bits
+!===
+
+[.datasheet-small]
+The reference defaults are 16 CTPs, 10 internal trigger interfaces, and nine
+clock-stop request inputs. The default SMU uses two of the internal trigger
+interfaces and one of the clock-stop request inputs for SMC connections, so its
+external boundary exposes eight internal trigger interfaces and eight clock-stop
+request inputs; all 16 CTPs remain externally visible.
+
+|===
+
+// datasheet-section: system-context
+[.datasheet-section]
+SYSTEM CONTEXT
+
+image::../assets/dtp-block-diagram.svg[DTP system context,pdfwidth=7.5in,align=center]
+
+<<<
+
+[cols="50,2,48",frame=none,grid=none,stripes=none]
+|===
+a|
+// datasheet-section: capabilities
+[.datasheet-section]
+CAPABILITIES
+
+*JTAG and scan*
+
+* Primary TAP with IDCODE and BYPASS; SAMPLE/PRELOAD and EXTEST are
+  compile-time optional with boundary scan enabled
+* Compile-time optional INTEST, CLAMP, HIGHZ, RUNBIST,
+  EXTEST_PULSE, EXTEST_TRAIN, TMP, and CLAMP hold/release functions
+* Boundary-scan host interface plus separate DFD, secure DFT, non-secure DFT,
+  extended STAP, I/O STAP, SMC STAP, SEP STAP, and extra-STAP connections
+* Capability registers report enabled functions and JTAG-to-AXI limits
+
+*Debug and control*
+
+* Single and series JTAG-to-AXI transactions, including incrementing and
+  fixed-address series operations and target error reporting
+* Independent lifecycle disable fields for three bridge paths and eight
+  scan-side paths
+* Independently enabled reset-control outputs for SMC, SEP, and adopter logic
+* Debugger-controlled boot-stall and functional clock-stop requests
+
+*Cross trigger*
+
+* Bidirectional external CTP signaling and chiplet-local trigger interfaces
+* Software-controlled source/destination routing with point-to-point and
+  wire-OR behavior
+* Pulse synchronization or four-phase request/acknowledge mode per internal
+  trigger interface
+
+// datasheet-section: interfaces-and-configuration
+[.datasheet-section]
+INTERFACES AND CONFIGURATION
+
+[cols="28,72",options="header"]
+!===
+!Feature !Integration options
+!Clocks and resets !System clock/reset, JTAG TCK/TRST_N, JTAG power-on reset,
+scan reset, test enable
+!Lifecycle policy !Active-high, per-path debug and test disable controls
+!Scan !PTAP pins; BSR/iJTAG scan controls; I/O, SMC, SEP, and extra STAPs
+!Fabric !One AXI4 manager, two AXI4-Lite managers, one AXI4-Lite subordinate
+!Cross trigger !External pad controls, internal source/sink interfaces,
+clock-stop requests and output
+!Build-time !Instruction/path enables, extra STAP count, IDCODE/version fields,
+reset-control output types, trigger protocol modes, AXI type parameters
+!===
+
+// datasheet-section: document-control
+[.datasheet-section]
+DOCUMENT CONTROL
+
+[cols="18,20,30,32",options="header"]
+!===
+!Version !Date !Author !Change
+! ! ! !
+!===
+
+|
+a|
+// datasheet-section: integration-dependencies
+[.datasheet-section]
+INTEGRATION DEPENDENCIES
+
+* Generate lifecycle debug-disable policy outside DTP and connect the current
+  active-high debug-disable contract.
+* Replace the zero-valued IDCODE manufacturer, part, revision, and OCAH version
+  defaults with release-specific values.
+* Provide safe clock, reset, CDC, pad, and clock-gating integration, and
+  establish project-specific TCK constraints.
+* Configure the SMC, SEP, and adopter reset-control output types and enables,
+  and connect or correctly bypass every enabled scan and secondary-TAP chain.
+* Connect enabled AXI manager ports only to address maps permitted by the
+  product security policy. Disabled and unused interfaces require documented
+  tie-offs.
+* Integrate the cross-trigger CSR subordinate into the management address map
+  and connect the required local, external, and clock-stop endpoints.
+
+// datasheet-section: verification-and-maturity
+[.datasheet-section]
+VERIFICATION AND MATURITY
+
+[.beta-note]
+--
+The OCAH https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest/dashboard.html[verification dashboard]
+publishes the current verification and maturity status.
+The repository's open-source PyUVM environment exercises TAP operation,
+standard and optional instructions, JTAG-to-AXI data and error paths,
+backpressure/reset cases, iJTAG and STAP routing, cross-trigger modes, clock
+controls, and lifecycle-disable matrices. Scoreboards, reference models,
+coverage intent, and deliberately corrupted-checker tests guard against vacuous
+passes.
+
+This beta sheet does not specify a characterized operating frequency, and no
+third-party standards certification, silicon characterization, or portable
+frequency, area, and power figures are claimed. Those results depend on the
+selected configuration, libraries, constraints, physical implementation, and
+target process.
+--
+
+// datasheet-section: deliverables-and-further-information
+[.datasheet-section]
+DELIVERABLES
+
+* SystemVerilog RTL and dependency filelists
+* SystemRDL-derived cross-trigger register collateral
+* Integration, architecture, interface, and verification-plan documentation
+* Open-source cocotb/PyUVM tests, reusable JTAG/AXI agents, scoreboards,
+  reference models, and functional coverage
+* Lint collateral and lint, CDC, and RDC waivers
+* Synthesis and timing-constraint starting points
+* Apache License 2.0 repository distribution
+
+[.datasheet-section]
+RESOURCES
+
+Documentation: https://tenstorrent.github.io/tt-oca-harness/[tenstorrent.github.io/tt-oca-harness] +
+DTP source documentation: `hw/sys/dtp/doc/` +
+RTL: `hw/sys/dtp/rtl/` +
+Verification: `hw/sys/dtp/dv/` +
+Synthesis collateral: `hw/sys/dtp/synth/` +
+Integrator Guide: `doc/integrator/` +
+Project: https://github.com/tenstorrent/tt-oca-harness[github.com/tenstorrent/tt-oca-harness]
+
+// datasheet-section: terms
+[.datasheet-section]
+TERMS
+
+[.datasheet-small]
+BSR: boundary-scan register. CSR: control and status register. CTP: cross
+trigger port. DFD: design-for-debug. DFT: design for test. iJTAG: internal JTAG
+(IEEE 1687). OTP: one-time programmable. PTAP: primary TAP. SEP: security
+processor. SMC: system management controller. SMU: system management unit.
+STAP: secondary TAP. TMP: test mode persistence.
+
+|===
