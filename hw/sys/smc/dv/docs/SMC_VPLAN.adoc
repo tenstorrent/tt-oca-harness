@@ -10586,6 +10586,46 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 
 '''''
 
+[[sec-257-smc_i2c_target_loopback_test]]
+===== 257 `smc_i2c_target_loopback_test`
+
+*Source Module*: `smc_i2c_target_loopback_test`
+
+*BFM / Model*: `SmcI2cMasterVip` on the `tb_i2c0_*` pads as the external controller; observation on `STATUS`, `TARGET_FIFO_STATUS`, `ACQDATA` and the bytes read back
+
+*Objective*: `CTRL.LLPBK` in target mode, which `i2c.rdl` describes as a target that "sends all received SDA data back out", driven against a transmit FIFO with one free entry.
+
+*Test Coverage*:
+
+* The transmit FIFO depth is measured by filling it through `TXDATA` until `STATUS.TXFULL` sets. The FIFO is then reset and loaded with one entry fewer.
+* `LLPBK` is set with `ACQ_START_STOP_EN`, so the START and STOP are acquisition entries, and a two-byte write is made to the target.
+** The first byte takes the free transmit entry.
+** The second byte, and the STOP behind it, must wait in the acquisition FIFO.
+** The START entry carries no payload and must not wait.
+** `TARGET_FIFO_STATUS.ACQLVL` must show exactly two entries.
+* A read cannot unblock this state. The target holds a read until the acquisition FIFO is empty, and the acquisition FIFO cannot empty into a full transmit FIFO. Software breaks the tie by reading `ACQDATA`, which must return the waiting byte as a data entry. The STOP entry must then leave on its own.
+* A read of the whole transmit FIFO must return the bytes loaded through `TXDATA`, in order, followed by the first written byte looped back. It must leave the acquisition FIFO empty.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target, measure the transmit FIFO depth, reset it and load one entry fewer.
+. Set `LLPBK` and `ACQ_START_STOP_EN`, write two bytes from the external controller, and check `ACQLVL`.
+. Read `ACQDATA`, check that the acquisition FIFO empties, then read the full depth back.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-LOOPBACK-BLOCKED` |With one free transmit entry, the second written byte and its STOP waited in the acquisition FIFO, `ACQDATA` returned the byte as data, and the STOP then left
+|`CHK-I2C-TGT-LOOPBACK-ECHO` |The read returned the `TXDATA` bytes in order and then the first written byte, and left the acquisition FIFO empty
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
