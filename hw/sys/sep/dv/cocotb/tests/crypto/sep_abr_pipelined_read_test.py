@@ -98,7 +98,9 @@ class sep_abr_pipelined_read_test(sep_base_test):
         alone = seq.rdata & 0xFFFF_FFFF
         self.logger.info(
             "REPRO m_axi control: 0x%08x read alone -> 0x%08x (resp=%d)",
-            A_VERSION1, alone, seq.resp_code,
+            A_VERSION1,
+            alone,
+            seq.resp_code,
         )
 
         # The control read is the golden, so it has to be worth comparing
@@ -119,7 +121,8 @@ class sep_abr_pipelined_read_test(sep_base_test):
         self.logger.info(
             "CHK-ABR-CONTROL PASS: 0x%08x reads 0x%08x alone, OKAY -- a non-zero "
             "golden for the depth sweep",
-            A_VERSION1, alone,
+            A_VERSION1,
+            alone,
         )
 
         axi = self.env.ext_axi_agent.driver.axi
@@ -150,7 +153,10 @@ class sep_abr_pipelined_read_test(sep_base_test):
             shown = ", ".join("timeout" if v is None else f"0x{v:08x}" for v in vals)
             self.logger.info(
                 "m_axi depth=%d @0x%08x: %s  [timeouts=%d]",
-                depth, A_VERSION1, shown, lost,
+                depth,
+                A_VERSION1,
+                shown,
+                lost,
             )
             for i, v in enumerate(vals):
                 if v != alone:
@@ -158,9 +164,7 @@ class sep_abr_pipelined_read_test(sep_base_test):
 
         assert not bad_resp, (
             "CHK-ABR-PIPELINED-READ FAIL: "
-            + "; ".join(
-                f"depth {d} read {i} answered resp={c}" for d, i, c in bad_resp
-            )
+            + "; ".join(f"depth {d} read {i} answered resp={c}" for d, i, c in bad_resp)
             + f". Every read is of 0x{A_VERSION1:08x}, which answers OKAY when "
             "read on its own, so the aperture refused a read it had already "
             "accepted an AR for. See issue #2253."
@@ -168,8 +172,7 @@ class sep_abr_pipelined_read_test(sep_base_test):
         assert not wrong, (
             "CHK-ABR-PIPELINED-READ FAIL: "
             + "; ".join(
-                f"depth {d} read {i} returned "
-                + ("no response" if v is None else f"0x{v:08x}")
+                f"depth {d} read {i} returned " + ("no response" if v is None else f"0x{v:08x}")
                 for d, i, v in wrong
             )
             + f". Every read is of 0x{A_VERSION1:08x}, which returns 0x{alone:08x} when "

@@ -219,8 +219,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         # it before the next is issued, leaving nothing concurrent.
         axi = self.env.axi_agent.driver.axi
         events = [
-            axi.init_read(address=a, length=8, size=SIZE_8B, arid=i)
-            for i, a in enumerate(addrs)
+            axi.init_read(address=a, length=8, size=SIZE_8B, arid=i) for i, a in enumerate(addrs)
         ]
 
         for i, (ev, addr, exp) in enumerate(zip(events, addrs, want)):
@@ -301,9 +300,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         )
 
     async def _rd(self, addr: int, size: int) -> int:
-        seq = SepAxiAccessSeq(
-            "wide_rd", op=SepAxiOp.READ, addr=addr, length=1 << size, size=size
-        )
+        seq = SepAxiAccessSeq("wide_rd", op=SepAxiOp.READ, addr=addr, length=1 << size, size=size)
         await self.start_seq(seq)
         assert seq.resp_ok, (
             f"read @0x{addr:08x} size={size} returned resp={seq.resp_code}, expected OKAY"
