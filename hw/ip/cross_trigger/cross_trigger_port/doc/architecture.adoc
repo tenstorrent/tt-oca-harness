@@ -91,8 +91,10 @@ configured I/O pad. For I/O pads that do have explicit open-drain control, the
 request data signal should connect to the output-enable control pin of the I/O
 pad, and the output data signal of the I/O pin should be driven statically low.
 
-The pad input signal must be inverted before reaching the CTP so that an
-assertion of the active-low shared wire produces a rising edge at the receiver.
+The pad input signal connects to the CTP without inversion. The receiver
+generates a pulse on _CT_Dst_ on the assertion edge of the shared wire: the
+falling edge with `INVERT` clear, and the rising edge of an active-high wire
+with `INVERT` set.
 
 <<ctp-wire-or-behavior-figure>> shows the open-drain request path and pulse-stretching
 logic used in wire-OR mode.
