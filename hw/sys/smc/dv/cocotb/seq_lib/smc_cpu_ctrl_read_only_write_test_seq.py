@@ -59,10 +59,9 @@ _WRITE_PATTERN = 0xFFFF_FFFF_FFFF_FFFF
 _ACCESSES_PER_READ_ONLY = 3
 _ACCESSES_FOR_WDT = 4
 _MUTEX = "smc_cpu_ctrl/MUTEX"
-# Accesses one mutex costs: the read that finds it free and takes it, the write
-# that gives it back, the half-register write, the read that shows the field
-# survived it -- and takes the mutex again -- and the write that gives it back.
-_ACCESSES_PER_MUTEX = 5
+# Accesses one mutex costs: four reads that each take it, two half writes while
+# held, a full write carrying a one, two half writes while free, and the release.
+_ACCESSES_PER_MUTEX = 10
 
 
 class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
@@ -88,33 +87,47 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
         self.read_only_registers += 1
 
     async def _mutex_leg(self, index: int, addr: int, width: int) -> None:
-        """A half-register write over the half the mutex bit does not occupy.
+        """Every combination of the mutex bit and its byte lane, and a one on it.
 
         `cpu_ctrl.rdl` makes `MUTEX.mutex` bit 0 of a 64-bit register and
         describes it as "HW mutex. Reads will attempt to acquire mutex, 1 on
         success. If the mutex is already acquired, the read will return 0. To
         release the mutex, write any value to the register." So a read is the
-        only way to see the field, and it takes the mutex; the leaf gives back
-        everything it takes.
-        """
-        taken = await self.csr_read(f"MUTEX{index}_ACQUIRE", addr, length=width)
-        assert taken & 1, (
-            f"MUTEX[{index}] read 0x{taken:x}; the RDL returns 0 when the mutex is already "
-            f"acquired, so something else holds it and this leaf will not take it"
-        )
-        await self.csr_write(f"MUTEX{index}_RELEASE", addr, 0, length=width)
+        only way to see the field, it takes the mutex, and any write gives it
+        back -- whichever half the write selects.
 
-        # The mutex is free again, so the field holds its reset one. A
-        # four-byte write at the upper half leaves the byte lane bit 0 sits in
-        # deasserted, and a field that retains has to keep its value.
-        await self.csr_write(f"MUTEX{index}_UPPER_HALF", addr + width // 2, 0, length=4)
-        held = await self.csr_read(f"MUTEX{index}_HELD", addr, length=width)
-        assert held & 1, (
-            f"MUTEX[{index}] read 0x{held:x} after a four-byte write at its upper half; "
-            f"that write did not select the lane bit 0 sits in, so the mutex had to still "
-            f"be free and the read had to take it"
+        The leg writes the register with the bit both free and held, and with
+        the lane that carries it both selected and not: a four-byte write at the
+        low half selects it, one at the upper half does not. Each write while
+        held must give the mutex back, which the read after it shows by taking
+        it again; each write while free must leave it free. A one is also
+        carried on the bit's lane, which the releases elsewhere never do.
+        """
+        half = width // 2
+        name = f"MUTEX{index}"
+
+        async def take(tag: str, why: str) -> None:
+            got = await self.csr_read(f"{name}_{tag}", addr, length=width)
+            assert got & 1, f"MUTEX[{index}] read 0x{got:x} {why}"
+
+        await take("ACQUIRE", "at the start; the RDL returns 0 when something else holds it")
+        await self.csr_write(f"{name}_HELD_LOW", addr, 0, length=4)
+        await take("AFTER_HELD_LOW", "after a low-half write while held; any write releases it")
+        await self.csr_write(f"{name}_HELD_UPPER", addr + half, 0, length=4)
+        await take(
+            "AFTER_HELD_UPPER",
+            "after an upper-half write while held; that write did not select bit 0's "
+            "lane, but any write releases it",
         )
-        await self.csr_write(f"MUTEX{index}_RELEASE_AGAIN", addr, 0, length=width)
+        await self.csr_write(f"{name}_RELEASE_ONE", addr, 1, length=width)
+        await self.csr_write(f"{name}_FREE_LOW", addr, 1, length=4)
+        await self.csr_write(f"{name}_FREE_UPPER", addr + half, 0, length=4)
+        await take(
+            "AFTER_FREE",
+            "after a low-half and an upper-half write while free; neither may take it, so "
+            "it had to still be free",
+        )
+        await self.csr_write(f"{name}_RELEASE", addr, 0, length=width)
         self.mutexes_held += 1
 
     async def body(self) -> None:
@@ -174,11 +187,11 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             f"{self.mutexes_held} of {len(mutexes)} mutexes driven"
         )
         cocotb.log.info(
-            "CHK-CPU-CTRL-MUTEX-HALF-WRITE: each of the %d CPU_CTRL mutexes was found "
-            "free, given back, and then kept its free state across a four-byte write at "
-            "the half of the 64-bit register its bit does not occupy -- the read after "
-            "that write took the mutex, which it could only do if the field had survived "
-            "-- and every mutex this leaf took was given back",
+            "CHK-CPU-CTRL-MUTEX-HALF-WRITE: each of the %d CPU_CTRL mutexes took a "
+            "four-byte write at the half its bit occupies and at the half it does not, "
+            "both while held and while free, and a one on its bit's lane; every write while "
+            "held gave the mutex back, shown by the next read taking it again, every write "
+            "while free left it free, and every mutex this leaf took was given back",
             self.mutexes_held,
         )
 

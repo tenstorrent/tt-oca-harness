@@ -24,7 +24,9 @@ from smc_base_test import smc_base_test
 #   6 read-only registers x (read, write, read)                             18
 #   WDT_TIMEOUT_RESET: the pulse count read, the write of 0, the readback
 #     and the second pulse count read                                        4
-CPU_CTRL_READ_ONLY_WRITE_MIN_CSR_ACCESSES = 6 * 3 + 4
+#   4 MUTEX registers x (four acquiring reads, two half writes while held,
+#     a full write carrying a one, two half writes while free, the release) 40
+CPU_CTRL_READ_ONLY_WRITE_MIN_CSR_ACCESSES = 6 * 3 + 4 + 4 * 10
 
 
 @pyuvm.test()
