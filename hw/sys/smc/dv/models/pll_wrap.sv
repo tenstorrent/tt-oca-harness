@@ -29,9 +29,9 @@
 //
 // prim_ag_clk_mux (anti-glitch mux): clk0 is ref (safe fallback on reset,
 // SelectOnReset=0) and clk1 is the post-mux2 PLL path.  sel=1 permanently
-// selects clk1 in the behavioral model.  ag_rst_n starts 1 for 1 ps then
-// tracks rst_ni; the falling edge initialises the set/reset flops before
-// functional reset deasserts, ensuring ref is driven during reset.
+// selects clk1 in the behavioral model.  ag_rst_n is wired directly to
+// rst_ni; while reset is asserted the set_ni pin forces sel_sync_clk0=1,
+// ensuring ref (clk0) is driven during reset.
 //
 // clk_ref passes straight through — it is the reference and needs no mux.
 //
@@ -93,10 +93,8 @@ module pll_wrap
   // AG reset
   ///////////////
 
-  // Starts high for 1 ps so the AG mux set/reset flops receive a falling
-  // edge from their rst/set pins before functional reset deasserts.
-  logic ag_rst_n = 1'b1;
-  always @(rst_ni) ag_rst_n <= #1ps rst_ni;
+  logic ag_rst_n;
+  assign ag_rst_n = rst_ni;
 
   /////////////////////////////
   // ref -- straight through
