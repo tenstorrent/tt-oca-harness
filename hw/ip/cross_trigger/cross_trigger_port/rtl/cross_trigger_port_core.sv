@@ -116,9 +116,7 @@ module cross_trigger_port_core (
     .busy_o             (handshake_busy)
   );
 
-  // Wire-OR mode: ct_dst pulses on the assertion edge of the synchronized ct_req_out_din.
-  // The history bit and the synchronizer both reset to 0, so an active-low wire
-  // rising to its idle level after reset is not an assertion edge.
+  // Wire-OR mode: ct_dst pulses on the falling (assertion) edge of ct_req_out_din.
   logic wire_or_ct_dst;
   logic wire_or_req_out_prev;
   always_ff @(posedge clk_i or negedge rst_ni) begin
