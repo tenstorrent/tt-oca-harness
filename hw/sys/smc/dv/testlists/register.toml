@@ -36,3 +36,19 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "axil"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_periph_regblock_sweep_test"
+module = "smc_periph_regblock_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "register"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_read_only_write_test"
+module = "smc_cpu_ctrl_read_only_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "register"]
+run_modes = ["smoke"]
