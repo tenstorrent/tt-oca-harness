@@ -13,7 +13,9 @@ scope_epoch = "smc-vcs-cov-v1"
 # Register block structural facts: A1 NO-STALL and A2 NO-ERROR across the
 # PeakRDL blocks, plus A3 NO-READ-CHANNEL, A4 READ-NEVER-ERRORS and A5
 # INPUT-UNCONNECTED, which belong to one block each, and A6 SINGLEPULSE-RETAIN,
-# the retain row of a field the RDL declares singlepulse. B1 PARTIAL-LANE-WRITE
+# the retain row of a field the RDL declares singlepulse, A7 SINGLEPULSE-LOADS,
+# the load-skipping path of such a field's flop, and C1 CONTRADICTORY-PATH, a
+# branch path whose own decisions contradict. B1 PARTIAL-LANE-WRITE
 # joins them and is the bench's own: the AXI agent writes whole 32-bit words, so
 # on a block whose cpuif is no wider no write-branch row that needs a lane off
 # has an access behind it here. A block with a wider cpuif takes a half-word
@@ -57,7 +59,11 @@ args = ["-elfile", "{path}"]
 # Features the integration leaves out (P1 NTRACE-OFF, P2 SKIP-TIED-OFF, P3
 # WREN-TIED, P4 SINGLE-SOURCE, P5 INSTR-TYPE-CONST, P6 LC-STATE-OFF, P7
 # NO-ERROR-CAP, P8 WREN-TIED-ZERO, P9 DEBUG-WIDTH-64, P10
-# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING): the
+# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING, P13
+# CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16 SINK-ENABLE-CONST, P17
+# ONE-TRACE-CORE, and F3 TIEOFF's branch paths): the DFD clamps, JTAG MMR
+# requester and eFuse secure test mode are tied off, the sink enables and trace
+# core count are fixed by parameters, and the
 # trace wrapper is
 # instantiated with zero
 # N-trace instances, the AXI filter with its skip input tied to zero, the eFuse

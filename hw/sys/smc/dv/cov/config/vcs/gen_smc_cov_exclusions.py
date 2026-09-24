@@ -162,6 +162,20 @@ state variable as a transition:
   occupies that one state. Reset behaviour is graded by the reset tests, not
   by landing a reset in each protocol state.
 
+Five more tie-offs and parameters decide branch decisions rather than condition
+rows. The DFD's gated functional clamps are each a constant OR of two tied
+inputs (P13 CLAMP-TIED); its JTAG MMR requester's valid is tied to zero (P14
+JTAG-MMR-TIED); the eFuse's secure test mode input is tied to zero (P15
+SECURE-TM-TIED); `mmrs` derives its NTR and DST sink enables from parameters
+(P16 SINK-ENABLE-CONST); and the trace sink has one core (P17 ONE-TRACE-CORE).
+P1, P4, P6, F3 and A1 read branch paths as well as rows, by the same signals.
+
+Two regblock facts are PeakRDL's own. A field the RDL declares singlepulse sets
+its load_next on every arm, so the path of its flop that skips the load never
+runs (A7 SINGLEPULSE-LOADS); and the response logic tests each ack alone inside
+a test of the two ORed, so the path with the OR true and both acks false is a
+contradiction urg lists as a path (C1 CONTRADICTORY-PATH).
+
 Input is the set of templates urg writes for the merged database::
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions cond+branch+fsm -report <dir>
@@ -175,9 +189,14 @@ pattern. The report scores each operand of a condition again beneath it, and
 the classes that take operand rows pair each template point with its report
 table within its own source line, since the operand of a write has the same
 text in every bit-0 field of a block. A condition vector is read from the report's EXPRESSION table alone
-and a branch arm from the table of the construct at that source line, and an
-arm the report scores as a path through several decisions rather than as one
-direction is left graded. The rule is a backstop, not the argument: a class
+and a branch arm from the table of the construct at that source line. Where
+the report scores a construct as paths through several decisions, as it does
+for a case statement or an else-if chain, each path is read whole: the decision
+columns are read from the annotated source, the path is paired with its
+template entry by its column values, and it is written only when one of its own
+decisions is out of reach under a class's fact, or when its decisions have no
+common solution (C1). A comparison is one opaque truth value to that test, so
+two bit fields are never read as one. The rule is a backstop, not the argument: a class
 states a fact, and the fact has to be narrow enough that the pattern would
 never have named a reachable point in the first place. The report has to be the one urg
 wrote without an exclusion file: the runner keeps it as
@@ -458,7 +477,8 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
 A3 = (
     "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the "
     "write channel only -- its read-channel select has no branch for that map -- so this "
-    "block's arvalid is never asserted and a row that needs it high cannot occur. A row over "
+    "block's arvalid is never asserted and a row or branch path that needs it high cannot "
+    "occur. A row over "
     "ar_accept alone stays graded: the block ORs it with aw_accept, which the write channel "
     "does assert."
 )
@@ -611,8 +631,9 @@ WREN_HI = re.compile(r"SignalSnapshotNode\d+Eap\d+Hi_F_Value_WrEn")
 WREN_ZERO = r"MMR_CDbgEapStatus_F_Rsvd3116_WrEn"
 P6 = (
     "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so "
-    "the lifecycle-state arms of the shadow registers and the guard are never entered and the "
-    "RMA token comparisons they hold have no access that can reach them. The fuse-sense, "
+    "the lifecycle-state arms of the interface controller, the shadow registers, their access "
+    "control and the guard are never entered and the RMA token comparisons they hold have no "
+    "access that can reach them. The fuse-sense, "
     "security-disable and image-lock terms outside those arms stay graded."
 )
 P7 = (
@@ -620,6 +641,51 @@ P7 = (
     "NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs a constant "
     "zero, so a term that needs either of them asserted is false for the life of the design. "
     "The read and write backpressure rows of the same expressions stay graded."
+)
+
+P13 = (
+    "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | "
+    "i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST "
+    "sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network "
+    "interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR "
+    "interface takes the AND over every block, the CLA's included, so both are zero as well. "
+    "Each gated clamp holds one value for the life of the design and the ternary arm the other "
+    "value selects never executes."
+)
+P14 = (
+    "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it "
+    "directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high "
+    "(gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
+)
+P15 = (
+    "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the "
+    "secure-test-mode arms of the shadow registers, their access control and the guard never "
+    "execute. The program-lock and read-lock arms beside them stay graded."
+)
+P16 = (
+    "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the "
+    "default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and "
+    "DST_SINK_EN as one, and the arm of each if on those enables that the constant does not "
+    "select never executes."
+)
+P17 = (
+    "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of "
+    "NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so "
+    "NUM_CORES > 1 is false and its then arm never executes."
+)
+A7 = (
+    "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL "
+    "sets the field's load_next on its software-write arm and on the else arm that clears it "
+    "back to zero, so the storage loads on every clock out of reset and the path of its flop "
+    "that skips the load never runs."
+)
+C1 = (
+    "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if "
+    "chain's decisions as a path, including combinations whose decisions contradict one "
+    "another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then "
+    "tests each ack alone, so the path through the outer branch with both inner tests false "
+    "needs the disjunction true and both of its terms false. A path is written only when its "
+    "own decisions, read over the same signals, have no common solution."
 )
 
 # (file suffix, first line, last line) of the source region a fact covers, for
@@ -973,6 +1039,65 @@ FEATURE_BRANCH_FACTS: "dict[str, list[tuple[str, object, str]]]" = {
     "idma_legalizer_rw_axi": [(P7, re.compile(r"^kill_i$"), "1")],
 }
 
+# Facts over the decisions of a multi-decision branch path, as (class, signals,
+# value): a path is written when one of its decisions is out of reach with the
+# signals held at that value and within reach with them free.
+NTRACE_SIGNAL = re.compile(r"^(?!.*(?:ntraceordst|dstorntrace))(?:trntr|insntrace|.*ntrace)", re.I)
+LC_STATE_OFF = re.compile(r"^(?:HAS_LC_STATE|is_lc_state_access)$")
+SECURE_TM = re.compile(r"^secure_tm_i$")
+BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
+    "efuse_guard": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
+    "efuse_interface_controller": [(P6, LC_STATE_OFF, 0)],
+    "efuse_shadow_reg_access_control": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
+    "efuse_shadow_regs": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
+    "trace_sink": [(P1, NTRACE_SIGNAL, 0), (P4, SINGLE_SOURCE_DEAD, 0)],
+    "mmr_req_ctrl": [
+        (P14, re.compile(r"^gnt_is_jtag$"), 0),
+        (P16, re.compile(r"^NTR_SINK_EN$"), 0),
+        (P16, re.compile(r"^DST_SINK_EN$"), 1),
+    ],
+    "cla_wrapper": [(P13, re.compile(r"^cla_gated_func_clamp\b"), 0)],
+    "dst_wrapper": [(P13, re.compile(r"^dst_gated_func_clamp\b"), 0)],
+    "tnif_wrapper": [(P13, re.compile(r"^(?:dst|tnif)_gated_func_clamp\b"), 0)],
+    "mmrs": [
+        (P13, re.compile(r"^intf_gated_func_clamp$"), 0),
+        (P14, re.compile(r"^i_jtag_mmr_req_vld$"), 0),
+    ],
+    "trace_wrapper": [
+        (P13, re.compile(r"^(?:dst_sink|funnel)_gated_func_clamp$"), 0),
+        (P13, re.compile(r"^ntr_sink_gated_func_clamp$"), 1),
+    ],
+    "trace_axi_master": [(F3, re.compile(r"^axi_resp_i\.(?:aw_ready|w_ready|b_valid)$"), 0)],
+}
+
+# Decisions on an elaboration-time constant: (class, condition, value it holds).
+BRANCH_CONSTANT_DECISIONS: "dict[str, list[tuple[str, str, int]]]" = {
+    "trace_sink": [(P17, "NUM_CORES>1", 0)],
+}
+
+# Case items of a state F3 leaves unreachable.
+BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
+    "trace_axi_master": (F3, frozenset({"AW_HANDSHAKE", "W_HANDSHAKE", "RESP_HANDSHAKE"})),
+}
+
+
+def feature_path_class(
+    module: str, construct: "BranchConstruct", values: tuple[str, ...]
+) -> "str | None":
+    """The feature class that forbids a branch path, or None."""
+    dead = BRANCH_DEAD_ITEMS.get(module)
+    if dead and construct.decisions[0][0] == "case" and values[0] in dead[1]:
+        return dead[0]
+    for reason, condition, value in BRANCH_CONSTANT_DECISIONS.get(module, []):
+        for (_, text), taken in zip(construct.decisions, values):
+            if _bare(text) == condition and taken in ("0", "1") and int(taken) != value:
+                return reason
+    for reason, forced, value in BRANCH_PATH_FACTS.get(module, []):
+        if path_needs_forced_away(construct, values, forced, value):
+            return reason
+    return None
+
+
 # PeakRDL builds a software write as storage-with-the-lane-masked OR incoming
 # data, and urg scores the two operands as one row each. RETAIN is the row where
 # the first operand alone carries the result: the storage holds a one and the
@@ -1002,6 +1127,11 @@ I2C_SINGLEPULSE = (
 # are facts about one block, checked against its own source, not about a
 # family. The vector pattern pins which row of a multi-term expression the
 # fact covers, so a sibling row that an access can reach stays graded.
+# The same per-block facts over the decisions of a branch path.
+REGBLOCK_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
+    "uart_16550_main_wo_reg": [(A3, re.compile(r"^(?:s_)?axil_arvalid$"), 0)],
+}
+
 EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
     "uart_16550_main_wo_reg": [
         (A3, re.compile(r"^\(\(\(!\w*arvalid\)\)"), re.compile(r"^0")),
@@ -1351,6 +1481,338 @@ def branch_is_uncovered(
     return branches.get((module, int(line), direction)) == "Not Covered"
 
 
+class BranchConstruct(NamedTuple):
+    """One branch construct of the report: its decisions and the status of each path."""
+
+    line: int
+    decisions: "tuple[tuple[str, str | None], ...]"
+    paths: "tuple[tuple[tuple[str, ...], str], ...]"
+
+
+class BranchTemplate(NamedTuple):
+    """One branch construct of urg's exclusion template, with an entry per path."""
+
+    line: int
+    source: str
+    condition: str
+    paths: "tuple[tuple[tuple[str, ...], str], ...]"
+
+
+REPORT_SOURCE_LINE = re.compile(r"^(\d+)\s+\S")
+DECISION_MARK = re.compile(r"-(\d+)-")
+UNANNOTATED_DECISION = re.compile(r"^\s+-(\d+)-\s+(?!-\d+-)(\S.*?)\s*$")
+DECISION_KEYWORD = re.compile(r"(?:end\s+)?(?:else\s+)?(?:unique\s+|priority\s+)?(if|case)\s*(\()")
+TEMPLATE_BRANCH_ROW = re.compile(r'^// (Branch (\d+) "\d+" "(.*)" \(\d+\) "(.*)")$')
+TEMPLATE_BRANCH_HEAD = re.compile(r'^// Branch (\d+) "\d+" "(.*)"$')
+
+
+def _parenthesised(text: str, start: int) -> "str | None":
+    """The balanced parenthesised text that opens at text[start]."""
+    depth = 0
+    for i in range(start, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return None
+
+
+def _ternary_selector(text: str, question: int) -> "str | None":
+    """The operand left of the `?` at text[question], read back to its delimiter."""
+    depth = 0
+    i = question - 1
+    while i >= 0:
+        c = text[i]
+        if c in ")]}":
+            depth += 1
+        elif c in "([{":
+            if depth == 0:
+                break
+            depth -= 1
+        elif depth == 0 and c in ":?,;":
+            break
+        elif depth == 0 and c == "=":
+            if i > 0 and text[i - 1] in "=!<>":
+                i -= 2
+                continue
+            if i + 1 < len(text) and text[i + 1] == "=":
+                i -= 1
+                continue
+            break
+        i -= 1
+    return text[i + 1 : question].strip() or None
+
+
+def _decision(source_line: str, column: int) -> "tuple[str, str | None]":
+    """(kind, condition) of the decision whose marker sits at this column of a source line.
+
+    The report writes each `-N-` marker under the `if`, `case` or `?` it numbers,
+    in the same columns as the annotated source line above it. A condition that
+    continues onto the next line is not read and gives None.
+    """
+    m = re.match(r"^\d+\s+", source_line)
+    low = m.end() if m else 0
+    if column < len(source_line) and source_line[column] == "?":
+        return ("?", _ternary_selector(source_line[low:], column - low))
+    m = DECISION_KEYWORD.match(source_line[column:])
+    if m:
+        return (m.group(1), _parenthesised(source_line[column:], m.start(2)))
+    return ("", None)
+
+
+def branch_constructs(modinfo: Path) -> dict[str, list[BranchConstruct]]:
+    """module -> every branch construct of the report, in report order, all paths included."""
+    out: dict[str, list[BranchConstruct]] = {}
+    lines = modinfo.read_text(errors="replace").splitlines()
+    module = None
+    last: "tuple[int, str] | None" = None
+    decisions: dict[int, tuple[str, str | None]] = {}
+    first: "int | None" = None
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = re.match(r"^(\w+) Coverage for (Module|Instance) : (\S+?)(?:\(|\s|$)", line)
+        if m:
+            module = m.group(3) if m.group(1) == "Branch" and m.group(2) == "Module" else None
+            last, decisions, first = None, {}, None
+            i += 1
+            continue
+        if module is None:
+            i += 1
+            continue
+        if line.startswith("Branches:"):
+            j = i + 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+            width = len(lines[j].split()) - 1 if j < len(lines) else 0
+            k = j + 1
+            paths = []
+            while k < len(lines) and lines[k].strip():
+                tokens = lines[k].split()
+                if tokens[-2:] == ["Not", "Covered"]:
+                    paths.append((tuple(tokens[:-2]), "Not Covered"))
+                elif tokens[-1:] == ["Covered"]:
+                    paths.append((tuple(tokens[:-1]), "Covered"))
+                k += 1
+            if first is not None:
+                columns = tuple(decisions.get(n, ("", None)) for n in range(1, width + 1))
+                out.setdefault(module, []).append(BranchConstruct(first, columns, tuple(paths)))
+            last, decisions, first = None, {}, None
+            i = k
+            continue
+        m = REPORT_SOURCE_LINE.match(line)
+        listed = UNANNOTATED_DECISION.match(line)
+        if m:
+            last = (int(m.group(1)), line)
+        elif listed and last is not None:
+            # The report lists the decisions of a construct it cannot annotate
+            # in place, one per line, beneath the source line.
+            n, text = int(listed.group(1)), listed.group(2)
+            if text.endswith(" ? ...;"):
+                decisions[n] = ("?", text[: -len(" ? ...;")])
+            else:
+                decisions[n] = _decision(text, 0)
+            if n == 1:
+                first = last[0]
+        elif last is not None:
+            for mark in DECISION_MARK.finditer(line):
+                n = int(mark.group(1))
+                decisions[n] = _decision(last[1], mark.start())
+                if n == 1:
+                    first = last[0]
+        i += 1
+    return out
+
+
+def _path_values(path: str) -> tuple[str, ...]:
+    return tuple(re.sub(r"\s+", "", path).split(","))
+
+
+def branch_templates(template: Path) -> dict[str, list[BranchTemplate]]:
+    """module -> every branch construct of urg's branch template, in template order."""
+    out: dict[str, list[BranchTemplate]] = {}
+    module = source = ""
+    for line in template.read_text(errors="replace").splitlines():
+        m = MODULE_RE.match(line)
+        if m:
+            module = m.group(1)
+            continue
+        m = TEMPLATE_SOURCE.match(line)
+        if m:
+            source = f"{m.group(1)}:{m.group(2)}"
+            continue
+        m = TEMPLATE_BRANCH_ROW.match(line)
+        if m and module:
+            construct = out[module][-1]
+            if not m.group(4).startswith(m.group(3) + " "):
+                continue
+            path = _path_values(m.group(4)[len(m.group(3)) + 1 :])
+            out[module][-1] = construct._replace(paths=construct.paths + ((path, m.group(1)),))
+            continue
+        m = TEMPLATE_BRANCH_HEAD.match(line)
+        if m and module:
+            line_no = int(source.rpartition(":")[2] or 0)
+            out.setdefault(module, []).append(BranchTemplate(line_no, source, m.group(2), ()))
+    return out
+
+
+def _bare(condition: "str | None") -> str:
+    """A condition without spaces, outer parentheses or the value of a loop index."""
+    text = re.sub(r"\[\w+\]", "[]", re.sub(r"\s+", "", condition or ""))
+    while text.startswith("(") and _parenthesised(text, 0) == text:
+        text = text[1:-1]
+    return text
+
+
+def align_branches(
+    report: list[BranchConstruct], template: list[BranchTemplate]
+) -> list[tuple[BranchTemplate, BranchConstruct]]:
+    """Pair template constructs with report constructs whose first decision reads the same.
+
+    A generate loop repeats one construct at one line, so constructs are paired
+    by their order within a line. The template dates a decision inside an
+    instance's port list from the instance's first line and the report from the
+    decision's own, so what is left is paired by condition, in order, a few lines
+    on, and only where both sides hold the same number of that condition.
+    """
+    by_line: dict[int, list[BranchConstruct]] = {}
+    for c in report:
+        by_line.setdefault(c.line, []).append(c)
+    seen: dict[int, int] = {}
+    out = []
+    used: set[int] = set()
+    left: list[BranchTemplate] = []
+    for t in template:
+        n = seen.get(t.line, 0)
+        seen[t.line] = n + 1
+        candidates = by_line.get(t.line, [])
+        c = candidates[n] if n < len(candidates) else None
+        if c is not None and c.decisions and _bare(c.decisions[0][1]) == _bare(t.condition):
+            out.append((t, c))
+            used.add(id(c))
+        else:
+            left.append(t)
+    rest: dict[str, list[BranchConstruct]] = {}
+    for c in report:
+        if id(c) not in used and c.decisions:
+            rest.setdefault(_bare(c.decisions[0][1]), []).append(c)
+    wanted: dict[str, list[BranchTemplate]] = {}
+    for t in left:
+        wanted.setdefault(_bare(t.condition), []).append(t)
+    for key, ts in wanted.items():
+        cs = rest.get(key, [])
+        if len(cs) != len(ts):
+            continue
+        pairs = list(zip(ts, cs))
+        if all(0 < c.line - t.line <= 16 for t, c in pairs):
+            out += pairs
+    return out
+
+
+# A comparison is one opaque truth value to the evaluator: its two sides are
+# wider than a bit, so reading them as bits could invent a contradiction. The
+# same comparison text is the same value wherever it recurs in one path.
+COMPARISON = re.compile(r"\(([^()]*?[^=!<>])\s*(==|!=|>=|<=|>|<)\s*([^=<>][^()]*?)\)")
+
+
+def _opaque(condition: str, names: dict[str, str]) -> "str | None":
+    before = None
+    while before != condition:
+        before = condition
+        condition = COMPARISON.sub(
+            lambda m: names.setdefault(m.group(0), f"cmp{len(names)}_"), condition
+        )
+    if re.search(r"==|!=|>=|<=|(?<![<>])[<>](?![<>])", condition):
+        return None
+    return condition
+
+
+def _binary_decisions(
+    construct: BranchConstruct, values: tuple[str, ...]
+) -> "tuple[list[str], str] | None":
+    """The if and ternary decisions a path takes, as conditions and one bit each."""
+    names: dict[str, str] = {}
+    terms, vector = [], ""
+    for (kind, condition), value in zip(construct.decisions, values):
+        if value not in ("0", "1") or kind not in ("if", "?") or not condition:
+            continue
+        term = _opaque(condition, names)
+        if term is None:
+            return None
+        terms.append(term)
+        vector += value
+    return terms, vector
+
+
+def contradictory_path(construct: BranchConstruct, values: tuple[str, ...]) -> bool:
+    """Whether a path's own decisions, read over the same signals, have no common solution."""
+    decided = _binary_decisions(construct, values)
+    if decided is None or len(decided[0]) < 2:
+        return False
+    return _row_satisfiable(tuple(decided[0]), decided[1], None, 0) is False
+
+
+def path_needs_forced_away(
+    construct: BranchConstruct,
+    values: tuple[str, ...],
+    forced: "re.Pattern[str]",
+    value: int,
+) -> bool:
+    """Whether one decision of the path is out of reach with the forced signals held."""
+    for (kind, condition), taken in zip(construct.decisions, values):
+        if taken not in ("0", "1") or kind not in ("if", "?") or not condition:
+            continue
+        term = _opaque(condition, {})
+        if term is not None and needs_forced_away([term], taken, forced, value):
+            return True
+    return False
+
+
+def singlepulse_load_fields(source: str) -> frozenset[str]:
+    """Fields of a generated register block whose load_next is set on every arm."""
+    path = Path(source.split(":")[0])
+    if not path.is_file():
+        return frozenset()
+    out = set()
+    for m in re.finditer(
+        r"always_comb begin(.*?)\n    end\n", path.read_text(errors="replace"), re.S
+    ):
+        body = m.group(1)
+        field = re.search(r"field_combo\.([\w.\[\]]+)\.load_next = load_next_c;", body)
+        if field is None or "// singlepulse clears back to 0" not in body:
+            continue
+        loads = re.findall(r"load_next_c = ([^;]*);", body)
+        if loads.count("'0") == 1 and set(loads) == {"'0", "'1"}:
+            out.add(re.sub(r"\[\w+\]", "[]", field.group(1)))
+    return frozenset(out)
+
+
+def singlepulse_skip_path(
+    construct: BranchConstruct, values: tuple[str, ...], fields: frozenset[str]
+) -> bool:
+    """Whether a path skips the load of a field whose load_next is always set."""
+    for (kind, condition), taken in zip(construct.decisions, values):
+        m = re.fullmatch(r"\(field_combo\.([\w.\[\]]+)\.load_next\)", condition or "")
+        if kind == "if" and taken == "0" and m and re.sub(r"\[\w+\]", "[]", m.group(1)) in fields:
+            return True
+    return False
+
+
+def uncovered_paths(
+    report: list[BranchConstruct], template: list[BranchTemplate]
+) -> "list[tuple[BranchConstruct, tuple[str, ...], str]]":
+    """(construct, path values, template entry) for every path the report marks Not Covered."""
+    out = []
+    for t, c in align_branches(report, template):
+        status = {values: s for values, s in c.paths}
+        for values, entry in t.paths:
+            if len(values) == len(c.decisions) and status.get(values) == "Not Covered":
+                out.append((c, values, entry))
+    return out
+
+
 class Section:
     def __init__(self, checksum: str, module: str) -> None:
         self.checksum = checksum
@@ -1467,12 +1929,41 @@ def select_extra(
     return None
 
 
+REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, B1, C1)
+FEATURE_CLASSES = (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16, P17, F3)
+
+
+def metric_blocks(
+    templates: dict[str, dict[str, Section]],
+    module: str,
+    block: list[tuple[str, str]],
+    order: tuple[str, ...],
+) -> list[str]:
+    """A module's entries as one block per metric, each under that metric's checksum.
+
+    urg checks a block's checksum against the metric of the entries it holds, and
+    the condition and branch templates give one module different checksums.
+    """
+    out: list[str] = []
+    for metric, kind in (("cond", "Condition "), ("branch", "Branch ")):
+        entries = [(r, e) for r, e in block if e.startswith(kind)]
+        if not entries:
+            continue
+        out += ["", f"CHECKSUM: {templates[metric][module].checksum}"]
+        out += [f'ANNOTATION: "{r}"' for r in order if any(x == r for x, _ in entries)]
+        out.append(f"MODULE: {module}")
+        out += [e for _, e in entries]
+    return out
+
+
 def render_regblock(
     templates: dict[str, dict[str, Section]],
     uncovered: dict[tuple[str, str], set[str]],
     branches: dict[tuple[str, int, str], str],
     report_points_by_module: dict[str, list[Point]],
     template_points_by_module: dict[str, list[TemplatePoint]],
+    paths: "dict[str, list[tuple[BranchConstruct, tuple[str, ...], str]]]",
+    branch_sources: dict[str, str],
 ) -> tuple[str, int]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
@@ -1494,12 +1985,10 @@ def render_regblock(
     for module in modules:
         block: list[tuple[str, str]] = []
         facts_cache: dict[str, tuple[bool, bool]] = {}
-        checksum = ""
         for metric in ("cond", "branch"):
             section = templates[metric].get(module)
             if section is None:
                 continue
-            checksum = checksum or section.checksum
             for src, entry in section.entries:
                 stall0, noerr = facts_cache.setdefault(
                     src.split(":")[0], regblock_facts(module, src)
@@ -1515,7 +2004,7 @@ def render_regblock(
             reason = select_extra(module, entry, uncovered, src, branches)
             if reason:
                 block.append((reason, entry))
-        # Last, the write-branch rows that need a write lane off: A6's where a
+        # Then the write-branch rows that need a write lane off: A6's where a
         # singlepulse field's retain operand is asked for the storage at one,
         # which the design forbids at any cpuif width, and B1's for the rest,
         # which only a block no wider than the agent's write leaves unreachable.
@@ -1553,14 +2042,35 @@ def render_regblock(
                     continue
                 block.append((reason, entry))
                 taken.add(entry)
+        source = branch_sources.get(module, "")
+        if is_regblock_source(source):
+            stall = regblock_facts(module, source)[0]
+            pulses = singlepulse_load_fields(source)
+            for construct, values, entry in paths.get(module, []):
+                if entry in taken:
+                    continue
+                if contradictory_path(construct, values):
+                    reason = C1
+                elif stall and path_needs_forced_away(construct, values, STALL_OPERAND, 0):
+                    reason = A1
+                elif singlepulse_skip_path(construct, values, pulses):
+                    reason = A7
+                else:
+                    reason = next(
+                        (
+                            r
+                            for r, forced, value in REGBLOCK_PATH_FACTS.get(module, [])
+                            if path_needs_forced_away(construct, values, forced, value)
+                        ),
+                        None,
+                    )
+                if reason is None:
+                    continue
+                block.append((reason, entry))
+                taken.add(entry)
         if not block:
             continue
-        out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (A1, A2, A3, A4, A5, A6, B1):
-            if any(r == reason for r, _ in block):
-                out.append(f'ANNOTATION: "{reason}"')
-        out.append(f"MODULE: {module}")
-        out += [e for _, e in block]
+        out += metric_blocks(templates, module, block, REGBLOCK_CLASSES)
         count += len(block)
     return "\n".join(out) + "\n", count
 
@@ -1708,6 +2218,7 @@ def render_feature(
     uncovered: dict[tuple[str, str], set[str]],
     branches: dict[tuple[str, int, str], str],
     terms: dict[tuple[str, str], list[str]],
+    paths: "dict[str, list[tuple[BranchConstruct, tuple[str, ...], str]]]",
 ) -> tuple[str, int]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
@@ -1724,13 +2235,17 @@ def render_feature(
         "//==================================================",
     ]
     count = 0
-    modules = sorted(set(FEATURE_FACTS) | set(FEATURE_BRANCH_FACTS))
+    modules = sorted(
+        set(FEATURE_FACTS)
+        | set(FEATURE_BRANCH_FACTS)
+        | set(BRANCH_PATH_FACTS)
+        | set(BRANCH_CONSTANT_DECISIONS)
+        | set(BRANCH_DEAD_ITEMS)
+    )
     for module in modules:
         block: list[tuple[str, str]] = []
-        checksum = ""
         section = templates["cond"].get(module)
         if section is not None:
-            checksum = section.checksum
             for src, entry in section.entries:
                 m = COND_ROW_RE.match(entry)
                 if m is None:
@@ -1752,7 +2267,6 @@ def render_feature(
                     break
         bsection = templates["branch"].get(module)
         if bsection is not None:
-            checksum = checksum or bsection.checksum
             for src, entry in bsection.entries:
                 m = BRANCH_ROW_RE.match(entry)
                 if m is None:
@@ -1764,14 +2278,17 @@ def render_feature(
                     if direction == want and pattern.search(cond):
                         block.append((reason, entry))
                         break
+            taken = {e for _, e in block}
+            for construct, values, entry in paths.get(module, []):
+                if entry in taken:
+                    continue
+                reason = feature_path_class(module, construct, values)
+                if reason:
+                    block.append((reason, entry))
+                    taken.add(entry)
         if not block:
             continue
-        out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12):
-            if any(r == reason for r, _ in block):
-                out.append(f'ANNOTATION: "{reason}"')
-        out.append(f"MODULE: {module}")
-        out += [e for _, e in block]
+        out += metric_blocks(templates, module, block, FEATURE_CLASSES)
         count += len(block)
     return "\n".join(out) + "\n", count
 
@@ -1787,17 +2304,26 @@ def main() -> int:
     }
     uncovered = uncovered_rows(args.modinfo)
     branches = branch_status(args.modinfo)
+    report_branches = branch_constructs(args.modinfo)
+    template_branches = branch_templates(args.template_dir / "fullexclude_module.branch")
+    paths = {
+        module: uncovered_paths(report_branches.get(module, []), constructs)
+        for module, constructs in template_branches.items()
+    }
+    branch_sources = {m: c[0].source for m, c in template_branches.items() if c}
     reg_text, reg_n = render_regblock(
         templates,
         uncovered,
         branches,
         report_points(args.modinfo),
         template_points(args.template_dir / "fullexclude_module.cond"),
+        paths,
+        branch_sources,
     )
     xor_text, xor_n = render_xor(templates, uncovered)
     fsm_text, fsm_n = render_fsm(templates, uncovered_fsm(args.modinfo))
     feat_text, feat_n = render_feature(
-        templates, uncovered, branches, expression_terms(args.modinfo)
+        templates, uncovered, branches, expression_terms(args.modinfo), paths
     )
     outputs = (
         (REGBLOCK_OUT, reg_text),
