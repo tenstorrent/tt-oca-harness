@@ -10512,6 +10512,51 @@ the wrong reason.
 
 '''''
 
+[[sec-250-smc_i2c_controller_scl_events_test]]
+===== 250 `smc_i2c_controller_scl_events_test`
+
+*Source Module*: `smc_i2c_controller_scl_events_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, and a second bench pad driver as another device on SCL and SDA; observation on `INTR_STATE`, `CONTROLLER_EVENTS`, `STATUS` and the target's data
+
+*Objective*: Another device on SCL, at each point of a controller transfer where the controller has released it, must be answered the way `i2c_controller_fsm` specifies for that point.
+
+*Test Coverage*:
+
+* SCL pulled low while the controller holds a clock pulse high is clock synchronisation: `INTR_STATE.SCL_INTERFERENCE` is raised and the transfer carries on. Driven in the START hold, the acknowledge pulse, a read data pulse and the pulse of the acknowledge the controller drives itself.
+* SCL falling while a repeated START or the STOP is being set up, or both lines low while the STOP is held, means the controller could not issue its control symbol before another device took the bus; the design reports it as arbitration loss through `ctrl_symbol_failed`. The STOP hold lasts only until the controller sees SDA rise, so that leg takes SDA on the STOP's setup rise and keeps it low when the controller releases it, then takes SCL as well once past the setup.
+* SCL held low across a rise the controller expects is a stretch: in the setup of a first START, the setup of a repeated START, the pulse of its own acknowledge and the setup of the STOP. Each transfer then has to complete with the target's data intact and no event raised.
+* SCL held low past `TIMEOUT_CTRL` in bus mode halts the controller with `CONTROLLER_EVENTS.BUS_TIMEOUT`, which is then checked as a register: a word of zeros and a byte write that leaves its lane disabled must both leave it set, and only a written one clears it.
+* The controller disabled while held in the setup of a repeated START: the restart it was about to issue is still pending, and it must not reach the bus. The bench target has to see one START for the transfer, not two.
+* Every point is placed by counting edges on the pads -- the START, the Nth SCL rise, or the fall after it -- so each lands in the same state on every run. Each leg re-enables the controller from scratch and returns the bus to idle afterwards, clocking the target out of any byte a halted transfer left it in.
+
+*Known limitation*: SDA changing while the controller holds a pulse high it is *driving* -- a bit it transmits, or the acknowledge it drives -- is interference, detected from the level alone a cycle before the unstable-SDA check can run; `smc_i2c_controller_control_symbol_test` records the same limit. Those unstable-SDA arms are left uncovered.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads.
+. For each point: re-enable the controller, arm the injector, queue the write or the write-restart-read, and make the pull or the hold at the counted edge.
+. Require `SCL_INTERFERENCE`, `ARBITRATION_LOST`, or a completed transfer with the target's data intact, as the point specifies; return the bus to idle.
+. Arm the bus timeout, hold SCL past it, require `BUS_TIMEOUT`, and run the retain checks on it.
+. Hold SCL in the setup of a repeated START, disable the controller during the hold, and require it to go idle with a single START seen by the target.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-SCL-INTERFERENCE` |SCL pulled low during each of the four held-high pulses raised `SCL_INTERFERENCE`
+|`CHK-I2C-CTRL-SYMBOL-FAILED` |SCL falling in the setup of a repeated START or of the STOP, and both lines low in the STOP hold, each raised `ARBITRATION_LOST`
+|`CHK-I2C-CTRL-STRETCH-POINTS` |SCL held across each of the four expected rises, and each transfer then completed with the target's data intact and no event
+|`CHK-I2C-CTRL-BUS-TIMEOUT` |SCL held past the bus timeout raised `BUS_TIMEOUT`, which survived zeros and a disabled lane and cleared only on a written one
+|`CHK-I2C-CTRL-PENDING-RESTART` |The controller disabled with a repeated START pending went idle without issuing it
+|===
+
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
