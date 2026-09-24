@@ -21,9 +21,6 @@
   var PASS_AT = 95;
   var WARN_AT = 70;
 
-  // Columns mapped from tools/dv/runlib/coverage_model.py CLOSURE_METRICS.
-  var COVERAGE_COLUMNS = ['line', 'branch', 'expression', 'user'];
-
   var GRID_LINE = '#e6e6e6';
 
   // Chart text is drawn by ECharts, so it does not inherit the stylesheet's
@@ -623,6 +620,57 @@
     }
   }
 
+  var TREND_PALETTE = ['#103525', '#F6931E', '#937027', '#3A863D', '#C55050', '#f6c343'];
+
+  /**
+   * The flow, framework and tool naming one series, as a single string.
+   * @param {!Object} entry An entry carrying the identity fields.
+   * @return {string} The three joined, for comparison and for sorting.
+   */
+  function seriesKey(entry) {
+    return IDENTITY.map(function (field) {
+      return entry[field] || '';
+    }).join('/');
+  }
+
+  /**
+   * The distinct series the published points report.
+   * @param {!Array<!Object>} points Every point in the published history.
+   * @return {!Array<!Object>} One entry per series, ordered by name.
+   */
+  function trendSeries(points) {
+    var seen = Object.create(null);
+    points.forEach(function (point) {
+      (point.per_dut || []).forEach(function (dut) {
+        if (dut.flow) seen[seriesKey(dut)] = dut;
+      });
+    });
+    return Object.keys(seen)
+      .sort()
+      .map(function (key) {
+        return seen[key];
+      });
+  }
+
+  /**
+   * Populate one chart's series control.
+   * @param {!HTMLSelectElement} selectEl Control to fill.
+   * @param {!Array<!Object>} series Every series the history reports.
+   * @param {!Object} wanted The identity the page was opened with.
+   */
+  function fillSeries(selectEl, series, wanted) {
+    series.forEach(function (entry, index) {
+      var option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = seriesLabel(entry);
+      selectEl.appendChild(option);
+    });
+    var preferred = series.filter(function (entry) {
+      return matches(entry, wanted);
+    })[0];
+    selectEl.value = String(preferred ? series.indexOf(preferred) : 0);
+  }
+
   /**
    * Render the trend charts from the published history.
    * @param {!HTMLElement} statusEl Element carrying the range, or the reason
@@ -632,6 +680,7 @@
    */
   function renderTrends(statusEl, trendsEl, windowEl) {
     var fail = failWith(statusEl);
+    var wanted = selector();
 
     fetchJson(HISTORY_URL)
       .then(function (history) {
@@ -641,18 +690,44 @@
           return;
         }
 
-        function draw() {
-          // A hidden element has no size for the charts to measure, so the
-          // wrapper is shown before they are drawn.
-          trendsEl.hidden = false;
-          var count = parseInt(windowEl.value, 10) || 0;
-          var pts = count > 0 ? all.slice(-count) : all;
-          var labels = pts.map(function (p) {
-            return (p.generated_at || '').slice(0, 10);
-          });
+        var series = trendSeries(all);
+        if (!series.length) {
+          fail('the published history names no series');
+          return;
+        }
 
+        /**
+         * The points one series published.
+         * @param {!Object} chosen The series to plot.
+         * @return {!Array<!Object>} Its points, newest last.
+         */
+        function pointsOf(chosen) {
+          var key = seriesKey(chosen);
+          return all.filter(function (point) {
+            return (point.per_dut || []).some(function (dut) {
+              return seriesKey(dut) === key;
+            });
+          });
+        }
+
+        /**
+         * One series' coverage within a point.
+         * @param {!Object} point One history point.
+         * @param {!Object} chosen The series to read.
+         * @return {!Object} Its per_dut entry, or an empty object.
+         */
+        function coverageOf(point, chosen) {
+          var key = seriesKey(chosen);
+          return (
+            (point.per_dut || []).filter(function (dut) {
+              return seriesKey(dut) === key;
+            })[0] || {}
+          );
+        }
+
+        function drawTests(host, pts, labels) {
           lineChart(
-            document.getElementById('dashboard-trend-tests'),
+            host,
             labels,
             [
               {
@@ -673,31 +748,41 @@
             100,
             ' %'
           );
+        }
 
-          var palette = ['#103525', '#F6931E', '#937027', '#3A863D', '#C55050', '#f6c343'];
+        function drawCoverage(host, pts, labels, chosen) {
+          // The families the plotted points report, as the summary table does.
+          var families = Object.create(null);
+          pts.forEach(function (p) {
+            Object.keys(coverageOf(p, chosen).effective_metrics || {}).forEach(function (family) {
+              families[family] = true;
+            });
+          });
           lineChart(
-            document.getElementById('dashboard-trend-coverage'),
+            host,
             labels,
-            COVERAGE_COLUMNS.map(function (family, i) {
-              return {
-                name: family,
-                colour: palette[i % palette.length],
-                values: pts.map(function (p) {
-                  var dut = (p.per_dut || [])[0] || {};
-                  var metrics = dut.effective_metrics || {};
-                  return round1(metrics[family]);
-                }),
-              };
-            }),
+            Object.keys(families)
+              .sort()
+              .map(function (family, i) {
+                return {
+                  name: family,
+                  colour: TREND_PALETTE[i % TREND_PALETTE.length],
+                  values: pts.map(function (p) {
+                    return round1((coverageOf(p, chosen).effective_metrics || {})[family]);
+                  }),
+                };
+              }),
             100,
             ' %'
           );
+        }
 
+        function drawFailures(host, pts, labels) {
           var counts = pts.map(function (p) {
             return Math.max(p.failed_tests || 0, p.flaky_tests || 0);
           });
           lineChart(
-            document.getElementById('dashboard-trend-failures'),
+            host,
             labels,
             [
               {
@@ -718,14 +803,60 @@
             Math.max.apply(null, counts.concat([4])),
             ''
           );
-
-          statusEl.className = 'dashboard-status';
-          statusEl.textContent =
-            pts.length + ' runs, ' + labels[0] + ' to ' + labels[labels.length - 1] + '.';
         }
 
-        windowEl.addEventListener('change', draw);
-        draw();
+        // A hidden element has no size for the charts to measure, so the
+        // wrapper is shown before they are drawn.
+        trendsEl.hidden = false;
+
+        [
+          { host: 'dashboard-trend-tests', control: 'dashboard-series-tests', draw: drawTests },
+          {
+            host: 'dashboard-trend-coverage',
+            control: 'dashboard-series-coverage',
+            draw: drawCoverage,
+          },
+          {
+            host: 'dashboard-trend-failures',
+            control: 'dashboard-series-failures',
+            draw: drawFailures,
+          },
+        ].forEach(function (chart) {
+          var hostEl = document.getElementById(chart.host);
+          var controlEl = document.getElementById(chart.control);
+          if (!hostEl || !controlEl) return;
+          fillSeries(controlEl, series, wanted);
+
+          function redraw() {
+            var chosen = series[parseInt(controlEl.value, 10) || 0];
+            var count = parseInt(windowEl.value, 10) || 0;
+            var pts = pointsOf(chosen);
+            if (count > 0) pts = pts.slice(-count);
+            var labels = pts.map(function (p) {
+              return (p.generated_at || '').slice(0, 10);
+            });
+            chart.draw(hostEl, pts, labels, chosen);
+          }
+
+          controlEl.addEventListener('change', redraw);
+          windowEl.addEventListener('change', redraw);
+          redraw();
+        });
+
+        var stamps = all.map(function (p) {
+          return (p.generated_at || '').slice(0, 10);
+        });
+        statusEl.className = 'dashboard-status';
+        statusEl.hidden = false;
+        statusEl.textContent =
+          series.length +
+          ' series, ' +
+          all.length +
+          ' runs, ' +
+          stamps[0] +
+          ' to ' +
+          stamps[stamps.length - 1] +
+          '.';
       })
       .catch(function (error) {
         fail(error.message);
