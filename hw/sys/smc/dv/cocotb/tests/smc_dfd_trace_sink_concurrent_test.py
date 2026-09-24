@@ -5,7 +5,9 @@
 The readout leaf stops the trace before reading the sink back, so the sink's
 read and write sides never move together. This one keeps the trace running and
 drives the read pointer and the RAM data port underneath it, in both values of
-the sink's destination-mode field.
+the sink's destination-mode field. It then stops the trace twice, once by
+clearing the DST enable alone and once through the sink's stop-on-wrap setting,
+and walks the sync-mode field under a running stream.
 """
 
 from __future__ import annotations
@@ -19,28 +21,38 @@ from smc_base_test import smc_base_test
 
 # Directed stimulus floor, written out here rather than read back from
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
-# sequence that silently stopped issuing accesses. No polling, every leg
-# directed.
+# sequence that silently stopped issuing accesses. The two polls (the window
+# fill and the wait for the DST to empty) are counted at one iteration each,
+# which is the shortest either can finish in.
 #
 #   DEBUG_CTRL force_clk_en write + readback                                  2
 #   64 mux identifiers in normal debug mode                                  64
 #   funnel control write + readback                                           2
-#   2 sink arms x (off write, 6 window writes, enable write + readback)      18
+#   5 sink arms x (off write, 6 window writes, enable write + readback)      45
 #   baseline: the data-port read and the write-pointer read                   2
 #   DST enable write + readback                                               2
 #   CLA arm: EAP reset write, control write, and 2 for the LogicalOp
 #     discovery if the first value it tries activates                         4
+#   window fill: one sweep of 64 action writes and the write-pointer read    65
 #   2 live phases x (64 action writes, a seek write, a data read and a
 #     write-pointer read at 8 of them, and the quiesce write)                178
-#   restore: DST, EAP, CLA control, funnel, sink control, DEBUG_BUS_MUX,
-#     DEBUG_CTRL                                                              7
-#   the shaped phase: a sink arm (9), the compressed-format write and its
-#     readback (2), then per closure mode the frame-config write and its
-#     readback (2) and per frame length a write, a readback and 4 action
-#     writes, so 2 x (2 + 16 x 6)                                           207
+#   the shaped phase: the compressed-format write and its readback (2),
+#     then per closure mode the frame-config write and its readback (2)
+#     and per frame length a write, a readback and 4 action writes, so
+#     2 x (2 + 16 x 6)                                                      198
+#   software stop: long-frame write + readback, restart write + readback,
+#     16 action writes, short-frame write + readback, 16 action writes, the
+#     running read, the stop write + readback and one empty poll             42
+#   stop on wrap: DST enable write + readback, 8 x (16 action writes and a
+#     write-pointer read), sink-disable write + readback, 4 action writes
+#     and the closing write-pointer read                                    145
+#   sync-mode walk: 2 timestamp sources x (impl write + readback, then
+#     4 x (control write + readback and 8 action writes))                     84
+#   restore: DST control, DST impl, frame config, EAP, CLA control,
+#     funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                         9
 #                                                                         ------
-#                                                                            484
-TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 484
+#                                                                           842
+TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 842
 
 
 @pyuvm.test()
@@ -52,8 +64,11 @@ class smc_dfd_trace_sink_concurrent_test(smc_base_test):
         "CHK-DST-CONCURRENT-FRAMEWALK",
         "CHK-DST-CONCURRENT-IDLE",
         "CHK-DST-CONCURRENT-MODE",
+        "CHK-DST-CONCURRENT-STOP",
+        "CHK-DST-CONCURRENT-STOPWRAP",
+        "CHK-DST-CONCURRENT-SYNCWALK",
     )
-    min_evidence = 4
+    min_evidence = 7
 
     auto_protocol_vip = False
 

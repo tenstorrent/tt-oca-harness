@@ -28,7 +28,30 @@ The witnesses are the ones the other sink leaves use: the RAM data port reads
 zero before any trace has run, the write pointer leaves the value it was given,
 and the data port returns non-zero words. What makes this leaf different is
 that the write-pointer movement and the read-side activity are required to
-happen in the *same* phase.
+happen in the *same* phase. The trace first runs until the sink's wrap flag
+reports one full pass of the window, so every position the read pointer is
+sent to holds a word the trace wrote.
+
+The sink's pointer fields sit above two reserved bits and hardware also writes
+them, so they are programmed through each field's own mask rather than the
+register's plain read-write mask, which leaves them out.
+
+Two ways of stopping the trace close the leaf:
+
+* **Clearing ``Trdstenable`` alone.** The DST is kept active, so its clock keeps
+  running while the trace winds down, and the uncompressed stream is running
+  with packets in flight when the enable drops. ``Trdstempty`` has to read 0
+  while that stream runs and come back to 1, its reset value, once the enable
+  has been cleared. Before the stop the stream runs at the longest frame length
+  the field offers and then at the shortest frame and stream lengths.
+* **The sink's stop-on-wrap setting.** With ``Trdstramstoponwrap`` set, the write
+  pointer has to advance and then park inside the window while the trace is
+  still being driven, rather than come round again. The sink enable is then
+  cleared with the sink kept active and the setting still held, and the pointer
+  has to stay where it parked.
+
+After both, ``Trdstsyncmode`` is walked through every value of its field under
+each timestamp source, on a fresh sink with the uncompressed stream running.
 """
 
 from __future__ import annotations
@@ -64,8 +87,14 @@ _SINK_WINDOW_BYTES = 0x400
 # Read-pointer positions walked during the live trace, as byte offsets.
 _READ_POSITIONS = tuple(range(0, _SINK_WINDOW_BYTES, _SINK_WINDOW_BYTES // 8))
 
+# The stop-on-wrap window, several times the live one, so the write pointer
+# is seen moving through it before it parks.
+_WRAP_WINDOW_BYTES = 0x2000
+
 _SETTLE_CYCLES = 16
 _DELIVER_POLLS = 32
+# Write-pointer samples that have to agree for the pointer to count as parked.
+_PARKED_SAMPLES = 3
 
 
 class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
@@ -82,6 +111,10 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.modes_live: list[int] = []
         self.frame_shapes: set[tuple[int, int]] = set()
         self.value_checks = 0
+        self.fill_bursts = 0
+        self.sync_modes: list[tuple[int, int]] = []
+        self.stop_polls = 0
+        self.wrap_samples: list[int] = []
 
     # -- register helpers -------------------------------------------------
 
@@ -99,9 +132,16 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self._write(reg, word, label)
         readback = await self._read(reg, f"{label}_rb")
-        assert readback & reg.rw_mask == word & reg.rw_mask, (
-            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & reg.rw_mask:x} into its "
-            f"software-writable bits, reads 0x{readback & reg.rw_mask:x}"
+        # Named read-write fields are compared even where hardware also writes
+        # them: the readback directly follows the write.
+        mask = reg.rw_mask
+        for name in values:
+            field = reg_field(reg, name)
+            if field.access == "read-write":
+                mask |= field.mask
+        assert readback & mask == word & mask, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into its "
+            f"software-writable bits, reads 0x{readback & mask:x}"
         )
         self.value_checks += 1
 
@@ -122,22 +162,29 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             "funnel",
         )
 
-    async def _open_sink(self, mode: int, label: str) -> None:
+    async def _open_sink(
+        self, mode: int, label: str, window: int = _SINK_WINDOW_BYTES, stop_on_wrap: int = 0
+    ) -> None:
         control = sink_register("Trdstramcontrol")
         await self._write(control, control.reset_word, f"{label}_off")
         for name, value in (
             ("Trdstramstartlow", 0),
             ("Trdstramstarthigh", 0),
-            ("Trdstramlimitlow", _SINK_WINDOW_BYTES),
+            ("Trdstramlimitlow", window),
             ("Trdstramlimithigh", 0),
             ("Trdstramwplow", 0),
             ("Trdstramrplow", 0),
         ):
             reg = sink_register(name)
-            await self._write(reg, value & reg.rw_mask, label)
+            await self._write(reg, value & reg_field(reg, name).mask, label)
         await self._write_check(
             control,
-            {"Trdstramactive": 1, "Trdstramenable": 1, "Trdstrammode": mode},
+            {
+                "Trdstramactive": 1,
+                "Trdstramenable": 1,
+                "Trdstrammode": mode,
+                "Trdstramstoponwrap": stop_on_wrap,
+            },
             f"{label}_mode{mode}",
         )
         self.modes_live.append(mode)
@@ -221,6 +268,24 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
                 self.frame_shapes.add((mode, value))
                 await self._drive_actions(logical_op, 4, f"shape{mode}_{value}")
 
+    async def _fill_window(self, logical_op: int) -> None:
+        """Keep the trace producing until the sink reports one pass of its window."""
+        eap = cla_register("CDbgNode0Eap0")
+        span = 1 << cla_field(eap, "Action0").width
+        wp = sink_register("Trdstramwplow")
+        wrap = reg_field(wp, "Trdstramwrap")
+        for burst in range(_DELIVER_POLLS):
+            await self._drive_actions(logical_op, span, f"fill{burst}")
+            if await self._read(wp, f"fill{burst}") & wrap.mask:
+                self.fill_bursts = burst + 1
+                self.value_checks += 1
+                return
+        raise AssertionError(
+            f"the sink wrap flag stayed 0 through {_DELIVER_POLLS} sweeps of the action field, "
+            f"so the trace never came round the 0x{_SINK_WINDOW_BYTES:x}-byte window and the "
+            f"positions the read pointer is sent to would hold words it never wrote"
+        )
+
     async def _drive_actions(self, logical_op: int, count: int, label: str) -> None:
         """A short burst of action values, to keep the stream producing."""
         eap = cla_register("CDbgNode0Eap0")
@@ -259,7 +324,9 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
             if value % step == 0:
                 offset = _READ_POSITIONS[value // step]
-                await self._write(rp, offset & rp.rw_mask, f"seek{offset:x}")
+                await self._write(
+                    rp, offset & reg_field(rp, "Trdstramrplow").mask, f"seek{offset:x}"
+                )
                 self.positions_driven += 1
                 word = await self._read(data, f"data{offset:x}")
                 self.words_read += 1
@@ -267,6 +334,175 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
                     self.nonzero_words += 1
                 self.wp_samples.append(await self._read(wp, f"wp{offset:x}"))
         await self._write(eap, eap.reset_word, "quiet")
+
+    # -- stopping the trace -----------------------------------------------
+
+    async def _stop_in_software(self, logical_op: int) -> None:
+        """Run the uncompressed stream, then clear the enable with the DST kept active."""
+        control = dst_register("Trdstcontrol")
+        empty = reg_field(control, "Trdstempty")
+        impl = dst_register("Trdstimpl")
+        length = reg_field(impl, "Trdstvendorframelength")
+        stream = reg_field(impl, "Trdstvendorstreamlength")
+        # The longest frame the field offers first. Uncompressed packets are a
+        # fixed size, so a 64-byte frame closes after a handful of them and
+        # only a long frame carries the running offset through every even
+        # position of the accumulator before the frame closes.
+        await self._write_check(
+            impl,
+            {
+                "Trdstvendorframelength": (1 << length.width) - 1,
+                "Trdstvendorstreamlength": (impl.reset_word & stream.mask) >> stream.offset,
+                "Trdsttimestampconfig": 0,
+            },
+            "longframe",
+        )
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
+            "restart",
+        )
+        await self._drive_actions(logical_op, 16, "longframe")
+        # Then the shortest frame and the shortest stream the two fields offer:
+        # a frame of 64 bytes, and the smallest stream-length encoding.
+        await self._write_check(
+            impl,
+            {"Trdstvendorframelength": 1, "Trdstvendorstreamlength": 0, "Trdsttimestampconfig": 0},
+            "shortstream",
+        )
+        await self._drive_actions(logical_op, 16, "shortstream")
+        running = await self._read(control, "running")
+        assert not running & empty.mask, (
+            f"DST Trdstcontrol reads 0x{running:08x} with the uncompressed stream running: "
+            f"Trdstempty is already 1, so there is nothing in flight for the stop below to "
+            f"wind down and clearing the enable would prove nothing"
+        )
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_NONE},
+            "stop",
+        )
+        for poll in range(_DELIVER_POLLS):
+            if await self._read(control, f"stop{poll}") & empty.mask:
+                self.stop_polls = poll + 1
+                break
+        assert self.stop_polls, (
+            f"DST Trdstempty stayed 0 for {_DELIVER_POLLS} polls after Trdstenable was cleared "
+            f"with Trdstactive held at 1, so the trace did not wind down to empty"
+        )
+        self.value_checks += 2
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-STOP: with the uncompressed stream running, first at the "
+            "longest frame length and then at the shortest frame and stream lengths, "
+            "Trdstempty read 0; clearing Trdstenable alone with the DST kept active brought "
+            "it back to 1 on poll %d of at most %d",
+            self.stop_polls,
+            _DELIVER_POLLS,
+        )
+
+    async def _stop_on_wrap(self, logical_op: int) -> None:
+        """Let the trace run into a sink that is set to stop when it wraps."""
+        control = sink_register("Trdstramcontrol")
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
+        await self._open_sink(0, "wrap", _WRAP_WINDOW_BYTES, stop_on_wrap=1)
+        await self._write_check(
+            dst_register("Trdstcontrol"),
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
+            "rewrap",
+        )
+        for burst in range(8):
+            await self._drive_actions(logical_op, 16, f"wrap{burst}")
+            self.wrap_samples.append(await self._read(wp, f"wrap{burst}") & pointer.mask)
+        parked = self.wrap_samples[-1]
+        assert any(0 < w < parked for w in self.wrap_samples), (
+            f"the write pointer read {[hex(w) for w in self.wrap_samples]} across the trace, "
+            f"never between 0 and where it ended, so it was not seen moving through the window"
+        )
+        assert all(w == parked for w in self.wrap_samples[-_PARKED_SAMPLES:]), (
+            f"the last {_PARKED_SAMPLES} write-pointer samples "
+            f"{[hex(w) for w in self.wrap_samples[-_PARKED_SAMPLES:]]} differ while the trace "
+            f"was still being driven, so the sink did not stop"
+        )
+        assert parked <= _WRAP_WINDOW_BYTES, (
+            f"the write pointer parked at 0x{parked:x}, past the 0x{_WRAP_WINDOW_BYTES:x}-byte "
+            f"window it was given"
+        )
+        await self._write_check(
+            control,
+            {"Trdstramactive": 1, "Trdstramenable": 0, "Trdstramstoponwrap": 1},
+            "wrapoff",
+        )
+        await self._drive_actions(logical_op, 4, "wrapoff")
+        after = await self._read(wp, "wrapoff") & pointer.mask
+        assert after == parked, (
+            f"the write pointer moved from 0x{parked:x} to 0x{after:x} after the sink enable "
+            f"was cleared with stop-on-wrap still set"
+        )
+        self.value_checks += 4
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-STOPWRAP: with Trdstramstoponwrap set the write pointer moved "
+            "through the 0x%x-byte window (%s) and parked at 0x%x for the last %d samples while "
+            "the trace was still driven, and stayed there once the sink enable was cleared with "
+            "the setting held",
+            _WRAP_WINDOW_BYTES,
+            ", ".join(hex(w) for w in self.wrap_samples),
+            parked,
+            _PARKED_SAMPLES,
+        )
+
+    async def _walk_sync_modes(self, logical_op: int) -> None:
+        """Every sync mode under each timestamp source, with the stream running.
+
+        The RDL description of ``Trdstsyncmode`` publishes one value, the one
+        that sends a timestamp, and marks the others as not applicable, so the
+        walk covers the whole field range. ``Trdsttimestampconfig`` picks where
+        that timestamp comes from, an external source or the CLA timesync, and
+        both are walked. The witness is the exact readback of each value with
+        the stream running under it. The walk comes last: the packetizer can be
+        left holding a partial frame after it, and nothing afterwards needs it
+        empty.
+        """
+        control = dst_register("Trdstcontrol")
+        sync = reg_field(control, "Trdstsyncmode")
+        impl = dst_register("Trdstimpl")
+        source = reg_field(impl, "Trdsttimestampconfig")
+        await self._open_sink(0, "sync")
+        for ts in range(1 << source.width):
+            await self._write_check(
+                impl,
+                {
+                    "Trdstvendorframelength": 1,
+                    "Trdstvendorstreamlength": 0,
+                    "Trdsttimestampconfig": ts,
+                },
+                f"tsource{ts}",
+            )
+            for value in range(1 << sync.width):
+                await self._write_check(
+                    control,
+                    {
+                        "Trdstactive": 1,
+                        "Trdstenable": 1,
+                        "Trdstformat": _DST_FORMAT_NONE,
+                        "Trdstsyncmode": value,
+                    },
+                    f"sync{ts}_{value}",
+                )
+                self.sync_modes.append((ts, value))
+                await self._drive_actions(logical_op, 8, f"sync{ts}_{value}")
+        expected = [(t, v) for t in range(1 << source.width) for v in range(1 << sync.width)]
+        assert self.sync_modes == expected, (
+            f"the sync-mode walk wrote {self.sync_modes}, not every sync mode under every "
+            f"timestamp source"
+        )
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-SYNCWALK: Trdstsyncmode was written and read back exactly in "
+            "all %d values of its %d-bit field under both timestamp sources, at the shortest "
+            "frame and stream lengths, with a burst of the uncompressed stream driven under each",
+            1 << sync.width,
+            sync.width,
+        )
 
     # -- body -------------------------------------------------------------
 
@@ -299,6 +535,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             "dst",
         )
         logical_op = await self._arm_cla()
+        await self._fill_window(logical_op)
         await self._stream_and_drain(logical_op)
 
         assert self.positions_driven == len(_READ_POSITIONS), (
@@ -375,6 +612,10 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             "offers; no register addresses that offset directly",
             len(expected),
         )
+
+        await self._stop_in_software(logical_op)
+        await self._stop_on_wrap(logical_op)
+        await self._walk_sync_modes(logical_op)
 
         for reg in (
             dst_register("Trdstcontrol"),
