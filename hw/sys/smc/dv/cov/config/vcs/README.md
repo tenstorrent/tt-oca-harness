@@ -98,7 +98,7 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
 ## Exclusion files
 
-`coverage_policy.toml` beside this file names five `-elfile` files the report
+`coverage_policy.toml` beside this file names six `-elfile` files the report
 applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
 The first four are written by `gen_smc_cov_exclusions.py` from urg's exclusion
 templates and the run's raw report (`cov/report_raw`, written without the
@@ -135,6 +135,7 @@ from it, rather than matching the expression by name:
 | `smc_regblock_exclusions.el` | A5 INPUT-UNCONNECTED | the SMC integration leaves that block's `devmode_i` unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates true |
 | `smc_regblock_exclusions.el` | A6 SINGLEPULSE-RETAIN | the RDL declares the field `singlepulse`, so its storage holds a written one for a single cycle and the cpuif takes no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write disables that lane. A W1C or plain write-only field keeps its value between writes and stays graded |
 | `smc_regblock_exclusions.el` | B1 PARTIAL-LANE-WRITE | **a bench fact, not a design one.** A field that keeps its value between writes does take the retain row when a write leaves one lane disabled while the field holds a one. The SMC AXI agent derives WSTRB from the data range and writes whole registers, so it never issues such a write: the row is uncovered for want of an agent, not for want of a path. Taken for every field of a generated register block no class above has named; the clear-on-write row of a W1C field is a different expression and a leaf covers it |
+| `smc_opentitan_toggle_exclusions.el` | T1 OPENTITAN-PORTS-ONLY | a unit that comes from OpenTitan is graded on its ports for toggle, its internals being verified upstream; every other unit the scope keeps is graded on all of its nets. Origin is the source's copyright line, not the unit's name, and the generator re-checks it. The ten units and their qualifying lines are listed below |
 | `smc_xor_network_exclusions.el` | X1 XOR-NETWORK | a CRC or parity network is an XOR of four or more terms; condition coverage enumerates 2^n input combinations of a function the tests compare by its output |
 | `smc_fsm_exclusions.el` | F2 DEFAULT | `avsbus_controller.cur_state` has `next_state = AVS_IDLE` as its always_comb default, which the extractor lists as an edge from every state; every state has a case arm and every arm assigns next_state, so the default never fires. `AVS_IDLE`, `AVS_SLAVE_RESYNC` and `AVS_END_LAST_SUBFRAME` assign AVS_IDLE in their own arm, reach it in the ordinary sequence, and stay graded |
 | `smc_fsm_exclusions.el` | F3 TIEOFF | `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero, so `trace_axi_master` never completes a response handshake and cannot pass REQ_HANDSHAKE: the states an `aw_ready`, `w_ready` or `b_valid` is needed to enter, and the edges touching them, cannot occur. The request it issues on `valid_i` needs no response, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded |
@@ -248,3 +249,42 @@ scope file silently); and `u_dut` matches
   hierarchy is gone from the code metrics but still graded for assertions.
 - **`-cm_common_hier` needs `-lca`.** An opt-in switch, not a separate
   licence.
+
+## Toggle inside OpenTitan units
+
+`smc_opentitan_toggle_exclusions.el` carries the T1 rule. `-cm_tgl portsonly`
+applies to a whole run and cannot name one unit, and a `begin tgl(portsonly)
+... end` block in `smc_cov_scope.hier` is not an option either:
+`hw/sys/smu/dv/cov/config/vcs/README.md` records that VCS keeps the toggle
+points of the subtrees a hierarchy file drops once a metric block is present,
+and this scope drops 603 units that way. The nets are therefore excluded at
+report time, which also means the effect shows up without a `--rebuild`.
+
+A unit qualifies on the copyright line of the source the build compiles it
+from, checked again whenever the file is generated. Units compiled from
+`vendor/lowRISC/` are all `prim*` library cells the scope already drops, and
+the lowRISC-headered files under `vendor/chipsalliance/i3c-core/` sit inside
+the I3C wrapper the scope drops as a tree, so neither is named here. A child
+module of a listed unit is its own unit: unless it is listed too, it keeps all
+of its nets.
+
+| Unit | Source | Copyright line | Port bits kept | Nets excluded |
+| --- | --- | --- | ---: | ---: |
+| `i2c` | `hw/ip/i2c/rtl/i2c.sv` | `Copyright lowRISC contributors (OpenTitan project).` | 36 | 197 |
+| `i2c_core` | `hw/ip/i2c/rtl/i2c_core.sv` | same | 214 | 173 |
+| `i2c_controller_fsm` | `hw/ip/i2c/rtl/i2c_controller_fsm.sv` | same | 44 | 35 |
+| `i2c_target_fsm` | `hw/ip/i2c/rtl/i2c_target_fsm.sv` | same | 48 | 43 |
+| `i2c_bus_monitor` | `hw/ip/i2c/rtl/i2c_bus_monitor.sv` | same | 18 | 22 |
+| `uart_16550` | `hw/ip/uart/uart_16550/rtl/uart_16550.sv` | `Copyright lowRISC contributors.` | 35 | 148 |
+| `uart_core` | `hw/ip/uart/uart_16550/rtl/uart_core.sv` | same | 83 | 161 |
+| `uart_rx` | `hw/ip/uart/uart_16550/rtl/uart_rx.sv` | same | 16 | 12 |
+| `uart_tx` | `hw/ip/uart/uart_16550/rtl/uart_tx.sv` | same | 12 | 7 |
+| `prim_clock_mux2` | `hw/common/och_prim_generic/rtl/prim_clock_mux2.sv` | `Copyright lowRISC contributors (OpenTitan project).` | 4 | 0 |
+| **total** | | | **510** | **798** |
+
+`prim_clock_mux2` declares nothing but its ports, so it contributes no entry;
+it is listed because the rule reaches it. The scope drops `hw/common/och_prim/`
+but not `och_prim_generic/`, which is why this one is graded at all.
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_opentitan_toggle_exclusions.py <dir>
