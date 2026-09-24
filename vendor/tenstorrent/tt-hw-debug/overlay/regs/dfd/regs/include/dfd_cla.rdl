@@ -16,8 +16,8 @@ addrmap dfd_cla {
         regwidth = 64;
 
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } Counter[15:0] = 0x0;
         field {
             sw = rw;
@@ -29,15 +29,15 @@ addrmap dfd_cla {
             desc = "When Counter = {upper_target,target} reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.";
         } ResetOnTarget[32:32] = 0x0;
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } UpperCounter[47:33] = 0x0;
         field {
             sw = rw;
             hw = r;
         } UpperTarget[62:48] = 0x0;
         field {
-            sw = r;
+            sw = rw;
             hw = r;
         } Rsvd[63:63] = 0x0;
     } CDbgClaCounter0Cfg @ 0x100;
@@ -46,8 +46,8 @@ addrmap dfd_cla {
         regwidth = 64;
 
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } Counter[15:0] = 0x0;
         field {
             sw = rw;
@@ -59,15 +59,15 @@ addrmap dfd_cla {
             desc = "When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.";
         } ResetOnTarget[32:32] = 0x0;
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } UpperCounter[47:33] = 0x0;
         field {
             sw = rw;
             hw = r;
         } UpperTarget[62:48] = 0x0;
         field {
-            sw = r;
+            sw = rw;
             hw = r;
         } Rsvd[63:63] = 0x0;
     } CDbgClaCounter1Cfg @ 0x108;
@@ -76,8 +76,8 @@ addrmap dfd_cla {
         regwidth = 64;
 
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } Counter[15:0] = 0x0;
         field {
             sw = rw;
@@ -89,15 +89,15 @@ addrmap dfd_cla {
             desc = "When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.";
         } ResetOnTarget[32:32] = 0x0;
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } UpperCounter[47:33] = 0x0;
         field {
             sw = rw;
             hw = r;
         } UpperTarget[62:48] = 0x0;
         field {
-            sw = r;
+            sw = rw;
             hw = r;
         } Rsvd[63:63] = 0x0;
     } CDbgClaCounter2Cfg @ 0x110;
@@ -106,8 +106,8 @@ addrmap dfd_cla {
         regwidth = 64;
 
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } Counter[15:0] = 0x0;
         field {
             sw = rw;
@@ -119,15 +119,15 @@ addrmap dfd_cla {
             desc = "When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.";
         } ResetOnTarget[32:32] = 0x0;
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } UpperCounter[47:33] = 0x0;
         field {
             sw = rw;
             hw = r;
         } UpperTarget[62:48] = 0x0;
         field {
-            sw = r;
+            sw = rw;
             hw = r;
         } Rsvd[63:63] = 0x0;
     } CDbgClaCounter3Cfg @ 0x118;
@@ -2014,13 +2014,13 @@ addrmap dfd_cla {
         regwidth = 64;
 
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
             desc = "Current timestamp value (lower 8 bits)";
         } TimestampLower[7:0] = 0x0;
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
             desc = "Current timestamp value (upper 56 bits)";
         } TimestampUpper[63:8] = 0x0;
     } CDbgClaTimestamp @ 0x2F0;

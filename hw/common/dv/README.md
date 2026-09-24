@@ -41,10 +41,10 @@ Shared VIP imports use the top-level `ocah_<proto>_vip` packages under `vip/`;
 the root `__init__.py` re-exports the cocotb public API, so consumers never
 import from the subfolders directly. `ocah_jtag_vip` is the reference
 implementation for the SV-UVM side: its README carries the "Template
-Contract" (frozen item/event API, env-level reuse and commercial-VIP
-override, monitor-disable knob, nested vendor interface) that every OCAH
+Contract" (frozen item/event API, env-level reuse, optional-backend
+override, monitor-disable knob, and nested vendor interface) that every OCAH
 SV-UVM VIP follows. New protocol VIPs should provide master, slave, item,
-monitor, checker, and commercial-simulator coverage hook files when the
+monitor, checker, and optional-backend coverage hook files when the
 protocol shape supports them. For example:
 
 ```python
@@ -100,7 +100,7 @@ already represented here; extend the existing stable wrapper.
 |---------|----------|----------------|-------------------------------|
 | `ocah_axi_vip` | **Promoted** (both sides) | `ocah_axi_vip/cocotb/examples/example_register_access.py`, `example_axi_scoreboard_selftest.py` | DTP, SEP, SMC, and SMU use the shared AXI/AXI-Lite master and slave agents through the per-side `*Sequence` APIs; the checker/reference-model/scoreboard stack is gated by the DTP jtag2axi decode-error, security-gating, and SLVERR/DECERR injection tests; DUT-local agents retain address and scoreboard policy. SV layer (interface/struct bridge/SVA/passive UVM stack/UVM slave agent) is consumed by `--dut dtp --framework uvm`, where the UVM slave agent answers the SMC OTP AXI-Lite port; the UVM master side is consumed by the `--dut ocah_axi_vip --framework uvm` selftests |
 | `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 (master side) | `ocah_jtag_vip/cocotb/examples/example_idcode.py`, `example_slave_selftest.py` | The `--dut ocah_jtag_vip` wire-harness selftests (both frameworks) prove the master, the reactive device, the monitor, and the checker against each other under the protocol SVA; DTP, SMC, and SMU consume the master TAP API; the slave side (reactive TAP device) is selftest-validated and consumed by the DTP STAP-selection scenarios behind its `jtag_stap_*_host` ports; iJTAG, boundary-scan, and DUT TDR maps remain local |
-| `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | The `--dut ocah_spi_vip` wire-harness selftests prove the flash device, the controller engine, the monitor, and the flash checker against each other with in-band must-fail probes; SEP is the gating DUT consumer (`sep_spi_flash_jedec_smoke_test`; `sep_spi_ot_flash_cmd_rand_test` with firmware); the SMC SPI pad test `smc_spi_pad_bfm_test` binds the same flash model through `OcahSepSpiFlash`; true quad/octal lanes, DDR, vendor timing, and vendor commands are out of scope and earn no checker credit |
+| `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | The `--dut ocah_spi_vip` wire-harness selftests prove the flash device, the controller engine, the monitor, and the flash checker against each other with in-band must-fail probes; SEP is the gating DUT consumer (`sep_spi_flash_jedec_smoke_test`; `sep_spi_ot_flash_cmd_rand_test` with firmware); the SMC SPI pad test `smc_spi_pad_bfm_test` binds the same flash model through `OcahSepSpiFlash`; true quad/octal lanes, DDR, device-specific timing, and device-specific commands are out of scope and earn no checker credit |
 | `ocah_uart_vip` | **Promoted** for asynchronous serial console links | `ocah_uart_vip/cocotb/examples/example_loopback.py` | The `--dut ocah_uart_vip` wire-harness selftests prove the console host, the line engines, the passive tap, and the frame checker against each other with in-band must-fail probes (full-duplex data with wire-measured bit periods, 5..9-bit frames with none/even/odd parity and 1, 1.5, or 2 stop bits, fault classification, exact timeouts); SMC is the gating DUT consumer through its UART protocol model (`hw/sys/smc/dv/cocotb/seq_lib/smc_uart_protocol_vip.py`) in `smc_uart_loopback_test`; the backend is native to the package; flow control and SV collateral are out of scope |
 
 ### Capabilities without a promoted shared package
@@ -120,10 +120,10 @@ condition under which a shared package is introduced.
 | OCTS dual-chiplet sync | DUT-local: `hw/sys/smc/dv/cocotb/seq_lib/smc_octs_sync_bfm.py` drives and observes the PRIMARY/SECONDARY sync-load and credit pads for the SMC bench. A shared package is introduced only when a second subsystem drives OCTS pads. |
 | Memory-image helper | No shared package and no frozen image/preload format contract. |
 | True QSPI/OSPI multi-lane data | Out of scope for `ocah_spi_vip`: quad/octal personalities use single-bit data timing. |
-| Vendor-accurate flash BUSY timing and commands | Out of scope for `ocah_spi_vip`: the flash model is deterministic, instant-ready, and vendor-neutral. |
+| Device-specific flash BUSY timing and commands | Out of scope for `ocah_spi_vip`: the flash model is deterministic, instant-ready, and implementation-neutral. |
 | I3C HDR-DDR/HDR-BT | Out of scope: not part of the SDR baseline. |
 | iJTAG/boundary-scan | DUT-local: the DTP models encode fixed topology, lifecycle policy, and loopback fixtures, so they are not a reusable VIP. |
-| Commercial-simulator-only checker/coverage hooks | Never mandatory for contributors and never the sole gate: portable checker evidence must exist before licensed-only depth can gate. |
+| Optional-backend-only checker/coverage hooks | Never mandatory for contributors and never the sole gate: portable checker evidence must exist before optional-backend depth can gate. |
 
 Two examples define the ownership boundary:
 
@@ -182,7 +182,7 @@ evidence where it cannot; neither turns a failed transaction into PASS.
 
 | Realization | Metric | Record |
 |-------------|--------|--------|
-| SystemVerilog collateral (`interface/`, `sva/`, `cov/`) | Verilator line and branch coverage of the package's wire-harness selftests (`--dut ocah_<protocol>_vip --items all --cov`); SVA cover properties and `cov/` covergroups on a four-state simulator through the SV-UVM harness shape (`--framework uvm --tool vcs --cov`) | The package's `dv/cov/config/<tool>/coverage_policy.toml`: one threshold per metric family and one `[[holes]]` entry per uncovered point |
+| SystemVerilog collateral (`interface/`, `sva/`, `cov/`) | Verilator line and branch coverage of the package's wire-harness selftests (`--dut ocah_<protocol>_vip --items all --cov`); SVA cover properties and `cov/` covergroups on a four-state simulator through the SV-UVM harness shape (`--framework uvm --cov`) | The package's `dv/cov/config/<tool>/coverage_policy.toml`: one threshold per metric family and one `[[holes]]` entry per uncovered point |
 | Python components (drivers, monitors, checkers, reference models) | No simulator metric | The `CHK-*` identifier matrix of the harness selftests and of the simulator-free selftests, with one must-fail path per rule |
 
 A policy file grades hit points over the points that remain after accepted

@@ -9,7 +9,11 @@
 The UART 16550 module provides configurable parameters to customize FIFO
 sizes according to system requirements.
 
-.Module Parameters
+<<uart-module-parameters-table>> lists the configurable transmit and receive FIFO
+depths.
+
+[[uart-module-parameters-table]]
+.UART Module Parameters
 [width="100%",cols="20%,15%,15%,50%",options="header",]
 |=======================================================================
 |Parameter |Type |Default |Description
@@ -26,7 +30,10 @@ characters that can be buffered for reception.
 
 === Global Interface
 
-.Global Signals
+<<uart-global-signals-table>> defines the UART clock and reset signals.
+
+[[uart-global-signals-table]]
+.UART Global Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description
@@ -40,6 +47,9 @@ default values and FIFOs are cleared.
 
 === UART Serial Interface
 
+<<uart-serial-signals-table>> defines the serial receive and transmit interface.
+
+[[uart-serial-signals-table]]
 .UART Serial Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
@@ -64,7 +74,11 @@ Modem Status Interrupt. None of them gates the datapath: this component
 implements no automatic flow control, so software must act on the
 interrupt to throttle traffic. See the Programming section.
 
-.Modem Control Input Signals
+<<uart-modem-control-input-signals-table>> defines the modem inputs and their status
+reporting.
+
+[[uart-modem-control-input-signals-table]]
+.UART Modem Control Input Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description
@@ -87,7 +101,11 @@ Indicates carrier signal detected on modem connection. Reported in
 `MSR.DCD`; a change sets `MSR.DDCD`.
 |=======================================================================
 
-.Modem Control Output Signals
+<<uart-modem-control-output-signals-table>> defines the software-controlled modem
+outputs.
+
+[[uart-modem-control-output-signals-table]]
+.UART Modem Control Output Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description
@@ -112,7 +130,11 @@ enable in some systems.
 The DMA interface provides signals for Direct Memory Access controllers
 to manage data transfers automatically.
 
-.DMA Interface Signals
+<<uart-dma-interface-signals-table>> defines the receive-ready and transmit-ready
+handshake outputs.
+
+[[uart-dma-interface-signals-table]]
+.UART DMA Interface Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description
@@ -127,7 +149,10 @@ hysteresis).
 
 === Error Interface
 
-.Error Interface Signals
+<<uart-error-interface-signals-table>> defines the FIFO parity-error output.
+
+[[uart-error-interface-signals-table]]
+.UART Error Interface Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description
@@ -138,7 +163,10 @@ received character parity errors.
 
 === Interrupt Interface
 
-.Interrupt Interface Signals
+<<uart-interrupt-interface-signals-table>> defines the combined UART interrupt request.
+
+[[uart-interrupt-interface-signals-table]]
+.UART Interrupt Interface Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description

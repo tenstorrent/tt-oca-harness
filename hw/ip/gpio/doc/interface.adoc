@@ -9,7 +9,12 @@ integration for hardware protocols, and direct GPIO pad connections.
 
 === Configuration Parameters
 
+<<gpio-configuration-parameters-table>> lists the GPIO dimensions and integration
+parameters.
+
+[[gpio-configuration-parameters-table]]
 [width="100%",cols="30%,20%,50%",options="header",]
+.GPIO configuration parameters
 |=====================================================================================
 |Parameter |Default |Description
 |NUM_GPIO |65 |Total number of GPIO pins (61 bonded + 4 unbonded)
@@ -26,7 +31,10 @@ APB4)
 
 === Global Interface
 
-.Global Interface Signals
+<<gpio-global-interface-signals-table>> defines the GPIO clock and reset interface.
+
+[[gpio-global-interface-signals-table]]
+.GPIO Global Interface Signals
 [width="100%",cols="20%,10%,10%,10%,50%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -45,7 +53,11 @@ Test) support.
 The LSIO (Low Speed Input/Output) interface enables hardware-controlled
 GPIO operation for protocol processing.
 
-.LSIO Interface Signals
+<<gpio-lsio-interface-signals-table>> defines the controls used to select
+hardware-driven GPIO functions.
+
+[[gpio-lsio-interface-signals-table]]
+.GPIO LSIO Interface Signals
 [width="100%",cols="25%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Description
@@ -80,6 +92,10 @@ gated by lsio_disable, so it reads 0 during a software-forced LSIO
 The GPIO pad interface provides direct connection to external pads with
 bidirectional capabilities.
 
+<<gpio-pad-interface-signals-table>> defines the data and control connections to the
+external pads.
+
+[[gpio-pad-interface-signals-table]]
 .GPIO Pad Interface Signals
 [width="100%",cols="20%,10%,10%,60%",options="header",]
 |================================================================================
@@ -95,7 +111,10 @@ bidirectional capabilities.
 The interrupt interface provides event notification capabilities with
 configurable trigger modes.
 
-.Interrupt Interface Signals
+<<gpio-interrupt-interface-signals-table>> defines the GPIO interrupt output.
+
+[[gpio-interrupt-interface-signals-table]]
+.GPIO Interrupt Interface Signals
 [width="100%",cols="20%,10%,10%,60%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Description
