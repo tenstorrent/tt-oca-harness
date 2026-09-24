@@ -7,15 +7,8 @@
   'use strict';
 
   // Generate the headings rather than defining literally in the html
-  var SUMMARY_HEADINGS = [
-    'Block',
-    'Tests',
-    'Passing',
-    'Code Coverage',
-    'Branch Coverage',
-    'Expression Coverage',
-    'User Coverage',
-  ];
+  var METRIC_HEADINGS = ['Tests', 'Passing'];
+  var SUMMARY_HEADINGS = ['Block (framework, simulator)'].concat(METRIC_HEADINGS);
   var TEST_HEADINGS = ['Test', 'Category', 'Seed', 'Status', 'Duration'];
 
   // Files baked in during build, or public URLs
@@ -53,9 +46,10 @@
   // selects one with.
   var IDENTITY = ['flow', 'framework', 'tool'];
 
-  // Match to dut_status[] flows
+  // The blocks each table declares. A block publishing nothing still gets a
+  // row, so what is in scope but unverified stays visible.
   var CHIP_ROWS = ['chip_ocah'];
-  var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'aou'];
+  var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'smu', 'aou'];
   var LINKABLE_ROWS = CHIP_ROWS.concat(BLOCK_ROWS);
 
   /**
@@ -117,15 +111,6 @@
       return;
     }
     cell(row, pct + ' %', band(pct));
-  }
-
-  /**
-   * Format a date as a minute-resolution UTC stamp, e.g. "2026-08-31 20:11 UTC".
-   * @param {!Date} date The date to format.
-   * @return {string} The formatted stamp.
-   */
-  function utcStamp(date) {
-    return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
   }
 
   /**
@@ -204,16 +189,47 @@
   }
 
   /**
-   * Produce a coverage object containing coverage data per flow.
+   * The coverage families the given series report between them. Which families
+   * exist depends on the simulator, so a page asks only about what it shows.
    * @param {!Object} summary Parsed summary.json.
-   * @return {!Object} Coverage entries keyed by flow name.
+   * @param {!Array<!Object>} entries The dut_status entries being shown.
+   * @return {!Array<string>} The family names, sorted.
    */
-  function coverageByFlow(summary) {
-    var coverage = Object.create(null);
-    (summary.results || []).forEach(function (result) {
-      if (result && result.flow) coverage[result.flow] = result.coverage;
+  function coverageFamilies(summary, entries) {
+    var seen = Object.create(null);
+    entries.forEach(function (entry) {
+      var metrics = (coverageFor(summary, entry) || {}).effective_metrics || {};
+      Object.keys(metrics).forEach(function (family) {
+        seen[family] = true;
+      });
     });
-    return coverage;
+    return Object.keys(seen).sort();
+  }
+
+  /**
+   * A coverage family as a column heading, e.g. "fsm_state" to "Fsm state".
+   * @param {string} family The family as the publisher names it.
+   * @return {string} The heading.
+   */
+  function familyHeading(family) {
+    return (family.charAt(0).toUpperCase() + family.slice(1)).replace(/_/g, ' ');
+  }
+
+  /**
+   * The coverage a summary published for one series.
+   * @param {!Object} summary Parsed summary.json.
+   * @param {!Object} entry The dut_status entry to match.
+   * @return {?Object} Its results[].coverage, or null when it has none.
+   */
+  function coverageFor(summary, entry) {
+    var result = (summary.results || []).filter(function (candidate) {
+      return matches(candidate, {
+        flow: entry.flow,
+        framework: entry.framework,
+        tool: entry.tool,
+      });
+    })[0];
+    return (result && result.coverage) || null;
   }
 
   /**
@@ -243,82 +259,130 @@
   }
 
   /**
-   * Build one row of a summary table: the block name followed by the columns
-   * named in SUMMARY_HEADINGS. Both the overview tables and the single-row
-   * table on a block page use this, so the two cannot drift apart.
-   * @param {string} name Block name rendered in the first cell.
-   * @param {?Object} dut The block's dut_status entry, or undefined when the
-   *     published data has none; every metric then reads n/a.
-   * @param {?Object} coverage The block's results[].coverage entry, if any.
-   * @param {boolean} linked Render the name as a link to its block page.
+   * Build one row of an overview table, naming the series and linking to its
+   * block page.
+   * @param {string} name Block name, used when nothing was published for it.
+   * @param {?Object} dut The series' dut_status entry, or null when the block
+   *     published none; every measurement then reads n/a.
    * @return {!HTMLTableRowElement} The populated row.
    */
-  function summaryRow(name, dut, coverage, linked) {
+  function summaryRow(name, dut) {
     var row = document.createElement('tr');
     var td = document.createElement('td');
 
-    if (linked && dut && LINKABLE_ROWS.indexOf(name) !== -1) {
+    // The block and what ran it name one series, so they share a cell rather
+    // than a column each.
+    if (dut && LINKABLE_ROWS.indexOf(name) !== -1) {
       var url = new URL('dashboard-block.html', window.location.href);
-      url.searchParams.set('flow', name);
+      addIdentity(url, dut);
       var link = document.createElement('a');
       link.href = url.href;
-      link.textContent = name;
+      link.textContent = seriesLabel(dut);
       td.appendChild(link);
     } else {
-      td.textContent = name;
+      td.textContent = dut ? seriesLabel(dut) : name;
     }
     row.appendChild(td);
 
     if (!dut) {
-      for (var i = 1; i < SUMMARY_HEADINGS.length; i++) {
+      for (var i = 1; i < SUMMARY_HEADINGS.length + 1; i++) {
         cell(row, 'n/a', 'dashboard-na');
       }
       return row;
     }
 
-    cell(row, String(dut.tests_total));
-    metricCell(row, dut.pass_rate);
-
-    var metrics = (coverage && coverage.effective_metrics) || {};
-    COVERAGE_COLUMNS.forEach(function (family) {
-      metricCell(row, metrics[family]);
-    });
-
+    metricCells(row, dut, null, null);
     return row;
   }
 
   /**
-   * Render the overview dashboard split into chip and block tables, with a
-   * timestamp of when the data was published.
-   * @param {!HTMLElement} statusEl Element carrying the timestamp, or the
-   *     reason the tables are empty.
+   * Add the measurement cells one series reports.
+   * @param {!HTMLTableRowElement} row The row to append them to.
+   * @param {!Object} dut The series' dut_status entry.
+   * @param {?Object} coverage Its results[].coverage entry, if any.
+   * @param {?Array<string>} families One cell per coverage family, or null for
+   *     the single total the publisher reports.
+   */
+  function metricCells(row, dut, coverage, families) {
+    var total = dut.tests_total;
+    if (total === null || total === undefined) {
+      cell(row, 'n/a', 'dashboard-na');
+    } else {
+      cell(row, String(total));
+    }
+    metricCell(row, dut.pass_rate);
+
+    if (!families) {
+      metricCell(row, dut.coverage_total_percent);
+      return;
+    }
+
+    var metrics = (coverage && coverage.effective_metrics) || {};
+    families.forEach(function (family) {
+      metricCell(row, metrics[family]);
+    });
+  }
+
+  /**
+   * Add a row naming a series, so one table can carry several.
+   * @param {!HTMLTableSectionElement} body The body to append the row to.
+   * @param {string} label The series name.
+   * @param {number} span The columns the table carries.
+   */
+  function headingRow(body, label, span) {
+    var row = document.createElement('tr');
+    var th = document.createElement('th');
+    th.colSpan = span;
+    th.scope = 'colgroup';
+    th.textContent = label;
+    row.appendChild(th);
+    body.appendChild(row);
+  }
+
+  /**
+   * Render the overview dashboard split into chip and block tables.
+   * @param {!HTMLElement} statusEl Element carrying the reason the tables are
+   *     empty.
    * @param {!HTMLTableSectionElement} chipRowsEl Body of the chip-level table.
    * @param {!HTMLTableSectionElement} blockRowsEl Body of the block-level table.
    */
   function renderDashboard(statusEl, chipRowsEl, blockRowsEl) {
     var fail = failWith(statusEl);
 
-    fillHead(document.getElementById('dashboard-chip-head'), SUMMARY_HEADINGS);
-    fillHead(document.getElementById('dashboard-block-head'), SUMMARY_HEADINGS);
+    // One coverage figure here, as the publisher reports it; the block page
+    // breaks it down by family.
+    var headings = SUMMARY_HEADINGS.concat(['Coverage']);
+    fillHead(document.getElementById('dashboard-chip-head'), headings);
+    fillHead(document.getElementById('dashboard-block-head'), headings);
 
     fetchJson(SUMMARY_URL)
       .then(function (summary) {
-        var duts = Object.create(null);
-        (summary.dut_status || []).forEach(function (dut) {
-          duts[dut.flow] = dut;
-        });
+        /**
+         * Fill a table, giving a block one row per series it published. A
+         * block that published none still gets a row, reading n/a.
+         * @param {!HTMLTableSectionElement} body The table body to fill.
+         * @param {!Array<string>} names The blocks that table declares.
+         */
+        function fill(body, names) {
+          names.forEach(function (name) {
+            var series = (summary.dut_status || []).filter(function (dut) {
+              return dut.flow === name;
+            });
+            if (!series.length) {
+              body.appendChild(summaryRow(name, null));
+              return;
+            }
+            series.forEach(function (dut) {
+              body.appendChild(summaryRow(name, dut));
+            });
+          });
+        }
 
-        var coverage = coverageByFlow(summary);
+        fill(chipRowsEl, CHIP_ROWS);
+        fill(blockRowsEl, BLOCK_ROWS);
 
-        CHIP_ROWS.forEach(function (name) {
-          chipRowsEl.appendChild(summaryRow(name, duts[name], coverage[name], true));
-        });
-        BLOCK_ROWS.forEach(function (name) {
-          blockRowsEl.appendChild(summaryRow(name, duts[name], coverage[name], true));
-        });
-
-        statusEl.className = 'dashboard-status';
-        statusEl.textContent = 'Data as of ' + utcStamp(new Date(summary.generated_at));
+        // Hide the now-empty banner.
+        statusEl.hidden = true;
       })
       .catch(function (error) {
         fail(error.message);
@@ -340,7 +404,8 @@
    */
   function renderBlock(statusEl, nameEl, summaryEl, testsEl, rowEl, testRowsEl) {
     var fail = failWith(statusEl);
-    var flow = new URLSearchParams(window.location.search).get('flow') || '';
+    var wanted = selector();
+    var flow = wanted.flow || '';
 
     /**
      * Round, and format seconds to more readable format.
@@ -360,15 +425,24 @@
      * @return {boolean} True when the block was found and its row rendered.
      */
     function renderSummary(summary) {
-      var dut = (summary.dut_status || []).filter(function (entry) {
-        return entry.flow === flow;
-      })[0];
-      if (!dut) return false;
+      var series = (summary.dut_status || []).filter(function (entry) {
+        return matches(entry, wanted);
+      });
+      if (!series.length) return false;
 
-      rowEl.appendChild(summaryRow(dut.flow, dut, coverageByFlow(summary)[flow], false));
+      var families = coverageFamilies(summary, series);
+      var headings = METRIC_HEADINGS.concat(families.map(familyHeading));
+      fillHead(document.getElementById('dashboard-block-summary-head'), headings);
+      series.forEach(function (dut) {
+        // The page heading names the series; only several need telling apart.
+        if (series.length > 1) headingRow(rowEl, seriesLabel(dut), headings.length);
+        var row = document.createElement('tr');
+        metricCells(row, dut, coverageFor(summary, dut), families);
+        rowEl.appendChild(row);
+      });
       summaryEl.hidden = false;
 
-      statusEl.textContent = 'Data as of ' + utcStamp(new Date(summary.generated_at));
+      statusEl.hidden = true;
       return true;
     }
 
@@ -377,56 +451,63 @@
      * @param {!Object} detail Parsed tests.json.
      */
     function renderTests(detail) {
-      var flows = detail.flows || {};
-      var tests = Object.prototype.hasOwnProperty.call(flows, flow) ? flows[flow] : [];
-      if (!tests.length) return;
+      var series = (detail.results || []).filter(function (entry) {
+        return matches(entry, wanted);
+      });
+      if (!series.length) return;
 
-      // failures first, then sort by slowest
-      tests
-        .slice()
-        .sort(function (a, b) {
-          var aFail = a.status !== 'PASS',
-            bFail = b.status !== 'PASS';
-          if (aFail !== bFail) return aFail ? -1 : 1;
-          return (b.duration_sec || 0) - (a.duration_sec || 0);
-        })
-        .forEach(function (test) {
-          var row = document.createElement('tr');
-          cell(row, test.name);
-          cell(row, test.category || '—');
-          cell(row, test.seed === undefined ? '—' : String(test.seed));
-          cell(row, test.status, test.status === 'PASS' ? 'dash-pass' : 'dash-fail');
-          cell(row, duration(test.duration_sec));
-          testRowsEl.appendChild(row);
-        });
+      series.forEach(function (entry) {
+        var tests = entry.tests || [];
+        if (!tests.length) return;
+
+        if (series.length > 1) headingRow(testRowsEl, seriesLabel(entry), TEST_HEADINGS.length);
+
+        // failures first, then sort by slowest
+        tests
+          .slice()
+          .sort(function (a, b) {
+            var aFail = a.status !== 'PASS',
+              bFail = b.status !== 'PASS';
+            if (aFail !== bFail) return aFail ? -1 : 1;
+            return (b.duration_sec || 0) - (a.duration_sec || 0);
+          })
+          .forEach(function (test) {
+            var row = document.createElement('tr');
+            cell(row, test.name);
+            cell(row, test.category || '—');
+            cell(row, test.seed === undefined ? '—' : String(test.seed));
+            cell(row, test.status, test.status === 'PASS' ? 'dash-pass' : 'dash-fail');
+            cell(row, duration(test.duration_sec));
+            testRowsEl.appendChild(row);
+          });
+      });
 
       testsEl.hidden = false;
     }
 
-    fillHead(document.getElementById('dashboard-block-summary-head'), SUMMARY_HEADINGS);
     fillHead(document.getElementById('dashboard-test-head'), TEST_HEADINGS);
 
     if (!flow) {
       fail('no block selected; reach this page from the verification dashboard');
       return;
     }
-    nameEl.textContent = flow;
-    document.title = flow + ' — Block Verification Detail';
+    nameEl.textContent = seriesLabel(wanted);
+    document.title = seriesLabel(wanted) + ' — Block Verification Detail';
 
     var historyEl = document.getElementById('dashboard-block-history');
     if (historyEl) {
       var historyUrl = new URL('dashboard-test-history.html', window.location.href);
-      historyUrl.searchParams.set('flow', flow);
+      addIdentity(historyUrl, wanted);
       var historyLink = document.createElement('a');
       historyLink.href = historyUrl.href;
-      historyLink.textContent = 'Per-test history for ' + flow + ' \u2192';
+      historyLink.textContent = 'Per-test history for ' + seriesLabel(wanted) + ' \u2192';
       historyEl.appendChild(historyLink);
     }
 
     fetchJson(SUMMARY_URL)
       .then(function (summary) {
         if (!renderSummary(summary)) {
-          fail('the published data contains no flow named "' + flow + '"');
+          fail('the published data has no series named "' + seriesLabel(wanted) + '"');
           return null;
         }
         return fetch(TESTS_URL, { cache: 'no-cache' })
