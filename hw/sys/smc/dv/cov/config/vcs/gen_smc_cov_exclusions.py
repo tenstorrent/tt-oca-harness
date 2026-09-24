@@ -805,7 +805,10 @@ P13 = (
     "interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR "
     "interface takes the AND over every block, the CLA's included, so both are zero as well. "
     "Each gated clamp holds one value for the life of the design and the ternary arm the other "
-    "value selects never executes. The NTR sink is absent, so every block of mmrs's clamp "
+    "value selects never executes. Every instance takes one value for both its clamp and its "
+    "fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so "
+    "its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. "
+    "The NTR sink is absent, so every block of mmrs's clamp "
     "vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 )
 P14 = (
@@ -834,7 +837,9 @@ P17 = (
     "south write way and its staged copies read zero; a core's pointer never matches its own "
     "pending frame, so with one core the overflow-pending flop never sets; and the north write "
     "way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero "
-    "way comes with the north write enable."
+    "way comes with the north write enable. "
+    "Each trace hop has one core in its path and zero upstream repeaters and hops to the tail, so "
+    "at most one core is enabled and its setup counter never leaves its target of zero."
 )
 P19 = (
     "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a "
@@ -1723,6 +1728,41 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                 len(terms) == 2
                 and bool(re.fullmatch(r"wdt_timeout_cluster_i\[\d\]", terms[0]))
                 and vector[0] == "0"
+            ),
+        )
+    ],
+    "generic_ipx_clk_rst_ctrl": [
+        (
+            P13,
+            lambda terms, vector: (
+                (terms == ("i_func_clamp", "i_fuse_dis") and vector in ("01", "10"))
+                or (terms == ("clk_en_sel", "((~i_fuse_dis))") and vector == "10")
+            ),
+        )
+    ],
+    "trace_funnel": [
+        (
+            P13,
+            lambda terms, vector: (
+                terms[0] == "({NUM_CORES {{(~i_func_clamp)}}})" and vector[0] == "0"
+            ),
+        ),
+        (
+            P1,
+            lambda terms, vector: (
+                terms[0] == "Trfunnel_enable_input_ntrace_Pid_vector" and vector[0] == "1"
+            ),
+        ),
+    ],
+    "trace_hop": [
+        (
+            P17,
+            lambda terms, vector: (
+                any(
+                    b == "1" and re.fullmatch(r"\(num_cores_enabled == 3'h[234]\)", t)
+                    for t, b in zip(terms, vector)
+                )
+                or (terms[0].startswith("(tr_init_setup_cnt == ") and vector[0] == "0")
             ),
         )
     ],
