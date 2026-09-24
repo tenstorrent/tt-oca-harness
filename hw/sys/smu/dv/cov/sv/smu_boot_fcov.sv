@@ -217,13 +217,13 @@ module smu_boot_fcov #(
   );
     option.per_instance = 1;
     cp_lc_state: coverpoint lc_state {
-      bins test_dev = {8'hF0};   // LC_TEST_DEV   4'b0000
-      bins prod = {8'hE1};       // LC_PROD       4'b0001
+      bins test_dev = {8'hF0};  // LC_TEST_DEV   4'b0000
+      bins prod = {8'hE1};  // LC_PROD       4'b0001
       bins rma_sip_0 = {8'hD2};  // LC_RMA_SIP_0  4'b0010
       bins rma_sip_1 = {8'hC3};  // LC_RMA_SIP_1  4'b0011
-      bins rma_chip_0 = {8'h96}; // LC_RMA_CHIP_0 4'b0110
-      bins rma_chip_1 = {8'h87}; // LC_RMA_CHIP_1 4'b0111
-      bins prod_end = {8'h78};   // LC_PROD_END   4'b1000
+      bins rma_chip_0 = {8'h96};  // LC_RMA_CHIP_0 4'b0110
+      bins rma_chip_1 = {8'h87};  // LC_RMA_CHIP_1 4'b0111
+      bins prod_end = {8'h78};  // LC_PROD_END   4'b1000
       bins invalid = default;
     }
     cp_demote1: coverpoint demote1;
