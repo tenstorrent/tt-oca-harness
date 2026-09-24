@@ -40,7 +40,7 @@ PROD_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 OCAH_ROOT  ?= $(abspath $(PROD_DIR)/../../../../..)
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 UV = uv
-PYTHON ?= $(UV) --directory "$(OCAH_ROOT)" run --locked python3
+PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked python3
 
 ifneq ($(RISCV_TOOLCHAIN),)
   _TC_PREFIX := $(RISCV_TOOLCHAIN)/
@@ -56,7 +56,7 @@ SIZE := $(_TC_PREFIX)riscv64-unknown-elf-size
 NM   := $(_TC_PREFIX)riscv64-unknown-elf-nm
 
 # Architecture / ABI – same as hw/sys/smc/dv/fw/toolchain.mk
-ARCH      := rv64imafdczicsr_zba_zbb_zbc_zbs_zifencei_zihpm
+ARCH      := rv64imafdczicsr_zba_zbb_zbs_zifencei_zihpm
 ABI       := lp64d
 ARCHFLAGS := -march=$(ARCH) -mabi=$(ABI) -mtune=rocket
 

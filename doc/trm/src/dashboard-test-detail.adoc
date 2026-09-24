@@ -4,8 +4,8 @@
 [[verification-test-detail]]
 = Test Detail
 
-Every published run of one test, with the seeds it ran, the reason given for
-any that failed, and a link to the run that produced it.
+Every published run of one test, with the seeds it ran and the reason given for
+any that failed.
 
 ifdef::backend-html5[]
 ++++

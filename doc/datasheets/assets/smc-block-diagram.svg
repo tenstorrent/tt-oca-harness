@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="308" viewBox="0 0 1000 308" role="img" aria-labelledby="title desc">
+  <title id="title">SMC in a chiplet system</title>
+  <desc id="desc">Board and platform interfaces connect to the System Management Controller. Within the chiplet, the SMC contains a four-core CPU cluster, AXI fabric and management peripherals, and connects to DTP, SEP and adopter IP or macros. A separate system-fabric and sideband path links the SMC to a peer chiplet. External connections and management relationships are product-specific.</desc>
+  <defs>
+    <marker id="arrow-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#374151"/>
+    </marker>
+    <marker id="arrow-start" markerWidth="7" markerHeight="7" refX="0" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M7,0 L0,3.5 L7,7 z" fill="#374151"/>
+    </marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #1f2937; }
+      .heading { font-weight: bold; font-size: 20px; }
+      .label { font-weight: bold; font-size: 17px; }
+      .small { font-size: 16px; }
+      .chiplet { fill: #f8fafc; stroke: #6b7280; stroke-width: 1.5; stroke-dasharray: 7 5; }
+      .external { fill: #fff7d6; stroke: #a16207; stroke-width: 1.5; }
+      .smc { fill: #fff3a3; stroke: #103525; stroke-width: 2; }
+      .block { fill: #ffffff; stroke: #6b7280; stroke-width: 1; }
+      .ocah { fill: #e8f0ff; stroke: #315b9a; stroke-width: 1.5; }
+      .adopter { fill: #e9f8ee; stroke: #287a45; stroke-width: 1.5; }
+      .both { fill: none; stroke: #374151; stroke-width: 1.5; marker-start: url(#arrow-start); marker-end: url(#arrow-end); }
+    </style>
+  </defs>
+
+  <rect x="214" y="4.4" width="590" height="241.12" rx="10" class="chiplet"/>
+  <text x="234" y="26.4" class="label">CHIPLET</text>
+
+  <rect x="4" y="39.6" width="164" height="184.8" rx="8" class="external"/>
+  <text x="86" y="65.12" text-anchor="middle" class="label">Board / platform</text>
+  <text x="86" y="100.32" text-anchor="middle" class="small">Power and reset</text>
+  <text x="86" y="127.6" text-anchor="middle" class="small">Serial I/O and pads</text>
+  <text x="86" y="154.88" text-anchor="middle" class="small">Sensors</text>
+  <text x="86" y="174.24" text-anchor="middle" class="small">and telemetry</text>
+
+  <rect x="240" y="39.6" width="328" height="184.8" rx="8" class="smc"/>
+  <text x="404" y="62.48" text-anchor="middle" class="heading">SMC</text>
+
+  <rect x="254" y="75.68" width="140" height="59.84" rx="5" class="block"/>
+  <text x="324" y="98.56" text-anchor="middle" class="label">CPU cluster</text>
+  <text x="324" y="119.68" text-anchor="middle" class="small">4 Rocket cores</text>
+
+  <rect x="410" y="75.68" width="144" height="59.84" rx="5" class="block"/>
+  <text x="482" y="93.28" text-anchor="middle" class="label">AXI fabric</text>
+  <text x="482" y="110.88" text-anchor="middle" class="small">Filter / remap</text>
+  <text x="482" y="127.6" text-anchor="middle" class="small">DMA</text>
+
+  <rect x="254" y="147.84" width="300" height="64.24" rx="5" class="block"/>
+  <text x="404" y="166.32" text-anchor="middle" class="label">Management peripherals</text>
+  <text x="404" y="184.8" text-anchor="middle" class="small">Mailbox, serial I/O, telemetry, timer</text>
+  <text x="404" y="203.28" text-anchor="middle" class="small">Reset / isolation controls</text>
+
+  <rect x="620" y="39.6" width="164" height="52.8" rx="6" class="ocah"/>
+  <text x="702" y="61.6" text-anchor="middle" class="label">DTP</text>
+  <text x="702" y="80.96" text-anchor="middle" class="small">Debug / trigger</text>
+
+  <rect x="620" y="105.6" width="164" height="52.8" rx="6" class="ocah"/>
+  <text x="702" y="127.6" text-anchor="middle" class="label">SEP</text>
+  <text x="702" y="146.96" text-anchor="middle" class="small">Security paths</text>
+
+  <rect x="620" y="171.6" width="164" height="52.8" rx="6" class="adopter"/>
+  <text x="702" y="193.6" text-anchor="middle" class="small" font-weight="bold">Adopter IP / macros</text>
+  <text x="702" y="212.96" text-anchor="middle" class="small">Memory / analog</text>
+
+  <rect x="854" y="79.2" width="142" height="116.16" rx="8" class="ocah"/>
+  <text x="925" y="108.24" text-anchor="middle" class="heading">Peer OCAH</text>
+  <text x="925" y="131.12" text-anchor="middle" class="heading">chiplet</text>
+  <text x="925" y="159.28" text-anchor="middle" class="small">Adopter-defined</text>
+  <text x="925" y="178.64" text-anchor="middle" class="small">relationship</text>
+
+  <path d="M168 132 H240" class="both"/>
+  <path d="M568 66 H620" class="both"/>
+  <path d="M568 132 H620" class="both"/>
+  <path d="M568 198 H620" class="both"/>
+  <path d="M404 224.4 V259.6 H829 V137.28 H854" class="both"/>
+  <text x="616" y="279.84" text-anchor="middle" class="small">System fabric / sidebands</text>
+
+  <text x="500" y="303.6" text-anchor="middle" class="small">Dashed boundary: one chiplet. Clocks, macros, Boot ROM, address map and management policy are adopter-defined.</text>
+</svg>
