@@ -9311,8 +9311,6 @@ Drive `smc_i2c_protocol_interruption_test_seq`. Each checker below is a named co
 * The read asks for two bytes rather than one. A controller reading a single byte only ever NACKs it, so the acknowledge phase is entered only when a byte is followed by another.
 * Both legs are checked at the far end: the write against the bytes the target acquired, the read against the bytes the target was told to source.
 
-* `ZEROER_CTRL_STATUS_START` is packed with `int_en = 1`, so the start write above leaves `CTRL_STATUS.INT_EN` holding a one. The field is bit 0 of a 64-bit register, so a four-byte write at the upper half leaves the byte lane it sits in deasserted, and a field that retains has to keep its value across it. Any write of this register is also the zeroer's trigger, so the leg waits the operation out before reading, and then requires the whole word outside the STATUS bit to read back as the armed word -- INT_EN still set and nothing else moved. The half write therefore leaves the register exactly as it found it and there is nothing to restore.
-
 *Test Procedure*:
 
 Drive `smc_i2c2_controller_rdwr_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
@@ -9551,8 +9549,6 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * One instance per entry. Filling an acquisition FIFO byte by byte is most of the leaf's time, so three of them in one simulation run past the time a single run is given; the instance is a parameter of the sequence and the package carries an entry for each, this one for I2C0 and cards 242 and 243 for I2C1 and I2C2. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 * No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
 * `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
-
-* The four `MUTEX` registers are 64 bits wide with the mutex in bit 0, so a four-byte write at the upper half leaves that byte lane deasserted and a field that retains has to keep its value. `cpu_ctrl.rdl` describes the field as "HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register", so a read is the only way to see it and a read takes it. Each mutex is therefore read first and has to come back free -- which fails if anything else holds it -- given straight back, subjected to the half write, and read again: that second read can only return one if the field survived the write, and it is given back as well. Every mutex the leaf takes is released, and all four end the leaf free.
 
 *Test Procedure*:
 
