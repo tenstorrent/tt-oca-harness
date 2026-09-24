@@ -325,8 +325,26 @@ tags = ["ci", "i2c"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_i2c_target_addr_stretch_test"
-module = "smc_i2c_target_addr_stretch_test"
+name = "smc_i2c0_target_addr_stretch_test"
+module = "smc_i2c0_target_addr_stretch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c1_target_addr_stretch_test"
+module = "smc_i2c1_target_addr_stretch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c2_target_addr_stretch_test"
+module = "smc_i2c2_target_addr_stretch_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]

@@ -9534,21 +9534,21 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-232-smc_i2c_target_addr_stretch_test]]
-===== 232 `smc_i2c_target_addr_stretch_test`
+[[sec-232-smc_i2c0_target_addr_stretch_test]]
+===== 232 `smc_i2c0_target_addr_stretch_test`
 
-*Source Module*: `smc_i2c_target_addr_stretch_test`
+*Source Module*: `smc_i2c0_target_addr_stretch_test`
 
 *BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, which `+smc_i2c_shared_bus` puts in front of all three instances; observation on the resolved SCL net and on `ACQDATA`
 
-*Objective*: A repeated START issued while the target's acquisition FIFO is full must hold the bus through the address phase until software drains it, on every instance.
+*Objective*: A repeated START issued while the target's acquisition FIFO is full must hold the bus through the address phase until software drains it.
 
 *Test Coverage*:
 
 * The address phase, which `smc_i2c_target_acq_stretch_test` does not reach: that leaf fills the FIFO part-way through a transfer, so the target stretches at a data byte. Holding the address phase needs the FIFO to still be out of room when a new address arrives, which only a repeated START can arrange -- a STOP would end the transfer and let software drain at leisure.
 * Both settings of `CTRL.NACK_ADDR_AFTER_TIMEOUT`, which `i2c.rdl` gives as ACK the address byte even if a stretch timeout occurs (`0`, for SMBus) or NACK it (`1`). The two settings take the target down different paths to the same hold, and in both the transfer has to complete once the FIFO is drained.
 * A third leg where the repeated START asks the target to *transmit*. `TARGET_EVENTS.TX_PENDING` is not raised on this path and the leg does not look for it: `i2c_core.sv:1062` gates the event on `event_read_cmd_received`, which `i2c_target_fsm.sv` emits from `AddrAckHold` only on the branch where the address phase did *not* stretch. The register's own contract is checked in `smc_i2c_target_nack_timeout_test`, on a read whose address phase was acknowledged normally. The target leaves the address-phase stretch into the transmit stretch rather than into byte acquisition, and stays there until software supplies a byte: the drain alone does not release it, and the leg requires that.
-* All three instances. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
+* One instance per entry. Filling an acquisition FIFO byte by byte is most of the leaf's time, so three of them in one simulation run past the time a single run is given; the instance is a parameter of the sequence and the package carries an entry for each, this one for I2C0 and cards 242 and 243 for I2C1 and I2C2. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 * No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
 * `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
 
@@ -9563,19 +9563,18 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 . Require the bench's transfer to still be in flight, then drain `ACQDATA` until it completes.
 . Compare the whole acquired stream against the bench's traffic and require every ACK bit to be low.
 . Repeat with `CTRL.NACK_ADDR_AFTER_TIMEOUT` set, and again with the repeated START asking for a read, where the release needs a byte in `TXDATA` as well as the drain.
-. Repeat the whole sequence on each instance in turn, with the other two disabled.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-I2C-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
-|`CHK-I2C-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set, which takes the target's other address-phase path to the same result
-|`CHK-I2C-TGT-ADDR-STRETCH-READ` |When the held address phase belonged to a read, the target went on holding for a byte to send and was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
+|`CHK-I2C0-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
+|`CHK-I2C0-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set, which takes the target's other address-phase path to the same result
+|`CHK-I2C0-TGT-ADDR-STRETCH-READ` |When the held address phase belonged to a read, the target went on holding for a byte to send and was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
 |===
 
-*Pass Criteria*: all three checkers hold after their compares, on every instance, and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
@@ -9930,6 +9929,71 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-242-smc_i2c1_target_addr_stretch_test]]
+===== 242 `smc_i2c1_target_addr_stretch_test`
+
+*Source Module*: `smc_i2c1_target_addr_stretch_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, which `+smc_i2c_shared_bus` puts in front of all three instances; observation on the resolved SCL net and on `ACQDATA`
+
+*Objective*: The address-phase hold of card 232, on I2C1.
+
+*Test Coverage*:
+
+* The same three legs the sequence drives for any instance -- `CTRL.NACK_ADDR_AFTER_TIMEOUT` clear, set, and a repeated START that asks the target to transmit -- pointed at I2C1, with I2C0 and I2C2 disabled so only the instance under test can answer.
+* A separate entry rather than a loop, because filling an acquisition FIFO byte by byte is most of the run and three of them do not fit in the time one simulation is given. Card 232 carries the mechanism in full.
+
+*Test Procedure*:
+
+Drive `smc_i2c_target_addr_stretch_test_seq` with the instance set to 1. The steps are those of card 232.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C1-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
+|`CHK-I2C1-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set
+|`CHK-I2C1-TGT-ADDR-STRETCH-READ` |The held address phase of a read was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+
+[[sec-243-smc_i2c2_target_addr_stretch_test]]
+===== 243 `smc_i2c2_target_addr_stretch_test`
+
+*Source Module*: `smc_i2c2_target_addr_stretch_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, which `+smc_i2c_shared_bus` puts in front of all three instances; observation on the resolved SCL net and on `ACQDATA`
+
+*Objective*: The address-phase hold of card 232, on I2C2.
+
+*Test Coverage*:
+
+* The same three legs, pointed at I2C2, with I2C0 and I2C1 disabled so only the instance under test can answer.
+* A separate entry rather than a loop, for the runtime reason card 232 gives. Card 232 carries the mechanism in full.
+
+*Test Procedure*:
+
+Drive `smc_i2c_target_addr_stretch_test_seq` with the instance set to 2. The steps are those of card 232.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C2-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
+|`CHK-I2C2-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set
+|`CHK-I2C2-TGT-ADDR-STRETCH-READ` |The held address phase of a read was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
