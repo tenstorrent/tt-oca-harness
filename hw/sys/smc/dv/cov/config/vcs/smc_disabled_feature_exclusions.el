@@ -518,6 +518,16 @@ ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend wi
 MODULE: idma_axi_write
 Condition 10 "2958787609" "((ready_to_write == 1'b1) & ((!dp_poison_i))) 1 -1" (2 "10")
 
+CHECKSUM: "1600696508 3952410150"
+ANNOTATION: "SMC-P27-PAGE-WIDTH-BOUND: the iDMA page splitter forms page_addr_width as OffsetWidth plus max_llen (at most 7) or 8, and OffsetWidth is 3 on the 64-bit backend, so the width never exceeds 11 and its clamp at 12 never selects the clamped value."
+MODULE: idma_legalizer_page_splitter
+Condition 1 "3441990763" "((page_addr_width > 4'hc) ? 'd12 : page_addr_width) 1 -1" (2 "1")
+
+CHECKSUM: "1600696508 1259132338"
+ANNOTATION: "SMC-P27-PAGE-WIDTH-BOUND: the iDMA page splitter forms page_addr_width as OffsetWidth plus max_llen (at most 7) or 8, and OffsetWidth is 3 on the 64-bit backend, so the width never exceeds 11 and its clamp at 12 never selects the clamped value."
+MODULE: idma_legalizer_page_splitter
+Branch 0 "3110941386" "not_bursting_i" (1) "not_bursting_i 0,1"
+
 CHECKSUM: "768735472 3557211807"
 ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
 MODULE: idma_legalizer_rw_axi
@@ -650,6 +660,14 @@ Branch 7 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 8 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 9 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 11 "1454664243" "i_jtag_mmr_req_vld" (0) "i_jtag_mmr_req_vld 1"
+
+CHECKSUM: "3666106679 2225543826"
+ANNOTATION: "SMC-C6-ELSE-OF-TIMEOUT: smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test in the else arm runs only with that timeout high and a row that needs it low is never evaluated."
+MODULE: smc_cpu_ctrl_wrap
+Condition 4 "4033334027" "(wdt_timeout_cluster_i[0] && (cycle_count[0] != 32'b0)) 1 -1" (1 "01")
+Condition 6 "2554685946" "(wdt_timeout_cluster_i[1] && (cycle_count[1] != 32'b0)) 1 -1" (1 "01")
+Condition 8 "1916832996" "(wdt_timeout_cluster_i[2] && (cycle_count[2] != 32'b0)) 1 -1" (1 "01")
+Condition 10 "442641941" "(wdt_timeout_cluster_i[3] && (cycle_count[3] != 32'b0)) 1 -1" (1 "01")
 
 CHECKSUM: "3685564638 3131932856"
 ANNOTATION: "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both instances, and they reach the CLA crosstrigger input and the DFD clock-stop gate unchanged. The CLA crosstrigger edge, the timestamp load it arms and the TDR clock-stop term therefore hold zero here. Bench ports that drive those inputs retire the class."
@@ -1593,9 +1611,14 @@ Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_M
 Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
 Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
 
+CHECKSUM: "3055559241 4290674178"
+ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
+MODULE: uart_16550_main_reg
+Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage.LSR.PE.value)) || ((|field_storage.LSR.FE.value)) || ((|field_storage.LSR.BI.value))) 1 -1" (2 "0001")
+
 CHECKSUM: "2535161971 656965095"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
-ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well; the row that needs break_err alone has no stimulus."
+ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 MODULE: uart_core
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")

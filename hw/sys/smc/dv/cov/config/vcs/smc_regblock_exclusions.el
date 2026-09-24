@@ -286,6 +286,7 @@ Condition 57 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 CHECKSUM: "1147255362 363877172"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A10-HW-WRITE-EVERY-CYCLE: the RDL gives these fields hw = rw with no hardware write enable, so PeakRDL loads the hardware value on every clock without a software write and sets load_next on both arms; the path of the field's flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: filter_ctrl_reg
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
@@ -293,6 +294,8 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
+Branch 22 "1813063680" "(~arst_n)" (2) "(~arst_n) 0,0"
+Branch 24 "3372078797" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "936371605 2913940277"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."

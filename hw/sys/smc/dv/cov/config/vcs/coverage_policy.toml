@@ -14,7 +14,8 @@ scope_epoch = "smc-vcs-cov-v1"
 # PeakRDL blocks, plus A3 NO-READ-CHANNEL, A4 READ-NEVER-ERRORS and A5
 # INPUT-UNCONNECTED, which belong to one block each, and A6 SINGLEPULSE-RETAIN,
 # the retain row of a field the RDL declares singlepulse, A7 SINGLEPULSE-LOADS,
-# the load-skipping path of such a field's flop, and C1 CONTRADICTORY-PATH, a
+# the load-skipping path of such a field's flop, A10 HW-WRITE-EVERY-CYCLE, the
+# same path of a hw = rw field without a write enable, and C1 CONTRADICTORY-PATH, a
 # branch path whose own decisions contradict. B1 PARTIAL-LANE-WRITE
 # joins them and is the bench's own: the AXI agent writes whole 32-bit words, so
 # on a block whose cpuif is no wider no write-branch row that needs a lane off
@@ -65,8 +66,8 @@ args = ["-elfile", "{path}"]
 # CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16 SINK-ENABLE-CONST, P17
 # ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19 NTR-RAM-READ-TIED, P20
 # TCOUNT-SELECT-PAIRED, P22 DFD-CONTROL-TIED, P24 DIVIDER-INIT-NEVER-SET, P25
-# SINK-WRITEBACK-TIED, P26 OUTPUT-FLOP-PARAM, C5
-# SIGNAL-IDENTITY, and F3
+# SINK-WRITEBACK-TIED, P26 OUTPUT-FLOP-PARAM, P27 PAGE-WIDTH-BOUND, C5
+# SIGNAL-IDENTITY, C6 ELSE-OF-TIMEOUT, and F3
 # TIEOFF's branch paths; B6 SIM-ONLY-FUSE-BYPASS is the bench's and its
 # policy's, as no leaf passes the simulation-only +skip_fuse_sense plusarg the
 # DV policy forbids, and B8 DFD-BENCH-INPUTS-TIED is the bench's, which ties the

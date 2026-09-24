@@ -605,6 +605,12 @@ A9 = (
     "aligned base), so cpuif_addr and rd_mux_addr hold zero and a row that needs either "
     "nonzero cannot occur."
 )
+A10 = (
+    "SMC-REGBLOCK-A10-HW-WRITE-EVERY-CYCLE: the RDL gives these fields hw = rw with no "
+    "hardware write enable, so PeakRDL loads the hardware value on every clock without a "
+    "software write and sets load_next on both arms; the path of the field's flop that skips "
+    "the load never runs."
+)
 C3 = (
     "SMC-REGBLOCK-C3-NO-EXTERNAL-WRITE: the block's only external register is read-only, so "
     "PeakRDL gives external_wr_ack a constant zero, and a row that needs an external write "
@@ -745,7 +751,9 @@ P12 = (
     "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame "
     "whose data is all zeros and stores it in the same entry as that framing error, in the "
     "FIFO and in the holding register alike, so an entry carrying break_err always carries "
-    "framing_err as well; the row that needs break_err alone has no stimulus."
+    "framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits "
+    "on the same cycle and the same LSR read clears both, so LSR.BI is never set without "
+    "LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
 )
 # The whole condition, so that a change to the order of its terms stops the
 # vector matching rather than moving it onto a sibling.
@@ -875,6 +883,17 @@ P26 = (
     "CLA muxes at 0. In each section the comparisons on the parameter are constant, so the "
     "row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode "
     "arm that tests it at 0 never executes."
+)
+P27 = (
+    "SMC-P27-PAGE-WIDTH-BOUND: the iDMA page splitter forms page_addr_width as OffsetWidth plus "
+    "max_llen (at most 7) or 8, and OffsetWidth is 3 on the 64-bit backend, so the width never "
+    "exceeds 11 and its clamp at 12 never selects the clamped value."
+)
+C6 = (
+    "SMC-C6-ELSE-OF-TIMEOUT: smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count "
+    "while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage "
+    "timeout, so the decrement test in the else arm runs only with that timeout high and a row "
+    "that needs it low is never evaluated."
 )
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
@@ -1523,6 +1542,7 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
 # Decisions on an elaboration-time constant: (class, condition, value it holds).
 BRANCH_CONSTANT_DECISIONS: "dict[str, list[tuple[str, str, int]]]" = {
     "trace_sink": [(P17, "NUM_CORES>1", 0)],
+    "idma_legalizer_page_splitter": [(P27, "page_addr_width>'d12", 0)],
     **{
         block: [(P5, "instr_type==2'b01", 0), (P5, "instr_type==2'b10", 0)]
         for block in ("cla_mmr", "dst_mmr", "dst_sink_mmr", "funnel_mmr")
@@ -1544,6 +1564,39 @@ BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
 # Per-module row predicates over the report's own terms: (class, test(terms, vector)).
 NORTH_WAY_NONZERO = re.compile(r"^\(TrRamNorthTraceWrWay_TS0 == [123]\[1:0\]\)$")
 ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
+    "smc_cpu_ctrl_wrap": [
+        (
+            C6,
+            lambda terms, vector: (
+                len(terms) == 2
+                and bool(re.fullmatch(r"wdt_timeout_cluster_i\[\d\]", terms[0]))
+                and vector[0] == "0"
+            ),
+        )
+    ],
+    "idma_legalizer_page_splitter": [
+        (
+            P27,
+            lambda terms, vector: any(
+                t == "(page_addr_width > 4'hc)" and b == "1" for t, b in zip(terms, vector)
+            ),
+        )
+    ],
+    "uart_16550_main_reg": [
+        (
+            P12,
+            lambda terms, vector: (
+                any(
+                    t == "((|field_storage.LSR.BI.value))" and b == "1"
+                    for t, b in zip(terms, vector)
+                )
+                and any(
+                    t == "((|field_storage.LSR.FE.value))" and b == "0"
+                    for t, b in zip(terms, vector)
+                )
+            ),
+        )
+    ],
     # The north write way is the staged OR of each valid core's pointer, staged on
     # the same clock as the valid, so a non-zero way comes with a staged valid, and
     # with no pending write that valid is the north write enable.
@@ -2658,8 +2711,14 @@ def _scoped(pattern: "re.Pattern[str]") -> "re.Pattern[str]":
     return re.compile(r"^(?:[A-Za-z_]\w*(?:\[\d+\])?\.)*" + pattern.pattern[1:], pattern.flags)
 
 
-def singlepulse_load_fields(source: str) -> frozenset[str]:
-    """Fields of a generated register block whose load_next is set on every arm."""
+def singlepulse_load_fields(
+    source: str, marker: str = "// singlepulse clears back to 0"
+) -> frozenset[str]:
+    """Fields of a generated register block whose load_next is set on every arm.
+
+    The marker names the arm that sets it when no software write does: the
+    singlepulse clear, or an unconditional hardware write.
+    """
     path = Path(source.split(":")[0])
     if not path.is_file():
         return frozenset()
@@ -2669,7 +2728,7 @@ def singlepulse_load_fields(source: str) -> frozenset[str]:
     ):
         body = m.group(1)
         field = re.search(r"field_combo\.([\w.\[\]]+)\.load_next = load_next_c;", body)
-        if field is None or "// singlepulse clears back to 0" not in body:
+        if field is None or marker not in body:
             continue
         loads = re.findall(r"load_next_c = ([^;]*);", body)
         if loads.count("'0") == 1 and set(loads) == {"'0", "'1"}:
@@ -2876,7 +2935,7 @@ def select_extra(
     return None
 
 
-REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, A8, A9, B1, B7, C1, C3, C4)
+REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, B1, B7, C1, C3, C4)
 FEATURE_CLASSES = (
     P1,
     P2,
@@ -2902,7 +2961,9 @@ FEATURE_CLASSES = (
     P24,
     P25,
     P26,
+    P27,
     C5,
+    C6,
     F3,
     B6,
     B8,
@@ -3054,6 +3115,7 @@ def render_regblock(
         if is_regblock_source(source):
             stall = regblock_facts(module, source)[0]
             pulses = singlepulse_load_fields(source)
+            hw_loads = singlepulse_load_fields(source, "end else begin // HW Write")
             for construct, values, entry in paths.get(module, []):
                 if entry in taken:
                     continue
@@ -3067,6 +3129,8 @@ def render_regblock(
                     reason = A8
                 elif singlepulse_skip_path(construct, values, pulses):
                     reason = A7
+                elif singlepulse_skip_path(construct, values, hw_loads):
+                    reason = A10
                 else:
                     reason = next(
                         (
