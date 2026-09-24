@@ -8496,6 +8496,44 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-239-smc_uart_rbr_error_path_test]]
+===== 239 `smc_uart_rbr_error_path_test`
+
+*Source Module*: `smc_uart_rbr_error_path_test`
+
+*BFM / Model*: UART3's transmit pin crossed to UART0's receive pin (`+smc_uart_cross_3to0`); observation on `LSR` and `IIR`
+
+*Objective*: A character that arrives broken while the receive FIFO is off must carry its flags through the receiver buffer register.
+
+*Test Coverage*:
+
+* The second of the two receive paths `uart_core.sv` selects with `FCR.FIFO_ENABLE`. Each path carries its own copy of the error flags. `smc_uart_error_conditions_test` breaks characters on the FIFO path and `smc_uart_core_mode_select_test` sends clean ones through the register path, so a broken character had never taken it.
+* The two kinds two UARTs can disagree into existence: a parity disagreement, and a word length disagreement that makes the receiver sample its stop bit where a data bit still is.
+* The framing character carries a one, so the frame is not the all-zero one a break is, and the leg requires `LSR.BI` to stay clear. A break sets the framing flag as well, so a break alone cannot separate the two.
+* The receive trigger level, which `uart_core.sv` builds from `ECR.RCVR_TRIGGER_MS2B` and `FCR.RCVR_TRIGGER` together and compares against the depth the FIFO was built with. Every other leaf programs a level the design supports; this one programs a level above the depth, where the watermark can never be reached.
+
+*Test Procedure*:
+
+[arabic]
+. With both UARTs' FIFOs disabled and the two ends agreeing, send one character and require no error flag.
+. Set the transmitter to odd parity and the receiver to even, send one character and require `LSR.PE`.
+. Set the transmitter to eight bits and the receiver to five, send a character with a zero at the receiver's stop position and a one before it, and require `LSR.FE` without `LSR.BI`.
+. Program the trigger level above the FIFO depth with the FIFOs on, send one character, and require `LSR.DR` with no received-data-ready interrupt.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-RBR-CLEAN` |A character both ends agreed on reached the receiver buffer register with no error flag
+|`CHK-UART-RBR-ERRORS` |A parity disagreement and a word length disagreement each reached the receiver buffer register with their own flag and no other
+|`CHK-UART-RXILVL-UNSUPPORTED` |With the trigger level above the FIFO depth a character still arrived and the received-data-ready interrupt stayed away
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
