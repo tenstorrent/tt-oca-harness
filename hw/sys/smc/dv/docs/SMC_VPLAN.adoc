@@ -4432,7 +4432,7 @@ Drive `smc_dfd_cla_counter_edge_test_seq`. Each checker below is a named compare
 *Test Coverage*:
 
 * `Trdstformat` = 0, one of the three values the field's own RDL description names, written into the DST control register and read back.
-* `DEBUG_BUS_MUX.Muxselseg0..7` walked through the segment selects its own description names (0, 1, 2, 4) while the trace is live, one write per mux id per rotation, so the lanes carry different debug-bus segments and consecutive samples differ. Without that a compressor is fed a bus that holds still and emits nothing.
+* The CLA's own mux (`CDbgMuxSelLo`), the last stage in front of the trace, resets to off and would hold the traced bus at zero, so it is put in normal debug mode. The functional debug signals behind the DEBUG_BUS_MUX array hold still in this bench, so the array is put in its identifier output mode and the identifier whose return to normal mode moves the node 0 pair 0 snapshot is found by measurement. That mux's `Muxselseg0..7` are walked through the segment selects the description names (0, 1, 2, 4) while the trace is live, and the lanes are read through the snapshot after each. Without a changing bus a compressor emits nothing.
 * `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
 * `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
 
@@ -4448,7 +4448,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 0. Each checker be
 |Checker |Description
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
 |`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
-|`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
+|`CHK-DST-FORMAT-PAYLOAD` |The measured mux was walked through every segment select the `Muxselseg` description names while the trace was running, and the lanes read through the snapshot took at least two different values; a rotation that does not run, no mux that moves the snapshot, or lanes that stay the same fails it
 |`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
 
@@ -4471,7 +4471,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 0. Each checker be
 *Test Coverage*:
 
 * `Trdstformat` = 1, one of the three values the field's own RDL description names, written into the DST control register and read back.
-* `DEBUG_BUS_MUX.Muxselseg0..7` walked through the segment selects its own description names (0, 1, 2, 4) while the trace is live, one write per mux id per rotation, so the lanes carry different debug-bus segments and consecutive samples differ. Without that a compressor is fed a bus that holds still and emits nothing.
+* The CLA's own mux (`CDbgMuxSelLo`), the last stage in front of the trace, resets to off and would hold the traced bus at zero, so it is put in normal debug mode. The functional debug signals behind the DEBUG_BUS_MUX array hold still in this bench, so the array is put in its identifier output mode and the identifier whose return to normal mode moves the node 0 pair 0 snapshot is found by measurement. That mux's `Muxselseg0..7` are walked through the segment selects the description names (0, 1, 2, 4) while the trace is live, and the lanes are read through the snapshot after each. Without a changing bus a compressor emits nothing.
 * `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
 * `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
 
@@ -4487,7 +4487,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 1. Each checker be
 |Checker |Description
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
 |`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
-|`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
+|`CHK-DST-FORMAT-PAYLOAD` |The measured mux was walked through every segment select the `Muxselseg` description names while the trace was running, and the lanes read through the snapshot took at least two different values; a rotation that does not run, no mux that moves the snapshot, or lanes that stay the same fails it
 |`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
 
@@ -4507,7 +4507,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 1. Each checker be
 *Test Coverage*:
 
 * `Trdstformat` = 3, one of the three values the field's own RDL description names, written into the DST control register and read back.
-* `DEBUG_BUS_MUX.Muxselseg0..7` walked through the segment selects its own description names (0, 1, 2, 4) while the trace is live, one write per mux id per rotation, so the lanes carry different debug-bus segments and consecutive samples differ. Without that a compressor is fed a bus that holds still and emits nothing.
+* The CLA's own mux (`CDbgMuxSelLo`), the last stage in front of the trace, resets to off and would hold the traced bus at zero, so it is put in normal debug mode. The functional debug signals behind the DEBUG_BUS_MUX array hold still in this bench, so the array is put in its identifier output mode and the identifier whose return to normal mode moves the node 0 pair 0 snapshot is found by measurement. That mux's `Muxselseg0..7` are walked through the segment selects the description names (0, 1, 2, 4) while the trace is live, and the lanes are read through the snapshot after each. Without a changing bus a compressor emits nothing.
 * `Trdstimpl.Trdstvendorframelength` changed part way through the run, which its description makes frame lengths of 64 and 192 bytes, so the packet path sees more than one frame size.
 * `Trdstsyncmode` at the periodic-timestamp value its description names, with the shortest `Trdstsyncmax` period, so the periodic-sync path runs.
 
@@ -4523,7 +4523,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 3. Each checker be
 |Checker |Description
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
 |`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
-|`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
+|`CHK-DST-FORMAT-PAYLOAD` |The measured mux was walked through every segment select the `Muxselseg` description names while the trace was running, and the lanes read through the snapshot took at least two different values; a rotation that does not run, no mux that moves the snapshot, or lanes that stay the same fails it
 |`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
 
@@ -4795,7 +4795,7 @@ Drive `smc_dfd_trace_sink_concurrent_test_seq`. Each checker below is a named co
 
 * All 16 event-action pairs across all four nodes, each driven over the whole declared range of its action field with a relation this sequence measures to activate that pair, on the node the DUT reports current. The other CLA leaves drive the action field on one pair of one node only.
 * All 32 debug-signal snapshot registers read at their RDL reset first and again after their own pair has acted.
-* The debug-bus mux array is put into the identifier output mode its description names, so the bus carries known non-zero content.
+* The debug-bus mux array is put into the identifier output mode its description names, and the CLA's own mux (`CDbgMuxSelLo`), which resets to off and would hold the bus at zero, into normal debug mode, so the bus the pairs capture carries known non-zero content and holds still.
 
 *Test Procedure*:
 
@@ -4809,13 +4809,13 @@ Drive `smc_dfd_cla_snapshot_capture_test_seq`. Each checker below is a named com
 |Checker |Description
 |`CHK-CLA-SNAPSHOT-RESET` |All 32 snapshot registers read their RDL reset before the CLA was armed; one already moved fails it
 |`CHK-CLA-SNAPSHOT-DRIVE` |All 16 pairs across all four nodes had their action field driven over its whole declared range with a relation measured to activate that pair; a pair that never activates, or a node the walk cannot reach, fails it
-|`CHK-CLA-SNAPSHOT-QUIESCENT` |The snapshot registers still read their RDL reset afterwards. The capture follows the relation result rather than an action code, so it did occur; what it writes is the debug-signal bus, which reads zero in this bench. This is a deny leg and the drive checker is its live control. A register that does change fails it, because the claim would then have to check the captured value instead
+|`CHK-CLA-SNAPSHOT-CAPTURE` |After each pair acted, its `Lo` snapshot left its RDL reset and all sixteen read the same value, the content of a bus that holds still; the `Hi` halves stayed at their reset. A `Lo` snapshot at its reset, two pairs that disagree, or a `Hi` half that moves fails it
 |===
 
 *Known limitation*: the `Hi` halves of the snapshot registers cannot be written at all in this configuration. `smc_dfd_wrap.sv:141` passes `DEBUG_SIGNAL_WIDTH` of 64, `core_logic_analyzer.sv:166` makes `DBG_SIGNAL_CONFIG` the comparison of that against 128, and the generate at `core_logic_analyzer.sv:556` that drives the `Hi` write enables is therefore not elaborated.
 
 
-*Pass Criteria*: `CHK-CLA-SNAPSHOT-DRIVE`, `CHK-CLA-SNAPSHOT-QUIESCENT`, `CHK-CLA-SNAPSHOT-RESET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-SNAPSHOT-CAPTURE`, `CHK-CLA-SNAPSHOT-DRIVE`, `CHK-CLA-SNAPSHOT-RESET` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== EFUSE

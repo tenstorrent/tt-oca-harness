@@ -70,14 +70,19 @@ from cocotb.triggers import ClockCycles
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import (
+    DBM_MODE_IDENTIFIER,
+    DBM_MODE_NORMAL,
     checked_mask,
+    cla_mux_normal,
     dfd_register,
     dst_register,
     field_word,
+    find_sampled_mux,
     funnel_register,
     pack_fields,
     reg_field,
     sink_register,
+    traced_bus,
 )
 
 # dfd_dst.rdl Trdstformat, the uncompressed value its description names, so
@@ -106,10 +111,6 @@ _DELIVER_POLLS = 32
 # Write-pointer samples that have to agree for the pointer to count as parked.
 _PARKED_SAMPLES = 3
 
-# dfx_ctrl_status.rdl Dbmmode, the values its description names as normal debug
-# mode and the mux identifier output mode.
-_DBM_MODE_NORMAL = 1
-_DBM_MODE_IDENTIFIER = 2
 # Mode switches in the odd-offset walk: each makes one compressed packet, and a
 # run of equal odd-sized packets visits every offset of the 64-byte accumulator
 # within 64 packets, so this leaves room for a frame closing part way.
@@ -357,13 +358,6 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
 
     # -- odd write offsets --------------------------------------------------
 
-    async def _snapshot(self, label: str) -> int:
-        lo = cla_register("CDbgSignalSnapshotNode0Eap0Lo")
-        hi = cla_register("CDbgSignalSnapshotNode0Eap0Hi")
-        low = await self._read(lo, f"{label}_lo")
-        high = await self._read(hi, f"{label}_hi")
-        return (high << 32) | low
-
     async def _set_mux_mode(self, identity: int, mode: int, label: str) -> None:
         mux = dfd_register("dfx_ctrl/DEBUG_BUS_MUX")
         await self._write(mux, pack_fields(mux, {"Dbmmode": mode, "Dbmid": identity}), label)
@@ -453,30 +447,10 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         )
         eap = cla_register("CDbgNode0Eap0")
         await self._write(eap, pack_fields(eap, {"LogicalOp": logical_op, "DestNode": 0}), "odd")
-        cla_mux = cla_register("CDbgMuxSelLo")
-        for identity in range(1 << dbmid.width):
-            await self._write(
-                cla_mux,
-                pack_fields(cla_mux, {"Dbmmode": _DBM_MODE_NORMAL, "Dbmid": identity}),
-                f"clamux{identity}",
-            )
-        for identity in range(1 << dbmid.width):
-            await self._set_mux_mode(identity, _DBM_MODE_IDENTIFIER, f"ident{identity}")
-        await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
-        identifier_state = await self._snapshot("ident")
-        for identity in range(1 << dbmid.width):
-            await self._set_mux_mode(identity, _DBM_MODE_NORMAL, f"probe{identity}")
-            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
-            normal_state = await self._snapshot(f"probe{identity}")
-            if normal_state != identifier_state:
-                self.sampled_mux = identity
-                break
-        else:
-            raise AssertionError(
-                f"the Node0Eap0 debug-signal snapshot stayed 0x{identifier_state:016x} as each "
-                f"of the {1 << dbmid.width} mux identifiers was returned to normal mode, so no "
-                f"mux mode change reaches the bus the trace samples"
-            )
+        await cla_mux_normal(self, "clamux")
+        self.sampled_mux, identifier_state, normal_state = await find_sampled_mux(
+            self, _SETTLE_CYCLES, "odd"
+        )
         diff = identifier_state ^ normal_state
         self.odd_bytes = sum(1 for b in range(8) if (diff >> (8 * b)) & 0xFF)
         self.odd_states = (identifier_state, normal_state)
@@ -485,7 +459,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             f"{self.odd_bytes} bytes, an even count, so switching between them makes packets "
             f"no different in parity from the uncompressed ones"
         )
-        modes = (_DBM_MODE_IDENTIFIER, _DBM_MODE_NORMAL)
+        modes = (DBM_MODE_IDENTIFIER, DBM_MODE_NORMAL)
         await self._restart_compressed(logical_op, modes)
         wp = sink_register("Trdstramwplow")
         pointer = reg_field(wp, "Trdstramwplow")
@@ -500,14 +474,14 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         )
         self.odd_pointer = (before, after)
         # The last switch left the mux in normal mode; the snapshot must say so.
-        final = await self._snapshot("odd_end")
+        final = await traced_bus(self, "odd_end")
         assert final == normal_state, (
             f"after {_ODD_SWITCHES} switches ending in normal mode the snapshot reads "
             f"0x{final:016x}, not the normal-mode state 0x{normal_state:016x}, so the "
             f"switching did not move the bus between the two measured states"
         )
         for identity in range(1 << dbmid.width):
-            await self._set_mux_mode(identity, _DBM_MODE_NORMAL, f"renormal{identity}")
+            await self._set_mux_mode(identity, DBM_MODE_NORMAL, f"renormal{identity}")
         self.value_checks += 4
         cocotb.log.info(
             "CHK-DST-CONCURRENT-ODDBYTES: with the CLA mux in normal mode, DEBUG_BUS_MUX "

@@ -131,6 +131,79 @@ def checked_mask(reg: RdlReg, values: dict[str, int]) -> int:
     return mask
 
 
+# dfx_ctrl_status.rdl and dfd_cla.rdl Dbmmode: the values the description names
+# as normal debug mode and the mux identifier output mode.
+DBM_MODE_NORMAL = 1
+DBM_MODE_IDENTIFIER = 2
+
+
+def _reg_label(reg: RdlReg, label: str) -> str:
+    return f"{reg.path.rsplit('/', 1)[1]}:{label}"
+
+
+async def cla_mux_normal(seq: SmcCsrSeq, label: str) -> None:
+    """Put the CLA's own debug-bus mux in normal debug mode.
+
+    It is the last mux stage in front of the CLA and the trace, and resets to
+    its off mode. It takes a mode only while the programmed identifier is its
+    own, so the mode is written once per identifier value.
+    """
+    reg = cla_register("CDbgMuxSelLo")
+    dbmid = cla_field(reg, "Dbmid")
+    for identity in range(1 << dbmid.width):
+        word = pack_fields(reg, {"Dbmmode": DBM_MODE_NORMAL, "Dbmid": identity})
+        await seq.csr_write(
+            _reg_label(reg, f"{label}{identity}"), reg.addr, word, length=reg.width_bytes
+        )
+
+
+async def traced_bus(seq: SmcCsrSeq, label: str) -> int:
+    """The debug-signal snapshot node 0 pair 0 last captured, as one 64-bit value."""
+    value = 0
+    for shift, half in ((0, "Lo"), (32, "Hi")):
+        reg = cla_register(f"CDbgSignalSnapshotNode0Eap0{half}")
+        word = await seq.csr_read(_reg_label(reg, label), reg.addr, length=reg.width_bytes)
+        value |= word << shift
+    return value
+
+
+async def set_dbm(seq: SmcCsrSeq, values: dict[str, int], label: str) -> None:
+    reg = dfd_register("dfx_ctrl/DEBUG_BUS_MUX")
+    await seq.csr_write(
+        _reg_label(reg, label), reg.addr, pack_fields(reg, values), length=reg.width_bytes
+    )
+
+
+async def find_sampled_mux(seq: SmcCsrSeq, settle: int, label: str) -> tuple[int, int, int]:
+    """Find, by measurement, a DEBUG_BUS_MUX identifier that feeds the traced bus.
+
+    Needs the CLA mux in normal mode and node 0 pair 0 activating, so its
+    snapshot follows the bus. Every identifier is put in the identifier output
+    mode, then each in turn back in normal mode until the snapshot changes.
+    Returns that identifier and the bus with it in each of the two modes.
+    """
+    dbmid = reg_field(dfd_register("dfx_ctrl/DEBUG_BUS_MUX"), "Dbmid")
+    for identity in range(1 << dbmid.width):
+        await set_dbm(
+            seq, {"Dbmmode": DBM_MODE_IDENTIFIER, "Dbmid": identity}, f"{label}_id{identity}"
+        )
+    await ClockCycles(cocotb.top.clk_smc_i, settle)
+    identifier_state = await traced_bus(seq, f"{label}_ident")
+    for identity in range(1 << dbmid.width):
+        await set_dbm(
+            seq, {"Dbmmode": DBM_MODE_NORMAL, "Dbmid": identity}, f"{label}_probe{identity}"
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, settle)
+        normal_state = await traced_bus(seq, f"{label}_probe{identity}")
+        if normal_state != identifier_state:
+            return identity, identifier_state, normal_state
+    raise AssertionError(
+        f"the node 0 pair 0 debug-signal snapshot stayed 0x{identifier_state:016x} as each of "
+        f"the {1 << dbmid.width} DEBUG_BUS_MUX identifiers was returned to normal mode, so no "
+        f"mux mode change reaches the bus the CLA and the trace sample"
+    )
+
+
 @lru_cache(maxsize=None)
 def block_register(block: str, name: str) -> RdlReg:
     """One register of a sub-block of the SMC_CLA aperture, by its RDL name.
