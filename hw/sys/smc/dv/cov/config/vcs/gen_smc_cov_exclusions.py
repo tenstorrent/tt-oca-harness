@@ -9,8 +9,9 @@ access from this bench can reach, and SEP records the same facts in
 
 * A1 NO-STALL: a PeakRDL register block whose cpuif has no external
   registers hardwires `cpuif_req_stall_rd` and `cpuif_req_stall_wr` to zero,
-  so the AXI-Lite handshake can never see valid without ready and the stall
-  branches of the request path never execute.
+  so the AXI-Lite handshake can never see valid without ready, the stall
+  branches of the request path never execute, and no row of a stall
+  sub-expression that needs a stall input at one occurs.
 * A2 NO-ERROR: a PeakRDL register block generated without an address or
   access check ("No valid address check" in the generated source) never sets
   `decoded_err`, `cpuif_wr_err` or `cpuif_rd_err`, so its error branches and
@@ -213,6 +214,7 @@ HANDSHAKE_RE = re.compile(
     r"\((s_axil_\w*valid)\s*&&\s*(s_axil_\w*ready)\)\s+1\s+-1\"\s+\(\d+ \"10\"\)"
 )
 STALL_RE = re.compile(r"cpuif_req_stall")
+STALL_OPERAND = re.compile(r"^cpuif_req_stall_(?:rd|wr)\b")
 ERROR_RE = re.compile(r"decoded_err|cpuif_wr_err|cpuif_rd_err|readback_err|axil_resp_buffer_err")
 XOR_TERM_RE = re.compile(r"^\((?:[A-Za-z_][\w\[\]\.:]*\s*\^\s*){3,}[A-Za-z_][\w\[\]\.:]*\)")
 COND_ROW_RE = re.compile(r'^(Condition \d+ "\d+" "(.*) 1 -1") \((\d+) "([01]+)"\)$')
@@ -222,8 +224,9 @@ A1 = (
     "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires "
     "cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is "
     "accepted the cycle it is valid and the stall branches of the request path never "
-    "execute; the valid-without-ready row of each handshake condition has no access "
-    "that can produce it."
+    "execute; the valid-without-ready row of each handshake condition, and each row "
+    "of a stall sub-expression that needs a stall input at one, has no access that "
+    "can produce it."
 )
 A2 = (
     "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access "
@@ -1519,7 +1522,18 @@ def render_regblock(
         taken = {e for _, e in block}
         tpoints = template_points_by_module.get(module, [])
         width = cpuif_data_width(tpoints[0].source) if tpoints else None
-        for tp, rp in align_points(report_points_by_module.get(module, []), tpoints):
+        aligned = align_points(report_points_by_module.get(module, []), tpoints)
+        stall0 = bool(tpoints) and regblock_facts(module, tpoints[0].source)[0]
+        for tp, rp in aligned if stall0 else ():
+            if not is_regblock_source(tp.source) or not STALL_RE.search(tp.text):
+                continue
+            for vector, entry in tp.rows:
+                if entry in taken or vector not in rp.uncovered:
+                    continue
+                if needs_forced_away(rp.terms, vector, STALL_OPERAND, 0):
+                    block.append((A1, entry))
+                    taken.add(entry)
+        for tp, rp in aligned:
             if not is_regblock_source(tp.source) or "decoded_wr_biten" not in tp.text:
                 continue
             if not in_write_branch(tp.source):

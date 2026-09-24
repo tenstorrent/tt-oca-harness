@@ -131,7 +131,7 @@ from it, rather than matching the expression by name:
 
 | File | Class | Fact |
 | --- | --- | --- |
-| `smc_regblock_exclusions.el` | A1 NO-STALL | a PeakRDL regblock without external registers hardwires `cpuif_req_stall_rd/wr` to zero: the valid-without-ready row of each AXI-Lite handshake condition and the stall branches cannot occur |
+| `smc_regblock_exclusions.el` | A1 NO-STALL | a PeakRDL regblock without external registers hardwires `cpuif_req_stall_rd/wr` to zero: the valid-without-ready row of each AXI-Lite handshake condition, the stall branches, and each stall sub-expression row that needs a stall input at one cannot occur |
 | `smc_regblock_exclusions.el` | A2 NO-ERROR | a regblock generated with "No valid address check" never sets `decoded_err`, `cpuif_wr_err` or `cpuif_rd_err`: its error branches and SLVERR responses cannot occur |
 | `smc_regblock_exclusions.el` | A3 NO-READ-CHANNEL | the UART's read-channel select has no branch for the write-only register map, so that block's `arvalid` is never asserted and a row needing it high cannot occur. A row over `ar_accept` alone stays graded: the block ORs it with `aw_accept`, which the write channel does assert |
 | `smc_regblock_exclusions.el` | A4 READ-NEVER-ERRORS | in the vendored iDMA register top `reg_re` and `reg_we` are mutually exclusive, `wr_err` is gated on `reg_we` and `addrmiss` requires that no address hit, so the per-address read term crossed with an error cannot occur |
