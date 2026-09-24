@@ -339,7 +339,8 @@ A2 = (
     "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access "
     "check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp "
     "never leave OKAY; the error branches have no access that can enter them. The "
-    "fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+    "fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer "
+    "that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
 )
 X1 = (
     "SMC-X1-XOR-NETWORK: a CRC or parity network is an XOR reduction of its inputs, and "
@@ -621,8 +622,11 @@ C4 = (
     "decode strobe of a read-only or write-only register, and into the req it presents for an "
     "external one, so the strobe or req is never high in the other direction. A row that needs "
     "it high in that direction, in the block or in the logic that consumes the req, cannot "
-    "occur; the test rewrites each strobe or req as itself and its direction, and takes a row "
-    "only when that makes it unsatisfiable."
+    "occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its "
+    "negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge "
+    "holds pwrite from setup through access, so those enables carry the pwrite of the transfer "
+    "in flight. The test rewrites each strobe, req or enable as itself and its direction, and "
+    "takes a row only when that makes it unsatisfiable."
 )
 B7 = (
     "SMC-REGBLOCK-B7-DFX-INPUTS-TIED: a property of this bench, not of the design. The SMC "
@@ -671,7 +675,8 @@ P1 = (
     "leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the "
     "N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space "
     "of zero against an N-trace threshold of zero with <=. The NTR sink register block is "
-    "absent, so every register-derived N-trace term follows, the north source flag never "
+    "absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the "
+    "negation of that block's zero RAM mode, reads one, the north source flag never "
     "selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous "
     "grant holds its N-trace reset value. A row is taken only where "
     "the report's own term list shows it asking one of those signals for a value that zero "
@@ -793,7 +798,8 @@ P13 = (
     "interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR "
     "interface takes the AND over every block, the CLA's included, so both are zero as well. "
     "Each gated clamp holds one value for the life of the design and the ternary arm the other "
-    "value selects never executes."
+    "value selects never executes. The NTR sink is absent, so every block of mmrs's clamp "
+    "vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 )
 P14 = (
     "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it "
@@ -836,6 +842,14 @@ P22 = (
     "reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or "
     "path that needs one of them high cannot occur."
 )
+B12 = (
+    "SMC-B12-BANK-MODEL-NO-SLVERR: a property of this bench, not of the design. "
+    "smc_ip_integration answers the eFuse shim with efuse_bank_model, whose register block "
+    "drives pslverr from cpuif errors tied to zero, so no read, program or read-back returns "
+    "SLVERR and the sense status stays zero; the model's injected program failures corrupt the "
+    "data, which the read-back mismatch term still grades. A bank model or macro that can "
+    "return SLVERR retires the class."
+)
 B8 = (
     "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The "
     "testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both "
@@ -851,9 +865,13 @@ P24 = (
 C5 = (
     "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs "
     "them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, "
-    "baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as "
-    "one of its terms. The test rewrites the dependent signal in those terms and takes a row "
-    "only when that makes it unsatisfiable."
+    "baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; "
+    "system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; "
+    "cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked "
+    "value, so they are never high together; and efuse_shadow_reg_access_control raises "
+    "write_locked_o only on the arm that forwards no request, so the shadow registers never see "
+    "a forwarded write with it high. The test rewrites the dependent signal in those terms and "
+    "takes a row only when that makes it unsatisfiable."
 )
 B9 = (
     "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench "
@@ -873,9 +891,10 @@ P25 = (
     "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a "
     "zero default and sets only the empty and enable write enables, assigns the RAM read-pointer "
     "high write structure a constant zero, and the funnel ties the RAM start and limit write "
-    "structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and "
-    "read-pointer-high enables the DST sink MMR ORs with a software write hold zero, and the "
-    "hardware-write row of each cannot occur."
+    "structures and its own control and disable-input write structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and "
+    "read-pointer-high enables the DST sink MMR ORs with a software write hold zero, as do the "
+    "funnel MMR's control and disable-input enables, and the hardware-write row of each cannot "
+    "occur."
 )
 P26 = (
     "SMC-P26-OUTPUT-FLOP-PARAM: each tt_debug_bus_mux section urg reports is one parameter set "
@@ -884,16 +903,64 @@ P26 = (
     "row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode "
     "arm that tests it at 0 never executes."
 )
+P28 = (
+    "SMC-P28-LOG-WRITE-OKAY: uart_log_engine_wrap wires the log engine's write port only to its "
+    "own UART, whose demux sends every write to one of three PeakRDL register blocks generated "
+    "with cpuif_wr_err at zero, and axi_lite_from_mem reports an error only on SLVERR or DECERR, "
+    "so log_write_mem_resp_error and log_write_err hold zero and a row that needs either high "
+    "cannot occur. The INTR_TEST path still sets the status bit, and its rows stay graded."
+)
+P29 = (
+    "SMC-P29-FIELD-MAP-LOCKS: smc_efuse_pkg's field map gives every field WRITE_UNLOCK and "
+    "READ_UNLOCK save the LOCKS meta-field, which is WRITE_SET_ONLY under the all-ones index the "
+    "lock lookups never lock, and an unmapped address reads a lock of zero. No address carries "
+    "the write-lock or read-lock code or lock bit 3, and a set-only address is never hardware "
+    "write-locked. The program and read interfaces present address 0, inside LOCKS, while idle, "
+    "so the guard sees no lock unless an operation is in flight."
+)
 P27 = (
     "SMC-P27-PAGE-WIDTH-BOUND: the iDMA page splitter forms page_addr_width as OffsetWidth plus "
     "max_llen (at most 7) or 8, and OffsetWidth is 3 on the 64-bit backend, so the width never "
     "exceeds 11 and its clamp at 12 never selects the clamped value."
 )
 C6 = (
-    "SMC-C6-ELSE-OF-TIMEOUT: smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count "
-    "while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage "
-    "timeout, so the decrement test in the else arm runs only with that timeout high and a row "
-    "that needs it low is never evaluated."
+    "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before "
+    "it fail, so a row of its condition that an earlier test already takes is never evaluated. "
+    "smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is "
+    "high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test "
+    "runs only with that timeout high; vlt_packet_compression takes a timestamp packet without "
+    "a grant first; avsbus_controller takes a retry with a countdown above zero first; and "
+    "efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first."
+)
+C7 = (
+    "SMC-C7-ENUM-MEMBERS-ONLY: a variable is assigned only members of its enum, so a case "
+    "default or an arm that needs a non-member never runs. efuse_shadow_regs' sense state "
+    "resets to StIdle and every assignment names one of its four members, and the fuse command "
+    "the program, read and sense requesters drive is READ, PROGRAM, PROGRAM_READ_BACK or the "
+    "all-zero READ default, never the unused 2'b11 that efuse_interface_shim's last arms need."
+)
+C8 = (
+    "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the "
+    "local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse "
+    "demux, drive penable only together with psel and hold the request from setup through "
+    "access until pready; apb_demux gates psel and penable with one select, and mmrs passes "
+    "psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from "
+    "psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the "
+    "setup phase raises at the earliest and grants nothing more until then, so no response "
+    "meets a setup phase. A row that needs penable without psel, pready without penable, or a "
+    "response in the setup phase cannot occur."
+)
+C9 = (
+    "SMC-C9-W2C-PULSE: cla_node_eap asserts reset_eap_status_w2c on the rising edge of an EAP "
+    "status W2C bit, and the CLA MMR loads the bit's zero write-back on that cycle. "
+    "mmr_req_ctrl grants no request for MMR_PIPE_LAT cycles after a grant, so no software write "
+    "lands on the cycle the hardware clears the bit, and it is never high two cycles running."
+)
+C10 = (
+    "SMC-C10-VALID-WITH-COMMAND: efuse_program_interface sets the request's program command and "
+    "its valid on the same cycle and clears both together to the all-zero default, and the "
+    "read and sense requesters issue only READ, so efuse_interface_shim never sees a program "
+    "command without valid."
 )
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
@@ -901,8 +968,8 @@ B6 = (
     "ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow "
     "registers take a preload file or zeros in place of the sensed fuse image. The DV policy "
     "(section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes "
-    "the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high "
-    "never run here. A policy change admitting the plusarg retires the class."
+    "the plusarg, so the plusarg arms, the preload flag the initial block sets only with "
+    "sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
 )
 P18 = (
     "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override "
@@ -927,6 +994,12 @@ C1 = (
 # (file suffix, first line, last line) of the source region a fact covers, for
 # where one file carries the same expression text inside and outside the region.
 LC_STATE_ARM = ("efuse_shadow_regs.sv", 290, 347)
+LC_STATE_WRITE_ARM = ("efuse_shadow_regs.sv", 595, 667)
+SENSE_DEFAULT_ARM = ("efuse_shadow_regs.sv", 419, 422)
+PROGRAM_COMMAND = re.compile(
+    r"command == FUSE_COMMAND_PROGRAM\) \|\| \(fuse_command_req_i\.command == "
+    r"FUSE_COMMAND_PROGRAM_READ_BACK\)"
+)
 
 # update_value's set and clear encodings, which MmrWrInstrType tied to zero never presents.
 INSTR_TYPE_TEST = re.compile(r"^\(instr_type == 2'b\d+\)$")
@@ -1359,6 +1432,8 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
             None,
         ),
         (P6, re.compile(r"."), None, LC_STATE_ARM),
+        (P6, re.compile(r"."), None, LC_STATE_WRITE_ARM),
+        (C7, re.compile(r"."), None, SENSE_DEFAULT_ARM),
         (
             B6,
             re.compile(r"sim_skip_fuse_sense"),
@@ -1400,6 +1475,11 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         (P6, re.compile(r"."), None, ("efuse_shadow_reg_access_control.sv", 115, 117)),
     ],
     "mmr_req_ctrl": [(P16, re.compile(r"."), None, ("mmr_req_ctrl.sv", 167, 167))],
+    # Both points sit behind a test that takes FUSE_COMMAND_READ first.
+    "efuse_interface_shim": [
+        (C7, PROGRAM_COMMAND, re.compile(r"^0+$"), ("efuse_interface_shim.sv", 514, 514)),
+        (C7, PROGRAM_COMMAND, re.compile(r"^0+$"), ("efuse_interface_shim.sv", 545, 547)),
+    ],
     "idma_legalizer_rw_axi": [
         (P7, re.compile(r"\| kill_i\)$"), re.compile(r"^01$"), None),
         (P7, re.compile(r"& \(\(!flush_i\)\)\)$"), re.compile(r"^1+0$"), None),
@@ -1428,6 +1508,19 @@ NTRACE_SIGNAL = re.compile(
 LC_STATE_OFF = re.compile(r"^(?:HAS_LC_STATE|is_lc_state_access)$")
 SECURE_TM = re.compile(r"^secure_tm_i$")
 BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
+    "funnel_mmr": [
+        (
+            P25,
+            re.compile(
+                r"^(?:FunnelMmrTrfunnel(?:control|disinput)Wr\.\w+"
+                r"|MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn)$"
+            ),
+            0,
+        )
+    ],
+    "apb2mmr": [(P13, re.compile(r"^rsp_err$"), 0)],
+    "log_engine": [(P28, re.compile(r"^log_write_(?:mem_resp_error|err)$"), 0)],
+    "uart_core": [(P11, re.compile(r"^fifo_thr_rbr_err$"), 0)],
     "efuse_guard": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
     "efuse_interface_controller": [(P6, LC_STATE_OFF, 0)],
     "efuse_shadow_reg_access_control": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
@@ -1436,6 +1529,8 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
         (P15, SECURE_TM, 0),
         (B6, SIM_SKIP, 0),
         (B9, re.compile(r"^security_disable_i$"), 0),
+        (B6, re.compile(r"^preload_plusarg_found$"), 0),
+        (B12, re.compile(r"^fuse_command_resp\.status$"), 0),
     ],
     "efuse_program_interface": [(P15, re.compile(r"^secure_tm_blocked_i$"), 0)],
     "i2c_core": [(P11, re.compile(r"^(?:controller|target)_(?:tx|rx)_fifo_error$"), 0)],
@@ -1483,6 +1578,7 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     "avsbus_controller": [
         (P18, re.compile(r"^i_tdr_peripherals_apb2avsbus_postdiv_override$"), 0),
         (P24, re.compile(r"^do_initial_divider_setting$"), 0),
+        (A2, re.compile(r"^reg_pslverr$"), 0),
     ],
     "cla_wrapper": [(P13, re.compile(r"^cla_gated_func_clamp\b"), 0)],
     "clk_rst_wrapper": [
@@ -1519,6 +1615,7 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
         (P1, re.compile(r"^ntr(?:_sink)?_gated_reset_n\b"), 0),
         (P16, re.compile(r"^(?:CLA_EN|DST_EN|DST_SINK_EN|TRACE_SINK_SUPPORT)$"), 1),
         (P16, re.compile(r"^(?:NTR_EN|NTR_SINK_EN)$"), 0),
+        (P1, re.compile(r"^Trntrissrammode$"), 1),
     ],
     "dst_mmr": [(P13, re.compile(r"^MMR_Trdstcontrol_F_Trdstempty_WrEn$"), 1)],
     "dst_sink_mmr": [
@@ -1573,6 +1670,114 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                 and vector[0] == "0"
             ),
         )
+    ],
+    "core_logic_analyzer": [
+        (
+            P22,
+            lambda terms, vector: (
+                terms[0] == "(timestamp.time_val >= ClatimematchMmr.TimeMatchVal)"
+                and vector == "11"
+            ),
+        )
+    ],
+    "cla_node_eap": [
+        (
+            C9,
+            lambda terms, vector: (
+                terms == ("(eap_status_w2c == 1'b1)", "(eap_status_w2c_dly == 1'b0)")
+                and vector == "10"
+            ),
+        )
+    ],
+    "apb2mmr": [
+        (
+            C8,
+            lambda terms, vector: (
+                terms[:2] == ("psel", "penable")
+                and (
+                    vector[:2] == "01"
+                    or (terms[2:3] == ("rsp_vld",) and vector == "101")
+                    or (terms[2:3] == ("pready",) and vector[1:3] == "01")
+                )
+            ),
+        )
+    ],
+    "vlt_packet_compression": [
+        (
+            C6,
+            lambda terms, vector: (
+                terms
+                == ("(ts_packet_enable || retry_ts_packet_tx)", "requested_packet_space_granted")
+                and vector == "10"
+            ),
+        )
+    ],
+    "avsbus_controller": [
+        (
+            C6,
+            lambda terms, vector: (
+                terms == ("avs_retry_condition_detected", "(avs_retry_countdown == 8'b0)")
+                and vector == "10"
+            ),
+        ),
+        (C8, lambda terms, vector: terms == ("psel", "penable") and vector == "01"),
+    ],
+    "efuse_shadow_regs": [
+        (
+            C6,
+            lambda terms, vector: (
+                terms == ("write_setup_only", "is_lc_state_access") and vector == "10"
+            ),
+        )
+    ],
+    "efuse_shadow_reg_access_control": [
+        (
+            C8,
+            lambda terms, vector: (
+                terms == ("apb_req_penable_i", "apb_req_psel_i") and vector == "10"
+            ),
+        ),
+        (
+            P29,
+            lambda terms, vector: (
+                any(
+                    b == "1"
+                    and t in ("(sw_lock_bits[2:1] == 2'b11)", "sw_lock_bits[0]", "sw_lock_bits[3]")
+                    for t, b in zip(terms, vector)
+                )
+                or (
+                    terms == ("((!is_write_locked))", "(sw_lock_bits[2:1] == 2'b10)")
+                    and vector == "01"
+                )
+            ),
+        ),
+    ],
+    "efuse_guard": [
+        (
+            P29,
+            lambda terms, vector: (
+                terms
+                in (("is_programing_i", "is_program_locked"), ("is_reading_i", "is_read_locked"))
+                and vector == "01"
+            ),
+        )
+    ],
+    "efuse_interface_shim": [
+        (
+            C10,
+            lambda terms, vector: (
+                len(terms) == 2
+                and terms[0] == "fuse_command_req_i.valid"
+                and "FUSE_COMMAND_PROGRAM" in terms[1]
+                and vector == "01"
+            ),
+        ),
+        (
+            B12,
+            lambda terms, vector: (
+                terms[0] == "apb_fuse_bank_resp_w_readback.pslverr" and vector[0] == "1"
+            ),
+        ),
     ],
     "idma_legalizer_page_splitter": [
         (
@@ -1641,7 +1846,18 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
 
 # Signals the source defines from others: (class, name, what it stands for).
 SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
-    "uart_core": [(C5, "rx_enable", "tx_enable")],
+    "uart_core": [
+        (C5, "rx_enable", "tx_enable"),
+        (C5, "thr_rready", "(thr_rready && thr_rvalid)"),
+    ],
+    "cla_arithmetic_compare": [
+        (C5, "compare_equal", "(compare_equal && (~below_compare_int))"),
+    ],
+    "efuse_shadow_regs": [(C5, "write_locked", "(write_locked && (~apb_req_from_ac.pwrite))")],
+    "avsbus_controller": [
+        (C4, "R_avs_cmd_wr_en", "(R_avs_cmd_wr_en && pwrite)"),
+        (C4, "R_avs_readback_rd_en", "(R_avs_readback_rd_en && (~pwrite))"),
+    ],
     "system_timer_octs_core": [(C5, "credit_gen_pulse", "(credit_gen_pulse && enable)")],
     # smc_dfd_wrap drives every present block's clock-disable control from one net.
     "mmrs": [
@@ -1888,6 +2104,13 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
         held = [(_scoped(forced), value) for _, forced, value in facts]
         if rewritten != tuple(plain) and _row_satisfiable_held(rewritten, vector, held) is False:
             if _row_satisfiable(tuple(plain), vector, None, 0):
+                for reason, name, meaning in identities:
+                    alone = tuple(re.sub(rf"\b{re.escape(name)}\b", meaning, t) for t in plain)
+                    if (
+                        alone != tuple(plain)
+                        and _row_satisfiable_held(alone, vector, held) is False
+                    ):
+                        return reason
                 return identities[0][0]
     return None
 
@@ -2962,12 +3185,21 @@ FEATURE_CLASSES = (
     P25,
     P26,
     P27,
+    P28,
+    P29,
+    A2,
+    C4,
     C5,
     C6,
+    C7,
+    C8,
+    C9,
+    C10,
     F3,
     B6,
     B8,
     B9,
+    B12,
 )
 
 
@@ -3374,6 +3606,7 @@ def render_feature(
             for name, param, reason, region in SECTION_REGION_FACTS
             if _in_section(module, name, param)
         ]
+        placed = [f for f in FEATURE_FACTS.get(module, []) if f[3] is not None]
         parents: dict[int, list[str]] = {}
         for tp, rp in points.get(module, []):
             if not rp.sub:
@@ -3384,6 +3617,20 @@ def render_feature(
                 if entry in taken or vector not in rp.uncovered:
                     continue
                 reason = next((r for r, g in regions if in_region(tp.source, g)), None)
+                reason = reason or next(
+                    (
+                        r
+                        for r, pattern, test, g in placed
+                        if in_region(tp.source, g)
+                        and pattern.search(tp.text)
+                        and (
+                            test(rp.terms or [], vector)
+                            if callable(test)
+                            else test is None or test.match(vector)
+                        )
+                    ),
+                    None,
+                )
                 reason = reason or dead or feature_row_class(module, rp.terms, vector)
                 if reason:
                     block.append((reason, entry))

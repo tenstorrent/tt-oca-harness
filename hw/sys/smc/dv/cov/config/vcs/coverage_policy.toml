@@ -66,13 +66,16 @@ args = ["-elfile", "{path}"]
 # CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16 SINK-ENABLE-CONST, P17
 # ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19 NTR-RAM-READ-TIED, P20
 # TCOUNT-SELECT-PAIRED, P22 DFD-CONTROL-TIED, P24 DIVIDER-INIT-NEVER-SET, P25
-# SINK-WRITEBACK-TIED, P26 OUTPUT-FLOP-PARAM, P27 PAGE-WIDTH-BOUND, C5
-# SIGNAL-IDENTITY, C6 ELSE-OF-TIMEOUT, and F3
+# SINK-WRITEBACK-TIED, P26 OUTPUT-FLOP-PARAM, P27 PAGE-WIDTH-BOUND, P28
+# LOG-WRITE-OKAY, P29 FIELD-MAP-LOCKS, C5 SIGNAL-IDENTITY, C6 EARLIER-ARM-TAKES,
+# C7 ENUM-MEMBERS-ONLY, C8 APB-PHASE-ORDER, C9 W2C-PULSE, C10
+# VALID-WITH-COMMAND, A2 and C4 where a consumer reads a register block, and F3
 # TIEOFF's branch paths; B6 SIM-ONLY-FUSE-BYPASS is the bench's and its
 # policy's, as no leaf passes the simulation-only +skip_fuse_sense plusarg the
 # DV policy forbids, and B8 DFD-BENCH-INPUTS-TIED is the bench's, which ties the
 # CLA crosstrigger and TDR clock-stop inputs, as B9 SECURITY-DISABLE-TIED
-# is for the eFuse security-disable input): the
+# is for the eFuse security-disable input, and B12 BANK-MODEL-NO-SLVERR for
+# the eFuse bank model that never returns SLVERR): the
 # DFD clamps, JTAG MMR requester, eFuse secure test mode and AVS TDR override
 # are tied off, the sink enables and trace
 # core count are fixed by parameters, and the

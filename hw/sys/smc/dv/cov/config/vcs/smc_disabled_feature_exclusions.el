@@ -16,16 +16,36 @@ ANNOTATION: "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_B
 MODULE: accumulator_bank
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
 
+CHECKSUM: "3532153177 2090497106"
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
+ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
+MODULE: apb2mmr
+Condition 1 "2974504196" "(psel && penable && ( ~ ((paddr_base >= 23'(BASE_ADDR)) && (paddr_base < 23'(MMR_END_ADDR))) )) 1 -1" (1 "011")
+Condition 4 "2760227610" "(psel && penable && rsp_vld) 1 -1" (1 "011")
+Condition 4 "2760227610" "(psel && penable && rsp_vld) 1 -1" (2 "101")
+Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (1 "0111")
+Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (2 "1011")
+Condition 7 "4224431006" "(rsp_err || decode_miss) 1 -1" (3 "10")
+
 CHECKSUM: "3564686069 3785605357"
 ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
 ANNOTATION: "SMC-P24-DIVIDER-INIT-NEVER-SET: avsbus_controller assigns do_initial_divider_setting only 1'b0, under reset and on a divider update, so it is zero for the life of the design and a row that needs it high cannot occur."
+ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here. A consumer that ORs the block's pslverr into its own, as avsbus_controller does, sees it zero."
+ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur. avsbus_controller ANDs its AVS_CMD and AVS_READBACK reqs with req_is_wr and its negation, which PeakRDL latches from pwrite in the setup phase, and its AXI-Lite bridge holds pwrite from setup through access, so those enables carry the pwrite of the transfer in flight. The test rewrites each strobe, req or enable as itself and its direction, and takes a row only when that makes it unsatisfiable."
+ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, so a row of its condition that an earlier test already takes is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first; avsbus_controller takes a retry with a countdown above zero first; and efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first."
+ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
 MODULE: avsbus_controller
 Condition 3 "2211674544" "((do_initial_divider_setting == 1'b1) || (R_avs_cfg_1_F_clk_divider_value_resync != previous_clk_divider_value_q) || (R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync != previous_clk_divider_duty_cycle_numerator_q)) 1 -1" (4 "100")
 Condition 4 "30701402" "(do_initial_divider_setting == 1'b1) 1 -1" (2 "1")
+Condition 16 "45492393" "(avs_retry_condition_detected && (avs_retry_countdown == 8'b0)) 1 -1" (2 "10")
+Condition 69 "688776685" "(psel & penable) 1 -1" (1 "01")
+Condition 71 "1133592924" "(pwrite & R_avs_normal_status_F_cmd_fifo_full & R_avs_cmd_wr_en) 1 -1" (1 "011")
+Condition 72 "4077019754" "(((~pwrite)) & apb_readback_buf_empty & R_avs_readback_rd_en) 1 -1" (1 "011")
 Condition 73 "2122482897" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_update_clk_divider_value : update_clk_divider_value) 1 -1" (2 "1")
 Condition 74 "1200842655" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_R_avs_cfg_1_F_clk_divider_value_resync : R_avs_cfg_1_F_clk_divider_value_resync) 1 -1" (2 "1")
 Condition 75 "1242591211" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync : R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync) 1 -1" (2 "1")
 Condition 76 "715597411" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_postdiv_mux_sel : postdiv_mux_sel) 1 -1" (2 "1")
+Condition 98 "816972098" "(access_error | reg_pslverr) 1 -1" (2 "01")
 
 CHECKSUM: "3564686069 976103321"
 ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
@@ -40,6 +60,11 @@ ANNOTATION: "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both i
 MODULE: axi_filter_wrap
 Condition 33 "3026107144" "(filter_skip_i ? 1'b0 : (no_write_filter_matches ? BlockByDefault : ((!allow_write[write_filter_hit_idx])))) 1 -1" (2 "1")
 Condition 35 "1476893936" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? BlockByDefault : ((!allow_read[read_filter_hit_idx])))) 1 -1" (2 "1")
+
+CHECKSUM: "1977138259 497414737"
+ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
+MODULE: cla_arithmetic_compare
+Condition 4 "1450259898" "(((~below_compare_int)) | compare_equal) 1 -1" (2 "01")
 
 CHECKSUM: "3897059503 4287847881"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
@@ -167,8 +192,13 @@ Branch 570 "3796963668" "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn" (0) "MM
 Branch 636 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 636 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
+CHECKSUM: "1071030063 2651064629"
+ANNOTATION: "SMC-C9-W2C-PULSE: cla_node_eap asserts reset_eap_status_w2c on the rising edge of an EAP status W2C bit, and the CLA MMR loads the bit's zero write-back on that cycle. mmr_req_ctrl grants no request for MMR_PIPE_LAT cycles after a grant, so no software write lands on the cycle the hardware clears the bit, and it is never high two cycles running."
+MODULE: cla_node_eap
+Condition 16 "1362647026" "((eap_status_w2c == 1'b1) && (eap_status_w2c_dly == 1'b0)) 1 -1" (2 "10")
+
 CHECKSUM: "40131737 3263069872"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: cla_wrapper
 Condition 1 "2319685587" "(cla_gated_func_clamp[0] ? '0 : debug_bus_aligned[0]) 1 -1" (2 "1")
 Condition 2 "3176255836" "(cla_gated_func_clamp[0] ? '0 : xtrigger_out_int[0]) 1 -1" (2 "1")
@@ -186,7 +216,7 @@ Condition 13 "2068185434" "(cla_gated_func_clamp[0] ? '0 : ClaMmrsWr_int[0]) 1 -
 Condition 14 "1149897855" "(cla_gated_func_clamp[0] ? '0 : DebugMuxSelMmr[0]) 1 -1" (2 "1")
 
 CHECKSUM: "40131737 2335395861"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: cla_wrapper
 Branch 0 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 Branch 1 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
@@ -204,8 +234,8 @@ Branch 12 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 Branch 13 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 
 CHECKSUM: "705672635 932150476"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 MODULE: clk_rst_wrapper
 Condition 1 "2056512603" "(({CLA_W {i_critical_signal_hold}}) | cla_gated_reset_n) 1 -1" (3 "10")
@@ -234,6 +264,7 @@ Condition 4 "1736850090" "(time_match_event & ClactrlstatusMmr.EnableEap) 1 -1" 
 Condition 5 "2605745958" "(gen_timestamp_sync_scheme_0.timestamp_load ? ClatimestampsyncMmr.TimestampSync[63:TIMESTAMP_LOWER_WIDTH] : (i_Time_Tick ? gen_timestamp_sync_scheme_0.timestamp_nxt[63:TIMESTAMP_LOWER_WIDTH] : gen_timestamp_sync_scheme_0.timestamp_full[63:TIMESTAMP_LOWER_WIDTH])) 1 -1" (2 "1")
 Condition 7 "1814173673" "(gen_timestamp_sync_scheme_0.timestamp_load ? ClatimestampsyncMmr.TimestampSync[(TIMESTAMP_LOWER_WIDTH - 1):0] : (i_Time_Tick ? gen_timestamp_sync_scheme_0.timestamp_nxt[(TIMESTAMP_LOWER_WIDTH - 1):0] : gen_timestamp_sync_scheme_0.timestamp_full[(TIMESTAMP_LOWER_WIDTH - 1):0])) 1 -1" (2 "1")
 Condition 9 "221502022" "(gen_timestamp_sync_scheme_0.timestamp_load ? 1'b0 : ClatimestampconfigMmr.Resync) 1 -1" (2 "1")
+Condition 10 "3166030688" "((timestamp.time_val >= ClatimematchMmr.TimeMatchVal) && ((|ClatimematchMmr.TimeMatchVal))) 1 -1" (3 "11")
 Condition 11 "267506247" "(xtrigger_in[0] && ((~i_xtrigger_ff))) 1 -1" (2 "10")
 Condition 11 "267506247" "(xtrigger_in[0] && ((~i_xtrigger_ff))) 1 -1" (3 "11")
 Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtrigger_posedge) 1 -1" (1 "01")
@@ -241,7 +272,7 @@ Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtri
 
 CHECKSUM: "1876497610 1878539093"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: dst_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
@@ -249,7 +280,7 @@ Condition 21 "2049624858" "(MMR_Trdstcontrol_F_Trdstempty_WrEn ? MMR_Trdstcontro
 
 CHECKSUM: "1876497610 901426059"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: dst_mmr
 Branch 4 "2305236049" "MMR_Trdstcontrol_F_Trdstempty_WrEn" (1) "MMR_Trdstcontrol_F_Trdstempty_WrEn 0"
 Branch 23 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
@@ -257,8 +288,8 @@ Branch 23 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
 CHECKSUM: "1453354636 2637439043"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
-ANNOTATION: "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a zero default and sets only the empty and enable write enables, assigns the RAM read-pointer high write structure a constant zero, and the funnel ties the RAM start and limit write structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and read-pointer-high enables the DST sink MMR ORs with a software write hold zero, and the hardware-write row of each cannot occur."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
+ANNOTATION: "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a zero default and sets only the empty and enable write enables, assigns the RAM read-pointer high write structure a constant zero, and the funnel ties the RAM start and limit write structures and its own control and disable-input write structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and read-pointer-high enables the DST sink MMR ORs with a software write hold zero, as do the funnel MMR's control and disable-input enables, and the hardware-write row of each cannot occur."
 MODULE: dst_sink_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
@@ -274,14 +305,14 @@ Condition 94 "465082857" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_T
 
 CHECKSUM: "1453354636 620480316"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: dst_sink_mmr
 Branch 4 "259740910" "MMR_Trdstramcontrol_F_Trdstramempty_WrEn" (1) "MMR_Trdstramcontrol_F_Trdstramempty_WrEn 0"
 Branch 32 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 32 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
 CHECKSUM: "2746040415 2271697718"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 MODULE: dst_wrapper
 Condition 1 "3720933200" "((((0 < NUM_CLA_INST) ? cla_trigger_trace_start[0] : 1'b0)) | (dst_inst[0].sdtrig_dst_trace_start & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable)) 1 -1" (2 "01")
@@ -295,7 +326,7 @@ Condition 21 "713795741" "(dst_gated_func_clamp[0] ? '0 : dst_inst[0].dst_tnif_d
 Condition 22 "341128059" "(dst_gated_func_clamp[0] ? '0 : dst_inst[0].DstMmrsWr_int) 1 -1" (2 "1")
 
 CHECKSUM: "2746040415 3906711782"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: dst_wrapper
 Branch 1 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
 Branch 2 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
@@ -303,6 +334,7 @@ Branch 3 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
 
 CHECKSUM: "671687310 1858521928"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
+ANNOTATION: "SMC-P29-FIELD-MAP-LOCKS: smc_efuse_pkg's field map gives every field WRITE_UNLOCK and READ_UNLOCK save the LOCKS meta-field, which is WRITE_SET_ONLY under the all-ones index the lock lookups never lock, and an unmapped address reads a lock of zero. No address carries the write-lock or read-lock code or lock bit 3, and a set-only address is never hardware write-locked. The program and read interfaces present address 0, inside LOCKS, while idle, so the guard sees no lock unless an operation is in flight."
 MODULE: efuse_guard
 Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (1 "01")
 Condition 3 "998874561" "((program_target_addr_i == SIP_TOKEN_BIT_ADDR) && (rma_sip_token_match_i != TOKEN_MATCH_CODE)) 1 -1" (2 "10")
@@ -315,6 +347,20 @@ Condition 9 "247465763" "((pro_read_intf_wr_index == '0) ? 1'b0 : efuse_guard.en
 Condition 11 "1814251451" "((pro_read_intf_rd_index == '0) ? 1'b0 : efuse_guard.entry_read_locked(pro_read_intf_rd_index, shadow_regs_i)) 1 -1" (1 "0")
 Condition 11 "1814251451" "((pro_read_intf_rd_index == '0) ? 1'b0 : efuse_guard.entry_read_locked(pro_read_intf_rd_index, shadow_regs_i)) 1 -1" (2 "1")
 Condition 13 "1172051810" "(pro_read_intf_rm_lc_state_write_lock || pro_read_intf_lock_lc_state_write) 1 -1" (2 "01")
+Condition 4 "3891361775" "(program_target_addr_i == SIP_TOKEN_BIT_ADDR) 1 -1" (1 "0")
+Condition 4 "3891361775" "(program_target_addr_i == SIP_TOKEN_BIT_ADDR) 1 -1" (2 "1")
+Condition 5 "2347181330" "(rma_sip_token_match_i != TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 5 "2347181330" "(rma_sip_token_match_i != TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 7 "825618400" "(program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) 1 -1" (1 "0")
+Condition 7 "825618400" "(program_target_addr_i == CHIPLET_TOKEN_BIT_ADDR) 1 -1" (2 "1")
+Condition 8 "2060243040" "(rma_chiplet_token_match_i != TOKEN_MATCH_CODE) 1 -1" (1 "0")
+Condition 8 "2060243040" "(rma_chiplet_token_match_i != TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 10 "3086908092" "(pro_read_intf_wr_index == '0) 1 -1" (1 "0")
+Condition 10 "3086908092" "(pro_read_intf_wr_index == '0) 1 -1" (2 "1")
+Condition 12 "1660249500" "(pro_read_intf_rd_index == '0) 1 -1" (1 "0")
+Condition 12 "1660249500" "(pro_read_intf_rd_index == '0) 1 -1" (2 "1")
+Condition 14 "1385262767" "(is_programing_i && is_program_locked) 1 -1" (1 "01")
+Condition 15 "3758630843" "(is_reading_i && is_read_locked) 1 -1" (1 "01")
 
 CHECKSUM: "671687310 829883966"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
@@ -341,6 +387,17 @@ Branch 3 "1184457743" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1,-,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,0,1,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,0,0,0,-,-"
 
+CHECKSUM: "1698122930 1130749731"
+ANNOTATION: "SMC-C7-ENUM-MEMBERS-ONLY: a variable is assigned only members of its enum, so a case default or an arm that needs a non-member never runs. efuse_shadow_regs' sense state resets to StIdle and every assignment names one of its four members, and the fuse command the program, read and sense requesters drive is READ, PROGRAM, PROGRAM_READ_BACK or the all-zero READ default, never the unused 2'b11 that efuse_interface_shim's last arms need."
+ANNOTATION: "SMC-C10-VALID-WITH-COMMAND: efuse_program_interface sets the request's program command and its valid on the same cycle and clears both together to the all-zero default, and the read and sense requesters issue only READ, so efuse_interface_shim never sees a program command without valid."
+ANNOTATION: "SMC-B12-BANK-MODEL-NO-SLVERR: a property of this bench, not of the design. smc_ip_integration answers the eFuse shim with efuse_bank_model, whose register block drives pslverr from cpuif errors tied to zero, so no read, program or read-back returns SLVERR and the sense status stays zero; the model's injected program failures corrupt the data, which the read-back mismatch term still grades. A bank model or macro that can return SLVERR retires the class."
+MODULE: efuse_interface_shim
+Condition 12 "2953569792" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
+Condition 18 "3037674975" "((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) 1 -1" (1 "00")
+Condition 4 "3748480020" "(fuse_command_req_i.valid && ((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK))) 1 -1" (1 "01")
+Condition 9 "1462769144" "(apb_fuse_bank_resp_w_readback.pslverr || ((apb_fuse_bank_resp_w_readback.prdata & efuse_write_word) != efuse_write_word)) 1 -1" (3 "10")
+Condition 17 "3700849439" "(((fuse_command_req_i.command == FUSE_COMMAND_PROGRAM) || (fuse_command_req_i.command == FUSE_COMMAND_PROGRAM_READ_BACK)) ? fuse_command_resp_w : 34'b0) 1 -1" (1 "0")
+
 CHECKSUM: "1705828286 2700233996"
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 MODULE: efuse_program_interface
@@ -349,16 +406,28 @@ Condition 4 "2745518814" "(efuse_req_err_i || (fuse_command_resp_i.status == 1'b
 CHECKSUM: "2470957733 3469611085"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
+ANNOTATION: "SMC-P29-FIELD-MAP-LOCKS: smc_efuse_pkg's field map gives every field WRITE_UNLOCK and READ_UNLOCK save the LOCKS meta-field, which is WRITE_SET_ONLY under the all-ones index the lock lookups never lock, and an unmapped address reads a lock of zero. No address carries the write-lock or read-lock code or lock bit 3, and a set-only address is never hardware write-locked. The program and read interfaces present address 0, inside LOCKS, while idle, so the guard sees no lock unless an operation is in flight."
+ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
 MODULE: efuse_shadow_reg_access_control
 Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (1 "0")
 Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (2 "1")
 Condition 5 "1601616447" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.read_locked(field_index)) 1 -1" (1 "0")
 Condition 5 "1601616447" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.read_locked(field_index)) 1 -1" (2 "1")
+Condition 4 "3098952961" "(field_index == '0) 1 -1" (1 "0")
+Condition 4 "3098952961" "(field_index == '0) 1 -1" (2 "1")
+Condition 6 "3741109779" "(field_index == '0) 1 -1" (1 "0")
+Condition 6 "3741109779" "(field_index == '0) 1 -1" (2 "1")
+Condition 7 "3341583605" "(apb_req_penable_i && apb_req_psel_i) 1 -1" (2 "10")
+Condition 10 "3408752146" "(((!is_write_locked)) & (sw_lock_bits[2:1] == 2'b10)) 1 -1" (1 "01")
 Condition 12 "2044479785" "(secure_tm_i ? (is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) : (is_write_locked | (sw_lock_bits[2:1] == 2'b11))) 1 -1" (2 "1")
 Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (1 "000")
 Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (2 "001")
 Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (3 "010")
 Condition 13 "3957149935" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) 1 -1" (4 "100")
+Condition 14 "1024332690" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
+Condition 15 "57363498" "(is_write_locked | (sw_lock_bits[2:1] == 2'b11)) 1 -1" (2 "01")
+Condition 16 "1432529323" "(sw_lock_bits[2:1] == 2'b11) 1 -1" (2 "1")
+Condition 17 "2025791036" "(is_read_locked | sw_lock_bits[0]) 1 -1" (2 "01")
 
 CHECKSUM: "2470957733 3321935136"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
@@ -373,8 +442,12 @@ Branch 2 "2952040438" "(HAS_LC_STATE && (field_index == '0))" (0) "(HAS_LC_STATE
 
 CHECKSUM: "3035079037 1696817153"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high never run here. A policy change admitting the plusarg retires the class."
+ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
+ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, so a row of its condition that an earlier test already takes is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first; avsbus_controller takes a retry with a countdown above zero first; and efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first."
+ANNOTATION: "SMC-C7-ENUM-MEMBERS-ONLY: a variable is assigned only members of its enum, so a case default or an arm that needs a non-member never runs. efuse_shadow_regs' sense state resets to StIdle and every assignment names one of its four members, and the fuse command the program, read and sense requesters drive is READ, PROGRAM, PROGRAM_READ_BACK or the all-zero READ default, never the unused 2'b11 that efuse_interface_shim's last arms need."
+ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
 ANNOTATION: "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench ties sep_security_disable_i to zero in both instances, and it reaches the eFuse shadow registers unchanged, so the security-disable term of the fuse-sense load holds zero here. A bench port that drives the input retires the class."
+ANNOTATION: "SMC-B12-BANK-MODEL-NO-SLVERR: a property of this bench, not of the design. smc_ip_integration answers the eFuse shim with efuse_bank_model, whose register block drives pslverr from cpuif errors tied to zero, so no read, program or read-back returns SLVERR and the sense status stays zero; the model's injected program failures corrupt the data, which the read-back mismatch term still grades. A bank model or macro that can return SLVERR retires the class."
 MODULE: efuse_shadow_regs
 Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (2 "10")
 Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (3 "11")
@@ -420,8 +493,13 @@ Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" 
 Condition 21 "720021776" "(rma_chiplet_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
 Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
 Condition 22 "714165230" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 23 "330204192" "(fuse_sense_done ? StFinished : StIdle) 1 -1" (1 "0")
+Condition 23 "330204192" "(fuse_sense_done ? StFinished : StIdle) 1 -1" (2 "1")
 Condition 26 "3258283642" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (2 "10")
 Condition 26 "3258283642" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (3 "11")
+Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (1 "01")
+Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (2 "10")
+Condition 33 "2190871633" "(apb_req_from_ac.pstrb[0] && ((!apb_resp_from_ac.pready))) 1 -1" (3 "11")
 Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (1 "0")
 Condition 34 "582550207" "(shadow_efuse.values[efuse_pkg::SHADOW_IDX_TRANSIENT_RMA_EN][0] == 1'b1) 1 -1" (2 "1")
 Condition 35 "2651110473" "((rma_chiplet_token_match_i == TOKEN_MATCH_CODE) && ((!chiplet_state_change_completed_n0_scan))) 1 -1" (1 "01")
@@ -435,15 +513,31 @@ Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!so
 Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
 Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
 Condition 2 "4011173503" "(sim_skip_fuse_sense == 1'b1) 1 -1" (2 "1")
+Condition 3 "1907892326" "(preload_plusarg_found == 1'b0) 1 -1" (1 "0")
+Condition 7 "4235087075" "(words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE)) 1 -1" (1 "0")
+Condition 7 "4235087075" "(words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE)) 1 -1" (2 "1")
+Condition 12 "3491961324" "(apb_req_from_ac.pwdata[1] | lc_state_cur[1]) 1 -1" (1 "00")
+Condition 12 "3491961324" "(apb_req_from_ac.pwdata[1] | lc_state_cur[1]) 1 -1" (2 "01")
+Condition 12 "3491961324" "(apb_req_from_ac.pwdata[1] | lc_state_cur[1]) 1 -1" (3 "10")
+Condition 14 "3463265527" "(lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) 1 -1" (1 "01")
+Condition 14 "3463265527" "(lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) 1 -1" (2 "10")
+Condition 14 "3463265527" "(lc_state_cur[1] && (rma_chiplet_token_match_i == TOKEN_MATCH_CODE)) 1 -1" (3 "11")
+Condition 16 "651734236" "(apb_req_from_ac.pwdata[2] | lc_state_cur[2]) 1 -1" (1 "00")
+Condition 16 "651734236" "(apb_req_from_ac.pwdata[2] | lc_state_cur[2]) 1 -1" (2 "01")
+Condition 16 "651734236" "(apb_req_from_ac.pwdata[2] | lc_state_cur[2]) 1 -1" (3 "10")
 Condition 27 "3307276254" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (2 "10")
+Condition 28 "1181535201" "(fuse_command_resp.valid && (fuse_command_resp.status == 1'b0)) 1 -1" (2 "10")
+Condition 29 "3557066554" "(fuse_command_resp.status == 1'b0) 1 -1" (1 "0")
+Condition 30 "1343183551" "(apb_req_from_ac.pwrite && ((!write_locked))) 1 -1" (2 "10")
 Condition 31 "3715707245" "(write_setup_only && ((!is_lc_state_access))) 1 -1" (2 "10")
 Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (1 "01")
+Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (2 "10")
 Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (3 "11")
 
 CHECKSUM: "3035079037 2392609755"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
-ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high never run here. A policy change admitting the plusarg retires the class."
+ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms, the preload flag the initial block sets only with sim_skip_fuse_sense high, and every row or path that needs either high never run here. A policy change admitting the plusarg retires the class."
 MODULE: efuse_shadow_regs
 Branch 0 "372284962" "secure_tm_i" (0) "secure_tm_i 1"
 Branch 1 "3274679000" "$test$plusargs(\"skip_fuse_sense\")" (0) "$test$plusargs(\"skip_fuse_sense\") 1"
@@ -480,13 +574,20 @@ Branch 8 "1283278657" "(!rst_ni)" (25) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,
 
 CHECKSUM: "4117541145 44057898"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
+ANNOTATION: "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a zero default and sets only the empty and enable write enables, assigns the RAM read-pointer high write structure a constant zero, and the funnel ties the RAM start and limit write structures and its own control and disable-input write structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and read-pointer-high enables the DST sink MMR ORs with a software write hold zero, as do the funnel MMR's control and disable-input enables, and the hardware-write row of each cannot occur."
 MODULE: funnel_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
+Condition 9 "2106129299" "(MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn ? MMR_Trfunnelcontrol_F_Trfunnelempty_Data : MMR_Trfunnelcontrol_F_Trfunnelempty_Data_prev) 1 -1" (2 "1")
+Condition 13 "2170642287" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRFUNNELCONTROL)) | FunnelMmrTrfunnelcontrolWr.TrfunnelenableWrEn) 1 -1" (2 "01")
+Condition 20 "2237436538" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRFUNNELCONTROL)) | FunnelMmrTrfunnelcontrolWr.TrfunnelactiveWrEn) 1 -1" (2 "01")
+Condition 27 "1085791224" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRFUNNELDISINPUT)) | FunnelMmrTrfunneldisinputWr.TrfunneldisinputWrEn) 1 -1" (2 "01")
 
 CHECKSUM: "4117541145 1216273502"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
+ANNOTATION: "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a zero default and sets only the empty and enable write enables, assigns the RAM read-pointer high write structure a constant zero, and the funnel ties the RAM start and limit write structures and its own control and disable-input write structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and read-pointer-high enables the DST sink MMR ORs with a software write hold zero, as do the funnel MMR's control and disable-input enables, and the hardware-write row of each cannot occur."
 MODULE: funnel_mmr
+Branch 0 "2316299915" "MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn" (0) "MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn 1"
 Branch 11 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 11 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
@@ -550,6 +651,13 @@ ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend wi
 MODULE: idma_legalizer_rw_axi
 Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
 
+CHECKSUM: "370854006 1734903030"
+ANNOTATION: "SMC-P28-LOG-WRITE-OKAY: uart_log_engine_wrap wires the log engine's write port only to its own UART, whose demux sends every write to one of three PeakRDL register blocks generated with cpuif_wr_err at zero, and axi_lite_from_mem reports an error only on SLVERR or DECERR, so log_write_mem_resp_error and log_write_err hold zero and a row that needs either high cannot occur. The INTR_TEST path still sets the status bit, and its rows stay graded."
+MODULE: log_engine
+Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (1 "01")
+Condition 11 "3674367730" "(log_write_mem_resp_valid && log_write_mem_resp_error) 1 -1" (3 "11")
+Condition 13 "2864378118" "(log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) 1 -1" (3 "10")
+
 CHECKSUM: "3895468110 949337104"
 ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
 ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, with CLA_EN, DST_EN and TRACE_SINK_SUPPORT at one and NTR_EN at zero; the arm of each if or ternary on those enables that the constant does not select never executes."
@@ -558,6 +666,7 @@ Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 
 Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 -1" (2 "01")
 Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 -1" (3 "10")
 Condition 2 "1378508001" "(ram_cs & ram_cs_is_ntr) 1 -1" (1 "01")
+Condition 2 "1378508001" "(ram_cs & ram_cs_is_ntr) 1 -1" (2 "10")
 Condition 2 "1378508001" "(ram_cs & ram_cs_is_ntr) 1 -1" (3 "11")
 Condition 4 "2904522137" "(ram_cs & ((~ram_cs_is_ntr))) 1 -1" (2 "10")
 Condition 6 "3082891033" "(fabric_rdy & ((~jt_req_vld))) 1 -1" (2 "10")
@@ -592,8 +701,8 @@ Branch 10 "1128284310" "NTR_SINK_EN" (0) "NTR_SINK_EN 1"
 Branch 11 "1891817966" "DST_SINK_EN" (1) "DST_SINK_EN 0"
 
 CHECKSUM: "3001181867 1671278051"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 MODULE: mmrs
 Condition 19 "3808774952" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMSTARTLOW_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
@@ -642,6 +751,8 @@ Condition 12 "1992160571" "(({NUM_NTRACE_INST_SAFE {i_critical_signal_hold}}) | 
 Condition 13 "2586339335" "(i_critical_signal_hold | dst_sink_gated_reset_n) 1 -1" (3 "10")
 Condition 14 "173698312" "(i_critical_signal_hold | ntr_sink_gated_reset_n) 1 -1" (3 "10")
 Condition 15 "1723289713" "(i_critical_signal_hold | funnel_gated_reset_n) 1 -1" (3 "10")
+Condition 30 "4219737160" "((Trramstarthigh_Warl_Check_ANY | Trramlimithigh_Warl_Check_ANY) & MmrWrEn & Trntrissrammode) 1 -1" (3 "110")
+Condition 34 "544945129" "((Trramstartlow_Warl_Check_ANY | Trramlimitlow_Warl_Check_ANY) & MmrWrEn & Trntrissrammode) 1 -1" (3 "110")
 Condition 36 "2840195561" "(intf_gated_func_clamp ? (psel & penable) : gen_apb_inf_blk.apb_conv_pready) 1 -1" (2 "1")
 Condition 37 "4214449727" "(psel & penable) 1 -1" (1 "01")
 Condition 37 "4214449727" "(psel & penable) 1 -1" (2 "10")
@@ -653,7 +764,7 @@ Condition 39 "2767787333" "(psel & penable) 1 -1" (3 "11")
 Condition 40 "138770619" "(intf_gated_func_clamp ? '0 : gen_apb_inf_blk.apb_conv_prdata) 1 -1" (2 "1")
 
 CHECKSUM: "3001181867 707411587"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
 MODULE: mmrs
 Branch 7 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
@@ -662,7 +773,7 @@ Branch 9 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 11 "1454664243" "i_jtag_mmr_req_vld" (0) "i_jtag_mmr_req_vld 1"
 
 CHECKSUM: "3666106679 2225543826"
-ANNOTATION: "SMC-C6-ELSE-OF-TIMEOUT: smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test in the else arm runs only with that timeout high and a row that needs it low is never evaluated."
+ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, so a row of its condition that an earlier test already takes is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first; avsbus_controller takes a retry with a countdown above zero first; and efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first."
 MODULE: smc_cpu_ctrl_wrap
 Condition 4 "4033334027" "(wdt_timeout_cluster_i[0] && (cycle_count[0] != 32'b0)) 1 -1" (1 "01")
 Condition 6 "2554685946" "(wdt_timeout_cluster_i[1] && (cycle_count[1] != 32'b0)) 1 -1" (1 "01")
@@ -676,12 +787,12 @@ Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o
 Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (3 "11")
 
 CHECKSUM: "2716617997 3184480883"
-ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
+ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 MODULE: system_timer_octs_core
 Condition 8 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (1 "011")
 
 CHECKSUM: "4226918805 2330986106"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 MODULE: tnif
 Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (1 "011")
 Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (3 "110")
@@ -702,7 +813,7 @@ Condition 19 "4168576200" "(dst_pull_out | ntr_pull_out) 1 -1" (2 "01")
 Condition 20 "220599304" "(ntr_pull_out == 1'b1) 1 -1" (2 "1")
 
 CHECKSUM: "1255329244 2573646565"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: tnif_wrapper
 Condition 1 "3014164906" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_pull_out_w) 1 -1" (2 "1")
 Condition 2 "4059522878" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_flush_out_w) 1 -1" (2 "1")
@@ -712,7 +823,7 @@ Condition 5 "2824346823" "(tnif_gated_func_clamp[0] ? 1'b0 : tnif_tr_src_int[0])
 Condition 6 "1323528358" "(tnif_gated_func_clamp[0] ? '0 : tnif_tr_data_int[0]) 1 -1" (2 "1")
 
 CHECKSUM: "1255329244 4012058925"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: tnif_wrapper
 Branch 0 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
 Branch 1 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
@@ -746,7 +857,7 @@ Branch 0 "1918024820" "state" (10) "state RESP_HANDSHAKE ,-,-,-,-,-,-,1"
 Branch 0 "1918024820" "state" (11) "state RESP_HANDSHAKE ,-,-,-,-,-,-,0"
 
 CHECKSUM: "3643492222 1006470345"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 MODULE: trace_hop
 Condition 17 "3721999652" "(upstrm_tr_ntrace_bp & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (2 "10")
 Condition 17 "3721999652" "(upstrm_tr_ntrace_bp & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (3 "11")
@@ -754,7 +865,7 @@ Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELA
 Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (3 "11")
 
 CHECKSUM: "3354362860 3417673543"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. The pending entries are flops reset to zero and written only by a pending write, so their source, way and address fields, and the read inhibits set from them, never read one. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free."
 ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable."
 ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
@@ -1492,7 +1603,7 @@ Condition 506 "59168117" "(trntrRamRpLow_ANY[5:3] == 7[2:0]) 1 -1" (2 "1")
 Condition 512 "1552913216" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[7] : DataTraceRdEn_TS1[7]) 1 -1" (2 "1")
 
 CHECKSUM: "3354362860 1334787416"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the negation of that block's zero RAM mode, reads one, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. The pending entries are flops reset to zero and written only by a pending write, so their source, way and address fields, and the read inhibits set from them, never read one. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free."
 ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable."
 ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
@@ -1543,7 +1654,7 @@ Branch 52 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 53 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 
 CHECKSUM: "3227266885 3872669934"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: trace_wrapper
 Condition 1 "3805417146" "(({NUM_DST_INST_SAFE {(~dst_sink_gated_func_clamp)}}) & ((~dst_gated_func_clamp))) 1 -1" (1 "01")
 Condition 1 "3805417146" "(({NUM_DST_INST_SAFE {(~dst_sink_gated_func_clamp)}}) & ((~dst_gated_func_clamp))) 1 -1" (2 "10")
@@ -1563,7 +1674,7 @@ Condition 11 "539313021" "(funnel_gated_func_clamp ? '0 : FunnelMmrsWr_int) 1 -1
 Condition 12 "1721060743" "(funnel_gated_func_clamp ? '0 : m_trc_axi_req_int) 1 -1" (2 "1")
 
 CHECKSUM: "3227266885 1401209627"
-ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: trace_wrapper
 Branch 0 "1580568819" "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp)" (0) "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) 1"
 Branch 1 "2572674655" "ntr_sink_gated_func_clamp" (1) "ntr_sink_gated_func_clamp 0"
@@ -1619,7 +1730,7 @@ Condition 161 "3763558957" "(((|field_storage.LSR.OE.value)) || ((|field_storage
 CHECKSUM: "2535161971 656965095"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well. The main register block's LSR.BI and LSR.FE latch those two bits on the same cycle and the same LSR read clears both, so LSR.BI is never set without LSR.FE either; the rows that need break_err or LSR.BI alone have no stimulus."
-ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
+ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 MODULE: uart_core
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
@@ -1629,5 +1740,12 @@ Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
 Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
+Condition 3 "3867028423" "(thr_rready && thr_rvalid) 1 -1" (2 "10")
 Condition 17 "2934452335" "(tx_enable || rx_enable) 1 -1" (2 "01")
 Condition 17 "2934452335" "(tx_enable || rx_enable) 1 -1" (3 "10")
+Condition 49 "3934623659" "(fifo_thr_rbr_err || fifo_error_intr_test) 1 -1" (3 "10")
+
+CHECKSUM: "243658460 2303570125"
+ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, so a row of its condition that an earlier test already takes is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first; avsbus_controller takes a retry with a countdown above zero first; and efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first."
+MODULE: vlt_packet_compression
+Condition 19 "898194808" "((ts_packet_enable || retry_ts_packet_tx) && requested_packet_space_granted) 1 -1" (2 "10")
