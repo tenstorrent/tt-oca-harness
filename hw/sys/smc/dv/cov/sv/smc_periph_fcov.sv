@@ -467,9 +467,13 @@ module smc_periph_fcov #(
     option.per_instance = 1;
     cp_core2pad: coverpoint core2pad;
     cp_core2pad_en: coverpoint core2pad_en;
-    cp_pad2core_en: coverpoint pad2core_en;
+    // smc_padring ties the UART RX and CTS pads' input enables on, so the
+    // any-pad reduction never reads 0 outside reset.
+    cp_pad2core_en: coverpoint pad2core_en {ignore_bins tied_on = {1'b0};}
+    // smc_padring ties the UART TX and RTS pads' and two further pads' output
+    // enables on, so outside reset the count never settles at exactly one.
     cp_en_count: coverpoint en_count {
-      bins none = {0}; bins one = {1}; bins few = {[2 : 8]}; bins many = default;
+      bins none = {0}; ignore_bins one = {1}; bins few = {[2 : 8]}; bins many = default;
     }
     x_gpio_dir: cross cp_core2pad_en, cp_pad2core_en;
   endgroup

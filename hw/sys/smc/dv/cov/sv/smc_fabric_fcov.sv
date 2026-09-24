@@ -20,7 +20,12 @@
 
 `include "ocah_fcov_macros.svh"
 
-module smc_fabric_fcov (
+module smc_fabric_fcov #(
+  // 1 when the bench answers the SMC's DTP CSR AXI-Lite port. The SMC bench
+  // ties that response port off, so no access to it completes and none is
+  // issued; the DTP-active bins are dropped rather than carried unhittable.
+  parameter bit DtpCsrResponder = 1'b0
+) (
   input wire clk_smc_i,
   input wire rst_cold_ni,
 
@@ -405,7 +410,7 @@ module smc_fabric_fcov (
   // ------------------------------------------------------------------
   covergroup cg_axil_masters with function sample (logic dtp_csr, logic external, logic efuse_bank);
     option.per_instance = 1;
-    cp_dtp_csr: coverpoint dtp_csr;
+    cp_dtp_csr: coverpoint dtp_csr {ignore_bins no_responder = {1'b1} with (!DtpCsrResponder);}
     cp_external: coverpoint external;
     cp_efuse_bank: coverpoint efuse_bank;
     x_concurrency: cross cp_dtp_csr, cp_external, cp_efuse_bank;
@@ -415,13 +420,15 @@ module smc_fabric_fcov (
       logic [2:0] awsize, logic [1:0] awburst, logic [7:0] wstrb
   );
     option.per_instance = 1;
-    cp_awsize: coverpoint awsize {bins sizes[] = {[0 : 3]}; bins wide = default;}
-    // The reserved encoding gets a normal bin, not illegal_bins: an
-    // illegal bin turns a hit into a runtime error, which would let this
-    // coverage module end a simulation and change a test's verdict.
-    // Rejecting the encoding is an assertion's job.
+    // SEP_IN is a 64-bit port, so AxSIZE above 3 names a beat wider than the
+    // bus and no manager may drive it.
+    cp_awsize: coverpoint awsize {bins sizes[] = {[0 : 3]}; ignore_bins wide = {[4 : 7]};}
+    // 2'b11 is the reserved AxBURST encoding, which no manager drives. An
+    // ignore bin, not illegal_bins: an illegal bin turns a hit into a runtime
+    // error, which would let this coverage module end a simulation and change
+    // a test's verdict. Rejecting the encoding is an assertion's job.
     cp_awburst: coverpoint awburst {
-      bins fixed = {2'b00}; bins incr = {2'b01}; bins wrap = {2'b10}; bins reserved = {2'b11};
+      bins fixed = {2'b00}; bins incr = {2'b01}; bins wrap = {2'b10}; ignore_bins reserved = {2'b11};
     }
     cp_wstrb: coverpoint wstrb {bins none = {8'h00}; bins full = {8'hFF}; bins partial = default;}
     x_size_burst: cross cp_awsize, cp_awburst;
