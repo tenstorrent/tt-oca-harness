@@ -10714,6 +10714,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 ** A forced slave resync is requested while they wait.
 ** After one pop, every command must complete with its reply intact.
 * sdata held low while the bus is idle raises `AVS_SLAVE_ISSUED_INTERRUPT` as the only unmasked source, and the clear register clears it.
+* sdata is held low long enough to raise the slave interrupt, and a command queued while it is still low has to launch and read back its reply intact.
+* Both FIFOs are filled and one `AVS_CMD` write more is made, which is refused. `READBACK_FIFO_FULL`, `CMD_FIFO_FULL` and `CMD_FIFO_OVERFLOW` must all be set. The AVSBus interrupt line, `tb_avsbus_irq`, must be low with every source masked and high with each of the three unmasked on its own, and every reply must then drain intact.
 
 *Test Procedure*:
 
@@ -10723,6 +10725,8 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 . Run the good, retry-exhaust, retry-recover, bad-data, not-valid and both buffered legs, setting `MAX_RETRIES` and the interrupt mask for each.
 . Fill the readback FIFO, queue two more commands, force a resync, and drain.
 . Hold sdata low with the bus idle, then clear the slave interrupt.
+. Hold sdata low again and queue a command while it is low.
+. Fill both FIFOs, write one command more, then unmask each FIFO interrupt on its own and drain.
 
 *Checkers*:
 
@@ -10736,9 +10740,11 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 |`CHK-AVS-SLAVE-BUFFERED` |A reply that waited behind a retry was delivered after it: as good when good, and unretried once the budget was cleared
 |`CHK-AVS-SLAVE-STALL` |A full readback FIFO held back further commands, and after a forced resync and a pop every command completed intact
 |`CHK-AVS-SLAVE-INTERRUPT` |sdata low while idle raised `AVS_SLAVE_ISSUED_INTERRUPT` as the only unmasked source, and it cleared
+|`CHK-AVS-SLAVE-INTERRUPT-LAUNCH` |A command queued during a slave interrupt, with sdata still low, launched and read back its reply intact
+|`CHK-AVS-SLAVE-MASKS` |With both FIFOs full and one command refused, three FIFO interrupts were set; the interrupt line followed the mask for each alone, and every reply drained
 |===
 
-*Pass Criteria*: all seven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all nine checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

@@ -48,6 +48,14 @@ Reply shapes and what each leg requires:
 * **A slave interrupt**: sdata held low while the bus is idle raises
   `AVS_SLAVE_ISSUED_INTERRUPT`, the only source unmasked, and the clear
   register clears it.
+* **A command launched during a slave interrupt**: sdata is held low long
+  enough to raise the interrupt, and a command queued while it is still low
+  has to launch and read back its reply intact.
+* **Three FIFO interrupts, one at a time**: with both FIFOs full and one
+  `AVS_CMD` write more, which is refused, `READBACK_FIFO_FULL`,
+  `CMD_FIFO_FULL` and `CMD_FIFO_OVERFLOW` are all set. The AVSBus interrupt
+  line has to be low with every source masked and high with each of the
+  three unmasked on its own, and every reply then drains intact.
 
 The leg order is fixed and every expectation follows from the documents; the
 responder's reply queue is consumed one word per master subframe it sees.
@@ -59,6 +67,7 @@ from collections import deque
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr
 from .smc_avsbus_protocol_utils import (
@@ -120,6 +129,20 @@ SLAVE_ISSUED_BM = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT__AVS_SLAVE_ISSUED_
 READBACK_FIFO_FULL_BM = avs_field("AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__READBACK_FIFO_FULL_bm")
 FORCE_RESYNC_BM = avs_field("AVSBUS_CONTROLLER__AVS_CFG_1__FORCE_SLAVE_RESYNC_OPERATION_bm")
 CLEAR_ALL = 0x1FF
+CMD_FIFO_DEPTH = avs_field("AVSBUS_CONTROLLER__AVS_FIFOS_STATUS__CMD_FIFO_VACANT_SLOTS_reset")
+CMD_FIFO_FULL_BM = avs_field("AVSBUS_CONTROLLER__AVS_NORMAL_STATUS__CMD_FIFO_FULL_bm")
+INT_RB_FULL = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT__READBACK_FIFO_FULL_INT_bm")
+INT_CMD_FULL = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_FULL_INT_bm")
+INT_CMD_OVERFLOW = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT__CMD_FIFO_OVERFLOW_INT_bm")
+DISABLE_RB_FULL = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_READBACK_FIFO_FULL_INT_bm"
+)
+DISABLE_CMD_FULL = avs_field("AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_FULL_INT_bm")
+DISABLE_CMD_OVERFLOW = avs_field(
+    "AVSBUS_CONTROLLER__AVS_INTERRUPT_MASK__DISABLE_CMD_FIFO_OVERFLOW_INT_bm"
+)
+#: The AVSBus interrupt line crosses into the SMC clock domain before the pin.
+IRQ_SETTLE_CYCLES = 40
 #: Commands queued behind a full readback FIFO.
 STALL_EXTRA = 2
 STALL_WAIT_CYCLES = 3000
@@ -536,6 +559,110 @@ class smc_avsbus_slave_reply_test_seq(SmcCsrSeq):
             "cleared it"
         )
 
+    async def _interrupt_launch_leg(self) -> None:
+        """Signal a slave interrupt, then launch a command while sdata is still low."""
+        assert self.driver is not None
+        label = "INT_LAUNCH"
+        await self._set_retries(label, 0)
+        await self.csr_write(f"{label}_CLEAR", AVS_INTERRUPT_CLEAR, CLEAR_ALL)
+        word = self._word("GOOD_2")
+        self._send(word)
+        self.driver.idle = 0
+        await ClockCycles(cocotb.top.clk_smc_i, SLAVE_INT_CYCLES)
+        await self.csr_write(f"{label}_CMD", AVS_CMD, CMD_A)
+        got = await self._pop(label)
+        self.driver.idle = 1
+        intr = await self.csr_read(f"{label}_INTR", AVS_INTERRUPT)
+        assert intr & SLAVE_ISSUED_BM, (
+            f"{label}: sdata held low with the bus idle left AVS_SLAVE_ISSUED_INTERRUPT clear "
+            f"(0x{intr:08x})"
+        )
+        assert got & READBACK_FIELDS == word & READBACK_FIELDS, (
+            f"{label}: the command launched while sdata was low read back 0x{got:08x}, not "
+            f"0x{word:08x}"
+        )
+        await self.csr_write(f"{label}_CLEAR_END", AVS_INTERRUPT_CLEAR, CLEAR_ALL)
+        await self._await_idle(label)
+        cocotb.log.info(
+            "CHK-AVS-SLAVE-INTERRUPT-LAUNCH: with sdata held low long enough to raise "
+            "AVS_SLAVE_ISSUED_INTERRUPT, a command queued while it was still low launched and "
+            "its reply read back intact"
+        )
+
+    async def _avs_cmd_refused(self, label: str, word: int) -> int:
+        item = SmcSysAxiItem(f"wr_{label}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = AVS_CMD
+        item.length = 4
+        item.wdata = word
+        item.allow_error = True
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code is not None, f"{label}: the write got no response"
+        return item.resp_code
+
+    async def _mask_leg(self) -> None:
+        """Raise three FIFO interrupts together and unmask each one on its own."""
+        assert self.driver is not None
+        label = "MASKS"
+        await self._set_retries(label, 0)
+        await self.csr_write(f"{label}_MASK_ALL", AVS_INTERRUPT_MASK, MASK_ALL)
+        await self.csr_write(f"{label}_CLEAR", AVS_INTERRUPT_CLEAR, CLEAR_ALL)
+        good = self._word("GOOD")
+        total = RB_FIFO_DEPTH + CMD_FIFO_DEPTH
+        self._send(*([good] * total))
+        for index in range(RB_FIFO_DEPTH):
+            await self.csr_write(f"{label}_FILL{index}", AVS_CMD, CMD_A)
+        await self._await_replies(label, RB_FIFO_DEPTH)
+        for index in range(CMD_FIFO_DEPTH):
+            await self.csr_write(f"{label}_QUEUE{index}", AVS_CMD, CMD_B)
+        status = await self.csr_read(f"{label}_QUEUED", AVS_NORMAL_STATUS)
+        assert status & CMD_FIFO_FULL_BM and status & READBACK_FIFO_FULL_BM, (
+            f"{label}: AVS_NORMAL_STATUS=0x{status:08x}; both FIFOs must be full"
+        )
+        resp = await self._avs_cmd_refused(f"{label}_OVERFLOW", CMD_A)
+        intr = await self.csr_read(f"{label}_INTR", AVS_INTERRUPT)
+        wanted = INT_RB_FULL | INT_CMD_FULL | INT_CMD_OVERFLOW
+        assert intr & wanted == wanted, (
+            f"{label}: AVS_INTERRUPT=0x{intr:08x} after filling both FIFOs and one write more; "
+            f"READBACK_FIFO_FULL, CMD_FIFO_FULL and CMD_FIFO_OVERFLOW must all be set"
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, IRQ_SETTLE_CYCLES)
+        assert int(cocotb.top.tb_avsbus_irq.value) == 0, (
+            f"{label}: the AVSBus interrupt line is high with every source masked"
+        )
+        for name, disable in (
+            ("READBACK_FIFO_FULL", DISABLE_RB_FULL),
+            ("CMD_FIFO_FULL", DISABLE_CMD_FULL),
+            ("CMD_FIFO_OVERFLOW", DISABLE_CMD_OVERFLOW),
+        ):
+            await self.csr_write(f"{label}_ONLY_{name}", AVS_INTERRUPT_MASK, MASK_ALL & ~disable)
+            await ClockCycles(cocotb.top.clk_smc_i, IRQ_SETTLE_CYCLES)
+            assert int(cocotb.top.tb_avsbus_irq.value) == 1, (
+                f"{label}: with only {name} unmasked the AVSBus interrupt line stayed low"
+            )
+            await self.csr_write(f"{label}_REMASK_{name}", AVS_INTERRUPT_MASK, MASK_ALL)
+            await ClockCycles(cocotb.top.clk_smc_i, IRQ_SETTLE_CYCLES)
+            assert int(cocotb.top.tb_avsbus_irq.value) == 0, (
+                f"{label}: the AVSBus interrupt line stayed high once {name} was masked again"
+            )
+        for index in range(total):
+            got = await self._pop(f"{label}_DRAIN{index}")
+            assert got & READBACK_FIELDS == good & READBACK_FIELDS, (
+                f"{label}: reply {index} read back 0x{got:08x}"
+            )
+        await self.csr_write(f"{label}_CLEAR_END", AVS_INTERRUPT_CLEAR, CLEAR_ALL)
+        await self._await_idle(label)
+        cocotb.log.info(
+            "CHK-AVS-SLAVE-MASKS: with both FIFOs full and one AVS_CMD write refused "
+            "(response %d), READBACK_FIFO_FULL, CMD_FIFO_FULL and CMD_FIFO_OVERFLOW were all "
+            "set; the interrupt line was low with every source masked and high with each of "
+            "the three unmasked on its own, and all %d replies then drained intact",
+            resp,
+            total,
+        )
+
     async def body(self) -> None:
         self.cfg0 = await self.csr_read("AVS_CFG_0_SAVE", AVS_CFG_0)
         await self.csr_write("MASK_ALL", AVS_INTERRUPT_MASK, MASK_ALL)
@@ -603,5 +730,7 @@ class smc_avsbus_slave_reply_test_seq(SmcCsrSeq):
 
         await self._stall_leg()
         await self._slave_interrupt_leg()
+        await self._interrupt_launch_leg()
+        await self._mask_leg()
         self.driver.stop()
         await self.csr_write("AVS_CFG_0_RESTORE", AVS_CFG_0, self.cfg0)
