@@ -4714,6 +4714,9 @@ Drive `smc_dfd_dbm_mode_lock_test_seq`. Each checker below is a named compare th
 
 * `smc_dfd_trace_sink_readout_test` stops the trace before reading the sink back, so the sink's read and write sides never move together. This leaf keeps the trace running and drives the read pointer and the RAM data port underneath it, so the write pointer and the read pointer are in motion at the same time and the data port is taken while frames are still arriving.
 * The sink's destination mode is changed between two live phases, so the mode selection is exercised with traffic in flight rather than on an idle sink.
+* A third phase runs a compressed stream and walks the frame shape under it: every combination of the frame-closure mode and the frame length. Where a packet lands inside the accumulator is the write byte boundary, and no register addresses it; the frame geometry is the only software lever that moves it, because it sets where a frame closes and whether a packet crossing that point is pushed back or the frame is closed early.
+
+*Known limitation*: the accumulator's bank states are not visible at the register interface, so this leaf produces the boundary stimulus but cannot witness which bank state a given frame shape reaches. An uncompressed packet is a fixed 10 bytes against a 32-byte bank, so the boundary only ever lands on even offsets; the odd offsets that the remaining bank-FSM and cross-connect rows need occur only under the compressing formats, where the packet length follows the data rather than any register.
 
 *Test Procedure*:
 
@@ -4728,10 +4731,11 @@ Drive `smc_dfd_trace_sink_concurrent_test_seq`. Each checker below is a named co
 |`CHK-DST-CONCURRENT-IDLE` |The RAM data port reads 0 and the write pointer its reset with the sink armed and no trace captured; either one already non-zero fails it and makes the live phase prove nothing
 |`CHK-DST-CONCURRENT-DRAIN` |Inside one live trace the read pointer was driven across the window, the data port returned at least one non-zero word against that baseline, and the write pointer was sampled away from its starting value in the same phase; any of the three missing fails it
 |`CHK-DST-CONCURRENT-MODE` |The sink was armed and driven through a live trace in both values of its destination-mode field, each read back exactly; a value the register does not accept fails it
+|`CHK-DST-CONCURRENT-FRAMEWALK` |Under a compressed stream the frame shape was walked through all 32 combinations of the closure mode and the frame length, each written and read back exactly; a combination the registers do not accept fails it
 |===
 
 
-*Pass Criteria*: `CHK-DST-CONCURRENT-DRAIN`, `CHK-DST-CONCURRENT-IDLE`, `CHK-DST-CONCURRENT-MODE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DST-CONCURRENT-DRAIN`, `CHK-DST-CONCURRENT-FRAMEWALK`, `CHK-DST-CONCURRENT-IDLE`, `CHK-DST-CONCURRENT-MODE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-224-smc_dfd_cla_snapshot_capture_test]]

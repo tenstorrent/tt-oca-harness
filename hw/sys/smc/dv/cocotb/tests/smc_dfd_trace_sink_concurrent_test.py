@@ -34,9 +34,13 @@ from smc_base_test import smc_base_test
 #     write-pointer read at 8 of them, and the quiesce write)                178
 #   restore: DST, EAP, CLA control, funnel, sink control, DEBUG_BUS_MUX,
 #     DEBUG_CTRL                                                              7
+#   the shaped phase: a sink arm (9), the compressed-format write and its
+#     readback (2), then per closure mode the frame-config write and its
+#     readback (2) and per frame length a write, a readback and 4 action
+#     writes, so 2 x (2 + 16 x 6)                                           207
 #                                                                         ------
-#                                                                            277
-TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 277
+#                                                                            484
+TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 484
 
 
 @pyuvm.test()
@@ -45,10 +49,11 @@ class smc_dfd_trace_sink_concurrent_test(smc_base_test):
 
     required_evidence = (
         "CHK-DST-CONCURRENT-DRAIN",
+        "CHK-DST-CONCURRENT-FRAMEWALK",
         "CHK-DST-CONCURRENT-IDLE",
         "CHK-DST-CONCURRENT-MODE",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 
