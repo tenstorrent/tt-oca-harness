@@ -27,10 +27,10 @@ Reset all FIFOs and configure thresholds:
 [source,c]
 ----
 // Reset all FIFOs
-write32(base + 0x20, 0x1E); // FIFO_CTRL: Reset all FIFOs
+write32(base + 0x20, 0x0183); // FIFO_CTRL: RXRST, FMTRST, ACQRST, TXRST
 
 // Controller FIFO configuration
-write32(base + 0x24, 0x00080010); // HOST_FIFO_CONFIG: RX_THRESH=8, FMT_THRESH=16
+write32(base + 0x24, 0x00100008); // HOST_FIFO_CONFIG: RX_THRESH=8, FMT_THRESH=16
 
 // Target FIFO configuration
 write32(base + 0x28, 0x00080010); // TARGET_FIFO_CONFIG: ACQ_THRESH=8, TX_THRESH=16
@@ -42,11 +42,11 @@ Enable desired interrupts:
 
 [source,c]
 ----
-// Clear all interrupts first
-write32(base + 0x00, 0xFFFF); // INTR_STATE: Clear all interrupts
+// Clear latched W1C events; live threshold/halt status is not writable.
+write32(base + 0x00, 0x000FE3E8); // INTR_STATE W1C fields
 
 // Enable desired interrupts
-write32(base + 0x04, 0x0203); // INTR_ENABLE: Enable common interrupts
+write32(base + 0x04, 0x0213); // FMT_THRESHOLD, RX_THRESHOLD, CONTROLLER_HALT, CMD_COMPLETE
 ----
 
 == Enable Operation Mode
@@ -232,9 +232,15 @@ To achieve nominal rates within 5% or so, we recommend that the internal clock i
 
 == Timing Parameter Examples
 
-The following tables show a couple of examples for calculating timing register parameters for Fast-mode Plus devices.
+<<fast-mode-plus-example-normal-capacitance-table>> and
+<<high-capacitance-fast-mode-plus-example-table>> give examples of timing-register
+calculations for Fast-mode Plus devices.
 Both examples assume a desired datarate of 1 Mbaud (the bus maximum) for an SCL period of 1 us, and an internal device clock period of 3 ns.
 
+<<fast-mode-plus-example-normal-capacitance-table>> gives example register values for a
+1 Mbaud bus with a 3 ns device clock.
+
+[[fast-mode-plus-example-normal-capacitance-table]]
 .Fast-mode Plus Example (Normal Capacitance)
 [width="100%",cols="25%,15%,15%,15%,30%",options="header"]
 |=====================================================================================
@@ -249,13 +255,17 @@ Both examples assume a desired datarate of 1 Mbaud (the bus maximum) for an SCL 
 |TIMING3.THD_DAT |0 |0 |0 |Spec. Minimum
 |TIMING3.TSU_DAT |260 |87 |261 |Spec. Minimum
 |TIMING4.T_BUF |500 |167 |501 |Spec. Minimum
-|TIMING4.T_STO |260 |87 |161 |Spec. Minimum
+|TIMING4.T_STO |260 |87 |261 |Spec. Minimum
 |=====================================================================================
 
 This next example shows how the first SCL timing registers: `TIMING0` and `TIMING1` are altered in a high-capacitance Fast-mode Plus bus, where the physical value of t~r~ driven to an atypical value of 400ns.
 As in the previous example the integer register values are determined based on a system clock period, t~clk~, of 3ns.
 All other parameters in registers `TIMING2`, `TIMING3`, `TIMING4` are unchanged from the previous example.
 
+<<high-capacitance-fast-mode-plus-example-table>> gives the revised timing values for
+the high-capacitance example.
+
+[[high-capacitance-fast-mode-plus-example-table]]
 .High-Capacitance Fast-mode Plus Example
 [width="100%",cols="25%,15%,15%,15%,30%",options="header"]
 |=====================================================================================
@@ -287,26 +297,28 @@ Example code:
 
 [source,c]
 ----
+write32(base + 0x00, 0x200); // Clear previous completion before submitting.
+
 // Write address with START and write bit
-write32(base + 0x1C, 0x0400A0); // FDATA: START=1, FBYTE=7-bit addr (0x50) + W
+write32(base + 0x1C, 0x01A0); // FDATA: START=1, FBYTE=7-bit addr (0x50) + W
 
 // Write data bytes (n-1 times)
 write32(base + 0x1C, 0x00AA); // FDATA: Data byte 0xAA
 write32(base + 0x1C, 0x00BB); // FDATA: Data byte 0xBB
 
 // Send last byte with STOP
-write32(base + 0x1C, 0x0200AA); // FDATA: STOP=1, FBYTE=last byte 0xAA
+write32(base + 0x1C, 0x02AA); // FDATA: STOP=1, FBYTE=last byte 0xAA
 
 // Wait for completion
-while (!(read32(base + 0x00) & 0x200)); // Wait for CMD_COMPLETE
+while (!(read32(base + 0x00) & (0x200 | 0x10))); // Completion or halt
 
 // Check for errors
-if (read32(base + 0x00) & 0x40) { // CONTROLLER_HALT
+if (read32(base + 0x00) & 0x10) { // CONTROLLER_HALT
     // Check CONTROLLER_EVENTS for reason
     uint32_t events = read32(base + 0x78);
     // Handle error...
     // Reset FMT FIFO
-    write32(base + 0x20, 0x08); // FIFO_CTRL: FMTRST=1
+    write32(base + 0x20, 0x02); // FIFO_CTRL: FMTRST=1
     // Clear events
     write32(base + 0x78, events);
 }
@@ -321,38 +333,41 @@ write32(base + 0x00, 0x200); // Clear CMD_COMPLETE
 ** `FDATA.START` = 1;
 ** `FDATA.FBYTE` = <7-bit address + read bit>.
 2. Issue a read transfer by writing to the FMT FIFO.
-** `FDATA.READ` = 1;
+** `FDATA.READB` = 1;
 ** `FDATA.STOP` = 1;
 ** `FDATA.FBYTE` = <`n`>.
-3. Wait for the transfer to finish or interrupt by checking:
-** If `STATUS.FMTEMPTY` bit is 1.
-*** **Or** if `INTR_STATE.FMT_THRESHOLD` bit is 1 ( as long as `FIFO_CTRL.FMTILVL` is set to 1).
-** If `INTR_STATE.CONTROLLER_HALT` is 1.
-4. If the `INTR_STATE.CONTROLLER_HALT` bit is 1, then set `FIFO_CTRL.FMTRST` to reset the FMT FIFO, clear latched events in `CONTROLLER_EVENTS`, and go back to step 1. Otherwise, proceed.
-5. If `STATUS.FMTEMPTY` is 1, the read transfer has completed.
-** Retrieve the data from the FIFO by reading `RDATA` `n` times.
+3. Wait for `INTR_STATE.CMD_COMPLETE` or `INTR_STATE.CONTROLLER_HALT`.
+A format FIFO threshold or empty indication alone does not prove that the
+bus transfer has finished.
+4. On `CONTROLLER_HALT`, inspect and clear `CONTROLLER_EVENTS`, reset the
+FMT FIFO with `FIFO_CTRL.FMTRST`, and discard any partial receive data before
+retrying.
+5. On completion without a halt, retrieve the received bytes from `RDATA`.
+The example reads four bytes, which must fit in the configured RX FIFO.
 
 Example code:
 
 [source,c]
 ----
+write32(base + 0x00, 0x200); // Clear previous completion before submitting.
+
 // Address device for reading
-write32(base + 0x1C, 0x0400A1); // FDATA: START=1, FBYTE=7-bit addr (0x50) + R
+write32(base + 0x1C, 0x01A1); // FDATA: START=1, FBYTE=7-bit addr (0x50) + R
 
 // Issue read transfer
-write32(base + 0x1C, 0x030004); // FDATA: READ=1, STOP=1, FBYTE=n=4
+write32(base + 0x1C, 0x0604); // FDATA: READB=1, STOP=1, FBYTE=n=4
 
 // Wait for completion or error
-while (!(read32(base + 0x00) & (0x200 | 0x40))); // Wait for CMD_COMPLETE or CONTROLLER_HALT
+while (!(read32(base + 0x00) & (0x200 | 0x10))); // Wait for CMD_COMPLETE or CONTROLLER_HALT
 
-if (read32(base + 0x00) & 0x40) { // CONTROLLER_HALT
+if (read32(base + 0x00) & 0x10) { // CONTROLLER_HALT
     // Reset FMT FIFO
-    write32(base + 0x20, 0x08); // FIFO_CTRL: FMTRST=1
+    write32(base + 0x20, 0x02); // FIFO_CTRL: FMTRST=1
     // Clear events
     uint32_t events = read32(base + 0x78);
     write32(base + 0x78, events);
     // Retry from step 1...
-} else if (read32(base + 0x14) & 0x01) { // STATUS.FMTEMPTY
+} else if (read32(base + 0x14) & 0x04) { // STATUS.FMTEMPTY
     // Read data from RX FIFO
     uint8_t data[4];
     for (int i = 0; i < 4; i++) {
@@ -371,7 +386,7 @@ write32(base + 0x00, 0x200); // Clear CMD_COMPLETE
 [source,sourceCode,c]
 ----
 // Set target address to 0x48
-write32(base + 0x54, 0x48); // TARGET_ID: ADDRESS0=0x48
+write32(base + 0x54, (0x7Fu << 7) | 0x48u); // MASK0=0x7F, ADDRESS0=0x48
 ----
 2.  *Enable Target Mode*:
 +
@@ -392,8 +407,7 @@ if (read32(base + 0x00) & 0x04) { // ACQ_THRESHOLD interrupt
     // For read transactions, load response data:
     write32(base + 0x5C, response_data); // TXDATA
 
-    // Clear interrupt
-    write32(base + 0x00, 0x04); // Clear ACQ_THRESHOLD
+    // ACQ_THRESHOLD is read-only; drain ACQDATA below the threshold to deassert it.
 }
 ----
 
@@ -421,7 +435,7 @@ if (intr_state & 0x60) { // SCL or SDA interference
 ----
 if (read32(base + 0x00) & 0x08) { // RX_OVERFLOW
     // Reset RX FIFO
-    write32(base + 0x20, 0x02); // FIFO_CTRL: RXRST=1
+    write32(base + 0x20, 0x01); // FIFO_CTRL: RXRST=1
 
     // Clear overflow interrupt
     write32(base + 0x00, 0x08);
@@ -440,21 +454,28 @@ if (read32(base + 0x00) & 0x08) { // RX_OVERFLOW
 #define I2C_BASE 0x40000000
 
 // Configure for maximum performance
-write32(I2C_BASE + 0x24, 0x00040030); // Aggressive FIFO thresholds
+write32(I2C_BASE + 0x24, 0x00040030); // RX_THRESH=48, FMT_THRESH=4
 write32(I2C_BASE + 0x04, 0x0003);     // Enable FMT and RX threshold interrupts
 
-// Use interrupt-driven transfers for efficiency
-void i2c_controller_write_burst(uint8_t addr, uint8_t* data, int len) {
-    // Load entire transaction into FIFO
-    write32(I2C_BASE + 0x1C, 0x0400 | (addr << 1)); // START + address + W
-    for (int i = 0; i < len; i++) {
-        write32(I2C_BASE + 0x1C, data[i]);
+// Polled example; a system driver can service the same conditions by interrupt.
+int i2c_controller_write_burst(uint8_t addr, const uint8_t* data, int len) {
+    if (len <= 0) return -1;
+    write32(I2C_BASE + 0x00, 0x200); // Clear previous completion.
+    for (int i = -1; i < len; ++i) {
+        while (read32(I2C_BASE + 0x14) & 0x01) { // STATUS.FMTFULL
+            if (read32(I2C_BASE + 0x00) & 0x10) return -1;
+        }
+        uint32_t entry = i < 0 ? (0x0100u | ((uint32_t)addr << 1)) : data[i];
+        if (i == len - 1) entry |= 0x0200u; // STOP accompanies the final data byte.
+        write32(I2C_BASE + 0x1C, entry);
     }
-    write32(I2C_BASE + 0x1C, 0x0200); // STOP
-
-    // Wait for completion interrupt
-    while (!(read32(I2C_BASE + 0x00) & 0x200));
-    write32(I2C_BASE + 0x00, 0x200); // Clear interrupt
+    uint32_t state;
+    do {
+        state = read32(I2C_BASE + 0x00);
+    } while (!(state & (0x200 | 0x10)));
+    if (state & 0x10) return -1; // Caller performs CONTROLLER_EVENTS recovery.
+    write32(I2C_BASE + 0x00, 0x200);
+    return 0;
 }
 ----
 
@@ -464,14 +485,16 @@ void i2c_controller_write_burst(uint8_t addr, uint8_t* data, int len) {
 ----
 // Configure target with multiple address ranges
 void configure_multi_address_target() {
-    // Primary address: 0x50
-    write32(I2C_BASE + 0x54, 0x50);
+    // Match exactly 0x50 and 0x51; zero masks would disable the addresses.
+    write32(I2C_BASE + 0x54, (0x7Fu << 21) | (0x51u << 14) | (0x7Fu << 7) | 0x50u);
 
-    // Enable target mode with manual ACK control for address filtering
-    write32(I2C_BASE + 0x10, 0x0A); // ENABLETARGET=1, ACK_CTRL_EN=1
+    // Enable target mode with software control of received-data ACKs
+    write32(I2C_BASE + 0x10, 0x12); // ENABLETARGET=1, ACK_CTRL_EN=1
 
-    // Configure ACK control for selective response
-    write32(I2C_BASE + 0x6C, 0x01); // TARGET_ACK_CTRL: Enable manual control
+    // When the target stretches for software ACK control, accept one byte.
+    if (read32(I2C_BASE + 0x14) & (1u << 10)) {
+        write32(I2C_BASE + 0x6C, 1u); // TARGET_ACK_CTRL.NBYTES=1
+    }
 }
 ----
 
@@ -499,7 +522,7 @@ void handle_i2c_errors() {
 
     if (intr_state & 0x08) { // RX overflow
         printf("RX FIFO overflow - possible data loss\n");
-        write32(I2C_BASE + 0x20, 0x02); // Reset RX FIFO
+        write32(I2C_BASE + 0x20, 0x01); // Reset RX FIFO
     }
 
     // Clear all error interrupts
@@ -517,13 +540,14 @@ void monitor_fifo_performance() {
     uint32_t target_status = read32(I2C_BASE + 0x30);
 
     printf("Controller FIFOs - FMT: %d, RX: %d\n",
-           (host_status >> 16) & 0x7F, host_status & 0x7F);
+           host_status & 0xFFF, (host_status >> 16) & 0xFFF);
     printf("Target FIFOs - ACQ: %d, TX: %d\n",
-           (target_status >> 16) & 0x1FF, target_status & 0x7F);
+           (target_status >> 16) & 0xFFF, target_status & 0xFFF);
 
     // Adjust thresholds based on utilization patterns
-    if ((host_status & 0x7F) > 32) { // RX FIFO getting full
-        write32(I2C_BASE + 0x24, 0x00100010); // Increase RX threshold
+    if (((host_status >> 16) & 0xFFF) > 32) { // RX FIFO getting full
+        uint32_t config = read32(I2C_BASE + 0x24);
+        write32(I2C_BASE + 0x24, (config & 0x0FFF0000u) | 16u); // Service RX above 16
     }
 }
 ----

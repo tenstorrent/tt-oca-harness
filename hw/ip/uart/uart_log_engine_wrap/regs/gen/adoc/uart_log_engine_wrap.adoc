@@ -16,7 +16,7 @@
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | <<reg-{regmap-instance}-uart_log_engine_wrap-uart_log_engine_ctrl-CTRL,CTRL>> | RW a| Control Register
+| 0x0 | <<reg-{regmap-instance}-uart_log_engine_wrap-uart_log_engine_ctrl-CTRL,uart_log_engine_ctrl.CTRL>> | RW a| Control Register
 | 0x100 | <<reg-{regmap-instance}-uart_log_engine_wrap-uart-RBR,RBR>> | R a| Receiver Buffer Register
 | 0x104 | <<reg-{regmap-instance}-uart_log_engine_wrap-uart-IER,IER>> | RW a| Interrupt Enable Register
 | 0x108 | <<reg-{regmap-instance}-uart_log_engine_wrap-uart-IIR,IIR>> | R a| Interrupt Identification Register
@@ -27,6 +27,7 @@
 | 0x11C | <<reg-{regmap-instance}-uart_log_engine_wrap-uart-SCR,SCR>> | RW a| Scratch Register
 | 0x120 | <<reg-{regmap-instance}-uart_log_engine_wrap-uart-ECR,ECR>> | RW a| Extended Control Register
 | 0x124 | <<reg-{regmap-instance}-uart_log_engine_wrap-uart-ITR,ITR>> | RW a| Interrupt Test Register
+| 0x200 | <<reg-{regmap-instance}-uart_log_engine_wrap-log_engine-CTRL,log_engine.CTRL>> | RW a| Control Register
 | 0x204 | <<reg-{regmap-instance}-uart_log_engine_wrap-log_engine-LOG_REGION_SIZE,LOG_REGION_SIZE>> | RW a| Log Region Size Register
 | 0x208 | <<reg-{regmap-instance}-uart_log_engine_wrap-log_engine-LOG_REGION_ADDR,LOG_REGION_ADDR>> | RW a| Log Region Address Register
 | 0x210 | <<reg-{regmap-instance}-uart_log_engine_wrap-log_engine-LOG_WRITE_ADDR,LOG_WRITE_ADDR>> | RW a| Log Write Address Register
@@ -37,7 +38,7 @@
 |===
 
 [#reg-{regmap-instance}-uart_log_engine_wrap-uart_log_engine_ctrl-CTRL]
-=== CTRL
+=== uart_log_engine_ctrl.CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -260,6 +261,17 @@ writing `0` releases it.
 Writing `1` forces the interrupt and writing `0` releases it.
 | 0 | `TRBFI` | RW | 0x0 a| Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces
 the interrupt and writing `0` releases it.
+|===
+
+[#reg-{regmap-instance}-uart_log_engine_wrap-log_engine-CTRL]
+=== log_engine.CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `Reserved` | - | - a| Reserved
+| 0 | `EN` | RW | 0x0 a| Log Engine Enable. When set, enables the Log Engine. When unset, disables the
+Log Engine and resets all FSMs, flops, and FIFOs.
 |===
 
 [#reg-{regmap-instance}-uart_log_engine_wrap-log_engine-LOG_REGION_SIZE]

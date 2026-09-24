@@ -58,7 +58,8 @@ binary = "vcs"
 frameworks = ["cocotb", "uvm"]
 license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
 supports_waves = ["vpd", "fsdb"]
-supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional"]
+# `user` is the cover-property half of urg's assert metric, read from asserts.txt.
+supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional", "user"]
 default_waves = "vpd"
 
 [vcs.build_defaults]

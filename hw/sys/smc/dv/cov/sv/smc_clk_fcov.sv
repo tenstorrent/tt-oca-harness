@@ -383,7 +383,12 @@ module smc_clk_fcov #(
 `ifndef VERILATOR
   // ------------------------------------------------------------------
   // Commercial-simulator covergroups: the crosses a flat cover-property
-  // list cannot express, plus a real bucketed view of the domain ratios.
+  // list cannot express, plus a bucketed view of the domain ratios. A bucket
+  // is the domain's edge count per reference edge in quarters; the classes
+  // are the relations the clock tree distinguishes (a stalled, slower, equal,
+  // faster or much faster domain), not the ratio values themselves. Values
+  // above eight times the reference fall in the default bin and are not
+  // graded.
   // ------------------------------------------------------------------
   covergroup cg_clk_ratio with function sample (
       logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
@@ -393,15 +398,17 @@ module smc_clk_fcov #(
       bins stalled = {0};
       bins slower = {[1 : 3]};
       bins same = {4};
-      bins faster[] = {[5 : 32]};
-      bins much_faster = default;
+      bins faster = {[5 : 8]};
+      bins much_faster = {[9 : 32]};
+      bins beyond = default;
     }
     cp_periph_bucket: coverpoint (periph_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
       bins slower = {[1 : 3]};
       bins same = {4};
-      bins faster[] = {[5 : 32]};
-      bins much_faster = default;
+      bins faster = {[5 : 8]};
+      bins much_faster = {[9 : 32]};
+      bins beyond = default;
     }
     x_smc_periph: cross cp_smc_bucket, cp_periph_bucket;
   endgroup

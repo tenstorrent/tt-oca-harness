@@ -14,6 +14,8 @@ asciidoc:
     sectanchors: ''
     sectlinks: ''
     sectnums: ''
+    sectnumlevels: 9
+    xrefstyle: short
     idprefix: ''
     idseparator: '-'
     safe-mode: unsafe
