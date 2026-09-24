@@ -203,6 +203,7 @@ one-line intent.
 |`smu_xtrig_ctm_remap_test` |fabric |product-pin CTM remap
 |`smu_axi_in_burst_outstanding_test` |fabric |The inbound SMN port carries several transfers in flight and refuses the burst types the register targets do not support.
 |`smu_axi_in_attribute_sweep_test` |fabric |Every AW/AR attribute the inbound SMN port carries is answered as the traffic-filter specification assigns, and one SMC write leaves the chiplet on `smu_axi_out`.
+|`smu_axi_out_addr_len_size_test` |fabric |What the SMC masters a bench can drive send out of the chiplet crosses smu_axi_out with the address, AxSIZE and AxLEN they were given.
 |`smu_aperture_map_walk_test` |fabric |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
 |`smu_periph_ext_window_test` |fabric |The SMC peripheral crossbar's macro AXI-Lite window is reachable over JTAG2AXI, decodes its sub-windows, and shrinks with the SMC aperture.
@@ -4345,6 +4346,42 @@ Two things are worth reading before the entries:
 
 '''''
 
+[[sec-110-smu_axi_out_addr_len_size_test]]
+===== 110 `smu_axi_out_addr_len_size_test`
+
+*Source Module*: `smu_axi_out_addr_len_size_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_jtag_vip` for the SMC JTAG2AXI bridge, the outbound filter and the iDMA registers; the shared responder on `u_axi_out_if`, whose address phases the sequence records; `elaboration` firmware mode
+
+*Objective*: What the SMC masters a bench can drive send out of the chiplet crosses `smu_axi_out` with the address, AxSIZE and AxLEN they were given.
+
+*Test Coverage*:
+
+* `smu_axi_xbar_pkg` `Connectivity` connects `smc_out` and `sep_out` to `ext_out` and gives `ext_in` no path there, so every outbound transfer is issued by the SMC or the SEP. Without firmware the bench drives two SMC masters: the JTAG2AXI bridge, whose requests carry the programmed address and AxSIZE with ID 0, AxLEN 0, INCR and fixed AxCACHE, AxPROT, AxQOS, AxREGION and AxLOCK (`hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv`), and the iDMA register frontend, which issues INCR bursts sized by the transfer with a fixed AxCACHE (`vendor/pulp-platform/idma/upstream/src/frontend/reg/tpl/idma_reg.sv.tpl`). The fixed fields are therefore not walked here.
+* JTAG2AXI writes 1, 2, 4 and 8 bytes at two 56-bit addresses whose upper bits are the `0xAA..` and `0x55..` patterns, outside the SMC local window and the SEP aperture, and reads each back; each transfer crosses the boundary exactly once with that address, AxSIZE, AxLEN 0 and INCR, the responder holds the bytes and the read returns them.
+* With outbound filter entry 0 passing every address, the iDMA copies a 2 KiB block between two further such addresses; the reads and writes at the boundary are INCR, together cover the block exactly, and the longest reaches AxLEN 255. The destination holds the source bytes and DONE reports the id the launch read from NEXT_ID.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the primary TAP and start recording the outbound address phases.
+. For each address and AxSIZE, write over JTAG2AXI, wait for the outbound write count, read back, wait for the outbound read count, and compare the recorded phases, the responder's bytes and the returned data.
+. Fill the source block in the responder, zero the destination, program outbound filter entry 0 to pass all, program the iDMA descriptor, launch it by reading NEXT_ID once, and poll DONE.
+. Compare the destination with the source and the recorded bursts with the block.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXIOUT-SIZE` |each of the eight JTAG2AXI writes and reads crosses `smu_axi_out` exactly once with its address, AxSIZE, AxLEN 0 and INCR; the responder holds every byte written and every read returns it
+|`CHK-AXIOUT-LEN` |the iDMA copy completes with the launched id, the destination holds the source block, and the boundary's INCR reads and writes cover the block exactly with the longest at AxLEN 255
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -4364,12 +4401,12 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |Group |Leaves |Notes
 |`fw_boot` |3 |The firmware boot smokes plus the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |15 |The fabric and filter leaves; every member is in `hosted`
+|`fabric` |16 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |21 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |30 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |71 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |103 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |72 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |104 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers

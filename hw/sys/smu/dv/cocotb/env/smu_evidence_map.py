@@ -123,6 +123,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "reach the ports and read back",
         ),
     ],
+    "smu_axi_out_addr_len_size_test": [
+        (
+            "CHK-AXIOUT-SIZE",
+            "CHK-AXIOUT-SIZE",
+            "each JTAG2AXI write and read of 1, 2, 4 and 8 bytes at two 56-bit addresses "
+            "crosses smu_axi_out once with its address, AxSIZE, AxLEN 0 and INCR, and the "
+            "bytes land and read back",
+        ),
+        (
+            "CHK-AXIOUT-LEN",
+            "CHK-AXIOUT-LEN",
+            "a 2 KiB iDMA copy crosses smu_axi_out as INCR bursts covering the block both "
+            "ways, the longest at AxLEN 255, and the destination holds the source",
+        ),
+    ],
     "smu_axi_in_burst_outstanding_test": [
         (
             "CHK-AXIIN-DEPTH",
