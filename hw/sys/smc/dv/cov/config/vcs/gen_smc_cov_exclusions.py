@@ -677,10 +677,14 @@ def is_regblock_source(src: str) -> bool:
 P1 = (
     "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and "
     "NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at "
-    "zero instances, so every N-trace signal of the sink reads zero, save three the tie-off "
+    "zero instances, so every N-trace signal of the sink reads zero, save five the tie-off "
     "leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the "
-    "N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space "
-    "of zero against an N-trace threshold of zero with <=. The NTR sink register block is "
+    "N-trace RAM enable start, the two backpressure flags, which compare an N-trace space "
+    "of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and "
+    "its delayed copy, which a write count held at zero keeps at one. With the N-trace read "
+    "enable at zero the DST read-ready is the OR of the DST read enables, and the read and "
+    "write interleave flops, enabled only on an N-trace term, hold their reset value of zero. "
+    "The NTR sink register block is "
     "absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the "
     "negation of that block's zero RAM mode, reads one, the north source flag never "
     "selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous "
@@ -704,7 +708,8 @@ P4 = (
     "entries are flops reset to zero and written only by a pending write, so their source, way "
     "and address fields, and the read inhibits set from them, never read one. A row is taken "
     "only where the report's own term list shows it out of reach with those held at zero and "
-    "within reach with them free."
+    "within reach with them free, save the frame-start guard whose first term conjoins the "
+    "south valid with the second, which the south valid alone rules out."
 )
 P5 = (
     "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR "
@@ -1055,7 +1060,10 @@ SHARED_NAME = re.compile(r"ntraceordst|dstorntrace", re.I)
 # done flag resets to one and only the RAM enable start (itself zero) clears it,
 # and each backpressure flag compares an N-trace space of zero against an N-trace
 # threshold of zero with <=.
-NTRACE_AT_ONE = re.compile(r"^(?:TrntrFlushTimeoutDone_ANY|trntrRamModeBP_ANY|trntrMemModeBP_ANY)$")
+NTRACE_AT_ONE = re.compile(
+    r"^(?:TrntrFlushTimeoutDone_ANY|trntrRamModeBP_ANY|trntrMemModeBP_ANY"
+    r"|trntrcoreFrameFillComplete(?:_d1)?_ANY(?:\[\d+\])?)$"
+)
 TERM_IDENT = re.compile(r"[A-Za-z_][A-Za-z_0-9]*(?:\.[A-Za-z_][A-Za-z_0-9]*)*")
 LITERAL = re.compile(r"^\d*'[bhdo]?[0-9a-fA-F_]+(\[[^\]]*\])?$")
 COMPARE = re.compile(r"^(.+?)\s*(!=|==|>=|<=|>|<)\s*(.+)$", re.S)
@@ -1399,7 +1407,8 @@ def needs_lane_off(terms: "tuple[str, ...] | None", vector: str) -> bool:
 # tied signal, so it is left free, as is every north-side signal.
 SINGLE_SOURCE_DEAD = re.compile(
     r"TrRamPend(?:Pkt)?(?:Vld|WrEn|RdEn|NorthWrEn|SouthWrEn)|TrRamPend\w*PktVld|"
-    r"South\w*Vld|TrRamSouth\w*|TR_TS_South\w*|TrRamPerWayPendToWriteCnt\w*"
+    r"South\w*Vld|TrRamSouth\w*|TR_TS_South\w*|TrRamPerWayPendToWriteCnt\w*|"
+    r"TrdstRamPendPktInhibitRamRd\w*"
 )
 
 
@@ -1940,6 +1949,51 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
     # the same clock as the valid, so a non-zero way comes with a staged valid, and
     # with no pending write that valid is the north write enable.
     "trace_sink": [
+        # With the N-trace read enable at zero the DST read-ready is the OR of the DST
+        # read enables, and the interleave flops enable only on an N-trace term.
+        (
+            P1,
+            lambda terms, vector: (
+                (
+                    terms[0] == "TrdstMemRamRdRdy_TS1"
+                    and bool(re.fullmatch(r"TrdstMemRamRdEn_TS1\[\d\]", terms[-1]))
+                    and vector == "01"
+                )
+                or any(
+                    (t, b)
+                    in (
+                        ("(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1)", "1"),
+                        ("(TrMemRamRd_NtraceOrDst_ANY == 1'b1)", "1"),
+                        ("(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0)", "0"),
+                        ("(TrMemRamRd_NtraceOrDst_ANY == 1'b0)", "0"),
+                    )
+                    for t, b in zip(terms, vector)
+                )
+            ),
+        ),
+        # The first term's conjuncts include the south valid, tied to zero with one core.
+        (
+            P4,
+            lambda terms, vector: (
+                len(terms) == 2
+                and terms[0].startswith(
+                    "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg))"
+                )
+                and vector == "10"
+            ),
+        ),
+        (
+            P1,
+            lambda terms, vector: any(
+                (t, b)
+                in (
+                    ("trntrcoreFrameFillComplete_d1_ANY[0]", "0"),
+                    ("((~trntrcoreFrameFillComplete_d1_ANY[0]))", "1"),
+                    ("((~trntrcoreFrameFillComplete_ANY[0]))", "1"),
+                )
+                for t, b in zip(terms, vector)
+            ),
+        ),
         # The N-trace flush-timeout counter only counts after a start the tie-off
         # never raises, so it stays at zero and never meets TR_SINK_FLUSH_TIMEOUT (16'hFF).
         (
