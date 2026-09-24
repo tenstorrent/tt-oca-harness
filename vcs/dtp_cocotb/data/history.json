@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-23T21:02:58+00:00",
+  "generated_at": "2026-09-24T13:42:06+00:00",
   "points": [
     {
       "failed_tests": 1,
@@ -751,6 +751,67 @@
             "functional": 100.0,
             "line": 94.09,
             "toggle": 57.96
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": false,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 97.35
+    },
+    {
+      "failed_tests": 4,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-24T13:42:06+00:00",
+      "id": "fb835d11ac14b3e3",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-0dd8c0a94281002d",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 95.3,
+            "branch": 91.49,
+            "condition": 87.76,
+            "fsm_state": 71.68,
+            "functional": 99.96,
+            "line": 96.21,
+            "toggle": 82.41,
+            "user": 96.1864
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 18
+            },
+            "by_disposition": {
+              "cover": 18
+            },
+            "by_metric": {
+              "user": 18
+            },
+            "by_status": {
+              "open": 18
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 18,
+            "observations_complete": false,
+            "open": 18,
+            "unclassified": 18
+          },
+          "raw_metrics": {
+            "assertion": 95.3,
+            "branch": 86.86,
+            "condition": 85.27,
+            "fsm_state": 52.85,
+            "functional": 99.96,
+            "line": 93.99,
+            "toggle": 57.89,
+            "user": 96.1864
           },
           "status": "FAIL",
           "target": "default",
