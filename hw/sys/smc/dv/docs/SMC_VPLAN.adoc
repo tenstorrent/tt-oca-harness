@@ -9807,18 +9807,18 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 *Test Coverage*:
 
 * The control-symbol check the controller makes in every state where it holds SCL released. `smc_i2c_controller_sda_interference_test` pulls SDA low at time offsets measured in bit periods, which lands the edge wherever it falls -- with this controller's timing usually while SCL is low, where it is a different event. This leaf counts SCL rising edges from the START on the bus and pulls inside the high window of a chosen one, so the edge is a control symbol by construction and lands in a chosen slot.
-* The two slots where the line is high because it is released: the acknowledge of an address nobody answers, and a one bit of a byte the target is returning.
+* The two slots where the line is high because it is released: the acknowledge of an address nobody answers (`ClockPulseAck`), and a one bit of a byte the target is returning (`ReadClockPulse`).
+* The two slots where the line is high because the controller drives it: the first address bit of a write (`ClockPulse`), and the not-acknowledge the controller drives after the last byte of a read (`HostClockPulseAck`). An external pull there is also interference, which the design detects from a single sample of SCL high; the control-symbol check needs SCL high on two consecutive samples as well. A pull made the instant SCL rises therefore raises interference alone, so these two are made a fixed 60 ns into the high window, after both samples are high, and still released inside it.
 * The pull is released inside the same high window, because one that outlasts the slot reaches a state where the controller drives the line and is interference there instead.
 * The slot numbering is anchored on the START seen on the pads, not on a status read: a poll returns some cycles after the controller leaves idle, by which time bits have already been clocked.
-
-*Known limitation*: the other two slots where the controller holds SCL released -- a bit it is transmitting, and the not-acknowledge it drives after a read -- are high only because the controller is driving them. An external pull there is interference, which the design detects from the level alone and acts on a cycle before the control-symbol check, which needs two consecutive samples. Both are left uncovered rather than claimed.
+* The read abandoned mid-byte runs last. The transfer the controller makes after it starts with the offset byte in place of the address, so no slot numbered from the START would be where it should be. Between legs the bus is clocked until the bench target lets SDA go and is given a STOP, since an abandoned transfer can leave the target part-way through a byte.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up I2C0 as a host with the bench EEPROM target on the pads, and run one uninterrupted write.
-. For each slot: re-enable the controller from scratch, arm the injector, queue the transfer, wait for the START on the bus, count SCL rises and pull SDA low inside the chosen one.
-. Require `INTR_STATE.SDA_UNSTABLE` and a return to idle.
+. For each slot: re-enable the controller from scratch, arm the injector, queue the transfer, wait for the START on the bus, count SCL rises and pull SDA low inside the chosen one -- at the rise for a released slot, 60 ns after it for a driven one.
+. Require `INTR_STATE.SDA_UNSTABLE` and a return to idle, then clear `CTRL`, clock the bus back to idle and give it a STOP.
 
 *Checkers*:
 
@@ -9826,7 +9826,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |===
 |Checker |Description
 |`CHK-I2C-CTRL-SYMBOL-CLEAN` |An uninterrupted write reached the target and left `SDA_UNSTABLE` clear
-|`CHK-I2C-CTRL-SYMBOL-UNSTABLE` |An edge made inside a chosen SCL high window raised `SDA_UNSTABLE` and returned the controller to idle, at both slots
+|`CHK-I2C-CTRL-SYMBOL-UNSTABLE` |An edge made inside a chosen SCL high window raised `SDA_UNSTABLE` and returned the controller to idle, at all four slots: two where the line is released and two where the controller drives it
 |===
 
 *Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Nothing is asserted about the transfer after an injection: on this DUT the next transaction from the same controller is NACKed even once the events are cleared, so each leg re-enables the controller from scratch. Enrolled in: `all`, `hosted`, `i2c`.
@@ -10551,7 +10551,7 @@ the wrong reason.
 * The controller disabled while held in the setup of a repeated START: the restart it was about to issue is still pending, and it must not reach the bus. The bench target has to see one START for the transfer, not two.
 * Every point is placed by counting edges on the pads -- the START, the Nth SCL rise, or the fall after it -- so each lands in the same state on every run. Each leg re-enables the controller from scratch and returns the bus to idle afterwards, clocking the target out of any byte a halted transfer left it in.
 
-*Known limitation*: SDA changing while the controller holds a pulse high it is *driving* -- a bit it transmits, or the acknowledge it drives -- is interference, detected from the level alone a cycle before the unstable-SDA check can run; `smc_i2c_controller_control_symbol_test` records the same limit. Those unstable-SDA arms are left uncovered.
+SDA changing while the controller holds a pulse high is not driven here; `smc_i2c_controller_control_symbol_test` covers it, in the pulses where the line is released and in those the controller drives.
 
 *Test Procedure*:
 
