@@ -71,6 +71,13 @@ and `kill_i` a constant zero (P7 NO-ERROR-CAP). The legalizer's
 software-writable RDL field the frontend carries into the backend options, so
 that branch stays graded.
 
+`core_logic_analyzer` derives `DBG_SIGNAL_CONFIG` from
+`DEBUG_SIGNAL_WIDTH == 128` and `smc_dfd_wrap` passes 64, so the
+`cla_snapshot_mmr_hi_blk` generate that drives every snapshot `Hi` write enable
+is not elaborated and each holds zero (P9 DEBUG-WIDTH-64). The `Lo` halves are
+assigned outside that generate, and the report agrees: all sixteen `Hi` true
+arms are uncovered and all sixteen `Lo` true arms are covered.
+
 The CLA holds a second write-enable fact, the converse of P3:
 `MMR_CDbgEapStatus_F_Rsvd3116_WrEn` is its write structure's field and nothing
 else, and the CLA gives that structure a zero default and never names the
@@ -342,6 +349,18 @@ P8 = (
     "then arm of the write-data ternary it selects have no stimulus. This is the converse of "
     "P3, where a constant one leaves the else arm unreachable instead."
 )
+P9 = (
+    "SMC-P9-DEBUG-WIDTH-64: core_logic_analyzer derives DBG_SIGNAL_CONFIG from "
+    "DEBUG_SIGNAL_WIDTH == 128 and smc_dfd_wrap passes 64, so the cla_snapshot_mmr_hi_blk "
+    "generate that drives every snapshot Hi write enable is not elaborated and each of them "
+    "holds the zero its write structure defaults to; the enable's true arm and the then arm of "
+    "the ternary it selects have no stimulus. The Lo halves are assigned outside that generate "
+    "and stay graded."
+)
+# The snapshot write enables of the half a 64-bit debug bus does not elaborate.
+WREN_HI = re.compile(r"SignalSnapshotNode\d+Eap\d+Hi_F_Value_WrEn")
+
+
 # The one reserved-field enable the MMR block drives from its write structure
 # alone. Every other MMR_CDbg*_F_Rsvd*_WrEn carries a `reg_write & reg_addr`
 # term, so a software write to that register asserts it.
@@ -543,7 +562,7 @@ def expression_terms(modinfo: Path) -> "dict[tuple[str, str], list[str]]":
 # and only uncovered rows are taken.
 FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "trace_sink": [
-        (P1, re.compile(r"\btrntr|Ntrace|InsnTrace"), ntrace_tied_off, None),
+        (P1, re.compile(r"\btrntr|ntrace|insntrace", re.I), ntrace_tied_off, None),
         # The pending valid is the leading term: the row that turns it on is the
         # fact's, the row that leaves it off belongs to ordinary trace traffic.
         (P4, re.compile(r"^\(TrRamPendPktVld_ANY\[\d\] &"), re.compile(r"^1"), None),
@@ -556,6 +575,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "cla_mmr": [
         (P3, re.compile(WREN_TIED, re.I), None, None),
         (P8, re.compile(WREN_ZERO), re.compile(r"^1$"), None),
+        (P9, WREN_HI, re.compile(r"^1$"), None),
         (P5, re.compile(r"^\(instr_type == 2'b\d+\)$"), re.compile(r"^1$"), None),
     ],
     "mmrs": [
@@ -593,6 +613,7 @@ FEATURE_BRANCH_FACTS: "dict[str, list[tuple[str, object, str]]]" = {
     "cla_mmr": [
         (P3, re.compile(WREN_TIED, re.I), "0"),
         (P8, re.compile(WREN_ZERO), "1"),
+        (P9, WREN_HI, "1"),
     ],
     "idma_legalizer_rw_axi": [(P7, re.compile(r"^kill_i$"), "1")],
 }
@@ -700,6 +721,13 @@ def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
             terms.append(m.group(1).rstrip(")"))
             if not m.group(2):
                 expr = "(" + " ^ ".join(terms) + ")"
+            continue
+        # A ternary is listed the same way, as the one term it has. Its text
+        # carries the closing parenthesis, and a status row does not, which is
+        # what tells the two apart.
+        m = re.match(r"^\s*1\s+(\S.*\))\s*$", line)
+        if m and expr == "" and not terms:
+            expr = "(" + m.group(1)
             continue
         m = re.match(r"^\s*((?:[01]\s+)+)Not Covered", line)
         if m and expr:
@@ -1155,7 +1183,7 @@ def render_feature(
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
-        for reason in (P1, P2, P3, P4, P5, P6, P7, P8):
+        for reason in (P1, P2, P3, P4, P5, P6, P7, P8, P9):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

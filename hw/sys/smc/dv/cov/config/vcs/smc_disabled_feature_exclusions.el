@@ -21,6 +21,7 @@ CHECKSUM: "3897059503 4287847881"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB path only ever issues one instruction type and the other encoding is never presented."
 ANNOTATION: "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's field alone, with no register-write term beside it, and the CLA gives that structure a zero default and never names the field; the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
+ANNOTATION: "SMC-P9-DEBUG-WIDTH-64: core_logic_analyzer derives DBG_SIGNAL_CONFIG from DEBUG_SIGNAL_WIDTH == 128 and smc_dfd_wrap passes 64, so the cla_snapshot_mmr_hi_blk generate that drives every snapshot Hi write enable is not elaborated and each of them holds the zero its write structure defaults to; the enable's true arm and the then arm of the ternary it selects have no stimulus. The Lo halves are assigned outside that generate and stay graded."
 MODULE: cla_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
@@ -72,6 +73,22 @@ Condition 1223 "3077930320" "(MMR_CDbgClaTimestamp_F_TimestampLower_WrEn ? MMR_C
 Condition 1249 "4047399831" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.ResyncWrEn) 1 -1" (1 "00")
 Condition 1249 "4047399831" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_CDBGCLATIMESTAMPCONFIG)) | ClaMmrCdbgclatimestampconfigWr.ResyncWrEn) 1 -1" (3 "10")
 Condition 1252 "4181707586" "(MMR_CDbgClaTimestampConfig_F_Resync_WrEn ? MMR_CDbgClaTimestampConfig_F_Resync_Data : MMR_CDbgClaTimestampConfig_F_Resync_Data_prev) 1 -1" (1 "0")
+Condition 1379 "477376630" "(MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1383 "980780792" "(MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1387 "135540226" "(MMR_CDbgSignalSnapshotNode1Eap0Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode1Eap0Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode1Eap0Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1391 "773167244" "(MMR_CDbgSignalSnapshotNode1Eap1Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode1Eap1Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode1Eap1Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1395 "3263333836" "(MMR_CDbgSignalSnapshotNode2Eap0Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode2Eap0Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode2Eap0Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1399 "3833803586" "(MMR_CDbgSignalSnapshotNode2Eap1Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode2Eap1Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode2Eap1Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1403 "3605175224" "(MMR_CDbgSignalSnapshotNode3Eap0Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode3Eap0Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode3Eap0Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1407 "4041420086" "(MMR_CDbgSignalSnapshotNode3Eap1Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode3Eap1Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode3Eap1Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1411 "2334296921" "(MMR_CDbgSignalSnapshotNode0Eap2Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode0Eap2Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode0Eap2Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1415 "2904767959" "(MMR_CDbgSignalSnapshotNode0Eap3Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode0Eap3Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode0Eap3Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1419 "2671940909" "(MMR_CDbgSignalSnapshotNode1Eap2Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode1Eap2Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode1Eap2Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1423 "3108184995" "(MMR_CDbgSignalSnapshotNode1Eap3Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode1Eap3Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode1Eap3Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1427 "1439973091" "(MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1431 "1943373933" "(MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1435 "1102323863" "(MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_Data_prev) 1 -1" (2 "1")
+Condition 1439 "1739953689" "(MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn ? MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_Data : MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_Data_prev) 1 -1" (2 "1")
 Branch 2 "341151317" "MMR_CDbgClaCounter0Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter0Cfg_F_UpperCounter_WrEn 0"
 Branch 6 "2489696128" "MMR_CDbgClaCounter0Cfg_F_Counter_WrEn" (1) "MMR_CDbgClaCounter0Cfg_F_Counter_WrEn 0"
 Branch 9 "2538484915" "MMR_CDbgClaCounter1Cfg_F_UpperCounter_WrEn" (1) "MMR_CDbgClaCounter1Cfg_F_UpperCounter_WrEn 0"
@@ -100,6 +117,22 @@ Branch 204 "917489242" "MMR_CDbgEapStatus_F_Node0Eap0_WrEn" (1) "MMR_CDbgEapStat
 Branch 214 "683882288" "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn" (1) "MMR_CDbgClaCtrlStatus_F_CurrentNode_WrEn 0"
 Branch 455 "2128509458" "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn" (1) "MMR_CDbgClaTimestamp_F_TimestampLower_WrEn 0"
 Branch 466 "3498676337" "MMR_CDbgClaTimestampConfig_F_Resync_WrEn" (1) "MMR_CDbgClaTimestampConfig_F_Resync_WrEn 0"
+Branch 525 "705907807" "MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode0Eap0Hi_F_Value_WrEn 1"
+Branch 528 "2529472489" "MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode0Eap1Hi_F_Value_WrEn 1"
+Branch 531 "3930148102" "MMR_CDbgSignalSnapshotNode1Eap0Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode1Eap0Hi_F_Value_WrEn 1"
+Branch 534 "1452715696" "MMR_CDbgSignalSnapshotNode1Eap1Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode1Eap1Hi_F_Value_WrEn 1"
+Branch 537 "3906454331" "MMR_CDbgSignalSnapshotNode2Eap0Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode2Eap0Hi_F_Value_WrEn 1"
+Branch 540 "1409294477" "MMR_CDbgSignalSnapshotNode2Eap1Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode2Eap1Hi_F_Value_WrEn 1"
+Branch 543 "679854690" "MMR_CDbgSignalSnapshotNode3Eap0Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap0Hi_F_Value_WrEn 1"
+Branch 546 "2488410580" "MMR_CDbgSignalSnapshotNode3Eap1Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap1Hi_F_Value_WrEn 1"
+Branch 549 "1544584415" "MMR_CDbgSignalSnapshotNode0Eap2Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode0Eap2Hi_F_Value_WrEn 1"
+Branch 552 "3771178857" "MMR_CDbgSignalSnapshotNode0Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode0Eap3Hi_F_Value_WrEn 1"
+Branch 555 "2621603206" "MMR_CDbgSignalSnapshotNode1Eap2Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode1Eap2Hi_F_Value_WrEn 1"
+Branch 558 "546676272" "MMR_CDbgSignalSnapshotNode1Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode1Eap3Hi_F_Value_WrEn 1"
+Branch 561 "2664756155" "MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_WrEn 1"
+Branch 564 "570626061" "MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn 1"
+Branch 567 "1585902306" "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn 1"
+Branch 570 "3796963668" "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn 1"
 
 CHECKSUM: "671687310 1858521928"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the shadow registers and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
@@ -234,8 +267,16 @@ Condition 65 "2106885550" "(trntrRamEnableStart_ANY_d1 | (trntrMemModeEnable_ANY
 Condition 70 "2106885550" "(trntrRamEnableStart_ANY_d1 | (trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY)) 1 -1" (2 "01")
 Condition 70 "2106885550" "(trntrRamEnableStart_ANY_d1 | (trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY)) 1 -1" (3 "10")
 Condition 72 "307645617" "(52'((TrntrMemAxiWrAddr_ANY + 'h00000040)) == trntrMemSMEMLimitAddr_ANY) 1 -1" (2 "1")
+Condition 73 "1232920695" "(TrMemAxiWrRdy_ANY & ((|TrntrMemRamRdEn_TS1)) & ((|TrdstMemRamRdEn_TS1))) 1 -1" (1 "011")
+Condition 73 "1232920695" "(TrMemAxiWrRdy_ANY & ((|TrntrMemRamRdEn_TS1)) & ((|TrdstMemRamRdEn_TS1))) 1 -1" (3 "110")
+Condition 73 "1232920695" "(TrMemAxiWrRdy_ANY & ((|TrntrMemRamRdEn_TS1)) & ((|TrdstMemRamRdEn_TS1))) 1 -1" (4 "111")
+Condition 74 "1962176138" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & TrdstMemRdBufferFull_ANY) 1 -1" (1 "011")
+Condition 74 "1962176138" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & TrdstMemRdBufferFull_ANY) 1 -1" (3 "110")
+Condition 74 "1962176138" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & TrdstMemRdBufferFull_ANY) 1 -1" (4 "111")
 Condition 75 "923988676" "(((~trntrRamActiveEnable_ANY)) & trntrRamActiveEnable_ANY_d1) 1 -1" (1 "01")
 Condition 75 "923988676" "(((~trntrRamActiveEnable_ANY)) & trntrRamActiveEnable_ANY_d1) 1 -1" (3 "11")
+Condition 76 "404381369" "(TrntrFlushTimeoutStart_ANY & ((~TrntrFlushTimeoutDone_ANY))) 1 -1" (2 "10")
+Condition 76 "404381369" "(TrntrFlushTimeoutStart_ANY & ((~TrntrFlushTimeoutDone_ANY))) 1 -1" (3 "11")
 Condition 83 "400257705" "(trntrRamEnableStart_ANY_d1 | Eff_InsnTraceWrEnPerCore_TS0[0]) 1 -1" (2 "01")
 Condition 83 "400257705" "(trntrRamEnableStart_ANY_d1 | Eff_InsnTraceWrEnPerCore_TS0[0]) 1 -1" (3 "10")
 Condition 84 "2930191227" "(trntrRamEnableStart_ANY_d1 ? (trntrRamMode_ANY ? trntrRamSMEMStartLow_ANY : trntrRamStartLow_ANY) : trntrcorefullRamWpLow_ANY[0]) 1 -1" (2 "1")
@@ -274,6 +315,70 @@ Condition 101 "2027575735" "(TrRamPendWrEn_ANY[7] | TrRamPendRdEn_ANY[7]) 1 -1" 
 Condition 101 "2027575735" "(TrRamPendWrEn_ANY[7] | TrRamPendRdEn_ANY[7]) 1 -1" (3 "10")
 Condition 102 "1948533711" "(TrRamPendWrEn_ANY[7] | ((~TrRamPendRdEn_ANY[7]))) 1 -1" (1 "00")
 Condition 102 "1948533711" "(TrRamPendWrEn_ANY[7] | ((~TrRamPendRdEn_ANY[7]))) 1 -1" (3 "10")
+Condition 135 "1645981492" "(TrntrMemRamRdEn_TS2[0] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 135 "1645981492" "(TrntrMemRamRdEn_TS2[0] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 136 "4020611922" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[0]) 1 -1" (2 "1")
+Condition 137 "1645981492" "(TrntrMemRamRdEn_TS2[0] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 137 "1645981492" "(TrntrMemRamRdEn_TS2[0] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 138 "2061897543" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[0]) 1 -1" (1 "01")
+Condition 138 "2061897543" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[0]) 1 -1" (2 "10")
+Condition 138 "2061897543" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[0]) 1 -1" (3 "11")
+Condition 139 "2227260386" "(TrntrMemRamRdEn_TS2[1] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 139 "2227260386" "(TrntrMemRamRdEn_TS2[1] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 140 "3593935938" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[1]) 1 -1" (2 "1")
+Condition 141 "2227260386" "(TrntrMemRamRdEn_TS2[1] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 141 "2227260386" "(TrntrMemRamRdEn_TS2[1] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 142 "1131722839" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[1]) 1 -1" (1 "01")
+Condition 142 "1131722839" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[1]) 1 -1" (2 "10")
+Condition 142 "1131722839" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[1]) 1 -1" (3 "11")
+Condition 143 "3350853819" "(TrntrMemRamRdEn_TS2[2] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 143 "3350853819" "(TrntrMemRamRdEn_TS2[2] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 144 "3745047587" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[2]) 1 -1" (2 "1")
+Condition 145 "3350853819" "(TrntrMemRamRdEn_TS2[2] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 145 "3350853819" "(TrntrMemRamRdEn_TS2[2] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 146 "1249591350" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[2]) 1 -1" (1 "01")
+Condition 146 "1249591350" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[2]) 1 -1" (2 "10")
+Condition 146 "1249591350" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[2]) 1 -1" (3 "11")
+Condition 147 "560143469" "(TrntrMemRamRdEn_TS2[3] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 147 "560143469" "(TrntrMemRamRdEn_TS2[3] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 148 "3869922099" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[3]) 1 -1" (2 "1")
+Condition 149 "560143469" "(TrntrMemRamRdEn_TS2[3] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 149 "560143469" "(TrntrMemRamRdEn_TS2[3] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 150 "1944712998" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[3]) 1 -1" (1 "01")
+Condition 150 "1944712998" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[3]) 1 -1" (2 "10")
+Condition 150 "1944712998" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[3]) 1 -1" (3 "11")
+Condition 151 "1243968594" "(TrntrMemRamRdEn_TS2[4] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 151 "1243968594" "(TrntrMemRamRdEn_TS2[4] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 152 "2340848768" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[4]) 1 -1" (2 "1")
+Condition 153 "1243968594" "(TrntrMemRamRdEn_TS2[4] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 153 "1243968594" "(TrntrMemRamRdEn_TS2[4] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 154 "516235413" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[4]) 1 -1" (1 "01")
+Condition 154 "516235413" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[4]) 1 -1" (2 "10")
+Condition 154 "516235413" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[4]) 1 -1" (3 "11")
+Condition 155 "2902429828" "(TrntrMemRamRdEn_TS2[5] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 155 "2902429828" "(TrntrMemRamRdEn_TS2[5] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 156 "2987668368" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[5]) 1 -1" (2 "1")
+Condition 157 "2902429828" "(TrntrMemRamRdEn_TS2[5] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 157 "2902429828" "(TrntrMemRamRdEn_TS2[5] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 158 "660051845" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[5]) 1 -1" (1 "01")
+Condition 158 "660051845" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[5]) 1 -1" (2 "10")
+Condition 158 "660051845" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[5]) 1 -1" (3 "11")
+Condition 159 "4018611165" "(TrntrMemRamRdEn_TS2[6] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 159 "4018611165" "(TrntrMemRamRdEn_TS2[6] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 160 "3139161073" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[6]) 1 -1" (2 "1")
+Condition 161 "4018611165" "(TrntrMemRamRdEn_TS2[6] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 161 "4018611165" "(TrntrMemRamRdEn_TS2[6] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 162 "777547748" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[6]) 1 -1" (1 "01")
+Condition 162 "777547748" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[6]) 1 -1" (2 "10")
+Condition 162 "777547748" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[6]) 1 -1" (3 "11")
+Condition 163 "157140747" "(TrntrMemRamRdEn_TS2[7] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 163 "157140747" "(TrntrMemRamRdEn_TS2[7] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 164 "2190048481" "(TrntrMemAxiWrVld_ANY ? 1'b0 : TrntrMemRamRdEn_TS2[7]) 1 -1" (2 "1")
+Condition 165 "157140747" "(TrntrMemRamRdEn_TS2[7] | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 165 "157140747" "(TrntrMemRamRdEn_TS2[7] | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 166 "399169780" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[7]) 1 -1" (1 "01")
+Condition 166 "399169780" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[7]) 1 -1" (2 "10")
+Condition 166 "399169780" "(TrntrMemRamRdRdy_TS1 & TrntrMemRamRdEn_TS1[7]) 1 -1" (3 "11")
 Condition 167 "1342976092" "(trntrRamMode_ANY ? InsnTraceWrEnPerCore_TS0 : (InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY)))) 1 -1" (2 "1")
 Condition 171 "2582696343" "(((~TrRamPendPktNorthWrEn_TS0)) & ((|Eff_TR_TS_North_Vld_stg))) 1 -1" (1 "01")
 Condition 172 "1140082796" "(((~TrRamPendPktSouthWrEn_TS0)) & ((|Eff_TR_TS_South_Vld_stg))) 1 -1" (1 "01")
@@ -285,6 +390,12 @@ Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (Trd
 Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (4 "111")
 Condition 257 "1426921381" "(((|TrntrMemRamRdEn_TS1)) & (((|TrdstMemRamRdEn_TS1)) ? (TrMemRamRd_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (2 "10")
 Condition 257 "1426921381" "(((|TrntrMemRamRdEn_TS1)) & (((|TrdstMemRamRdEn_TS1)) ? (TrMemRamRd_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (3 "11")
+Condition 260 "1902888936" "(TrdstMemRamRdRdy_TS1 | TrntrMemRamRdRdy_TS1) 1 -1" (2 "01")
+Condition 261 "3167850203" "(TrntrMemRamRdRdy_TS1 ? TrntrMemRamRdAddr_TS1 : TrdstMemRamRdAddr_TS1) 1 -1" (2 "1")
+Condition 262 "2026687476" "(TrntrMemRamRdRdy_TS1 ? TrntrMemRamRdEn_TS1 : TrdstMemRamRdEn_TS1) 1 -1" (2 "1")
+Condition 263 "2167911241" "(TrntrMemAxiWrVld_ANY | TrdstMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 264 "641942251" "(TrntrMemAxiWrVld_ANY ? TrntrMemAxiWrAddr_ANY : TrdstMemAxiWrAddr_ANY) 1 -1" (2 "1")
+Condition 265 "3204964237" "(TrntrMemAxiWrVld_ANY ? TrntrMemAxiWrData_ANY : TrdstMemAxiWrData_ANY) 1 -1" (2 "1")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (1 "01")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (3 "11")
 Condition 267 "1834590780" "(trntrRamActiveEnable_ANY & ((~trntrRamActiveEnable_ANY_d1))) 1 -1" (2 "10")

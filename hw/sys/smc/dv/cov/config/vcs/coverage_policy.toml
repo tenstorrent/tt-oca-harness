@@ -49,11 +49,13 @@ args = ["-elfile", "{path}"]
 
 # Features the integration leaves out (P1 NTRACE-OFF, P2 SKIP-TIED-OFF, P3
 # WREN-TIED, P4 SINGLE-SOURCE, P5 INSTR-TYPE-CONST, P6 LC-STATE-OFF, P7
-# NO-ERROR-CAP, P8 WREN-TIED-ZERO): the trace wrapper is instantiated with zero
+# NO-ERROR-CAP, P8 WREN-TIED-ZERO, P9 DEBUG-WIDTH-64): the trace wrapper is
+# instantiated with zero
 # N-trace instances, the AXI filter with its skip input tied to zero, the eFuse
 # without lifecycle state and the iDMA backend without error handling, and the
-# CLA holds one reserved write enable at the zero its write structure gives it,
-# so those conditions have no stimulus.
+# CLA holds one reserved write enable at the zero its write structure gives it
+# and leaves the snapshot Hi half unelaborated at a 64-bit debug bus, so those
+# conditions have no stimulus.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
