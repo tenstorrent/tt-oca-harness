@@ -54,6 +54,13 @@ _BLOCKS: dict[str, int] = {"dst": 6, "dst_sink": 13, "funnel": 5}
 # pointer state the trace-carrying leaves set up. Nothing in this leaf depends
 # on them, and all of them are restored, but sweeping them after the inert
 # registers keeps the disturbance at the end of the run.
+# Adjacent register pairs of the sink written as one double-width access, so
+# each register's address is reached by a transfer that also carries its
+# neighbour. Every other access this leaf issues is one register wide. The
+# names repeat across sub-blocks, so the block is named too.
+_PAIR_BLOCK = "dst_sink"
+_PAIRS = (("Trdstramcontrol", "Trdstramimpl"), ("ScratchLo", "ScratchHi"))
+
 _LAST = (
     "Trdstcontrol",
     "Trdstramcontrol",
@@ -106,6 +113,7 @@ class smc_dfd_sink_mmr_sweep_test_seq(SmcCsrSeq):
         self.registers_swept = 0
         self.pinned_registers = 0
         self.readonly_checks = 0
+        self.narrow_writes = 0
         self.value_checks = 0
 
     @staticmethod
@@ -157,6 +165,30 @@ class smc_dfd_sink_mmr_sweep_test_seq(SmcCsrSeq):
         if reg.rw_mask:
             self.pinned_registers += 1
 
+    async def _narrow_cycle(self, low: RdlReg, high: RdlReg) -> None:
+        """Write a register pair as one double-width access and check both halves.
+
+        Every other access this leaf issues is one register wide, which asserts
+        the whole byte strobe of that register. A double-width write at the low
+        register's address carries both registers in one transfer, so each half
+        is reached with the other half's lanes driving the same transfer.
+        """
+        await self._read_check(low, "pair_reset", low.reset_word)
+        await self._read_check(high, "pair_reset", high.reset_word)
+        pattern = (high.declared_mask << 32) | low.declared_mask
+        await self.csr_write(f"{low.path}:pair", low.addr, pattern, length=8)
+        self.narrow_writes += 1
+        await self._read_check(low, "pair", low.declared_mask)
+        await self._read_check(high, "pair", high.declared_mask)
+        await self.csr_write(
+            f"{low.path}:pair_restore",
+            low.addr,
+            (high.reset_word << 32) | low.reset_word,
+            length=8,
+        )
+        await self._read_check(low, "pair_restore", low.reset_word)
+        await self._read_check(high, "pair_restore", high.reset_word)
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
@@ -194,6 +226,34 @@ class smc_dfd_sink_mmr_sweep_test_seq(SmcCsrSeq):
             self.registers_swept,
             self.pinned_registers,
             self.value_checks,
+        )
+        by_name = {
+            reg.path.rsplit("/", 1)[1]: reg
+            for reg in swept
+            if reg.path.split("/")[1].split("[", 1)[0] == _PAIR_BLOCK
+        }
+        for low_name, high_name in _PAIRS:
+            assert low_name in by_name and high_name in by_name, (
+                f"the generated map no longer carries {_PAIR_BLOCK}/{low_name} and "
+                f"{_PAIR_BLOCK}/{high_name} as a pair"
+            )
+            low, high = by_name[low_name], by_name[high_name]
+            assert high.addr == low.addr + low.width_bytes, (
+                f"{low.path} at 0x{low.addr:08x} and {high.path} at 0x{high.addr:08x} are "
+                f"not adjacent, so a double-width write at the first does not carry both"
+            )
+            await self._narrow_cycle(low, high)
+        assert self.narrow_writes == len(_PAIRS), (
+            f"the pair pass issued {self.narrow_writes} double-width writes, not the "
+            f"{len(_PAIRS)} its pair list calls for"
+        )
+        self.value_checks += 1
+        cocotb.log.info(
+            "CHK-DFD-SINK-MMR-PAIR: %d adjacent register pairs of the sink each took one "
+            "double-width write carrying both registers, and both halves read back with "
+            "the bits the contract pins taking the pattern and every read-only bit still "
+            "at its RDL reset; every other access this leaf issues is one register wide",
+            self.narrow_writes,
         )
         cocotb.log.info(
             "CHK-DFD-SINK-MMR-READONLY: %d reads over the %d swept registers that carry one "

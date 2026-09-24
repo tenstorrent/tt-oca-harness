@@ -22,7 +22,10 @@ from smc_base_test import smc_base_test
 # 24 registers (6 dst, 13 dst_sink, 5 funnel), 5 accesses each: the reset read,
 # the pattern write, its readback, the restore write and its readback. No
 # polling, every leg directed.
-SINK_MMR_SWEEP_MIN_CSR_ACCESSES = 24 * 5
+#
+# Two adjacent pairs get a further double-width pass: two reset reads, the
+# pair write and two readbacks, the restore and two more readbacks.
+SINK_MMR_SWEEP_MIN_CSR_ACCESSES = 24 * 5 + 2 * 8
 
 
 @pyuvm.test()
@@ -31,9 +34,10 @@ class smc_dfd_sink_mmr_sweep_test(smc_base_test):
 
     required_evidence = (
         "CHK-DFD-SINK-MMR-DECODE",
+        "CHK-DFD-SINK-MMR-PAIR",
         "CHK-DFD-SINK-MMR-READONLY",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     auto_protocol_vip = False
 
