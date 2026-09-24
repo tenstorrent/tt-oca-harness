@@ -9669,7 +9669,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * An empty transmit FIFO is the way into the outgoing hold, and a released SDA line reads as all ones at the bench.
 * `TARGET_NACK_COUNT` is the register witness. `i2c_core.sv` increments it on the edge where the target decides to NACK the transaction, and the field is read-to-clear, so each leg reads it clear beforehand and requires exactly one afterwards -- not merely non-zero.
 * The acquisition stream must end with the NACK-stop entry, so software can see the transaction ended badly rather than inferring it from the missing data.
-* All three instances, reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
+* One instance per entry. The hold relation needs a bus rate slow enough that it dominates the run, and three instances of that do not fit in the time one simulation is given; the instance is a parameter of the sequence and the package carries an entry for each, this one for I2C0 and cards 244 and 245 for I2C1 and I2C2. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 * `TARGET_EVENTS` as a register rather than a flag. The outgoing leg sets `CTRL.TX_STRETCH_CTRL_EN`, so the target records the read it stretched for in `TARGET_EVENTS.TX_PENDING`; a word of zeros and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled, must both leave it set, and only a written one clears it. Each read is compared against the mask from the generated header.
 
 *Test Procedure*:
@@ -9695,14 +9695,14 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-236-smc_i2c_target_fast_controller_test]]
-===== 236 `smc_i2c_target_fast_controller_test`
+[[sec-236-smc_i2c0_target_fast_controller_test]]
+===== 236 `smc_i2c0_target_fast_controller_test`
 
-*Source Module*: `smc_i2c_target_fast_controller_test`
+*Source Module*: `smc_i2c0_target_fast_controller_test`
 
 *BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, with its bit rate changed part-way through a transfer; observation on the ACK bits, `TARGET_NACK_COUNT` and `ACQDATA`
 
-*Objective*: A controller that releases SCL before the target's data hold time has elapsed must have its transaction abandoned, on every instance.
+*Objective*: A controller that releases SCL before the target's data hold time has elapsed must have its transaction abandoned.
 
 *Test Coverage*:
 
@@ -9730,9 +9730,9 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-I2C-TGT-FAST-CTRL-CONTROL` |Both slow transfers were acknowledged throughout, acquired in full and counted no NACK
-|`CHK-I2C-TGT-FAST-CTRL-ADDR` |The address clocked under the hold time got no acknowledge, was counted once, and left only the NACK-stop entry
-|`CHK-I2C-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
+|`CHK-I2C0-TGT-FAST-CTRL-CONTROL` |Both slow transfers were acknowledged throughout, acquired in full and counted no NACK
+|`CHK-I2C0-TGT-FAST-CTRL-ADDR` |The address clocked under the hold time got no acknowledge, was counted once, and left only the NACK-stop entry
+|`CHK-I2C0-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
@@ -9987,6 +9987,71 @@ Drive `smc_i2c_target_addr_stretch_test_seq` with the instance set to 2. The ste
 |`CHK-I2C2-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
 |`CHK-I2C2-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set
 |`CHK-I2C2-TGT-ADDR-STRETCH-READ` |The held address phase of a read was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-244-smc_i2c1_target_fast_controller_test]]
+===== 244 `smc_i2c1_target_fast_controller_test`
+
+*Source Module*: `smc_i2c1_target_fast_controller_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads with its bit rate changed part-way through a transfer, which `+smc_i2c_shared_bus` puts in front of all three instances; observation on the ACK bits, `TARGET_NACK_COUNT` and `ACQDATA`
+
+*Objective*: The abandon of card 236, on I2C1.
+
+*Test Coverage*:
+
+* The same four transfers the sequence drives for any instance -- a slow one, the address clocked under the hold time, a data byte clocked under it, and a slow one again -- pointed at I2C1, with I2C0 and I2C2 disabled so only the instance under test can answer.
+* A separate entry rather than a loop, because the hold relation needs a bus rate slow enough that it dominates the run and three instances of it do not fit in the time one simulation is given. Card 236 carries the mechanism in full, including why the rate changes only after the START.
+
+*Test Procedure*:
+
+Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 1. The steps are those of card 236.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C1-TGT-FAST-CTRL-CONTROL` |Both slow transfers were acknowledged throughout, acquired in full and counted no NACK
+|`CHK-I2C1-TGT-FAST-CTRL-ADDR` |The address clocked under the hold time got no acknowledge, was counted once, and left only the NACK-stop entry
+|`CHK-I2C1-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+
+[[sec-245-smc_i2c2_target_fast_controller_test]]
+===== 245 `smc_i2c2_target_fast_controller_test`
+
+*Source Module*: `smc_i2c2_target_fast_controller_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads with its bit rate changed part-way through a transfer, which `+smc_i2c_shared_bus` puts in front of all three instances; observation on the ACK bits, `TARGET_NACK_COUNT` and `ACQDATA`
+
+*Objective*: The abandon of card 236, on I2C2.
+
+*Test Coverage*:
+
+* The same four transfers, pointed at I2C2, with I2C0 and I2C1 disabled so only the instance under test can answer.
+* A separate entry rather than a loop, for the runtime reason card 236 gives. Card 236 carries the mechanism in full.
+
+*Test Procedure*:
+
+Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 2. The steps are those of card 236.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C2-TGT-FAST-CTRL-CONTROL` |Both slow transfers were acknowledged throughout, acquired in full and counted no NACK
+|`CHK-I2C2-TGT-FAST-CTRL-ADDR` |The address clocked under the hold time got no acknowledge, was counted once, and left only the NACK-stop entry
+|`CHK-I2C2-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.

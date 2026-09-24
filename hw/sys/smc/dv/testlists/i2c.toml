@@ -246,8 +246,26 @@ run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
 [[tests]]
-name = "smc_i2c_target_fast_controller_test"
-module = "smc_i2c_target_fast_controller_test"
+name = "smc_i2c0_target_fast_controller_test"
+module = "smc_i2c0_target_fast_controller_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c1_target_fast_controller_test"
+module = "smc_i2c1_target_fast_controller_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c2_target_fast_controller_test"
+module = "smc_i2c2_target_fast_controller_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "i2c"]
