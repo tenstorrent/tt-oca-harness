@@ -64,10 +64,11 @@ args = ["-elfile", "{path}"]
 # PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING, P13
 # CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16 SINK-ENABLE-CONST, P17
 # ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19 NTR-RAM-READ-TIED, P20
-# TCOUNT-SELECT-PAIRED, and F3
-# TIEOFF's branch paths; B6
-# SIM-ONLY-FUSE-BYPASS is the bench's and its policy's: no leaf passes the
-# simulation-only +skip_fuse_sense plusarg the DV policy forbids): the
+# TCOUNT-SELECT-PAIRED, P22 DFD-CONTROL-TIED, and F3
+# TIEOFF's branch paths; B6 SIM-ONLY-FUSE-BYPASS is the bench's and its
+# policy's, as no leaf passes the simulation-only +skip_fuse_sense plusarg the
+# DV policy forbids, and B8 DFD-BENCH-INPUTS-TIED is the bench's, which ties the
+# CLA crosstrigger and TDR clock-stop inputs): the
 # DFD clamps, JTAG MMR requester, eFuse secure test mode and AVS TDR override
 # are tied off, the sink enables and trace
 # core count are fixed by parameters, and the

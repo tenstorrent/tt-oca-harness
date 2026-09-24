@@ -175,6 +175,11 @@ gives it.
 The I2C FSMs reload their counter by an enumerated select assigned only its
 named values, and the target pairs its no-delay select only with no reload, so
 those case items never execute (P20 TCOUNT-SELECT-PAIRED).
+The DFD wrapper also ties the DFD top's critical-signal hold, DST clock disable,
+timestamp input and sdtrig control (P22 DFD-CONTROL-TIED), and the bench ties the
+CLA crosstrigger and TDR clock-stop inputs (B8 DFD-BENCH-INPUTS-TIED). The signals
+these classes hold decide condition rows as well as branch paths, operand tables
+included.
 The bench ties the four DFX status inputs the boot sequencer waits on high, so
 the input-low arms of their sticky fields have no stimulus (B7
 DFX-INPUTS-TIED, the bench's own).
@@ -700,6 +705,20 @@ P19 = (
     "constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and "
     "the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 )
+P22 = (
+    "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, "
+    "i_dst_clk_dis and i_timestamp to zero and its i_sdtrig_control to TRIG_TRACE_NONE. So the "
+    "warm-reset override terms, the DST clock-disable extension, the CLA time-match event (a "
+    "timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop "
+    "hold zero, and a row or path that needs one of them high cannot occur."
+)
+B8 = (
+    "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The "
+    "testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both "
+    "instances, and they reach the CLA crosstrigger input and the DFD clock-stop gate "
+    "unchanged. The CLA crosstrigger edge, the timestamp load it arms and the TDR clock-stop "
+    "term therefore hold zero here. Bench ports that drive those inputs retire the class."
+)
 P20 = (
     "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only "
     "under load_tcount, assign tcount_sel nothing but its named values, and the target assigns "
@@ -1054,7 +1073,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
             None,
             None,
         ),
-        (P6, re.compile(r"sim_skip_fuse_sense|security_disable_i"), None, LC_STATE_ARM),
+        (P6, re.compile(r"."), None, LC_STATE_ARM),
         (
             B6,
             re.compile(r"sim_skip_fuse_sense"),
@@ -1090,6 +1109,10 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         (P6, re.compile(r"rma_(sip|chiplet)_token_match_i"), None, None),
         (P6, re.compile(r"pro_read_intf_(wr|rd)_index == '0"), None, None),
         (P6, re.compile(r"pro_read_intf_lock_lc_state_write"), re.compile(r"^01$"), None),
+        (P6, re.compile(r"."), None, ("efuse_guard.sv", 74, 84)),
+    ],
+    "efuse_shadow_reg_access_control": [
+        (P6, re.compile(r"."), None, ("efuse_shadow_reg_access_control.sv", 115, 117)),
     ],
     "idma_legalizer_rw_axi": [
         (P7, re.compile(r"\| kill_i\)$"), re.compile(r"^01$"), None),
@@ -1131,15 +1154,37 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     ],
     "avsbus_controller": [(P18, re.compile(r"^i_tdr_peripherals_apb2avsbus_postdiv_override$"), 0)],
     "cla_wrapper": [(P13, re.compile(r"^cla_gated_func_clamp\b"), 0)],
-    "dst_wrapper": [(P13, re.compile(r"^dst_gated_func_clamp\b"), 0)],
+    "clk_rst_wrapper": [
+        (P13, re.compile(r"^(?:dst_func_clamp_ext|dst_fuse_dis_ext)\b"), 0),
+        (P1, re.compile(r"^(?:ntr_gated_reset_n|ntr_func_enable)\b"), 0),
+        (
+            P1,
+            re.compile(
+                r"^(?:ntr_func_clamp_ext|ntr_fuse_dis_ext|ntr_clk_dis_ext|ntr_clk_dis_ctrl_ext)\b"
+            ),
+            1,
+        ),
+        (P22, re.compile(r"^(?:i_critical_signal_hold|dst_clk_dis_ext)\b"), 0),
+    ],
+    "tnif": [(P1, re.compile(r"^(?:ntr_req_in|ntr_bp_in|ntr_flush_in|ntr_pull_out)$"), 0)],
+    "trace_hop": [(P1, NTRACE_SIGNAL, 0)],
+    "core_logic_analyzer": [
+        (P22, re.compile(r"^time_match_event$"), 0),
+        (B8, re.compile(r"^(?:xtrigger_in\[0\]|xtrigger_posedge|timestamp_load)$"), 0),
+    ],
+    "smc_dfd_wrap": [(B8, re.compile(r"^tdr_dbg_ctrl_clock_stop_en_i$"), 0)],
+    "dst_wrapper": [
+        (P13, re.compile(r"^dst_gated_func_clamp\b"), 0),
+        (P22, re.compile(r"^sdtrig_dst_trace_(?:start|stop)$"), 0),
+    ],
     "tnif_wrapper": [(P13, re.compile(r"^(?:dst|tnif)_gated_func_clamp\b"), 0)],
     "mmrs": [
         (P13, re.compile(r"^intf_gated_func_clamp$"), 0),
         (P14, re.compile(r"^i_jtag_mmr_req_vld$"), 0),
     ],
     "trace_wrapper": [
-        (P13, re.compile(r"^(?:dst_sink|funnel)_gated_func_clamp$"), 0),
-        (P13, re.compile(r"^ntr_sink_gated_func_clamp$"), 1),
+        (P13, re.compile(r"^(?:dst_sink|funnel|dst)_gated_func_clamp\b"), 0),
+        (P13, re.compile(r"^(?:ntr_sink|ntr)_gated_func_clamp\b"), 1),
     ],
     "trace_axi_master": [(F3, re.compile(r"^axi_resp_i\.(?:aw_ready|w_ready|b_valid)$"), 0)],
 }
@@ -1159,6 +1204,26 @@ BRANCH_DEAD_CASE_ITEMS: "dict[str, list[tuple[str, str, frozenset[str]]]]" = {
 BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
     "trace_axi_master": (F3, frozenset({"AW_HANDSHAKE", "W_HANDSHAKE", "RESP_HANDSHAKE"})),
 }
+
+
+def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str) -> "str | None":
+    """The feature class whose held signals put a condition row out of reach, or None.
+
+    Each comparison is one opaque truth value here, as on the branch paths.
+    """
+    if not terms:
+        return None
+    names: dict[str, str] = {}
+    plain = []
+    for term in terms:
+        text = _opaque(_one_bit(term), names)
+        if text is None:
+            return None
+        plain.append(text)
+    for reason, forced, value in BRANCH_PATH_FACTS.get(module, []):
+        if needs_forced_away(plain, vector, _scoped(forced), value):
+            return reason
+    return None
 
 
 def feature_path_class(
@@ -1915,7 +1980,7 @@ def path_needs_forced_away(
         if taken not in ("0", "1") or kind not in ("if", "?") or not condition:
             continue
         term = _opaque(_one_bit(condition), {})
-        if term is not None and needs_forced_away([term], taken, forced, value):
+        if term is not None and needs_forced_away([term], taken, _scoped(forced), value):
             return True
     return False
 
@@ -1934,7 +1999,17 @@ def _one_bit(condition: str) -> str:
         condition,
     )
     condition = re.sub(r"\b([A-Za-z_]\w*)\s*==\s*1'b1\b", r"\1", condition)
-    return re.sub(r"\b([A-Za-z_]\w*)\s*==\s*1'b0\b", r"!\1", condition)
+    condition = re.sub(r"\b([A-Za-z_]\w*)\s*==\s*1'b0\b", r"!\1", condition)
+    # A width cast and a replication keep a one-bit value's truth.
+    condition = re.sub(r"\$bits\([^()]*\)'\s*(?=\()|\b\d+'(?=\()", "", condition)
+    return re.sub(r"\{\s*\w+\s*\{([^{}]*)\}\s*\}", r"(\1)", condition)
+
+
+def _scoped(pattern: "re.Pattern[str]") -> "re.Pattern[str]":
+    """A held-signal pattern that also names the signal under a generate scope."""
+    if not pattern.pattern.startswith("^"):
+        return pattern
+    return re.compile(r"^(?:[A-Za-z_]\w*(?:\[\d+\])?\.)*" + pattern.pattern[1:], pattern.flags)
 
 
 def singlepulse_load_fields(source: str) -> frozenset[str]:
@@ -2118,8 +2193,10 @@ FEATURE_CLASSES = (
     P18,
     P19,
     P20,
+    P22,
     F3,
     B6,
+    B8,
 )
 
 
@@ -2418,6 +2495,7 @@ def render_feature(
     branches: dict[tuple[str, int, str], str],
     terms: dict[tuple[str, str], list[str]],
     paths: "dict[str, list[tuple[BranchConstruct, tuple[str, ...], str]]]",
+    points: "dict[str, list[tuple[TemplatePoint, Point]]]",
 ) -> tuple[str, int]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
@@ -2486,6 +2564,16 @@ def render_feature(
                 if reason:
                     block.append((reason, entry))
                     taken.add(entry)
+        # The same held signals decide condition rows, operand tables included.
+        taken = {e for _, e in block}
+        for tp, rp in points.get(module, []):
+            for vector, entry in tp.rows:
+                if entry in taken or vector not in rp.uncovered:
+                    continue
+                reason = feature_row_class(module, rp.terms, vector)
+                if reason:
+                    block.append((reason, entry))
+                    taken.add(entry)
         if not block:
             continue
         out += metric_blocks(templates, module, block, FEATURE_CLASSES)
@@ -2511,19 +2599,30 @@ def main() -> int:
         for module, constructs in template_branches.items()
     }
     branch_sources = {m: c[0].source for m, c in template_branches.items() if c}
+    report_points_by_module = report_points(args.modinfo)
+    template_points_by_module = template_points(args.template_dir / "fullexclude_module.cond")
     reg_text, reg_n = render_regblock(
         templates,
         uncovered,
         branches,
-        report_points(args.modinfo),
-        template_points(args.template_dir / "fullexclude_module.cond"),
+        report_points_by_module,
+        template_points_by_module,
         paths,
         branch_sources,
     )
     xor_text, xor_n = render_xor(templates, uncovered)
     fsm_text, fsm_n = render_fsm(templates, uncovered_fsm(args.modinfo))
     feat_text, feat_n = render_feature(
-        templates, uncovered, branches, expression_terms(args.modinfo), paths
+        templates,
+        uncovered,
+        branches,
+        expression_terms(args.modinfo),
+        paths,
+        {
+            m: align_points(report_points_by_module.get(m, []), tps)
+            for m, tps in template_points_by_module.items()
+            if m in BRANCH_PATH_FACTS
+        },
     )
     outputs = (
         (REGBLOCK_OUT, reg_text),

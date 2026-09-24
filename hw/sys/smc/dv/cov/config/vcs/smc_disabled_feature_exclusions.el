@@ -16,6 +16,12 @@ ANNOTATION: "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_B
 MODULE: accumulator_bank
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
 
+CHECKSUM: "3564686069 3785605357"
+ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
+MODULE: avsbus_controller
+Condition 73 "2122482897" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_update_clk_divider_value : update_clk_divider_value) 1 -1" (2 "1")
+Condition 76 "715597411" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_postdiv_mux_sel : postdiv_mux_sel) 1 -1" (2 "1")
+
 CHECKSUM: "3564686069 976103321"
 ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
 MODULE: avsbus_controller
@@ -153,6 +159,24 @@ Branch 564 "570626061" "MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn" (0) "MMR
 Branch 567 "1585902306" "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn 1"
 Branch 570 "3796963668" "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn 1"
 
+CHECKSUM: "40131737 3263069872"
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+MODULE: cla_wrapper
+Condition 1 "2319685587" "(cla_gated_func_clamp[0] ? '0 : debug_bus_aligned[0]) 1 -1" (2 "1")
+Condition 2 "3176255836" "(cla_gated_func_clamp[0] ? '0 : xtrigger_out_int[0]) 1 -1" (2 "1")
+Condition 3 "3068957808" "(cla_gated_func_clamp[0] ? '0 : cla_debug_marker_int[0]) 1 -1" (2 "1")
+Condition 4 "264622201" "(cla_gated_func_clamp[0] ? '0 : external_action_trace_start_int[0]) 1 -1" (2 "1")
+Condition 5 "2334110376" "(cla_gated_func_clamp[0] ? '0 : external_action_trace_stop_int[0]) 1 -1" (2 "1")
+Condition 6 "4131367700" "(cla_gated_func_clamp[0] ? '0 : external_action_trace_pulse_int[0]) 1 -1" (2 "1")
+Condition 7 "335171173" "(cla_gated_func_clamp[0] ? '0 : external_action_halt_clock_out_int[0]) 1 -1" (2 "1")
+Condition 8 "2237368492" "(cla_gated_func_clamp[0] ? '0 : external_action_halt_clock_local_out_int[0]) 1 -1" (2 "1")
+Condition 9 "3508722613" "(cla_gated_func_clamp[0] ? '0 : external_action_debug_interrupt_out_int[0]) 1 -1" (2 "1")
+Condition 10 "2465274575" "(cla_gated_func_clamp[0] ? '0 : external_action_toggle_gpio_out_int[0]) 1 -1" (2 "1")
+Condition 11 "3860552601" "(cla_gated_func_clamp[0] ? '0 : external_action_custom_int[0]) 1 -1" (2 "1")
+Condition 12 "464764905" "(cla_gated_func_clamp[0] ? '0 : cla_timestamp_muxed[0]) 1 -1" (2 "1")
+Condition 13 "2068185434" "(cla_gated_func_clamp[0] ? '0 : ClaMmrsWr_int[0]) 1 -1" (2 "1")
+Condition 14 "1149897855" "(cla_gated_func_clamp[0] ? '0 : DebugMuxSelMmr[0]) 1 -1" (2 "1")
+
 CHECKSUM: "40131737 2335395861"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 MODULE: cla_wrapper
@@ -170,6 +194,52 @@ Branch 10 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 Branch 11 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 Branch 12 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 Branch 13 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
+
+CHECKSUM: "705672635 932150476"
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_dst_clk_dis and i_timestamp to zero and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the DST clock-disable extension, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
+MODULE: clk_rst_wrapper
+Condition 1 "2056512603" "(({CLA_W {i_critical_signal_hold}}) | cla_gated_reset_n) 1 -1" (3 "10")
+Condition 2 "3497547431" "(({DST_W {i_critical_signal_hold}}) | dst_gated_reset_n) 1 -1" (3 "10")
+Condition 3 "3252498558" "(({NTR_W {i_critical_signal_hold}}) | ntr_gated_reset_n) 1 -1" (2 "01")
+Condition 3 "3252498558" "(({NTR_W {i_critical_signal_hold}}) | ntr_gated_reset_n) 1 -1" (3 "10")
+Condition 4 "4130516192" "(({TNIF_W {i_critical_signal_hold}}) | tnif_gated_reset_n) 1 -1" (3 "10")
+Condition 5 "1481059577" "(i_critical_signal_hold | dst_sink_gated_reset_n) 1 -1" (3 "10")
+Condition 6 "2917113816" "(i_critical_signal_hold | ntr_sink_gated_reset_n) 1 -1" (3 "10")
+Condition 7 "1554427744" "(i_critical_signal_hold | funnel_gated_reset_n) 1 -1" (3 "10")
+Condition 16 "4099891087" "(tnif_crc_gen.dst_clk_dis_ext & tnif_crc_gen.ntr_clk_dis_ext) 1 -1" (2 "10")
+Condition 16 "4099891087" "(tnif_crc_gen.dst_clk_dis_ext & tnif_crc_gen.ntr_clk_dis_ext) 1 -1" (3 "11")
+Condition 17 "210518932" "(tnif_crc_gen.dst_clk_dis_ctrl_ext & tnif_crc_gen.ntr_clk_dis_ctrl_ext) 1 -1" (2 "10")
+Condition 18 "2054392430" "(tnif_crc_gen.dst_func_clamp_ext & tnif_crc_gen.ntr_func_clamp_ext) 1 -1" (2 "10")
+Condition 18 "2054392430" "(tnif_crc_gen.dst_func_clamp_ext & tnif_crc_gen.ntr_func_clamp_ext) 1 -1" (3 "11")
+Condition 19 "3329123790" "(tnif_crc_gen.dst_fuse_dis_ext & tnif_crc_gen.ntr_fuse_dis_ext) 1 -1" (2 "10")
+Condition 19 "3329123790" "(tnif_crc_gen.dst_fuse_dis_ext & tnif_crc_gen.ntr_fuse_dis_ext) 1 -1" (3 "11")
+Condition 20 "995581807" "((1'(dst_func_enable)) | (1'(ntr_func_enable))) 1 -1" (2 "01")
+
+CHECKSUM: "724319045 3392260149"
+ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_dst_clk_dis and i_timestamp to zero and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the DST clock-disable extension, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
+ANNOTATION: "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both instances, and they reach the CLA crosstrigger input and the DFD clock-stop gate unchanged. The CLA crosstrigger edge, the timestamp load it arms and the TDR clock-stop term therefore hold zero here. Bench ports that drive those inputs retire the class."
+MODULE: core_logic_analyzer
+Condition 4 "1736850090" "(time_match_event & ClactrlstatusMmr.EnableEap) 1 -1" (2 "10")
+Condition 4 "1736850090" "(time_match_event & ClactrlstatusMmr.EnableEap) 1 -1" (3 "11")
+Condition 9 "221502022" "(gen_timestamp_sync_scheme_0.timestamp_load ? 1'b0 : ClatimestampconfigMmr.Resync) 1 -1" (2 "1")
+Condition 11 "267506247" "(xtrigger_in[0] && ((~i_xtrigger_ff))) 1 -1" (2 "10")
+Condition 11 "267506247" "(xtrigger_in[0] && ((~i_xtrigger_ff))) 1 -1" (3 "11")
+Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtrigger_posedge) 1 -1" (1 "01")
+Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtrigger_posedge) 1 -1" (3 "11")
+
+CHECKSUM: "2746040415 2271697718"
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_dst_clk_dis and i_timestamp to zero and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the DST clock-disable extension, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
+MODULE: dst_wrapper
+Condition 2 "2321781715" "(dst_inst[0].sdtrig_dst_trace_start & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (2 "10")
+Condition 2 "2321781715" "(dst_inst[0].sdtrig_dst_trace_start & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
+Condition 4 "3950667315" "(dst_inst[0].sdtrig_dst_trace_stop & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (2 "10")
+Condition 4 "3950667315" "(dst_inst[0].sdtrig_dst_trace_stop & dst_inst[0].Trdstcontrol.Trdstinsttriggerenable) 1 -1" (3 "11")
+Condition 20 "3792509132" "(dst_gated_func_clamp[0] ? 1'b0 : dst_inst[0].dst_tnif_req_w) 1 -1" (2 "1")
+Condition 21 "713795741" "(dst_gated_func_clamp[0] ? '0 : dst_inst[0].dst_tnif_data_w) 1 -1" (2 "1")
+Condition 22 "341128059" "(dst_gated_func_clamp[0] ? '0 : dst_inst[0].DstMmrsWr_int) 1 -1" (2 "1")
 
 CHECKSUM: "2746040415 3906711782"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
@@ -218,6 +288,16 @@ Branch 3 "1184457743" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1,-,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,0,1,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,0,0,0,-,-"
 
+CHECKSUM: "2470957733 3469611085"
+ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
+ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute. The program-lock and read-lock arms beside them stay graded."
+MODULE: efuse_shadow_reg_access_control
+Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (1 "0")
+Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (2 "1")
+Condition 5 "1601616447" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.read_locked(field_index)) 1 -1" (1 "0")
+Condition 5 "1601616447" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.read_locked(field_index)) 1 -1" (2 "1")
+Condition 12 "2044479785" "(secure_tm_i ? (is_write_locked | (sw_lock_bits[2:1] == 2'b11) | sw_lock_bits[3]) : (is_write_locked | (sw_lock_bits[2:1] == 2'b11))) 1 -1" (2 "1")
+
 CHECKSUM: "2470957733 3321935136"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute. The program-lock and read-lock arms beside them stay graded."
@@ -241,6 +321,11 @@ Condition 4 "516759797" "(sim_skip_fuse_sense && ((!fuse_sense_done))) 1 -1" (3 
 Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (1 "01")
 Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (2 "10")
 Condition 5 "2119063415" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (3 "11")
+Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (1 "0111")
+Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (2 "1011")
+Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (3 "1101")
+Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (4 "1110")
+Condition 6 "735688330" "(fuse_command_resp.valid && ((!fuse_command_resp.status)) && (words_received_q < efuse_word_counter_t'(NumShadowWords)) && (words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE))) 1 -1" (5 "1111")
 Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (1 "01111")
 Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (2 "10111")
 Condition 8 "1196167266" "(apb_req_from_ac.pwrite && ((!write_locked)) && write_setup_only && is_lc_state_access && apb_req_from_ac.pstrb[0]) 1 -1" (3 "11011")
@@ -286,6 +371,10 @@ Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!so
 Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!sop_state_change_completed_n0_scan))) 1 -1" (3 "11")
 Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
 Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
+Condition 2 "4011173503" "(sim_skip_fuse_sense == 1'b1) 1 -1" (2 "1")
+Condition 31 "3715707245" "(write_setup_only && ((!is_lc_state_access))) 1 -1" (2 "10")
+Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (1 "01")
+Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (3 "11")
 
 CHECKSUM: "3035079037 2392609755"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
@@ -354,6 +443,16 @@ ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend wi
 MODULE: idma_legalizer_rw_axi
 Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
 
+CHECKSUM: "3895468110 949337104"
+ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
+MODULE: mmr_req_ctrl
+Condition 9 "260715249" "(gnt_is_jtag ? jt_req_blk_sel : bus_req_blk_sel) 1 -1" (2 "1")
+Condition 10 "280341080" "(gnt_is_jtag ? jt_req_addr : bus_req_addr) 1 -1" (2 "1")
+Condition 11 "2052308069" "(gnt_is_jtag ? jt_req_data : bus_req_data) 1 -1" (2 "1")
+Condition 12 "2691816795" "(gnt_is_jtag ? jt_req_we : bus_req_we) 1 -1" (2 "1")
+Condition 13 "1362727685" "(gnt_is_jtag ? ({1'b0, jt_req_we}) : bus_req_strb) 1 -1" (2 "1")
+Condition 14 "27178933" "(gnt_is_jtag ? 1'b0 : bus_req_err) 1 -1" (2 "1")
+
 CHECKSUM: "3895468110 1001217158"
 ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
 ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, and the arm of each if on those enables that the constant does not select never executes."
@@ -369,6 +468,7 @@ Branch 11 "1891817966" "DST_SINK_EN" (1) "DST_SINK_EN 0"
 
 CHECKSUM: "3001181867 1671278051"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 MODULE: mmrs
 Condition 19 "3808774952" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMSTARTLOW_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
 Condition 21 "814690507" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMLIMITLOW_REG_ADDR) & MmrCs[NTR_SINK_BLK_IDX]) 1 -1" (3 "11")
@@ -377,6 +477,10 @@ Condition 25 "2530857465" "((MmrAddr == ntr_sink_mmr_pkg::NTR_SINK_TRRAMLIMITHIG
 Condition 29 "3250728458" "(((Trramstarthigh_Warl_Check_ANY | Trramlimithigh_Warl_Check_ANY) & MmrWrEn & Trntrissrammode) ? 1'b0 : MmrWrEn) 1 -1" (2 "1")
 Condition 32 "348996440" "(Trramstartlow_Warl_Check_ANY ? Trramstartlow_Warl_Data_ANY : Trramlimitlow_Warl_Data_ANY) 1 -1" (2 "1")
 Condition 33 "3332840335" "(((Trramstartlow_Warl_Check_ANY | Trramlimitlow_Warl_Check_ANY) & MmrWrEn & Trntrissrammode) ? Warl_Updated_Data_ANY : MmrWrData) 1 -1" (2 "1")
+Condition 3 "993832504" "(psel & ((~intf_gated_func_clamp))) 1 -1" (2 "10")
+Condition 36 "2840195561" "(intf_gated_func_clamp ? (psel & penable) : gen_apb_inf_blk.apb_conv_pready) 1 -1" (2 "1")
+Condition 38 "2553916146" "(intf_gated_func_clamp ? (psel & penable) : gen_apb_inf_blk.apb_conv_pslverr) 1 -1" (2 "1")
+Condition 40 "138770619" "(intf_gated_func_clamp ? '0 : gen_apb_inf_blk.apb_conv_prdata) 1 -1" (2 "1")
 
 CHECKSUM: "3001181867 707411587"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
@@ -387,6 +491,34 @@ Branch 8 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 9 "905896149" "intf_gated_func_clamp" (0) "intf_gated_func_clamp 1"
 Branch 11 "1454664243" "i_jtag_mmr_req_vld" (0) "i_jtag_mmr_req_vld 1"
 
+CHECKSUM: "3685564638 3131932856"
+ANNOTATION: "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both instances, and they reach the CLA crosstrigger input and the DFD clock-stop gate unchanged. The CLA crosstrigger edge, the timestamp load it arms and the TDR clock-stop term therefore hold zero here. Bench ports that drive those inputs retire the class."
+MODULE: smc_dfd_wrap
+Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (2 "10")
+Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (3 "11")
+
+CHECKSUM: "4226918805 2330986106"
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+MODULE: tnif
+Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (1 "011")
+Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (3 "110")
+Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (4 "111")
+Condition 5 "3193926140" "((ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) ? (prev_gnt == tnifState_e'(DST_GNT)) : 1'b1) 1 -1" (2 "1")
+Condition 6 "1933900385" "(ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 1 -1" (2 "10")
+Condition 6 "1933900385" "(ntr_req_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) )) 1 -1" (3 "11")
+Condition 19 "4168576200" "(dst_pull_out | ntr_pull_out) 1 -1" (2 "01")
+Condition 20 "220599304" "(ntr_pull_out == 1'b1) 1 -1" (2 "1")
+
+CHECKSUM: "1255329244 2573646565"
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+MODULE: tnif_wrapper
+Condition 1 "3014164906" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_pull_out_w) 1 -1" (2 "1")
+Condition 2 "4059522878" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_flush_out_w) 1 -1" (2 "1")
+Condition 3 "393759502" "(dst_gated_func_clamp[0] ? 1'b0 : tnif_gen_blk[0].dst_bp_out_w) 1 -1" (2 "1")
+Condition 4 "3510830807" "(tnif_gated_func_clamp[0] ? 1'b0 : tnif_tr_valid_int[0]) 1 -1" (2 "1")
+Condition 5 "2824346823" "(tnif_gated_func_clamp[0] ? 1'b0 : tnif_tr_src_int[0]) 1 -1" (2 "1")
+Condition 6 "1323528358" "(tnif_gated_func_clamp[0] ? '0 : tnif_tr_data_int[0]) 1 -1" (2 "1")
+
 CHECKSUM: "1255329244 4012058925"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 MODULE: tnif_wrapper
@@ -396,6 +528,17 @@ Branch 2 "2275614227" "dst_gated_func_clamp[0]" (0) "dst_gated_func_clamp[0] 1"
 Branch 3 "159930838" "tnif_gated_func_clamp[0]" (0) "tnif_gated_func_clamp[0] 1"
 Branch 4 "159930838" "tnif_gated_func_clamp[0]" (0) "tnif_gated_func_clamp[0] 1"
 Branch 5 "159930838" "tnif_gated_func_clamp[0]" (0) "tnif_gated_func_clamp[0] 1"
+
+CHECKSUM: "404099673 59558564"
+ANNOTATION: "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so the trace write master never completes a response handshake and cannot pass REQ_HANDSHAKE; the states an aw_ready, w_ready or b_valid is needed to enter, and the edges touching them, have no stimulus. The request the master issues on valid_i is reachable, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded."
+MODULE: trace_axi_master
+Condition 1 "315528187" "(axi_resp_i.aw_ready & axi_resp_i.w_ready) 1 -1" (1 "01")
+Condition 1 "315528187" "(axi_resp_i.aw_ready & axi_resp_i.w_ready) 1 -1" (2 "10")
+Condition 1 "315528187" "(axi_resp_i.aw_ready & axi_resp_i.w_ready) 1 -1" (3 "11")
+Condition 2 "2557034634" "(axi_resp_i.aw_ready & ((~axi_resp_i.w_ready))) 1 -1" (2 "10")
+Condition 2 "2557034634" "(axi_resp_i.aw_ready & ((~axi_resp_i.w_ready))) 1 -1" (3 "11")
+Condition 3 "31931372" "(((~axi_resp_i.aw_ready)) & axi_resp_i.w_ready) 1 -1" (1 "01")
+Condition 3 "31931372" "(((~axi_resp_i.aw_ready)) & axi_resp_i.w_ready) 1 -1" (3 "11")
 
 CHECKSUM: "404099673 4227542036"
 ANNOTATION: "SMC-FSM-F3-TIEOFF: smc_dfd_wrap ties every m_trc_axi_* response input to zero, so the trace write master never completes a response handshake and cannot pass REQ_HANDSHAKE; the states an aw_ready, w_ready or b_valid is needed to enter, and the edges touching them, have no stimulus. The request the master issues on valid_i is reachable, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded."
@@ -410,9 +553,18 @@ Branch 0 "1918024820" "state" (9) "state W_HANDSHAKE ,-,-,-,-,-,0,-"
 Branch 0 "1918024820" "state" (10) "state RESP_HANDSHAKE ,-,-,-,-,-,-,1"
 Branch 0 "1918024820" "state" (11) "state RESP_HANDSHAKE ,-,-,-,-,-,-,0"
 
+CHECKSUM: "3643492222 1006470345"
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+MODULE: trace_hop
+Condition 17 "3721999652" "(upstrm_tr_ntrace_bp & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (2 "10")
+Condition 17 "3721999652" "(upstrm_tr_ntrace_bp & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (3 "11")
+Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (2 "10")
+Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (3 "11")
+
 CHECKSUM: "3354362860 3417673543"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free. The pending RAM's source field is RAM content and is left free, so a row that holds the dead signals at zero and turns on another term stays graded, as ordinary trace traffic reaches it."
+ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default."
 ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 MODULE: trace_sink
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
@@ -753,6 +905,206 @@ Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_s
 Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrntrMemRamRdEn_TS2[7])) & ((~TrntrMemRdBufferVld_TS3[7])) & ((~TrntrMemRdBufferVld_TS4[7])) & ((~TrntrMemRdBufferVld_TS5[7])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (8 "111111101")
 Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrntrMemRamRdEn_TS2[7])) & ((~TrntrMemRdBufferVld_TS3[7])) & ((~TrntrMemRdBufferVld_TS4[7])) & ((~TrntrMemRdBufferVld_TS5[7])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (9 "111111110")
 Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrntrMemRamRdEn_TS2[7])) & ((~TrntrMemRdBufferVld_TS3[7])) & ((~TrntrMemRdBufferVld_TS4[7])) & ((~TrntrMemRdBufferVld_TS5[7])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (10 "111111111")
+Condition 2 "641947095" "(((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY)))) 1 -1" (1 "00")
+Condition 2 "641947095" "(((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY)))) 1 -1" (2 "01")
+Condition 3 "938877714" "(trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))) 1 -1" (2 "10")
+Condition 3 "938877714" "(trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))) 1 -1" (3 "11")
+Condition 8 "2355571142" "((((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) | (trntrRamMode_ANY & TrntrMemAxiWrVld_ANY)) 1 -1" (2 "01")
+Condition 8 "2355571142" "((((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) | (trntrRamMode_ANY & TrntrMemAxiWrVld_ANY)) 1 -1" (3 "10")
+Condition 9 "2983480438" "(((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) 1 -1" (1 "01")
+Condition 9 "2983480438" "(((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) 1 -1" (3 "11")
+Condition 13 "1017783977" "(trntrRamEnable_ANY | trntrStoponWrap_ANY) 1 -1" (2 "01")
+Condition 13 "1017783977" "(trntrRamEnable_ANY | trntrStoponWrap_ANY) 1 -1" (3 "10")
+Condition 14 "2214234110" "((((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) | (trntrRamMode_ANY & TrntrMemAxiWrVld_ANY)) 1 -1" (2 "01")
+Condition 14 "2214234110" "((((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) | (trntrRamMode_ANY & TrntrMemAxiWrVld_ANY)) 1 -1" (3 "10")
+Condition 15 "3192513102" "(((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) 1 -1" (1 "01")
+Condition 15 "3192513102" "(((~trntrRamMode_ANY)) & trntrRamWrEn_TS0) 1 -1" (3 "11")
+Condition 18 "392071492" "(((~trntrRamMode_ANY)) & trntrnextlocaltoupdateRamWpWrap_ANY_stg_d1) 1 -1" (1 "01")
+Condition 18 "392071492" "(((~trntrRamMode_ANY)) & trntrnextlocaltoupdateRamWpWrap_ANY_stg_d1) 1 -1" (3 "11")
+Condition 19 "18654330" "(trntrRamMode_ANY & TrntrMemAxiWrAddrWrap_ANY) 1 -1" (1 "01")
+Condition 19 "18654330" "(trntrRamMode_ANY & TrntrMemAxiWrAddrWrap_ANY) 1 -1" (2 "10")
+Condition 19 "18654330" "(trntrRamMode_ANY & TrntrMemAxiWrAddrWrap_ANY) 1 -1" (3 "11")
+Condition 50 "3219102058" "(((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY) 1 -1" (2 "01")
+Condition 50 "3219102058" "(((|trntrNumFrameFillComplete_ANY_d1)) | TrntrMemAxiWrVld_ANY) 1 -1" (3 "10")
+Condition 66 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (1 "01")
+Condition 66 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (2 "10")
+Condition 66 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (3 "11")
+Condition 71 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (1 "01")
+Condition 71 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (2 "10")
+Condition 71 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (3 "11")
+Condition 85 "3781501857" "(trntrRamMode_ANY ? trntrRamSMEMStartLow_ANY : trntrRamStartLow_ANY) 1 -1" (2 "1")
+Condition 168 "391229778" "(InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY))) 1 -1" (2 "10")
+Condition 168 "391229778" "(InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY))) 1 -1" (3 "11")
+Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (1 "0111")
+Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (3 "1101")
+Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (4 "1110")
+Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (5 "1111")
+Condition 178 "4113069550" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) 1 -1" (1 "011")
+Condition 178 "4113069550" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) 1 -1" (3 "110")
+Condition 178 "4113069550" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0)) 1 -1" (4 "111")
+Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (1 "01")
+Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (2 "10")
+Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (3 "11")
+Condition 191 "3444410989" "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY) 1 -1" (1 "01")
+Condition 191 "3444410989" "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY) 1 -1" (3 "11")
+Condition 193 "606411623" "(trdstnorthcoresNewFrameStart_ANY | trdstsouthcoresNewFrameStart_ANY) 1 -1" (2 "01")
+Condition 196 "2714579994" "(trntrRamEnableStart_ANY_d1 | (((~trntrStoponWrap_ANY)) & trntrnextlocaltoupdateRamWpLowWrap_ANY)) 1 -1" (3 "10")
+Condition 197 "4271254814" "(((~trntrStoponWrap_ANY)) & trntrnextlocaltoupdateRamWpLowWrap_ANY) 1 -1" (1 "01")
+Condition 198 "3205363084" "(trntrRamEnableStart_ANY_d1 ? trntrRamSMEMStartLow_ANY : trntrnextlocaltoupdateRamWpLow_ANY_stg) 1 -1" (2 "1")
+Condition 200 "4279312846" "(trntrnextlocaltoupdateRamWpWrapOneNewFrame_ANY & (((|trntrnorthcoresNewFrameStart_ANY_d1)) | ((|trntrsouthcoresNewFrameStart_ANY_d1)))) 1 -1" (1 "01")
+Condition 200 "4279312846" "(trntrnextlocaltoupdateRamWpWrapOneNewFrame_ANY & (((|trntrnorthcoresNewFrameStart_ANY_d1)) | ((|trntrsouthcoresNewFrameStart_ANY_d1)))) 1 -1" (3 "11")
+Condition 201 "3708034992" "(((|trntrnorthcoresNewFrameStart_ANY_d1)) | ((|trntrsouthcoresNewFrameStart_ANY_d1))) 1 -1" (2 "01")
+Condition 201 "3708034992" "(((|trntrnorthcoresNewFrameStart_ANY_d1)) | ((|trntrsouthcoresNewFrameStart_ANY_d1))) 1 -1" (3 "10")
+Condition 202 "217900918" "(trntrnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trntrnorthcoresNewFrameStart_ANY_d1)) & ((|trntrsouthcoresNewFrameStart_ANY_d1))) 1 -1" (1 "011")
+Condition 202 "217900918" "(trntrnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trntrnorthcoresNewFrameStart_ANY_d1)) & ((|trntrsouthcoresNewFrameStart_ANY_d1))) 1 -1" (2 "101")
+Condition 202 "217900918" "(trntrnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trntrnorthcoresNewFrameStart_ANY_d1)) & ((|trntrsouthcoresNewFrameStart_ANY_d1))) 1 -1" (3 "110")
+Condition 202 "217900918" "(trntrnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trntrnorthcoresNewFrameStart_ANY_d1)) & ((|trntrsouthcoresNewFrameStart_ANY_d1))) 1 -1" (4 "111")
+Condition 204 "487623278" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY) 1 -1" (1 "01")
+Condition 204 "487623278" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY) 1 -1" (2 "10")
+Condition 204 "487623278" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY) 1 -1" (3 "11")
+Condition 205 "3600901328" "((trntrnorthcoresNewFrameStart_ANY | trntrsouthcoresNewFrameStart_ANY) ? trntrnextlocalRamWpLow_ANY[1] : trntrnextlocalRamWpLow_ANY[0]) 1 -1" (2 "1")
+Condition 206 "3382680641" "(trntrnorthcoresNewFrameStart_ANY | trntrsouthcoresNewFrameStart_ANY) 1 -1" (2 "01")
+Condition 206 "3382680641" "(trntrnorthcoresNewFrameStart_ANY | trntrsouthcoresNewFrameStart_ANY) 1 -1" (3 "10")
+Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (1 "01")
+Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (2 "10")
+Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (3 "11")
+Condition 212 "1497109905" "(TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) 1 -1" (2 "10")
+Condition 212 "1497109905" "(TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) 1 -1" (3 "11")
+Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (1 "01")
+Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (2 "10")
+Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (3 "11")
+Condition 217 "2484997170" "(trRamDataRdEn_ANY ? trntrRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH] : trdstRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH]) 1 -1" (2 "1")
+Condition 219 "1349485583" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (1 "011")
+Condition 219 "1349485583" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (3 "110")
+Condition 219 "1349485583" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (4 "111")
+Condition 220 "738352040" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (1 "00")
+Condition 220 "738352040" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (2 "01")
+Condition 221 "2752063877" "(trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (1 "01")
+Condition 221 "2752063877" "(trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (2 "10")
+Condition 221 "2752063877" "(trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (3 "11")
+Condition 222 "1640642712" "((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))) 1 -1" (2 "01")
+Condition 222 "1640642712" "((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))) 1 -1" (3 "10")
+Condition 223 "1104102604" "(TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) 1 -1" (2 "10")
+Condition 223 "1104102604" "(TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) 1 -1" (3 "11")
+Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (2 "10")
+Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
+Condition 225 "177503260" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (1 "00")
+Condition 225 "177503260" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (2 "01")
+Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (1 "011")
+Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (3 "110")
+Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (4 "111")
+Condition 236 "4148929162" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (1 "00")
+Condition 236 "4148929162" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (2 "01")
+Condition 237 "490412319" "(trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (1 "01")
+Condition 237 "490412319" "(trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (2 "10")
+Condition 237 "490412319" "(trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (3 "11")
+Condition 238 "2740983506" "(TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))) 1 -1" (2 "01")
+Condition 238 "2740983506" "(TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))) 1 -1" (3 "10")
+Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (2 "10")
+Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
+Condition 240 "2086714443" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (1 "00")
+Condition 240 "2086714443" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (2 "01")
+Condition 249 "2223440153" "(TrntrMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) : 1'b1) 1 -1" (2 "1")
+Condition 255 "2533328945" "(((|TrntrMemRamRdEn_TS1)) ? (TrMemRamRd_NtraceOrDst_ANY == 1'b0) : 1'b1) 1 -1" (2 "1")
+Condition 274 "435609100" "((TR_TS_North_Src & Eff_InsnTraceWrEnPerCore_TS0[(0 << 1)]) | (((~TR_TS_North_Src)) & Eff_DataTraceWrEnPerCore_TS0[(0 << 1)])) 1 -1" (3 "10")
+Condition 275 "2355327014" "(TR_TS_North_Src & Eff_InsnTraceWrEnPerCore_TS0[(0 << 1)]) 1 -1" (1 "01")
+Condition 275 "2355327014" "(TR_TS_North_Src & Eff_InsnTraceWrEnPerCore_TS0[(0 << 1)]) 1 -1" (3 "11")
+Condition 283 "4175957272" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (2 "10")
+Condition 283 "4175957272" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (3 "11")
+Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (2 "10")
+Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (3 "11")
+Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (2 "10")
+Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (3 "11")
+Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (2 "10")
+Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (3 "11")
+Condition 318 "2872829392" "(trntrfirstcoreNewFrameStart_ANY[0] ? trntrnextlocalRamWpLow_ANY[0] : trntrnextlocalRamWpLow_ANY[1]) 1 -1" (2 "1")
+Condition 321 "680006148" "(InsnTraceWrEnPerCore_TS0[0] ? ((trntrcorenextwritecnt_ANY[0] + 1'b1)) : trntrcorenextwritecnt_ANY[0]) 1 -1" (2 "1")
+Condition 323 "3266273913" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (2 "01")
+Condition 323 "3266273913" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (3 "10")
+Condition 323 "3266273913" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (4 "11")
+Condition 328 "1177968682" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (2 "01")
+Condition 328 "1177968682" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (3 "10")
+Condition 328 "1177968682" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (4 "11")
+Condition 348 "938001971" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (2 "10")
+Condition 348 "938001971" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (3 "11")
+Condition 350 "1253287201" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 350 "1253287201" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 352 "2368131127" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 352 "2368131127" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 354 "2882854578" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 354 "2882854578" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 356 "1816243108" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 356 "1816243108" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 358 "1072535779" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 358 "1072535779" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 360 "4168674805" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 360 "4168674805" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 362 "3733644144" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 362 "3733644144" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 364 "421500518" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (2 "10")
+Condition 364 "421500518" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0])) 1 -1" (3 "11")
+Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (2 "10")
+Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (3 "11")
+Condition 372 "2513135843" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 372 "2513135843" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 374 "1381899765" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 374 "1381899765" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 376 "1957434224" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 376 "1957434224" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 378 "3006883430" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 378 "3006883430" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 380 "3767883041" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 380 "3767883041" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 382 "654319671" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 382 "654319671" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 384 "32648882" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 384 "32648882" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 386 "3328662436" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
+Condition 386 "3328662436" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (2 "10")
+Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (3 "11")
+Condition 394 "1776884814" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 394 "1776884814" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 396 "2927389016" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 396 "2927389016" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 398 "2291034077" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 398 "2291034077" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 400 "1327174347" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 400 "1327174347" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 402 "481763724" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 402 "481763724" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 404 "3676460186" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 404 "3676460186" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 406 "4258290207" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 406 "4258290207" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 408 "977612553" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
+Condition 408 "977612553" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (2 "10")
+Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (3 "11")
+Condition 416 "3063009676" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 416 "3063009676" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 418 "1896129690" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 418 "1896129690" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 420 "1475783199" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 420 "1475783199" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 422 "2422464265" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 422 "2422464265" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 424 "3285183566" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 424 "3285183566" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 426 "73046360" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 426 "73046360" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 428 "581474269" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 428 "581474269" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 430 "3846038219" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
+Condition 430 "3846038219" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 442 "784684440" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[0] : DataTraceRdEn_TS1[0]) 1 -1" (2 "1")
+Condition 452 "2460586056" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[1] : DataTraceRdEn_TS1[1]) 1 -1" (2 "1")
+Condition 462 "53870428" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[2] : DataTraceRdEn_TS1[2]) 1 -1" (2 "1")
+Condition 472 "3210295948" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[3] : DataTraceRdEn_TS1[3]) 1 -1" (2 "1")
+Condition 482 "3440639060" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[4] : DataTraceRdEn_TS1[4]) 1 -1" (2 "1")
+Condition 492 "1904163204" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[5] : DataTraceRdEn_TS1[5]) 1 -1" (2 "1")
+Condition 502 "3772995216" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[6] : DataTraceRdEn_TS1[6]) 1 -1" (2 "1")
+Condition 512 "1552913216" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[7] : DataTraceRdEn_TS1[7]) 1 -1" (2 "1")
 
 CHECKSUM: "3354362860 1334787416"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
@@ -804,6 +1156,26 @@ Branch 50 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 51 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 52 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 53 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
+
+CHECKSUM: "3227266885 3872669934"
+ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+MODULE: trace_wrapper
+Condition 1 "3805417146" "(({NUM_DST_INST_SAFE {(~dst_sink_gated_func_clamp)}}) & ((~dst_gated_func_clamp))) 1 -1" (1 "01")
+Condition 1 "3805417146" "(({NUM_DST_INST_SAFE {(~dst_sink_gated_func_clamp)}}) & ((~dst_gated_func_clamp))) 1 -1" (2 "10")
+Condition 2 "473899374" "(({NUM_NTRACE_INST_SAFE {(~ntr_sink_gated_func_clamp)}}) & ((~ntr_gated_func_clamp))) 1 -1" (1 "01")
+Condition 2 "473899374" "(({NUM_NTRACE_INST_SAFE {(~ntr_sink_gated_func_clamp)}}) & ((~ntr_gated_func_clamp))) 1 -1" (2 "10")
+Condition 2 "473899374" "(({NUM_NTRACE_INST_SAFE {(~ntr_sink_gated_func_clamp)}}) & ((~ntr_gated_func_clamp))) 1 -1" (3 "11")
+Condition 3 "3979228174" "((dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) ? '0 : TN_MS_Gnt_int) 1 -1" (2 "1")
+Condition 4 "3871415065" "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) 1 -1" (2 "10")
+Condition 4 "3871415065" "(dst_sink_gated_func_clamp && ntr_sink_gated_func_clamp) 1 -1" (3 "11")
+Condition 5 "1308450810" "(ntr_sink_gated_func_clamp ? '0 : TN_MS_Ntrace_Bp_int) 1 -1" (1 "0")
+Condition 6 "815388895" "(dst_sink_gated_func_clamp ? '0 : TN_MS_Dst_Bp_int) 1 -1" (2 "1")
+Condition 7 "23757109" "(ntr_sink_gated_func_clamp ? '0 : TN_MS_Ntrace_Flush_int) 1 -1" (1 "0")
+Condition 8 "1785154983" "(dst_sink_gated_func_clamp ? '0 : TN_MS_Dst_Flush_int) 1 -1" (2 "1")
+Condition 9 "955680890" "(ntr_sink_gated_func_clamp ? '0 : NtrSinkMmrsWr_int) 1 -1" (1 "0")
+Condition 10 "879037063" "(dst_sink_gated_func_clamp ? '0 : DstSinkMmrsWr_int) 1 -1" (2 "1")
+Condition 11 "539313021" "(funnel_gated_func_clamp ? '0 : FunnelMmrsWr_int) 1 -1" (2 "1")
+Condition 12 "1721060743" "(funnel_gated_func_clamp ? '0 : m_trc_axi_req_int) 1 -1" (2 "1")
 
 CHECKSUM: "3227266885 1401209627"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
