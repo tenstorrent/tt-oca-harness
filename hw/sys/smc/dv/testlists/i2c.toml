@@ -100,6 +100,14 @@ args = ["+smc_i2c_shared_bus"]
 
 # CSR-only FMT/TX full+empty and RX/ACQ empty (commercial i2c_fifo_full).
 [[tests]]
+name = "smc_i2c_event_retain_test"
+module = "smc_i2c_event_retain_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_i2c_fifo_full_test"
 module = "smc_i2c_fifo_full_test"
 seed = 1

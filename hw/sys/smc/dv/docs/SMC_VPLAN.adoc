@@ -10773,6 +10773,48 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
+[[sec-280-smc_i2c_event_retain_test]]
+===== 280 `smc_i2c_event_retain_test`
+
+*Source Module*: `smc_i2c_event_retain_test`
+
+*BFM / Model*: `SmcI2cMasterVip` on the `tb_i2c0_*` pads as the external controller for the target leg; observation on `INTR_STATE`, `TARGET_EVENTS`, `SMBUS_CTRL` and `TARGET_NACK_COUNT`
+
+*Objective*: I2C0 event and counter fields held to what `i2c.rdl` says a write may and may not do to them. Leaves that raise these events clear them at once, so for most of them the write that must not clear a set bit had never been made.
+
+*Test Coverage*:
+
+* Six `INTR_STATE` event bits no leaf had held across a write: `RX_OVERFLOW`, `SDA_UNSTABLE`, `UNEXP_STOP`, `SMBALERT`, `CONTROLLER_RX_FIFO_ERROR` and `TARGET_RX_FIFO_ERROR`. Each is forced through `INTR_TEST` (`sw = w`, `singlepulse`).
+** A word of zeros written over `INTR_STATE` must leave the bit set.
+** Its own written one must clear it, with every other bit unchanged.
+* `TARGET_EVENTS.START_DETECT` and `STOP_DETECT`, set by a transfer to the enabled target. A word of zeros must leave both set, and each must clear on its own written one while the other stays.
+* `SMBUS_CTRL.SMBALERT` (`hwclr`: "clears itself when the controller addresses this target"). A write of the bit over itself must leave it set, and it must read clear after the transfer that addresses the target.
+* `TARGET_NACK_COUNT` (`sw = rw`, `rclr`). A written value must read back once and then read zero.
+
+*Test Procedure*:
+
+[arabic]
+. For each of the six bits: force it through `INTR_TEST`, write zeros to `INTR_STATE`, then write its one.
+. Write `TARGET_NACK_COUNT` and read it twice.
+. Enable the target, set `SMBALERT` twice, write one byte from the external controller, then check `SMBALERT` and clear the start and stop flags one at a time.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-INTR-STATE-RETAIN` |Each of the six forced bits survived a word of zeros and cleared on its own written one, with every other bit unchanged
+|`CHK-I2C-NACK-COUNT-WRITE` |`TARGET_NACK_COUNT` read the written value once and zero on the read after
+|`CHK-I2C-TARGET-EVENTS-CLEAR` |The start and stop flags survived a word of zeros and each cleared on its own written one while the other stayed
+|`CHK-I2C-SMBALERT-HWCLR` |`SMBALERT` stayed set when written over itself and cleared when the target was addressed
+|===
+
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
