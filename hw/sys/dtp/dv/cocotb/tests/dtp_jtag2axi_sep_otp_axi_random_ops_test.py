@@ -20,6 +20,7 @@ class dtp_jtag2axi_sep_otp_axi_random_ops_test(dtp_base_test):
         "CHK-AXI-STRB",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-MEM-IMAGE",
     )
     axi_checker_stream_minimums = {"sep_otp": 2}
 

@@ -228,6 +228,26 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Reads of one ABR register from the SMN inbound master at increasing numbers of
+# reads in flight. Every read targets the same read-only register, so every
+# response must carry the same value; from the third read in flight some carry
+# zero with an OKAY response. Issue #2253 owns the gap; this leaf FAILS while the
+# RTL carries it.
+#
+# Driven from m_axi deliberately. The CPU-LSU splice stands in for the VeeR LSU,
+# which serialises MMIO loads, so pipelining there would be stimulus the port
+# cannot carry in the real design. The inbound port is a real SoC master under no
+# such restriction.
+name = "sep_abr_pipelined_read_test"
+module = "crypto.sep_abr_pipelined_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "axi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Adams Bridge ML-DSA-87 sigGen and sigVer NIST KAT on the same aperture.
 # MLDSA_CTRL.CTRL SIGNING (0x2) and VERIFYING (0x3), external-mu ACVP groups.
 # Deterministic signing, so the signature is compared word-for-word against the

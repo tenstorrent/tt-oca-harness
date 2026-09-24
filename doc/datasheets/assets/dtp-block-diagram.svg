@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="380" viewBox="0 0 1100 380" role="img" aria-labelledby="title desc">
+  <title id="title">OCAH DTP in an OCA multi-chiplet system</title>
+  <desc id="desc">External debug equipment or an upstream peer STAP connects to the DTP primary TAP. The JTAG Interface Unit provides scan, AXI, boot and reset access to local functions and a secondary TAP path to a peer chiplet. The Cross Trigger Network connects external trigger endpoints through Cross Trigger Ports (CTPs), peer triggers and chiplet-local clock and trigger functions. The two DTP units exchange clock-stop controls and status. Dashed outlines mark chiplet boundaries; the solid green outline marks DTP. The crossing between the scan and trigger routes has no junction.</desc>
+  <defs>
+    <marker id="scan-end" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#937027"/></marker>
+    <marker id="trigger-end" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#246779"/></marker>
+    <marker id="trigger-start" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto"><path d="M7 0 L0 3.5 L7 7 Z" fill="#246779"/></marker>
+  </defs>
+  <g font-family="Arial, sans-serif" fill="#103525" text-anchor="middle">
+    <g fill="none" stroke="#77736b" stroke-width="1.5" stroke-dasharray="7 5">
+      <rect x="235" y="10" width="595" height="325" rx="8"/>
+      <rect x="890" y="70" width="200" height="265" rx="8"/>
+    </g>
+    <text x="255" y="34" text-anchor="start" font-size="19">Chiplet boundary</text>
+    <text x="990" y="96" font-size="19">Peer OCA chiplet</text>
+    <rect x="255" y="66" width="555" height="140" rx="8" fill="#f5f8f5" stroke="#103525" stroke-width="2"/>
+    <text x="532" y="90" font-size="21" font-weight="bold">Debug and Test Ports (DTP)</text>
+
+    <g fill="#f8f4eb" stroke="#937027" stroke-width="1.5">
+      <rect x="5" y="109" width="195" height="80" rx="6"/>
+      <rect x="275" y="106" width="235" height="92" rx="6"/>
+      <rect x="550" y="106" width="240" height="92" rx="6"/>
+      <rect x="910" y="120" width="160" height="78" rx="6"/>
+      <rect x="250" y="264" width="120" height="54" rx="6"/>
+      <rect x="384" y="264" width="120" height="54" rx="6"/>
+      <rect x="518" y="264" width="140" height="54" rx="6"/>
+    </g>
+    <g fill="#eef5f7" stroke="#246779" stroke-width="1.5">
+      <rect x="5" y="204" width="195" height="66" rx="6"/>
+      <rect x="674" y="264" width="140" height="54" rx="6"/>
+      <rect x="910" y="264" width="160" height="54" rx="6"/>
+    </g>
+
+    <g font-size="20" font-weight="bold">
+      <text x="102" y="135" font-size="18">External debug / test</text>
+      <text x="392" y="132">JTAG Interface Unit</text>
+      <text x="670" y="132">Cross Trigger Network</text>
+      <text x="990" y="147">Debug / test</text>
+      <text x="102" y="230">Trigger endpoints</text>
+      <text x="310" y="286">SMC</text>
+      <text x="444" y="286">SEP</text>
+      <text x="588" y="286">Adopter IP</text>
+      <text x="744" y="286">Clock / reset</text>
+      <text x="990" y="286">Local functions</text>
+    </g>
+    <g font-size="18">
+      <text x="102" y="158">JTAG controller or</text>
+      <text x="102" y="179">upstream peer STAP</text>
+      <text x="392" y="158">TAP · scan · JTAG-to-AXI</text>
+      <text x="392" y="184">Boot · reset · clock controls</text>
+      <text x="670" y="158">Trigger routing · CTPs</text>
+      <text x="670" y="184">Clock-stop aggregation</text>
+      <text x="990" y="175">JTAG + triggers</text>
+      <text x="102" y="255">External debug / test</text>
+      <text x="310" y="307">Fabric · OTP</text>
+      <text x="444" y="307">OTP · scan</text>
+      <text x="588" y="307">When connected</text>
+      <text x="744" y="307">Local triggers</text>
+      <text x="990" y="307">Management · IP</text>
+    </g>
+
+    <g fill="none" stroke="#937027" stroke-width="2">
+      <path d="M200 150 H275" marker-end="url(#scan-end)"/>
+      <path d="M300 106 V50 H865 V153 H908" marker-end="url(#scan-end)"/>
+      <path d="M392 198 V249 H310 V264" marker-end="url(#scan-end)"/>
+      <path d="M392 249 H444 V264" marker-end="url(#scan-end)"/>
+      <path d="M444 249 H588 V264" marker-end="url(#scan-end)"/>
+    </g>
+    <g fill="none" stroke="#246779" stroke-width="2">
+      <path d="M512 154 H548" marker-start="url(#trigger-start)" marker-end="url(#trigger-end)"/>
+      <path d="M790 173 H860 V222 H965 V198" marker-start="url(#trigger-start)" marker-end="url(#trigger-end)"/>
+      <path d="M1045 198 V264" marker-start="url(#trigger-start)" marker-end="url(#trigger-end)"/>
+      <path d="M200 237 H670 V198" stroke="#ffffff" stroke-width="9" marker-start="none" marker-end="none"/>
+      <path d="M200 237 H670 V198" marker-start="url(#trigger-start)" marker-end="url(#trigger-end)"/>
+      <path d="M744 198 V264" marker-start="url(#trigger-start)" marker-end="url(#trigger-end)"/>
+    </g>
+    <g fill="#937027" font-size="18">
+      <text x="228" y="136">PTAP</text>
+      <text x="700" y="39">OCAH STAP to peer PTAP</text>
+    </g>
+    <g fill="#246779" font-size="18">
+      <text x="300" y="230">External CTPs</text>
+      <text x="930" y="247">Cross-trigger</text>
+    </g>
+    <g fill="#937027">
+      <circle cx="392" cy="249" r="3"/>
+      <circle cx="444" cy="249" r="3"/>
+    </g>
+    <text x="550" y="367" font-size="18">Adopter supplies pads, policy, clocks, resets, scan chains and permitted mappings.</text>
+  </g>
+</svg>

@@ -301,12 +301,13 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
 
   task run_random_ops(dtp_j2a_target_t t);
     int unsigned size = t.default_size;
+    bit [7:0] image[bit [63:0]];
     `uvm_info(get_type_name(), $sformatf("%s SINGLE_OP Randomized Writes", t.name), UVM_LOW)
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
       bit [63:0] addr = random_target_aligned_addr(t, size);
       bit [63:0] data = 64'($urandom) & data_mask(size);
-      // Any non-empty legal strobe pattern; the memory check judges the
-      // enabled lanes only.
+      // Any non-empty legal strobe pattern; the per-write check judges the
+      // enabled lanes, the end-state image every lane.
       bit [7:0] wstrb = 8'($urandom_range(int'(full_wstrb(size)), 1));
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: random write addr=0x%08h data=0x%0h wstrb=0x%01h",
@@ -316,10 +317,13 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
                 data,
                 wstrb
                 ), UVM_LOW)
+      snapshot_target_word(t, image, addr, size);
       write_target_single_and_check(t, addr, data, status, size, wstrb, $sformatf(
                                     "random_write#%0d", idx));
+      image_write(image, addr, data, wstrb, size);
       operation_count++;
     end
+    check_memory_image(t, image, "random_write");
   endtask
 
   // -- read_random_ops: randomized single reads of preloaded data ----------
