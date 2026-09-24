@@ -45,31 +45,31 @@ endif::backend-html5[]
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
 |`ext_boot_seq_done_i` |`logic` |Input |1 |External boot sequence completion (memory repair and shadow register override done); gates reset release. |External boot/repair controller |1'b1
 
-|`dmi_core_enable` |`logic` |Input |1 |Enables DMI accesses to the core debug module (addresses 0x00-0x4F). Tied high at SMU; TAP access is already lifecycle-gated. |Debug infrastructure |1'b1
-|`dmi_uncore_enable` |`logic` |Input |1 |Enables DMI accesses to an external uncore aperture (addresses 0x50+). Unused: the core debug module AXI master already reaches the SEP fabric. |Debug infrastructure |Tie to '0 if unused
-|`dmi_uncore_en` |`logic` |Output |1 |DMI uncore access enable. |Debug infrastructure |N/A
-|`dmi_uncore_wr_en` |`logic` |Output |1 |DMI uncore write enable. |Debug infrastructure |N/A
-|`dmi_uncore_addr` |`logic` |Output |`[6:0]` |DMI uncore address. |Debug infrastructure |N/A
-|`dmi_uncore_wdata` |`logic` |Output |`[31:0]` |DMI uncore write data. |Debug infrastructure |N/A
-|`dmi_uncore_rdata` |`logic` |Input |`[31:0]` |DMI uncore read data. |Debug infrastructure |N/A
-|`dmi_active` |`logic` |Output |1 |DMI active indicator. |Debug infrastructure |N/A
+|`dmi_core_enable_i` |`logic` |Input |1 |Enables DMI accesses to the core debug module (addresses 0x00-0x4F). Tied high at SMU; TAP access is already lifecycle-gated. |Debug infrastructure |1'b1
+|`dmi_uncore_enable_i` |`logic` |Input |1 |Enables DMI accesses to an external uncore aperture (addresses 0x50+). Unused: the core debug module AXI master already reaches the SEP fabric. |Debug infrastructure |Tie to '0 if unused
+|`dmi_uncore_en_o` |`logic` |Output |1 |DMI uncore access enable. |Debug infrastructure |N/A
+|`dmi_uncore_wr_en_o` |`logic` |Output |1 |DMI uncore write enable. |Debug infrastructure |N/A
+|`dmi_uncore_addr_o` |`logic` |Output |`[6:0]` |DMI uncore address. |Debug infrastructure |N/A
+|`dmi_uncore_wdata_o` |`logic` |Output |`[31:0]` |DMI uncore write data. |Debug infrastructure |N/A
+|`dmi_uncore_rdata_i` |`logic` |Input |`[31:0]` |DMI uncore read data. |Debug infrastructure |N/A
+|`dmi_active_o` |`logic` |Output |1 |DMI active indicator. |Debug infrastructure |N/A
 
-|`sep_cpu_trace` |`sep_cpu_trace_t` |Output |- |CPU trace output for debug. |Trace infrastructure |N/A
+|`sep_cpu_trace_o` |`sep_cpu_trace_t` |Output |- |CPU trace output for debug. |Trace infrastructure |N/A
 |`lockstep_ctrl_i` |`sep_pkg::sep_lockstep_ctrl_t` |Input |- |VeeR lockstep controls: disable corruption detection, and error-injection enable. Inert unless the core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS control |Tie to '0 if unused
 |`lockstep_status_o` |`sep_pkg::sep_lockstep_status_t` |Output |- |VeeR lockstep status: corruption detected. Reads 0 unless the core is built with `RV_LOCKSTEP_ENABLE`. |Chip-level RAS aggregation |N/A
 
-|`jtag_id` |`logic` |Input |`[31:1]` |JTAG ID value. |Configuration tie-off |N/A
+|`jtag_id_i` |`logic` |Input |`[31:1]` |JTAG ID value. |Configuration tie-off |N/A
 
-|`timer_int` |`logic` |Input |1 |Timer interrupt. |Internal timer |Tie to '0 if unused
-|`soft_int` |`logic` |Input |1 |Software interrupt. |Software IRQ source |Tie to '0 if unused
-|`extintsrc_req` |`logic` |Input |`[NUM_EXTERNAL_IRQS-1:0]` |External interrupt sources for PIC. |External IRQ sources |Tie to '0 if unused
+|`timer_int_i` |`logic` |Input |1 |Timer interrupt. |Internal timer |Tie to '0 if unused
+|`soft_int_i` |`logic` |Input |1 |Software interrupt. |Software IRQ source |Tie to '0 if unused
+|`extintsrc_req_i` |`logic` |Input |`[NUM_EXTERNAL_IRQS-1:0]` |External interrupt sources for PIC. |External IRQ sources |Tie to '0 if unused
 
 |`sep_cpu_tcm_req_o` |`sep_cpu_tcm_req_t` |Output |- |CPU tightly-coupled memory (TCM) request (ICCM + DCCM). |SRAM macros |N/A
 |`sep_cpu_tcm_rsp_i` |`sep_cpu_tcm_rsp_t` |Input |- |CPU TCM response. |SRAM macros |N/A
-|`sep_sram_req` |`sep_sram_req_t` |Output |- |Scratch SRAM request. |SRAM macros |N/A
-|`sep_sram_rsp` |`sep_sram_rsp_t` |Input |- |Scratch SRAM response. |SRAM macros |N/A
-|`sep_boot_rom_req` |`sep_sram_req_t` |Output |- |Boot ROM (BL0) request. |ROM macro |N/A
-|`sep_boot_rom_rsp` |`sep_sram_rsp_t` |Input |- |Boot ROM (BL0) response. |ROM macro |N/A
+|`sep_sram_req_o` |`sep_sram_req_t` |Output |- |Scratch SRAM request. |SRAM macros |N/A
+|`sep_sram_rsp_i` |`sep_sram_rsp_t` |Input |- |Scratch SRAM response. |SRAM macros |N/A
+|`sep_boot_rom_req_o` |`sep_sram_req_t` |Output |- |Boot ROM (BL0) request. |ROM macro |N/A
+|`sep_boot_rom_rsp_i` |`sep_sram_rsp_t` |Input |- |Boot ROM (BL0) response. |ROM macro |N/A
 
 |`smn_outbound_axi_req_o` |`sep_system_peripherals_outbound_axi_req_t` |Output |- |SMN outbound AXI request (system bus master). |SMN fabric |N/A
 |`smn_outbound_axi_resp_i` |`sep_system_peripherals_outbound_axi_resp_t` |Input |- |SMN outbound AXI response. |SMN fabric |N/A
@@ -79,10 +79,10 @@ endif::backend-html5[]
 |`sep_ext_to_smc_axi_resp_i` |`sep_system_peripherals_internal_axi_resp_t` |Input |- |SEP-to-SMC AXI response. |SMC `sep_axi_in_resp_o` |N/A
 
 |`entropy_rosc_sample_clk_i` |`logic` |Input |1 |Ring-oscillator sample clock for entropy source (async vs `clk_i`; ~100-400 MHz typical). |Ring oscillator |N/A
-|`sep_crypto_pka_imem_sram_req` |`sep_crypto_pka_imem_sram_req_t` |Output |- |OTBN PKA instruction memory SRAM request. |SRAM macro |N/A
-|`sep_crypto_pka_imem_sram_rsp` |`sep_crypto_pka_imem_sram_rsp_t` |Input |- |OTBN PKA instruction memory SRAM response. |SRAM macro |N/A
-|`sep_crypto_pka_dmem_sram_req` |`sep_crypto_pka_dmem_sram_req_t` |Output |- |OTBN PKA data memory SRAM request. |SRAM macro |N/A
-|`sep_crypto_pka_dmem_sram_rsp` |`sep_crypto_pka_dmem_sram_rsp_t` |Input |- |OTBN PKA data memory SRAM response. |SRAM macro |N/A
+|`sep_crypto_pka_imem_sram_req_o` |`sep_crypto_pka_imem_sram_req_t` |Output |- |OTBN PKA instruction memory SRAM request. |SRAM macro |N/A
+|`sep_crypto_pka_imem_sram_rsp_i` |`sep_crypto_pka_imem_sram_rsp_t` |Input |- |OTBN PKA instruction memory SRAM response. |SRAM macro |N/A
+|`sep_crypto_pka_dmem_sram_req_o` |`sep_crypto_pka_dmem_sram_req_t` |Output |- |OTBN PKA data memory SRAM request. |SRAM macro |N/A
+|`sep_crypto_pka_dmem_sram_rsp_i` |`sep_crypto_pka_dmem_sram_rsp_t` |Input |- |OTBN PKA data memory SRAM response. |SRAM macro |N/A
 |`ext_trng_axil_req_o` |`sep_32_32_axil_req_t` |Output |- |External TRNG AXI-Lite passthrough request (to `sep_ip_integration`). |External TRNG shim |N/A
 |`ext_trng_axil_resp_i` |`sep_32_32_axil_resp_t` |Input |- |External TRNG AXI-Lite passthrough response. |External TRNG shim |N/A
 |`ext_trng_axis_req_i` |`ext_trng_axis_req_t` |Input |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream request array (from `sep_ip_integration`). |External TRNG shim |N/A

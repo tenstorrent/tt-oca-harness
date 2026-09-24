@@ -878,34 +878,34 @@ module smu #(
 
       // STAP access is already gated by lifecycle; the core DM AXI master
       // reaches the SEP fabric, so the DMI uncore aperture is unused.
-      .dmi_core_enable               (1'b1),
-      .dmi_uncore_enable             (1'b0),
-      .dmi_uncore_en                 (/* unused */),
-      .dmi_uncore_wr_en              (/* unused */),
-      .dmi_uncore_addr               (/* unused */),
-      .dmi_uncore_wdata              (/* unused */),
-      .dmi_uncore_rdata              (32'h0),
-      .dmi_active                    (/* unused */),
+      .dmi_core_enable_i             (1'b1),
+      .dmi_uncore_enable_i           (1'b0),
+      .dmi_uncore_en_o               (/* unused */),
+      .dmi_uncore_wr_en_o            (/* unused */),
+      .dmi_uncore_addr_o             (/* unused */),
+      .dmi_uncore_wdata_o            (/* unused */),
+      .dmi_uncore_rdata_i            (32'h0),
+      .dmi_active_o                  (/* unused */),
 
-      .sep_cpu_trace                 (sep_cpu_trace_o),
+      .sep_cpu_trace_o               (sep_cpu_trace_o),
       .lockstep_ctrl_i               (sep_lockstep_ctrl_i),
       .lockstep_status_o             (sep_lockstep_status_o),
 
-      .jtag_id                       ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
+      .jtag_id_i                     ({Cfg.JTAG_IDCODE_SI_REV, Cfg.JTAG_IDCODE_PART_NUM, Cfg.JTAG_IDCODE_MFR_ID}),
 
       // No external CLINT; EL2 internal timers drive mip.MTIP / mip.MSIP
-      .timer_int                     (1'b0),
-      .soft_int                      (1'b0),
-      .extintsrc_req                 (sep_ext_interrupts_i),
+      .timer_int_i                   (1'b0),
+      .soft_int_i                    (1'b0),
+      .extintsrc_req_i               (sep_ext_interrupts_i),
 
       .sep_cpu_tcm_req_o             (sep_cpu_tcm_req_o),
       .sep_cpu_tcm_rsp_i             (sep_cpu_tcm_rsp_i),
 
-      .sep_sram_req                  (sep_sram_req_o),
-      .sep_sram_rsp                  (sep_sram_rsp_i),
+      .sep_sram_req_o                (sep_sram_req_o),
+      .sep_sram_rsp_i                (sep_sram_rsp_i),
 
-      .sep_boot_rom_req              (sep_boot_rom_req_o),
-      .sep_boot_rom_rsp              (sep_boot_rom_rsp_i),
+      .sep_boot_rom_req_o            (sep_boot_rom_req_o),
+      .sep_boot_rom_rsp_i            (sep_boot_rom_rsp_i),
 
       .smn_outbound_axi_req_o        (sep_smn_outbound_axi_req),
       .smn_outbound_axi_resp_i       (sep_smn_outbound_axi_resp),
@@ -916,14 +916,14 @@ module smu #(
       .sep_ext_to_smc_axi_req_o      (sep_ext_to_smc_axi_req),
       .sep_ext_to_smc_axi_resp_i     (sep_ext_to_smc_axi_resp),
 
-      .sep_crypto_pka_imem_sram_req  (sep_crypto_pka_imem_sram_req_o),
-      .sep_crypto_pka_imem_sram_rsp  (sep_crypto_pka_imem_sram_rsp_i),
+      .sep_crypto_pka_imem_sram_req_o(sep_crypto_pka_imem_sram_req_o),
+      .sep_crypto_pka_imem_sram_rsp_i(sep_crypto_pka_imem_sram_rsp_i),
 
-      .sep_crypto_pka_dmem_sram_req  (sep_crypto_pka_dmem_sram_req_o),
-      .sep_crypto_pka_dmem_sram_rsp  (sep_crypto_pka_dmem_sram_rsp_i),
+      .sep_crypto_pka_dmem_sram_req_o(sep_crypto_pka_dmem_sram_req_o),
+      .sep_crypto_pka_dmem_sram_rsp_i(sep_crypto_pka_dmem_sram_rsp_i),
 
-      .abr_mem_req                   (abr_mem_req_o),
-      .abr_mem_rsp                   (abr_mem_rsp_i),
+      .abr_mem_req_o                 (abr_mem_req_o),
+      .abr_mem_rsp_i                 (abr_mem_rsp_i),
 
       // External TRNG loopback + entropy sample clock (closed in smu_wrapper)
       .entropy_rosc_sample_clk_i     (entropy_rosc_sample_clk_i),
