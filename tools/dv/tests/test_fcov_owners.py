@@ -28,7 +28,7 @@ COUNTS = {
 }
 RESULT = {
     "label": "all",
-    "tool_version": "Verilator 5.050",
+    "tool_version": "Verilator 5.050 2026-07-01 rev v5.050 (mod)",
     "git": {"commit": "0123456789abcdef0123456789abcdef01234567"},
 }
 
@@ -74,7 +74,8 @@ class RenderTest(unittest.TestCase):
             "2 leaves, 3 points, 2 hit, 1 unhit, 1 hit by exactly one leaf.",
             text,
         )
-        self.assertIn("commit `0123456789ab`", text)
+        self.assertIn("commit `0123456789ab` with Verilator 5.050:", text)
+        self.assertNotIn("rev v5.050", text)
         self.assertIn("[[smu-fcov-owners]]", text)
 
     def test_one_table_per_module_with_owner_single_and_disposition(self) -> None:

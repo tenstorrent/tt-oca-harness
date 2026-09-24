@@ -107,6 +107,9 @@ def apply_policy(points: dict[str, PointOwners], result: dict) -> None:
 
 def render(points: dict[str, PointOwners], result: dict, dut: str, leaves: int) -> str:
     git = result.get("git", {})
+    # The runner records the simulator's full banner; the table names the
+    # simulator and its version only.
+    simulator = " ".join(str(result.get("tool_version", "Verilator")).split()[:2])
     total = len(points)
     hit = [p for p in points.values() if p.hits]
     single = [p for p in hit if len(p.hits) == 1]
@@ -122,7 +125,7 @@ def render(points: dict[str, PointOwners], result: dict, dut: str, leaves: int) 
         "==== Owning tests, measured",
         "",
         f"Measured on `--items {result.get('label', 'all')}` at commit "
-        f"`{str(git.get('commit', ''))[:12]}` with {result.get('tool_version', 'Verilator')}: "
+        f"`{str(git.get('commit', ''))[:12]}` with {simulator}: "
         f"{leaves} leaves, {total} points, {len(hit)} hit, {unhit} unhit, "
         f"{len(single)} hit by exactly one leaf.",
         "",
