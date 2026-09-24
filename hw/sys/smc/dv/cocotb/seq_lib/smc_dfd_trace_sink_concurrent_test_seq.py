@@ -58,7 +58,8 @@ Two ways of stopping the trace close the leaf:
   has to stay where it parked.
 
 After both, ``Trdstsyncmode`` is walked through every value of its field under
-each timestamp source, on a fresh sink with the uncompressed stream running.
+each timestamp source, on a fresh sink with the uncompressed stream running and
+the restarting action held so the stream runs for many frames under each.
 """
 
 from __future__ import annotations
@@ -113,6 +114,10 @@ _DBM_MODE_IDENTIFIER = 2
 # run of equal odd-sized packets visits every offset of the 64-byte accumulator
 # within 64 packets, so this leaves room for a frame closing part way.
 _ODD_SWITCHES = 160
+# Writes of the restarting action per sync-mode value, each followed by the
+# settle time: long enough at 64-byte frames to pass the shortest stream length
+# more than once.
+_HOLD_WRITES = 24
 
 
 class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
@@ -637,6 +642,22 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             _PARKED_SAMPLES,
         )
 
+    async def _hold_action(self, logical_op: int, label: str) -> None:
+        """Keep the trace running on the action measured to restart it.
+
+        A sweep of the action field passes values that stop the trace as well
+        as ones that start it, so a sweep alone runs the stream for a few
+        frames and leaves it stopped. Holding the restarting action keeps it
+        running across many frames at the shortest frame length.
+        """
+        eap = cla_register("CDbgNode0Eap0")
+        word = pack_fields(
+            eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": self.odd_start_action}
+        )
+        for step in range(_HOLD_WRITES):
+            await self._write(eap, word, f"{label}_{step}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+
     async def _walk_sync_modes(self, logical_op: int) -> None:
         """Every sync mode under each timestamp source, with the stream running.
 
@@ -644,8 +665,10 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         that sends a timestamp, and marks the others as not applicable, so the
         walk covers the whole field range. ``Trdsttimestampconfig`` picks where
         that timestamp comes from, an external source or the CLA timesync, and
-        both are walked. The witness is the exact readback of each value with
-        the stream running under it. The walk comes last: the packetizer can be
+        both are walked. Under each value a short action burst is followed by
+        the restarting action measured in the odd-offset walk, held so the
+        stream runs for many frames. The witness is the exact readback of each
+        value with the stream running under it. The walk comes last: the packetizer can be
         left holding a partial frame after it, and nothing afterwards needs it
         empty.
         """
@@ -677,6 +700,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
                 )
                 self.sync_modes.append((ts, value))
                 await self._drive_actions(logical_op, 8, f"sync{ts}_{value}")
+                await self._hold_action(logical_op, f"hold{ts}_{value}")
         expected = [(t, v) for t in range(1 << source.width) for v in range(1 << sync.width)]
         assert self.sync_modes == expected, (
             f"the sync-mode walk wrote {self.sync_modes}, not every sync mode under every "
