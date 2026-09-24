@@ -180,6 +180,9 @@ timestamp input and sdtrig control (P22 DFD-CONTROL-TIED), and the bench ties th
 CLA crosstrigger and TDR clock-stop inputs (B8 DFD-BENCH-INPUTS-TIED). The signals
 these classes hold decide condition rows as well as branch paths, operand tables
 included.
+A ternary operand reads as the arm its selector picks and a ternary point as its
+selector, which is how urg scores it; an operand inside an arm whose selector the
+held signals keep at the other value is never evaluated, so all its rows go.
 A module's held signals are also tried together, each comparison over N-trace
 signals alone at its tied value, so the trace sink's N-trace read path and its
 pending buffer, and the MMR fabric's JTAG and NTR-sink paths, are read as the
@@ -1063,10 +1066,68 @@ def expression_terms(modinfo: Path) -> "dict[tuple[str, str], list[str]]":
     }
 
 
-LANE_IDENTIFIER = re.compile(r"[A-Za-z_][\w$]*(?:\[[^\]]*\])*(?:\.[A-Za-z_][\w$]*(?:\[[^\]]*\])*)*")
+LANE_IDENTIFIER = re.compile(
+    r"[A-Za-z_][\w$]*(?:\[(?:[^\[\]]|\[[^\]]*\])*\])*"
+    r"(?:\.[A-Za-z_][\w$]*(?:\[(?:[^\[\]]|\[[^\]]*\])*\])*)*"
+)
 
 
 SIZED_LITERAL = re.compile(r"\d*'[sS]?([bhdoBHDO])([0-9a-fA-F_xXzZ]+)")
+
+
+def split_ternary(text: str) -> "tuple[str, str, str] | None":
+    """(selector, then, else) of a top-level `C ? A : B`, outer parentheses peeled.
+
+    The else operand is whatever follows the matching `:`, and may be cut short
+    where the report truncates a long term; only the selector is read then.
+    """
+    text = text.strip()
+    while text.startswith("(") and _parenthesised(text, 0) == text:
+        text = text[1:-1].strip()
+    depth = 0
+    question = None
+    pending = 0
+    for i, c in enumerate(text):
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif depth == 0 and c == "?":
+            if question is None:
+                question = i
+            else:
+                pending += 1
+        elif depth == 0 and c == ":" and question is not None:
+            if pending:
+                pending -= 1
+            else:
+                return (
+                    text[:question].strip(),
+                    text[question + 1 : i].strip(),
+                    text[i + 1 :].strip(),
+                )
+    return None
+
+
+def _python_ternaries(text: str) -> str:
+    """Nested `C ? A : B` rewritten as Python conditionals, marked for the evaluator."""
+    parts = split_ternary(text)
+    if parts is not None and parts[2]:
+        c, a, b = (_python_ternaries(x) for x in parts)
+        return f"(({a}) \x01 ({c}) \x02 ({b}))"
+    out, i = [], 0
+    while i < len(text):
+        if text[i] == "(":
+            group = _parenthesised(text, i)
+            if group is None:
+                out.append(text[i:])
+                break
+            out.append("(" + _python_ternaries(group[1:-1]) + ")")
+            i += len(group)
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
 
 
 def _python_condition(term: str, names: list[str]) -> "str | None":
@@ -1075,10 +1136,14 @@ def _python_condition(term: str, names: list[str]) -> "str | None":
     Every signal is abstracted to one bit, which is exact for the one-bit enables,
     valids and lanes the classes below ask about; a reduction of a vector becomes
     the signal itself, and a comparison between signals stays a comparison. A
-    ternary or anything else this does not read gives None, so the row is left out.
+    ternary operand reads as the value of the arm its selector picks; anything
+    this does not read gives None, so the row is left out.
     """
     if "?" in term:
-        return None
+        term = _python_ternaries(term)
+        if "?" in term:
+            return None
+    term = re.sub(r"\$bits\([^()]*\)'\s*(?=\()|\b\d+'(?=\s*\()", "", term)
 
     def literal(m: re.Match) -> str:
         return "0" if re.fullmatch(r"0+", m.group(2).replace("_", "")) else "1"
@@ -1098,7 +1163,8 @@ def _python_condition(term: str, names: list[str]) -> "str | None":
         body = body.replace(a, b)
     body = re.sub(r"!(?!=)", " not ", body)
     body = body.replace("~", " not ").replace("&", " and ").replace("|", " or ")
-    return body.replace("^", " != ").strip()
+    body = body.replace("^", " != ").replace("\x01", " if ").replace("\x02", " else ")
+    return body.strip()
 
 
 def _row_satisfiable(
@@ -1514,11 +1580,87 @@ def _tie_ntrace(term: str) -> str:
         value = tied_value(body)
         return m.group(0) if value is None else ("1'b1" if value else "1'b0")
 
+    term = re.sub(r"\$bits\([^()]*\)'\s*(?=\()|\b\d+'(?=\s*\()", "", term)
+    term = re.sub(r"\(([A-Za-z_][\w.]*(?:\[[^\]]*\])*)\)", r"\1", term)
     before = None
     while before != term:
         before = term
         term = COMPARISON.sub(tie, term)
     return term
+
+
+def _arm_contexts(text: str, target: str) -> "list[list[tuple[str, str]]] | None":
+    """For each place target occurs in text, the (selector, arm) pairs enclosing it.
+
+    Both strings carry no spaces. None when target does not occur.
+    """
+    found: list[list[tuple[str, str]]] = []
+    parts = split_ternary(text)
+    if parts is not None and text.strip("()") != target.strip("()"):
+        c, a, b = parts
+        for sub, arm in ((a, "1"), (b, "0")):
+            inner = _arm_contexts(sub, target)
+            if inner is not None:
+                found += [[(c, arm)] + ctx for ctx in inner]
+        inner = _arm_contexts(c, target)
+        if inner is not None:
+            found += inner
+        return found or None
+    if text == target or text.strip("()") == target.strip("()"):
+        return [[]]
+    i = 0
+    while i < len(text):
+        if text[i] == "(":
+            group = _parenthesised(text, i)
+            if group is None:
+                break
+            if target in group:
+                inner = _arm_contexts(group[1:-1], target)
+                if inner is not None:
+                    found += inner
+            i += len(group)
+        else:
+            i += 1
+    return found or None
+
+
+def dead_arm_class(module: str, child: str, parents: "list[str]") -> "str | None":
+    """The class whose held signals keep every arm holding this operand unselected."""
+    facts = path_facts(module)
+    if not facts:
+        return None
+    held = [(_scoped(forced), value) for _, forced, value in facts]
+    target = re.sub(r"\s+", "", child)
+    for parent in parents:
+        whole = re.sub(r"\s+", "", parent)
+        if whole.strip("()") == target.strip("()"):
+            continue
+        contexts = _arm_contexts(whole, target)
+        if not contexts:
+            continue
+        reasons = []
+        for ctx in contexts:
+            reason = None
+            for selector, arm in ctx:
+                sel = _opaque(_one_bit(_tie_ntrace(selector)), {})
+                if sel is not None and _row_satisfiable_held((sel,), arm, held) is False:
+                    ids = LANE_IDENTIFIER.findall(selector)
+                    reason = next(
+                        (
+                            r
+                            for r, forced, _ in facts
+                            if any(_scoped(forced).search(n) for n in ids)
+                        ),
+                        P1 if any(r == P1 for r, _, _ in facts) else facts[0][0],
+                    )
+                    break
+            if reason is None:
+                break
+            reasons.append(reason)
+        else:
+            if reasons:
+                return reasons[0]
+    return None
 
 
 def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str) -> "str | None":
@@ -1528,6 +1670,9 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     """
     if not terms:
         return None
+    if len(terms) == 1 and split_ternary(terms[0]) is not None:
+        # urg scores a ternary point by its selector.
+        terms = (split_ternary(terms[0])[0],)
     for reason, test in ROW_PREDICATES.get(module, []):
         if len(terms) == len(vector) and test(terms, vector):
             return reason
@@ -3050,12 +3195,17 @@ def render_feature(
             for name, param, reason, region in SECTION_REGION_FACTS
             if _in_section(module, name, param)
         ]
+        parents: dict[int, list[str]] = {}
         for tp, rp in points.get(module, []):
+            if not rp.sub:
+                parents.setdefault(tp.line, []).append(tp.text)
+        for tp, rp in points.get(module, []):
+            dead = dead_arm_class(module, tp.text, parents.get(tp.line, [])) if rp.sub else None
             for vector, entry in tp.rows:
                 if entry in taken or vector not in rp.uncovered:
                     continue
                 reason = next((r for r, g in regions if in_region(tp.source, g)), None)
-                reason = reason or feature_row_class(module, rp.terms, vector)
+                reason = reason or dead or feature_row_class(module, rp.terms, vector)
                 if reason:
                     block.append((reason, entry))
                     taken.add(entry)
