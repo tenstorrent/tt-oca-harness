@@ -386,24 +386,24 @@ module sep_efuse_wrapper #(
     .ext_boot_seq_done_i        (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
 
     // Debug signals
-    .is_write_locked_shadow_regs_o(sep_efuse_debug_o[0]),
-    .is_read_locked_shadow_regs_o (sep_efuse_debug_o[1]),
-    .is_program_locked_o          (sep_efuse_debug_o[2]),
-    .is_read_locked_o             (sep_efuse_debug_o[3]),
-    .is_write_setup_only_o        (sep_efuse_debug_o[4]),
-    .is_lc_state_access_o         (sep_efuse_debug_o[5]),
-    .is_read_timeout_debug_o      (sep_efuse_debug_o[6]),
-    .is_program_timeout_debug_o   (sep_efuse_debug_o[7]),
-    .is_efuse_req_err_o           (sep_efuse_debug_o[8]),
-    .is_secure_tm_blocked_o       (sep_efuse_debug_o[9]),
-    .is_rma_sip_token_match_debug_o (sep_efuse_token_match_sip_debug_o),
+    .is_write_locked_shadow_regs_o      (sep_efuse_debug_o[0]),
+    .is_read_locked_shadow_regs_o       (sep_efuse_debug_o[1]),
+    .is_program_locked_o                (sep_efuse_debug_o[2]),
+    .is_read_locked_o                   (sep_efuse_debug_o[3]),
+    .is_write_setup_only_o              (sep_efuse_debug_o[4]),
+    .is_lc_state_access_o               (sep_efuse_debug_o[5]),
+    .is_read_timeout_debug_o            (sep_efuse_debug_o[6]),
+    .is_program_timeout_debug_o         (sep_efuse_debug_o[7]),
+    .is_efuse_req_err_o                 (sep_efuse_debug_o[8]),
+    .is_secure_tm_blocked_o             (sep_efuse_debug_o[9]),
+    .is_rma_sip_token_match_debug_o     (sep_efuse_token_match_sip_debug_o),
     .is_rma_chiplet_token_match_debug_o (sep_efuse_token_match_chiplet_debug_o),
 
-    .sec_disable_token_o          (),
+    .sec_disable_token_o                (),
 
-    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o),
+    .locked_field_access_interrupt_o    (locked_field_access_interrupt_o),
 
-    .token_match_fault_o              (token_match_fault_o)
+    .token_match_fault_o                (token_match_fault_o)
   );
 
 
