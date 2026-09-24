@@ -68,6 +68,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_avsbus_slave_reply_test"
+module = "smc_avsbus_slave_reply_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_avsbus_status_depth_test"
 module = "smc_avsbus_status_depth_test"
 seed = 1

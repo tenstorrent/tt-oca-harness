@@ -10626,6 +10626,69 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 
 '''''
 
+[[sec-258-smc_avsbus_slave_reply_test]]
+===== 258 `smc_avsbus_slave_reply_test`
+
+*Source Module*: `smc_avsbus_slave_reply_test`
+
+*BFM / Model*: an in-sequence AVSBus slave responder on the sdata pad. It watches the master subframes on mdata over the DUT's AVS clock and, in the following subframe, shifts out a chosen 32-bit reply one bit per rising edge, holding sdata high between replies. Observation on `AVS_READBACK`, `AVS_LATEST_SLAVE_SUBFRAME`, `AVS_SLAVE_STATUS`, `AVS_NORMAL_STATUS`, `AVS_INTERRUPT` and the master subframes.
+
+*Objective*: Give the controller the slave replies that a level held on sdata cannot give. A held level only ever produces all-zero or all-one replies.
+
+*Test Coverage*:
+
+* The reply format is transcribed from `interface.adoc` "AVSBus Slave Subframe". No document in this tree gives the CRC-3 polynomial, so each reply shape is sent once with each of the eight CRC codes.
+** `architecture.adoc` says a reply that fails the check does not update `AVS_LATEST_SLAVE_SUBFRAME`.
+** With `MAX_RETRIES` at 0, a failing reply is still delivered.
+** So exactly one of the eight codes must update `AVS_LATEST_SLAVE_SUBFRAME`, and the other seven must reach `AVS_READBACK` without updating it. The accepted code is used for the legs that need a reply the controller believes.
+* Reply shapes the responder produces:
+** acknowledge 0 with status 0x10, 0x11 and data;
+** acknowledge 1, resource unavailable;
+** acknowledge 2, bad CRC;
+** acknowledge 3, bad data;
+** a frame-not-valid reply;
+** the same shapes with each of the eight CRC codes.
+* A good reply must reach `AVS_READBACK` and `AVS_LATEST_SLAVE_SUBFRAME` unchanged, and `AVS_SLAVE_STATUS` must show its acknowledge and status.
+* Three acknowledge-1 replies against a budget of 2: the same command goes out three times, `TOTAL_RETRIES` rises by 2, and `MAX_RETRIES_ATTEMPTED_INT` is raised as the only unmasked source.
+* An acknowledge-2 reply followed by a good one costs one retry and delivers the good reply.
+* Acknowledge 3 is not a retry code. It is delivered at once and shown in `AVS_SLAVE_STATUS`.
+* A frame-not-valid reply raises `SLAVE_UNRESPONSIVE_INT`, the only source unmasked.
+* Two commands are sent back to back and the first is retried, so the second's reply waits.
+** If the waiting reply is good, it is delivered after the retry's good reply.
+** If it is acknowledge 1 and `MAX_RETRIES` is cleared while the retry is on the wire, it is delivered as it is, without a retry.
+* The readback FIFO is filled by leaving every reply unread.
+** The commands queued after it must wait with no subframe on the wire.
+** A forced slave resync is requested while they wait.
+** After one pop, every command must complete with its reply intact.
+* sdata held low while the bus is idle raises `AVS_SLAVE_ISSUED_INTERRUPT` as the only unmasked source, and the clear register clears it.
+
+*Test Procedure*:
+
+[arabic]
+. Mask every interrupt, start the responder, and set `MAX_RETRIES` to 0.
+. Learn the accepted CRC code for each reply shape.
+. Run the good, retry-exhaust, retry-recover, bad-data, not-valid and both buffered legs, setting `MAX_RETRIES` and the interrupt mask for each.
+. Fill the readback FIFO, queue two more commands, force a resync, and drain.
+. Hold sdata low with the bus idle, then clear the slave interrupt.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-SLAVE-CRC-ONE-GOOD` |For every reply shape exactly one CRC code was accepted, and the other seven were delivered without updating `AVS_LATEST_SLAVE_SUBFRAME`
+|`CHK-AVS-SLAVE-READBACK` |A good reply reached `AVS_READBACK`, `AVS_LATEST_SLAVE_SUBFRAME` and `AVS_SLAVE_STATUS` unchanged
+|`CHK-AVS-SLAVE-RETRY-CODES` |Acknowledge 1 exhausted a budget of 2 with three identical subframes and `MAX_RETRIES_ATTEMPTED_INT`; acknowledge 2 then good cost one retry
+|`CHK-AVS-SLAVE-NO-RETRY` |Acknowledge 3 was delivered with no retry, and a frame-not-valid reply raised `SLAVE_UNRESPONSIVE_INT`
+|`CHK-AVS-SLAVE-BUFFERED` |A reply that waited behind a retry was delivered after it: as good when good, and unretried once the budget was cleared
+|`CHK-AVS-SLAVE-STALL` |A full readback FIFO held back further commands, and after a forced resync and a pop every command completed intact
+|`CHK-AVS-SLAVE-INTERRUPT` |sdata low while idle raised `AVS_SLAVE_ISSUED_INTERRUPT` as the only unmasked source, and it cleared
+|===
+
+*Pass Criteria*: all seven checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
