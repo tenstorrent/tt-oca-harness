@@ -30,6 +30,7 @@ _DMA_CTRL_ADDR_H = (
     / "c"
     / "dma_ctrl_addr.h"
 )
+_ALIAS_REMAP_H = _REPO / "hw" / "ip" / "axi_alias_remap" / "regs" / "gen" / "c" / "alias_remap.h"
 _DMA_CTRL_H = (
     _REPO / "vendor" / "pulp-platform" / "idma" / "overlay" / "rdl" / "gen" / "c" / "dma_ctrl.h"
 )
@@ -289,6 +290,16 @@ CG_HYST_SHIFT = _field_mask(
 )
 DMA_CONFIG_ENABLED_ND = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__ENABLED_ND_bm")
 DMA_CONFIG_DECOUPLE_RW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_RW_bm")
+
+ALIAS_REMAP_ATTRS_CACHEABLE = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm"
+)
+ALIAS_REMAP_ATTRS_VALID = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm"
+)
+ALIAS_REMAP_ATTRS_OFFSET = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bm"
+)
 
 # Zeroer CSR absolute addresses (generated smc_addr.h).
 ZEROER_CTRL_DEST_ADDR = smc_addr("SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR")
