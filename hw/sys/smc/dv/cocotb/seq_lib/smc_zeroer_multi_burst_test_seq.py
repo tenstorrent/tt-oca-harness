@@ -93,6 +93,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
 
     def __init__(self, name: str = "smc_zeroer_multi_burst_test_seq") -> None:
         super().__init__(name)
+        self.int_en_held = 0
         self.checked_bytes = 0
         self.bursts_observed = 0
         #: CTRL_STATUS.STATUS level read with the zeroer idle. No meaning is
@@ -240,6 +241,35 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             f"0x{witness:016x}; it sits immediately past the end of the job, so the zeroing "
             f"ran past the size it was given"
         )
+        # `ZEROER_CTRL_STATUS_START` is packed with `int_en=1`, so the start
+        # write above left `CTRL_STATUS.INT_EN` holding a one. The field is bit
+        # 0 of a 64-bit register, so a four-byte write at the upper half leaves
+        # its byte lane deasserted and a field that retains has to keep it.
+        # Any write of this register is also the zeroer's trigger, so the leg
+        # waits the operation out before reading.
+        await self.csr_write("ZEROER_CTRL_STATUS_UPPER_HALF", ZEROER_CTRL_STATUS + 4, 0, length=4)
+        await self._await_status(
+            self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
+        )
+        word = await self.csr_read("ZEROER_CTRL_STATUS_INT_EN", ZEROER_CTRL_STATUS, length=8)
+        assert word & ZEROER_CTRL_STATUS_START, (
+            f"CTRL_STATUS reads 0x{word:x} after a four-byte write at its upper half; that "
+            f"write did not select the lane INT_EN sits in, so the bit the start write set "
+            f"has to still be there"
+        )
+        assert word & ~STATUS_BM & 0xFFFF_FFFF_FFFF_FFFF == ZEROER_CTRL_STATUS_ARMED, (
+            f"CTRL_STATUS reads 0x{word:x} outside the STATUS bit after the half write; "
+            f"the armed word this leaf left is 0x{ZEROER_CTRL_STATUS_ARMED:x}, so the "
+            f"write moved something it did not select"
+        )
+        self.int_en_held = 1
+        cocotb.log.info(
+            "CHK-ZEROER-INT-EN-HALF-WRITE: CTRL_STATUS.INT_EN, set by the start write, "
+            "survived a four-byte write at the half of the 64-bit register it does not "
+            "occupy, and the register read back the armed word either side of it, so the "
+            "write left nothing to restore",
+        )
+
         cocotb.log.info(
             "CHK-ZEROER-MULTI-BURST-ZEROED: all %d probe words of the 0x%x-byte job read 0 "
             "(%d bytes compared), including the first and last word of each half, and the "

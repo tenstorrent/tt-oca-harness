@@ -32,10 +32,11 @@ class smc_cpu_ctrl_read_only_write_test(smc_base_test):
     """Write at every CPU_CTRL address the RDL makes read-only."""
 
     required_evidence = (
+        "CHK-CPU-CTRL-MUTEX-HALF-WRITE",
         "CHK-CPU-CTRL-READ-ONLY-WRITE",
         "CHK-CPU-CTRL-WDT-ZERO-WRITE",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     auto_protocol_vip = False
 

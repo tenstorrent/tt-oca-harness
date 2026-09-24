@@ -58,6 +58,11 @@ _WRITE_PATTERN = 0xFFFF_FFFF_FFFF_FFFF
 
 _ACCESSES_PER_READ_ONLY = 3
 _ACCESSES_FOR_WDT = 4
+_MUTEX = "smc_cpu_ctrl/MUTEX"
+# Accesses one mutex costs: the read that finds it free and takes it, the write
+# that gives it back, the half-register write, the read that shows the field
+# survived it -- and takes the mutex again -- and the write that gives it back.
+_ACCESSES_PER_MUTEX = 5
 
 
 class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
@@ -65,6 +70,7 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_cpu_ctrl_read_only_write_test_seq") -> None:
         super().__init__(name)
+        self.mutexes_held = 0
         self.read_only_registers = 0
         self.pulse_count_before = -1
         self.pulse_count_after = -1
@@ -80,6 +86,36 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             f"`sw = r`, so the write has to take no effect"
         )
         self.read_only_registers += 1
+
+    async def _mutex_leg(self, index: int, addr: int, width: int) -> None:
+        """A half-register write over the half the mutex bit does not occupy.
+
+        `cpu_ctrl.rdl` makes `MUTEX.mutex` bit 0 of a 64-bit register and
+        describes it as "HW mutex. Reads will attempt to acquire mutex, 1 on
+        success. If the mutex is already acquired, the read will return 0. To
+        release the mutex, write any value to the register." So a read is the
+        only way to see the field, and it takes the mutex; the leaf gives back
+        everything it takes.
+        """
+        taken = await self.csr_read(f"MUTEX{index}_ACQUIRE", addr, length=width)
+        assert taken & 1, (
+            f"MUTEX[{index}] read 0x{taken:x}; the RDL returns 0 when the mutex is already "
+            f"acquired, so something else holds it and this leaf will not take it"
+        )
+        await self.csr_write(f"MUTEX{index}_RELEASE", addr, 0, length=width)
+
+        # The mutex is free again, so the field holds its reset one. A
+        # four-byte write at the upper half leaves the byte lane bit 0 sits in
+        # deasserted, and a field that retains has to keep its value.
+        await self.csr_write(f"MUTEX{index}_UPPER_HALF", addr + width // 2, 0, length=4)
+        held = await self.csr_read(f"MUTEX{index}_HELD", addr, length=width)
+        assert held & 1, (
+            f"MUTEX[{index}] read 0x{held:x} after a four-byte write at its upper half; "
+            f"that write did not select the lane bit 0 sits in, so the mutex had to still "
+            f"be free and the read had to take it"
+        )
+        await self.csr_write(f"MUTEX{index}_RELEASE_AGAIN", addr, 0, length=width)
+        self.mutexes_held += 1
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -131,6 +167,21 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             f"fields; it carries the configured pulse durations and a bit that reads low "
             f"while a core reset is in progress, and none of that may move"
         )
+        mutexes = rdl_array(_MUTEX)
+        for index, reg in enumerate(mutexes):
+            await self._mutex_leg(index, reg.addr, reg.width_bytes)
+        assert self.mutexes_held == len(mutexes), (
+            f"{self.mutexes_held} of {len(mutexes)} mutexes driven"
+        )
+        cocotb.log.info(
+            "CHK-CPU-CTRL-MUTEX-HALF-WRITE: each of the %d CPU_CTRL mutexes was found "
+            "free, given back, and then kept its free state across a four-byte write at "
+            "the half of the 64-bit register its bit does not occupy -- the read after "
+            "that write took the mutex, which it could only do if the field had survived "
+            "-- and every mutex this leaf took was given back",
+            self.mutexes_held,
+        )
+
         cocotb.log.info(
             "CHK-CPU-CTRL-WDT-ZERO-WRITE: a full-width write of 0 into the four "
             "`singlepulse` reset fields of WDT_TIMEOUT_RESET left the register reading 0, "
@@ -140,7 +191,11 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             self.pulse_count_after,
         )
 
-        expected = len(targets) * _ACCESSES_PER_READ_ONLY + _ACCESSES_FOR_WDT
+        expected = (
+            len(targets) * _ACCESSES_PER_READ_ONLY
+            + _ACCESSES_FOR_WDT
+            + len(mutexes) * _ACCESSES_PER_MUTEX
+        )
         self.assert_all_reachable(expected, "CPU_CTRL_READ_ONLY_WRITE")
         assert self.read_only_registers == len(targets), (
             f"{self.read_only_registers} of {len(targets)} read-only registers written at"
