@@ -402,6 +402,7 @@ Branch 0 "1918024820" "state" (11) "state RESP_HANDSHAKE ,-,-,-,-,-,-,0"
 CHECKSUM: "3354362860 3417673543"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free. The pending RAM's source field is RAM content and is left free, so a row that holds the dead signals at zero and turns on another term stays graded, as ordinary trace traffic reaches it."
+ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 MODULE: trace_sink
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (3 "110")
@@ -630,27 +631,36 @@ Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRa
 Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY) 1 -1" (3 "11")
 Condition 344 "1521288229" "(TrRamPendPktVld_ANY[7] & ((~TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY))) 1 -1" (2 "10")
 Condition 344 "1521288229" "(TrRamPendPktVld_ANY[7] & ((~TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY))) 1 -1" (3 "11")
+Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (1 "011")
 Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (3 "110")
+Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (4 "111")
 Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (1 "011")
 Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (2 "101")
+Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (3 "110")
 Condition 443 "645287319" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 1[2:0])) 1 -1" (4 "111")
 Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (1 "011")
 Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (2 "101")
+Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (3 "110")
 Condition 453 "2191003982" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 2[2:0])) 1 -1" (4 "111")
 Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (1 "011")
 Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (2 "101")
+Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (3 "110")
 Condition 463 "2227030581" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 3[2:0])) 1 -1" (4 "111")
 Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (1 "011")
 Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (2 "101")
+Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (3 "110")
 Condition 473 "3859864642" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 4[2:0])) 1 -1" (4 "111")
 Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (1 "011")
 Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (2 "101")
+Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (3 "110")
 Condition 483 "3761571641" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 5[2:0])) 1 -1" (4 "111")
 Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (1 "011")
 Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (2 "101")
+Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (3 "110")
 Condition 493 "1155226592" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 6[2:0])) 1 -1" (4 "111")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (1 "011")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (2 "101")
+Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (3 "110")
 Condition 503 "1123975323" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 7[2:0])) 1 -1" (4 "111")
 Condition 521 "2743047216" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrntrMemRamRdEn_TS2[0])) & ((~TrntrMemRdBufferVld_TS3[0])) & ((~TrntrMemRdBufferVld_TS4[0])) & ((~TrntrMemRdBufferVld_TS5[0])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (1 "011111111")
 Condition 521 "2743047216" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(0 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(0 / 2)])) & ((~TrntrMemRamRdEn_TS2[0])) & ((~TrntrMemRdBufferVld_TS3[0])) & ((~TrntrMemRdBufferVld_TS4[0])) & ((~TrntrMemRdBufferVld_TS5[0])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (2 "101111111")
@@ -736,14 +746,17 @@ Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_s
 CHECKSUM: "3354362860 1334787416"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free. The pending RAM's source field is RAM content and is left free, so a row that holds the dead signals at zero and turns on another term stays graded, as ordinary trace traffic reaches it."
-ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false and its then arm never executes."
+ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default."
+ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 MODULE: trace_sink
 Branch 0 "127462735" "trntrRamMode_ANY" (0) "trntrRamMode_ANY 1"
+Branch 3 "2247757869" "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY)" (0) "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY) 1,-"
 Branch 4 "4011877369" "(~trntrRamMode_ANY)" (2) "(~trntrRamMode_ANY) 0,-,1"
 Branch 4 "4011877369" "(~trntrRamMode_ANY)" (3) "(~trntrRamMode_ANY) 0,-,0"
 Branch 5 "4232888735" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY)" (0) "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY) 1,-"
 Branch 5 "4232888735" "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY)" (1) "(trntrnorthcoresNewFrameStart_ANY & trntrsouthcoresNewFrameStart_ANY) 0,1"
 Branch 6 "133615400" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0)" (0) "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1"
+Branch 7 "2462516503" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
 Branch 8 "3433112996" "TrntrMemRamRdRdy_TS1" (0) "TrntrMemRamRdRdy_TS1 1"
 Branch 9 "3433112996" "TrntrMemRamRdRdy_TS1" (0) "TrntrMemRamRdRdy_TS1 1"
 Branch 10 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
@@ -753,14 +766,24 @@ Branch 16 "703101902" "trntrcoreNewFrameStart_ANY[0]" (1) "trntrcoreNewFrameStar
 Branch 17 "1385722517" "trntrRamMode_ANY" (0) "trntrRamMode_ANY 1"
 Branch 18 "3037034392" "trntrRamEnableStart_ANY_d1" (0) "trntrRamEnableStart_ANY_d1 1,-"
 Branch 18 "3037034392" "trntrRamEnableStart_ANY_d1" (1) "trntrRamEnableStart_ANY_d1 0,1"
+Branch 24 "1117085537" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
+Branch 25 "1568427950" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
+Branch 26 "2101837567" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
+Branch 27 "1655598640" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
+Branch 28 "1026628701" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
+Branch 29 "584584338" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
+Branch 30 "48446915" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
+Branch 31 "487206156" "TraceMemRdEn_ANY" (1) "TraceMemRdEn_ANY 0,1"
 Branch 54 "1388915620" "(NUM_CORES > 1)" (0) "(NUM_CORES > 1) 1"
 Branch 55 "1388915620" "(NUM_CORES > 1)" (0) "(NUM_CORES > 1) 1"
 Branch 56 "1388915620" "(NUM_CORES > 1)" (0) "(NUM_CORES > 1) 1"
 Branch 57 "964016798" "(~trntrRamMode_ANY)" (1) "(~trntrRamMode_ANY) 0"
+Branch 58 "2143333193" "(trntrRamRpLow_ANY[31:2] == trntrRamLimitLow_ANY[31:2])" (1) "(trntrRamRpLow_ANY[31:2] == trntrRamLimitLow_ANY[31:2]) 0"
 Branch 59 "2298274607" "trntrRamRpLow_ANY[2]" (0) "trntrRamRpLow_ANY[2] 1"
 Branch 34 "1929784973" "trntrRamEnableStart_ANY_d1" (0) "trntrRamEnableStart_ANY_d1 1"
 Branch 37 "3169844844" "trntrRamEnableStart_ANY_d1" (0) "trntrRamEnableStart_ANY_d1 1,1"
 Branch 37 "3169844844" "trntrRamEnableStart_ANY_d1" (1) "trntrRamEnableStart_ANY_d1 1,0"
+Branch 35 "3418039480" "(trntrRamEnableStart_ANY_d1 | (52'(TrntrMemAxiWrAddr_ANY) == trntrMemSMEMLimitAddr_ANY))" (1) "(trntrRamEnableStart_ANY_d1 | (52'(TrntrMemAxiWrAddr_ANY) == trntrMemSMEMLimitAddr_ANY)) 0"
 Branch 46 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 47 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"
 Branch 48 "3513402957" "TrntrMemAxiWrVld_ANY" (0) "TrntrMemAxiWrVld_ANY 1"

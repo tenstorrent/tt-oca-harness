@@ -162,13 +162,16 @@ state variable as a transition:
   occupies that one state. Reset behaviour is graded by the reset tests, not
   by landing a reset in each protocol state.
 
-Six more tie-offs and parameters decide branch decisions rather than condition
+Seven more tie-offs and parameters decide branch decisions rather than condition
 rows. The DFD's gated functional clamps are each a constant OR of two tied
 inputs (P13 CLAMP-TIED); its JTAG MMR requester's valid is tied to zero (P14
 JTAG-MMR-TIED); the eFuse's secure test mode input is tied to zero (P15
 SECURE-TM-TIED); `mmrs` derives its NTR and DST sink enables from parameters
 (P16 SINK-ENABLE-CONST); and the trace sink has one core (P17 ONE-TRACE-CORE), and the AVS controller ties its own TDR post-divider
-override to zero (P18 TDR-OVERRIDE-TIED).
+override to zero (P18 TDR-OVERRIDE-TIED). The DFD top ties the trace sink's
+N-trace RAM read enable to zero (P19 NTR-RAM-READ-TIED), and a P1 decision over
+N-trace signals alone, a comparison included, holds the value the tie-off
+gives it.
 
 One more belongs to the bench and its policy: the eFuse's simulation-only
 `+skip_fuse_sense` bypass replaces the sensed fuse image, the DV policy forbids
@@ -678,7 +681,13 @@ P16 = (
 P17 = (
     "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of "
     "NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so "
-    "NUM_CORES > 1 is false and its then arm never executes."
+    "NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it "
+    "guards stays at its zero default."
+)
+P19 = (
+    "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a "
+    "constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and "
+    "the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 )
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
@@ -712,6 +721,9 @@ C1 = (
 # (file suffix, first line, last line) of the source region a fact covers, for
 # where one file carries the same expression text inside and outside the region.
 LC_STATE_ARM = ("efuse_shadow_regs.sv", 290, 347)
+
+# The trace sink's N-trace RAM read enable, tied to zero at the DFD top.
+NTR_RAM_READ = re.compile(r"^trRamDataRdEn_ANY$")
 
 # The eFuse's simulation-only fuse-sense bypass: the flag and the plusarg test
 # that sets it, as the path reader names a plusarg test.
@@ -992,6 +1004,12 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "trace_sink": [
         (P1, re.compile(r"\btrntr|ntrace|insntrace", re.I), ntrace_tied_off, None),
         (P4, re.compile(r"TrRamPend|TrRamSouth|TR_TS_South|South_Vld"), single_source_row, None),
+        (
+            P19,
+            re.compile(r"trRamDataRdEn_ANY"),
+            lambda t, v: needs_forced_away(t, v, NTR_RAM_READ, 0),
+            None,
+        ),
     ],
     "axi_filter_wrap": [(P2, re.compile(r"^\(filter_skip_i \?"), re.compile(r"^1$"), None)],
     "cla_mmr": [
@@ -1081,7 +1099,12 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     "efuse_interface_controller": [(P6, LC_STATE_OFF, 0)],
     "efuse_shadow_reg_access_control": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
     "efuse_shadow_regs": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0), (B6, SIM_SKIP, 0)],
-    "trace_sink": [(P1, NTRACE_SIGNAL, 0), (P4, SINGLE_SOURCE_DEAD, 0)],
+    "trace_sink": [
+        (P1, NTRACE_SIGNAL, 0),
+        (P4, SINGLE_SOURCE_DEAD, 0),
+        (P19, NTR_RAM_READ, 0),
+        (P17, re.compile(r"^trdstsouthcoresNewFrameStart_ANY$"), 0),
+    ],
     "mmr_req_ctrl": [
         (P14, re.compile(r"^gnt_is_jtag$"), 0),
         (P16, re.compile(r"^NTR_SINK_EN$"), 0),
@@ -1127,6 +1150,15 @@ def feature_path_class(
     for reason, forced, value in BRANCH_PATH_FACTS.get(module, []):
         if path_needs_forced_away(construct, values, forced, value):
             return reason
+    if any(r == P1 for r, _, _ in BRANCH_PATH_FACTS.get(module, [])):
+        # A decision over N-trace signals alone holds the value P1's tie-off
+        # gives it, comparisons included; a width cast does not change it.
+        for (kind, text), taken in zip(construct.decisions, values):
+            if taken not in ("0", "1") or kind not in ("if", "?") or not text:
+                continue
+            term = re.sub(r"\$bits\([^()]*\)'\s*", "", text)
+            if is_ntrace_term(term) and tied_value(term) not in (None, int(taken)):
+                return P1
     return None
 
 
@@ -1714,9 +1746,12 @@ def _bare(condition: "str | None") -> str:
 
 
 def _construct_key(condition: "str | None") -> str:
-    """A first decision as both sides print it: the template escapes quotes and
-    parenthesises each operand, the annotated source does neither."""
-    return re.sub(r"[()]", "", _bare((condition or "").replace('\\"', '"')))
+    """A first decision as both sides print it: the template escapes quotes,
+    parenthesises each operand and folds a `$bits(...)'` cast to its width,
+    and the annotated source does none of these."""
+    text = (condition or "").replace('\\"', '"')
+    text = re.sub(r"\$bits\([^()]*\)'\s*|\b\d+'(?=\s*\()", "", text)
+    return re.sub(r"[()]", "", _bare(text))
 
 
 def align_branches(
@@ -2023,6 +2058,7 @@ FEATURE_CLASSES = (
     P16,
     P17,
     P18,
+    P19,
     F3,
     B6,
 )
