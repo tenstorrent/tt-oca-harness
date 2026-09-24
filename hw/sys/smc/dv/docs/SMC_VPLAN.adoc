@@ -4308,6 +4308,9 @@ Drive `smc_jtag_dmi_smoke_test_seq`. Each checker below is a named compare the D
 * The registers of the block with no software-writable field (35 in the current map) are hardware-driven status and carry no write expectation; their reset content is read by `smc_remap_cla_test`.
 * *Map and design disagree*: the generated map declares `Rsvd` (bit 63) of `CDbgClaCounter0Cfg` to `CDbgClaCounter3Cfg` plain read-write, while the vendored MMR specification (`cla_mmrs.yml`) gives it a single legal value of 0 under a WARL register, and the design reads 0 after a write of 1. The generation of `dfd_cla.rdl` from that specification drops the legal-value constraint. The leaf holds those bits to the specified value 0 rather than the map's contract and fails if one reads back the written value or the map stops declaring it read-write, so the entry is revisited either way.
 
+* `CDbgClaTimestamp`, which the generated map declares `sw = rw; hw = rw` for both fields and the sweep leaves out as hardware-driven, is driven on its own with the CLA enabled (pairs left disabled). It advances by itself: the measured run read 0x2365 and then 0x23A2 64 clocks later, the CLA's time tick counting it up. Software writes land: written 0x0000010000000100 it read back 0x000001000000010C, and its upper half written 2 through a half-register access read back 2 above a still-counting lower half. The map's `hw = rw` matches: hardware writes the register every cycle it ticks, so the value software reads is its own write carried forward, never below it. The capture register and the capture bit of `CDbgClaTimestampConfig` stay unexercised because the only trigger is the cross-trigger input, which the bench ties to 0.
+* One offset of the block's register hole (0x310, between `CDbgClaTimestampOffset` and `CDbgSignalMask0Hi`) is read and written with all ones.
+
 *Test Procedure*:
 
 Drive `smc_dfd_cla_mmr_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
@@ -4318,11 +4321,13 @@ Drive `smc_dfd_cla_mmr_sweep_test_seq`. Each checker below is a named compare th
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-CLA-TIMESTAMP` |With the CLA enabled, `CDbgClaTimestamp` written whole reads back at or above the written value, and its upper half written alone reads that value; a readback below the write or a wrong upper half fails it
+|`CHK-CLA-MMR-HOLE` |The read and the all-ones write to the hole complete, a read that completes OKAY returns 0, and the registers on either side hold their values; a hang, a non-zero OKAY read or a moved neighbour fails it
 |`CHK-CLA-MMR-WRITE-SWEEP` |Every swept CLA MMR register read its generated RDL reset, returned exactly the software-writable bits written by each half-register access (the legal-value-pinned counter `Rsvd` bits read their specified value 0 instead) while the other half kept its value, drove 0 in every bit no field occupies, and read its RDL reset back after the two restore writes; a wrong readback, a half-write that spilled into the other half, or a driven undeclared bit fails it
 |===
 
 
-*Pass Criteria*: `CHK-CLA-MMR-WRITE-SWEEP` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-MMR-HOLE`, `CHK-CLA-MMR-WRITE-SWEEP`, `CHK-CLA-TIMESTAMP` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-211-smc_dfd_cla_node_eap_sweep_test]]
@@ -4377,6 +4382,8 @@ Drive `smc_dfd_cla_node_eap_sweep_test_seq`. Each checker below is a named compa
 * The CLA armed and `CDbgNode0Eap0.Action0` driven over all 64 values of its 6-bit field. Which action code starts a trace is published by no RDL, generated header or MMR specification, so the sweep names none and reads the outcome off the DUT.
 * `Trdstcontrol.Trdstempty` and `Trdstramwplow`, both read at their RDL reset first, are the two hardware-driven witnesses that the accumulator bank left the empty state and that a filled bank was taken by the sink.
 
+* After the hand-off the sink enable is cleared with the sink kept active and stop-on-wrap clear, and the action field is driven over its whole range again. The window has never wrapped in this run (the wrap flag is sticky, so this has to happen before any wrap), so the sink's wrap-flag update sees a sink neither enabled nor set to stop on wrap while trace still arrives. What a disabled sink does with that trace is not in the register contract; the measured write pointer moved from 0x480 to 0x800, so the sink keeps writing.
+
 *Test Procedure*:
 
 Drive `smc_dfd_trace_accumulator_fill_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
@@ -4387,13 +4394,14 @@ Drive `smc_dfd_trace_accumulator_fill_test_seq`. Each checker below is a named c
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-DST-TRACE-SINK-DISABLED` |The sink control write that clears the enable with the sink active reads back exactly, and the action sweep that follows completes; a rejected write fails it. The write pointer is recorded, not held to a value
 |`CHK-DST-TRACE-IDLE` |`Trdstcontrol.Trdstempty` reads its RDL reset of 1 and `Trdstramwplow` reads its RDL reset of 0 with the DFD clock held on and no trace running; either one already off its reset fails it and makes the later observations unattributable
 |`CHK-DST-TRACE-ACCUMULATE` |At least one value of the 6-bit `Action0` field made the DUT clear `Trdstcontrol.Trdstempty`, so the debug bus reached the packetizer and its accumulator bank left the empty state; a sweep in which the bit never clears fails it
 |`CHK-DST-TRACE-BANK-HANDOFF` |The `Trdstramwplow` write pointer field moved off 0 and stays inside the 0x1000-byte window, so the trace RAM sink took at least one filled bank from the accumulator and the bank went empty again; a pointer still at its reset, or a word that changed only in the wrap flag, fails it
 |===
 
 
-*Pass Criteria*: `CHK-DST-TRACE-ACCUMULATE`, `CHK-DST-TRACE-BANK-HANDOFF`, `CHK-DST-TRACE-IDLE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DST-TRACE-ACCUMULATE`, `CHK-DST-TRACE-BANK-HANDOFF`, `CHK-DST-TRACE-IDLE`, `CHK-DST-TRACE-SINK-DISABLED` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-213-smc_dfd_cla_counter_edge_test]]
@@ -4803,6 +4811,7 @@ Drive `smc_dfd_dbm_mode_lock_test_seq`. Each checker below is a named compare th
 * Before the read side is driven, the trace runs until the sink's wrap flag reports one pass of the window, so every read-pointer position holds a word the trace wrote. The sink's pointer fields sit above two reserved bits and hardware writes them too, so they are programmed through each field's own mask; the register's plain read-write mask leaves them out.
 * The compressed phase then puts the CLA's own debug-bus mux (`CDbgMuxSelLo`, off at reset, so the trace sampled a constant bus in every other leaf) in normal mode, puts every DEBUG_BUS_MUX identifier in the identifier output mode, and returns each to normal mode until the `Node0Eap0` debug-signal snapshot changes. The two bus states of that mux, read through the snapshot, must differ in an odd number of bytes. After an emptying stop the action field is walked until `Trdstempty` reads 0 with the bus switching, which restarts the compressed trace, and the bus is switched 160 times at the longest frame length. A run of equal odd-sized compressed packets walks the accumulator write offset through every position, including the odd ones above 32 that an uncompressed stream never reaches; the accumulator offset has no register view, so the next coverage measurement is its witness.
 * A RAM-mode window is placed with `Trdstramstartlow` at 0x4000 bytes, one trace RAM size (16 KB) up, and a 0x400-byte limit past it. The value is legal for the byte-address field and out of the RAM's range by construction; the RAM indexes the low address bits, so the trace still lands in it. The held trace has to move the write pointer from the programmed start through that window, which is what the register view shows (0x4000 to 0x4140 in the measured run), and the start register is then written back to its reset. The staged-RAM write-side wrap is set by this window while the read side stays unwrapped, which executes the lapped arm of the sink's distance computation; the read-side wrap itself cannot be set, because the read address only advances through the tied memory write-out.
+* A window whose limit is one 64-byte line above its start, the smallest the sink's byte-address fields describe, is programmed, its limit read back, and the trace held on into it.
 * The leaf ends in the sink's memory mode (`Trdstrammode` = 1). The memory write-out is never accepted in this bench, so the frames the sink stages in its local RAM are never drained, it backpressures the DST, and in this state the sink's memory-mode flush also reaches the DST. The trace runs uncompressed with the periodic timestamp at its shortest period and the traced bus switched under each of 100 writes of the restarting action, so data and timestamp packets keep asking for space the backpressured sink does not free and the packetizer has to retry them. Still in memory mode, the sink enable is then cleared with the sink active and stop-on-wrap set, and the trace is stopped the same way, so the sink's memory-mode stop terms and its empty computation see staged frames with nothing arriving; the sink control is read across that without a claim on the empty flag, and the trace is restarted. The sink is then re-armed in RAM mode and the stream has to resume, after which the RAM data port is read back to back while the stream writes, so register reads meet RAM writes; every wait is bounded, so a sink stuck in backpressure fails the leaf instead of stalling it. It runs last because a software stop after it does not empty the packetizer. The staged-RAM lap rows cannot be reached: the read side only advances through the tied memory write-out, and backpressure at half the staging RAM stops the write side long before it can lap.
 * The uncompressed stream runs at the longest frame length the field offers, so the fixed-size packets carry the accumulator's write offset through every even position before a frame closes, and then at the shortest frame and stream lengths. The trace is then stopped by clearing `Trdstenable` alone with `Trdstactive` held at 1, so the DST clock keeps running while the stream winds down with packets in flight.
 * The trace is then run into a sink with `Trdstramstoponwrap` set, and the sink enable is cleared afterwards with the sink kept active and the setting still held.
@@ -4831,6 +4840,7 @@ Drive `smc_dfd_trace_sink_concurrent_test_seq`. Each checker below is a named co
 |`CHK-DST-CONCURRENT-IDLE` |The RAM data port reads 0 and the write pointer its reset with the sink armed and no trace captured; either one already non-zero fails it and makes the live phase prove nothing
 |`CHK-DST-CONCURRENT-DRAIN` |Inside one live trace the read pointer was driven across the window, the data port returned at least one non-zero word against that baseline, and the write pointer was sampled away from its starting value in the same phase; any of the three missing fails it
 |`CHK-DST-CONCURRENT-MODE` |The sink was armed and driven through a live trace in both values of its destination-mode field, each read back exactly; a value the register does not accept fails it
+|`CHK-DST-CONCURRENT-EDGES` |`Trdstramlimitlow` reads back the one-line limit 0x40 it was written, with the trace then held on into that window; a limit that does not read back fails it
 |`CHK-DST-CONCURRENT-FRAMEWALK` |Under a compressed stream the frame shape was walked through all 32 combinations of the closure mode and the frame length, each written and read back exactly; a combination the registers do not accept fails it
 |`CHK-DST-CONCURRENT-ODDBYTES` |With the CLA mux in normal mode, a DEBUG_BUS_MUX identifier whose mode change moves the debug-signal snapshot is found, its two bus states differ in an odd number of bytes, an action restarts the compressed trace after an emptying stop, the sink write pointer moves across the 160 switches, and the snapshot ends on the normal-mode state; no mux that moves the snapshot, an even byte difference, no restarting action, a pointer that stays put or a wrong final state fails it
 |`CHK-DST-CONCURRENT-MEMORY` |With the sink in memory mode and the uncompressed trace held on for 100 action writes, `Trdstempty` reads 0; the sink and trace stop writes that follow read back exactly; re-armed in RAM mode, the write pointer moves within 32 polls. A DST that drained anyway, or a stream that does not resume, fails it
@@ -4840,7 +4850,7 @@ Drive `smc_dfd_trace_sink_concurrent_test_seq`. Each checker below is a named co
 |===
 
 
-*Pass Criteria*: `CHK-DST-CONCURRENT-DRAIN`, `CHK-DST-CONCURRENT-FRAMEWALK`, `CHK-DST-CONCURRENT-HIGHSTART`, `CHK-DST-CONCURRENT-IDLE`, `CHK-DST-CONCURRENT-MEMORY`, `CHK-DST-CONCURRENT-MODE`, `CHK-DST-CONCURRENT-ODDBYTES`, `CHK-DST-CONCURRENT-STOP`, `CHK-DST-CONCURRENT-STOPWRAP`, `CHK-DST-CONCURRENT-SYNCWALK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DST-CONCURRENT-DRAIN`, `CHK-DST-CONCURRENT-EDGES`, `CHK-DST-CONCURRENT-FRAMEWALK`, `CHK-DST-CONCURRENT-HIGHSTART`, `CHK-DST-CONCURRENT-IDLE`, `CHK-DST-CONCURRENT-MEMORY`, `CHK-DST-CONCURRENT-MODE`, `CHK-DST-CONCURRENT-ODDBYTES`, `CHK-DST-CONCURRENT-STOP`, `CHK-DST-CONCURRENT-STOPWRAP`, `CHK-DST-CONCURRENT-SYNCWALK` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-224-smc_dfd_cla_snapshot_capture_test]]

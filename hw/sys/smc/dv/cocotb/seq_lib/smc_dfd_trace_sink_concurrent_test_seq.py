@@ -142,6 +142,10 @@ _MEMORY_EXIT_READS = 8
 # A RAM-mode window start one trace RAM size (16 KB) up: a legal value for the
 # byte-address field, out of the RAM's range by construction.
 _HIGH_START_BYTES = 0x4000
+# One 64-byte line, the smallest window the sink's byte-address fields describe,
+# and the action writes the trace is held on for in that window.
+_ONE_LINE_BYTES = 0x40
+_EDGE_WRITES = 8
 # Writes of the restarting action per sync-mode value, each followed by the
 # settle time: long enough at 64-byte frames to pass the shortest stream length
 # more than once.
@@ -583,6 +587,39 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             _HIGH_START_BYTES,
             _SINK_WINDOW_BYTES,
             self.high_pointer,
+        )
+
+    async def _window_edges(self, logical_op: int) -> None:
+        """A window whose limit is one 64-byte line above its start.
+
+        That is the smallest window the sink's byte-address fields describe; the
+        limit has to read back, and the trace is then run into the window.
+        """
+        eap = cla_register("CDbgNode0Eap0")
+        hold = pack_fields(
+            eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": self.odd_start_action}
+        )
+        await self._write_check(
+            dst_register("Trdstcontrol"),
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
+            "edges",
+        )
+        await self._open_sink(0, "oneline", _ONE_LINE_BYTES)
+        limit = sink_register("Trdstramlimitlow")
+        field = reg_field(limit, "Trdstramlimitlow")
+        read = await self._read(limit, "oneline_limit") & field.mask
+        assert read == _ONE_LINE_BYTES, (
+            f"Trdstramlimitlow reads 0x{read:x} after being written 0x{_ONE_LINE_BYTES:x}"
+        )
+        for step in range(_EDGE_WRITES):
+            await self._write(eap, hold, f"oneline{step}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        self.value_checks += 1
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-EDGES: Trdstramlimitlow took the one-line limit 0x%x, read it "
+            "back, and the trace was held on into that window for %d action writes",
+            _ONE_LINE_BYTES,
+            _EDGE_WRITES,
         )
 
     # -- memory mode ------------------------------------------------------
@@ -1034,6 +1071,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         await self._stop_on_wrap(logical_op)
         await self._walk_sync_modes(logical_op)
         await self._high_start(logical_op)
+        await self._window_edges(logical_op)
         # A software stop after memory mode does not empty the packetizer, so
         # nothing may follow that needs it to.
         await self._memory_backpressure(logical_op)

@@ -43,6 +43,10 @@ read at their RDL reset first so what changes is attributable to the sweep:
 The sink's limit field sits above two reserved bits and hardware writes it
 too, so the register's plain read-write mask leaves it out; the window is
 written through the field's own bit positions.
+
+After the hand-off the sink enable is cleared with the sink kept active and
+stop-on-wrap clear, and the action field is driven over its range again; the
+window has never wrapped, and the write pointer is recorded without a claim.
 """
 
 from __future__ import annotations
@@ -251,6 +255,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         self.dbmids_programmed = 0
         self.value_checks = 0
         self.sink_pointer = 0
+        self.disabled_pointer = 0
 
     # -- register helpers -------------------------------------------------
 
@@ -477,6 +482,40 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
             _SINK_WINDOW_BYTES,
         )
 
+    async def _disabled_sink(self, logical_op: int) -> None:
+        """Clear the sink enable, keeping it active, with the trace still driven.
+
+        The window is far from full and has never wrapped, and stop-on-wrap is
+        clear, so the sink's wrap-flag update sees a sink that is neither enabled
+        nor set to stop on wrap. What the sink does with trace that still arrives
+        is not in the register contract, so the write pointer is only recorded.
+        """
+        await self._write_check(
+            sink_register("Trdstramcontrol"),
+            {"Trdstramactive": 1, "Trdstramenable": 0},
+            "disable",
+        )
+        eap = cla_register("CDbgNode0Eap0")
+        action = cla_field(eap, "Action0")
+        for value in range(1 << action.width):
+            await self.csr_write(
+                f"CDbgNode0Eap0:disabled{value}",
+                eap.addr,
+                pack_fields(eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": value}),
+                length=eap.width_bytes,
+            )
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        wp = sink_register("Trdstramwplow")
+        self.disabled_pointer = await self._read(wp, "disabled")
+        cocotb.log.info(
+            "CHK-DST-TRACE-SINK-DISABLED: with the sink enable cleared, the sink kept active and "
+            "stop-on-wrap clear, the control readback held and the action field was driven over "
+            "its whole range again; the write-pointer register read 0x%08x afterwards, against "
+            "0x%08x at the hand-off",
+            self.disabled_pointer,
+            self.sink_pointer,
+        )
+
     async def _restore(self) -> None:
         for reg in (
             cla_register("CDbgNode0Eap0"),
@@ -505,6 +544,8 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         await self._open_sink()
         await self._open_funnel()
         await self._enable_dst()
-        await self._sweep_actions(await self._arm_cla())
+        logical_op = await self._arm_cla()
+        await self._sweep_actions(logical_op)
         await self._bank_handoff()
+        await self._disabled_sink(logical_op)
         await self._restore()

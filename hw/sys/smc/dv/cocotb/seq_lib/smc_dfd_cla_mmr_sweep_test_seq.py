@@ -46,9 +46,12 @@ way.
 from __future__ import annotations
 
 import cocotb
+from cocotb.triggers import ClockCycles
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_cla_regmap import cla_registers
+from .smc_cla_regmap import cla_field, cla_register, cla_registers
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_dfd_trace_accumulator_fill_test_seq import pack_fields
 from .smc_rdl_regmap import RdlReg
 
 _BLOCK = "smc_cla/cla"
@@ -102,6 +105,15 @@ def _swept_registers() -> tuple[tuple[RdlReg, ...], int]:
 
 
 SWEPT, HW_STATUS_COUNT = _swept_registers()
+
+# A value for CDbgClaTimestamp with both fields non-zero and far from wrapping,
+# and a value for the register's upper half written on its own.
+_TIMESTAMP_VALUE = 0x0000_0100_0000_0100
+_TIMESTAMP_UPPER_HALF = 0x2
+# An offset inside the block's register hole between CDbgClaTimestampOffset and
+# CDbgSignalMask0Hi, relative to the block's first register.
+_HOLE_OFFSET = 0x310
+_SETTLE_CYCLES = 64
 # Registers whose write sweep touches bits outside the low half, so the
 # high-half access carries a non-zero pattern of its own.
 SWEPT_WIDE = tuple(reg for reg in SWEPT if reg.rw_mask >> 32)
@@ -115,6 +127,9 @@ class smc_dfd_cla_mmr_sweep_test_seq(SmcCsrSeq):
         self.registers_swept = 0
         self.write_groups = 0
         self.pinned_checks = 0
+        self.timestamp_running = (0, 0)
+        self.timestamp_written = (0, 0)
+        self.hole = (0, 0, 0)
         self.value_checks = 0
 
     @staticmethod
@@ -178,6 +193,91 @@ class smc_dfd_cla_mmr_sweep_test_seq(SmcCsrSeq):
                 self.write_groups += 1
                 await self._read_check(reg, f"{tag}@{offset}", model)
 
+    async def _timestamp(self) -> None:
+        """Write and read CDbgClaTimestamp, which hardware also writes, with the CLA enabled.
+
+        The generated map declares both timestamp fields ``sw = rw; hw = rw``: software
+        writes them and hardware advances them. With the CLA enabled (its event-action
+        pairs left disabled), the register is read twice, then written whole and read
+        back, then written through its upper half alone and read back. Hardware may
+        only move the value forward from what software wrote, so every readback has to
+        be at or above the value written, and the upper half has to read the value its
+        own write gave it.
+        """
+        ctrl = cla_register("CDbgClaCtrlStatus")
+        chain = cla_field(ctrl, "ClaChainLoopDelay")
+        ts = cla_register("CDbgClaTimestamp")
+        word = pack_fields(
+            ctrl,
+            {"EnableCla": 1, "ClaChainLoopDelay": (ctrl.reset_word & chain.mask) >> chain.offset},
+        )
+        await self.csr_write(f"{ctrl.path}:ts_enable", ctrl.addr, word, length=ctrl.width_bytes)
+        first = await self.csr_read(f"{ts.path}:ts_first", ts.addr, length=ts.width_bytes)
+        await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        second = await self.csr_read(f"{ts.path}:ts_second", ts.addr, length=ts.width_bytes)
+        self.timestamp_running = (first, second)
+        await self.csr_write(
+            f"{ts.path}:ts_write", ts.addr, _TIMESTAMP_VALUE, length=ts.width_bytes
+        )
+        back = await self.csr_read(f"{ts.path}:ts_back", ts.addr, length=ts.width_bytes)
+        assert back >= _TIMESTAMP_VALUE, (
+            f"{ts.path} @ 0x{ts.addr:08x}: written 0x{_TIMESTAMP_VALUE:016x}, reads 0x{back:016x}, "
+            f"below the written value; hardware may only advance it"
+        )
+        half = ts.width_bytes // 2
+        await self.csr_write(
+            f"{ts.path}:ts_upper", ts.addr + half, _TIMESTAMP_UPPER_HALF, length=half
+        )
+        upper = await self.csr_read(f"{ts.path}:ts_upper_rb", ts.addr, length=ts.width_bytes)
+        assert upper >> (half * 8) == _TIMESTAMP_UPPER_HALF, (
+            f"{ts.path} @ 0x{ts.addr:08x}: its upper half was written 0x{_TIMESTAMP_UPPER_HALF:x} "
+            f"on its own, and the register reads 0x{upper:016x}"
+        )
+        self.timestamp_written = (back, upper)
+        await self.csr_write(f"{ts.path}:ts_restore", ts.addr, ts.reset_word, length=ts.width_bytes)
+        await self.csr_write(
+            f"{ctrl.path}:ts_restore", ctrl.addr, ctrl.reset_word, length=ctrl.width_bytes
+        )
+        self.value_checks += 2
+
+    async def _hole(self) -> None:
+        """Read and write one offset of the block's register hole."""
+        regs = sorted(cla_registers().values(), key=lambda r: r.addr)
+        base = regs[0].addr & ~0xFFF
+        addr = base + _HOLE_OFFSET
+        assert all(r.addr != addr for r in regs), f"0x{addr:08x} is a declared CLA register"
+        below = max((r for r in regs if r.addr < addr), key=lambda r: r.addr)
+        above = min((r for r in regs if r.addr > addr), key=lambda r: r.addr)
+        held = {}
+        for reg in (below, above):
+            held[reg.path] = await self.csr_read(
+                f"{reg.path}:hole_before", reg.addr, length=reg.width_bytes
+            )
+        items = []
+        for op, data in ((SmcSysAxiOp.READ, 0), (SmcSysAxiOp.WRITE, (1 << 64) - 1)):
+            item = SmcSysAxiItem(f"{'rd' if op is SmcSysAxiOp.READ else 'wr'}_cla_hole")
+            item.op = op
+            item.addr = addr
+            item.length = 8
+            item.wdata = data
+            item.allow_error = True
+            await self.start_item(item)
+            await self.finish_item(item)
+            self.accesses += 1
+            items.append(item)
+        if items[0].resp_code == 0:
+            assert items[0].rdata == 0, (
+                f"the CLA hole at 0x{addr:08x} read 0x{items[0].rdata:x}; no field occupies it"
+            )
+        for reg in (below, above):
+            now = await self.csr_read(f"{reg.path}:hole_after", reg.addr, length=reg.width_bytes)
+            assert now == held[reg.path], (
+                f"{reg.path} read 0x{held[reg.path]:x} before and 0x{now:x} after an all-ones "
+                f"write to the CLA hole at 0x{addr:08x}"
+            )
+        self.hole = (addr, items[0].resp_code, items[1].resp_code)
+        self.value_checks += 3
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
@@ -211,4 +311,24 @@ class smc_dfd_cla_mmr_sweep_test_seq(SmcCsrSeq):
             self.value_checks,
             self.write_groups,
             self.pinned_checks,
+        )
+
+        await self._timestamp()
+        cocotb.log.info(
+            "CHK-CLA-TIMESTAMP: with the CLA enabled, CDbgClaTimestamp read 0x%016x then 0x%016x "
+            "%d cycles later; written 0x%016x it read back 0x%016x, and its upper half written "
+            "0x%x on its own read back in a register value of 0x%016x",
+            *self.timestamp_running,
+            _SETTLE_CYCLES,
+            _TIMESTAMP_VALUE,
+            self.timestamp_written[0],
+            _TIMESTAMP_UPPER_HALF,
+            self.timestamp_written[1],
+        )
+        await self._hole()
+        cocotb.log.info(
+            "CHK-CLA-MMR-HOLE: the CLA hole at 0x%08x took a read (response %d) and an all-ones "
+            "write (response %d); a read that completed OKAY returned 0 and the registers on "
+            "either side held their values",
+            *self.hole,
         )
