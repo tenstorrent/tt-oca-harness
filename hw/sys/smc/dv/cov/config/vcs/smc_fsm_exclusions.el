@@ -56,7 +56,7 @@ Transition AVS_SHIFT_LAST_SUBFRAME->AVS_RESET "256->1"
 Transition AVS_SHIFT_MID_SUBFRAME->AVS_IDLE "64->8"
 Transition AVS_SHIFT_MID_SUBFRAME->AVS_RESET "64->1"
 
-CHECKSUM: "1165090697 249869120"
+CHECKSUM: "2334538941 249869120"
 ANNOTATION: "SMC-FSM-F4-PARAM-OFF: the MMR register map exists only when the eFuse instance has lifecycle state, and smc_efuse_wrapper instantiates the controller with HAS_LC_STATE = 0, so the decode arm selecting EFUSE_MMR_REG_MAP is not elaborated and no access reaches the state or its edges."
 MODULE: efuse_interface_controller
 Fsm efuse_reg_select "249869120"
@@ -211,7 +211,7 @@ Transition RESP_HANDSHAKE->RESET_VALUE "4->0"
 Transition W_HANDSHAKE->RESET_VALUE "3->0"
 Transition W_HANDSHAKE->RESP_HANDSHAKE "3->4"
 
-CHECKSUM: "3138320682 4062283189"
+CHECKSUM: "1963439906 4062283189"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: zeroer
 Fsm cur_state "4062283189"

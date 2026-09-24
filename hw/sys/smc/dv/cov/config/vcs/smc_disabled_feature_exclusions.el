@@ -329,7 +329,7 @@ Branch 1 "4285556711" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,-,1"
 Branch 1 "4285556711" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,-,0"
 Branch 2 "1963251078" "secure_tm_i" (0) "secure_tm_i 1,-,-"
 
-CHECKSUM: "1165090697 2171588946"
+CHECKSUM: "2334538941 2171588946"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 MODULE: efuse_interface_controller
 Branch 1 "3889967684" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
@@ -675,10 +675,10 @@ MODULE: smc_dfd_wrap
 Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (2 "10")
 Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (3 "11")
 
-CHECKSUM: "1526613778 3247183741"
+CHECKSUM: "2716617997 3184480883"
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 MODULE: system_timer_octs_core
-Condition 7 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (1 "011")
+Condition 8 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (1 "011")
 
 CHECKSUM: "4226918805 2330986106"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
