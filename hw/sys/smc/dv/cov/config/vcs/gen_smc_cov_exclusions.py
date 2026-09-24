@@ -939,12 +939,16 @@ P27 = (
 )
 C6 = (
     "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before "
-    "it fail, so a row of its condition that an earlier test already takes is never evaluated. "
+    "it fail, and a statement inside an arm only when that arm's test holds, so a row of its "
+    "condition that an earlier or enclosing test already decides is never evaluated. "
     "smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is "
     "high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test "
     "runs only with that timeout high; vlt_packet_compression takes a timestamp packet without "
-    "a grant first; avsbus_controller takes a retry with a countdown above zero first; and "
-    "efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first."
+    "a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller "
+    "takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write "
+    "outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost "
+    "start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the "
+    "iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 )
 C7 = (
     "SMC-C7-ENUM-MEMBERS-ONLY: a variable is assigned only members of its enum, so a case "
@@ -1671,6 +1675,44 @@ BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
 }
 
 
+# C6 rows by their report terms: (module, terms, vectors an earlier or enclosing test rules out).
+EARLIER_ARM_ROWS: "list[tuple[str, tuple[str, ...], frozenset[str]]]" = [
+    ("i2c_controller_fsm", ("trans_started", "((!host_enable_i))"), frozenset({"10"})),
+    (
+        "i2c_controller_fsm",
+        ("trans_started", "((!scl_i))", "((!scl_i_q))", "stretch_predict_cnt_expired"),
+        frozenset({"0111"}),
+    ),
+    ("i2c_controller_fsm", ("trans_started", "((!scl_i))", "scl_i_q"), frozenset({"011"})),
+    (
+        "i2c_controller_fsm",
+        (
+            "((!host_enable_i))",
+            "(fmt_fifo_depth_i == 7'b1)",
+            "unhandled_unexp_nak_i",
+            "((!trans_started))",
+        ),
+        frozenset({"1000"}),
+    ),
+    ("i2c_bus_monitor", ("monitor_enable", "((!monitor_enable_q))"), frozenset({"01"})),
+    ("idma_channel_coupler", ("((!aw_ready_decoupled))", "first"), frozenset({"01"})),
+    (
+        "idma_channel_coupler",
+        ("aw_ready_decoupled", "((!first))", "(aw_to_send_q != '0)"),
+        frozenset({"101", "100"}),
+    ),
+    (
+        "idma_axi_read",
+        ("read_rsp_i.r.last", "read_rsp_i.r_valid", "read_req_o.r_ready"),
+        frozenset({"011"}),
+    ),
+    (
+        "vlt_packet_compression",
+        ("incoming_packet", "retry_data_packet_tx", "retry_ts_packet_tx"),
+        frozenset({"000", "010", "100", "110"}),
+    ),
+]
+
 # Per-module row predicates over the report's own terms: (class, test(terms, vector)).
 NORTH_WAY_NONZERO = re.compile(r"^\(TrRamNorthTraceWrWay_TS0 == [123]\[1:0\]\)$")
 ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
@@ -2123,6 +2165,9 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     for reason, test in ROW_PREDICATES.get(module, []):
         if len(terms) == len(vector) and test(terms, vector):
             return reason
+    for name, arm_terms, vectors in EARLIER_ARM_ROWS:
+        if name == module and tuple(terms) == arm_terms and vector in vectors:
+            return C6
     facts = path_facts(module)
     ntrace = any(r == P1 for r, _, _ in facts)
     names: dict[str, str] = {}
@@ -3620,6 +3665,7 @@ def render_feature(
         | set(BRANCH_DEAD_CASE_ITEMS)
         | set(SIGNAL_IDENTITIES)
         | set(ROW_PREDICATES)
+        | {name for name, _, _ in EARLIER_ARM_ROWS}
         | {k for t in templates.values() for k in t if path_facts(k) or region_facts(k)}
     )
     for module in modules:
@@ -3749,7 +3795,11 @@ def main() -> int:
         {
             m: align_points(report_points_by_module.get(m, []), tps)
             for m, tps in template_points_by_module.items()
-            if path_facts(m) or m in SIGNAL_IDENTITIES or m in ROW_PREDICATES
+            if path_facts(m)
+            or m in SIGNAL_IDENTITIES
+            or m in ROW_PREDICATES
+            or any(name == m for name, _, _ in EARLIER_ARM_ROWS)
+            or any(f[3] is not None for f in FEATURE_FACTS.get(m, []))
         },
     )
     outputs = (
