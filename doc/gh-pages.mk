@@ -36,31 +36,31 @@ ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-pr
 ocah-doc-stage-ghpages: ocah-doc-combined-html
 	@mkdir -p "$(OCAH_GHPAGES_DIR)/downloads"
 	@touch "$(OCAH_GHPAGES_DIR)/.nojekyll"
-	@if [ -f "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)" ]; then \
-		cp "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	@if [ -f "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" ]; then \
+		cp "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
 	else \
-		echo "warning: TRM PDF not found at $(OCAH_TRM_DIST)/$(OCAH_TRM_PDF), skipping (Downloads link will 404 until it exists)"; \
+		echo "warning: TRM PDF not found at $(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF), skipping (Downloads link will 404 until it exists)"; \
 	fi
-	@if [ -f "$(OCAH_INTEGRATOR_DIST)/$(OCAH_INTEGRATOR_PDF)" ]; then \
-		cp "$(OCAH_INTEGRATOR_DIST)/$(OCAH_INTEGRATOR_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	@if [ -f "$(OCAH_INTEGRATOR_BUILD)/latex/$(OCAH_INTEGRATOR_PDF)" ]; then \
+		cp "$(OCAH_INTEGRATOR_BUILD)/latex/$(OCAH_INTEGRATOR_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
 	else \
-		echo "warning: Integrator Guide PDF not found at $(OCAH_INTEGRATOR_DIST)/$(OCAH_INTEGRATOR_PDF), skipping (Downloads link will 404 until it exists)"; \
+		echo "warning: Integrator Guide PDF not found at $(OCAH_INTEGRATOR_BUILD)/latex/$(OCAH_INTEGRATOR_PDF), skipping (Downloads link will 404 until it exists)"; \
 	fi
-	@if [ -f "$(OCAH_PROGRAMMER_DIST)/$(OCAH_PROGRAMMER_PDF)" ]; then \
-		cp "$(OCAH_PROGRAMMER_DIST)/$(OCAH_PROGRAMMER_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	@if [ -f "$(OCAH_PROGRAMMER_BUILD)/latex/$(OCAH_PROGRAMMER_PDF)" ]; then \
+		cp "$(OCAH_PROGRAMMER_BUILD)/latex/$(OCAH_PROGRAMMER_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
 	else \
-		echo "warning: Programmer's Guide PDF not found at $(OCAH_PROGRAMMER_DIST)/$(OCAH_PROGRAMMER_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf programmer"; \
+		echo "warning: Programmer's Guide PDF not found at $(OCAH_PROGRAMMER_BUILD)/latex/$(OCAH_PROGRAMMER_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf programmer"; \
 	fi
-	@if [ -f "$(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF)" ]; then \
-		cp "$(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+	@if [ -f "$(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF)" ]; then \
+		cp "$(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF)" "$(OCAH_GHPAGES_DIR)/downloads/"; \
 	else \
-		echo "warning: Application Notes PDF not found at $(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf appnotes"; \
+		echo "warning: Application Notes PDF not found at $(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf appnotes"; \
 	fi
 	@for pdf in $(OCAH_DATASHEET_PDFS); do \
-		if [ -f "$(OCAH_DATASHEETS_DIST)/$$pdf" ]; then \
-			cp "$(OCAH_DATASHEETS_DIST)/$$pdf" "$(OCAH_GHPAGES_DIR)/downloads/"; \
+		if [ -f "$(OCAH_DATASHEETS_BUILD)/$$pdf" ]; then \
+			cp "$(OCAH_DATASHEETS_BUILD)/$$pdf" "$(OCAH_GHPAGES_DIR)/downloads/"; \
 		else \
-			echo "warning: Datasheet PDF not found at $(OCAH_DATASHEETS_DIST)/$$pdf, skipping -- run: ./scripts/docker-run.sh doc-pdf datasheets"; \
+			echo "warning: Datasheet PDF not found at $(OCAH_DATASHEETS_BUILD)/$$pdf, skipping -- run: ./scripts/docker-run.sh doc-pdf datasheets"; \
 		fi; \
 	done
 	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
@@ -78,12 +78,13 @@ ocah-doc-push-ghpages: ocah-doc-stage-ghpages
 	@cd "$(OCAH_ROOT)" && uv run ghp-import -n -p -f "$(OCAH_GHPAGES_DIR)"
 	@echo "Deployed to GitHub Pages (gh-pages branch)."
 
-## All-in-one convenience for a manual local deploy: build everything
-## (HTML + PDF for TRM/Integrator), stage, and push.
+## All-in-one convenience for a manual local deploy: build HTML and PDFs,
+## stage, and push.
 .PHONY: ocah-doc-deploy-ghpages
 ocah-doc-deploy-ghpages:
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-trm-pdf
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-integrator-pdf
+	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-programmer-pdf
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-datasheets-pdf
 	@$(MAKE) --no-print-directory -C "$(OCAH_ROOT)" ocah-doc-push-ghpages
 
