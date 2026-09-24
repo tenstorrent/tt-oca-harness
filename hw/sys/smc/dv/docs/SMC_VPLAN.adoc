@@ -8579,6 +8579,42 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-241-smc_avsbus_frame_sequencing_test]]
+===== 241 `smc_avsbus_frame_sequencing_test`
+
+*Source Module*: `smc_avsbus_frame_sequencing_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad driven at its idle or responding level by the bench
+
+*Objective*: How one AVSBus frame follows another, which the command mix decides.
+
+*Test Coverage*:
+
+* A command queued on its own. `architecture.adoc` describes a frame as a first subframe, as many middle subframes as there are further commands ready, and a last one, so with nothing behind it the first subframe is followed straight by the last. Every other leaf queues its commands in one burst, so that path had never been taken.
+* A command queued while the bus is already running, spaced so that one of them arrives during a last subframe and starts a new frame from the end of it instead of letting the bus go idle.
+* A reply the master had to buffer. A frame retried while a later frame is already on the wire leaves that later reply pending; when the master returns to it, it either retries that one too or, if it is good, resynchronises the slave. The bench decides which by driving the pad: the retries are provoked at the idle level and the pad is then released to its responding level, so the buffered reply is a good one.
+
+*Test Procedure*:
+
+[arabic]
+. With the pad at its responding level and the readback FIFO drained, queue one command and require a response and the last-subframe shift state on the debug bus.
+. Queue several commands one at a time with a short gap, and require a response for each.
+. With a retry budget programmed and the pad at its idle level, queue two commands and wait for `TOTAL_RETRIES` to move; release the pad to its responding level and require the slave-resynchronisation state on the debug bus.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-SINGLE-COMMAND` |A command with nothing behind it produced its response and took the machine through the last-subframe shift rather than a middle one
+|`CHK-AVS-LATE-COMMAND` |Commands written one at a time while the bus ran all produced responses
+|`CHK-AVS-BUFFERED-REPLY` |After a retry with a second frame on the wire, a buffered reply that turned out good took the master to the slave resynchronisation rather than another retry
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
