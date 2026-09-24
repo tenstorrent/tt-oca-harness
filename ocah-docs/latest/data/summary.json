@@ -9,10 +9,10 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.19,
+      "coverage_total_percent": 89.27,
       "flow": "dtp",
       "framework": "uvm",
-      "pass_rate": 94.7,
+      "pass_rate": 98.01,
       "tests_total": 151,
       "tool": "vcs"
     },
@@ -41,7 +41,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-09-24T21:08:53+00:00",
+  "generated_at": "2026-09-24T23:30:32+00:00",
   "results": [
     {
       "coverage": {
@@ -64,12 +64,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 94.36,
-          "branch": 92.19,
-          "condition": 87.98,
-          "fsm_state": 71.78,
+          "branch": 92.23,
+          "condition": 88.08,
+          "fsm_state": 72.08,
           "functional": 98.18,
           "line": 96.94,
-          "toggle": 82.93,
+          "toggle": 82.98,
           "user": 94.4915
         }
       },
