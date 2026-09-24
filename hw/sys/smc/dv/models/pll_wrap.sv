@@ -17,20 +17,21 @@
 //
 // Clock path for sys and periph:
 //
-//   osc_ref ──> clk0 \                                  clk0 \
-//                     prim_clock_mux2 ──> clk_XXX_mux2 ──────  prim_ag_clk_mux ──> clk_XXX_o
-//   osc_XXX ──> clk1 /  sel=1 selects PLL (default)           /  sel=0 keeps clk0
+//                        clk0 \                         clk0 \
+//   osc_ref ─────────────────  prim_clock_mux2          ─────  prim_ag_clk_mux ──> clk_XXX_o
+//                        clk1 /  ──> clk_XXX_mux2 ──>   clk1 /
+//   osc_XXX ──────────────────   sel=1 (PLL locked)      sel=1 (select PLL path)
 //
-// prim_clock_mux2 (refclk mux): clk0 carries the always-on reference clock,
-// clk1 carries the PLL oscillator.  In hardware, software holds sel=0 until
-// the PLL has locked, then asserts sel=1 to switch over.  In this behavioral
-// model the PLL is always considered locked, so sel is permanently 1.
+// prim_clock_mux2 (refclk mux): clk0 is the always-on reference clock and
+// clk1 is the PLL oscillator.  In hardware, software holds sel=0 (ref) until
+// the PLL has locked, then sets sel=1 to switch to the PLL clock.  In this
+// behavioral model the PLL is always considered locked, so sel is hardwired 1.
 //
-// prim_ag_clk_mux (anti-glitch mux): prevents glitches on the output during
-// the clk0→clk1 transition in the mux above.  ag_rst_n starts 1 for 1 ps
-// then tracks rst_ni; the resulting falling edge initialises the set/reset
-// flops before functional reset deasserts.  sel=0 permanently selects clk0
-// (the post-refclk-mux path) so the AG mux is transparent at steady state.
+// prim_ag_clk_mux (anti-glitch mux): clk0 is ref (safe fallback on reset,
+// SelectOnReset=0) and clk1 is the post-mux2 PLL path.  sel=1 permanently
+// selects clk1 in the behavioral model.  ag_rst_n starts 1 for 1 ps then
+// tracks rst_ni; the falling edge initialises the set/reset flops before
+// functional reset deasserts, ensuring ref is driven during reset.
 //
 // clk_ref passes straight through — it is the reference and needs no mux.
 //
@@ -48,7 +49,6 @@ module pll_wrap
 ) (
   input  logic       clk_i,
   input  logic       rst_ni,
-  input  logic       test_en_i,
 
   input  axil_req_t  axil_req_i,
   output axil_resp_t axil_resp_o,
@@ -120,12 +120,12 @@ module pll_wrap
   prim_ag_clk_mux #(
     .SelectOnReset (1'b0)
   ) u_sys_ag_mux (
-    .clk0_i     (clk_sys_mux2),
-    .clk1_i     (osc_sys),
+    .clk0_i     (osc_ref),
+    .clk1_i     (clk_sys_mux2),
     .rst_clk0_ni(ag_rst_n),
     .rst_clk1_ni(ag_rst_n),
-    .test_en_i  (test_en_i),
-    .sel_i      (1'b0),
+    .test_en_i  (1'b0),
+    .sel_i      (1'b1),
     .clk_o      (clk_sys_o)
   );
 
@@ -145,12 +145,12 @@ module pll_wrap
   prim_ag_clk_mux #(
     .SelectOnReset (1'b0)
   ) u_periph_ag_mux (
-    .clk0_i     (clk_periph_mux2),
-    .clk1_i     (osc_periph),
+    .clk0_i     (osc_ref),
+    .clk1_i     (clk_periph_mux2),
     .rst_clk0_ni(ag_rst_n),
     .rst_clk1_ni(ag_rst_n),
-    .test_en_i  (test_en_i),
-    .sel_i      (1'b0),
+    .test_en_i  (1'b0),
+    .sel_i      (1'b1),
     .clk_o      (clk_periph_o)
   );
 
