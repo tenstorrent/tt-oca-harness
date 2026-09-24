@@ -25,7 +25,6 @@ endif
 # prim_fifo_sync, prim_diff_decode_multi) and the PicoRV32 core it embeds; both
 # vendor file lists are opt-in Bender targets.
 COMMON_TARGETS = -t axi_rtl -t common_cells_rtl -t register_interface_l1 \
-                 -t exclude_register_interface_deprecated \
                  -t key_manager -t picorv32_rtl
 
 # ==============================================================================

@@ -471,7 +471,7 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/ip/drbg/rtl/drbg_pkg.sv
   - target: any(sep, smc)
@@ -593,7 +593,7 @@ sources:
     files:
       - hw/common/axi/axi4lite_intf.sv
       - hw/common/axi/axi_cg_snoop.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
@@ -696,7 +696,7 @@ sources:
       - hw/common/och_prim_generic/rtl/prim_or4.sv
       - hw/common/och_prim_generic/rtl/prim_stdbuf.sv
       - hw/common/och_prim_generic/rtl/prim_stdmux2.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/common/tlul/rtl/tlul_adapter_host.sv
       - hw/common/tlul/rtl/tlul_adapter_reg.sv
@@ -746,7 +746,7 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/ip/drbg/rtl/drbg.sv
       - hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv

@@ -61,9 +61,12 @@ endif
 
 include $(shell cocotb-config --makefiles)/Makefile.sim
 
+# register_interface_l1 carries prim_mubi_pkg, which the OpenTitan primitives under the drbg closure need.
+BENDER_TARGETS = -t register_interface_l1 -t drbg
+
 .PHONY: filelist
 filelist:
-	bender script flist-plus -t drbg > $(FILELIST)
+	cd $(OCH_ROOT) && bender script flist-plus $(BENDER_TARGETS) > $(FILELIST)
 
 .PHONY: build-verilator
 build-verilator: filelist
