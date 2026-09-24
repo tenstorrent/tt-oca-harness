@@ -10536,6 +10536,56 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
+[[sec-256-smc_i2c_controller_edge_timing_test]]
+===== 256 `smc_i2c_controller_edge_timing_test`
+
+*Source Module*: `smc_i2c_controller_edge_timing_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads, and a second bench pad driver that moves SCL and SDA together; observation on `INTR_STATE`, `CONTROLLER_EVENTS`, `STATUS` and the target's data
+
+*Objective*: Test the controller's decisions that depend on how SCL and SDA move relative to each other. It samples the two lines through matching synchronisers, so some decisions arise only when both lines move on the same clock, or when SCL falls after the controller has already seen a stretch.
+
+*Test Coverage*:
+
+* SCL falling while SDA changes. Both lines are pulled low at the same instant, 60 ns into the high window of four pulses where SDA is high:
+** a bit the controller transmits;
+** the acknowledge of an address nobody answers;
+** a one bit the target returns;
+** the not-acknowledge the controller drives.
++
+The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
+* SCL rising while SDA changes, in the not-acknowledge pulse. Both lines are held low from the low phase before it, which stretches the pulse, and then released together. SDA rises with SCL, so the read must complete intact with no event.
+* SCL falling after a stretch. SCL is held low for 5 us across the expected rise, released, and pulled low again 60 ns into the high window.
+** In the same four pulses, the fall is clock synchronisation (`SCL_INTERFERENCE`).
+** In the setup of a repeated START and in the setup of the STOP, the controller could not issue its control symbol (`CONTROLLER_EVENTS.ARBITRATION_LOST`). `TSU_STA` or `TSU_STO` is lengthened so that the setup outlasts the pull's delay.
+* SDA rising while SCL falls in the STOP hold. SDA is held low through the STOP's setup, then released at the moment SCL is pulled low. The controller sees SDA high and must finish its STOP with `CMD_COMPLETE` and no event.
+* Another device in the setup of a first START. `TIMING2.TSU_STA` is lengthened so the setup can be hit from a time offset after the queue.
+** SCL pulled low there means another device took the bus first. The transfer must still complete intact.
+** SDA pulled low there must raise `INTR_STATE.SDA_INTERFERENCE`.
+* Every point in a transfer is placed by counting edges on the pads from the START, as in `smc_i2c_controller_scl_events_test`. Each leg disables the controller, clears its events and returns the bus to idle afterwards.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target and the second pad driver on the pads.
+. For each point: re-enable the controller, arm the edge, queue the transfer, and require the outcome above; then disable, clear and recover the bus.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-EDGE-FALL-CHANGE` |SCL and SDA pulled low together in each of the four pulses raised `SCL_INTERFERENCE`
+|`CHK-I2C-CTRL-EDGE-RISE-CHANGE` |SCL and SDA released together into the not-acknowledge pulse left the read to complete intact with no event
+|`CHK-I2C-CTRL-EDGE-STRETCH-FALL` |An SCL fall after a stretch raised `SCL_INTERFERENCE` in each pulse and `ARBITRATION_LOST` in each setup
+|`CHK-I2C-CTRL-EDGE-STOP-HOLD` |SDA released as SCL fell in the STOP hold let the STOP finish with `CMD_COMPLETE` and no event
+|`CHK-I2C-CTRL-EDGE-FIRST-START` |SCL pulled in a first START's setup left the transfer to complete; SDA pulled there raised `SDA_INTERFERENCE`
+|===
+
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
