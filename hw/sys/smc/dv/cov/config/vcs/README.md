@@ -8,7 +8,7 @@ things, and the two flows answer different questions:
 
 | File | Flow | Mechanism | Population |
 | --- | --- | --- | --- |
-| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` | the SEP rule: DUT minus the bench, the CPU subtree, the library and interconnect cells and the I3C controllers; every other functional third-party IP stays graded |
+| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` | the SEP rule: DUT minus the bench, the CPU subtree, the library and interconnect cells and the I3C controllers; the bench's coverage collectors under `hw/sys/smc/dv/cov/sv` keep their assertions and covergroups but leave the code and toggle metrics; every other functional third-party IP stays graded |
 | `../verilator/smc_cov_scope.vlt` | public CI | `coverage_off -file`, globs | what SMC owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`, the `hw/top` shells and the `cov/sv` points |
 
 Both are applied at **compile** time, following what SEP measured
@@ -71,6 +71,13 @@ Verilator 5.050 leaves some vendored files instrumented that its scope names
                                third-party block that one SMC leaf reaches and
                                that has its own bench (hw/ip/i3ccore_wrap/dv),
                                the same argument SEP uses to drop sep_cpu
+    // bench coverage          begin line+cond+fsm+branch+tgl ... end around the
+       collectors              sixteen units compiled from hw/sys/smc/dv/cov/sv:
+                               the functional-coverage collectors the bench top
+                               instantiates beside the DUT. Their code is bench
+                               code, so it leaves the code and toggle metrics;
+                               their assertions and covergroups stay, as the SMU
+                               scope keeps its own
 
 The `-module` lines are generated:
 
