@@ -27,8 +27,8 @@ and token-processing figures remain canonical.
 
 | Figure | Description | Authored page | Asset | Notes |
 | --- | --- | --- | --- | --- |
-| FIG001 | OCAH subsystem / top-level block diagram | [doc/trm/src/overview.adoc](../../../doc/trm/src/overview.adoc) | [doc/trm/assets/ocah_top.png](../../../doc/trm/assets/ocah_top.png) | Imported |
-| FIG003 | OCAH clock-domain and CDC overlay | [doc/trm/src/clock_domains.adoc](../../../doc/trm/src/clock_domains.adoc) | [doc/trm/assets/ocah_top.png](../../../doc/trm/assets/ocah_top.png) | Reuses the top-level CDC figure as requested; no separate colored overlay supplied |
+| FIG001 | OCAH subsystem / top-level block diagram | [doc/trm/src/overview.adoc](../../../doc/trm/src/overview.adoc) | [doc/trm/assets/ocah_top.svg](../../../doc/trm/assets/ocah_top.svg) | Redrawn as hand-authored SVG from the imported draw.io figure |
+| FIG003 | OCAH clock-domain and CDC overlay | [doc/trm/src/clock_domains.adoc](../../../doc/trm/src/clock_domains.adoc) | [doc/trm/assets/ocah_top.svg](../../../doc/trm/assets/ocah_top.svg) | Reuses the top-level CDC figure as requested; no separate colored overlay supplied |
 
 ## SMU
 
