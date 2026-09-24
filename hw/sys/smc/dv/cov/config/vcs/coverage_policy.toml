@@ -13,9 +13,15 @@ scope_epoch = "smc-vcs-cov-v1"
 # Register block structural facts: A1 NO-STALL and A2 NO-ERROR across the
 # PeakRDL blocks, plus A3 NO-READ-CHANNEL, A4 READ-NEVER-ERRORS and A5
 # INPUT-UNCONNECTED, which belong to one block each, and A6 SINGLEPULSE-RETAIN,
-# the retain row of a field the RDL declares singlepulse. B1 PARTIAL-LANE-WRITE
-# joins them and is the bench's own: the AXI agent writes whole registers, so
-# the retain row of a field that keeps its value has no access behind it here.
+# the retain row of a field the RDL declares singlepulse, A7 SINGLEPULSE-LOADS,
+# the load-skipping path of such a field's flop, and C1 CONTRADICTORY-PATH, a
+# branch path whose own decisions contradict. B1 PARTIAL-LANE-WRITE
+# joins them and is the bench's own: the AXI agent writes whole 32-bit words, so
+# on a block whose cpuif is no wider no write-branch row that needs a lane off
+# has an access behind it here. A block with a wider cpuif takes a half-word
+# write from the same agent and keeps those rows graded.
+# B7 DFX-INPUTS-TIED is the bench's too: it ties the four DFX status inputs the
+# boot sequencer waits on high, so their input-low arms have no stimulus.
 # The file header and the generator's docstring state them.
 [[native_files]]
 tool = "vcs"
@@ -35,11 +41,16 @@ args = ["-elfile", "{path}"]
 
 
 # FSM facts (F2 DEFAULT, F3 TIEOFF, F4 PARAM-OFF, F5 RESET-EDGE, F6
-# ENABLE-EDGE): the always_comb default read as an edge from every state, the
+# ENABLE-EDGE, F7 SCL-HELD-LOW, F8 NO-INTERFERENCE, F9 LOOP-INDEX-EXTRACTION): the always_comb default read as an edge from every state, the
 # states a write master cannot reach because the integration ties its response
 # inputs to zero, a decode state whose arm a parameter leaves unelaborated, the
 # edges that exist only as a state register's reset assignment, and the one an
-# enable-edge load cannot supply.
+# enable-edge load cannot supply, the I2C fan-in overrides a state holding SCL
+# low cannot take, and those a state that never drives the bus cannot. B2
+# UNAIMED-OVERRIDE is the bench's own: the rest of those override edges wait on
+# a bus event or write landing in a chosen sub-bit state, which the bench cannot
+# place. F9 is the extraction's: a combinational loop index is not a state. B4
+# is the bench's: it ties the CPU SRAM auto-init bypass high.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
@@ -49,13 +60,25 @@ args = ["-elfile", "{path}"]
 
 # Features the integration leaves out (P1 NTRACE-OFF, P2 SKIP-TIED-OFF, P3
 # WREN-TIED, P4 SINGLE-SOURCE, P5 INSTR-TYPE-CONST, P6 LC-STATE-OFF, P7
-# NO-ERROR-CAP, P8 WREN-TIED-ZERO, P9 DEBUG-WIDTH-64): the trace wrapper is
+# NO-ERROR-CAP, P8 WREN-TIED-ZERO, P9 DEBUG-WIDTH-64, P10
+# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING, P13
+# CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16 SINK-ENABLE-CONST, P17
+# ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19 NTR-RAM-READ-TIED, P20
+# TCOUNT-SELECT-PAIRED, and F3
+# TIEOFF's branch paths; B6
+# SIM-ONLY-FUSE-BYPASS is the bench's and its policy's: no leaf passes the
+# simulation-only +skip_fuse_sense plusarg the DV policy forbids): the
+# DFD clamps, JTAG MMR requester, eFuse secure test mode and AVS TDR override
+# are tied off, the sink enables and trace
+# core count are fixed by parameters, and the
+# trace wrapper is
 # instantiated with zero
 # N-trace instances, the AXI filter with its skip input tied to zero, the eFuse
 # without lifecycle state and the iDMA backend without error handling, and the
 # CLA holds one reserved write enable at the zero its write structure gives it
-# and leaves the snapshot Hi half unelaborated at a 64-bit debug bus, so those
-# conditions have no stimulus.
+# and leaves the snapshot Hi half unelaborated at a 64-bit debug bus, and a VLT
+# packet is shorter than an accumulator bank, so those conditions have no
+# stimulus.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
