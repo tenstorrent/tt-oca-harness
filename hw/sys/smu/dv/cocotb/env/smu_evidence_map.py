@@ -97,6 +97,32 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "responder holds the word and the B response returns OKAY",
         ),
     ],
+    "smu_aperture_map_walk_test": [
+        (
+            "CHK-SMCMAP-WALK-PORT",
+            "CHK-SMCMAP-WALK-PORT",
+            "every programmed GLOBAL_BASE and REGION_SIZE reaches smc_global_base_o and "
+            "smc_region_size_o and reads back over JTAG2AXI",
+        ),
+        (
+            "CHK-SMCMAP-WALK-INSIDE",
+            "CHK-SMCMAP-WALK-INSIDE",
+            "at every setting the rebased VERSION_LO read returns its RDL reset value and "
+            "the rebased SCRATCH_COLD write reads back, all OKAY",
+        ),
+        (
+            "CHK-SMCMAP-WALK-EDGE",
+            "CHK-SMCMAP-WALK-EDGE",
+            "at every setting the first address of the window reaches the SMC once and the word "
+            "below and the address past it do not and return DECERR",
+        ),
+        (
+            "CHK-SMCMAP-RESTORE",
+            "CHK-SMCMAP-RESTORE",
+            "GLOBAL_BASE and REGION_SIZE written back to LOCAL_BASE and the RDL reset "
+            "reach the ports and read back",
+        ),
+    ],
     "smu_axi_in_burst_outstanding_test": [
         (
             "CHK-AXIIN-DEPTH",

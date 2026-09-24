@@ -138,6 +138,11 @@ module smu_wrapper_uvm_top (
   // carries a different source id.
   output logic [11:0] sep_xbar_in_aw_user_o,
   output logic [55:0] sep_xbar_in_aw_addr_o,
+  // Crossbar -> SMC inbound AR and AW. A DECERR on ext_in comes either from
+  // the crossbar's decode miss or from the SMC inbound filter; only the first
+  // leaves these counts where they were.
+  output logic [31:0] smc_xbar_in_ar_count_o,
+  output logic [31:0] smc_xbar_in_aw_count_o,
   // SEP AP / STEE output-remap region-0 offsets, as the remap datapath sees
   // them. sep_smu_remap programs these write-only and cannot read them back,
   // so the golden comparison has to happen here.
@@ -1204,7 +1209,15 @@ module smu_wrapper_uvm_top (
       sep_xbar_in_aw_count_o <= '0;
       sep_xbar_in_aw_user_o  <= '0;
       sep_xbar_in_aw_addr_o  <= '0;
+      smc_xbar_in_ar_count_o <= '0;
+      smc_xbar_in_aw_count_o <= '0;
     end else begin
+      if (u_dut.u_smu.xbar_to_smc_req.ar_valid && u_dut.u_smu.xbar_to_smc_resp.ar_ready) begin
+        smc_xbar_in_ar_count_o <= smc_xbar_in_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.xbar_to_smc_req.aw_valid && u_dut.u_smu.xbar_to_smc_resp.aw_ready) begin
+        smc_xbar_in_aw_count_o <= smc_xbar_in_aw_count_o + 32'd1;
+      end
       if (u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid &&
                 u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready) begin
         sep_smn_out_aw_count_o <= sep_smn_out_aw_count_o + 32'd1;
