@@ -5,15 +5,18 @@
 // [coverage.verilator].build_args in smc_sim_cfg.toml, so what it drops never
 // enters the coverage database. Edit then `--rebuild`.
 //
-// This is the Verilator counterpart of SEP's cov/config/vcs/sep_cov_scope.hier
-// and it follows the same rule SEP measured: scope has to be applied at
-// COMPILE time. A report-time filter prunes the pages and still grades the
-// whole database.
+// Scope is applied at COMPILE time, as SEP measured: a report-time filter
+// prunes the pages and still grades the whole database.
+//
+// This file grades what SMC owns: hw/sys/smc/rtl, hw/sys/smc/regs, the hw/top
+// shells and the cov/sv points. The VCS scope in ../vcs/smc_cov_scope.hier is
+// wider -- it follows the SEP rule and keeps functional third-party IP graded
+// -- so the two flows report different populations; ../vcs/README.md says why
+// the public-CI set stays narrow.
 //
 // MECHANISM NOTE: Verilator's `coverage_off` takes `-file` (with globs) only.
 // There is no `-module` form -- `coverage_off -module "prim_rom"` is a syntax
-// error. VCS scopes by hierarchy, so the .hier file next door names instance
-// trees for the same intent; the two files must be kept in step by hand.
+// error.
 //
 // GLOB NOTE: the pattern is matched against the path as Verilator OPENED the
 // file, not the absolute path it records in the generated code. The filelist
@@ -52,10 +55,9 @@ coverage_off -file "*chipyard_generated_files/*"
 // ---------------------------------------------------------------------------
 // Vendored third-party RTL.
 // ---------------------------------------------------------------------------
-// Third-party RTL:
 // pulp-platform axi + common_cells, chipsalliance i3c-core, lowRISC prims,
-// tt-hw-debug trace/mmr. None of it is SMC-level DV's to close, and leaving it
-// in makes the headline number a statement about other projects' code.
+// tt-hw-debug trace/mmr. The public-CI figure is SMC-owned RTL; the VCS scope
+// keeps the functional blocks among these graded.
 coverage_off -file "*vendor/*"
 
 // IP blocks and shared primitives SMC integrates carry their own DV packages

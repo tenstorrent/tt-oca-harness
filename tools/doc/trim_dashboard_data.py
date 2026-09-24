@@ -18,7 +18,8 @@ The ``summary`` subcommand reads a published summary and keeps only:
     {
       "generated_at": str,
       "dut_status":   [{"flow": str, "framework": str, "tool": str,
-                        "tests_total": int, "pass_rate": float}],
+                        "tests_total": int, "pass_rate": float,
+                        "coverage_total_percent": float}],
       "results":      [{"flow": str, "framework": str, "tool": str,
                         "coverage": {"effective_metrics": {...}}}]
     }
@@ -27,10 +28,10 @@ With ``--tests-out``, a second file for the block pages:
 
     {
       "generated_at": str,
-      "flows": {
-        "<flow>": [{"name": str, "status": str, "category": str,
-                    "seed": int, "duration_sec": float, "stage": str}]
-      }
+      "results": [{"flow": str, "framework": str, "tool": str,
+                   "tests": [{"name": str, "status": str, "category": str,
+                              "seed": int, "duration_sec": float,
+                              "stage": str}]}]
     }
 
 The ``history`` subcommand reads a published history and writes the series for
@@ -63,7 +64,11 @@ SUMMARY_KEYS: tuple[str, ...] = ("generated_at",)
 # The fields that together name one series.
 IDENTITY_KEYS: tuple[str, ...] = ("flow", "framework", "tool")
 
-DUT_KEYS: tuple[str, ...] = IDENTITY_KEYS + ("tests_total", "pass_rate")
+DUT_KEYS: tuple[str, ...] = IDENTITY_KEYS + (
+    "tests_total",
+    "pass_rate",
+    "coverage_total_percent",
+)
 
 # dut_status[] flattens coverage to a single total_percent, so the per-metric
 # breakdown (line/toggle/assertion/functional) only exists on results[].
@@ -229,18 +234,19 @@ def trim_summary(args: argparse.Namespace) -> int:
     write_json(args.output, trimmed)
 
     if args.tests_out:
-        by_flow: dict[str, list[dict[str, Any]]] = {}
+        detailed: list[dict[str, Any]] = []
         for result in summary.get("results") or []:
             if not isinstance(result, dict) or not result.get("flow"):
                 continue
             tests = result.get("tests_detail")
-            if isinstance(tests, list):
-                by_flow[result["flow"]] = [
-                    trim_test(test) for test in tests if isinstance(test, dict)
-                ]
+            if not isinstance(tests, list):
+                continue
+            entry = {key: result[key] for key in IDENTITY_KEYS if key in result}
+            entry["tests"] = [trim_test(test) for test in tests if isinstance(test, dict)]
+            detailed.append(entry)
         detail: dict[str, Any] = {
             "generated_at": summary.get("generated_at"),
-            "flows": by_flow,
+            "results": detailed,
         }
         write_json(args.tests_out, detail)
 

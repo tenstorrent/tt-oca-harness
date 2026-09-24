@@ -141,3 +141,11 @@ args = [
     "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
     "+smc_efuse_prog_fail_count=1",
 ]
+
+[[tests]]
+name = "smc_efuse_lock_guard_test"
+module = "smc_efuse_lock_guard_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]

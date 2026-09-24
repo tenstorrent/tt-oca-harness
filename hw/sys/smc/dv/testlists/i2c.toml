@@ -211,3 +211,156 @@ tests = [
     "smc_i2c_target_smbus_test",
     "smc_i2c_intr_mask_test",
 ]
+
+[[tests]]
+name = "smc_i2c_intr_reg_sweep_test"
+module = "smc_i2c_intr_reg_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_acq_stretch_test"
+module = "smc_i2c_target_acq_stretch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_config_regblock_sweep_test"
+module = "smc_i2c_config_regblock_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_nack_timeout_test"
+module = "smc_i2c_target_nack_timeout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_target_fast_controller_test"
+module = "smc_i2c_target_fast_controller_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_target_multi_instance_stretch_test"
+module = "smc_i2c_target_multi_instance_stretch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c2_controller_rdwr_test"
+module = "smc_i2c2_controller_rdwr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_protocol_interruption_test"
+module = "smc_i2c_protocol_interruption_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_target_bus_timeout_test"
+module = "smc_i2c_target_bus_timeout_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_bus_monitor_idle_test"
+module = "smc_i2c_bus_monitor_idle_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_controller_sda_interference_test"
+module = "smc_i2c_controller_sda_interference_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_i2c_fifo_reset_pulse_test"
+module = "smc_i2c_fifo_reset_pulse_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_ack_ctrl_test"
+module = "smc_i2c_target_ack_ctrl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_target_addr_stretch_test"
+module = "smc_i2c_target_addr_stretch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+[[tests]]
+name = "smc_intr_status_partial_clear_test"
+module = "smc_intr_status_partial_clear_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_controller_control_symbol_test"
+module = "smc_i2c_controller_control_symbol_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_controller_stretch_test"
+module = "smc_i2c_controller_stretch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_controller_exits_test"
+module = "smc_i2c_controller_exits_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c"]
+run_modes = ["smoke"]
