@@ -26,8 +26,11 @@ write-1-to-set:
 * **A write-locked program.** With SPARE[7]'s write lock set, a program with
   read-back of a bit the asset holds at 0 must complete with `PROGRAM_STATUS`
   set and `EFUSE_REQ_ERROR` raised. The command never reaches the bank: a
-  read of the word afterwards must still return the asset's value. The
-  program is a read-back program, the kind the regression's policy admits.
+  read of the word afterwards must still return the asset's value.
+* **A program without read-back.** `EFUSE_PROGRAM_CTRL.EFUSE_PROGRAM_READ_BACK`
+  clear sends a plain program. The leaf does not trust the command: a read of
+  the word through the read interface must show the bit burnt, and a read-back
+  program of the same bit must find it set.
 
 Locks set through `LOCKS` hold until reset, so SPARE[6] and SPARE[7] are left
 locked; no other leaf in the run uses them.
@@ -65,6 +68,8 @@ LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
 READ_FIELD = 6
 PROGRAM_FIELD = 7
 READ_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", READ_FIELD)
+PLAIN_FIELD = 8
+PLAIN_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", PLAIN_FIELD)
 PROGRAM_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", PROGRAM_FIELD)
 READ_LOCK = smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{READ_FIELD}_READ_LOCK_bm")
 WRITE_LOCK = smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{PROGRAM_FIELD}_WRITE_LOCK_bm")
@@ -196,4 +201,39 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
             PROGRAM_FIELD,
             zero_bits[0],
             program_word,
+        )
+
+        plain_word = efuse_preload_word_at(PLAIN_WORD_ADDR)
+        plain_free = [b for b in range(32) if not (plain_word >> b) & 1]
+        assert plain_free, f"SPARE[{PLAIN_FIELD}] word 0 is all ones in the asset"
+        plain_bit = _bit_addr(PLAIN_WORD_ADDR, plain_free[0])
+        await self.csr_write("PLAIN_GO", PROGRAM_CTRL, plain_bit | PROG_DATA | PROG_GO | PROG_EN)
+        ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, "PLAIN_DONE")
+        await self.csr_write("PLAIN_IDLE", PROGRAM_CTRL, 0)
+        assert not ctrl & PROG_ERR, (
+            f"a program of SPARE[{PLAIN_FIELD}] bit {plain_free[0]} without read-back failed "
+            f"(PROGRAM_CTRL=0x{ctrl:08x})"
+        )
+        want = plain_word | (1 << plain_free[0])
+        ctrl, data = await self._read("PLAIN_READ", _bit_addr(PLAIN_WORD_ADDR))
+        assert not ctrl & READ_ERR and data == want, (
+            f"after a program without read-back SPARE[{PLAIN_FIELD}] reads 0x{data:08x} "
+            f"(READ_CTRL=0x{ctrl:08x}); with the bit burnt it is 0x{want:08x}"
+        )
+        await self.csr_write(
+            "PLAIN_CHECK_GO", PROGRAM_CTRL, plain_bit | PROG_DATA | PROG_GO | PROG_RB | PROG_EN
+        )
+        ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, "PLAIN_CHECK_DONE")
+        await self.csr_write("PLAIN_CHECK_IDLE", PROGRAM_CTRL, 0)
+        assert not ctrl & PROG_ERR, (
+            f"a read-back program of the bit just burnt without read-back reported a mismatch "
+            f"(PROGRAM_CTRL=0x{ctrl:08x})"
+        )
+        cocotb.log.info(
+            "CHK-EFUSE-PROGRAM-NO-READBACK: a program of SPARE[%d] bit %d with read-back "
+            "disabled completed without error, the read interface then returned 0x%08x with "
+            "the bit set, and a read-back program of the same bit found it burnt",
+            PLAIN_FIELD,
+            plain_free[0],
+            want,
         )
