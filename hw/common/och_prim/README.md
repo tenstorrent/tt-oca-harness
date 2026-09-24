@@ -1,20 +1,28 @@
 # och_prim
 
-Tenstorrent-specific **prim** RTL that has **no** matching module name under
-`vendor/opentitan/` (Section B in the vendor delta inventory).
+Tenstorrent building-block RTL for which OpenTitan has no primitive: bus
+adapters and arbiters, counters, clock dividers and glitch-free clock muxes,
+multi-stage and pulse synchronizers, reset synchronizers, JTAG scan cells and
+memory wrappers. Modules here are composed from ordinary RTL and from the cells
+in [`../och_prim_generic/`](../och_prim_generic/) and the vendored OpenTitan
+`prim` / `prim_generic` libraries; they are never swapped for a technology cell
+themselves.
 
-TT modifications to OpenTitan primitives that *do* have a vendored upstream
-counterpart are no longer forked here; they are applied as per-module patches
+OCAH uses OpenTitan IP, and with it OpenTitan's primitives. A module belongs
+here only if nothing under
+`vendor/lowRISC/opentitan/upstream/hw/ip/prim{,_generic}/rtl/` does the same
+job. Two-stage synchronizers, clock gates, clock muxes and buffers, flops and
+simple gates are OpenTitan's (`prim_flop_2sync`, `prim_clock_gating`,
+`prim_clock_mux2`, `prim_clock_buf`, `prim_buf`, `prim_flop`, `prim_inv`,
+`prim_and2`, ...); instantiate those rather than adding a TT equivalent.
+Changes TT needs in an OpenTitan primitive are applied as per-module patches
 under
-[`vendor/lowRISC/opentitan/patches/`](../../../vendor/lowRISC/opentitan/patches/)
-on top of `vendor/lowRISC/opentitan/upstream/hw/ip/prim{,_generic}/rtl/`.
+[`vendor/lowRISC/opentitan/patches/`](../../../vendor/lowRISC/opentitan/patches/),
+not forked here.
 
 | Path | Contents |
 |------|----------|
-| `rtl/` | TT-only prim modules (bus adapters, CDC sync, JTAG, libcell behavioral, etc.) with no upstream name |
-
-Default simulation and synthesis file lists compile `rtl/` here plus the
-(patched) vendored `prim*` under `vendor/opentitan/` (see repo-root `Bender.yml`).
+| `rtl/` | TT-only building blocks with no OpenTitan counterpart |
 
 The root [`Bender.yml`](../../../Bender.yml) is the source inventory for these
 modules and their vendored counterparts.

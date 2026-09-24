@@ -665,25 +665,18 @@ sources:
       - hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
       - hw/common/och_prim/rtl/prim_pulse_signal.sv
       - hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
+      - hw/common/och_prim/rtl/prim_rev_cell.sv
       - hw/common/och_prim/rtl/prim_rom_bank_swap.sv
       - hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
-      - hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
-      - hw/common/och_prim/rtl/prim_sync2.sv
-      - hw/common/och_prim/rtl/prim_sync2r.sv
       - hw/common/och_prim/rtl/prim_sync3.sv
       - hw/common/och_prim/rtl/prim_sync3_pulse.sv
       - hw/common/och_prim/rtl/prim_sync3r.sv
       - hw/common/och_prim/rtl/prim_sync4.sv
       - hw/common/och_prim/rtl/prim_sync4r.sv
       - hw/common/och_prim/rtl/prim_sync_data_autohs.sv
-      - hw/common/och_prim/rtl/prim_sync_randomized_delay.sv
       - hw/common/och_prim/rtl/prim_sync_reset.sv
       - hw/common/och_prim/rtl/prim_updown_counter.sv
       - hw/common/och_prim/rtl/prim_zero_counter.sv
-      - hw/common/och_prim_generic/rtl/prim_and3.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
-      - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
       - hw/common/sync.sv
   # Scrambled-RAM primitives: dtp has no scrambled memory, so excluded here.
   - target: any(sep, smc, key_manager)
@@ -702,27 +695,19 @@ sources:
   - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
     files:
       - hw/common/och_prim_generic/rtl/prim_ao222.sv
-      - hw/common/och_prim_generic/rtl/prim_clkgater.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
       - hw/common/och_prim_generic/rtl/prim_clock_nand2.sv
-      - hw/common/och_prim_generic/rtl/prim_dffrxq.sv
-      - hw/common/och_prim_generic/rtl/prim_dffsxq.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_2sync_r.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_2sync_s.sv
       - hw/common/och_prim_generic/rtl/prim_flop_3sync.sv
       - hw/common/och_prim_generic/rtl/prim_flop_3sync_r.sv
       - hw/common/och_prim_generic/rtl/prim_flop_3sync_s.sv
       - hw/common/och_prim_generic/rtl/prim_flop_4sync.sv
       - hw/common/och_prim_generic/rtl/prim_flop_4sync_r.sv
       - hw/common/och_prim_generic/rtl/prim_flop_4sync_s.sv
-      - hw/common/och_prim_generic/rtl/prim_inv.sv
       - hw/common/och_prim_generic/rtl/prim_latch_n.sv
       - hw/common/och_prim_generic/rtl/prim_metastab_hardened_dffr.sv
       - hw/common/och_prim_generic/rtl/prim_nand4.sv
       - hw/common/och_prim_generic/rtl/prim_nor4.sv
       - hw/common/och_prim_generic/rtl/prim_or2.sv
       - hw/common/och_prim_generic/rtl/prim_or4.sv
-      - hw/common/och_prim_generic/rtl/prim_stdbuf.sv
       - hw/common/och_prim_generic/rtl/prim_stdmux2.sv
   - target: sep
     files:
@@ -1051,7 +1036,7 @@ sources:
       #                therefore always brings CALIPTRA along; sep_crypto.sv also
       #                carries an elaboration check that rejects the mismatch.
       #   TECH_SPECIFIC_ICG - skip the latch in abr_icg.sv; overlay abr_clk_gate
-      #                instantiates prim_clkgater (foundry cell under `-t synth`).
+      #                instantiates prim_clock_gating (foundry cell under `-t synth`).
       # File order follows vendor/chipsalliance/adams-bridge/upstream/src/abr_top/config/abr_top.vf.
       # =====================================================================
       - defines:
@@ -1577,7 +1562,7 @@ sources:
   # Reference wrappers are additive to their corresponding subsystem targets.
   - target: any(smc_wrapper, smu_wrapper)
     files:
-      - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
+      - hw/common/och_prim/rtl/prim_pad_shim.sv
       - hw/sys/smc/dv/models/axil_okay_slv.sv
       - hw/sys/smc/dv/models/pll_wrap.sv
       - hw/sys/smc/dv/models/pvt_wrap.sv

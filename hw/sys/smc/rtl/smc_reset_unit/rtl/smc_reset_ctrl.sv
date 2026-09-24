@@ -79,11 +79,11 @@ module smc_reset_ctrl (
   // Only pass reset once all shift registers are 0, meaning it has been in asserted for 32 cycles
   assign cold_rst_deglitch_to_rstbypass = |cold_rst_deglitch_shift_reg_n0_scan;
 
-  prim_rstbypass_stdmux2 u_cold_rst_pre_extend_rstbypass (
-    .rst_ni(cold_rst_deglitch_to_rstbypass),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no(cold_rst_pre_extend)
+  prim_rst_mux2_hf_n u_cold_rst_pre_extend_rstbypass (
+    .rst0_ni(cold_rst_deglitch_to_rstbypass),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (cold_rst_pre_extend)
   );
 
   // Cold reset extender circuit

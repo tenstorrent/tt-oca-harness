@@ -453,7 +453,7 @@ code coverage come from the commercial simulators. See `DTP_FCOV.adoc`.
 
 === Canonical RTL Selection
 
-Bender supplies the HW-owned `prim_sync2` and generated
+Bender supplies the OpenTitan `prim_flop_2sync` and generated
 `cross_trigger_port_reg` and `cross_trigger_matrix_reg` implementations to the
 DTP simulator flows. Verilator and VCS therefore compile the same synchronizer
 and CSR RTL selected by the subsystem source graph.

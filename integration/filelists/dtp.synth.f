@@ -231,6 +231,8 @@ hw/sys/dtp/rtl/dtp_pkg.sv
 // Package(tt-oca-harness) Target(any(dtp, sep))
 hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
 hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
+// Package(tt-oca-harness) Target(any(axi_hang_detector, dtp, key_manager, sep, smc, system_timer_octs, uart))
+hw/common/och_prim/rtl/prim_axi_snoop.sv
 // Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/och_prim/rtl/prim_ag_clk_mux.sv
 hw/common/och_prim/rtl/prim_apb_arb.sv
@@ -239,10 +241,8 @@ hw/common/och_prim/rtl/prim_axi_id_converter.sv
 hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
 hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
 hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-hw/common/och_prim/rtl/prim_axi_snoop.sv
 hw/common/och_prim/rtl/prim_axi_user_override.sv
 hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-hw/common/och_prim/rtl/prim_axil_err_slv.sv
 hw/common/och_prim/rtl/prim_axil_prot_filter.sv
 hw/common/och_prim/rtl/prim_bin2gray.sv
 hw/common/och_prim/rtl/prim_carry_select_adder.sv
@@ -263,25 +263,18 @@ hw/common/och_prim/rtl/prim_pipe_stages.sv
 hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
 hw/common/och_prim/rtl/prim_pulse_signal.sv
 hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
+hw/common/och_prim/rtl/prim_rev_cell.sv
 hw/common/och_prim/rtl/prim_rom_bank_swap.sv
 hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
-hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
-hw/common/och_prim/rtl/prim_sync2.sv
-hw/common/och_prim/rtl/prim_sync2r.sv
 hw/common/och_prim/rtl/prim_sync3.sv
 hw/common/och_prim/rtl/prim_sync3_pulse.sv
 hw/common/och_prim/rtl/prim_sync3r.sv
 hw/common/och_prim/rtl/prim_sync4.sv
 hw/common/och_prim/rtl/prim_sync4r.sv
 hw/common/och_prim/rtl/prim_sync_data_autohs.sv
-hw/common/och_prim/rtl/prim_sync_randomized_delay.sv
 hw/common/och_prim/rtl/prim_sync_reset.sv
 hw/common/och_prim/rtl/prim_updown_counter.sv
 hw/common/och_prim/rtl/prim_zero_counter.sv
-hw/common/och_prim_generic/rtl/prim_and3.sv
-hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
-hw/common/och_prim_generic/rtl/prim_clock_or2.sv
-hw/common/och_prim_generic/rtl/prim_rev_cell.sv
 hw/common/sync.sv
 // Package(tt-oca-harness) Target(synth)
 hw/common/defs/ocah_vendor_defines.svh

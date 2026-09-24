@@ -19,11 +19,11 @@ module OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0 (
 
   assign io_rstbypass = io_rst_synced & ~reset;
 
-  prim_rstbypass_stdmux2 u_rstbypass (
-    .rst_ni(io_rstbypass),
-    .test_rst_ni(1'b0),
-    .test_mode_i(1'b0),
-    .rst_no(io_q)
+  prim_rst_mux2_hf_n u_rstbypass (
+    .rst0_ni(io_rstbypass),
+    .rst1_ni(1'b0),
+    .sel_i  (1'b0),
+    .rst_no (io_q)
   );
 
 endmodule

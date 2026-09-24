@@ -1,30 +1,30 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Verilator stubs (SMC)
 
-Behavioural stand-ins for two `och_prim` synchroniser cells. The runner
-compiles them on Verilator and Xcelium and drops them on VCS.
+Behavioural stand-in for the `och_prim` three-stage synchroniser. The runner
+compiles it on Verilator and Xcelium and drops it on VCS.
 
 | File | Replaces | Difference from the product cell |
 |------|----------|----------------------------------|
-| `prim_sync2.sv` | `hw/common/och_prim/rtl/prim_sync2.sv` | same two-flop pipe, every stage `initial '0` |
 | `prim_sync3.sv` | `hw/common/och_prim/rtl/prim_sync3.sv` | same three-flop pipe, every stage `initial '0` |
 
-The port lists (`i_clk` / `i_d` / `o_q`) and parameters are identical to the
-product cells, which are in the same compile. `RANDOM_DELAY_ENABLE` is not
-defined on any DV build, so the product cells' `prim_sync_randomized_delay`
-stage passes its input through and they too are a plain flop pipe; the one
-behaviour these files add is a defined `0` on the far side of the crossing
+The port list (`clk_i` / `d_i` / `q_o`) and parameters are identical to the
+product cell, which is in the same compile. The product cell's
+`prim_cdc_rand_delay` stage passes its input through unless a run sets
+`+cdc_instrumentation_enabled=1`, so it too is a plain flop pipe; the one
+behaviour this file adds is a defined `0` on the far side of the crossing
 before the pipe has filled; the product cell shows X there on a four-state
-simulator.
+simulator. Two-stage crossings use OpenTitan `prim_flop_2sync`, which has a
+reset port and no stand-in.
 
 Enrolment: `smc_sim_cfg.toml` `[build].stubs`. The runner
 (`tools/dv/runlib/stages.py`) filters that list only when `tool == "vcs"`:
 there it drops any stub whose basename the Bender graph supplies, so the
-product cells elaborate on VCS. On Verilator and Xcelium it keeps both files
-and emits them ahead of the Bender filelist, so the stub and the product cell
-are in the same compile; Verilator's `-Wno-MODDUP` first-definition-wins picks
+product cell elaborates on VCS. On Verilator and Xcelium it keeps both files
+and emits the stub ahead of the Bender filelist, so the stub and the product
+cell are in the same compile; Verilator's `-Wno-MODDUP` first-definition-wins picks
 the stub, and no Xcelium build of this bench is recorded. The SMU bench
-enrols the same two files in the `[build].stubs` of
+enrols the same file in the `[build].stubs` of
 `hw/sys/smu/dv/smu_sim_cfg.toml` (`--dut smu`).
 
 Nothing under this directory may replace an SMC module (`smc_*`). PeakRDL

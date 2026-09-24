@@ -585,17 +585,17 @@ module smc_peripherals #(
   logic gated_clk_ref_avs;
   logic gated_clk_periph_avs;
 
-  prim_clkgater u_avs_clk_ref_gater (
+  prim_clock_gating u_avs_clk_ref_gater (
     .clk_i(clk_ref_i),
     .en_i(~avs_cg_en_ref_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_ref_avs)
   );
 
-  prim_clkgater u_avs_clk_periph_gater (
+  prim_clock_gating u_avs_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~avs_cg_en_periph_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_avs)
   );
 
@@ -633,10 +633,10 @@ module smc_peripherals #(
 
   logic gated_clk_periph_i2c;
 
-  prim_clkgater u_i2c_clk_periph_gater (
+  prim_clock_gating u_i2c_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~i2c_cg_en_periph_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_i2c)
   );
 
@@ -700,10 +700,10 @@ module smc_peripherals #(
 
   logic gated_clk_periph_uart;
 
-  prim_clkgater u_uart_clk_periph_gater (
+  prim_clock_gating u_uart_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~uart_cg_en_periph_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_uart)
   );
 
@@ -792,19 +792,19 @@ module smc_peripherals #(
 
   logic gated_clk_smc_tel;
 
-  prim_clkgater u_tel_clk_smc_gater (
+  prim_clock_gating u_tel_clk_smc_gater (
     .clk_i(clk_smc_i),
     .en_i(~tel_cg_en_i),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_smc_tel)
   );
 
   logic gated_clk_telemetry;
 
-  prim_clkgater u_tel_clk_telemetry_gater (
+  prim_clock_gating u_tel_clk_telemetry_gater (
     .clk_i(clk_telemetry_i),
     .en_i(~tel_cg_en_telemetry_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_telemetry)
   );
 
@@ -975,10 +975,10 @@ module smc_peripherals #(
 
   logic gated_clk_periph_i3c;
 
-  prim_clkgater u_i3c_clk_periph_gater (
+  prim_clock_gating u_i3c_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_i3c)
   );
 

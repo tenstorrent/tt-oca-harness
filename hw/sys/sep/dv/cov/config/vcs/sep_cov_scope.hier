@@ -41,6 +41,8 @@
 -module prim_blanker
 -module prim_buf
 -module prim_cdc_rand_delay
+-module prim_clock_gating
+-module prim_clock_mux2
 -module prim_count
 -module prim_diff_decode
 -module prim_edge_detector
@@ -51,6 +53,7 @@
 -module prim_flop
 -module prim_flop_2sync
 -module prim_flop_en
+-module prim_inv
 -module prim_lc_sync
 -module prim_leading_one_ppc
 -module prim_max_tree
@@ -108,19 +111,13 @@
 // TT-owned generic standard-cell wrappers (hw/common/och_prim_generic).
 // Authored by TT, but library-class by the same rule as the two blocks above.
 -module prim_ao222
--module prim_clkgater
--module prim_clock_mux2
 -module prim_clock_nand2
--module prim_dffrxq
 -module prim_flop_3sync
--module prim_inv
 -module prim_metastab_hardened_dffr
 -module prim_nand4
 -module prim_nor4
 -module prim_or2
 -module prim_or4
--module prim_rev_cell
--module prim_stdbuf
 -module prim_stdmux2
 
 // DV models and AXI error slaves inside the integration wrapper. The memory
@@ -162,10 +159,9 @@
 
 // TT-owned CDC, reset and code-conversion primitives (hw/common/och_prim).
 // Library-class by the same rule as the blocks above: a synchroniser chain, a
-// reset synchroniser, a scan/bypass reset mux and a Gray codec carry the same
-// behaviour in every design that instantiates them, and no SEP test states a
-// requirement about one. prim_sync_randomized_delay is a simulation-time CDC
-// jitter model, so a toggle on it states nothing about the design at all.
+// reset synchroniser, a scan/bypass reset mux, a Gray codec and a revision-ID
+// cell carry the same behaviour in every design that instantiates them, and no
+// SEP test states a requirement about one.
 //
 // The rest of och_prim stays graded, because a SEP test does name the function:
 // prim_axi_lite_err_slv (sep_axi_map_refuse_test and the dead-space decode
@@ -182,10 +178,9 @@
 // lifecycle, class-key and chiplet-UID redundant encodings.
 -module prim_bin2gray
 -module prim_gray2bin
+-module prim_rev_cell
 -module prim_rst_mux2_hf_n
--module prim_rstbypass_stdmux2
 -module prim_sync3
--module prim_sync_randomized_delay
 -module prim_sync_reset
 
 // adams-bridge's vendored copy of the OpenTitan prim library

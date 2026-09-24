@@ -543,7 +543,9 @@
 -module prim_clk_gater_hysteresis
 -module prim_clkmux4
 -module prim_clock_buf
+-module prim_clock_gating
 -module prim_clock_inv
+-module prim_clock_mux2
 -module prim_count
 -module prim_diff_decode
 -module prim_diff_decode_multi
@@ -575,14 +577,11 @@
 -module prim_rom_bank_swap
 -module prim_rst_mux2_hf_n
 -module prim_rst_sync
--module prim_rstbypass_stdmux2
 -module prim_sec_anchor_buf
 -module prim_sec_anchor_flop
 -module prim_subreg
 -module prim_subreg_arb
 -module prim_subreg_ext
--module prim_sync2
--module prim_sync2r
 -module prim_sync3
 -module prim_sync3_pulse
 -module prim_sync3_pulse_dest
@@ -591,7 +590,6 @@
 -module prim_sync4
 -module prim_sync4r
 -module prim_sync_data_autohs
--module prim_sync_randomized_delay
 -module prim_sync_reset
 -module prim_updown_counter
 -module prim_xnor2

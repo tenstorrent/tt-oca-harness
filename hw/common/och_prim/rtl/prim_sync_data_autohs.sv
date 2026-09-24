@@ -33,14 +33,18 @@ module prim_sync_data_autohs #(
 
 
   if (DEPTH == 2) begin : gen_depth_2
-    prim_flop_2sync_r u_sync_req_toggle (
+    prim_flop_2sync #(
+      .Width(1)
+    ) u_sync_req_toggle (
       .clk_i (clk_dst_i),
       .rst_ni(rst_dst_ni),
       .d_i   (clk1_req_toggle_reg),
       .q_o   (clk2_req_toggle)
     );
 
-    prim_flop_2sync_r u_sync_ack_toggle (
+    prim_flop_2sync #(
+      .Width(1)
+    ) u_sync_ack_toggle (
       .clk_i (clk_src_i),
       .rst_ni(rst_src_ni),
       .d_i   (clk2_ack_toggle_reg),

@@ -138,10 +138,10 @@ module zeroer #(
 
   wire axi_clk_enable = disable_cg | zeroer_busy_o | ~rst_ni;
 
-  prim_clkgater u_axi_clk_gater (
+  prim_clock_gating u_axi_clk_gater (
     .clk_i(clk_i),
     .en_i (axi_clk_enable),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(axi_clk)
   );
 

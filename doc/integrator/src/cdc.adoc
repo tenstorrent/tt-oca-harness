@@ -44,8 +44,8 @@ Each enumerated CDC element in each block is given its own `set_max_delay`,
 sized from the clock that actually captures it as read from the netlist. Muxed
 domains resolve to several clocks; the tightest period wins.
 
-The elements covered are `prim_sync2/3/4` and their reset and set variants, the
-pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
+The elements covered are `prim_flop_2sync`, `prim_sync3/4` and their reset
+variants, the pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
 `avsbus_async_fifo`, `cdc_fifo_gray`, `axi_cdc`, `prim_reg_cdc`,
 `prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`, `dmi_wrapper` and
 Rocket `AsyncQueue`.

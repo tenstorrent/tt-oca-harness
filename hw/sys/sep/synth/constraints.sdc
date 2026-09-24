@@ -112,7 +112,7 @@ if {[sizeof_collection $entropy_shared_ro_pins] == 0} {
     create_clock -add -name ENTROPY_SHARED_RO \
         -period $clock_periods(ENTROPY_SHARED_RO_PERIOD) $entropy_shared_ro_pin
 
-    set entropy_ref_cells [get_cells -hierarchical -quiet -filter "ref_name == prim_dffrxq"]
+    set entropy_ref_cells [get_cells -hierarchical -quiet -filter "ref_name =~ prim_flop*"]
     set entropy_div_flops {}
     if {[sizeof_collection $entropy_ref_cells] > 0} {
         set entropy_div_flops [get_object_name $entropy_ref_cells]

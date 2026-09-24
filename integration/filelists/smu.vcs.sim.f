@@ -344,10 +344,14 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
 // Package(opentitan) Target(all(any(cross_trigger, dtp, entropy_source, key_manager, opentitan_smu, sep, smc, smu, system_timer_octs, uart), not(synth)))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_and2.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_gating.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
 // Package(opentitan) Target(any(key_manager, opentitan_smu, sep, smc, smu, uart))
@@ -356,7 +360,6 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sec_anchor_flop.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_decode.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_sender.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv
@@ -860,6 +863,8 @@ hw/common/axi/axi_lite_to_ahb.sv
 // Package(tt-oca-harness) Target(sep)
 hw/common/axi/axi_lite_to_tlul.sv
 hw/common/axi/tlul_to_axi_lite.sv
+// Package(tt-oca-harness) Target(any(axi_hang_detector, dtp, key_manager, sep, smc, system_timer_octs, uart))
+hw/common/och_prim/rtl/prim_axi_snoop.sv
 // Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
 hw/common/och_prim/rtl/prim_ag_clk_mux.sv
 hw/common/och_prim/rtl/prim_apb_arb.sv
@@ -868,10 +873,8 @@ hw/common/och_prim/rtl/prim_axi_id_converter.sv
 hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
 hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
 hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-hw/common/och_prim/rtl/prim_axi_snoop.sv
 hw/common/och_prim/rtl/prim_axi_user_override.sv
 hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-hw/common/och_prim/rtl/prim_axil_err_slv.sv
 hw/common/och_prim/rtl/prim_axil_prot_filter.sv
 hw/common/och_prim/rtl/prim_bin2gray.sv
 hw/common/och_prim/rtl/prim_carry_select_adder.sv
@@ -892,52 +895,37 @@ hw/common/och_prim/rtl/prim_pipe_stages.sv
 hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
 hw/common/och_prim/rtl/prim_pulse_signal.sv
 hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
+hw/common/och_prim/rtl/prim_rev_cell.sv
 hw/common/och_prim/rtl/prim_rom_bank_swap.sv
 hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
-hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
-hw/common/och_prim/rtl/prim_sync2.sv
-hw/common/och_prim/rtl/prim_sync2r.sv
 hw/common/och_prim/rtl/prim_sync3.sv
 hw/common/och_prim/rtl/prim_sync3_pulse.sv
 hw/common/och_prim/rtl/prim_sync3r.sv
 hw/common/och_prim/rtl/prim_sync4.sv
 hw/common/och_prim/rtl/prim_sync4r.sv
 hw/common/och_prim/rtl/prim_sync_data_autohs.sv
-hw/common/och_prim/rtl/prim_sync_randomized_delay.sv
 hw/common/och_prim/rtl/prim_sync_reset.sv
 hw/common/och_prim/rtl/prim_updown_counter.sv
 hw/common/och_prim/rtl/prim_zero_counter.sv
-hw/common/och_prim_generic/rtl/prim_and3.sv
-hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
-hw/common/och_prim_generic/rtl/prim_clock_or2.sv
-hw/common/och_prim_generic/rtl/prim_rev_cell.sv
 hw/common/sync.sv
 // Package(tt-oca-harness) Target(any(key_manager, sep, smc))
 hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
 hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
 // Package(tt-oca-harness) Target(all(any(dtp, entropy_source, key_manager, sep, smc, system_timer_octs, uart), not(synth)))
 hw/common/och_prim_generic/rtl/prim_ao222.sv
-hw/common/och_prim_generic/rtl/prim_clkgater.sv
-hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
 hw/common/och_prim_generic/rtl/prim_clock_nand2.sv
-hw/common/och_prim_generic/rtl/prim_dffrxq.sv
-hw/common/och_prim_generic/rtl/prim_dffsxq.sv
-hw/common/och_prim_generic/rtl/prim_flop_2sync_r.sv
-hw/common/och_prim_generic/rtl/prim_flop_2sync_s.sv
 hw/common/och_prim_generic/rtl/prim_flop_3sync.sv
 hw/common/och_prim_generic/rtl/prim_flop_3sync_r.sv
 hw/common/och_prim_generic/rtl/prim_flop_3sync_s.sv
 hw/common/och_prim_generic/rtl/prim_flop_4sync.sv
 hw/common/och_prim_generic/rtl/prim_flop_4sync_r.sv
 hw/common/och_prim_generic/rtl/prim_flop_4sync_s.sv
-hw/common/och_prim_generic/rtl/prim_inv.sv
 hw/common/och_prim_generic/rtl/prim_latch_n.sv
 hw/common/och_prim_generic/rtl/prim_metastab_hardened_dffr.sv
 hw/common/och_prim_generic/rtl/prim_nand4.sv
 hw/common/och_prim_generic/rtl/prim_nor4.sv
 hw/common/och_prim_generic/rtl/prim_or2.sv
 hw/common/och_prim_generic/rtl/prim_or4.sv
-hw/common/och_prim_generic/rtl/prim_stdbuf.sv
 hw/common/och_prim_generic/rtl/prim_stdmux2.sv
 // Package(tt-oca-harness) Target(sep)
 hw/common/tlul/rtl/tlul_adapter_host.sv
@@ -965,7 +953,7 @@ hw/ip/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
 hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
 hw/ip/axi_filter/rtl/axi_filter_wrap.sv
 hw/ip/axi_filter/rtl/traffic_filter.sv
-// Package(tt-oca-harness) Target(smc)
+// Package(tt-oca-harness) Target(any(axi_hang_detector, smc))
 hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
 // Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
@@ -1703,7 +1691,7 @@ hw/sys/smc/rtl/smc_reset_unit/rtl/smc_subsystem_resets.sv
 hw/sys/smu/rtl/smu.sv
 hw/sys/smu/rtl/smu_axi_xbar.sv
 // Package(tt-oca-harness) Target(any(smc_wrapper, smu_wrapper))
-hw/common/och_prim_generic/rtl/prim_pad_shim.sv
+hw/common/och_prim/rtl/prim_pad_shim.sv
 hw/sys/smc/dv/models/axil_okay_slv.sv
 hw/sys/smc/dv/models/pll_wrap.sv
 hw/sys/smc/dv/models/pvt_wrap.sv
