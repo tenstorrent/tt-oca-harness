@@ -29,9 +29,7 @@
 //
 // prim_ag_clk_mux (anti-glitch mux): clk0 is ref (safe fallback on reset,
 // SelectOnReset=0) and clk1 is the post-mux2 PLL path.  sel=1 permanently
-// selects clk1 in the behavioral model.  ag_rst_n is wired directly to
-// rst_ni; while reset is asserted the set_ni pin forces sel_sync_clk0=1,
-// ensuring ref (clk0) is driven during reset.
+// selects clk1 in the behavioral model.
 //
 // clk_ref passes straight through — it is the reference and needs no mux.
 //
@@ -89,13 +87,6 @@ module pll_wrap
     forever #2500ps osc_periph = ~osc_periph;
   end
 
-  ///////////////
-  // AG reset
-  ///////////////
-
-  logic ag_rst_n;
-  assign ag_rst_n = rst_ni;
-
   /////////////////////////////
   // ref -- straight through
   /////////////////////////////
@@ -120,8 +111,8 @@ module pll_wrap
   ) u_sys_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_sys_mux2),
-    .rst_clk0_ni(ag_rst_n),
-    .rst_clk1_ni(ag_rst_n),
+    .rst_clk0_ni(rst_ni),
+    .rst_clk1_ni(rst_ni),
     .test_en_i  (1'b0),
     .sel_i      (1'b1),
     .clk_o      (clk_sys_o)
@@ -145,8 +136,8 @@ module pll_wrap
   ) u_periph_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_periph_mux2),
-    .rst_clk0_ni(ag_rst_n),
-    .rst_clk1_ni(ag_rst_n),
+    .rst_clk0_ni(rst_ni),
+    .rst_clk1_ni(rst_ni),
     .test_en_i  (1'b0),
     .sel_i      (1'b1),
     .clk_o      (clk_periph_o)
