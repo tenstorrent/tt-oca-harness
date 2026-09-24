@@ -20,6 +20,8 @@ scope_epoch = "smc-vcs-cov-v1"
 # on a block whose cpuif is no wider no write-branch row that needs a lane off
 # has an access behind it here. A block with a wider cpuif takes a half-word
 # write from the same agent and keeps those rows graded.
+# B7 DFX-INPUTS-TIED is the bench's too: it ties the four DFX status inputs the
+# boot sequencer waits on high, so their input-low arms have no stimulus.
 # The file header and the generator's docstring state them.
 [[native_files]]
 tool = "vcs"

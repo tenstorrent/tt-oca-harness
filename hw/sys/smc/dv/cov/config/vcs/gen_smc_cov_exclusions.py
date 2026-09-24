@@ -175,6 +175,9 @@ gives it.
 The I2C FSMs reload their counter by an enumerated select assigned only its
 named values, and the target pairs its no-delay select only with no reload, so
 those case items never execute (P20 TCOUNT-SELECT-PAIRED).
+The bench ties the four DFX status inputs the boot sequencer waits on high, so
+the input-low arms of their sticky fields have no stimulus (B7
+DFX-INPUTS-TIED, the bench's own).
 
 One more belongs to the bench and its policy: the eFuse's simulation-only
 `+skip_fuse_sense` bypass replaces the sensed fuse image, the DV policy forbids
@@ -514,6 +517,14 @@ A6 = (
     "Fields of the same block that keep their value between writes stay graded."
 )
 
+B7 = (
+    "SMC-REGBLOCK-B7-DFX-INPUTS-TIED: a property of this bench, not of the design. The SMC "
+    "passes mem_repair_done, mem_repair_success, mbist_done and mbist_pass straight to the DFX "
+    "status register's sticky fields, whose load_next is that input, and the testbench ties all "
+    "four high because the boot sequencer waits on them; a row or path that needs one of them, "
+    "or its load, low has no stimulus here. "
+    "Bench ports that drive those inputs retire the class."
+)
 B1 = (
     "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC "
     "AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more "
@@ -1216,6 +1227,17 @@ I2C_SINGLEPULSE = (
 # acks (readback_done and the external read ack, which it generates as zero)
 # never rise.
 REGBLOCK_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
+    "dfx_ctrl_status_reg": [
+        (
+            B7,
+            re.compile(
+                r"^(?:hwif_in\.STATUS_SMU\.(?:mem_repair_done|mem_repair_success|mbist_done"
+                r"|mbist_pass)\.next|field_combo\.STATUS_SMU\.(?:mem_repair_done"
+                r"|mem_repair_success|mbist_done|mbist_pass)\.load_next)$"
+            ),
+            1,
+        )
+    ],
     "uart_16550_main_wo_reg": [
         (
             A3,
@@ -2059,7 +2081,7 @@ def select_extra(
     return None
 
 
-REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, B1, C1)
+REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, B1, B7, C1)
 FEATURE_CLASSES = (
     P1,
     P2,
