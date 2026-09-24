@@ -6,7 +6,7 @@
  *
  * Single KeyGen operation: load a fixed seed + entropy, run KEYGEN, wait for
  * VALID, and check the public key is non-zero. Exercises the keygen datapath
- * end-to-end through the SEP -> axi4_to_ahb -> AB path.
+ * end-to-end through the SEP -> axi_lite_to_ahb -> AB path.
  */
 
 #include <stdint.h>
