@@ -63,8 +63,11 @@ from .smc_i2c_target_smbus_test_seq import (
     _pack_timing4,
 )
 
-I2C0 = 0
-TARGET_ADDR = 0x26
+#: Every instance is driven. `+smc_i2c_shared_bus` puts all three on one
+#: open-drain bus, so the bench controller on I2C0's pads reaches each of them
+#: by address, and only the instance under test is enabled while a leg runs.
+INSTANCES = (0, 1, 2)
+TARGET_ADDR = {0: 0x26, 1: 0x2A, 2: 0x2B}
 
 #: Data hold time in the target's own clock periods. The bench clocks
 #: `clk_periph_i` at 10 ns, so this is a hold of 2 us -- far longer than a
@@ -96,27 +99,30 @@ STOP_DETECT_DWELL_NS = 10 * TARGET_HOLD_CYCLES * 10
 NACK_COUNT_BM = 0xFF
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", I2C0)
-I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", I2C0)
-I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", I2C0)
-I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", I2C0)
-I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", I2C0)
-I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", I2C0)
-I2C0_TARGET_NACK_COUNT = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR", I2C0
-)
-I2C0_TARGET_FIFO_STATUS = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", I2C0
-)
-I2C0_ACQDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR", I2C0)
-I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", I2C0)
-I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", I2C0)
-I2C0_TIMING2 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR", I2C0)
-I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", I2C0)
-I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", I2C0)
+
+_REGS = {
+    "wrap": "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR",
+    "ovrd": "SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR",
+    "ctrl": "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR",
+    "status": "SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR",
+    "fifo_ctrl": "SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR",
+    "target_id": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR",
+    "nack_count": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR",
+    "fifo_status": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR",
+    "acqdata": "SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR",
+    "timing0": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR",
+    "timing1": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR",
+    "timing2": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR",
+    "timing3": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR",
+    "timing4": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR",
+}
+
+
+def _regs(idx: int) -> dict[str, int]:
+    return {key: smc_indexed_addr(sym, idx) for key, sym in _REGS.items()}
+
 
 _ABYTE_BM = 0xFF
-ADDR_BYTE = (TARGET_ADDR & 0x7F) << 1
 
 
 class smc_i2c_target_fast_controller_test_seq(SmcCsrSeq):
@@ -126,51 +132,65 @@ class smc_i2c_target_fast_controller_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.results: dict[str, tuple[list[int], list[tuple[int, int]], int]] = {}
 
-    async def _pop_all(self) -> list[tuple[int, int]]:
+    @staticmethod
+    def _addr_byte(idx: int) -> int:
+        return (TARGET_ADDR[idx] & 0x7F) << 1
+
+    async def _pop_all(self, r: dict[str, int]) -> list[tuple[int, int]]:
         out: list[tuple[int, int]] = []
-        fifo = await self.csr_read("I2C0_TARGET_FIFO_STATUS", I2C0_TARGET_FIFO_STATUS)
+        fifo = await self.csr_read("I2C_TARGET_FIFO_STATUS", r["fifo_status"])
         level = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
         for _ in range(level):
-            word = await self.csr_read("I2C0_ACQDATA", I2C0_ACQDATA)
+            word = await self.csr_read("I2C_ACQDATA", r["acqdata"])
             out.append(((word & I2C_ACQDATA_SIGNAL) >> I2C_ACQDATA_SIGNAL_BP, word & _ABYTE_BM))
         return out
 
-    async def _clear_nack_count(self, label: str) -> None:
-        first = await self.csr_read(f"I2C0_NACK_COUNT_{label}_CLEAR", I2C0_TARGET_NACK_COUNT)
-        again = await self.csr_read(f"I2C0_NACK_COUNT_{label}_ENTRY", I2C0_TARGET_NACK_COUNT)
+    async def _clear_nack_count(self, r: dict[str, int], label: str) -> None:
+        first = await self.csr_read(f"{label}_NACK_CLEAR", r["nack_count"])
+        again = await self.csr_read(f"{label}_NACK_ENTRY", r["nack_count"])
         assert again & NACK_COUNT_BM == 0, (
             f"{label}: TARGET_NACK_COUNT reads {again & NACK_COUNT_BM} straight after a read "
             f"cleared it from {first & NACK_COUNT_BM}"
         )
 
-    async def _bring_up(self) -> None:
-        await self.csr_write("I2C0_DISABLE", I2C0_CTRL, 0)
-        await self.csr_write("I2C0_WRAP_TARGET", I2C0_WRAP_CTRL, I2C_WRAP_CTRL_TARGET)
-        await self.wait_i2c0_lsio_ready("I2C0_FAST_CONTROLLER")
-        await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, 0)
-        await self.csr_write("I2C0_TIMING0", I2C0_TIMING0, _pack_timing0(0x1A, 0x32))
-        await self.csr_write("I2C0_TIMING1", I2C0_TIMING1, _pack_timing1(2, 2))
-        await self.csr_write("I2C0_TIMING2", I2C0_TIMING2, _pack_timing2(5, 4))
+    async def _disable_others(self, idx: int) -> None:
+        for other in INSTANCES:
+            if other != idx:
+                await self.csr_write(f"I2C{other}_OFF", _regs(other)["ctrl"], 0)
+
+    async def _bring_up(self, idx: int) -> dict[str, int]:
+        r = _regs(idx)
+        await self.csr_write(f"I2C{idx}_DISABLE", r["ctrl"], 0)
+        await self.csr_write(f"I2C{idx}_WRAP_TARGET", r["wrap"], I2C_WRAP_CTRL_TARGET)
+        await self.arm_i2c_gpio_lsio(idx, f"I2C{idx}_FAST_CONTROLLER")
+        await self.csr_write(f"I2C{idx}_OVRD_OFF", r["ovrd"], 0)
+        await self.csr_write(f"I2C{idx}_TIMING0", r["timing0"], _pack_timing0(0x1A, 0x32))
+        await self.csr_write(f"I2C{idx}_TIMING1", r["timing1"], _pack_timing1(2, 2))
+        await self.csr_write(f"I2C{idx}_TIMING2", r["timing2"], _pack_timing2(5, 4))
         timing3 = _pack_timing3(2, TARGET_HOLD_CYCLES)
-        await self.csr_write("I2C0_TIMING3", I2C0_TIMING3, timing3)
-        await self.csr_read("I2C0_TIMING3_RB", I2C0_TIMING3, expected=timing3)
-        await self.csr_write("I2C0_TIMING4", I2C0_TIMING4, _pack_timing4(4, 5))
+        await self.csr_write(f"I2C{idx}_TIMING3", r["timing3"], timing3)
+        await self.csr_read(f"I2C{idx}_TIMING3_RB", r["timing3"], expected=timing3)
+        await self.csr_write(f"I2C{idx}_TIMING4", r["timing4"], _pack_timing4(4, 5))
         await self.csr_write(
-            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST | I2C_FIFO_CTRL_TXRST
+            f"I2C{idx}_FIFO_RST",
+            r["fifo_ctrl"],
+            I2C_FIFO_CTRL_RXRST_FMTRST | I2C_FIFO_CTRL_TXRST,
         )
         await self.csr_write(
-            "I2C0_TARGET_ID", I2C0_TARGET_ID, _pack_target_id(TARGET_ADDR, 0x7F, 0, 0)
+            f"I2C{idx}_TARGET_ID", r["target_id"], _pack_target_id(TARGET_ADDR[idx], 0x7F, 0, 0)
         )
         await self.csr_write(
-            "I2C0_CTRL", I2C0_CTRL, I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN
+            f"I2C{idx}_CTRL", r["ctrl"], I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN
         )
         await ClockCycles(cocotb.top.clk_smc_i, 20)
-        status = await self.csr_read("I2C0_STATUS_ENTRY", I2C0_STATUS)
+        status = await self.csr_read(f"I2C{idx}_STATUS_ENTRY", r["status"])
         assert status & I2C_STATUS_ACQEMPTY, (
-            f"the acquisition FIFO is not empty before the first transfer (STATUS=0x{status:08x})"
+            f"I2C{idx}: the acquisition FIFO is not empty before the first transfer "
+            f"(STATUS=0x{status:08x})"
         )
+        return r
 
-    async def _settled_entries(self) -> list[tuple[int, int]]:
+    async def _settled_entries(self, r: dict[str, int]) -> list[tuple[int, int]]:
         """Drain once the acquisition level is non-zero and has stopped moving.
 
         Every leg ends with an entry -- a stop for the ones the target
@@ -183,66 +203,56 @@ class smc_i2c_target_fast_controller_test_seq(SmcCsrSeq):
         level = -1
         for _ in range(SETTLE_ROUNDS):
             await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
-            fifo = await self.csr_read("I2C0_TARGET_FIFO_STATUS", I2C0_TARGET_FIFO_STATUS)
+            fifo = await self.csr_read("I2C_TARGET_FIFO_STATUS", r["fifo_status"])
             now = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
             if now > 0 and now == level:
-                return await self._pop_all()
+                return await self._pop_all(r)
             level = now
         raise AssertionError(
             f"the acquisition FIFO never settled above empty in {SETTLE_ROUNDS} rounds "
             f"(last level {level}); every leg closes with an entry of its own"
         )
 
-    async def _run_leg(self, label: str, change_at: str | None) -> None:
+    async def _run_leg(self, idx: int, r: dict[str, int], label: str, change_at: str | None):
         """One transfer: START, address, one data byte, STOP.
 
         Every leg starts at the slow rate. ``change_at`` names the byte whose
         acknowledge is clocked at the fast rate instead.
         """
-        await self._clear_nack_count(label)
-        master = SmcI2cMasterVip(speed=SLOW_SPEED, name=f"smc_i2c0_fast_ctrl_{label.lower()}")
+        await self._clear_nack_count(r, label)
+        master = SmcI2cMasterVip(speed=SLOW_SPEED, name=f"smc_i2c{idx}_fast_ctrl")
         acks: list[int] = []
         await master.send_start()
         if change_at == "address":
             master.set_speed(FAST_SPEED)
-        acks.append(await master.send_byte(ADDR_BYTE))
+        acks.append(await master.send_byte(self._addr_byte(idx)))
         if change_at == "data":
             await Timer(PARK_NS, unit="ns")
             master.set_speed(FAST_SPEED)
         for value in PAYLOAD:
             acks.append(await master.send_byte(value))
         await master.send_stop()
-        entries = await self._settled_entries()
-        count = (
-            await self.csr_read(f"I2C0_NACK_COUNT_{label}", I2C0_TARGET_NACK_COUNT)
-        ) & NACK_COUNT_BM
+        entries = await self._settled_entries(r)
+        count = (await self.csr_read(f"{label}_NACK", r["nack_count"])) & NACK_COUNT_BM
         self.results[label] = (acks, entries, count)
 
-    async def body(self) -> None:
-        await self.prove_dut_i2c0_pins()
-        cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
-        await self._bring_up()
-
-        await self._run_leg("BEFORE", None)
-        await self._run_leg("ADDR", "address")
-        await self._run_leg("DATA", "data")
-        await self._run_leg("AFTER", None)
-
-        for label, (acks, entries, count) in self.results.items():
-            cocotb.log.info(
-                "leg %s: ACK bits %s, TARGET_NACK_COUNT %d, acquired %s",
-                label,
-                acks,
-                count,
-                entries,
-            )
+    async def _instance(self, idx: int) -> None:
+        await self._disable_others(idx)
+        r = await self._bring_up(idx)
+        for name, change_at in (
+            ("BEFORE", None),
+            ("ADDR", "address"),
+            ("DATA", "data"),
+            ("AFTER", None),
+        ):
+            await self._run_leg(idx, r, f"I2C{idx}_{name}", change_at)
 
         wanted = [
-            (I2C_ACQ_SIGNAL_START, ADDR_BYTE),
+            (I2C_ACQ_SIGNAL_START, self._addr_byte(idx)),
             *[(I2C_ACQ_SIGNAL_NONE, v) for v in PAYLOAD],
         ]
-        for label in ("BEFORE", "AFTER"):
+        for name in ("BEFORE", "AFTER"):
+            label = f"I2C{idx}_{name}"
             acks, entries, count = self.results[label]
             assert all(a == 0 for a in acks), (
                 f"{label}: the target refused a transfer whose SCL low period is well over "
@@ -259,59 +269,70 @@ class smc_i2c_target_fast_controller_test_seq(SmcCsrSeq):
                 f"{label}: TARGET_NACK_COUNT reads {count} after a transfer the target "
                 f"acknowledged throughout"
             )
-        cocotb.log.info(
-            "CHK-I2C-TGT-FAST-CTRL-CONTROL: at a bit rate whose SCL low period is well over "
-            "the target's programmed hold of %d cycles, the transfer before the two fast legs "
-            "and the transfer after them were both acknowledged throughout, acquired in full "
-            "and counted no NACK",
-            TARGET_HOLD_CYCLES,
-        )
 
-        acks, entries, count = self.results["ADDR"]
+        acks, entries, count = self.results[f"I2C{idx}_ADDR"]
         assert acks[0] == 1, (
-            f"ADDR: the target acknowledged its address to a controller whose SCL low period "
-            f"is under its {TARGET_HOLD_CYCLES}-cycle hold time (ACK bits {acks})"
+            f"I2C{idx}_ADDR: the target acknowledged its address to a controller whose SCL "
+            f"low period is under its {TARGET_HOLD_CYCLES}-cycle hold time (ACK bits {acks})"
         )
         assert count == 1, (
-            f"ADDR: TARGET_NACK_COUNT reads {count} after one transaction the target abandoned "
-            f"at the address acknowledge"
+            f"I2C{idx}_ADDR: TARGET_NACK_COUNT reads {count} after one transaction the target "
+            f"abandoned at the address acknowledge"
         )
         assert [e[0] for e in entries] == [I2C_ACQ_SIGNAL_ERROR], (
-            f"ADDR: the acquired stream is {entries}; a transaction abandoned before the "
-            f"address was acknowledged records nothing for the address itself and closes "
+            f"I2C{idx}_ADDR: the acquired stream is {entries}; a transaction abandoned before "
+            f"the address was acknowledged records nothing for the address itself and closes "
             f"with the NACK-stop entry"
         )
-        cocotb.log.info(
-            "CHK-I2C-TGT-FAST-CTRL-ADDR: a controller whose SCL low period is under the "
-            "target's %d-cycle hold time got no acknowledge for its address (ACK bits "
-            "%s), the transaction was counted once in TARGET_NACK_COUNT, and the only thing "
-            "acquired was the NACK-stop entry closing it (%s)",
-            TARGET_HOLD_CYCLES,
-            acks,
-            entries,
-        )
 
-        acks, entries, count = self.results["DATA"]
+        acks, entries, count = self.results[f"I2C{idx}_DATA"]
         assert acks[0] == 0, (
-            f"DATA: the address was not acknowledged although it was clocked at the slow rate "
-            f"(ACK bits {acks})"
+            f"I2C{idx}_DATA: the address was not acknowledged although it was clocked at the "
+            f"slow rate (ACK bits {acks})"
         )
         assert acks[1] == 1, (
-            f"DATA: the target acknowledged a data byte clocked faster than its "
+            f"I2C{idx}_DATA: the target acknowledged a data byte clocked faster than its "
             f"{TARGET_HOLD_CYCLES}-cycle hold time (ACK bits {acks})"
         )
         assert count == 1, (
-            f"DATA: TARGET_NACK_COUNT reads {count} after one transaction the target abandoned "
-            f"at a data acknowledge"
+            f"I2C{idx}_DATA: TARGET_NACK_COUNT reads {count} after one transaction the target "
+            f"abandoned at a data acknowledge"
         )
         assert all(e[0] != I2C_ACQ_SIGNAL_NONE for e in entries), (
-            f"DATA: a data entry reached the acquisition FIFO from the byte the target "
-            f"abandoned on ({entries})"
+            f"I2C{idx}_DATA: a data entry reached the acquisition FIFO from the byte the "
+            f"target abandoned on ({entries})"
+        )
+
+    async def body(self) -> None:
+        assert "smc_i2c_shared_bus" in cocotb.plusargs, (
+            "smc_i2c_target_fast_controller_test needs +smc_i2c_shared_bus; without it only "
+            "I2C0's pads are on the bench bus and the other two instances cannot be reached"
+        )
+        await self.prove_dut_i2c0_pins()
+        cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
+        await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
+        for idx in INSTANCES:
+            await self._instance(idx)
+
+        cocotb.log.info(
+            "CHK-I2C-TGT-FAST-CTRL-CONTROL: at a bit rate whose SCL low period is well over "
+            "the target's programmed hold of %d cycles, the transfer before the two fast legs "
+            "and the transfer after them were acknowledged throughout, acquired in full and "
+            "counted no NACK, on every instance",
+            TARGET_HOLD_CYCLES,
         )
         cocotb.log.info(
-            "CHK-I2C-TGT-FAST-CTRL-DATA: with the address clocked slowly and acknowledged, the "
-            "same transfer sped up for its data byte got no acknowledge for it (ACK bits %s), "
-            "was counted once in TARGET_NACK_COUNT and left no data entry behind (%s)",
-            acks,
-            entries,
+            "CHK-I2C-TGT-FAST-CTRL-ADDR: a controller whose SCL low period is under the "
+            "target's %d-cycle hold time got no acknowledge for its address on any instance, "
+            "each transaction was counted once in TARGET_NACK_COUNT, and the only thing "
+            "acquired was the NACK-stop entry closing it (%s)",
+            TARGET_HOLD_CYCLES,
+            {k: v[2] for k, v in self.results.items() if k.endswith("_ADDR")},
+        )
+        cocotb.log.info(
+            "CHK-I2C-TGT-FAST-CTRL-DATA: with the address clocked slowly and acknowledged, "
+            "the same transfer sped up for its data byte got no acknowledge for it on any "
+            "instance, was counted once in TARGET_NACK_COUNT and left no data entry behind "
+            "(%s)",
+            {k: v[0] for k, v in self.results.items() if k.endswith("_DATA")},
         )
