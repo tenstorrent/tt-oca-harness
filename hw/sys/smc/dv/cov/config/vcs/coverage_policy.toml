@@ -35,11 +35,12 @@ args = ["-elfile", "{path}"]
 
 
 # FSM facts (F2 DEFAULT, F3 TIEOFF, F4 PARAM-OFF, F5 RESET-EDGE, F6
-# ENABLE-EDGE): the always_comb default read as an edge from every state, the
+# ENABLE-EDGE, F7 SCL-HELD-LOW, F8 NO-INTERFERENCE): the always_comb default read as an edge from every state, the
 # states a write master cannot reach because the integration ties its response
 # inputs to zero, a decode state whose arm a parameter leaves unelaborated, the
 # edges that exist only as a state register's reset assignment, and the one an
-# enable-edge load cannot supply.
+# enable-edge load cannot supply, the I2C fan-in overrides a state holding SCL
+# low cannot take, and those a state that never drives the bus cannot.
 [[native_files]]
 tool = "vcs"
 role = "exclude"

@@ -118,6 +118,15 @@ state variable as a transition:
   it, and an edge from such a state is the same extraction artefact as F2. A
   state whose own arm assigns the loaded state reaches it in the ordinary
   sequence and stays graded.
+* F7 SCL-HELD-LOW: the bus monitor raises `start_detect` only on a falling SDA
+  while SCL is high on two samples and clears its pending flag whenever SCL is
+  low, so a target state driving `scl_d = 1'b0` holds the wired-AND SCL low for
+  its duration and the override to AcquireStart cannot fire from it.
+* F8 NO-INTERFERENCE: `sda_released_but_low` is gated on `scl_sync` and the
+  interference terms on the transmitting flag, so a state that leaves
+  `transmitting_o` at zero, or holds SCL low, makes the term identically false
+  and the override it feeds cannot fire from it. A state whose own arm assigns
+  the same destination for another reason keeps that edge graded.
 * F5 RESET-EDGE: a state register's reset assignment is expanded into a
   transition from every state. Where no case arm assigns the reset state, the
   only way to cover such an edge is to assert the block's reset while the FSM
@@ -231,6 +240,58 @@ F6 = (
     "graded."
 )
 
+F7 = (
+    "SMC-FSM-F7-SCL-HELD-LOW: the bus monitor raises start_detect only on a falling SDA while "
+    "SCL is high on two samples, and clears the pending flag whenever SCL is low, so a target "
+    "state that drives scl_d = 1'b0 holds the wired-AND SCL low for its whole duration and "
+    "start_detect_i cannot rise in it. The fan-in override that takes the FSM to AcquireStart "
+    "cannot fire from such a state."
+)
+F8 = (
+    "SMC-FSM-F8-NO-INTERFERENCE: sda_released_but_low is gated on scl_sync, and the "
+    "interference and arbitration-lost terms built on it are gated on the transmitting flag, "
+    "so from a state whose output block leaves transmitting_o at zero, or that drives scl_d "
+    "low, the term is identically false and the fan-in override it feeds cannot fire from that "
+    "state. A state whose own case arm assigns the same destination for another reason is not "
+    "named here."
+)
+
+# Target states that drive scl_d = 1'b0 for their whole duration, so the bus
+# monitor cannot see a start in them.
+I2C_SCL_LOW = (
+    "StretchAddr",
+    "StretchAddrAck",
+    "StretchAddrAckSetup",
+    "StretchTx",
+    "StretchTxSetup",
+    "StretchAcqFull",
+    "StretchAcqSetup",
+)
+# Target states that leave transmitting_o at zero, or hold SCL low, and whose
+# own arm does not assign WaitForStop. StretchAddr and StretchAddrAck hold SCL
+# low too but assign it themselves, so they keep that edge graded.
+I2C_NO_ARB_LOSS = (
+    "Idle",
+    "AcquireStart",
+    "AcquireByte",
+    "TransmitWait",
+    "TransmitAck",
+    "StretchAddrAckSetup",
+    "StretchTxSetup",
+    "StretchAcqSetup",
+)
+# Controller states that leave transmitting_o at zero and do not raise
+# ctrl_symbol_failed, which only SetupStart, SetupStop and HoldStop do, and
+# whose own arm does not assign Idle. ClockPulseAck and ReadClockPulse do assign
+# it, on an unexpected start or stop, so they keep that edge graded.
+I2C_NO_SYMBOL_FAIL = (
+    "Active",
+    "ClockLowAck",
+    "HoldDevAck",
+    "ReadClockLow",
+    "ReadHoldBit",
+)
+
 # The states whose own case arm of avsbus_controller assigns AVS_IDLE, so that an
 # edge from them is the sequence rather than the always_comb default.
 AVS_IDLE_ARMS = ("AVS_IDLE", "AVS_SLAVE_RESYNC", "AVS_END_LAST_SUBFRAME")
@@ -258,6 +319,13 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
     ("i2c_bus_monitor", "state_q"): [(F6, ("edges", ("StBusBusyStop->StBusBusyHigh",)))],
     ("smc_cool_reset_wrap", "flr_counter_state"): [(F5, ("edges", ("COUNT_DOWN->IDLE",)))],
     ("accumulator_bank", "bank_status"): [(F5, ("edges", ("BANK_PARTIAL->BANK_EMPTY",)))],
+    ("i2c_target_fsm", "state_q"): [
+        (F7, ("edges", tuple(f"{s}->AcquireStart" for s in I2C_SCL_LOW))),
+        (F8, ("edges", tuple(f"{s}->WaitForStop" for s in I2C_NO_ARB_LOSS))),
+    ],
+    ("i2c_controller_fsm", "state_q"): [
+        (F8, ("edges", tuple(f"{s}->Idle" for s in I2C_NO_SYMBOL_FAIL))),
+    ],
 }
 
 
@@ -1141,7 +1209,7 @@ def render_fsm(
         if not any(r for r, _ in block):
             continue
         out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (F2, F3, F4, F5, F6):
+        for reason in (F2, F3, F4, F5, F6, F7, F8):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

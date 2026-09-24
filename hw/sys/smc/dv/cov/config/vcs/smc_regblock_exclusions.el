@@ -15,7 +15,6 @@
 CHECKSUM: "3869168330 760173647"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent derives WSTRB from the data range and writes whole registers, so no access it generates leaves one lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
 MODULE: alias_remap_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -23,8 +22,6 @@ Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 37 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 37 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
-Condition 26 "1017968551" "((field_storage.REGION.region_attrs.cacheable.value & ((~decoded_wr_biten[62]))) | (decoded_wr_data[62] & decoded_wr_biten[62])) 1 -1" (3 "10")
-Condition 30 "1983377402" "((field_storage.REGION.region_attrs.valid.value & ((~decoded_wr_biten[63]))) | (decoded_wr_data[63] & decoded_wr_biten[63])) 1 -1" (3 "10")
 
 CHECKSUM: "3896755233 3909592511"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."

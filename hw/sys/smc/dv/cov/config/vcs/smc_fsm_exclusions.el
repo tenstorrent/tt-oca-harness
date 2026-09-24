@@ -77,6 +77,37 @@ MODULE: i2c_bus_monitor
 Fsm state_q "1594583517"
 Transition StBusBusyStop->StBusBusyHigh "3->2"
 
+CHECKSUM: "287342404 606724223"
+ANNOTATION: "SMC-FSM-F8-NO-INTERFERENCE: sda_released_but_low is gated on scl_sync, and the interference and arbitration-lost terms built on it are gated on the transmitting flag, so from a state whose output block leaves transmitting_o at zero, or that drives scl_d low, the term is identically false and the fan-in override it feeds cannot fire from that state. A state whose own case arm assigns the same destination for another reason is not named here."
+MODULE: i2c_controller_fsm
+Fsm state_q "606724223"
+Transition Active->Idle "1->0"
+Transition ClockLowAck->Idle "12->0"
+Transition HoldDevAck->Idle "14->0"
+Transition ReadClockLow->Idle "15->0"
+Transition ReadHoldBit->Idle "17->0"
+
+CHECKSUM: "66702530 229560382"
+ANNOTATION: "SMC-FSM-F7-SCL-HELD-LOW: the bus monitor raises start_detect only on a falling SDA while SCL is high on two samples, and clears the pending flag whenever SCL is low, so a target state that drives scl_d = 1'b0 holds the wired-AND SCL low for its whole duration and start_detect_i cannot rise in it. The fan-in override that takes the FSM to AcquireStart cannot fire from such a state."
+ANNOTATION: "SMC-FSM-F8-NO-INTERFERENCE: sda_released_but_low is gated on scl_sync, and the interference and arbitration-lost terms built on it are gated on the transmitting flag, so from a state whose output block leaves transmitting_o at zero, or that drives scl_d low, the term is identically false and the fan-in override it feeds cannot fire from that state. A state whose own case arm assigns the same destination for another reason is not named here."
+MODULE: i2c_target_fsm
+Fsm state_q "229560382"
+Transition AcquireByte->WaitForStop "14->13"
+Transition AcquireStart->WaitForStop "1->13"
+Transition Idle->WaitForStop "0->13"
+Transition StretchAcqFull->AcquireStart "24->1"
+Transition StretchAcqSetup->AcquireStart "25->1"
+Transition StretchAcqSetup->WaitForStop "25->13"
+Transition StretchAddr->AcquireStart "21->1"
+Transition StretchAddrAck->AcquireStart "19->1"
+Transition StretchAddrAckSetup->AcquireStart "20->1"
+Transition StretchAddrAckSetup->WaitForStop "20->13"
+Transition StretchTx->AcquireStart "22->1"
+Transition StretchTxSetup->AcquireStart "23->1"
+Transition StretchTxSetup->WaitForStop "23->13"
+Transition TransmitAck->WaitForStop "11->13"
+Transition TransmitWait->WaitForStop "7->13"
+
 CHECKSUM: "194876589 1063748259"
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
 MODULE: smc_cool_reset_wrap
