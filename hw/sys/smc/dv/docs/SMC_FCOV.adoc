@@ -3,22 +3,27 @@
 [[smc-coverage-policy]]
 === SMC coverage targets and closure policy
 
-This chapter defines *what* the SMC release group is graded on and *how* a
+This chapter defines *what* the SMC coverage set is graded on and *how* a
 hole is waived. The numeric floors live in
 `cov/config/verilator/coverage_policy.toml` and fail
-`run_dv --dut smc --items hosted --tool verilator --cov` when unmet.
+`run_dv --dut smc --items hosted fw --tool verilator --cov` when unmet.
 
 [cols=",",options="header",]
 |===
 |Field |Value
-|Release group |`--dut smc --items hosted` (nightly and weekly, `regress.yml`). `--dut smc` already instantiates
-`smc_wrapper`; there is no second wrapper job.
+|Coverage set |`--dut smc --items hosted fw`: the package regression `all` less
+the three `dual` leaves, whose second build target the coverage merge cannot
+combine with `default` (SEP names its set the same way, `all` less `rom_fw`).
+`hosted` alone is the toolchain-free nightly and weekly tier (`regress.yml`);
+the fw leaves need the RISC-V toolchain, so the run of record is a developer
+or self-hosted run. `--dut smc` already instantiates `smc_wrapper`; there is
+no second wrapper job.
 |Public metrics |line, branch, expression, and the native `user` family
 |Numeric target |`user` 100.0 effective with `max_unclassified_points = 0`;
 line 78.0 / branch 75.9 / expression 69.0 effective
-|Signed |SMC DV owner, 2026-09-22, issue #507. Measurement:
-`--dut smc --items hosted --cov` (Verilator 5.050) on a 168-leaf
-`hosted` set; this tree's `hosted` group lists 176
+|Signed |SMC DV owner, on a 168-leaf `hosted`
+measurement (Verilator 5.050). Re-measured on the 192-leaf
+`hosted fw` set: line 97.50, branch 89.07, expression 86.46, user 407 of 467
 |===
 
 [[smc-cov-paths]]
@@ -30,7 +35,7 @@ line 78.0 / branch 75.9 / expression 69.0 effective
 |Public Verilator |line, branch and expression (`--coverage-line`,
 `--coverage-expr`) plus the `user` family from the `hw/sys/smc/dv/cov/sv/`
 cover properties, scoped at compile time by `smc_cov_scope.vlt` |local
-`run_dv --dut smc --items hosted --tool verilator --cov`. Nightly and
+`run_dv --dut smc --items hosted fw --tool verilator --cov`. Nightly and
 weekly `hosted` do not collect (`coverage: false` in `regress.yml`)
 |Commercial |code + assertion + covergroups under `ifndef VERILATOR`
 |licensed VCS; not a public CI job
@@ -62,7 +67,7 @@ package's to close.
 |===
 
 `\[[holes]]` and `\[[thresholds]]` are written from a measured
-`--dut smc --items hosted --cov` database. `expected_matches` is a hard
+`--dut smc --items hosted fw --cov` database. `expected_matches` is a hard
 count.
 
 [[smc-cov-waiver]]
@@ -89,3 +94,23 @@ the run's report against this policy and rewrites its coverage grade in
 place. A dispatch of `dashboard.yml` with the weekly's regress run id does
 the same for the published weekly. Both are described on the runner and
 dashboard pages under `tools/dv/doc/`.
+
+[[smc-cov-owners]]
+==== Owning tests
+
+SEP's coverage plan names, for every covergroup, the leaf that has to fill
+it: a hole is not gradable without knowing which test was supposed to fill
+it. Which leaf lights a `cov/sv` point is a property of a run, not of the
+source, so SMC measures the table rather than writing it. The include below
+is regenerated from the coverage run's directory:
+
+    python3 tools/dv/fcov_owners.py --dut smc --run-dir <run dir> \
+        --output hw/sys/smc/dv/docs/SMC_FCOV_OWNERS.adoc
+
+`--check` in place of a rewrite says whether the committed table still
+matches the run. A row with `Leaves` of 1 is a point one leaf alone reaches,
+which goes dark when that leaf is retired or narrowed; a row with 0 carries
+the policy disposition of the hole, or `unclassified` when the policy has
+none.
+
+include::SMC_FCOV_OWNERS.adoc[leveloffset=0]
