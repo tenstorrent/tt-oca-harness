@@ -488,6 +488,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
+|`smc_i3c_dxt_table_test` |Write and read back the Device Address Table, and read the Device Characteristic Table, of all six I3C instances through their CSR windows.
 |`smc_i3c_to_fabric_test` |Run the I3C CSR decode smoke through the SMC SEP_IN AXI input.
 |===
 
@@ -1889,12 +1890,13 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 * Every expectation comes from the generated register map (`hw/sys/smc/regs/gen/py/smc_reg.py`) or from a co-resident write/readback pattern, never from a first read of the DUT. A region whose reset is zero throughout is proven by the co-resident pattern rather than by a 0 == 0 compare, because a dead or unmapped window commonly reads 0.
 * The co-resident shape writes several addresses before any of them is read back, so a decode that collapses two windows onto one physical register returns a neighbour's pattern and fails the exact compare -- which a per-address write-then-read cannot see.
 * Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the DFX block, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
+* The first word past the straps block in the external window (window base plus `0x5800` from `memmap.adoc`, plus the block size from the generated `straps.h`) is claimed by no target of the window's demux. It must reach the external port and be answered DECERR there, and `STRAPS_LO`/`STRAPS_HI` must read the same on both sides of it.
 * The APB4-fronted blocks are read at their 32-bit generated-map addresses, and 32-bit reads are required to return values with bits above 16 set, so the APB4 data path is exercised beyond a 16-bit window.
 * The regions SEP_IN cannot reach in this bench are named in the log and left open rather than claimed: the PLIC and CLINT/BEU windows fold onto the local base in `smc_local_fabric`, the generated map declares no register in the debug-module region, and the M-mode/Xvisor remap regions are outbound apertures with no inbound decode pinned by the specification.
 
 *Test Procedure*:
 
-Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The sequence sweeps every reachable region at its base side and at the top of its extent, probes the three beyond-region addresses, routes one access into the external window, requires the scoreboard's exact-value compare count to have advanced by its floor, and prints the cell ledger. The leaf then re-checks the scoreboard compare count and books a protocol-VIP record with the sequence's measured access count against a stimulus floor.
+Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The sequence sweeps every reachable region at its base side and at the top of its extent, probes the three beyond-region addresses, routes one access into the external window and one past its straps block, requires the scoreboard's exact-value compare count to have advanced by its floor, and prints the cell ledger. The leaf then re-checks the scoreboard compare count and books a protocol-VIP record with the sequence's measured access count against a stimulus floor.
 
 *Checkers*:
 
@@ -1906,7 +1908,7 @@ Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The 
 |`CHK-ADDRESS-MAP-REGION-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged, so a run whose stimulus stopped reaching the DUT fails instead of passing with a short sweep
 |===
 
-*Pass Criteria*: every region's generated-reset compare or co-resident readback holds, the three beyond-region addresses each answer DECERR, the external window access drives `smc_external_req_o`, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` exact-value compares. The cells named NOT closed are not part of the claim. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: every region's generated-reset compare or co-resident readback holds, the three beyond-region addresses each answer DECERR, the external window accesses drive `smc_external_req_o` and the one past the straps block answers DECERR with the straps unchanged, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` exact-value compares. The cells named NOT closed are not part of the claim. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -9004,6 +9006,9 @@ Drive `smc_filter_region_span_test_seq`. Each checker below is a named compare t
 * **Two transfers whose channels have different work to do.** Decoupling only shows if the two sides are not in step, so each transfer is two-dimensional with a stride on one side only: a scatter, where the source rows are contiguous and the destination rows are a stride apart, so the read side issues one long run and the write side many short ones; and a gather, the other way round, so the fragmented side is the read. Both move the same four distinct rows and every row is compared against its source at the stride that should have placed it, so a transfer that dropped, duplicated or misplaced a row fails rather than passing quietly.
 * **Two descriptors back to back.** `dma_ctrl.rdl` says of `NEXT_ID` that "Reading this register starts the DMA transfer. Returns an ID value for the cumulative number of transfers. Returns 0 if command was not set up correctly", and of `DONE` that it "Holds the cumulative number of completed transfers". The second descriptor is therefore programmed and submitted without waiting for the first, and the leaf requires both ids to be non-zero and rising, `DONE` to have advanced by two, and each destination to hold its own payload rather than the other's or the sentinel.
 * Every destination is seeded with a sentinel that is none of the payload rows, so a transfer that never ran reads as the sentinel and fails.
+* **Transfers into a stalled SYS_OUT.** The legalizer issues a read or write request only while the backend's request ready for that side is high. Those readies come back from SYS_OUT through the AR register, the coupler's AW store, the write last-flag FIFO and the data FIFOs, and an always-ready responder never drops them. The leaf turns on the SYS_OUT responder's `enable_backpressure`, which holds READY low for 64 cycles out of every 65, and runs six 128-row 2D transfers of single-beat rows: the read side stalled (`ar`), the write side (`aw`, `w`), and both, first coupled and then decoupled. `CONFIG.ENABLE_ND` is set, so each row is a burst of its own; with it clear, the midend rejects every request as zero-length.
+* The bench counts cycles at the SYS_OUT boundary with VALID high and READY low, and requires a count on every stalled channel. The rows are seeded and compared in the responder's memory directly, each transfer with rows of its own, and every row must match its source.
+* The read request ready is driven low in both modes. The write request ready stays high. The legalizer loads the next row only when both machines are done and both readies are high, and a stalled write fills the backend's three-beat data buffer, which stops the reads. So the read side saturates before 32 writes are outstanding, whatever channel the responder stalls. Driving the write ready low needs a responder that keeps accepting reads while their data waits, and this bench does not have one.
 * `CONFIG` is restored to its reset and read back. The leaf writes no other DMA field, and touches no fuse.
 
 *Test Procedure*:
@@ -9017,9 +9022,10 @@ Drive `smc_dma_decouple_rw_test_seq`. Each checker below is a named compare the 
 |Checker |Description
 |`CHK-DMA-DECOUPLE-RW` |CONFIG.DECOUPLE_RW read back set from the mask the generated header gives it, and both transfers ran with the channels decoupled -- a scatter whose write side was the fragmented one and a gather whose read side was -- with every row landing where its stride puts it and matching its source; CONFIG was restored to its reset and read back
 |`CHK-DMA-QUEUED-DESCRIPTORS` |A second descriptor was programmed and submitted without waiting for the first, both NEXT_ID reads returned a non-zero and rising id rather than the 0 the RDL gives a rejected command, DONE advanced by two, and each destination held its own payload
+|`CHK-DMA-LEGALIZER-BACKPRESSURE` |Six 128-row 2D transfers ran into the backpressured SYS_OUT responder -- read side, write side and both, coupled and decoupled. Every stalled channel showed VALID high with READY low at the boundary, and every row of every transfer matched its own source
 |===
 
-*Pass Criteria*: `CHK-DMA-DECOUPLE-RW`, `CHK-DMA-QUEUED-DESCRIPTORS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-DMA-DECOUPLE-RW`, `CHK-DMA-LEGALIZER-BACKPRESSURE`, `CHK-DMA-QUEUED-DESCRIPTORS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -10401,6 +10407,39 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 |===
 
 *Pass Criteria*: both checkers hold after their compares and every sequence assert holds. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+[[sec-254-smc_i3c_dxt_table_test]]
+===== 254 `smc_i3c_dxt_table_test`
+
+*Source Module*: `smc_i3c_dxt_table_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP)
+
+*Objective*: Write and read back the Device Address Table, and read the Device Characteristic Table, of all six I3C instances through their CSR windows.
+
+*Test Coverage*:
+
+* The integration shell keeps each I3C instance's DAT and DCT in a single-port RAM, with a read-valid flop that a read reaching the RAM sets. No leaf had read either table on any instance. The I3C CSR window maps both tables (`registers.rdl`: `external DAT` at `0x400`, `external DCT` at `0x800`), and `smc_addr.h` gives their per-instance bases and the instance count, six.
+* **DAT.** `DAT_structure.rdl` makes every field of an entry `sw = rw`. The leaf records entry 0 of every instance, writes each instance a pattern of its own over the fields the RDL declares, and then reads all six back after all six are written. A read answered without reaching the RAM, or from another instance's RAM, returns the wrong pattern. Each entry is then restored and read back.
+* **DCT.** `DCT_structure.rdl` makes every field `sw = r`. Only dynamic address assignment writes the table, and this bench does not run it, so its content is not specified. The leaf reads entry 0 of every instance twice, as four 32-bit words, and requires every read to complete and the two passes to agree.
+* The I3C cores themselves are outside this plan's scope; the leaf credits the shell's table RAMs and the CSR-window path to them, not I3C protocol.
+
+*Test Procedure*:
+
+Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I3C-DAT-TABLE-RW` |DAT entry 0 of each of the six instances read back its own pattern over the declared fields after all six were written, and each was restored and read back
+|`CHK-I3C-DCT-TABLE-READ` |DCT entry 0 of each of the six instances was read twice, every read completed, and the two passes agreed
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

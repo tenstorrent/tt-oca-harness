@@ -30,7 +30,7 @@ from seq_lib.smc_address_map_region_decode_test_seq import (
 from smc_base_test import smc_base_test
 
 # Reads plus writes the sequence issues; a literal, not read from the sequence.
-EXPECTED_ACCESSES = 60
+EXPECTED_ACCESSES = 65
 
 
 @pyuvm.test()

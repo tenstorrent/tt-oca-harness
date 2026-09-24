@@ -12,6 +12,15 @@ tags = ["i3c_decode"]
 run_modes = ["smoke"]
 
 [[tests]]
+# DAT write/read and DCT reads on all six I3C instances through the CSR window.
+name = "smc_i3c_dxt_table_test"
+module = "smc_i3c_dxt_table_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_input_output_fabric_wr_rd_test"
 module = "smc_input_output_fabric_wr_rd_test"
 seed = 1

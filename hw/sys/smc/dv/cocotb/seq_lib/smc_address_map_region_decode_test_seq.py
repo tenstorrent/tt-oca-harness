@@ -158,6 +158,23 @@ EXTERNAL_MANDATORY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_
 EXTERNAL_SUPPLEMENTARY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
 assert EXTERNAL_MANDATORY_BASE == smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
 assert EFUSE_SHIM_CTRL_WINDOW == EXTERNAL_MANDATORY_BASE
+# memmap.adoc, "Captured GPIO Straps": STRAPS_LO at the adopter external window
+# plus 0x5800, STRAPS_HI after it. The block's size is the generated straps
+# header's; the first word past it is claimed by nothing in the window.
+_STRAPS_OFFSET = 0x5800
+_STRAPS_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "straps.h"
+
+
+def _straps_block_size() -> int:
+    for line in _STRAPS_H.read_text(encoding="utf-8").splitlines():
+        if "static_assert(sizeof(straps_t)" in line:
+            return int(line.split("==")[1].split(",")[0].strip(), 0)
+    raise AssertionError(f"{_STRAPS_H} declares no straps_t size")
+
+
+STRAPS_LO = EXTERNAL_MANDATORY_BASE + _STRAPS_OFFSET
+STRAPS_HI = STRAPS_LO + 4
+STRAPS_BEYOND = STRAPS_LO + _straps_block_size()
 
 _PATTERN_A = 0xA5A5_5A5A
 _PATTERN_B = 0x5A5A_A5A5
@@ -169,8 +186,8 @@ _SPM_PATTERN_HI = 0x5A5A_A5A5_FFFF_FFF8
 # Exact-value compares this body issues (reads carrying ``expected=``). A
 # literal, so a table edit that silently dropped an expectation fails here
 # rather than shrinking the floor with it.
-EXPECTED_VALUE_CHECKS = 39
-EXPECTED_DECERR_CHECKS = 3
+EXPECTED_VALUE_CHECKS = 41
+EXPECTED_DECERR_CHECKS = 4
 
 
 def _rom_word0() -> int:
@@ -422,6 +439,27 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"cycle(s) and was answered DECERR by the adopter window terminator (no supplementary "
             f"device attached in this bench)",
         )
+        # The first word past the straps block: routed to the external port and
+        # answered DECERR there, with both straps words unchanged across it.
+        straps_before = [
+            (await self.read_external_routed(f"EXTWIN_{name}_BEFORE", addr))[0]
+            for name, addr in (("STRAPS_LO", STRAPS_LO), ("STRAPS_HI", STRAPS_HI))
+        ]
+        _rdata, straps_hits = await self.read_external_routed(
+            "EXTWIN_STRAPS_BEYOND", STRAPS_BEYOND, decerr=True
+        )
+        self.external_hits["straps_beyond"] = straps_hits
+        for (name, addr), before in zip(
+            (("STRAPS_LO", STRAPS_LO), ("STRAPS_HI", STRAPS_HI)), straps_before
+        ):
+            await self.read_external_routed(f"EXTWIN_{name}_AFTER", addr, expected=before)
+        self.close_cell(
+            "straps-window-beyond",
+            f"0x{STRAPS_BEYOND:08x}, the first word past the straps block, drove "
+            f"smc_external_req_o for {straps_hits} clk_smc_i cycle(s) and was answered DECERR "
+            f"by the window terminator; STRAPS_LO/HI read 0x{straps_before[0]:08x}/"
+            f"0x{straps_before[1]:08x} on both sides of it",
+        )
         self.close_cell(
             "axil-external-region",
             f"mandatory base 0x{EXTERNAL_MANDATORY_BASE:08x} (eFuse SHIM reset) and supplementary "
@@ -433,15 +471,17 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         # The SEP_IN monitor flags any DECERR it was not told to expect; these
-        # four are the intended error-slave probes. The supplementary external
-        # base is one of them: this bench attaches no supplementary device, so
-        # the adopter window's terminator answers it.
+        # five are the intended error-slave probes. Two are in the adopter
+        # window and answered by its terminator: the supplementary base, since
+        # this bench attaches no supplementary device, and the first word past
+        # the straps block.
         self.env.axi_monitor.expected_decerr_addrs.update(
             {
                 WDT_REGION_BEYOND,
                 DFX_REGION_BEYOND,
                 FABRIC_CTRL_BEYOND,
                 EXTERNAL_SUPPLEMENTARY_BASE,
+                STRAPS_BEYOND,
             }
         )
 
@@ -518,12 +558,14 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         cocotb.log.info(
             "CHK-ADDRESS-MAP-REGION-DECODE: %d regions probed at base and top with %d "
             "scoreboard exact-value compares (floor %d), %d beyond-region DECERR probes, "
-            "external port active %d cycle(s) on the supplementary base; %d cells left open "
+            "external port active %d cycle(s) on the supplementary base and %d past the "
+            "straps block; %d cells left open "
             "as unreachable from SEP_IN",
             len(self.cells),
             self.value_checks_measured,
             EXPECTED_VALUE_CHECKS,
             EXPECTED_DECERR_CHECKS,
             self.external_hits.get("supplementary_base", 0),
+            self.external_hits.get("straps_beyond", 0),
             len(self.unreachable),
         )
