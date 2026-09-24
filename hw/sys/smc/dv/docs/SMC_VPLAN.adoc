@@ -10858,6 +10858,41 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 
 '''''
 
+[[sec-282-smc_log_engine_fetch_error_test]]
+===== 282 `smc_log_engine_fetch_error_test`
+
+*Source Module*: `smc_log_engine_fetch_error_test`
+
+*BFM / Model*: none; the log engine on UART wrapper 0 fetches from an address inside the I2C0 instance's stride but past its `SIZE`, which the I2C wrapper refuses (the decode `smc_deadspace_decode_test` holds it to); observation on `INTR_STATUS` and `tb_uart_irq_combined[0]`
+
+*Objective*: Make a log fetch come back with an error. The other log-engine leaves raise `LOG_FETCH_ERR` only through `INTR_TEST`.
+
+*Test Coverage*:
+
+* `LOG_REGION_ADDR` points at the refusing address and one `LOG_CTRL` element asks for a log. `INTR_STATUS.LOG_FETCH_ERR` must set and `LOG_WRITE_ERR` must not.
+* `INTR_ENABLE.LOG_FETCH_ERR` is set. The wrapper's interrupt line must be low before the error and high after it. The status bit must then clear on its written one, and the line must drop. The line also carries the 16550's interrupt, so the UART is set up with its interrupts disabled.
+* `LOG_WRITE_ERR` has no bus to come from. The engine's write port reaches only its own wrapper's UART register blocks (`uart_log_engine_wrap.sv`), which answer every address without error.
+
+*Test Procedure*:
+
+[arabic]
+. Set up UART0 as the transfer leaf does, and point the engine's region at the refusing address.
+. Start one element, wait for `LOG_FETCH_ERR`, check the line, stop the engine, and clear the status.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOG-ENGINE-FETCH-ERR` |A refused fetch set `LOG_FETCH_ERR` alone and raised the interrupt line with the interrupt enabled; its written one cleared it and the line dropped
+|===
+
+*Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+
+'''''
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
