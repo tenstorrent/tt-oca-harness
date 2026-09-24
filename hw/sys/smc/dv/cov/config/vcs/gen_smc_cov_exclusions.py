@@ -44,11 +44,13 @@ property of the design:
 
 * B1 PARTIAL-LANE-WRITE: a field that keeps its value between writes does take
   that same retain row when a write leaves one lane disabled while it holds a
-  one. The SMC AXI agent writes whole 32-bit words, so on a block whose cpuif
-  is no wider than that every write has every lane on, and every row of a
-  field's software-write branch that needs a lane off, whether the retain row
-  or a row of the retain or write-data operand, is uncovered for want of an
-  agent rather than for want of a path. On a block with a wider cpuif the same
+  one. The SMC AXI agent takes a one- or two-byte length, but no leaf of the
+  measured run writes a block whose cpuif is no wider than 32 bits with a lane
+  off, so every row of a field's software-write branch that needs one, whether
+  the retain row or a row of the retain or write-data operand, is uncovered for
+  want of a leaf rather than for want of a path. A leaf that writes such a
+  block a byte at a time covers the rows it reaches, and the next re-pin drops
+  them. On a block with a wider cpuif the same
   agent issues a half-word write, which does leave lanes disabled, so those rows
   stay graded. The
   clear-on-write row of a W1C field is a different expression and a leaf covers
@@ -58,7 +60,7 @@ Two facts are the integration's: the DFD top instantiates its trace wrapper
 with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, so every N-trace signal of
 the trace sink reads zero and a row asking one of them for a one cannot occur
 (P1 NTRACE-OFF, decided against the report's term list rather than a name
-prefix, plus the NTR-sink MMR decode of `mmrs`); both SMC fabrics tie the AXI
+prefix); both SMC fabrics tie the AXI
 filter's `filter_skip_i` to zero (P2 SKIP-TIED-OFF); the CLA drives twenty
 of its MMR hardware write-enables with a constant one, so their write-data
 ternaries never take the else arm (P3 WREN-TIED); one trace source can never
@@ -235,6 +237,10 @@ Claims examined and not held, so their points stay graded:
   the cycle that sets the flag carries it into the next transaction.
 * `trans_started && !host_enable_i` in the I2C controller: the flop clears a
   cycle after the enable falls, so the term holds for one cycle.
+* The NTR sink's RAM start and limit WARL checks in `mmrs`: with the NTR sink
+  absent, NTR_SINK_BLK_IDX and FUNNEL_BLK_IDX are both one, so the checks
+  decode a funnel access at offsets 0x10 to 0x1C and feed the funnel its write
+  enable and data. Only the SRAM-mode flag, which reads one, is held.
 * An AVSBus slave acknowledge of ResourceUnavailable or BadCRC: a responder in
   the sequence library answers each subframe bit by bit with every acknowledge
   code, frame-not-valid and every CRC code.
@@ -638,19 +644,19 @@ B7 = (
 )
 B1 = (
     "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC "
-    "AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more "
-    "than that, every write it issues has every lane on. A row of a field's software-write "
+    "AXI agent takes a one- or two-byte length, but no leaf of the measured run writes a "
+    "register block whose cpuif carries no more than 32 bits with a lane off. A row of a field's software-write "
     "branch that needs some lane off, the retain row, a row of the retain operand or of the "
     "write-data operand, is reachable in the design and uncovered for want of a partial write; "
-    "an agent that issues one covers it. A block whose cpuif is wider takes a half-word write "
+    "a leaf that issues one covers it, and the next re-pin drops the rows it reaches. A block whose cpuif is wider takes a half-word write "
     "from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is "
     "left out, and a leaf covers it."
 )
-# The width of the write the bench's AXI agent issues. A register block whose
-# cpuif is no wider than this cannot be written a part at a time, and PeakRDL
-# never builds a register wider than the cpuif, so the block's width settles it
-# for every register in it.
-AGENT_WRITE_BITS = 32
+# The widest cpuif B1 takes rows from: no leaf writes a block this narrow with a
+# lane off, while wider blocks take half-word writes. PeakRDL never builds a
+# register wider than the cpuif, so the block's width settles it for every
+# register in it.
+B1_CPUIF_BITS = 32
 CPUIF_WIDTH = re.compile(r"logic \[(\d+):0\] cpuif_wr_data;")
 
 
@@ -681,7 +687,8 @@ P1 = (
     "grant holds its N-trace reset value. A row is taken only where "
     "the report's own term list shows it asking one of those signals for a value that zero "
     "forbids; a row every N-trace term of which sits at zero stays graded, whatever the "
-    "expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+    "expression's other signals are, and so does the NTR-sink MMR decode of mmrs, whose block "
+    "index is the funnel's."
 )
 
 P3 = (
@@ -1413,10 +1420,6 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         (P8, re.compile(WREN_ZERO), re.compile(r"^1$"), None),
         (P9, WREN_HI, re.compile(r"^1$"), None),
         (P5, INSTR_TYPE_TEST, re.compile(r"^1$"), None),
-    ],
-    "mmrs": [
-        (P1, re.compile(r"NTR_SINK_\w+_REG_ADDR|MmrCs\[NTR_SINK_BLK_IDX\]"), None, None),
-        (P1, re.compile(r"Trntrissrammode|Trramstart(low|high)_Warl"), None, None),
     ],
     "efuse_shadow_regs": [
         (
@@ -3335,7 +3338,7 @@ def render_regblock(
                     reason = A6
                 elif (
                     width is not None
-                    and width <= AGENT_WRITE_BITS
+                    and width <= B1_CPUIF_BITS
                     and needs_lane_off(rp.terms, vector)
                 ):
                     reason = B1
