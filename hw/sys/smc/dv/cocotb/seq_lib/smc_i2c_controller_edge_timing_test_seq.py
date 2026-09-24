@@ -241,6 +241,12 @@ class smc_i2c_controller_edge_timing_test_seq(smc_i2c_controller_scl_events_test
                 EVENTS_ARBITRATION_LOST,
                 "CONTROLLER_EVENTS.ARBITRATION_LOST",
             )
+            await self.csr_write(f"{name}_EVENTS_ZERO", I2C0_CONTROLLER_EVENTS, 0)
+            kept = await self.csr_read(f"{name}_EVENTS_KEPT", I2C0_CONTROLLER_EVENTS)
+            assert kept & EVENTS_ARBITRATION_LOST, (
+                f"{name}: ARBITRATION_LOST cleared on a word of zeros (0x{kept:08x}); it "
+                f"clears only on a written one"
+            )
             await self.csr_write(f"{name}_HALT_OFF", I2C0_CTRL, 0)
         elif outcome == "cmd_complete":
             await self._wait_flag(name, I2C0_INTR_STATE, INTR_CMD_COMPLETE, "CMD_COMPLETE")
@@ -292,7 +298,8 @@ class smc_i2c_controller_edge_timing_test_seq(smc_i2c_controller_scl_events_test
         cocotb.log.info(
             "CHK-I2C-CTRL-EDGE-STRETCH-FALL: SCL held for %d ns across an expected rise and "
             "pulled low again %d ns into the high window raised SCL_INTERFERENCE in a pulse and "
-            "ARBITRATION_LOST in a setup, as each point specifies: %s",
+            "ARBITRATION_LOST in a setup, as each point specifies, and ARBITRATION_LOST "
+            "survived a word of zeros written over CONTROLLER_EVENTS: %s",
             STRETCH_NS,
             INTO_HIGH_NS,
             named("stretch_fall"),

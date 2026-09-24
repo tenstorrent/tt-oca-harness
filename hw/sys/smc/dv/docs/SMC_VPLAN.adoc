@@ -10559,7 +10559,7 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 * A NACK left pending across a disable. `HOST_NACK_HANDLER_TIMEOUT` is armed, the controller is NACKed, and `CTRL.ENABLEHOST` is cleared before the timeout runs out.
 ** The controller closes the transaction with one STOP of its own.
 ** The handler timeout must not run while the controller is disabled.
-** Re-enabled with the NACK still set, the timeout runs out, but with no transaction open nothing reaches the pads. The disable waits a fixed settle after the NACK is seen, because the controller reaches Idle only after the hold that follows the acknowledge.
+** Re-enabled with the NACK still set, the timeout runs out, but with no transaction open nothing reaches the pads. Clearing `NACK` alone must then leave `UNHANDLED_NACK_TIMEOUT` set on its own, since each field clears only on its own written one. The disable waits a fixed settle after the NACK is seen, because the controller reaches Idle only after the hold that follows the acknowledge.
 * `CTRL.LLPBK` in controller mode, which `i2c.rdl` limits to the SMBus alert input. A transfer made with it set must reach the target unchanged.
 * A read longer than the receive FIFO, with no `RDATA` reads until it ends.
 ** `INTR_STATE.RX_OVERFLOW` and `STATUS.RXFULL` must be raised.
@@ -10580,7 +10580,7 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 |`CHK-I2C-CTRL-NAKOK` |NACKs that `NAKOK` allowed left `CONTROLLER_EVENTS` at 0 and `CONTROLLER_HALT` clear, and the transfer ended in one STOP with `CMD_COMPLETE`
 |`CHK-I2C-CTRL-BACK-TO-BACK` |Two transactions queued together reached the target as two STARTs and two STOPs, with both bytes written
 |`CHK-I2C-CTRL-PARK-CONTINUE` |A parked transaction held SCL low with `HOSTIDLE` clear, raised no `BUS_TIMEOUT` with the timeout disabled, and the later entry finished it as one transaction
-|`CHK-I2C-CTRL-NACK-DISABLED` |A NACKed transaction closed with one STOP on disable, the handler timeout did not run while disabled, and once re-enabled it ran out with nothing on the pads
+|`CHK-I2C-CTRL-NACK-DISABLED` |A NACKed transaction closed with one STOP on disable, the handler timeout did not run while disabled, once re-enabled it ran out with nothing on the pads, and clearing NACK alone left the timeout flag set
 |`CHK-I2C-CTRL-LOOPBACK-HOST` |A write made with `LLPBK` set in controller mode reached the target unchanged, with no event
 |`CHK-I2C-CTRL-RX-OVERFLOW` |An undrained over-long read raised `RX_OVERFLOW` and `RXFULL`, the FIFO held the first bytes in order, and the interrupt cleared on a written one
 |===
@@ -10610,7 +10610,7 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 * SCL rising while SDA changes, in the not-acknowledge pulse. Both lines are held low from the low phase before it, which stretches the pulse, and then released together. SDA rises with SCL, so the read must complete intact with no event.
 * SCL falling after a stretch. SCL is held low for 5 us across the expected rise, released, and pulled low again 60 ns into the high window.
 ** In the same four pulses, the fall is clock synchronisation (`SCL_INTERFERENCE`).
-** In the setup of a repeated START and in the setup of the STOP, the controller could not issue its control symbol (`CONTROLLER_EVENTS.ARBITRATION_LOST`). `TSU_STA` or `TSU_STO` is lengthened so that the setup outlasts the pull's delay.
+** In the setup of a repeated START and in the setup of the STOP, the controller could not issue its control symbol (`CONTROLLER_EVENTS.ARBITRATION_LOST`). A word of zeros written over `CONTROLLER_EVENTS` must leave the flag set. `TSU_STA` or `TSU_STO` is lengthened so that the setup outlasts the pull's delay.
 * SDA rising while SCL falls in the STOP hold. SDA is held low through the STOP's setup, then released at the moment SCL is pulled low. The controller sees SDA high and must finish its STOP with `CMD_COMPLETE` and no event.
 * Another device in the setup of a first START. `TIMING2.TSU_STA` is lengthened so the setup can be hit from a time offset after the queue.
 ** SCL pulled low there means another device took the bus first. The transfer must still complete intact.
@@ -10630,7 +10630,7 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 |Checker |Description
 |`CHK-I2C-CTRL-EDGE-FALL-CHANGE` |SCL and SDA pulled low together in each of the four pulses raised `SCL_INTERFERENCE`
 |`CHK-I2C-CTRL-EDGE-RISE-CHANGE` |SCL and SDA released together into the not-acknowledge pulse left the read to complete intact with no event
-|`CHK-I2C-CTRL-EDGE-STRETCH-FALL` |An SCL fall after a stretch raised `SCL_INTERFERENCE` in each pulse and `ARBITRATION_LOST` in each setup
+|`CHK-I2C-CTRL-EDGE-STRETCH-FALL` |An SCL fall after a stretch raised `SCL_INTERFERENCE` in each pulse and `ARBITRATION_LOST` in each setup, and `ARBITRATION_LOST` survived a word of zeros
 |`CHK-I2C-CTRL-EDGE-STOP-HOLD` |SDA released as SCL fell in the STOP hold let the STOP finish with `CMD_COMPLETE` and no event
 |`CHK-I2C-CTRL-EDGE-FIRST-START` |SCL pulled in a first START's setup left the transfer to complete; SDA pulled there raised `SDA_INTERFERENCE`
 |===

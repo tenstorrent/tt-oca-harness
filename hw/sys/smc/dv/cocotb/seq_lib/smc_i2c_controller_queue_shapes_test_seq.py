@@ -288,6 +288,12 @@ class smc_i2c_controller_queue_shapes_test_seq(smc_i2c_controller_exits_test_seq
             f"{label}: after the handler timeout ran out with no transaction open, "
             f"{edges[0]} SCL rises and {edges[1]} STOPs reached the pads"
         )
+        await self.csr_write(f"{label}_CLEAR_NACK", I2C0_CONTROLLER_EVENTS, EVENTS_NACK)
+        alone = await self.csr_read(f"{label}_TIMEOUT_ALONE", I2C0_CONTROLLER_EVENTS)
+        assert alone == EVENTS_UNHANDLED_NACK_TIMEOUT, (
+            f"{label}: clearing NACK alone left CONTROLLER_EVENTS=0x{alone:08x}; "
+            f"UNHANDLED_NACK_TIMEOUT clears only on its own written one"
+        )
         await self.csr_write(f"{label}_CLEAR", I2C0_CONTROLLER_EVENTS, I2C_CONTROLLER_EVENTS_ALL)
         await self.csr_write(f"{label}_NACK_TIMEOUT_OFF", I2C0_HOST_NACK_HANDLER_TIMEOUT, 0)
         await self._wait_hostidle(label)
@@ -295,7 +301,8 @@ class smc_i2c_controller_queue_shapes_test_seq(smc_i2c_controller_exits_test_seq
             "CHK-I2C-CTRL-NACK-DISABLED: with HOST_NACK_HANDLER_TIMEOUT armed, a NACKed "
             "transaction closed with one STOP when ENABLEHOST was cleared, the handler timeout "
             "did not run over %d disabled cycles, and once re-enabled it ran out "
-            "(CONTROLLER_EVENTS=0x%08x) with nothing reaching the pads",
+            "(CONTROLLER_EVENTS=0x%08x) with nothing reaching the pads; clearing NACK alone "
+            "left UNHANDLED_NACK_TIMEOUT set on its own",
             DISABLED_CYCLES,
             events,
         )
