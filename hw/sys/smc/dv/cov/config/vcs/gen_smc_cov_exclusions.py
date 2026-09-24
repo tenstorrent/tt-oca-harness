@@ -624,8 +624,10 @@ P4 = (
     "graded, as ordinary trace traffic reaches it."
 )
 P5 = (
-    "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB "
-    "path only ever issues one instruction type and the other encoding is never presented."
+    "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR "
+    "block latches its reg_wr_instr_type from that net alone, so the set and clear encodings "
+    "update_value tests are never presented and their true rows cannot occur in any of the "
+    "blocks."
 )
 # The same twenty enables under the two spellings urg reports: the source-side
 # struct field in a condition, and the MMR block's flattened net in a branch.
@@ -821,6 +823,9 @@ C1 = (
 # (file suffix, first line, last line) of the source region a fact covers, for
 # where one file carries the same expression text inside and outside the region.
 LC_STATE_ARM = ("efuse_shadow_regs.sv", 290, 347)
+
+# update_value's set and clear encodings, which MmrWrInstrType tied to zero never presents.
+INSTR_TYPE_TEST = re.compile(r"^\(instr_type == 2'b\d+\)$")
 
 # The trace sink's N-trace RAM read enable, tied to zero at the DFD top.
 NTR_RAM_READ = re.compile(r"^trRamDataRdEn_ANY$")
@@ -1152,11 +1157,14 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         ),
     ],
     "axi_filter_wrap": [(P2, re.compile(r"^\(filter_skip_i \?"), re.compile(r"^1$"), None)],
+    "dst_mmr": [(P5, INSTR_TYPE_TEST, re.compile(r"^1$"), None)],
+    "dst_sink_mmr": [(P5, INSTR_TYPE_TEST, re.compile(r"^1$"), None)],
+    "funnel_mmr": [(P5, INSTR_TYPE_TEST, re.compile(r"^1$"), None)],
     "cla_mmr": [
         (P3, re.compile(WREN_TIED, re.I), None, None),
         (P8, re.compile(WREN_ZERO), re.compile(r"^1$"), None),
         (P9, WREN_HI, re.compile(r"^1$"), None),
-        (P5, re.compile(r"^\(instr_type == 2'b\d+\)$"), re.compile(r"^1$"), None),
+        (P5, INSTR_TYPE_TEST, re.compile(r"^1$"), None),
     ],
     "mmrs": [
         (P1, re.compile(r"NTR_SINK_\w+_REG_ADDR|MmrCs\[NTR_SINK_BLK_IDX\]"), None, None),
@@ -1323,6 +1331,10 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
 # Decisions on an elaboration-time constant: (class, condition, value it holds).
 BRANCH_CONSTANT_DECISIONS: "dict[str, list[tuple[str, str, int]]]" = {
     "trace_sink": [(P17, "NUM_CORES>1", 0)],
+    **{
+        block: [(P5, "instr_type==2'b01", 0), (P5, "instr_type==2'b10", 0)]
+        for block in ("cla_mmr", "dst_mmr", "dst_sink_mmr", "funnel_mmr")
+    },
 }
 
 # Case items no path reaches, per case condition: (class, condition, items).
@@ -2093,10 +2105,12 @@ def _bare(condition: "str | None") -> str:
 
 def _construct_key(condition: "str | None") -> str:
     """A first decision as both sides print it: the template escapes quotes,
-    parenthesises each operand and folds a `$bits(...)'` cast to its width,
-    and the annotated source does none of these."""
+    parenthesises each operand, folds a `$bits(...)'` cast to its width and
+    drops a binary literal's leading zeros, and the annotated source does none
+    of these."""
     text = (condition or "").replace('\\"', '"')
     text = re.sub(r"\$bits\([^()]*\)'\s*|\b\d+'(?=\s*\()", "", text)
+    text = re.sub(r"\b(\d+'[bB])0+(?=[01])", r"\1", text)
     return re.sub(r"[()]", "", _bare(text))
 
 

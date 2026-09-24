@@ -41,7 +41,7 @@ Condition 35 "1476893936" "(filter_skip_i ? 1'b0 : (no_read_filter_matches ? Blo
 
 CHECKSUM: "3897059503 4287847881"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
-ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB path only ever issues one instruction type and the other encoding is never presented."
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's field alone, with no register-write term beside it, and the CLA gives that structure a zero default and never names the field; the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
 ANNOTATION: "SMC-P9-DEBUG-WIDTH-64: core_logic_analyzer derives DBG_SIGNAL_CONFIG from DEBUG_SIGNAL_WIDTH == 128 and smc_dfd_wrap passes 64, so the cla_snapshot_mmr_hi_blk generate that drives every snapshot Hi write enable is not elaborated and each of them holds the zero its write structure defaults to; the enable's true arm and the then arm of the ternary it selects have no stimulus. The Lo halves are assigned outside that generate and stay graded."
 MODULE: cla_mmr
@@ -114,6 +114,7 @@ Condition 1439 "1739953689" "(MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn ? M
 
 CHECKSUM: "3897059503 370771677"
 ANNOTATION: "SMC-P3-WREN-TIED: the CLA drives this hardware write-enable with a constant one, so the term never reads zero and the write-data ternary it selects never takes its else arm; no software stimulus moves a tie-off."
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P8-WREN-TIED-ZERO: this reserved field's write enable is the CLA write structure's field alone, with no register-write term beside it, and the CLA gives that structure a zero default and never names the field; the enable holds zero, so its true arm and the then arm of the write-data ternary it selects have no stimulus. This is the converse of P3, where a constant one leaves the else arm unreachable instead."
 ANNOTATION: "SMC-P9-DEBUG-WIDTH-64: core_logic_analyzer derives DBG_SIGNAL_CONFIG from DEBUG_SIGNAL_WIDTH == 128 and smc_dfd_wrap passes 64, so the cla_snapshot_mmr_hi_blk generate that drives every snapshot Hi write enable is not elaborated and each of them holds the zero its write structure defaults to; the enable's true arm and the then arm of the ternary it selects have no stimulus. The Lo halves are assigned outside that generate and stay graded."
 MODULE: cla_mmr
@@ -161,6 +162,8 @@ Branch 561 "2664756155" "MMR_CDbgSignalSnapshotNode2Eap2Hi_F_Value_WrEn" (0) "MM
 Branch 564 "570626061" "MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode2Eap3Hi_F_Value_WrEn 1"
 Branch 567 "1585902306" "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap2Hi_F_Value_WrEn 1"
 Branch 570 "3796963668" "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn" (0) "MMR_CDbgSignalSnapshotNode3Eap3Hi_F_Value_WrEn 1"
+Branch 636 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
+Branch 636 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
 CHECKSUM: "40131737 3263069872"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
@@ -233,24 +236,36 @@ Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtri
 Condition 60 "2354949710" "(gen_timestamp_sync_scheme_0.timestamp_resync && xtrigger_posedge) 1 -1" (3 "11")
 
 CHECKSUM: "1876497610 1878539093"
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 MODULE: dst_mmr
+Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
+Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
 Condition 21 "2049624858" "(MMR_Trdstcontrol_F_Trdstempty_WrEn ? MMR_Trdstcontrol_F_Trdstempty_Data : MMR_Trdstcontrol_F_Trdstempty_Data_prev) 1 -1" (1 "0")
 
 CHECKSUM: "1876497610 901426059"
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 MODULE: dst_mmr
 Branch 4 "2305236049" "MMR_Trdstcontrol_F_Trdstempty_WrEn" (1) "MMR_Trdstcontrol_F_Trdstempty_WrEn 0"
+Branch 23 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
+Branch 23 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
 CHECKSUM: "1453354636 2637439043"
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 MODULE: dst_sink_mmr
+Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
+Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
 Condition 23 "2218510629" "(MMR_Trdstramcontrol_F_Trdstramempty_WrEn ? MMR_Trdstramcontrol_F_Trdstramempty_Data : MMR_Trdstramcontrol_F_Trdstramempty_Data_prev) 1 -1" (1 "0")
 
 CHECKSUM: "1453354636 620480316"
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 MODULE: dst_sink_mmr
 Branch 4 "259740910" "MMR_Trdstramcontrol_F_Trdstramempty_WrEn" (1) "MMR_Trdstramcontrol_F_Trdstramempty_WrEn 0"
+Branch 32 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
+Branch 32 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
 CHECKSUM: "2746040415 2271697718"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
@@ -443,6 +458,18 @@ Branch 8 "1283278657" "(!rst_ni)" (22) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,
 Branch 8 "1283278657" "(!rst_ni)" (23) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,1,0,1"
 Branch 8 "1283278657" "(!rst_ni)" (24) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,1,0,0"
 Branch 8 "1283278657" "(!rst_ni)" (25) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,0,-,-"
+
+CHECKSUM: "4117541145 44057898"
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
+MODULE: funnel_mmr
+Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
+Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
+
+CHECKSUM: "4117541145 1216273502"
+ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
+MODULE: funnel_mmr
+Branch 11 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
+Branch 11 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
 CHECKSUM: "287342404 4182007552"
 ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
