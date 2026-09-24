@@ -205,11 +205,15 @@ collection, security data processing, and inter-component communication
 without CPU intervention. The controller uses a frontend-backend
 architecture based on the PULP
 <a href="https://github.com/pulp-platform/iDMA">iDMA</a> engine, supporting
-multi-channel operation, scatter-gather transfers, and integration with
-SMC fabric filtering.</p>
+register-programmed linear and 2D transfers, and integration with SMC
+fabric filtering. SMC enables one control stream.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. DMA Controller Integration</caption>
+<div class="paragraph">
+<p><a href="#smc-dma-controller-integration-table">SMC DMA Controller Integration</a> summarises the DMA control aperture and fabric
+integration.</p>
+</div>
+<table id="smc-dma-controller-integration-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC DMA Controller Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -249,6 +253,16 @@ SMC fabric filtering.</p>
 <h2 id="architecture-overview"><a class="anchor" href="#architecture-overview"></a><a class="link" href="#architecture-overview">1. Architecture Overview</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
+<p><a href="#smc-dma-zeroer-diagram">SMC DMA and memory-zeroer architecture and shared fabric path</a> shows the DMA and zeroer connections to their shared fabric
+path.</p>
+</div>
+<div id="smc-dma-zeroer-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SMC_DMA_ZEROER_FIG013_FIG014.png" alt="SMC DMA and memory-zeroer architecture and shared fabric path" width="100%">
+</div>
+<div class="title">Figure 1. SMC DMA and memory-zeroer architecture and shared fabric path</div>
+</div>
+<div class="paragraph">
 <p>The DMA controller implements a frontend-backend architecture with the
 following modules:</p>
 </div>
@@ -278,10 +292,11 @@ control plane and data plane operations.</p>
 <h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The DMA controller supports the following configuration parameters:</p>
+<p><a href="#smc-dma-configuration-parameters-table">SMC DMA Configuration Parameters</a> lists the DMA frontend and backend
+configuration parameters.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. DMA Configuration Parameters</caption>
+<table id="smc-dma-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC DMA Configuration Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -369,10 +384,10 @@ processing, and transfer descriptor handling.</p>
 <div class="sect2">
 <h3 id="control-interface"><a class="anchor" href="#control-interface"></a><a class="link" href="#control-interface">3.1. Control Interface</a></h3>
 <div class="paragraph">
-<p>The table below describes the frontend control interface.</p>
+<p><a href="#smc-dma-frontend-control-interface-table">SMC DMA Frontend Control Interface</a> describes the frontend control interface.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Frontend Control Interface</caption>
+<table id="smc-dma-frontend-control-interface-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SMC DMA Frontend Control Interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -399,13 +414,13 @@ independent DMA access</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Error Reporting</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Immediate visibility into operation status and error
-conditions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No classified software error-status register in this
+control aperture</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration Lock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Protection against modification during active
-transfers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No configuration-lock register; software serializes
+updates to the shared transfer configuration</p></td>
 </tr>
 </tbody>
 </table>
@@ -455,10 +470,10 @@ treat the remaining banks as reserved.</p>
 <div class="sect2">
 <h3 id="transfer-descriptor-support"><a class="anchor" href="#transfer-descriptor-support"></a><a class="link" href="#transfer-descriptor-support">3.3. Transfer Descriptor Support</a></h3>
 <div class="paragraph">
-<p>The table below describes the transfer descriptor support.</p>
+<p><a href="#smc-dma-transfer-capabilities-table">SMC DMA Transfer Capabilities</a> describes the transfer descriptor support.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Transfer Capabilities</caption>
+<table id="smc-dma-transfer-capabilities-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC DMA Transfer Capabilities</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -485,8 +500,8 @@ source/destination stride</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scatter-Gather</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Non-contiguous memory regions with hardware descriptor
-parsing</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No hardware descriptor-chain fetcher in this integration.
+Software submits separate register-programmed requests for unrelated regions</p></td>
 </tr>
 </tbody>
 </table>
@@ -494,10 +509,10 @@ parsing</p></td>
 <div class="sect2">
 <h3 id="command-processing"><a class="anchor" href="#command-processing"></a><a class="link" href="#command-processing">3.4. Command Processing</a></h3>
 <div class="paragraph">
-<p>The DMA frontend streamlines command processing by parsing hardware
-descriptors directly, freeing software from interpretation overhead. It
-automatically calculates addresses for multi-dimensional transfers and
-optimizes burst lengths for efficient memory usage.</p>
+<p>Software programs the shared source, destination, length, stride, and
+repetition registers. Reading <code>NEXT_ID_0</code> submits that configuration to the
+2D midend, which expands the repetitions into linear backend requests.
+No memory-resident descriptor chain is fetched or interpreted.</p>
 </div>
 <div class="paragraph">
 <p>FIFO buffering between the frontend and midend ensures pipelined
@@ -558,10 +573,10 @@ and deadlock-free response delivery.</p>
 iDMA.</p>
 </div>
 <div class="paragraph">
-<p>The table below describes the AXI master interface.</p>
+<p><a href="#smc-dma-axi4-master-characteristics-table">SMC DMA AXI4 Master Characteristics</a> describes the AXI master interface.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. AXI4 Master Characteristics</caption>
+<table id="smc-dma-axi4-master-characteristics-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC DMA AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -618,11 +633,11 @@ access</p></td>
 <div class="sect2">
 <h3 id="transfer-configuration"><a class="anchor" href="#transfer-configuration"></a><a class="link" href="#transfer-configuration">5.1. Transfer Configuration</a></h3>
 <div class="paragraph">
-<p>The table below describes the transfer configuration parameters of the
+<p><a href="#smc-dma-transfer-parameters-table">SMC DMA Transfer Parameters</a> describes the transfer configuration parameters of the
 DMA backend.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. Transfer Parameters</caption>
+<table id="smc-dma-transfer-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. SMC DMA Transfer Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -668,11 +683,11 @@ DMA backend.</p>
 <div class="sect2">
 <h3 id="status-and-control"><a class="anchor" href="#status-and-control"></a><a class="link" href="#status-and-control">5.2. Status and Control</a></h3>
 <div class="paragraph">
-<p>The table below describes the status and control features of the DMA
+<p><a href="#smc-dma-status-monitoring-and-control-table">SMC DMA Status Monitoring and Control</a> describes the status and control features of the DMA
 backend.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. Status Monitoring and Control</caption>
+<table id="smc-dma-status-monitoring-and-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. SMC DMA Status Monitoring and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -685,20 +700,18 @@ backend.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Busy Status</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Real-time busy indication per channel</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STATUS_0[7:0]</code> repeats frontend command readiness; bit 8 is zero
+and bit 9 reports midend activity. These are not backend busy bits</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Completion Tracking</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Transfer completion ID tracking</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Error Status</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Error reporting and classification</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Progress Monitoring</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Real-time transfer progress indication</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Progress and Error Reporting</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use the submitted transfer ID and <code>DONE_0</code>; no
+byte-progress or classified error-status register is exposed</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Transfer Initiation</p></td>
@@ -706,28 +719,34 @@ backend.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Abort Capability</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Safe transfer abort with state preservation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No software abort register or state-preserving abort guarantee</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration Lock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Protection against inadvertent configuration
-changes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No software configuration lock</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Control</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable interrupt generation and masking</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unconditional one-cycle pulse when the wrapper busy
+output falls. No DMA-local interrupt enable, mask, or pending register</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>An idle frontend with room for another command can report <code>STATUS_0[7:0]</code>
+as <code>0xFF</code>. Conversely, zero in those bits does not establish that the last
+write has completed. Use <code>DONE_0</code> to track retired transfer IDs; the register
+name <code>BUSY</code> must not be interpreted as per-channel backend activity.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="performance-optimization-and-power-management"><a class="anchor" href="#performance-optimization-and-power-management"></a><a class="link" href="#performance-optimization-and-power-management">5.3. Performance Optimization and Power Management</a></h3>
 <div class="paragraph">
-<p>The two tables below describe the iDMA backend&#8217;s performance
-optimization and power management features.</p>
+<p><a href="#smc-dma-performance-features-table">SMC DMA Performance Features</a> summarises the backend&#8217;s burst and data-movement
+optimizations.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. Performance Features</caption>
+<table id="smc-dma-performance-features-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. SMC DMA Performance Features</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -774,8 +793,12 @@ controller optimization</p></td>
 </tr>
 </tbody>
 </table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Clock Gating Configuration</caption>
+<div class="paragraph">
+<p><a href="#smc-dma-clock-gating-configuration-table">SMC DMA Clock Gating Configuration</a> describes the clock-gating implementation
+and controls.</p>
+</div>
+<table id="smc-dma-clock-gating-configuration-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 9. SMC DMA Clock Gating Configuration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -839,8 +862,9 @@ interfaces, enabling parallel data movement.</p>
 <h3 id="response-path"><a class="anchor" href="#response-path"></a><a class="link" href="#response-path">6.2. Response Path</a></h3>
 <div class="paragraph">
 <p>As backends complete transfers, responses flow back through the request
-manager to the appropriate frontend, which updates status registers and
-generates interrupts. This completes the transfer loop and notifies
+manager to the appropriate frontend, which updates completed transfer IDs. The wrapper generates its interrupt
+when the combined busy indication falls, so the pulse is not a per-descriptor
+interrupt queue. This completes the transfer loop and notifies
 software of completion.</p>
 </div>
 </div>
@@ -964,97 +988,97 @@ register file is generated at the maximum stream count. With
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_1">STATUS_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_2">STATUS_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_3">STATUS_3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_4">STATUS_4</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_5">STATUS_5</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_6">STATUS_6</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_7">STATUS_7</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_8">STATUS_8</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_9">STATUS_9</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_10">STATUS_10</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_11">STATUS_11</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_12">STATUS_12</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_13">STATUS_13</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_14">STATUS_14</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="STATUS_15">STATUS_15</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</td></tr>
+<tr><td>9:0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</td></tr>
 </table>
 <h3 id="NEXT_ID_0">NEXT_ID_0</h3>
 <table>

@@ -306,7 +306,11 @@ before any later read. The programming sequence is in
 </div>
 <div class="sect2">
 <h3 id="destination-endpoints"><a class="anchor" href="#destination-endpoints"></a><a class="link" href="#destination-endpoints">3.4. Destination Endpoints</a></h3>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#efuse-destination-endpoints-table">eFuse destination endpoints</a> identifies the consumers of sensed fuse data.</p>
+</div>
+<table id="efuse-destination-endpoints-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. eFuse destination endpoints</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -349,9 +353,11 @@ access control</p></td>
 <div class="sect2">
 <h3 id="features"><a class="anchor" href="#features"></a><a class="link" href="#features">3.6. Features</a></h3>
 <div class="paragraph">
-<p>The feature list for the shadow register subsystem is as follows:</p>
+<p><a href="#efuse-shadow-register-features-table">eFuse shadow-register features</a> summarises the shadow-register capacity and
+access features.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="efuse-shadow-register-features-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. eFuse shadow-register features</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -412,7 +418,12 @@ each integration supplies its own address, data, access-length, and
 command types, while the macros guarantee a consistent struct layout and
 field ordering across all OTP variants.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#efuse-command-type-macros-table">eFuse command type macros</a> relates each command macro to its generated type and
+purpose.</p>
+</div>
+<table id="efuse-command-type-macros-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. eFuse command type macros</caption>
 <colgroup>
 <col style="width: 35%;">
 <col style="width: 30%;">
@@ -483,8 +494,12 @@ types:</p>
 </div>
 <div class="sect2">
 <h3 id="foundry-specific-signals"><a class="anchor" href="#foundry-specific-signals"></a><a class="link" href="#foundry-specific-signals">3.9. Foundry-Specific Signals</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Example Hardware Interfaces by OTP Variant</caption>
+<div class="paragraph">
+<p><a href="#example-hardware-interfaces-by-otp-variant-table">Example Hardware Interfaces by OTP Variant</a> compares the signals required by
+the supported OTP interface variants.</p>
+</div>
+<table id="example-hardware-interfaces-by-otp-variant-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Example Hardware Interfaces by OTP Variant</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -575,9 +590,10 @@ range with a 4-bit <code>lock</code> permission field:</p>
 </div>
 <div class="paragraph">
 <p>The <code>lock</code> field encodes read, write, and secure-test-mode permissions
-for the field:</p>
+for the field (<a href="#efuse-lock-field-encoding-table">eFuse lock-field encoding</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="efuse-lock-field-encoding-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. eFuse lock-field encoding</caption>
 <colgroup>
 <col style="width: 18%;">
 <col style="width: 22%;">
@@ -603,8 +619,8 @@ for the field:</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lock[3]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0</code> = unrestricted, <code>1</code> = access requires secure test mode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure-test write lock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code> adds a shadow write lock while secure test mode is active; <code>0</code> adds no such lock. Other locks still apply.</p></td>
 </tr>
 </tbody>
 </table>
@@ -613,9 +629,10 @@ for the field:</p>
 <h3 id="hardware-vs-software-locks"><a class="anchor" href="#hardware-vs-software-locks"></a><a class="link" href="#hardware-vs-software-locks">3.13. Hardware vs. Software Locks</a></h3>
 <div class="paragraph">
 <p>The same permission semantics are reached through two independent
-mechanisms, and the guard enforces whichever is more restrictive:</p>
+mechanisms, and the guard enforces whichever is more restrictive (<a href="#efuse-hardware-and-software-locks-table">eFuse hardware and software locks</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="efuse-hardware-and-software-locks-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. eFuse hardware and software locks</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 40%;">
@@ -682,7 +699,12 @@ to be bypassed.</p>
 <div class="paragraph">
 <p><strong>Behavior when <code>security_disable_i</code> is asserted:</strong></p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#efuse-security-disable-behavior-table">eFuse security-disable behavior</a> describes the sensing behavior when
+security_disable_i is asserted.</p>
+</div>
+<table id="efuse-security-disable-behavior-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. eFuse security-disable behavior</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -735,7 +757,12 @@ chip&#8217;s lifecycle state.</p>
 <div class="paragraph">
 <p><strong>Lifecycle State Encoding:</strong></p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#efuse-lifecycle-encodings-table">eFuse lifecycle encodings</a> lists the lifecycle encodings used by the eFuse
+controller.</p>
+</div>
+<table id="efuse-lifecycle-encodings-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. eFuse lifecycle encodings</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -791,9 +818,10 @@ chip&#8217;s lifecycle state.</p>
 </div>
 <div class="paragraph">
 <p>When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
-to eFuse registers is restricted:</p>
+to eFuse registers is restricted (<a href="#efuse-lifecycle-based-jtag-permissions-table">eFuse lifecycle-based JTAG permissions</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="efuse-lifecycle-based-jtag-permissions-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 9. eFuse lifecycle-based JTAG permissions</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 43%;">
@@ -848,7 +876,12 @@ assets during secure manufacturing test operations.</p>
 <div class="paragraph">
 <p><strong>Behavior when <code>secure_tm_i</code> is asserted:</strong></p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#efuse-secure-test-behavior-table">eFuse secure-test behavior</a> describes the restrictions applied when secure_tm_i
+is asserted.</p>
+</div>
+<table id="efuse-secure-test-behavior-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 10. eFuse secure-test behavior</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -898,7 +931,12 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#efuse-configuration-parameters-table">eFuse configuration parameters</a> lists the OTP capacity and word-dimension
+parameters.</p>
+</div>
+<table id="efuse-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 11. eFuse configuration parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 20%;">
@@ -936,7 +974,12 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 </div>
 <div class="sect2">
 <h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">4.3. Clock and Reset</a></h3>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#efuse-clock-and-reset-signals-table">eFuse clock and reset signals</a> defines the controller clock and reset
+interface.</p>
+</div>
+<table id="efuse-clock-and-reset-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 12. eFuse clock and reset signals</caption>
 <colgroup>
 <col style="width: 24%;">
 <col style="width: 14%;">
@@ -976,8 +1019,13 @@ access:</p>
 </div>
 <div class="sect2">
 <h3 id="smc-interface-functional-access"><a class="anchor" href="#smc-interface-functional-access"></a><a class="link" href="#smc-interface-functional-access">4.5. SMC Interface (Functional Access)</a></h3>
+<div class="paragraph">
+<p><a href="#efuse-functional-access-interface-table">eFuse functional-access interface</a> lists the AXI4-Lite request and response
+ports for functional access.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="eFuse SMC Interface (Functional Access)" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<table id="efuse-functional-access-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 13. eFuse functional-access interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 12%;">
@@ -1011,8 +1059,13 @@ access:</p>
 </div>
 <div class="sect2">
 <h3 id="jtag-interface-debug-access"><a class="anchor" href="#jtag-interface-debug-access"></a><a class="link" href="#jtag-interface-debug-access">4.6. JTAG Interface (Debug Access)</a></h3>
+<div class="paragraph">
+<p><a href="#efuse-jtag-access-interface-table">eFuse JTAG-access interface</a> lists the AXI4-Lite request and response ports for
+debug access.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="eFuse JTAG Interface (Debug Access)" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<table id="efuse-jtag-access-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 14. eFuse JTAG-access interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 12%;">
@@ -1051,8 +1104,13 @@ JTAG</p></td>
 <div class="paragraph">
 <p>APB interface for communicating with the eFuse bank model:</p>
 </div>
+<div class="paragraph">
+<p><a href="#efuse-bank-control-interface-table">eFuse bank-control interface</a> defines the APB connection to the fuse-bank
+control registers.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Bank Control Interface" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<table id="efuse-bank-control-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 15. eFuse bank-control interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 12%;">
@@ -1091,8 +1149,13 @@ eFuse bank</p></td>
 <div class="paragraph">
 <p>Custom interface for SHIM state machine communication:</p>
 </div>
+<div class="paragraph">
+<p><a href="#efuse-command-interface-table">eFuse command interface</a> defines the command request and response connection to
+the fuse shim.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Command Interface" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<table id="efuse-command-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 16. eFuse command interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 12%;">
@@ -1128,8 +1191,13 @@ from SHIM</p></td>
 </div>
 <div class="sect2">
 <h3 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">4.9. Security and Control Signals</a></h3>
+<div class="paragraph">
+<p><a href="#efuse-security-and-control-signals-table">eFuse security and control signals</a> defines the lifecycle and security-control
+inputs.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="eFuse Security and Control Signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<table id="efuse-security-and-control-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 17. eFuse security and control signals</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 12%;">
@@ -1200,8 +1268,12 @@ control rules</p></td>
 </div>
 <div class="sect2">
 <h3 id="debug-and-status-signals"><a class="anchor" href="#debug-and-status-signals"></a><a class="link" href="#debug-and-status-signals">4.10. Debug and Status Signals</a></h3>
+<div class="paragraph">
+<p><a href="#efuse-debug-and-status-signals-table">eFuse debug and status signals</a> defines the lock-status and debug outputs.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="eFuse Debug and Status Signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<table id="efuse-debug-and-status-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 18. eFuse debug and status signals</caption>
 <colgroup>
 <col style="width: 42%;">
 <col style="width: 12%;">
@@ -1275,7 +1347,7 @@ control rules</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_secure_tm_blocked_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Access blocked because secure test mode is not active</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse traffic blocked while secure test mode is active</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_rma_sip_token_match_debug</code></p></td>
@@ -1361,7 +1433,7 @@ tables below compose those integration-specific views from their canonical
 SystemRDL roots.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. SEP eFuse Placement</caption>
+<caption class="title">Table 19. SEP eFuse Placement</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 16.6666%;">
@@ -1408,7 +1480,7 @@ SystemRDL roots.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. SMC eFuse Placement</caption>
+<caption class="title">Table 20. SMC eFuse Placement</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -1443,7 +1515,7 @@ SystemRDL roots.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Key Manager eFuse Pass-Through</caption>
+<caption class="title">Table 21. Key Manager eFuse Pass-Through</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 16.6666%;">
@@ -1884,10 +1956,10 @@ EFUSE_PROGRAM_CTRL = (1 &lt;&lt; 27) | (1 &lt;&lt; 16) | (bit_addr &amp; 0xFFFF)
 EFUSE_PROGRAM_CTRL |= (1 &lt;&lt; 17);
 
 // Wait for completion
-while (EFUSE_PROGRAM_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
+while (!(EFUSE_PROGRAM_CTRL &amp; (1u &lt;&lt; 25))); // Wait for PROGRAM_DONE
 
 // Check status
-if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x3) {
+if ((EFUSE_PROGRAM_CTRL &gt;&gt; 26) &amp; 0x1) {
     // Handle error
 }
 
@@ -1900,20 +1972,22 @@ EFUSE_PROGRAM_CTRL &amp;= ~(1 &lt;&lt; 27);</code></pre>
 <h3 id="example-2-reading-multiple-words"><a class="anchor" href="#example-2-reading-multiple-words"></a><a class="link" href="#example-2-reading-multiple-words">6.4. Example 2: Reading Multiple Words</a></h3>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Own the read path (read_enable is bit 28). program_enable must already be 0.
-EFUSE_READ_CTRL = (1 &lt;&lt; 28) | (num_words &lt;&lt; 16) | (bit_addr &amp; 0xFFFF);
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Each command reads one 32-bit word; addresses are measured in bits.
+// program_enable must already be 0.
+for (uint32_t i = 0; i &lt; num_words; ++i) {
+    uint32_t addr = bit_addr + 32u * i;
+    EFUSE_READ_CTRL = (1u &lt;&lt; 28) | (addr &amp; 0xFFFFu);
+    EFUSE_READ_CTRL |= (1u &lt;&lt; 16); // READ_GO
+    while (!(EFUSE_READ_CTRL &amp; (1u &lt;&lt; 25))); // READ_DONE
+    if (EFUSE_READ_CTRL &amp; (1u &lt;&lt; 26)) {
+        // Handle read error before consuming data.
+        break;
+    }
+    data[i] = EFUSE_READ_INTERFACE_READ_DATA;
+}
 
-// Trigger read
-EFUSE_READ_CTRL |= (1 &lt;&lt; 17);
-
-// Wait for completion
-while (EFUSE_READ_CTRL &amp; (1 &lt;&lt; 24)); // Wait for busy to clear
-
-// Read data
-uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
-
-// Release read ownership before any later program
-EFUSE_READ_CTRL &amp;= ~(1 &lt;&lt; 28);</code></pre>
+// Release read ownership before any later program.
+EFUSE_READ_CTRL &amp;= ~(1u &lt;&lt; 28);</code></pre>
 </div>
 </div>
 </div>
@@ -1971,13 +2045,7 @@ EFUSE_READ_CTRL &amp;= ~(1 &lt;&lt; 28);</code></pre>
 <p>0: Success</p>
 </li>
 <li>
-<p>1: Bad data (data was not 1)</p>
-</li>
-<li>
-<p>2: Bad enables (program_enable not set or lock active)</p>
-</li>
-<li>
-<p>3: Programming failure (verification failed)</p>
+<p>1: Error. This one-bit field does not distinguish failure causes.</p>
 </li>
 </ul>
 </div>
@@ -2017,7 +2085,8 @@ command path so a subsequent read can proceed.</p>
 <p>Configure <code>efuse_addr</code> with target bit address</p>
 </li>
 <li>
-<p>Set <code>efuse_read_length_words</code> for multi-word reads</p>
+<p>Issue one command per 32-bit word; advance the bit address by 32 for each
+additional word. There is no software read-length field.</p>
 </li>
 </ul>
 </div>

@@ -249,10 +249,15 @@ as environment or active attack and to alert the security system of the
 degradation via alarm interrupts. Metrics can be queried by software via
 the CSRs.</p>
 </div>
-<div class="imageblock">
-<div class="content">
-<img src="_images/SEP_TRNG_Entropy.png" alt="SEP_TRNG_Entropy">
+<div class="paragraph">
+<p><a href="#sep-trng-diagram">SEP TRNG and DRBG entropy distribution</a> shows the entropy source, deterministic generator, and random-data
+distribution paths.</p>
 </div>
+<div id="sep-trng-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_Trng_TopLevel_FIG011.drawio.png" alt="SEP TRNG and DRBG entropy distribution" width="100%">
+</div>
+<div class="title">Figure 1. SEP TRNG and DRBG entropy distribution</div>
 </div>
 <div class="paragraph">
 <p>In OCAH the whitened entropy stream from the noise source is not routed
@@ -287,8 +292,12 @@ dedicated interrupts (<code>entropy_pool_low</code>, <code>entropy_pool_fill_sta
 <p>FIPS provenance is carried per-beat on a generic AXI-Stream <code>tuser</code>
 sideband. The adapter forwards this bit into each client&#8217;s <code>edn_fips</code> so
 that FIPS-aware consumers such as OTBN RND — which latches the bit and
-raises <code>rnd_fips_chk_fail</code> on a non-FIPS ack — observe the correct
-provenance of the bits they are receiving.</p>
+raises <code>rnd_fips_chk_fail</code> on a non-FIPS ack — receive that tag.
+The CSRNG seed FIPS tag is provisionally tied to <code>1</code>, and the external
+entropy mux also sets <code>tuser = 1</code> unconditionally. These values express an
+integration assumption; they do not measure entropy quality or establish
+FIPS compliance. The entropy source and its qualification must support that
+assumption independently.</p>
 </div>
 <div class="paragraph">
 <p>The internal entropy complex uses one software-reset request,
@@ -326,12 +335,13 @@ combinational source-selection muxes are not scan assets.</p>
 </div>
 <div class="paragraph">
 <p>The noise is distributed via streaming interfaces. The stream interface is
-generic and compatible with AXI-Stream and TLUL-Stream. The following table
+generic and compatible with AXI-Stream and TLUL-Stream. <a href="#entropy-streaming-signals-table">Entropy streaming signals</a>
 describes the stream interface. Source is the generator of the signal. Sink is
 the consumer. The entropy streaming interface will not require address or mask
 signals.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="entropy-streaming-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Entropy streaming signals</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -415,7 +425,12 @@ Generator.</p>
 </div>
 <div class="sect2">
 <h3 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">Parameters</a></h3>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#drbg-parameters-table">DRBG parameters</a> lists the seed FIFO, endpoint-count, and endpoint FIFO
+parameters.</p>
+</div>
+<table id="drbg-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. DRBG parameters</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">
@@ -463,7 +478,12 @@ Generator.</p>
 <div class="paragraph">
 <p>The DRBG presents several interface types to the rest of the SEP subsystem.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#drbg-external-interfaces-table">DRBG external interfaces</a> describes the entropy ingress, random-data endpoints,
+and control interfaces.</p>
+</div>
+<table id="drbg-external-interfaces-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. DRBG external interfaces</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">

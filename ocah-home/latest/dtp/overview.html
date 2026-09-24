@@ -193,20 +193,18 @@ the Cross Trigger Network (CTN) — plus the DTP top-level wiring that connects
 them to each other, to the SMU AXI crossbar, and to the external JTAG and
 cross-trigger pads.</p>
 </div>
-<div class="imageblock">
+<div id="dtp-internal-structure-figure" class="imageblock">
 <div class="content">
 <img src="_images/dtp_arch_overview.svg" alt="DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface">
 </div>
 <div class="title">Figure 1. DTP internal structure</div>
 </div>
 <div class="paragraph">
-<p>The figure uses blue borders and connectors for JTAG/JIU paths (including
+<p><a href="#dtp-internal-structure-figure">DTP internal structure</a> uses blue borders and connectors for JTAG/JIU paths (including
 instruction decode and selection signals), red for CTN paths, grey for pad I/O,
 and gold-dashed for the <code>jtag_clock_stop</code> control signal from PTAP to the
 clock-stop aggregator. Arrowheads indicate direction; solid arrows show primary
-paths and dashed arrows show return, selection, or control paths. JTAG scan-in
-and scan-out, AXI-Lite requests and responses, and CTP pad outputs and inputs
-each use separate arrows.</p>
+paths and dashed arrows show return, selection, or control paths.</p>
 </div>
 </div>
 </div>
@@ -227,8 +225,14 @@ five external JTAG pins (TCK, TDI, TDO, TMS, TRST_n).</p>
 JTAG, SMC CPU debug, SEP CPU debug, and optional extra TAPs.</p>
 </li>
 <li>
-<p>An iJTAG network with SIB-based chains for DFT secure, DFT non-secure, DFD,
-SMC fabric debug (JTAG2AXI), SMC OTP (JTAG2AXIL), and SEP OTP (JTAG2AXIL).</p>
+<p>An iJTAG network selected by <code>SELECT_IJTAG</code>, with a serial cascade of
+secure DFT, non-secure DFT, and DFD SIBs. Each SIB inserts or bypasses its
+associated external scan segment.</p>
+</li>
+<li>
+<p>Independent instruction-selected PTAP TDRs for SMC fabric debug
+(JTAG2AXI), SMC OTP (JTAG2AXIL), and SEP OTP (JTAG2AXIL). These bridges
+are outside the iJTAG SIB cascade.</p>
 </li>
 </ul>
 </div>

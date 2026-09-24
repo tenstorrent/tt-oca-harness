@@ -199,14 +199,33 @@
 <h1 class="page">OTP Fuse Controller</h1>
 <div id="preamble">
 <div class="sectionbody">
-<div id="fuse-controller-otp-fuse-controller-otp" class="imageblock">
+<div id="fuse-controller-otp-fuse-controller-otp" class="paragraph">
+<p><a href="#sep-otp-fuse-bank-diagram">SEP OTP fuse bank</a> shows the OTP fuse-bank organization.</p>
+</div>
+<div id="sep-otp-fuse-bank-diagram" class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
 </div>
+<div class="title">Figure 1. SEP OTP fuse bank</div>
 </div>
 <div class="paragraph">
 <p>The One-Time Programmable (OTP) fuse controller stores persistent
 chiplet policy.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-efuse-interface-diagram">eFuse controller and technology-specific interface shim</a> shows the controller boundary and the
+technology-specific fuse interface.</p>
+</div>
+<div id="sep-efuse-interface-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_eFuse_Interface_Block_Diagram_FIG023.png" alt="eFuse controller and technology-specific interface shim" width="100%">
+</div>
+<div class="title">Figure 2. eFuse controller and technology-specific interface shim</div>
+</div>
+<div class="paragraph">
+<p>The SMC reuses the eFuse interface with <code>HAS_LC_STATE=0</code> and no secret-shadow
+ranges. It has no local lifecycle controller; its wrapper receives lifecycle
+state and security-disable policy from SEP.</p>
 </div>
 </div>
 </div>
@@ -221,7 +240,7 @@ shadow register.</p>
 <div class="paragraph">
 <p>The <em>output</em> of the LC_STATE shadow register shall remain 4’b1111 until fuse
 sensing completes; only then is the LC_STATE value sensed from the fuses driven
-to downstream logic such as the lifecycle controller. The fuse-field table below
+to downstream logic such as the lifecycle controller. <a href="#sep-fuse-fields-table">SEP fuse fields</a>
 defines whether software can read and write the shadow register of each fuse
 field. Shadow registers that are not software-visible drive their fuse values
 directly to downstream hardware. All fuse fields other than LOCKS and LC_STATE
@@ -232,6 +251,15 @@ are made available to downstream logic as soon as they are ready.</p>
 indicator is generated. This triggers the DFT-based memory-repair machine for
 the SEP SRAMs. Once memory repair completes or is bypassed, the SEP CPU is
 enabled and fetches its first instruction from the SEP ROM.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-efuse-sense-diagram">eFuse sensing state machine and shadow-register timing</a> shows the fuse-sensing sequence and shadow-register timing.</p>
+</div>
+<div id="sep-efuse-sense-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_eFuse_Sense_FSM_FIG029.png" alt="eFuse sensing state machine and shadow-register timing" width="100%">
+</div>
+<div class="title">Figure 3. eFuse sensing state machine and shadow-register timing</div>
 </div>
 </div>
 </div>
@@ -251,7 +279,7 @@ or read-lock LOCKS or LOCKS_SPARE.</p>
 <p>The fuse block’s internal space, including the fuse-programming configuration
 space, is accessible through both a JTAG interface and an AXI interface, as
 shown in the figure, and each interface has its own access control. In addition
-to the shadow-register access control defined by the fuse-field table below, the
+to the shadow-register access control defined by <a href="#sep-fuse-fields-table">SEP fuse fields</a>, the
 JTAG port shall be further restricted: in the PROD and RMA_SIP states it may
 reach only the eFuse MMR token block. That block is the three token-input arrays
 (RMA_SIP_TOKEN_I, RMA_CHIPLET_TOKEN_I and SEC_DISABLE_TOKEN_I), the TOKEN_EOP
@@ -341,7 +369,12 @@ downstream logic during test.</p>
 <div class="sect1">
 <h2 id="fuse-fields"><a class="anchor" href="#fuse-fields"></a><a class="link" href="#fuse-fields">5. Fuse Fields</a></h2>
 <div class="sectionbody">
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sep-fuse-fields-table">SEP fuse fields</a> lists the fuse-field indices, sizes, access permissions, and
+purposes.</p>
+</div>
+<table id="sep-fuse-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP fuse fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 10%;">
@@ -488,10 +521,10 @@ part to the customer, the development-key bits shall be set (revoked).
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Anti-Rollback Counter (ARBC) for BL1:
-the minimum BL1 version that SEP ROM will load. The version is encoded
-as the population count of 1 bits in this field. The maximum version is 240
-(TBD), which leaves redundancy for any fuses that fail to blow.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL1 anti-rollback storage. The
+production ROM supplies the low 128 raw bits as security-version flags to
+the manifest validator; the upper 128 bits do not participate in that check.
+See <a href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">Anti-Rollback Security-Version Flags</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL2_VERSION</p></td>
@@ -499,10 +532,9 @@ as the population count of 1 bits in this field. The maximum version is 240
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">set-only</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Anti-Rollback Counter (ARBC) for BL2:
-the minimum BL2 version that can be loaded. The version is encoded
-as the population count of 1 bits in this field. The maximum version is 240
-(TBD), which leaves redundancy for any fuses that fail to blow.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL2 anti-rollback storage for later-stage
+firmware policy. This bank is not the production ROM&#8217;s BL1 security-version
+input; software using it must define its encoding and enforcement policy.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_UID</p></td>
@@ -817,22 +849,23 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 </div>
 </div>
 <div class="sect1">
-<h2 id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"><a class="anchor" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc"></a><a class="link" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">6. Anti-Rollback Counter (ARBC)</a></h2>
+<h2 id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"><a class="anchor" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc"></a><a class="link" href="#anti-rollback-counter-arbc-anti-rollback-counter-arbc">6. Anti-Rollback Security-Version Flags</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The counter is implemented as a ``population count'' in fuses instead of
-a binary counter. Each 256-bit counter field allocates 240 fuse bits for
-counting, with 16 spares as redundancy for fuses that fail to blow. Every
-counter increment blows one additional fuse bit, and the counter state equals
-the fuse population count&#8201;&#8212;&#8201;the number of fuses (out of 256) that have been
-blown.</p>
+<p>The production ROM reads bits <code>[127:0]</code> of <code>BL1_VERSION</code> into the manifest
+validator&#8217;s 128-bit device security-version field. These bits define the
+enforced BL1 rollback policy.</p>
 </div>
 <div class="paragraph">
-<p>A new device starts with an ARBC state of zero fuse bits blown. Each time the
-required production firmware version is incremented, one more fuse bit is
-blown as described above. Firmware signature verification includes the ARBC
-state along with the firmware version, ensuring that older firmware versions
-fail signature verification and cannot be loaded.</p>
+<p>When secure boot is active, the manifest must contain every flag already set
+on the device at the corresponding bit positions: for each byte,
+<code>(device &amp; ~manifest) == 0</code>. A manifest missing any device flag fails the
+security-version check.</p>
+</div>
+<div class="paragraph">
+<p>Provision security-version flags consistently with the signed manifest&#8217;s
+<code>manifest_security_version</code> field. <code>BL2_VERSION</code> is separate storage whose
+interpretation belongs to later-stage firmware.</p>
 </div>
 </div>
 </div>

@@ -515,7 +515,7 @@ parity of the received character.</p></td>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
+<tr><td>0x0</td><td><a href="#uart_log_engine_ctrl.CTRL">uart_log_engine_ctrl.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
 <tr><td>0x100</td><td><a href="#RBR">RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
 <tr><td>0x104</td><td><a href="#IER">IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
 <tr><td>0x108</td><td><a href="#IIR">IIR</a></td><td>R</td><td>Interrupt Identification Register</td></tr>
@@ -526,6 +526,7 @@ parity of the received character.</p></td>
 <tr><td>0x11C</td><td><a href="#SCR">SCR</a></td><td>RW</td><td>Scratch Register</td></tr>
 <tr><td>0x120</td><td><a href="#ECR">ECR</a></td><td>RW</td><td>Extended Control Register</td></tr>
 <tr><td>0x124</td><td><a href="#ITR">ITR</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
+<tr><td>0x200</td><td><a href="#log_engine.CTRL">log_engine.CTRL</a></td><td>RW</td><td>Control Register</td></tr>
 <tr><td>0x204</td><td><a href="#LOG_REGION_SIZE">LOG_REGION_SIZE</a></td><td>RW</td><td>Log Region Size Register</td></tr>
 <tr><td>0x208</td><td><a href="#LOG_REGION_ADDR">LOG_REGION_ADDR</a></td><td>RW</td><td>Log Region Address Register</td></tr>
 <tr><td>0x210</td><td><a href="#LOG_WRITE_ADDR">LOG_WRITE_ADDR</a></td><td>RW</td><td>Log Write Address Register</td></tr>
@@ -535,7 +536,7 @@ parity of the received character.</p></td>
 <tr><td>0x240 - 0x27C</td><td><a href="#LOG_CTRL_16_">LOG_CTRL[16]</a></td><td>RW</td><td>Log Control Register</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="CTRL">CTRL</h3>
+<h3 id="uart_log_engine_ctrl.CTRL">uart_log_engine_ctrl.CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -637,6 +638,12 @@ parity of the received character.</p></td>
 <tr><td>2</td><td>TLSI</td><td>RW</td><td>0x0</td><td>Test (Receiver) Line Status Interrupt. Writing `1` forces the interrupt and<br>writing `0` releases it.</td></tr>
 <tr><td>1</td><td>TTBEI</td><td>RW</td><td>0x0</td><td>Test Transmitter Buffer Empty (Transmitter Holding Register Empty) Interrupt.<br>Writing `1` forces the interrupt and writing `0` releases it.</td></tr>
 <tr><td>0</td><td>TRBFI</td><td>RW</td><td>0x0</td><td>Test Receiver Buffer Full (Received Data Ready) Interrupt. Writing `1` forces<br>the interrupt and writing `0` releases it.</td></tr>
+</table>
+<h3 id="log_engine.CTRL">log_engine.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>EN</td><td>RW</td><td>0x0</td><td>Log Engine Enable. When set, enables the Log Engine. When unset, disables the<br>Log Engine and resets all FSMs, flops, and FIFOs.</td></tr>
 </table>
 <h3 id="LOG_REGION_SIZE">LOG_REGION_SIZE</h3>
 <table>

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>CPU Subsystem :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <link rel="prev" href="memory_map.html">
+    <link rel="prev" href="fabric.html">
     <link rel="next" href="rom.html">
     <meta name="description" content="SEP VeeR EL2 configuration, boot, DMA, and alarm processing.">
     <meta name="generator" content="Antora 3.1.15">
@@ -90,7 +90,16 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
@@ -126,42 +135,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="3">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
-  </li>
-</ul>
-  </li>
-  <li class="nav-item" data-depth="3">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="index.html">Security Processor (SEP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
@@ -181,9 +154,6 @@
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="fabric.html">SEP Interconnect</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="memory_map.html">Memory Map and Registers</a>
   </li>
   <li class="nav-item is-current-page" data-depth="4">
     <a class="nav-link" href="cpu.html">CPU Subsystem</a>
@@ -269,6 +239,9 @@
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="test_mode.html">Test Mode Entry</a>
   </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="memory_map.html">Memory Map and Registers</a>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="3">
@@ -343,6 +316,42 @@
   </li>
 </ul>
   </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
@@ -371,6 +380,9 @@
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
   </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
+  </li>
 </ul>
   </li>
 </ul>
@@ -381,10 +393,16 @@
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -479,8 +497,19 @@ host. The core has been silicon proven by Western Digital and others. The
 Programmer’s Reference Manual</a> provides the details required for
 programming the CPU.</p>
 </div>
+<div class="paragraph">
+<p><a href="#sep-cpu-diagram">Figure 1</a> shows the CPU subsystem and its instruction, data, and external
+memory interfaces.</p>
+</div>
+<div id="sep-cpu-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_CPU_FIG004.svg" alt="SEP VeeR EL2 CPU subsystem and memory interfaces" width="100%">
+</div>
+<div class="title">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</div>
 </div>
 </div>
+</div>
+<p class="block-references">Figures and tables: <a href="#sep-cpu-diagram">Figure 1</a>.</p>
 <div class="sect1">
 <h2 id="cpu-feature-summary"><a class="anchor" href="#cpu-feature-summary"></a><a class="link" href="#cpu-feature-summary">1. CPU Feature Summary</a></h2>
 <div class="sectionbody">
@@ -517,19 +546,30 @@ for FUSA compliance</p>
 </div>
 </li>
 <li>
-<p>RISC-V PMP (Physical Memory Protection) - Privileged Architecture
-standard</p>
+<p>RISC-V PMP (Physical Memory Protection)</p>
 <div class="ulist">
 <ul>
 <li>
-<p>32-bit address space divided into 16 regions of 256 MB fixed size</p>
+<p><code>pmpcfg</code> and <code>pmpaddr</code> CSRs define address ranges and their read, write,
+and execute permissions</p>
 </li>
 <li>
-<p>Each region has execute, write and read permissions controlled by the
-Region Access Control Register (mrac)</p>
+<p>Access violations raise precise exceptions</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
-<p>Precisely trapped exception on usage violation</p>
+<p>Memory attributes controlled separately by the Region Access Control
+Register (<code>mrac</code>)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Sixteen fixed 256 MiB regions cover the 32-bit address space</p>
+</li>
+<li>
+<p>Each region has cacheability and side-effect attributes; these do not
+grant or deny read, write, or execute access</p>
 </li>
 </ul>
 </div>
@@ -541,8 +581,8 @@ Region Access Control Register (mrac)</p>
 for the complete source-by-source mapping</p>
 </li>
 <li>
-<p>Two independent or linked internal timers with standard RV <em>mip</em>
-interrupts</p>
+<p>Two independent or linked internal timers with VeeR-specific
+<code>mip.MITIP0</code> and <code>mip.MITIP1</code> interrupts</p>
 </li>
 <li>
 <p>Debug unit with JTAG interface and internal AXI4 Debug Master</p>
@@ -617,14 +657,8 @@ features:</p>
 <p>64 kB capacity</p>
 </li>
 <li>
-<p>SECDED error correction - single-error correction, double-error detection</p>
-<div class="ulist">
-<ul>
-<li>
-<p>32-bit data + 7-bit ECC tag</p>
-</li>
-</ul>
-</div>
+<p>64-bit data path without ECC or an integrity-error sideband in the open
+generic ROM integration</p>
 </li>
 </ul>
 </div>
@@ -844,6 +878,17 @@ available to DMA for automatic flow control</p>
 </li>
 </ul>
 </div>
+<div id="sep-dma-reference-diagram" class="imageblock">
+<div class="content">
+<img src="_images/opentitan_dma.svg" alt="OpenTitan DMA core and inline hashing reference architecture" width="100%">
+</div>
+<div class="title">Figure 2. OpenTitan DMA core and inline hashing reference architecture</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-dma-reference-diagram">Figure 2</a> shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#sep-dma-reference-diagram">Figure 2</a>.</p>
 <div class="sect2">
 <h3 id="och-modifications"><a class="anchor" href="#och-modifications"></a><a class="link" href="#och-modifications">8.1. OCAH Modifications</a></h3>
 <div class="ulist">
@@ -880,11 +925,17 @@ streaming interfaces</p>
 <p>Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#proposed-sep-dma-extensions-figure">Figure 3</a> illustrates the proposed DMA datapath extensions
+described in this section.</p>
+</div>
+<div id="proposed-sep-dma-extensions-figure" class="imageblock">
 <div class="content">
 <img src="_images/SEP_DMA.png" alt="SEP_DMA">
 </div>
+<div class="title">Figure 3. Proposed SEP DMA extensions</div>
 </div>
+<p class="block-references">Figures and tables: <a href="#proposed-sep-dma-extensions-figure">Figure 3</a>.</p>
 </div>
 </div>
 </div>
@@ -921,7 +972,7 @@ SEP</p>
 </div>
 </div>
 <nav class="pagination">
-  <span class="prev"><a href="memory_map.html">Memory Map and Registers</a></span>
+  <span class="prev"><a href="fabric.html">SEP Interconnect</a></span>
   <span class="next"><a href="rom.html">Boot ROM</a></span>
 </nav>
 </article>

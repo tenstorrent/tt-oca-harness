@@ -378,8 +378,11 @@ system software.</p>
 </div>
 <div class="sect2">
 <h3 id="serial-communication-errors"><a class="anchor" href="#serial-communication-errors"></a><a class="link" href="#serial-communication-errors">3.10. Serial Communication Errors</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Serial Communication Errors</caption>
+<div class="paragraph">
+<p><a href="#uart-serial-communication-errors-table">UART Serial Communication Errors</a> lists the serial errors detected by the UART.</p>
+</div>
+<table id="uart-serial-communication-errors-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. UART Serial Communication Errors</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -422,8 +425,12 @@ signals</p></td>
 <p>The UART 16550 module provides configurable parameters to customize FIFO
 sizes according to system requirements.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Module Parameters</caption>
+<div class="paragraph">
+<p><a href="#uart-module-parameters-table">UART Module Parameters</a> lists the configurable transmit and receive FIFO
+depths.</p>
+</div>
+<table id="uart-module-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. UART Module Parameters</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -464,8 +471,11 @@ characters that can be buffered for reception.</p></td>
 </div>
 <div class="sect2">
 <h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.3. Global Interface</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Global Signals</caption>
+<div class="paragraph">
+<p><a href="#uart-global-signals-table">UART Global Signals</a> defines the UART clock and reset signals.</p>
+</div>
+<table id="uart-global-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. UART Global Signals</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 10%;">
@@ -505,7 +515,10 @@ default values and FIFOs are cleared.</p></td>
 </div>
 <div class="sect2">
 <h3 id="uart-serial-interface"><a class="anchor" href="#uart-serial-interface"></a><a class="link" href="#uart-serial-interface">4.4. UART Serial Interface</a></h3>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#uart-serial-signals-table">UART Serial Signals</a> defines the serial receive and transmit interface.</p>
+</div>
+<table id="uart-serial-signals-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. UART Serial Signals</caption>
 <colgroup>
 <col style="width: 15%;">
@@ -558,8 +571,12 @@ Modem Status Interrupt. None of them gates the datapath: this component
 implements no automatic flow control, so software must act on the
 interrupt to throttle traffic. See the Programming section.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. Modem Control Input Signals</caption>
+<div class="paragraph">
+<p><a href="#uart-modem-control-input-signals-table">UART Modem Control Input Signals</a> defines the modem inputs and their status
+reporting.</p>
+</div>
+<table id="uart-modem-control-input-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. UART Modem Control Input Signals</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 10%;">
@@ -617,8 +634,12 @@ Indicates carrier signal detected on modem connection. Reported in
 </tr>
 </tbody>
 </table>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. Modem Control Output Signals</caption>
+<div class="paragraph">
+<p><a href="#uart-modem-control-output-signals-table">UART Modem Control Output Signals</a> defines the software-controlled modem
+outputs.</p>
+</div>
+<table id="uart-modem-control-output-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. UART Modem Control Output Signals</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 10%;">
@@ -680,8 +701,12 @@ enable in some systems.</p></td>
 <p>The DMA interface provides signals for Direct Memory Access controllers
 to manage data transfers automatically.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. DMA Interface Signals</caption>
+<div class="paragraph">
+<p><a href="#uart-dma-interface-signals-table">UART DMA Interface Signals</a> defines the receive-ready and transmit-ready
+handshake outputs.</p>
+</div>
+<table id="uart-dma-interface-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. UART DMA Interface Signals</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 10%;">
@@ -722,8 +747,11 @@ hysteresis).</p></td>
 </div>
 <div class="sect2">
 <h3 id="error-interface"><a class="anchor" href="#error-interface"></a><a class="link" href="#error-interface">4.7. Error Interface</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. Error Interface Signals</caption>
+<div class="paragraph">
+<p><a href="#uart-error-interface-signals-table">UART Error Interface Signals</a> defines the FIFO parity-error output.</p>
+</div>
+<table id="uart-error-interface-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. UART Error Interface Signals</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 10%;">
@@ -755,8 +783,11 @@ received character parity errors.</p></td>
 </div>
 <div class="sect2">
 <h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.8. Interrupt Interface</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Interrupt Interface Signals</caption>
+<div class="paragraph">
+<p><a href="#uart-interrupt-interface-signals-table">UART Interrupt Interface Signals</a> defines the combined UART interrupt request.</p>
+</div>
+<table id="uart-interrupt-interface-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 9. UART Interrupt Interface Signals</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 10%;">

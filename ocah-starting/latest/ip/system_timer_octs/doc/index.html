@@ -269,6 +269,16 @@ specifications, version , using credit-based synchronization for
 continuous maintenance that adapts to varying system loads and
 communication delays.</p>
 </div>
+<div class="paragraph">
+<p><a href="#system-timer-octs-diagram">System Timer OCTS primary and secondary synchronization</a> shows how primary and secondary timers exchange
+synchronization information.</p>
+</div>
+<div id="system-timer-octs-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/SMC_SystemTimerOCTS_FIG022.png" alt="System Timer OCTS primary and secondary synchronization" width="100%">
+</div>
+<div class="title">Figure 1. System Timer OCTS primary and secondary synchronization</div>
+</div>
 <div class="sect2">
 <h3 id="timer-core-processing"><a class="anchor" href="#timer-core-processing"></a><a class="link" href="#timer-core-processing">3.1. Timer Core Processing</a></h3>
 <div class="paragraph">
@@ -362,8 +372,13 @@ accuracy through periodic resynchronization.</p>
 <div class="paragraph">
 <p>The credit management system operates differently in PRIMARY and SECONDARY modes:</p>
 </div>
+<div class="paragraph">
+<p><a href="#octs-credit-management-table">OCTS credit management</a> compares credit generation and consumption in primary
+and secondary modes.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS credit management" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="octs-credit-management-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 1. OCTS credit management</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 68%;">
@@ -429,8 +444,12 @@ coordination.</p>
 </div>
 <div class="sect2">
 <h3 id="pulse-state-machine"><a class="anchor" href="#pulse-state-machine"></a><a class="link" href="#pulse-state-machine">3.9. Pulse State Machine</a></h3>
+<div class="paragraph">
+<p><a href="#octs-pulse-states-table">OCTS pulse states</a> describes the pulse-generation state machine.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS pulse states" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="octs-pulse-states-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 2. OCTS pulse states</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -584,8 +603,13 @@ system clock.</p>
 </div>
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
+<div class="paragraph">
+<p><a href="#octs-configuration-parameters-table">OCTS configuration parameters</a> lists the timer configuration parameters and
+defaults.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS configuration parameters" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="octs-configuration-parameters-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 3. OCTS configuration parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 16%;">
@@ -634,9 +658,13 @@ via the <code>is_primary_i</code> input signal, not through a compile-time param
 </div>
 <div class="sect2">
 <h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.2. Global Interface</a></h3>
+<div class="paragraph">
+<p><a href="#octs-global-interface-signals-table">OCTS Global Interface Signals</a> defines the timer clock, reset, and global
+interface signals.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS global interface signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 1. Global Interface Signals</caption>
+<table id="octs-global-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 4. OCTS Global Interface Signals</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 9%;">
@@ -688,9 +716,12 @@ behavior, register visibility, and synchronization signal direction.</p></td>
 </div>
 <div class="sect2">
 <h3 id="test-interface"><a class="anchor" href="#test-interface"></a><a class="link" href="#test-interface">4.3. Test Interface</a></h3>
+<div class="paragraph">
+<p><a href="#octs-test-interface-signals-table">OCTS Test Interface Signals</a> defines the timer test controls.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS test interface signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 2. Test Interface Signals</caption>
+<table id="octs-test-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 5. OCTS Test Interface Signals</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 9%;">
@@ -731,9 +762,13 @@ support.</p></td>
 </div>
 <div class="sect2">
 <h3 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">4.4. OCTS Synchronization Interface</a></h3>
+<div class="paragraph">
+<p><a href="#octs-synchronization-interface-signals-table">OCTS Synchronization Interface Signals</a> defines the synchronization inputs and
+outputs.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS synchronization interface signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 3. OCTS Synchronization Interface Signals</caption>
+<table id="octs-synchronization-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
+<caption class="title">Table 6. OCTS Synchronization Interface Signals</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 9%;">
@@ -801,9 +836,13 @@ inactive.</p>
 </div>
 <div class="sect2">
 <h3 id="timer-counter-interface"><a class="anchor" href="#timer-counter-interface"></a><a class="link" href="#timer-counter-interface">4.5. Timer Counter Interface</a></h3>
+<div class="paragraph">
+<p><a href="#octs-timer-counter-interface-signals-table">OCTS Timer Counter Interface Signals</a> defines the counter-step and
+counter-value interfaces.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS timer counter interface signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 4. Timer Counter Interface Signals</caption>
+<table id="octs-timer-counter-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 7. OCTS Timer Counter Interface Signals</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 9%;">
@@ -857,9 +896,13 @@ COUNT_HI registers.</p>
 <p>All input signals are required to meet setup and hold times with respect
 to the rising edge of clk_i.</p>
 </div>
+<div class="paragraph">
+<p><a href="#octs-timing-requirements-table">OCTS Timing Requirements</a> lists the stated setup and hold requirements by
+signal group.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 5. Timing Requirements</caption>
+<table id="octs-timing-requirements-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 8. OCTS Timing Requirements</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -1012,7 +1055,7 @@ optimized for both PRIMARY and SECONDARY timer modes.</p>
 // Release reset to all timers simultaneously
 
 // Configure PRIMARY timer
-write32(primary_base + 0x04, 0x0A05); // CTRL: CREDIT_VAL=10, PULSE_WIDTH=5
+write32(primary_base + 0x04, 0x0001050A); // CTRL: STEP=1, PULSE_WIDTH=5, CREDIT_VAL=10
 write32(primary_base + 0x0C, preset_lo); // TIMER_PRESET_LO
 write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI</code></pre>
 </div>
@@ -1023,7 +1066,7 @@ write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI</code></pre>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">for (int i = 0; i &lt; num_secondary; i++) {
-    write32(secondary_base[i] + 0x04, 0x0A05); // Same CTRL settings
+    write32(secondary_base[i] + 0x04, 0x0001050A); // Same CTRL settings
     write32(secondary_base[i] + 0x0C, preset_lo); // Same preset
     write32(secondary_base[i] + 0x10, preset_hi); // Same preset
 }</code></pre>
@@ -1255,9 +1298,13 @@ multi-chiplet systems.</p>
 </div>
 <div class="sect2">
 <h3 id="reset-values-and-power-on-behavior"><a class="anchor" href="#reset-values-and-power-on-behavior"></a><a class="link" href="#reset-values-and-power-on-behavior">5.6. Reset Values and Power-On Behavior</a></h3>
+<div class="paragraph">
+<p><a href="#octs-register-reset-values-and-power-on-behavior-table">OCTS Register Reset Values and Power-On Behavior</a> lists the register reset
+values and their boot-time implications.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 6. <strong>Register Reset Values and Power-On Behavior</strong></caption>
+<table id="octs-register-reset-values-and-power-on-behavior-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 9. OCTS Register Reset Values and Power-On Behavior</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 20%;">
@@ -1413,7 +1460,7 @@ void initialize_multi_chiplet_timing() {
 
     // Configure all timers with same parameters
     for (int i = 0; i &lt; 4; i++) {
-        write32(timer_bases[i] + 0x04, 0x0805); // Credit=8, Pulse=5
+        write32(timer_bases[i] + 0x04, 0x00010508); // Step=1, Pulse=5, Credit=8
         write32(timer_bases[i] + 0x0C, 0x00000000); // Preset_LO=0
         write32(timer_bases[i] + 0x10, 0x00000000); // Preset_HI=0
     }
@@ -1499,6 +1546,12 @@ void performance_measurement() {
 </div>
 <div class="sect2">
 <h3 id="dynamic-reconfiguration"><a class="anchor" href="#dynamic-reconfiguration"></a><a class="link" href="#dynamic-reconfiguration">6.4. Dynamic Reconfiguration</a></h3>
+<div class="paragraph">
+<p><code>CTRL.CREDIT_VAL</code> occupies bits <code>[7:0]</code>, <code>PULSE_WIDTH</code> bits <code>[15:8]</code>, and
+<code>STEP</code> bits <code>[23:16]</code>. Keep <code>CREDIT_VAL &gt; PULSE_WIDTH</code> and preserve a
+nonzero <code>STEP</code> for secondary counting. Apply compatible settings to the
+primary and secondary timers.</p>
+</div>
 <div class="listingblock">
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">void adjust_synchronization_parameters() {
@@ -1510,10 +1563,10 @@ void performance_measurement() {
     printf("Current: Credit=%u, Pulse=%u\n", current_credit, current_pulse);
 
     // Adjust for tighter synchronization
-    uint8_t new_credit = 5;  // Reduce credit value
-    uint8_t new_pulse = 10;  // Increase pulse width
+    uint8_t new_credit = 6;
+    uint8_t new_pulse = 3; // Must remain less than credit.
 
-    uint32_t new_ctrl = (new_pulse &lt;&lt; 8) | new_credit;
+    uint32_t new_ctrl = (ctrl &amp; 0x00FF0000u) | ((uint32_t)new_pulse &lt;&lt; 8) | new_credit;
     write32(PRIMARY_TIMER_BASE + 0x04, new_ctrl);
 
     printf("Updated: Credit=%u, Pulse=%u\n", new_credit, new_pulse);

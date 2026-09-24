@@ -240,8 +240,13 @@ produce the registered <code>stop_clks_o</code> output.</p>
 <div class="sect1">
 <h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p><a href="#ctn-configuration-parameters-table">CTN configuration parameters</a> lists the port-count and internal-trigger
+configuration parameters.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="CTN configuration parameters" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="ctn-configuration-parameters-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 1. CTN configuration parameters</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 12%;">
@@ -296,14 +301,15 @@ generated Cross-Trigger Matrix <code>NUM_CT_SRC</code> and <code>NUM_CT_DST</cod
 <h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">3. Architecture</a></h2>
 <div class="sectionbody">
 <div id="cross-trigger-network-architecture" class="paragraph">
-<p>The following diagram is an example of a SiP with a heterogeneous cross
+<p><a href="#sip-cross-trigger-topology-figure">SiP cross-trigger topology</a> is an example of a SiP with a heterogeneous cross
 triggering scheme utilizing both wire-OR and point-to-point cross triggering
 interfaces:</p>
 </div>
-<div class="imageblock">
+<div id="sip-cross-trigger-topology-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/sip_xtrig_diagram.png" alt="SiP Cross Trigger Diagram">
 </div>
+<div class="title">Figure 1. SiP cross-trigger topology</div>
 </div>
 <div class="sect2">
 <h3 id="cross-trigger-port-ctp"><a class="anchor" href="#cross-trigger-port-ctp"></a><a class="link" href="#cross-trigger-port-ctp">3.1. Cross Trigger Port (CTP)</a></h3>
@@ -351,12 +357,13 @@ of one of these four cross trigger signals, and the pad controls and I/O data
 signals are connected to the associated CTP.</p>
 </div>
 <div class="paragraph">
-<p>The following diagram illustrates the logical structure of a CTP module:</p>
+<p><a href="#ctn-cross-trigger-port-structure-figure">CTN cross-trigger port structure</a> illustrates the logical structure of a CTP module:</p>
 </div>
-<div class="imageblock">
+<div id="ctn-cross-trigger-port-structure-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/ctp_module_diagram.png" alt="CTP Module Diagram">
 </div>
+<div class="title">Figure 2. CTN cross-trigger port structure</div>
 </div>
 <div class="paragraph">
 <p>Signal names, directions, and pad controls are listed in the
@@ -392,22 +399,24 @@ request data signal should connect to the output-enable control pin of the I/O
 pad, and the output data signal of the I/O pin should be driven statically low.</p>
 </div>
 <div class="paragraph">
-<p>The following diagram illustrates the logical behavior of the CTPs when
+<p><a href="#ctn-wire-or-port-behavior-figure">CTN wire-OR port behavior</a> illustrates the logical behavior of the CTPs when
 configured in wire-OR mode:</p>
 </div>
-<div class="imageblock">
+<div id="ctn-wire-or-port-behavior-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/ctp_wireor_diagram.png" alt="CTP Wire-OR Mode Diagram">
 </div>
+<div class="title">Figure 3. CTN wire-OR port behavior</div>
 </div>
 <div class="paragraph">
 <p>Any number of chiplets may have their <em>CT_Req_out</em> pads interconnected as shown
-in the following example diagram:</p>
+in <a href="#ctn-wire-or-chiplet-connections-figure">CTN wire-OR chiplet connections</a>:</p>
 </div>
-<div class="imageblock">
+<div id="ctn-wire-or-chiplet-connections-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/sip_wireor_diagram.png" alt="SiP Wire-OR Cross Trigger Diagram">
 </div>
+<div class="title">Figure 4. CTN wire-OR chiplet connections</div>
 </div>
 </div>
 <div class="sect3">
@@ -421,22 +430,24 @@ for bi-directional communication, or two pads for unidirectional communication.
 All output pads are configured for push-pull operation.</p>
 </div>
 <div class="paragraph">
-<p>The following diagram illustrates the logical behavior of the CTPs when
+<p><a href="#ctn-point-to-point-port-behavior-figure">CTN point-to-point port behavior</a> illustrates the logical behavior of the CTPs when
 configured in point-to-point mode:</p>
 </div>
-<div class="imageblock">
+<div id="ctn-point-to-point-port-behavior-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/ctp_p2p_diagram.png" alt="CTP Point-to-Point Mode Diagram">
 </div>
+<div class="title">Figure 5. CTN point-to-point port behavior</div>
 </div>
 <div class="paragraph">
 <p>Any two chiplets may have their four cross trigger pads cross-coupled as shown
-in the following example diagram:</p>
+in <a href="#ctn-point-to-point-chiplet-connections-figure">CTN point-to-point chiplet connections</a>:</p>
 </div>
-<div class="imageblock">
+<div id="ctn-point-to-point-chiplet-connections-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/sip_p2p_diagram.png" alt="SiP Point-to-Point Cross Trigger Diagram">
 </div>
+<div class="title">Figure 6. CTN point-to-point chiplet connections</div>
 </div>
 <div class="paragraph">
 <p>On the sender side, the receiver&#8217;s <em>CT_Ack_out</em> is connected to the sender&#8217;s
@@ -450,12 +461,13 @@ pulse on <em>CT_Dst</em> and asserts <em>CT_Ack_out</em>. Deassertion proceeds i
 same sequence.</p>
 </div>
 <div class="paragraph">
-<p>The timing of the request/acknowledge handshake is shown in the diagram below:</p>
+<p>The timing of the request/acknowledge handshake is shown in <a href="#ctn-request-acknowledge-timing-figure">CTN request-acknowledge timing</a>:</p>
 </div>
-<div class="imageblock">
+<div id="ctn-request-acknowledge-timing-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/p2p_timing_diagram.svg" alt="Point-to-Point Request/Acknowledge Timing">
 </div>
+<div class="title">Figure 7. CTN request-acknowledge timing</div>
 </div>
 </div>
 </div>
@@ -469,10 +481,15 @@ is compatible with CTPs operating in either of the two signaling modes,
 point-to-point or wire-OR. Typically, each device or logic module connected to
 the CTM will act as both a source and a sink for cross trigger pulses.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#ctn-cross-trigger-matrix-figure">CTN cross-trigger matrix</a> shows the source selection and destination routing
+performed by the CTM.</p>
+</div>
+<div id="ctn-cross-trigger-matrix-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/ctm_module_diagram.png" alt="Cross Trigger Matrix Module Diagram">
 </div>
+<div class="title">Figure 8. CTN cross-trigger matrix</div>
 </div>
 <div class="paragraph">
 <p>The CTM is programmed at runtime via firmware or debug transactions. Proper
@@ -489,8 +506,12 @@ section below.</p>
 subordinate port. An internal AXI-Lite crossbar (<code>axi_lite_xbar</code>) routes
 transactions to the CTM and external CTPs based on address decoding.</p>
 </div>
+<div class="paragraph">
+<p><a href="#ctn-address-allocation-table">CTN address allocation</a> lists the CTM and external-CTP address ranges.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="CTN address map" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="ctn-address-allocation-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 2. CTN address allocation</caption>
 <colgroup>
 <col style="width: 18%;">
 <col style="width: 25%;">
@@ -558,8 +579,13 @@ concurrent access capability.</p>
 with CSR interface, and 10 internal CTPs using only the
 <code>cross_trigger_port_core</code> module without registers.</p>
 </div>
+<div class="paragraph">
+<p><a href="#external-and-internal-ctp-comparison-table">External and internal CTP comparison</a> compares the modules, configuration, and
+connections used for external and internal CTPs.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="External and internal CTP comparison" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="external-and-internal-ctp-comparison-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 3. External and internal CTP comparison</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 39%;">
@@ -601,7 +627,7 @@ with CSR interface, and 10 internal CTPs using only the
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Signal Mapping</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Standard GPIO pad controls</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Repurposed GPIO signals (see table below)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Repurposed GPIO signals (see <a href="#internal-ctp-wire-or-connections-table">Internal CTP wire-OR connections</a> and <a href="#internal-ctp-point-to-point-connections-table">Internal CTP point-to-point connections</a>)</p></td>
 </tr>
 </tbody>
 </table>
@@ -612,14 +638,19 @@ with CSR interface, and 10 internal CTPs using only the
 <p>Internal CTPs reuse the cross_trigger_port_core GPIO interface but connect to
 logical signals rather than physical pads. The <code>INT_CT_MODE</code> parameter bits are
 inverted before use: <code>MODE_WIRE_OR = ~INT_CT_MODE[i]</code>. This means
-<code>INT_CT_MODE[i]=0</code> selects Point-to-Point mode, while <code>INT_CT_MODE[i]=1</code> selects
-Wire-OR mode.</p>
+<code>INT_CT_MODE[i]=0</code> selects Wire-OR mode, while <code>INT_CT_MODE[i]=1</code> selects
+Point-to-Point mode.</p>
 </div>
 <div class="paragraph">
-<p><strong>Wire-OR Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):</strong></p>
+<p><strong>Wire-OR Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):</strong></p>
+</div>
+<div class="paragraph">
+<p><a href="#internal-ctp-wire-or-connections-table">Internal CTP wire-OR connections</a> maps the CTP core signals to internal
+connections in wire-OR mode.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="Internal CTP wire-OR signal mapping" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="internal-ctp-wire-or-connections-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 4. Internal CTP wire-OR connections</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 68%;">
@@ -647,10 +678,15 @@ Wire-OR mode.</p>
 </table>
 </div>
 <div class="paragraph">
-<p><strong>Point-to-Point Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):</strong></p>
+<p><strong>Point-to-Point Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):</strong></p>
+</div>
+<div class="paragraph">
+<p><a href="#internal-ctp-point-to-point-connections-table">Internal CTP point-to-point connections</a> maps the CTP core signals to internal
+connections in point-to-point mode.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="Internal CTP point-to-point signal mapping" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="internal-ctp-point-to-point-connections-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 5. Internal CTP point-to-point connections</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 68%;">
@@ -725,8 +761,13 @@ sources using a two-stage OR-tree architecture. The module separates CLA-only
 status from the combined functional halt signal to support independent JTAG
 visibility and chiplet clock gating control.</p>
 </div>
+<div class="paragraph">
+<p><a href="#ctn-clock-stop-signals-table">CTN clock-stop signals</a> identifies the clock-stop requests, enables, and status
+signals.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="CTN clock stop signals" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="ctn-clock-stop-signals-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 6. CTN clock-stop signals</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 27%;">
@@ -793,9 +834,11 @@ stops.</p>
 <div class="sect2">
 <h3 id="port-indexing"><a class="anchor" href="#port-indexing"></a><a class="link" href="#port-indexing">3.7. Port Indexing</a></h3>
 <div class="paragraph">
-<p>CTM ports are indexed as follows:</p>
+<p><a href="#ctn-matrix-port-indices-table">CTN matrix port indices</a> maps CTM port indices to external CTPs, internal CTPs,
+and clock-stop connections.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="ctn-matrix-port-indices-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. CTN matrix port indices</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -830,12 +873,13 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 <div class="sect2">
 <h3 id="cross-trigger-network-interface"><a class="anchor" href="#cross-trigger-network-interface"></a><a class="link" href="#cross-trigger-network-interface">4.1. Cross Trigger Port (CTP)</a></h3>
 <div class="paragraph">
-<p>The table below lists the CTP signals and their mode-dependent behavior.
+<p><a href="#ctn-cross-trigger-signal-interface-table">CTN cross-trigger signal interface</a> lists the CTP signals and their mode-dependent behavior.
 For the module diagram and signalling modes, see
 <a href="#cross-trigger-network-architecture">CTN Architecture</a>.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port interface" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="ctn-cross-trigger-signal-interface-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 8. CTN cross-trigger signal interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 12%;">
@@ -1060,7 +1104,7 @@ Trigger Port (CTP) registers into a unified address space. Its generated map
 keeps the CTP instance count and stride with the allocated apertures:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Cross Trigger Network Address Map</caption>
+<caption class="title">Table 9. Cross Trigger Network Address Map</caption>
 <colgroup>
 <col style="width: 12.5%;">
 <col style="width: 12.5%;">
@@ -1212,9 +1256,54 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0xC8</td><td><a href="#CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
-<tr><td>0x200</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x204</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
-<tr><td>0x208</td><td><a href="#STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x200</td><td><a href="#ctp_0_.CONFIG">ctp[0].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x204</td><td><a href="#ctp_0_.STATUS">ctp[0].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x208</td><td><a href="#ctp_0_.STRETCH_MULT">ctp[0].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x210</td><td><a href="#ctp_1_.CONFIG">ctp[1].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x214</td><td><a href="#ctp_1_.STATUS">ctp[1].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x218</td><td><a href="#ctp_1_.STRETCH_MULT">ctp[1].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x220</td><td><a href="#ctp_2_.CONFIG">ctp[2].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x224</td><td><a href="#ctp_2_.STATUS">ctp[2].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x228</td><td><a href="#ctp_2_.STRETCH_MULT">ctp[2].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x230</td><td><a href="#ctp_3_.CONFIG">ctp[3].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x234</td><td><a href="#ctp_3_.STATUS">ctp[3].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x238</td><td><a href="#ctp_3_.STRETCH_MULT">ctp[3].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x240</td><td><a href="#ctp_4_.CONFIG">ctp[4].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x244</td><td><a href="#ctp_4_.STATUS">ctp[4].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x248</td><td><a href="#ctp_4_.STRETCH_MULT">ctp[4].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x250</td><td><a href="#ctp_5_.CONFIG">ctp[5].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x254</td><td><a href="#ctp_5_.STATUS">ctp[5].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x258</td><td><a href="#ctp_5_.STRETCH_MULT">ctp[5].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x260</td><td><a href="#ctp_6_.CONFIG">ctp[6].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x264</td><td><a href="#ctp_6_.STATUS">ctp[6].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x268</td><td><a href="#ctp_6_.STRETCH_MULT">ctp[6].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x270</td><td><a href="#ctp_7_.CONFIG">ctp[7].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x274</td><td><a href="#ctp_7_.STATUS">ctp[7].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x278</td><td><a href="#ctp_7_.STRETCH_MULT">ctp[7].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x280</td><td><a href="#ctp_8_.CONFIG">ctp[8].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x284</td><td><a href="#ctp_8_.STATUS">ctp[8].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x288</td><td><a href="#ctp_8_.STRETCH_MULT">ctp[8].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x290</td><td><a href="#ctp_9_.CONFIG">ctp[9].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x294</td><td><a href="#ctp_9_.STATUS">ctp[9].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x298</td><td><a href="#ctp_9_.STRETCH_MULT">ctp[9].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2A0</td><td><a href="#ctp_10_.CONFIG">ctp[10].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2A4</td><td><a href="#ctp_10_.STATUS">ctp[10].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2A8</td><td><a href="#ctp_10_.STRETCH_MULT">ctp[10].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2B0</td><td><a href="#ctp_11_.CONFIG">ctp[11].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2B4</td><td><a href="#ctp_11_.STATUS">ctp[11].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2B8</td><td><a href="#ctp_11_.STRETCH_MULT">ctp[11].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2C0</td><td><a href="#ctp_12_.CONFIG">ctp[12].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2C4</td><td><a href="#ctp_12_.STATUS">ctp[12].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2C8</td><td><a href="#ctp_12_.STRETCH_MULT">ctp[12].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2D0</td><td><a href="#ctp_13_.CONFIG">ctp[13].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2D4</td><td><a href="#ctp_13_.STATUS">ctp[13].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2D8</td><td><a href="#ctp_13_.STRETCH_MULT">ctp[13].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2E0</td><td><a href="#ctp_14_.CONFIG">ctp[14].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2E4</td><td><a href="#ctp_14_.STATUS">ctp[14].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2E8</td><td><a href="#ctp_14_.STRETCH_MULT">ctp[14].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
+<tr><td>0x2F0</td><td><a href="#ctp_15_.CONFIG">ctp[15].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
+<tr><td>0x2F4</td><td><a href="#ctp_15_.STATUS">ctp[15].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2F8</td><td><a href="#ctp_15_.STRETCH_MULT">ctp[15].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</h3>
@@ -1223,7 +1312,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>31:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>25:0</td><td>CT_DST_SELECT</td><td>RW</td><td>0x0</td><td>Selects the CT_Dst port(s) to forward on the CT_Src output<br>at this array index. Each bit corresponds to one CT_Dst<br>port, from CT_Dst[0] at bit 0 upwards. Multiple ports may<br>be selected as a trigger source. All selected source ports<br>are then OR&#x27;d together to produce the CT_Src output. Set<br>this register to all-zero to disable that output.</td></tr>
 </table>
-<h3 id="CONFIG">CONFIG</h3>
+<h3 id="ctp_0_.CONFIG">ctp[0].CONFIG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1231,7 +1320,7 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
 <tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
 </table>
-<h3 id="STATUS">STATUS</h3>
+<h3 id="ctp_0_.STATUS">ctp[0].STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -1242,7 +1331,382 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
-<h3 id="STRETCH_MULT">STRETCH_MULT</h3>
+<h3 id="ctp_0_.STRETCH_MULT">ctp[0].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_1_.CONFIG">ctp[1].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_1_.STATUS">ctp[1].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_1_.STRETCH_MULT">ctp[1].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_2_.CONFIG">ctp[2].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_2_.STATUS">ctp[2].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_2_.STRETCH_MULT">ctp[2].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_3_.CONFIG">ctp[3].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_3_.STATUS">ctp[3].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_3_.STRETCH_MULT">ctp[3].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_4_.CONFIG">ctp[4].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_4_.STATUS">ctp[4].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_4_.STRETCH_MULT">ctp[4].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_5_.CONFIG">ctp[5].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_5_.STATUS">ctp[5].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_5_.STRETCH_MULT">ctp[5].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_6_.CONFIG">ctp[6].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_6_.STATUS">ctp[6].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_6_.STRETCH_MULT">ctp[6].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_7_.CONFIG">ctp[7].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_7_.STATUS">ctp[7].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_7_.STRETCH_MULT">ctp[7].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_8_.CONFIG">ctp[8].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_8_.STATUS">ctp[8].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_8_.STRETCH_MULT">ctp[8].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_9_.CONFIG">ctp[9].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_9_.STATUS">ctp[9].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_9_.STRETCH_MULT">ctp[9].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_10_.CONFIG">ctp[10].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_10_.STATUS">ctp[10].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_10_.STRETCH_MULT">ctp[10].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_11_.CONFIG">ctp[11].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_11_.STATUS">ctp[11].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_11_.STRETCH_MULT">ctp[11].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_12_.CONFIG">ctp[12].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_12_.STATUS">ctp[12].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_12_.STRETCH_MULT">ctp[12].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_13_.CONFIG">ctp[13].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_13_.STATUS">ctp[13].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_13_.STRETCH_MULT">ctp[13].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_14_.CONFIG">ctp[14].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_14_.STATUS">ctp[14].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_14_.STRETCH_MULT">ctp[14].STRETCH_MULT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>15:0</td><td>STRETCH_MULT</td><td>RW</td><td>0x0</td><td>The number of clock cycles a core-side cross trigger pulse is stretched on the GPIO pin when in wire-OR mode. Whenever a core-side pulse is received, the generated GPIO pulse has a width of (STRETCH_MULT+1) clock cycles.</td></tr>
+</table>
+<h3 id="ctp_15_.CONFIG">ctp[15].CONFIG</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>RESET</td><td>RW</td><td>0x0</td><td>Forcefully clears the request output signal of the point-to-point handshake logic. Primarily for debug and recovery of handshake deadlock.</td></tr>
+<tr><td>1</td><td>INVERT</td><td>RW</td><td>0x0</td><td>Inverts the sense of the incoming and outgoing GPIO signals. 0 - No inversion. Wire-OR mode uses active-low signaling with active or passive pull-ups. Point-to-point mode uses active-high signaling. 1 - All inputs and outputs of I/Os are inverted. Wire-OR mode uses active-high signaling with active or passive pull-downs. Point-to-point mode uses active-low signaling.</td></tr>
+<tr><td>0</td><td>MODE</td><td>RW</td><td>0x0</td><td>Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point</td></tr>
+</table>
+<h3 id="ctp_15_.STATUS">ctp[15].STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
+<tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
+</table>
+<h3 id="ctp_15_.STRETCH_MULT">ctp[15].STRETCH_MULT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

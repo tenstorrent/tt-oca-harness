@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-starting" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Starting with OCAH</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a user</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../dependencies.html">Dependencies</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../setup.html">Environment Setup</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../workflows.html">Workflows</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../guidelines.html">Guidelines</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Starting as a contributor</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../licensing.html">Licensing</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../contribution.html">Contributions</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defects.html">Defect Reporting</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../documentation.html">Documentation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../code_of_conduct.html">Code of Conduct</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="occp-protocol"><a class="anchor" href="#occp-protocol"></a><a class="link" href="#occp-protocol">1. OCCP protocol</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCCP is a request-response protocol carried as an ordered little-endian byte stream.
+A controller writes one request frame to an SMC target and reads the resulting response frame.
+The ROM implements version 1.0.0 of the Base and Boot applications.</p>
+</div>
+<div class="sect2">
+<h3 id="packet-format"><a class="anchor" href="#packet-format"></a><a class="link" href="#packet-format">1.1. Packet format</a></h3>
+<div class="paragraph">
+<p>Every frame begins with the same eight-byte packet header.
+The body immediately follows the header, followed by a body CRC only when the <code>Body CRC present</code> bit is set.
+The 11-bit <code>Length</code> field is the body length in bytes and does not include either CRC.</p>
+</div>
+<div class="listingblock">
+<div class="title">OCCP frame</div>
+<div class="content">
+<pre> byte 0        bytes 1..3       bytes 4..7        Length bytes       optional
++------------+----------------+-----------------+------------------+----------+
+| Header CRC | transport word | OCCP header     | message body     | body CRC |
++------------+----------------+-----------------+------------------+----------+</pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Packet-header fields</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Frame bits</th>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7:0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Header CRC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CRC-8 over frame bytes 1 through 7.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Body CRC present</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A CRC follows the body when set.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">31:9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C flags</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved by this implementation; transmitted as zero in responses.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">39:32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Application ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code> for Base or <code>0x01</code> for Boot.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">47:40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Message ID</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command within the selected application.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">51:48</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Flags</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Request flags. Responses echo these bits.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">52</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Set in an error response.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">63:53</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Length</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Body size from 0 through 2047 bytes.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Multi-byte integers in command bodies and responses are little-endian.
+Addresses are 64-bit values.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="integrity-checks"><a class="anchor" href="#integrity-checks"></a><a class="link" href="#integrity-checks">1.2. Integrity checks</a></h3>
+<div class="paragraph">
+<p>Header CRC uses an initial value of <code>0xFF</code>, polynomial <code>0xD3</code>, most-significant-bit-first processing, and no final XOR.
+It always covers the seven bytes after the CRC byte.</p>
+</div>
+<div class="paragraph">
+<p>When a body CRC is present, bodies of up to 14 bytes use the same CRC-8 algorithm.
+Bodies longer than 14 bytes use CRC-32 with initial value <code>0xFFFFFFFF</code>, polynomial <code>0x992C1A4C</code>, most-significant-bit-first processing, and final XOR <code>0xFFFFFFFF</code>.
+The CRC covers only the body.</p>
+</div>
+<div class="paragraph">
+<p>Requests with a clear <code>Body CRC present</code> bit are accepted without body integrity validation.
+Responses that contain a body set the bit and append the applicable CRC.
+Successful responses with no body clear it.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="applications-and-commands"><a class="anchor" href="#applications-and-commands"></a><a class="link" href="#applications-and-commands">1.3. Applications and commands</a></h3>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Implemented commands</caption>
+<colgroup>
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">AppID</th>
+<th class="tableblock halign-left valign-top">MsgID</th>
+<th class="tableblock halign-left valign-top">Command</th>
+<th class="tableblock halign-left valign-top">Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GetVersion</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns Base application version 1.0.0.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GetStatus</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns one OCCP status field or one entry from a status ring buffer.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WriteData</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writes bytes to an allowed, 32-bit-aligned address.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x03</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ReadData</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reads bytes from an allowed, 32-bit-aligned address.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GetVersion</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns Boot application version 1.0.0.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ExecuteImage</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Responds and transfers control to an allowed address in a non-secure lifecycle state.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AuthenticateImage</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Responds, publishes a manifest address to the coordination registers, and parks in <code>wfi</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x03</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TrainD2D</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not implemented; returns error code <code>0x07</code>.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="getversion"><a class="anchor" href="#getversion"></a><a class="link" href="#getversion">1.3.1. GetVersion</a></h4>
+<div class="paragraph">
+<p>The request body is empty.
+Both <code>GetVersion</code> handlers also flush the selected receive interface before
+responding. If bytes remain after the nominal zero-length request, the ROM FW
+returns <code>Oversize_msg</code> instead of the version.
+The four-byte response body is:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. GetVersion response body</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Major version</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Minor version</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Patch version</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Both applications currently return <code>1</code>, <code>0</code>, <code>0</code>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="getstatus"><a class="anchor" href="#getstatus"></a><a class="link" href="#getstatus">1.3.2. GetStatus</a></h4>
+<div class="paragraph">
+<p>The request body is exactly two bytes containing a 16-bit status ID.
+The response body is one 32-bit status value.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Supported status IDs</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Status ID</th>
+<th class="tableblock halign-left valign-top">Returned value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCCP boot-status nibble, encoded as an SMC BL0 status message.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCCP interface-status nibble, encoded as an SMC BL0 status message.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0002</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCCP command count in bits 7:0, encoded as an SMC BL0 status message.
+The current implementation also copies the internal-error byte into bits 15:8.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0003</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Last internal implementation error, encoded as an SMC BL0 error message.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x8000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Next unread SEP ring-buffer entry.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x8001</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Next unread SMC ring-buffer entry.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Other status IDs return <code>Unsupported_StatusID</code>.
+If the <code>STATUS_RPT_DISABLE</code> strap is asserted, every <code>GetStatus</code> request returns that error.
+An empty SEP or SMC ring buffer returns a zero value.</p>
+</div>
+<div class="paragraph">
+<p>The internal error field returned for status ID <code>0x0003</code> is distinct from the
+protocol error codes carried by error-response bodies:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. Internal implementation errors</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x00</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Invalid command</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Access violation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x03</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Alignment error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interface error</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x05</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Security violation</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x06</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Buffer overflow</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x07</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Timeout</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x08</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CRC failure</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x09</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Incomplete transport frame</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0A</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Oversized transport frame</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xFF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">General error</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>These are the values defined by the software OCCP status interface; not every
+value is emitted by the current handlers. In particular, misaligned read,
+write, execute, and authenticate addresses record access violation (<code>0x02</code>);
+alignment error (<code>0x03</code>) is defined but not emitted.</p>
+</div>
+<div class="paragraph">
+<p>For a packet-header read that is incomplete or oversized, the wire response
+uses <code>Incomplete_msg</code> or <code>Oversize_msg</code>, but the internal error field remains
+timeout (<code>0x07</code>) because the command-loop return value has not yet been
+replaced. Equivalent failures returned from a command-body handler record
+incomplete (<code>0x09</code>) or overflow (<code>0x0A</code>).</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="writedata"><a class="anchor" href="#writedata"></a><a class="link" href="#writedata">1.3.3. WriteData</a></h4>
+<div class="paragraph">
+<p>The request body contains a 12-byte command prefix followed by the write data.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. WriteData request body</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Destination address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bits 10:0: write size; bits 15:11: address attributes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Data</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The header body-length field must be from 12 through 2047 bytes.
+The encoded write size must be from 1 through 2035 bytes.
+The current handler validates these two values independently; it does not
+require the body-length field to equal 12 plus the encoded write size.
+The address attributes and reserved field are parsed but do not affect behavior.
+The destination must be 32-bit aligned and pass the target&#8217;s memory-access policy.
+For a four-byte transfer, the ROM FW performs one 32-bit access.
+For an eight-byte transfer to an eight-byte-aligned address, it performs one
+64-bit access.
+All other transfer sizes use byte accesses in increasing address order.
+A successful response has an empty body.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="readdata"><a class="anchor" href="#readdata"></a><a class="link" href="#readdata">1.3.4. ReadData</a></h4>
+<div class="paragraph">
+<p>The request body is exactly 12 bytes.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. ReadData request body</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Source address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bits 10:0: read size; bits 15:11: address attributes</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The read size must be from 1 through 2047 bytes.
+The address attributes and reserved field do not affect behavior.
+The source must be 32-bit aligned and pass the target&#8217;s memory-access policy.
+For a four-byte transfer, the ROM FW performs one 32-bit access.
+For an eight-byte transfer from an eight-byte-aligned address, it performs one
+64-bit access.
+All other transfer sizes use byte accesses in increasing address order.
+The response body is the requested data and always carries a body CRC.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="executeimage-and-authenticateimage"><a class="anchor" href="#executeimage-and-authenticateimage"></a><a class="link" href="#executeimage-and-authenticateimage">1.3.5. ExecuteImage and AuthenticateImage</a></h4>
+<div class="paragraph">
+<p>Both commands use the same ten-byte body:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. Boot command request body</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 60%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Offset</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Execution or manifest address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU ID</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bits 2:0: reserved; bits 7:3: address attributes</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The CPU ID, reserved bits, and address attributes do not affect ROM behavior.
+The address must be nonzero, 32-bit aligned, and pass the target&#8217;s
+memory-access policy.
+The SMC ROM applies that policy to an eight-byte range beginning at the
+supplied address.</p>
+</div>
+<div class="paragraph">
+<p><code>ExecuteImage</code> is accepted only in a non-secure lifecycle state.
+In a secure lifecycle state it returns <code>Invalid_Msgid</code>.
+When accepted, the ROM sends an empty success response, records boot
+completion, and jumps to the address.</p>
+</div>
+<div class="paragraph">
+<p><code>AuthenticateImage</code> is accepted in every valid lifecycle state.
+After the empty success response, the ROM converts an in-range SRAM address to an offset in scratch register 8, sets <code>MANIFEST_READY</code> in scratch register 9, and remains in <code>wfi</code>.
+An address outside the SMC SRAM range produces the scratch-register marker
+<code>0xFFFFFFFF</code>; the current handler still sets <code>MANIFEST_READY</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="error-responses"><a class="anchor" href="#error-responses"></a><a class="link" href="#error-responses">1.4. Error responses</a></h3>
+<div class="paragraph">
+<p>An error response sets the header Error bit and has a four-byte body containing the numeric error code.
+It always includes a CRC-8 body CRC.
+The response normally echoes the request AppID, MsgID, and flags.
+For a corrupt header CRC, AppID and MsgID are both <code>0xFF</code> because the request identifiers are not trusted.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 9. Protocol error codes</caption>
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 57.1429%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Code</th>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x01</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Invalid_Appid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The application is not implemented.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x02</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Invalid_Msgid</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The message is not implemented for the application, or <code>ExecuteImage</code> was
+requested in a secure lifecycle state.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x03</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Invalid_header</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A command body length or encoded transfer size is invalid.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x04</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Corrupt_header</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Header CRC validation failed.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x05</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Corrupt_Data</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Body CRC validation failed.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x06</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Invalid_Address</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">An address is null, misaligned, outside an allowed range, or overlaps protected memory.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x07</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Unsupported_StatusID</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A status ID is unsupported, status reporting is disabled, or <code>TrainD2D</code> was requested.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x08</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Invalid_Request_Length</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Defined by the implementation but not emitted by current handlers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x09</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>Invalid_Request</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Defined by the implementation but not emitted by current handlers.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The transport binding also uses <code>0x00010000</code> for an incomplete frame, <code>0x00010001</code> for an oversized frame, and <code>0x00010002</code> for a transport CRC failure.
+The I2C/I3C binding does not generate the transport-CRC error.
+When the eight-byte header itself is incomplete or oversized, the error
+response also uses AppID and MsgID <code>0xFF</code> because no valid header is available.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="i2c-and-i3c-transport-binding"><a class="anchor" href="#i2c-and-i3c-transport-binding"></a><a class="link" href="#i2c-and-i3c-transport-binding">1.5. I2C and I3C transport binding</a></h3>
+<div class="paragraph">
+<p>The controller sends the packet header, body, and optional body CRC in one target-write transaction.
+The ROM first consumes the eight-byte header, then consumes the declared body and CRC from the same transaction.
+A transaction ending before the expected byte count produces <code>Incomplete_msg</code>; bytes beyond the expected end produce <code>Oversize_msg</code>.
+On protocol or framing errors, the ROM discards residual bytes belonging to the failed frame before sending the error response.</p>
+</div>
+<div class="paragraph">
+<p>The controller obtains the response with a target-read transaction.
+For the open HCI I3C target implementation, response data is queued before the transmit descriptor advertises its length.
+Reads made before a response is armed are not accepted by the target hardware; the controller retries until the response descriptor is available.
+Large responses are streamed while the hardware drains the transmit queue.
+The I3C receive path retains frame-length accounting across the separate header and body reads, allowing it to distinguish incomplete, exact, and oversized writes.</p>
+</div>
+<div class="paragraph">
+<p>I2C uses the target driver&#8217;s transaction boundaries for the same exact-length checks.
+The transport timeout comes from eFuse <code>RESERVED_1</code> in system-clock polling iterations; a zero value selects 10,000.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

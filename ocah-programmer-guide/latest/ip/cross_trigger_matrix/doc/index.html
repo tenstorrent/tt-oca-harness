@@ -224,8 +224,13 @@ Each device connected to the CTM acts as both a source and a sink.</p>
 26 each. The RTL derives the following localparams from the generated
 register map:</p>
 </div>
+<div class="paragraph">
+<p><a href="#ctm-configuration-constants-table">CTM configuration constants</a> lists the source and destination counts used by
+the CTM register map.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="CTM configuration constants" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="ctm-configuration-constants-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 1. CTM configuration constants</caption>
 <colgroup>
 <col style="width: 24%;">
 <col style="width: 10%;">
@@ -263,6 +268,13 @@ elaboration if that total disagrees with the generated <code>NUM_CT_SRC</code> a
 module parameters, which the CTN overrides to match its own crossbar.</p>
 </div>
 <div class="paragraph">
+<p>The current wrapper decodes only a 256-byte CSR window. With an 8-byte
+stride, at most 32 source registers are addressable: a source register at
+offset <code>0x100</code> aliases source 0. The default 26×26 matrix fits. Increasing
+the integrated matrix beyond 32 ports requires widening the wrapper decode
+as well as regenerating the register map; regeneration alone is insufficient.</p>
+</div>
+<div class="paragraph">
 <p>Every CT_Src port occupies 8 bytes regardless of the port count. At or below
 32 destinations, each register is a single 32-bit word with immediate write
 semantics. Above 32 destinations both words must be written before the mask
@@ -284,10 +296,15 @@ destination ports, matching the DTP cross-trigger topology. The matrix
 implements a combinatorial AND-OR crossbar with registered outputs to route
 cross-trigger pulses between CTPs and internal cross-trigger sources.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#ctm-routing-structure-figure">CTM routing structure</a> shows how the CTM selects and combines sources for each
+registered destination.</p>
+</div>
+<div id="ctm-routing-structure-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/ctm_module_diagram.png" alt="Cross Trigger Matrix Module Diagram">
 </div>
+<div class="title">Figure 1. CTM routing structure</div>
 </div>
 <div class="paragraph">
 <p>The CTM is programmed at runtime via firmware or debug transactions. Proper
@@ -301,8 +318,13 @@ prevent loops in the SiP cross trigger network.</p>
 registration. Each of the 26 CT_Src output ports is driven by a dedicated
 <code>ctm_src_selector</code> module that performs the following operation:</p>
 </div>
+<div class="paragraph">
+<p><a href="#ctm-routing-stages-table">CTM routing stages</a> describes the selection, combination, and register stages
+of destination routing.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="CTM routing stages" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="ctm-routing-stages-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 2. CTM routing stages</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 72%;">
@@ -340,9 +362,11 @@ input pulses arrive simultaneously.</p>
 <div class="sect2">
 <h3 id="port-indexing"><a class="anchor" href="#port-indexing"></a><a class="link" href="#port-indexing">2.2. Port Indexing</a></h3>
 <div class="paragraph">
-<p>CTM ports are indexed as follows:</p>
+<p><a href="#ctm-port-indices-table">CTM port indices</a> maps matrix indices to external CTPs, internal CTPs, and
+clock-stop connections.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="ctm-port-indices-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. CTM port indices</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -376,70 +400,74 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="ctm-interface"><a class="anchor" href="#ctm-interface"></a><a class="link" href="#ctm-interface">3.1. Signal Interface</a></h3>
+<div class="paragraph">
+<p>These are the ports of <code>cross_trigger_matrix</code>. Packed control and bus types remain
+bundles at the module boundary; their members are not separate scalar ports.</p>
+</div>
+<div class="paragraph">
+<p><a href="#ctm-signal-interface-table">CTM signal interface</a> lists the CTM ports and bundled register interface.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="CTM signal interface" tabindex="0">
-<table class="tableblock frame-all grid-all stretch port-reference">
+<table id="ctm-signal-interface-table" class="tableblock frame-all grid-all stretch port-reference">
+<caption class="title">Table 4. CTM signal interface</caption>
 <colgroup>
-<col style="width: 24%;">
-<col style="width: 13%;">
-<col style="width: 10%;">
-<col style="width: 53%;">
+<col style="width: 30%;">
+<col style="width: 14%;">
+<col style="width: 25%;">
+<col style="width: 31%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Signal</th>
 <th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Type / dimensions</th>
 <th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">clk_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System clock for the bus and synchronous logic.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">rst_ni</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous system reset.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_dst_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N+M</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger inputs from CTPs and internal sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite CSR request.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_src_o</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N+M</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger outputs to CTPs and internal sinks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite CSR response.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_src_ack_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_dst_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">M</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Acknowledge from internal sinks (for handshake mode)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic [NUM_CT_DST-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trigger inputs to the routing matrix.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_dst_ack_o</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_src_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">M</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Acknowledge to internal sources (for handshake mode)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">route_cfg_i</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">varies</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Routing configuration per output port</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic [NUM_CT_SRC-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Routed trigger outputs from the matrix.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="paragraph">
-<p>Where N = NUM_CTP and M = NUM_INT_CT.</p>
+<p><code>NUM_CT_SRC</code> and <code>NUM_CT_DST</code> come from the generated register package.
+Routing masks are programmed through the AXI-Lite CSR port; there are no
+separate route-configuration or acknowledge ports.</p>
 </div>
 </div>
 <div class="sect2">

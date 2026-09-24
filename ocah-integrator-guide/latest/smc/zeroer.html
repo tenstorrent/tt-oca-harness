@@ -204,8 +204,12 @@
 zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Memory Zeroer Integration</caption>
+<div class="paragraph">
+<p><a href="#smc-memory-zeroer-integration-table">SMC Memory Zeroer Integration</a> summarises the zeroer control aperture and
+fabric integration.</p>
+</div>
+<table id="smc-memory-zeroer-integration-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC Memory Zeroer Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -231,11 +235,12 @@ architecture with dual clock domains.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Maximum Burst Length</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">255 beats (AXI maximum)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 beats (<code>AWLEN = 255</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Outstanding Transactions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Up to 32 concurrent AXI transactions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Counted by a 32-bit counter; no 32-transaction
+issuance limit or counter-based back-pressure</p></td>
 </tr>
 </tbody>
 </table>
@@ -266,13 +271,17 @@ sequences</p>
 <div class="sect1">
 <h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">2. Architecture</a></h2>
 <div class="sectionbody">
+<div class="paragraph">
+<p>The DMA and zeroer share the data-accelerator fabric path shown in
+<a href="dma.html#smc-dma-zeroer-diagram" class="xref page">SMC DMA and memory-zeroer architecture</a>.</p>
+</div>
 <div class="sect2">
 <h3 id="state-machine"><a class="anchor" href="#state-machine"></a><a class="link" href="#state-machine">2.1. State Machine</a></h3>
 <div class="paragraph">
-<p>The zeroer implements a three-state operation model:</p>
+<p>The zeroer implements a three-state operation model (<a href="#smc-zeroer-state-machine-table">SMC zeroer state machine</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. State Machine States</caption>
+<table id="smc-zeroer-state-machine-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC zeroer state machine</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -327,8 +336,12 @@ optional interrupt</p>
 </div>
 <div class="sect2">
 <h3 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">2.3. AXI Master Interface</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. AXI4 Master Characteristics</caption>
+<div class="paragraph">
+<p><a href="#smc-zeroer-axi4-master-characteristics-table">SMC zeroer AXI4 Master Characteristics</a> summarises the zeroer&#8217;s AXI master
+interface.</p>
+</div>
+<table id="smc-zeroer-axi4-master-characteristics-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SMC zeroer AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -358,7 +371,7 @@ optional interrupt</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Maximum Burst Length</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">255 beats for optimal memory efficiency</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 beats (<code>AWLEN = 255</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Burst Calculation</p></td>
@@ -378,19 +391,16 @@ optional interrupt</p>
 <div class="sect2">
 <h3 id="outstanding-transaction-management"><a class="anchor" href="#outstanding-transaction-management"></a><a class="link" href="#outstanding-transaction-management">2.4. Outstanding Transaction Management</a></h3>
 <div class="paragraph">
-<p>The zeroer efficiently manages outstanding AXI transactions using a
-32-bit counter to track in-flight writes. When the number of pending
-transactions reaches the allowed maximum, built-in flow control applies
-back-pressure until resources become available. Write responses are
-tracked to ensure accurate completion status, while AXI error responses
-are processed to handle faults robustly.</p>
+<p>The zeroer counts accepted write addresses and consumed write responses in a
+32-bit outstanding-request counter. The counter determines whether responses
+remain pending; it does not impose a limit of 32 transactions or throttle
+address issuance. AXI <code>AWREADY</code> and <code>WREADY</code> provide downstream back-pressure.</p>
 </div>
 <div class="paragraph">
-<p>Multiple write addresses can be pipelined to maximize throughput, and
-the zero data stream operates independently of response timing, allowing
-continuous operation. By supporting multiple bursts in flight, the
-zeroer achieves high parallelism and optimal memory bandwidth
-utilization.</p>
+<p>The response channel is consumed without checking <code>BRESP</code>. Completion means
+that all responses have arrived, not that every write succeeded. The internal
+error state handles an illegal state-machine encoding, not AXI bus errors.
+Software requiring verified clearing must use an independent verification path.</p>
 </div>
 </div>
 <div class="sect2">
@@ -402,8 +412,12 @@ and interface isolation.</p>
 </div>
 <div class="sect2">
 <h3 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">2.6. Clock Domains</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Clock Domain Characteristics</caption>
+<div class="paragraph">
+<p><a href="#smc-zeroer-clock-domain-characteristics-table">SMC zeroer Clock Domain Characteristics</a> identifies the AXI and APB clock
+domains and their roles.</p>
+</div>
+<table id="smc-zeroer-clock-domain-characteristics-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SMC zeroer Clock Domain Characteristics</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -430,8 +444,12 @@ independent of AXI activity</p></td>
 </div>
 <div class="sect2">
 <h3 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">2.7. Clock Gating</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. Clock Gating Control</caption>
+<div class="paragraph">
+<p><a href="#smc-zeroer-clock-gating-control-table">SMC zeroer Clock Gating Control</a> gives the gating conditions for each clock
+domain.</p>
+</div>
+<table id="smc-zeroer-clock-gating-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SMC zeroer Clock Gating Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -470,8 +488,12 @@ independent of AXI activity</p></td>
 <h3 id="control-and-status"><a class="anchor" href="#control-and-status"></a><a class="link" href="#control-and-status">2.8. Control and Status</a></h3>
 <div class="sect3">
 <h4 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">2.8.1. Operation Control</a></h4>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. Configuration and Control</caption>
+<div class="paragraph">
+<p><a href="#smc-zeroer-configuration-and-control-table">SMC zeroer Configuration and Control</a> defines the registers used to configure
+and start a zeroing operation.</p>
+</div>
+<table id="smc-zeroer-configuration-and-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. SMC zeroer Configuration and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -496,12 +518,13 @@ independent of AXI activity</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Control and status register (trigger, busy status)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional completion interrupt enable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTRL_STATUS.INT_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the completion pulse</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Validation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Hardware validates configuration parameters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software must validate destination, length, permissions, and
+address arithmetic before starting</p></td>
 </tr>
 </tbody>
 </table>
@@ -517,7 +540,8 @@ independent of AXI activity</p></td>
 <p><strong>Completion Status</strong>: Updates when all write responses received</p>
 </li>
 <li>
-<p><strong>Error Status</strong>: AXI error response detection and reporting</p>
+<p><strong>Error Reporting</strong>: No software-visible AXI error report; failed write
+responses are not distinguished from successful responses</p>
 </li>
 <li>
 <p><strong>Interrupt Generation</strong>: Optional interrupt on operation completion</p>
@@ -531,8 +555,12 @@ independent of AXI activity</p></td>
 <div class="sect1">
 <h2 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">3. Operation Details</a></h2>
 <div class="sectionbody">
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. Data Generation and Control</caption>
+<div class="paragraph">
+<p><a href="#smc-zeroer-data-generation-and-control-table">SMC zeroer Data Generation and Control</a> summarises zero-data generation and
+transfer control.</p>
+</div>
+<table id="smc-zeroer-data-generation-and-control-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. SMC zeroer Data Generation and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -563,11 +591,13 @@ unaligned addresses</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Overflow Protection</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Size overflow detection and handling</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Overflow assertions are simulation checks; there is
+no hardware overflow-rejection status or recovery control</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Safe Abort</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Ability to safely abort operation if needed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Abort</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No software abort control or guarantee that a reset safely drains
+outstanding writes</p></td>
 </tr>
 </tbody>
 </table>

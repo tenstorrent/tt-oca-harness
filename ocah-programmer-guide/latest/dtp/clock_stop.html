@@ -213,6 +213,16 @@ for debugger readback.</p>
 <h2 id="halt-path-architecture"><a class="anchor" href="#halt-path-architecture"></a><a class="link" href="#halt-path-architecture">1. Halt Path Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
+<p><a href="#dtp-clock-stop-diagram">DTP JTAG and CLA clock-stop aggregation</a> shows how JTAG and CLA requests contribute to the chiplet
+halt path.</p>
+</div>
+<div id="dtp-clock-stop-diagram" class="imageblock">
+<div class="content">
+<img src="_images/DTP_ClockStopAggregration_FIG010.png" alt="DTP JTAG and CLA clock-stop aggregation" width="100%">
+</div>
+<div class="title">Figure 1. DTP JTAG and CLA clock-stop aggregation</div>
+</div>
+<div class="paragraph">
 <p>Three distinct signals participate in clock stop:</p>
 </div>
 <div class="dlist">
@@ -270,6 +280,35 @@ path, while either source can assert the functional chiplet halt through
 <p>For the CTN clock-stop controller implementation and the <code>xtrig_clk_stop_req_i</code>
 input indexing, see
 <a href="../ip/cross_trigger_network/doc/index.html#cross-trigger-network" class="xref page">Cross-Trigger Network</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtp-clock-distribution"><a class="anchor" href="#dtp-clock-distribution"></a><a class="link" href="#dtp-clock-distribution">3. Clock Distribution</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#dtp-clock-tree">DTP system-clock and JTAG-clock distribution</a> shows which DTP blocks use the system clock and which use TCK.</p>
+</div>
+<div id="dtp-clock-tree" class="imageblock">
+<div class="content">
+<img src="_images/DTP_ClockingArchitecture_FIG021.png" alt="DTP system-clock and JTAG-clock distribution" width="100%">
+</div>
+<div class="title">Figure 2. DTP system-clock and JTAG-clock distribution</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtp-reset-distribution"><a class="anchor" href="#dtp-reset-distribution"></a><a class="link" href="#dtp-reset-distribution">4. Reset Distribution</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#dtp-reset-tree">DTP system and JTAG reset distribution</a> shows the reset distribution for DTP system logic and the JTAG scan
+paths.</p>
+</div>
+<div id="dtp-reset-tree" class="imageblock">
+<div class="content">
+<img src="_images/DTP_ResetArchitecture_FIG022.png" alt="DTP system and JTAG reset distribution" width="100%">
+</div>
+<div class="title">Figure 3. DTP system and JTAG reset distribution</div>
 </div>
 </div>
 </div>

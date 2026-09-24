@@ -225,6 +225,27 @@ selecting, per owner, which of the two algorithms it must sign with (see
 this path today&#8201;&#8212;&#8201;it verifies a single classical RSA-3072 signature, and
 combined classical + PQC signing is deferred to a later release.</p>
 </div>
+<div class="paragraph">
+<p>The upstream ML-DSA and ML-KEM algorithm datapaths are shown in
+<a href="#sep-abr-mldsa-diagram">Adams Bridge ML-DSA reference architecture</a> and <a href="#sep-abr-mlkem-diagram">Adams Bridge ML-KEM reference architecture</a>, respectively.</p>
+</div>
+<div id="sep-abr-mldsa-diagram" class="imageblock">
+<div class="content">
+<img src="_images/adams_bridge_mldsa.png" alt="Adams Bridge ML-DSA reference architecture" width="100%">
+</div>
+<div class="title">Figure 1. Adams Bridge ML-DSA reference architecture</div>
+</div>
+<div id="sep-abr-mlkem-diagram" class="imageblock">
+<div class="content">
+<img src="_images/adams_bridge_mlkem.png" alt="Adams Bridge ML-KEM reference architecture" width="100%">
+</div>
+<div class="title">Figure 2. Adams Bridge ML-KEM reference architecture</div>
+</div>
+<div class="paragraph">
+<p>These upstream diagrams describe the algorithm datapaths. The OCAH wrapper
+provides the AXI and key interfaces and exposes the working SRAM ports to
+the integrator, as described below.</p>
+</div>
 </div>
 </div>
 <div class="sect1">

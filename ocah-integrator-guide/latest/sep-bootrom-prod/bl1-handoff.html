@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smu.html">SMU Top-Level Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../cdc.html">CDC Timing Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="sep-prod-rom-bl1-handoff"><a class="anchor" href="#sep-prod-rom-bl1-handoff"></a><a class="link" href="#sep-prod-rom-bl1-handoff">1. BL1 handoff</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The payload TOC may describe SEP and SMC images. BL0 scans it for the first
+<code>IMAGE_TYPE_SEP_BL1</code> entry and validates that the complete image lies inside
+ICCM, that its length is nonzero and no larger than ICCM, and that its entry
+offset lies inside the image. These checks run during payload validation and
+are repeated at handoff.</p>
+</div>
+<div class="sect2">
+<h3 id="iccm-copy"><a class="anchor" href="#iccm-copy"></a><a class="link" href="#iccm-copy">1.1. ICCM copy</a></h3>
+<div class="paragraph">
+<p>The VeeR EL2 instruction-fetch unit can execute from ICCM, but the CPU
+load/store unit cannot read or write it. ICCM and DCCM occupy the same VeeR
+region, and load/store address checking treats ICCM addresses outside the DCCM
+offset as unmapped.</p>
+</div>
+<div class="paragraph">
+<p>BL0 therefore uses the secure DMA to copy the validated BL1 bytes from the
+payload in SEP SRAM to the entry&#8217;s ICCM load address. A CPU <code>memcpy</code> cannot
+replace this transfer.</p>
+</div>
+<div class="paragraph">
+<p>BL1&#8217;s binary contains executable code and the load image of its own read-only
+and writable data. Because BL1 also cannot read its ICCM copy, BL0 stores the
+payload source address in <code>bl0_state.bl1_image_src_addr</code>. BL1 startup uses that
+SRAM source when initializing DCCM.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="transfer-of-control"><a class="anchor" href="#transfer-of-control"></a><a class="link" href="#transfer-of-control">1.2. Transfer of control</a></h3>
+<div class="paragraph">
+<p>The entry address is the ICCM load address plus the TOC entry offset. After the
+DMA succeeds, BL0 writes the entry to <code>mepc</code>, executes <code>fence.i</code> and <code>fence</code>,
+and uses <code>mret</code> to transfer control. This makes the newly written instructions
+visible to the fetch unit and completes prior memory activity before BL1 runs.</p>
+</div>
+<div class="paragraph">
+<p>The handoff is non-returning. Reaching its caller again is an error. BL0 does
+not publish a success verdict before the transfer; BL1 proves successful
+execution through its own status path.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="shared-state"><a class="anchor" href="#shared-state"></a><a class="link" href="#shared-state">1.3. Shared state</a></h3>
+<div class="paragraph">
+<p>BL1 locates <code>struct bl0_state</code> at the top of DCCM and validates its leading and
+trailing magic words and size. The structure communicates:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the validated manifest and BL1 source addresses;</p>
+</li>
+<li>
+<p>selected boot mode and secure-boot state;</p>
+</li>
+<li>
+<p>lifecycle and feature-control values;</p>
+</li>
+<li>
+<p>the boot measurement and deferred BL2 demotion decision; and</p>
+</li>
+<li>
+<p>the last BL0 error, when execution did not reach handoff.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>BL0 and BL1 must use the same <code>include/bl0_state.h</code> layout.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="warm-reset-return"><a class="anchor" href="#warm-reset-return"></a><a class="link" href="#warm-reset-return">1.4. Warm-reset return</a></h3>
+<div class="paragraph">
+<p>BL1 may place an ICCM handler address in SEP <code>cold_scratch[7]</code> before enabling
+the watchdog. This register bank survives the warm watchdog reset. On reset,
+BL0 reads the slot before setting a stack or touching DCCM:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>zero selects a cold boot, after which BL0 poisons the slot with <code>-1</code>;</p>
+</li>
+<li>
+<p>an address inside ICCM transfers directly to the handler and remains in the
+slot for subsequent watchdog resets; and</p>
+</li>
+<li>
+<p>any other nonzero value reports an invalid target and stops.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The direct warm path preserves BL1 DCCM and ICCM state. The handler must
+restore any CPU state reset by the watchdog before resuming normal execution.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

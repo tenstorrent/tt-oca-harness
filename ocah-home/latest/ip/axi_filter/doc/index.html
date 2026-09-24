@@ -204,7 +204,11 @@ is one <code>filter_ctrl</code> register triple&#8201;&#8212;&#8201;<code>FILTER
 <div class="sect1">
 <h2 id="axi-traffic-filter-instances"><a class="anchor" href="#axi-traffic-filter-instances"></a><a class="link" href="#axi-traffic-filter-instances">Instances</a></h2>
 <div class="sectionbody">
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#traffic-filter-instances-table">Traffic filter instances</a> compares the filter dimensions, unmatched-traffic
+behavior, and bypass controls.</p>
+</div>
+<table id="traffic-filter-instances-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Traffic filter instances</caption>
 <colgroup>
 <col style="width: 20%;">
@@ -307,7 +311,7 @@ is a wildcard matching any source ID.</p>
 permission bit is consulted: <code>read_allowed</code> for AR, <code>write_allowed</code> for
 AW. If the bit is clear, the transaction is blocked. If no entry matches
 at all, the outcome is the instance&#8217;s unmatched-traffic policy from the
-table above.</p>
+<a href="#traffic-filter-instances-table">Traffic filter instances</a>.</p>
 </div>
 <div class="paragraph">
 <p>The two steps therefore fail differently:</p>
@@ -357,7 +361,7 @@ ignored.</p>
 </li>
 <li>
 <p><code>allow_burst = 0</code>: the granule is the data bus width&#8201;&#8212;&#8201;8 bytes on
-every instance in the table above&#8201;&#8212;&#8201;and address bits [2:0] are
+every instance in the <a href="#traffic-filter-instances-table">Traffic filter instances</a>&#8201;&#8212;&#8201;and address bits [2:0] are
 ignored.</p>
 </li>
 </ul>
@@ -369,7 +373,11 @@ narrower than one granule. Programming <code>START_ADDR</code> equal to <code>EN
 or any range shorter than the granule, still admits the whole granule,
 and a range that straddles a granule boundary admits both granules.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#granule-widening-examples-table">Granule widening examples</a> illustrates the address ranges admitted when burst
+filtering widens a programmed interval.</p>
+</div>
+<table id="granule-widening-examples-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. Granule widening examples</caption>
 <colgroup>
 <col style="width: 15%;">

@@ -217,22 +217,23 @@ and ASCON as well as standard keyed hash functions such as AES-CMAC and
 HMAC.</p>
 </div>
 <div class="paragraph">
-<p>The goal of this test component is to assess the statistical properties
-of the raw entropy source, so we will not add a conditioner here.</p>
+<p>The source includes a configurable SHA-256 whitener. Software can bypass
+whitening to observe the unconditioned stream; health tests also monitor the
+individual noise generators and the combined stream.</p>
 </div>
-<div class="imageblock">
+<div id="entropy-source-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_Entropy_Source.png" alt="SEP_Entropy_Source">
+<img src="../../_images/SEP_Esrc_TopLevel_FIG012.drawio.png" alt="Entropy source microarchitecture" width="100%">
 </div>
+<div class="title">Figure 1. Entropy source microarchitecture</div>
 </div>
 <div class="paragraph">
-<p>The diagram below shows the entropy source component which implements
-the above concept. The client controls the component via the AXI4-Lite bus
+<p><a href="#entropy-source-diagram">Entropy source microarchitecture</a> shows the entropy source and its conditioning pipeline.
+The client controls the component via the AXI4-Lite bus
 interface which provides access to a set of memory mapped configuration
-and status registers (CSRs) described later in this document. The raw
-entropy stream is connected to the (optional) downstream conditioning
-unit mentioned above as well as the health statistics tester, debug
-monitor and entropy bits storage.</p>
+and status registers (CSRs) described later in this document. The noise
+generators feed the decorrelation, mixing, health-test, and optional whitening
+stages before the output FIFO supplies entropy to the DRBG.</p>
 </div>
 <div class="paragraph">
 <p>The entropy source is designed according to guidelines set forth in the
@@ -250,6 +251,16 @@ statistical requirements specified by the BSI agency.</p>
 </div>
 <div class="paragraph">
 <p>The oscillator output is sampled by a metastable D flip-flop (<code>prim_dffrxq</code>) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (<code>rosc_sample_clk_i</code>) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR. Both selects are clock mux cells. Software changes a lane&#8217;s source or division only while that generator is disabled. A division value outside 0-5 selects divide-by-4.</p>
+</div>
+<div class="paragraph">
+<p><a href="#entropy-rosc-diagram">Entropy source ring-oscillator complex</a> shows the ring oscillators, sampling paths, and clock selection
+used to generate noise.</p>
+</div>
+<div id="entropy-rosc-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/SEP_Esrc_ROSC_FIG013.drawio.png" alt="Entropy source ring-oscillator complex" width="100%">
+</div>
+<div class="title">Figure 2. Entropy source ring-oscillator complex</div>
 </div>
 </div>
 </div>

@@ -219,7 +219,11 @@ Protection</em>. This section records how they apply to the SMC eFuse controller
 <div class="sect1">
 <h2 id="smc-efuse-asset-classification"><a class="anchor" href="#smc-efuse-asset-classification"></a><a class="link" href="#smc-efuse-asset-classification">1. SMC eFuse Asset Classification</a></h2>
 <div class="sectionbody">
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#smc-efuse-shadow-register-classification-table">SMC eFuse shadow register classification</a> relates the SMC fuse contents to
+their security class and scan policy.</p>
+</div>
+<table id="smc-efuse-shadow-register-classification-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. SMC eFuse shadow register classification</caption>
 <colgroup>
 <col style="width: 20%;">
@@ -312,7 +316,11 @@ regenerated:</p>
 <p><code>LOCKS</code> sits at fuse-map offset <code>0x0</code> and is 64 bits wide, so this resolves to
 shadow words 0 and 1.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#smc-shadow-word-allocation-table">SMC shadow word allocation</a> maps fuse fields to their shadow-register word
+ranges.</p>
+</div>
+<table id="smc-shadow-word-allocation-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. SMC shadow word allocation</caption>
 <colgroup>
 <col style="width: 55%;">

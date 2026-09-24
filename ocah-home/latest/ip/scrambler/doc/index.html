@@ -221,7 +221,12 @@ register contents into the local key register.</p>
 <div class="paragraph">
 <p>The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sram-scrambler-parameters-table">SRAM scrambler parameters</a> lists the address width, data width, and byte-wise
+permutation parameters.</p>
+</div>
+<table id="sram-scrambler-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SRAM scrambler parameters</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">
@@ -265,7 +270,12 @@ register contents into the local key register.</p>
 <div class="paragraph">
 <p>The scrambler is purely combinational. It has no clock or reset ports.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sram-scrambler-ports-table">SRAM scrambler ports</a> lists the combinational address, data, key, and enable
+interfaces.</p>
+</div>
+<table id="sram-scrambler-ports-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SRAM scrambler ports</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 10%;">
@@ -345,9 +355,10 @@ The player (permutation function) is also altered to accommodate the
 reduced block size i.e. word length.</p>
 </div>
 <div class="paragraph">
-<p>The data path implements the PRESENT 4-bit S-box (<code>sbox4</code>) from <code>scrambler_pkg</code>. Eight parallel S-box instances process the 32-bit word one nibble at a time. The S-box mapping is shown in the table below.</p>
+<p>The data path implements the PRESENT 4-bit S-box (<code>sbox4</code>) from <code>scrambler_pkg</code>. Eight parallel S-box instances process the 32-bit word one nibble at a time. The S-box mapping is shown in <a href="#sram-scrambler-s-box-table">SRAM scrambler S-box</a>.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="sram-scrambler-s-box-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SRAM scrambler S-box</caption>
 <colgroup>
 <col style="width: 5.8823%;">
 <col style="width: 5.8823%;">
@@ -416,7 +427,12 @@ reduced block size i.e. word length.</p>
 <div class="paragraph">
 <p>The permutation layer follows the PRESENT structure with progressive offsets of 8 bits rather than 16. Index <em>i</em> indicates the input bit position and <em>P(i)</em> indicates the output bit position.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sram-scrambler-permutation-for-bits-31-to-16-table">SRAM scrambler permutation for bits 31 to 16</a> maps input bits 31 through 16 to
+their output positions.</p>
+</div>
+<table id="sram-scrambler-permutation-for-bits-31-to-16-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. SRAM scrambler permutation for bits 31 to 16</caption>
 <colgroup>
 <col style="width: 5.8823%;">
 <col style="width: 5.8823%;">
@@ -479,7 +495,12 @@ reduced block size i.e. word length.</p>
 </tr>
 </tbody>
 </table>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sram-scrambler-permutation-for-bits-15-to-0-table">SRAM scrambler permutation for bits 15 to 0</a> maps input bits 15 through 0 to
+their output positions.</p>
+</div>
+<table id="sram-scrambler-permutation-for-bits-15-to-0-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. SRAM scrambler permutation for bits 15 to 0</caption>
 <colgroup>
 <col style="width: 5.8823%;">
 <col style="width: 5.8823%;">
@@ -620,9 +641,10 @@ just repeatedly concatenate the address with itself until we have 32
 bits, truncating any excess bits.</p>
 </div>
 <div class="paragraph">
-<p>The <code>scrambler_addr_tweak</code> submodule implements this expansion. For power-of-two-aligned widths (8 and 16), the address is replicated exactly to fill 32 bits. For non-power-of-two widths, the address is concatenated three times and the upper portion of the third copy is truncated to produce exactly 32 bits. The table below lists the expansion formula used for each supported width.</p>
+<p>The <code>scrambler_addr_tweak</code> submodule implements this expansion. For power-of-two-aligned widths (8 and 16), the address is replicated exactly to fill 32 bits. For non-power-of-two widths, the address is concatenated three times and the upper portion of the third copy is truncated to produce exactly 32 bits. <a href="#sram-scrambler-address-expansion-table">SRAM scrambler address expansion</a> lists the expansion formula used for each supported width.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="sram-scrambler-address-expansion-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. SRAM scrambler address expansion</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 85%;">
@@ -688,7 +710,12 @@ address</em>, only scrambling.</p>
 <div class="paragraph">
 <p>Each supported address width has a dedicated <code>addr_scrambleN</code> function in <code>scrambler_pkg</code>. These functions partition the address-key-XOR result into lanes of 3 or 4 bits, apply <code>sbox3</code> (Pyjamask) or <code>sbox4</code> (PRESENT) to each lane, concatenate the S-box outputs, and pass the result through the corresponding <code>permN</code> fixed permutation. The lane partitioning varies by width to ensure the full address is covered without padding.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sram-scrambler-address-lanes-table">SRAM scrambler address lanes</a> identifies the S-box lanes and permutation used
+at each address width.</p>
+</div>
+<table id="sram-scrambler-address-lanes-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. SRAM scrambler address lanes</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 35%;">
@@ -773,7 +800,12 @@ address</em>, only scrambling.</p>
 <div class="paragraph">
 <p>Five pre-configured modules are provided, each fixing the <code>ADDR_WIDTH</code> parameter for a specific SRAM depth. All variants default to <code>DATA_WIDTH</code> = 32 and <code>BYTE_WISE</code> = 0, though the <code>BYTE_WISE</code> parameter can be overridden at instantiation.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sram-scrambler-module-variants-table">SRAM scrambler module variants</a> relates each preconfigured module to its SRAM
+depth and address-scramble function.</p>
+</div>
+<table id="sram-scrambler-module-variants-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. SRAM scrambler module variants</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">
@@ -835,10 +867,15 @@ address</em>, only scrambling.</p>
 <div class="paragraph">
 <p>A bypass multiplexer gates the scrambled data path. When <code>scrambler_en_i</code> is deasserted, addresses and data pass through unmodified. Parity is always computed on the plaintext data before scrambling, ensuring that the parity check on the read path operates on the descrambled value.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#sram-scrambler-datapath-figure">SRAM scrambler datapath</a> shows the address and data scrambling paths at the
+SRAM interface.</p>
+</div>
+<div id="sram-scrambler-datapath-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/SEP_SRAM_Scrambler.png" alt="SEP_SRAM_Scrambler">
 </div>
+<div class="title">Figure 1. SRAM scrambler datapath</div>
 </div>
 </div>
 </div>

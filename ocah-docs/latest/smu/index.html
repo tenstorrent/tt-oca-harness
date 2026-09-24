@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>System Management Unit (SMU) :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <link rel="prev" href="../architecture.html#ocah-rtl-assertions">
-    <link rel="next" href="../dtp/index.html">
+    <link rel="next" href="../sep/index.html">
     <meta name="description" content="SMU overview — composition, AXI crossbar and child subsystem roles.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
@@ -90,7 +90,16 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
@@ -126,42 +135,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="3">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
-  </li>
-</ul>
-  </li>
-  <li class="nav-item" data-depth="3">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
@@ -181,9 +154,6 @@
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/fabric.html">SEP Interconnect</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Registers</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/cpu.html">CPU Subsystem</a>
@@ -269,6 +239,9 @@
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
   </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Registers</a>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="3">
@@ -343,6 +316,42 @@
   </li>
 </ul>
   </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
@@ -371,6 +380,9 @@
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
   </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
+  </li>
 </ul>
   </li>
 </ul>
@@ -381,10 +393,16 @@
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -485,13 +503,13 @@ and presents a single boundary to the System Management Network (SMN).</p>
 <div class="ulist">
 <ul>
 <li>
-<p><a href="../dtp/index.html" class="xref page"><strong>Debug and Test Ports (DTP)</strong></a> — Standardised debug and test access across heterogeneous, multi-vendor chiplet systems. Covers JTAG scan chains, JTAG2AXI debug bridges, cross-trigger network and synchronised clock control.</p>
-</li>
-<li>
 <p><a href="../sep/index.html" class="xref page"><strong>Security Processor (SEP)</strong></a> — Root of Trust with a physically isolated RISC-V execution environment for secure boot, lifecycle control, device attestation and hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3, TRNG, DRBG, Key Manager).</p>
 </li>
 <li>
 <p><a href="../smc/index.html" class="xref page"><strong>System Management Controller (SMC)</strong></a> — Firmware-driven orchestration engine responsible for clock, voltage and reset management, platform bootstrapping, system initialisation, and power/thermal management. Built on a RISC-V micro-controller with DMA and memory-zeroer accelerators.</p>
+</li>
+<li>
+<p><a href="../dtp/index.html" class="xref page"><strong>Debug and Test Ports (DTP)</strong></a> — Standardised debug and test access across heterogeneous, multi-vendor chiplet systems. Covers JTAG scan chains, JTAG2AXI debug bridges, cross-trigger network and synchronised clock control.</p>
 </li>
 </ul>
 </div>
@@ -501,6 +519,19 @@ are released from reset by the SMC&#8217;s reset unit in a controlled sequence.
 Platform-wide clock, power and reset behaviour is described in the
 <a href="../architecture.html#ocah-clock-domains" class="xref page">OCAH Architecture</a> chapter.</p>
 </div>
+<div id="smu-composition-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SMU_TopLevel_FIG001.drawio.png" alt="SMU composition with the optional SEP subsystem" width="100%">
+</div>
+<div class="title">Figure 1. SMU composition with the optional SEP subsystem</div>
+</div>
+<div class="paragraph">
+<p>The SMU composition is shown in <a href="#smu-composition-diagram">Figure 1</a>.
+The dashed SEP boundary denotes the optional subsystem controlled by the
+<code>SEP</code> integration parameter. Memory capacities in the diagram describe the
+illustrated configuration.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#smu-composition-diagram">Figure 1</a>.</p>
 </div>
 </div>
 <div class="sect1">
@@ -513,7 +544,17 @@ fabric between SEP, SMC, and the rest of the chiplet (reached through the
 non-reflexive connectivity: each master can reach the other two subordinates
 but never its own inbound port.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div id="smu-crossbar-connectivity-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SMU_AxiXbar_Connectivity_FIG002.1.drawio.png" alt="SMU AXI crossbar connectivity" width="100%">
+</div>
+<div class="title">Figure 2. SMU AXI crossbar connectivity</div>
+</div>
+<div class="paragraph">
+<p><a href="#smu-axi-crossbar-ports-table">Table 1</a> lists the permitted initiator-to-subordinate paths and
+their purposes.</p>
+</div>
+<table id="smu-axi-crossbar-ports-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. SMU AXI crossbar ports</caption>
 <colgroup>
 <col style="width: 22%;">
@@ -568,16 +609,75 @@ for the fixed-vs-programmable split and the reference envelope convention, and
 see the SMU AXI Crossbar Address Map section in the Integrator Guide for
 firmware programming order.</p>
 </div>
+<div id="smu-crossbar-decode-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smu-aperture-decode.svg" alt="SMU aperture decode and routing" width="100%">
+</div>
+<div class="title">Figure 3. SMU aperture decode and routing</div>
+</div>
+<div class="paragraph">
+<p><a href="#smu-crossbar-decode-diagram">Figure 3</a> shows the independent SEP and SMC address
+comparisons for each read or write request. Each aperture includes its base
+address and excludes <code>base + size</code>; the addition uses 57 bits to preserve
+carry from the 56-bit address. A match selects the corresponding subordinate,
+subject to the connectivity in <a href="#smu-crossbar-connectivity-diagram">Figure 2</a>.
+An unmatched SEP or SMC request uses <code>ext_out</code>. An unmatched external request
+returns <code>DECERR</code>, because <code>ext_in</code> cannot loop back to <code>ext_out</code>.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#smu-crossbar-connectivity-diagram">Figure 2</a>; <a href="#smu-axi-crossbar-ports-table">Table 1</a>; <a href="#smu-crossbar-decode-diagram">Figure 3</a>.</p>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smu-clocks-and-resets"><a class="anchor" href="#smu-clocks-and-resets"></a><a class="link" href="#smu-clocks-and-resets">3. Clocks and Resets</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#smu-clock-distribution">Figure 4</a> and <a href="#smu-reset-distribution">Figure 5</a> show the clock and
+reset distribution from the SMU boundary to DTP, SEP, SMC, and the shared
+AXI infrastructure. Each row identifies a source and its consumers; repeated
+instance names denote the same RTL instance. Boundary ports use blue boxes,
+SMU instances use grey boxes, and generated signals use green boxes.
+Arrows show signal direction. A comma-separated consumer list denotes fan-out.</p>
+</div>
+<div id="smu-clock-distribution" class="imageblock">
+<div class="content">
+<img src="_images/smu-clock-distribution.svg" alt="SMU clock sources and consumers" width="100%">
+</div>
+<div class="title">Figure 4. SMU clock distribution</div>
+</div>
+<div id="smu-reset-distribution" class="imageblock">
+<div class="content">
+<img src="_images/smu-reset-distribution.svg" alt="SMU reset sources and consumers" width="100%">
+</div>
+<div class="title">Figure 5. SMU reset distribution</div>
+</div>
+<p class="block-references">Figures and tables: <a href="#smu-clock-distribution">Figure 4</a>; <a href="#smu-reset-distribution">Figure 5</a>.</p>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smu-lifecycle-propagation"><a class="anchor" href="#smu-lifecycle-propagation"></a><a class="link" href="#smu-lifecycle-propagation">4. Lifecycle and Feature Control</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP lifecycle state and feature controls constrain the debug paths in DTP
+and the management functions in SMC, as shown in
+<a href="#smu-lifecycle-propagation-diagram">Figure 6</a>.</p>
+</div>
+<div id="smu-lifecycle-propagation-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smu-lifecycle-controls.svg" alt="SEP lifecycle and feature-control propagation to SMC and DTP" width="100%">
+</div>
+<div class="title">Figure 6. SEP lifecycle and feature-control propagation to SMC and DTP</div>
+</div>
 <div id="child-subsystems" class="paragraph">
-<p><a id="smu-child-subsystems"></a>The subsystem chapters (DTP, SEP, SMC) follow
+<p><a id="smu-child-subsystems"></a>The subsystem chapters (SEP, SMC, DTP) follow
 immediately; see the <a href="#smu-composition">Composition</a> section above for roles
 and cross-references.</p>
 </div>
+<p class="block-references">Figures and tables: <a href="#smu-lifecycle-propagation-diagram">Figure 6</a>.</p>
 </div>
 </div>
 <nav class="pagination">
   <span class="prev"><a href="../architecture.html#ocah-rtl-assertions">RTL Assertions</a></span>
-  <span class="next"><a href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a></span>
+  <span class="next"><a href="../sep/index.html">Security Processor (SEP)</a></span>
 </nav>
 </article>
   </div>

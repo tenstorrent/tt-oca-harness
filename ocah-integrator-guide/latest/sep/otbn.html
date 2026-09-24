@@ -275,6 +275,16 @@ currently supports the following algorithms:</p>
 at a later time. The microcode is loaded into SRAM based instruction
 memory allowing firmware updates to be made in the field.</p>
 </div>
+<div id="sep-otbn-reference-diagram" class="imageblock">
+<div class="content">
+<img src="_images/opentitan_otbn.svg" alt="OpenTitan OTBN core reference architecture" width="100%">
+</div>
+<div class="title">Figure 1. OpenTitan OTBN core reference architecture</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-otbn-reference-diagram">OpenTitan OTBN core reference architecture</a> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -307,8 +317,10 @@ served over native-protocol EDN by the shared
 <code>drbg_axis_edn_adapter</code> instance <code>u_axis_edn_crypto_s3c_scan</code> in <code>sep_crypto</code>,
 which converts the post-CSRNG DRBG AXI-Stream feed assigned to the crypto sink
 domain into per-client EDN responses. The adapter forwards the per-beat FIPS
-provenance through a generic AXI-Stream <code>tuser</code> sideband so OTBN RND observes
-compliant entropy and does not assert <code>rnd_fips_chk_fail</code>. The OTP scramble key
+tag through a generic AXI-Stream <code>tuser</code> sideband. The CSRNG seed tag and
+external entropy mux tag are tied high by the integration&#8217;s provisional
+policy. A high tag prevents a FIPS-tag failure for that response but does not
+prove that the entropy is FIPS compliant. The OTP scramble key
 handshake is tied to fixed values. Life-cycle escalation and RMA request
 signals are tied to their inactive state. OTBN occupies alert indices <code>[2:1]</code>
 in <a href="crypto.html#sep-crypto-alert-policy" class="xref page">OpenTitan Alert Termination</a> and exports a single <code>intr_done_o</code> interrupt.</p>

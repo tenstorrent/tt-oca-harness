@@ -234,7 +234,11 @@ instruction and for the <code>cla_clock_stop</code> readback status.</p>
 </li>
 </ul>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#dtp-jtag-scan-chain-figure">DTP JTAG scan chain</a> shows the PTAP, secondary scan path, and iJTAG instrument
+network.</p>
+</div>
+<div id="dtp-jtag-scan-chain-figure" class="imageblock">
 <div class="content">
 <img src="_images/dtp_jtag_scan_chain.svg" alt="DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain and iJTAG SIB network">
 </div>
@@ -280,9 +284,10 @@ scan chain and drives its internal host outputs low.</p>
 <h2 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">3. Clock Domains</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The DTP operates in two clock domains:</p>
+<p>The DTP operates in two clock domains (<a href="#dtp-clock-domains-table">DTP clock domains</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="dtp-clock-domains-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. DTP clock domains</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -319,7 +324,11 @@ within the CTPs using two-flip-flop synchroniser chains.</p>
 <div class="sect1">
 <h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">4. Reset Architecture</a></h2>
 <div class="sectionbody">
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#dtp-reset-signals-table">DTP reset signals</a> identifies the reset inputs and the logic they reset.</p>
+</div>
+<table id="dtp-reset-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. DTP reset signals</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -399,7 +408,11 @@ debug/test disable vector. Each field is active-high (1 = path disabled). The
 JTAG interface unit synchronizes the vector into the TCK domain and applies
 each field to the named path.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#dtp-debug-disable-paths-table">DTP debug-disable paths</a> maps each debug path to its active-high disable field.</p>
+</div>
+<table id="dtp-debug-disable-paths-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. DTP debug-disable paths</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">

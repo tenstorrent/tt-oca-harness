@@ -211,7 +211,7 @@ interrupt routing and priority handling.</p>
 <div class="paragraph">
 <p>This chapter is the single place for interrupt <strong>address maps</strong>, the
 <strong><code>cpu_interrupts_o</code> vector</strong>, <strong>PLIC/CLINT register</strong> includes, and <strong>bus
-error (NMI)</strong> behavior.</p>
+error</strong> behavior.</p>
 </div>
 </div>
 </div>
@@ -224,8 +224,13 @@ standardized interfaces. PLIC (AXI4-Lite) and CLINT (AXI4-Lite) are used
 for external and timer/software interrupts, respectively. Base addresses
 and interfaces (SMC-local view):</p>
 </div>
+<div class="paragraph">
+<p><a href="#smc-interrupt-controller-addresses-table">SMC interrupt-controller addresses</a> lists the interrupt-related MMIO blocks and
+their address ranges.</p>
+</div>
 <div class="smc-interrupt-table-scroll" role="region" aria-label="Interrupt controller address map" tabindex="0">
-<table class="tableblock frame-all grid-all stretch smc-interrupt-table">
+<table id="smc-interrupt-controller-addresses-table" class="tableblock frame-all grid-all stretch smc-interrupt-table">
+<caption class="title">Table 1. SMC interrupt-controller addresses</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 40%;">
@@ -289,11 +294,18 @@ additional globals (for example per-core Chipyard watchdog timers at indices
 <div class="sect2">
 <h3 id="bus-error-unit-interrupts"><a class="anchor" href="#bus-error-unit-interrupts"></a><a class="link" href="#bus-error-unit-interrupts">2.1. Bus Error Unit interrupts</a></h3>
 <div class="paragraph">
-<p>The Bus Error Units (BEU) provide per-core bus error monitoring. Unlike
-other interrupt sources, BEU interrupts bypass the PLIC and connect
-directly to each CPU core&#8217;s interrupt input as a non-maskable interrupt
-(NMI-like behavior). This ensures immediate notification of bus errors
-regardless of PLIC configuration or interrupt masking.</p>
+<p>A Bus Error Unit (BEU) accumulates error events for one core. The register
+named <code>ACCRUED_ENABLE</code> is sticky status, not an enable mask: events set its bits
+independently of <code>ENABLE</code>. Ordinary writes replace those bits; write zero to
+clear them. <code>ENABLE</code> instead gates capture of the first error&#8217;s <code>CAUSE</code> and
+<code>PHYS_ADDR</code> while <code>CAUSE</code> is zero. Software can also write <code>PHYS_ADDR</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>LOCAL_ENABLE</code> selects accrued errors for direct delivery to the core, bypassing
+the PLIC and the ordinary per-source <code>mie</code> bits. This is not an unconditionally
+non-maskable interrupt: in machine mode, <code>mstatus.MIE = 0</code> suppresses delivery.
+The machine interrupt is enabled while executing in lower privilege modes.
+The BEU also has a separate output selected by <code>PLIC_ENABLE</code>.</p>
 </div>
 <div class="paragraph">
 <p>For the raw <code>cpu_interrupts_o</code> bit map traced back to the SMC RTL,
@@ -351,12 +363,13 @@ cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+3]     = zeroer_intp;</code></pre>
 <div class="sect2">
 <h3 id="exact-indexed-map"><a class="anchor" href="#exact-indexed-map"></a><a class="link" href="#exact-indexed-map">3.1. Exact Indexed Map</a></h3>
 <div class="paragraph">
-<p>The table below shows the exact raw <code>cpu_interrupts_o</code> indexing. The
+<p><a href="#smc-indexed-interrupt-map-table">SMC indexed interrupt map</a> shows the exact raw <code>cpu_interrupts_o</code> indexing. The
 <code>Source</code> column is intentionally human-readable; implementation signal
 names are called out in the <code>RTL trace</code> column instead.</p>
 </div>
 <div class="smc-interrupt-table-scroll" role="region" aria-label="SMC CPU interrupt vector map" tabindex="0">
-<table class="tableblock frame-all grid-all stretch smc-interrupt-table smc-interrupt-table-wide">
+<table id="smc-indexed-interrupt-map-table" class="tableblock frame-all grid-all stretch smc-interrupt-table smc-interrupt-table-wide">
+<caption class="title">Table 2. SMC indexed interrupt map</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 20%;">
@@ -735,11 +748,11 @@ individual enable bits and <code>mstatus.MIE</code>.</p>
 <div class="paragraph">
 <p>The SMC interrupt system brings together a broad set of interrupt
 sources that support reliable and responsive system monitoring and
-control, summarized in the following table.</p>
+control, summarized in <a href="#smc-interrupt-sources-table">SMC interrupt sources</a>.</p>
 </div>
 <div class="smc-interrupt-table-scroll" role="region" aria-label="SMC interrupt source integration" tabindex="0">
-<table class="tableblock frame-all grid-all stretch smc-interrupt-table">
-<caption class="title">Table 1. SMC interrupt sources</caption>
+<table id="smc-interrupt-sources-table" class="tableblock frame-all grid-all stretch smc-interrupt-table">
+<caption class="title">Table 3. SMC interrupt sources</caption>
 <colgroup>
 <col style="width: 24%;">
 <col style="width: 28%;">
@@ -789,7 +802,7 @@ external intervention</p></td>
 monitoring instances, direct to cores (not PLIC)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Bus infrastructure integrity monitoring and fault
 isolation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Immediate fault reporting as NMI-like interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Direct core delivery, subject to machine-mode global interrupt masking</p></td>
 </tr>
 </tbody>
 </table>

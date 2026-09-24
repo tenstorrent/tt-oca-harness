@@ -228,7 +228,7 @@ Bit <code>i</code> of that vector is PIC source <code>i + 1</code>. The core&#82
 is numbered from 1, and the core ties source 0 to zero, so the low bit of the
 driven vector is the first programmable source. The comment directly above
 <code>NUM_INTERNAL_IRQS</code> in <code>sep_pkg.sv</code> numbers sources by that vector index, one
-less than the PIC source in the table below.</p>
+less than the PIC source in <a href="#sep-pic-source-assignments-table">SEP PIC source assignments</a>.</p>
 </div>
 <div class="paragraph">
 <p>Each per-source array carries an entry 0, so that the array index is the source
@@ -265,7 +265,12 @@ SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
 (SMC mailboxes, SPI). Slots 44–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sep-pic-source-assignments-table">SEP PIC source assignments</a> lists the assigned PIC sources and the range
+reserved for chip-level inputs.</p>
+</div>
+<table id="sep-pic-source-assignments-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP PIC source assignments</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 35%;">
@@ -555,8 +560,16 @@ configuration register.</p>
 <div class="paragraph">
 <p>The <code>timer_int</code> and <code>soft_int</code> pins of the VeeR EL2 core are tied to zero at
 the SMU integration boundary. There is no external CLINT-style delivery path.
-The VeeR core contains independent internal timers that generate standard RISC-V
-<code>mip.MTIP</code> and <code>mip.MSIP</code> interrupts without requiring an external signal.</p>
+The external pins drive <code>mip.MTIP</code> and <code>mip.MSIP</code>, respectively, so these
+pending bits remain inactive in this integration.</p>
+</div>
+<div class="paragraph">
+<p>The two internal timers instead report <code>mip.MITIP0</code> (bit 29) and
+<code>mip.MITIP1</code> (bit 28). Enable them through <code>mie.MITIE0</code> and <code>mie.MITIE1</code>
+at the corresponding bit positions, together with <code>mstatus.MIE</code>. Their
+interrupt cause codes are <code>0x1D</code> and <code>0x1C</code>, respectively (with the interrupt
+bit set in <code>mcause</code>). Enabling <code>mie.MTIE</code> or <code>mie.MSIE</code> does not enable the
+internal timers.</p>
 </div>
 </div>
 <div class="sect2">
@@ -576,9 +589,10 @@ counters below are live.</p>
 <h4 id="correctable-single-bit-errors"><a class="anchor" href="#correctable-single-bit-errors"></a><a class="link" href="#correctable-single-bit-errors">2.3.1. Correctable (single-bit) errors</a></h4>
 <div class="paragraph">
 <p>Hardware corrects the data and the access is retried, so no data is lost and no
-trap is taken. Each protected memory has a counter CSR:</p>
+trap is taken. Each protected memory has a counter CSR (<a href="#sep-correctable-error-counters-table">SEP correctable-error counters</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="sep-correctable-error-counters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SEP correctable-error counters</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -646,9 +660,10 @@ lets transient flips accumulate before firmware is told.</p>
 <h4 id="uncorrectable-double-bit-errors"><a class="anchor" href="#uncorrectable-double-bit-errors"></a><a class="link" href="#uncorrectable-double-bit-errors">2.3.2. Uncorrectable (double-bit) errors</a></h4>
 <div class="paragraph">
 <p>These cannot be masked and have no enable bit. The access returned no valid
-data, so the core traps on the instruction that hit the error:</p>
+data, so the core traps on the instruction that hit the error (<a href="#sep-uncorrectable-error-traps-table">SEP uncorrectable-error traps</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="sep-uncorrectable-error-traps-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SEP uncorrectable-error traps</caption>
 <colgroup>
 <col style="width: 35%;">
 <col style="width: 20%;">

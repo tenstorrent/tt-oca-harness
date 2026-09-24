@@ -288,7 +288,7 @@ state machine</p></td>
 <div class="paragraph">
 <p><strong>Note:</strong> All AXI, APB, FDI datapath, interrupt, and DFT interfaces are
 identical between <span class="monospaced">AOU_TOP</span> and <span class="monospaced">AOU_CORE_TOP</span>. The sections below that
-document these interfaces (Sections 2-8) apply to both modules unless
+document these interfaces apply to both modules unless
 otherwise noted.</p>
 </div>
 </blockquote>
@@ -300,9 +300,9 @@ internals, error handling, debugging features, and credit management&#8201;&#821
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-module-overview"><a class="anchor" href="#aou-ig-module-overview"></a><a class="link" href="#aou-ig-module-overview">1. Module Overview</a></h3>
+<h3 id="aou-ig-module-overview"><a class="anchor" href="#aou-ig-module-overview"></a><a class="link" href="#aou-ig-module-overview">Module Overview</a></h3>
 <div class="sect3">
-<h4 id="aou-ig-aou_top"><a class="anchor" href="#aou-ig-aou_top"></a><a class="link" href="#aou-ig-aou_top">1.1 AOU_TOP</a></h4>
+<h4 id="aou-ig-aou_top"><a class="anchor" href="#aou-ig-aou_top"></a><a class="link" href="#aou-ig-aou_top">AOU_TOP</a></h4>
 <div class="paragraph">
 <p><span class="monospaced">AOU_TOP</span> is the recommended top-level integration module. It
 instantiates two submodules:</p>
@@ -317,7 +317,7 @@ handle teardown, LinkError recovery, Retrain, and L1 entry/exit.</p>
 </li>
 <li>
 <p><strong><span class="monospaced">AOU_CORE_TOP</span></strong>&#8201;&#8212;&#8201;The AXI-over-UCIe protocol engine described in
-<a href="#aou-ig-aou_core_top">Section 1.2</a>.</p>
+<a href="#aou-ig-aou_core_top">AOU_CORE_TOP</a>.</p>
 </li>
 </ul>
 </div>
@@ -330,25 +330,25 @@ engine internally, so this signal is not exposed as a top-level port on
 <ul>
 <li>
 <p>FDI bringup control ports for the physical layer handshakes
-(<a href="#aou-ig-fdi-bringup-control-interface-aou_top-only">Section 3.14</a>)</p>
+(<a href="#aou-ig-fdi-bringup-control-interface-aou_top-only">FDI Bringup Control Interface (AOU_TOP only)</a>)</p>
 </li>
 <li>
 <p>Software bringup control pins
-(<a href="#aou-ig-fdi-bringup-software-control-aou_top-only">Section 3.15</a>)</p>
+(<a href="#aou-ig-fdi-bringup-software-control-aou_top-only">FDI Bringup Software Control (AOU_TOP only)</a>)</p>
 </li>
 <li>
 <p>Bringup status outputs
-(<a href="#aou-ig-fdi-bringup-status-aou_top-only">Section 3.16</a>)</p>
+(<a href="#aou-ig-fdi-bringup-status-aou_top-only">FDI Bringup Status (AOU_TOP only)</a>)</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
 <p>The FDI bringup flow is described in
-<a href="#aou-ig-fdi-bringup-flow-aou_top-only">Section 6.6</a>.</p>
+<a href="#aou-ig-fdi-bringup-flow-aou_top-only">FDI Bringup Flow (AOU_TOP only)</a>.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-aou_core_top"><a class="anchor" href="#aou-ig-aou_core_top"></a><a class="link" href="#aou-ig-aou_core_top">1.2 AOU_CORE_TOP</a></h4>
+<h4 id="aou-ig-aou_core_top"><a class="anchor" href="#aou-ig-aou_core_top"></a><a class="link" href="#aou-ig-aou_core_top">AOU_CORE_TOP</a></h4>
 <div class="paragraph">
 <p>Figure 1 shows high level block diagram of AOU CORE TOP.</p>
 </div>
@@ -358,7 +358,7 @@ engine internally, so this signal is not exposed as a top-level port on
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-purpose-and-function"><a class="anchor" href="#aou-ig-purpose-and-function"></a><a class="link" href="#aou-ig-purpose-and-function">1.2.1 Purpose and Function</a></h5>
+<h5 id="aou-ig-purpose-and-function"><a class="anchor" href="#aou-ig-purpose-and-function"></a><a class="link" href="#aou-ig-purpose-and-function">Purpose and Function</a></h5>
 <div class="paragraph">
 <p>The AOU_CORE_TOP is a bridge between AXI interface and the UCIe FDI
 interface, defined in AoU standard, AXI over UCIe Protocol Specification
@@ -464,11 +464,11 @@ core clock.</p>
 <p>When using <span class="monospaced">AOU_CORE_TOP</span> directly, the integrator must provide an
 external FDI state machine that drives <span class="monospaced">I_INT_FSM_IN_ACTIVE</span> and the
 associated control/status signals listed in
-<a href="#aou-ig-ucie-external-control-and-status">Section 3.12</a>.</p>
+<a href="#aou-ig-ucie-external-control-and-status">UCIe / External Control and Status</a>.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-key-features"><a class="anchor" href="#aou-ig-key-features"></a><a class="link" href="#aou-ig-key-features">1.2.2 Key Features</a></h5>
+<h5 id="aou-ig-key-features"><a class="anchor" href="#aou-ig-key-features"></a><a class="link" href="#aou-ig-key-features">Key Features</a></h5>
 <div class="ulist">
 <ul>
 <li>
@@ -502,7 +502,7 @@ FIFO Depth</p>
 <li>
 <p>Selectable 32B / 64B / 128B single-PHY and 32B+64B / 64B+128B two-PHY
 FDI configurations via the <span class="monospaced">FDI_CONFIG</span> parameter (see
-<a href="#aou-ig-parameter-list">Section 2</a>). Two-PHY variants additionally
+<a href="#aou-ig-parameter-list">Parameter List</a>). Two-PHY variants additionally
 require the <span class="monospaced">+define+TWO_PHY</span> build flag so the second-PHY ports
 physically exist.</p>
 </li>
@@ -531,7 +531,7 @@ specification</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-parameter-list"><a class="anchor" href="#aou-ig-parameter-list"></a><a class="link" href="#aou-ig-parameter-list">2. Parameter List</a></h3>
+<h3 id="aou-ig-parameter-list"><a class="anchor" href="#aou-ig-parameter-list"></a><a class="link" href="#aou-ig-parameter-list">Parameter List</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -919,9 +919,9 @@ supported by the design: <span class="monospaced">AOU_RX_CORE_IN_MUX</span> requ
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-interface-signals"><a class="anchor" href="#aou-ig-interface-signals"></a><a class="link" href="#aou-ig-interface-signals">3. Interface Signals</a></h3>
+<h3 id="aou-ig-interface-signals"><a class="anchor" href="#aou-ig-interface-signals"></a><a class="link" href="#aou-ig-interface-signals">Interface Signals</a></h3>
 <div class="sect3">
-<h4 id="aou-ig-clock-and-reset"><a class="anchor" href="#aou-ig-clock-and-reset"></a><a class="link" href="#aou-ig-clock-and-reset">3.1 Clock and Reset</a></h4>
+<h4 id="aou-ig-clock-and-reset"><a class="anchor" href="#aou-ig-clock-and-reset"></a><a class="link" href="#aou-ig-clock-and-reset">Clock and Reset</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -966,7 +966,7 @@ supported by the design: <span class="monospaced">AOU_RX_CORE_IN_MUX</span> requ
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-apb-slave-interface"><a class="anchor" href="#aou-ig-apb-slave-interface"></a><a class="link" href="#aou-ig-apb-slave-interface">3.2 APB Slave Interface</a></h4>
+<h4 id="aou-ig-apb-slave-interface"><a class="anchor" href="#aou-ig-apb-slave-interface"></a><a class="link" href="#aou-ig-apb-slave-interface">APB Slave Interface</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1035,7 +1035,7 @@ supported by the design: <span class="monospaced">AOU_RX_CORE_IN_MUX</span> requ
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-axi-master-rx-ar-channel"><a class="anchor" href="#aou-ig-axi-master-rx-ar-channel"></a><a class="link" href="#aou-ig-axi-master-rx-ar-channel">3.3 AXI Master (RX) – AR Channel</a></h4>
+<h4 id="aou-ig-axi-master-rx-ar-channel"><a class="anchor" href="#aou-ig-axi-master-rx-ar-channel"></a><a class="link" href="#aou-ig-axi-master-rx-ar-channel">AXI Master (RX) – AR Channel</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1125,7 +1125,7 @@ length.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-axi-master-rx-r-channel"><a class="anchor" href="#aou-ig-axi-master-rx-r-channel"></a><a class="link" href="#aou-ig-axi-master-rx-r-channel">3.4 AXI Master (RX) – R Channel</a></h4>
+<h4 id="aou-ig-axi-master-rx-r-channel"><a class="anchor" href="#aou-ig-axi-master-rx-r-channel"></a><a class="link" href="#aou-ig-axi-master-rx-r-channel">AXI Master (RX) – R Channel</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1182,7 +1182,7 @@ length.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-axi-master-rx-aw-channel"><a class="anchor" href="#aou-ig-axi-master-rx-aw-channel"></a><a class="link" href="#aou-ig-axi-master-rx-aw-channel">3.5 AXI Master (RX) – AW Channel</a></h4>
+<h4 id="aou-ig-axi-master-rx-aw-channel"><a class="anchor" href="#aou-ig-axi-master-rx-aw-channel"></a><a class="link" href="#aou-ig-axi-master-rx-aw-channel">AXI Master (RX) – AW Channel</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1272,7 +1272,7 @@ length.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-axi-master-rx-w-and-b-channels"><a class="anchor" href="#aou-ig-axi-master-rx-w-and-b-channels"></a><a class="link" href="#aou-ig-axi-master-rx-w-and-b-channels">3.6 AXI Master (RX) – W and B Channels</a></h4>
+<h4 id="aou-ig-axi-master-rx-w-and-b-channels"><a class="anchor" href="#aou-ig-axi-master-rx-w-and-b-channels"></a><a class="link" href="#aou-ig-axi-master-rx-w-and-b-channels">AXI Master (RX) – W and B Channels</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1348,7 +1348,7 @@ response ID.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-axi-slave-tx-ar-channel"><a class="anchor" href="#aou-ig-axi-slave-tx-ar-channel"></a><a class="link" href="#aou-ig-axi-slave-tx-ar-channel">3.7 AXI Slave (TX) – AR Channel</a></h4>
+<h4 id="aou-ig-axi-slave-tx-ar-channel"><a class="anchor" href="#aou-ig-axi-slave-tx-ar-channel"></a><a class="link" href="#aou-ig-axi-slave-tx-ar-channel">AXI Slave (TX) – AR Channel</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1438,7 +1438,7 @@ length.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-axi-slave-tx-r-channel"><a class="anchor" href="#aou-ig-axi-slave-tx-r-channel"></a><a class="link" href="#aou-ig-axi-slave-tx-r-channel">3.8 AXI Slave (TX) – R Channel</a></h4>
+<h4 id="aou-ig-axi-slave-tx-r-channel"><a class="anchor" href="#aou-ig-axi-slave-tx-r-channel"></a><a class="link" href="#aou-ig-axi-slave-tx-r-channel">AXI Slave (TX) – R Channel</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1496,7 +1496,7 @@ ID.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-axi-slave-tx-aw-w-b-channels"><a class="anchor" href="#aou-ig-axi-slave-tx-aw-w-b-channels"></a><a class="link" href="#aou-ig-axi-slave-tx-aw-w-b-channels">3.9 AXI Slave (TX) – AW, W, B Channels</a></h4>
+<h4 id="aou-ig-axi-slave-tx-aw-w-b-channels"><a class="anchor" href="#aou-ig-axi-slave-tx-aw-w-b-channels"></a><a class="link" href="#aou-ig-axi-slave-tx-aw-w-b-channels">AXI Slave (TX) – AW, W, B Channels</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1641,12 +1641,12 @@ response ID.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-phy-and-fdi-flit-data-interface"><a class="anchor" href="#aou-ig-phy-and-fdi-flit-data-interface"></a><a class="link" href="#aou-ig-phy-and-fdi-flit-data-interface">3.10 PHY and FDI (Flit Data Interface)</a></h4>
+<h4 id="aou-ig-phy-and-fdi-flit-data-interface"><a class="anchor" href="#aou-ig-phy-and-fdi-flit-data-interface"></a><a class="link" href="#aou-ig-phy-and-fdi-flit-data-interface">PHY and FDI (Flit Data Interface)</a></h4>
 <div class="paragraph">
 <p>The FDI port set is split into two banks: PHY0 (always present) and PHY1
 (present only when the design is built with <span class="monospaced">+define+TWO_PHY</span>). Both
 banks use the parameterized widths derived from <span class="monospaced">FDI_CONFIG</span> (see
-<a href="#aou-ig-fdi_config-values">Section 2 - FDI_CONFIG values</a>).</p>
+<a href="#aou-ig-fdi_config-values">FDI_CONFIG values</a>).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1881,14 +1881,14 @@ banks use the parameterized widths derived from <span class="monospaced">FDI_CON
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PHY selector for state-status / stall-request
-multiplexing: 0 = PHY0, 1 = PHY1. See <a href="#aou-ig-phy-type-mux">Section 6.6.4</a>.</p></td>
+multiplexing: 0 = PHY0, 1 = PHY1. See <a href="#aou-ig-phy-type-mux">PHY Type Mux</a>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-interrupt-and-error-to-error-handler"><a class="anchor" href="#aou-ig-interrupt-and-error-to-error-handler"></a><a class="link" href="#aou-ig-interrupt-and-error-to-error-handler">3.11 Interrupt and Error (to Error Handler)</a></h4>
+<h4 id="aou-ig-interrupt-and-error-to-error-handler"><a class="anchor" href="#aou-ig-interrupt-and-error-to-error-handler"></a><a class="link" href="#aou-ig-interrupt-and-error-to-error-handler">Interrupt and Error (to Error Handler)</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -1945,7 +1945,7 @@ multiplexing: 0 = PHY0, 1 = PHY1. See <a href="#aou-ig-phy-type-mux">Section 6.6
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-ucie-external-control-and-status"><a class="anchor" href="#aou-ig-ucie-external-control-and-status"></a><a class="link" href="#aou-ig-ucie-external-control-and-status">3.12 UCIe / External Control and Status</a></h4>
+<h4 id="aou-ig-ucie-external-control-and-status"><a class="anchor" href="#aou-ig-ucie-external-control-and-status"></a><a class="link" href="#aou-ig-ucie-external-control-and-status">UCIe / External Control and Status</a></h4>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
@@ -1953,7 +1953,7 @@ multiplexing: 0 = PHY0, 1 = PHY1. See <a href="#aou-ig-phy-type-mux">Section 6.6
 only. When integrating via <span class="monospaced">AOU_TOP</span>, these signals are
 consumed/generated internally by <span class="monospaced">AOU_FDI_BRINGUP_CTRL</span> and are not
 exposed as top-level ports. See
-<a href="#aou-ig-aou_core_top-only-ports-not-on-aou_top">Section 3.17</a>.</p>
+<a href="#aou-ig-aou_core_top-only-ports-not-on-aou_top">AOU_CORE_TOP-only Ports (not on AOU_TOP)</a>.</p>
 </div>
 </blockquote>
 </div>
@@ -2052,7 +2052,7 @@ violation, to notify the UCIE_CORE.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-dft"><a class="anchor" href="#aou-ig-dft"></a><a class="link" href="#aou-ig-dft">3.13 DFT</a></h4>
+<h4 id="aou-ig-dft"><a class="anchor" href="#aou-ig-dft"></a><a class="link" href="#aou-ig-dft">DFT</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -2080,7 +2080,7 @@ and capture.</p></td>
 </tbody>
 </table>
 <div class="sect4">
-<h5 id="aou-ig-tiel_dft_modescan-usage"><a class="anchor" href="#aou-ig-tiel_dft_modescan-usage"></a><a class="link" href="#aou-ig-tiel_dft_modescan-usage">3.13.1 TIEL_DFT_MODESCAN Usage</a></h5>
+<h5 id="aou-ig-tiel_dft_modescan-usage"><a class="anchor" href="#aou-ig-tiel_dft_modescan-usage"></a><a class="link" href="#aou-ig-tiel_dft_modescan-usage">TIEL_DFT_MODESCAN Usage</a></h5>
 <div class="paragraph">
 <p><span class="monospaced">TIEL_DFT_MODESCAN</span> controls a glitch-free mux (<span class="monospaced">u_sw_reset_mux</span>,
 instance of <span class="monospaced">AOU_SOC_GFMUX_LVT</span>) that selects the reset source for
@@ -2112,7 +2112,7 @@ or observability.</p>
 <div class="paragraph">
 <p>The <span class="monospaced">AOU_SOC_BUF</span> instance exists solely to prevent the synthesis tool
 from optimizing away the tied-low constant; it must be preserved as a
-persistent buffer (see <a href="#aou-ig-library-cell-replacement">Section 8.7</a>).</p>
+persistent buffer (see <a href="#aou-ig-library-cell-replacement">Library Cell Replacement</a>).</p>
 </div>
 <div class="paragraph">
 <p>The SDC file (<span class="monospaced">INTEG/constraints/aou_core_top.sdc</span>) constrains this pin
@@ -2120,7 +2120,7 @@ with <span class="monospaced">set_case_analysis 0</span> in functional timing mo
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-integrator-dft-responsibilities"><a class="anchor" href="#aou-ig-integrator-dft-responsibilities"></a><a class="link" href="#aou-ig-integrator-dft-responsibilities">3.13.2 Integrator DFT Responsibilities</a></h5>
+<h5 id="aou-ig-integrator-dft-responsibilities"><a class="anchor" href="#aou-ig-integrator-dft-responsibilities"></a><a class="link" href="#aou-ig-integrator-dft-responsibilities">Integrator DFT Responsibilities</a></h5>
 <div class="paragraph">
 <p>The design provides internal DFT muxing only for the software-controlled
 reset path (<span class="monospaced">w_DFTED_sw_resetn</span>). The two primary hardware resets and
@@ -2169,7 +2169,7 @@ scan constraints) to prevent unintended activity on external buses.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>CDC synchronizer handling</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The <span class="monospaced">AOU_SOC_SYNCHSR</span> instances in the
 <span class="monospaced">ASYNC_APB_BRIDGE</span> require scan-safe treatment. See
-<a href="#aou-ig-library-cell-replacement">Section 8.7</a> for replacement cell
+<a href="#aou-ig-library-cell-replacement">Library Cell Replacement</a> for replacement cell
 requirements.</p></td>
 </tr>
 </tbody>
@@ -2177,7 +2177,7 @@ requirements.</p></td>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-fdi-bringup-control-interface-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-control-interface-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-control-interface-aou_top-only">3.14 FDI Bringup Control Interface (AOU_TOP only)</a></h4>
+<h4 id="aou-ig-fdi-bringup-control-interface-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-control-interface-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-control-interface-aou_top-only">FDI Bringup Control Interface (AOU_TOP only)</a></h4>
 <div class="paragraph">
 <p>These signals connect <span class="monospaced">AOU_TOP</span> to the D2D adapter's physical layer for
 FDI bringup control. They are not present on <span class="monospaced">AOU_CORE_TOP</span>.</p>
@@ -2304,7 +2304,7 @@ activation</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-fdi-bringup-software-control-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-software-control-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-software-control-aou_top-only">3.15 FDI Bringup Software Control (AOU_TOP only)</a></h4>
+<h4 id="aou-ig-fdi-bringup-software-control-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-software-control-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-software-control-aou_top-only">FDI Bringup Software Control (AOU_TOP only)</a></h4>
 <div class="paragraph">
 <p>These top-level ports provide direct software control over the FDI
 bringup FSM. They are <strong>not SFR-mapped</strong>; the integrator must drive them
@@ -2357,7 +2357,7 @@ state for debug/test.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-fdi-bringup-status-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-status-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-status-aou_top-only">3.16 FDI Bringup Status (AOU_TOP only)</a></h4>
+<h4 id="aou-ig-fdi-bringup-status-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-status-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-status-aou_top-only">FDI Bringup Status (AOU_TOP only)</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -2393,7 +2393,7 @@ ACTIVE state.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-aou_core_top-only-ports-not-on-aou_top"><a class="anchor" href="#aou-ig-aou_core_top-only-ports-not-on-aou_top"></a><a class="link" href="#aou-ig-aou_core_top-only-ports-not-on-aou_top">3.17 AOU_CORE_TOP-only Ports (not on AOU_TOP)</a></h4>
+<h4 id="aou-ig-aou_core_top-only-ports-not-on-aou_top"><a class="anchor" href="#aou-ig-aou_core_top-only-ports-not-on-aou_top"></a><a class="link" href="#aou-ig-aou_core_top-only-ports-not-on-aou_top">AOU_CORE_TOP-only Ports (not on AOU_TOP)</a></h4>
 <div class="paragraph">
 <p>The following signals are present on <span class="monospaced">AOU_CORE_TOP</span> but are <strong>not</strong>
 exposed on <span class="monospaced">AOU_TOP</span>. In <span class="monospaced">AOU_TOP</span>, they are consumed or generated
@@ -2442,12 +2442,12 @@ to bringup FSM.</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-software-operation-guide"><a class="anchor" href="#aou-ig-software-operation-guide"></a><a class="link" href="#aou-ig-software-operation-guide">4. Software operation Guide</a></h3>
+<h3 id="aou-ig-software-operation-guide"><a class="anchor" href="#aou-ig-software-operation-guide"></a><a class="link" href="#aou-ig-software-operation-guide">Software operation Guide</a></h3>
 <div class="paragraph">
 <p>This section gives information about operation guide for the AOU_CORE.</p>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-register-map"><a class="anchor" href="#aou-ig-register-map"></a><a class="link" href="#aou-ig-register-map">4.1 Register Map</a></h4>
+<h4 id="aou-ig-register-map"><a class="anchor" href="#aou-ig-register-map"></a><a class="link" href="#aou-ig-register-map">Register Map</a></h4>
 <div class="paragraph">
 <p>The complete register map — address offsets, field definitions, access
 types, and reset values — is generated from the SystemRDL source and
@@ -2468,7 +2468,7 @@ maintained separately:</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-interrupts"><a class="anchor" href="#aou-ig-interrupts"></a><a class="link" href="#aou-ig-interrupts">5. Interrupts</a></h3>
+<h3 id="aou-ig-interrupts"><a class="anchor" href="#aou-ig-interrupts"></a><a class="link" href="#aou-ig-interrupts">Interrupts</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -2516,7 +2516,7 @@ AOU_CORE and re-enter the activation sequence.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-activation-flow"><a class="anchor" href="#aou-ig-activation-flow"></a><a class="link" href="#aou-ig-activation-flow">6. Activation Flow</a></h3>
+<h3 id="aou-ig-activation-flow"><a class="anchor" href="#aou-ig-activation-flow"></a><a class="link" href="#aou-ig-activation-flow">Activation Flow</a></h3>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
@@ -2524,7 +2524,7 @@ AOU_CORE and re-enter the activation sequence.</p>
 handled by <span class="monospaced">AOU_FDI_BRINGUP_CTRL</span> before protocol-level activation
 begins. The protocol activation described in this section occurs after
 <span class="monospaced">O_FDI_LINK_UP</span> is asserted. See
-<a href="#aou-ig-fdi-bringup-flow-aou_top-only">Section 6.6</a> for the FDI bringup
+<a href="#aou-ig-fdi-bringup-flow-aou_top-only">FDI Bringup Flow (AOU_TOP only)</a> for the FDI bringup
 sequence.</p>
 </div>
 </blockquote>
@@ -2545,7 +2545,7 @@ in response to an ActivateReq from the other die, to acknowledge receipt
 of the request.</p>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-credit-management-type"><a class="anchor" href="#aou-ig-credit-management-type"></a><a class="link" href="#aou-ig-credit-management-type">6.1 Credit Management Type</a></h4>
+<h4 id="aou-ig-credit-management-type"><a class="anchor" href="#aou-ig-credit-management-type"></a><a class="link" href="#aou-ig-credit-management-type">Credit Management Type</a></h4>
 <div class="paragraph">
 <p>There are two types of Credit Management Type. Since current AOU_SPEC
 cannot resolve pending AXI response without Activate again. When Credit
@@ -2600,7 +2600,7 @@ indicating that the remote die has started to activate / deactivate.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-activation-start"><a class="anchor" href="#aou-ig-activation-start"></a><a class="link" href="#aou-ig-activation-start">6.2 Activation Start</a></h4>
+<h4 id="aou-ig-activation-start"><a class="anchor" href="#aou-ig-activation-start"></a><a class="link" href="#aou-ig-activation-start">Activation Start</a></h4>
 <div class="paragraph">
 <p>Activation can be initiated by setting ACTIVATE_START SFR: In the
 current implementation, credits are granted based on the depth of the RX
@@ -2630,7 +2630,7 @@ activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-deactivation-start"><a class="anchor" href="#aou-ig-deactivation-start"></a><a class="link" href="#aou-ig-deactivation-start">6.3 Deactivation Start</a></h4>
+<h4 id="aou-ig-deactivation-start"><a class="anchor" href="#aou-ig-deactivation-start"></a><a class="link" href="#aou-ig-deactivation-start">Deactivation Start</a></h4>
 <div class="paragraph">
 <p>Deactivation is initiated by setting the AOU_INIT.DEACTIVATE_START
 register. Setting this register does not immediately trigger sending a
@@ -2671,7 +2671,7 @@ configured to a shorter duration.</p>
 </ul>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-deactivation-sequence-flow"><a class="anchor" href="#aou-ig-deactivation-sequence-flow"></a><a class="link" href="#aou-ig-deactivation-sequence-flow">6.3.1 Deactivation Sequence Flow</a></h5>
+<h5 id="aou-ig-deactivation-sequence-flow"><a class="anchor" href="#aou-ig-deactivation-sequence-flow"></a><a class="link" href="#aou-ig-deactivation-sequence-flow">Deactivation Sequence Flow</a></h5>
 <div class="paragraph">
 <p>Once the local die issues a DeactivateReq, it can no longer provide
 responses to transactions initiated by the remote die. If the remote die
@@ -2755,7 +2755,7 @@ backpressure must occur on the local die’s MI AW/AR/W channels.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-activationdeactivation-interrupt"><a class="anchor" href="#aou-ig-activationdeactivation-interrupt"></a><a class="link" href="#aou-ig-activationdeactivation-interrupt">6.4 Activation/Deactivation Interrupt</a></h4>
+<h4 id="aou-ig-activationdeactivation-interrupt"><a class="anchor" href="#aou-ig-activationdeactivation-interrupt"></a><a class="link" href="#aou-ig-activationdeactivation-interrupt">Activation/Deactivation Interrupt</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 50%;">
@@ -2807,7 +2807,7 @@ remote die.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-pm-entry-linkreset-linkdisabled-sequence"><a class="anchor" href="#aou-ig-pm-entry-linkreset-linkdisabled-sequence"></a><a class="link" href="#aou-ig-pm-entry-linkreset-linkdisabled-sequence">6.5 PM Entry / LinkReset / LinkDisabled Sequence</a></h4>
+<h4 id="aou-ig-pm-entry-linkreset-linkdisabled-sequence"><a class="anchor" href="#aou-ig-pm-entry-linkreset-linkdisabled-sequence"></a><a class="link" href="#aou-ig-pm-entry-linkreset-linkdisabled-sequence">PM Entry / LinkReset / LinkDisabled Sequence</a></h4>
 <div class="paragraph">
 <p>For PM entry / LinkReset / LinkDisable entry sequence, UCIE_CORE should
 check AOU_CORE state and try to change state. For this sequence,
@@ -2820,7 +2820,7 @@ AOU_SPEC. For this case, SW needs to check whether there is pending AXI
 transaction.</p>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-pm-entry-sw-sequence"><a class="anchor" href="#aou-ig-pm-entry-sw-sequence"></a><a class="link" href="#aou-ig-pm-entry-sw-sequence">6.5.1 PM Entry SW Sequence</a></h5>
+<h5 id="aou-ig-pm-entry-sw-sequence"><a class="anchor" href="#aou-ig-pm-entry-sw-sequence"></a><a class="link" href="#aou-ig-pm-entry-sw-sequence">PM Entry SW Sequence</a></h5>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2850,7 +2850,7 @@ AOU_INIT.SLV_TR_COMPLETE &amp; AOU_INIT.MST_TR_COMPLETE.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-link-disable-sw-sequence"><a class="anchor" href="#aou-ig-link-disable-sw-sequence"></a><a class="link" href="#aou-ig-link-disable-sw-sequence">6.5.2 Link Disable SW Sequence</a></h5>
+<h5 id="aou-ig-link-disable-sw-sequence"><a class="anchor" href="#aou-ig-link-disable-sw-sequence"></a><a class="link" href="#aou-ig-link-disable-sw-sequence">Link Disable SW Sequence</a></h5>
 <div class="paragraph">
 <p>Same as PM entry, before doing UCIe state transition, AOU_CORE needs to
 be Disabled properly.</p>
@@ -2879,7 +2879,7 @@ AOU_INIT.SLV_TR_COMPLETE &amp; AOU_INIT.MST_TR_COMPLETE.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-link-reset-sw-sequence"><a class="anchor" href="#aou-ig-link-reset-sw-sequence"></a><a class="link" href="#aou-ig-link-reset-sw-sequence">6.5.3 Link Reset SW Sequence</a></h5>
+<h5 id="aou-ig-link-reset-sw-sequence"><a class="anchor" href="#aou-ig-link-reset-sw-sequence"></a><a class="link" href="#aou-ig-link-reset-sw-sequence">Link Reset SW Sequence</a></h5>
 <div class="paragraph">
 <p>If AOU_CORE faces an uncorrectable error (ex. AOU SPEC violation),
 AOU_CORE sends LinkReset to CPU and D2D adapter. LinkReset indicates
@@ -2892,7 +2892,7 @@ AOU_CON0.AOU_SW_RESET.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-fdi-bringup-flow-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-flow-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-flow-aou_top-only">6.6 FDI Bringup Flow (AOU_TOP only)</a></h4>
+<h4 id="aou-ig-fdi-bringup-flow-aou_top-only"><a class="anchor" href="#aou-ig-fdi-bringup-flow-aou_top-only"></a><a class="link" href="#aou-ig-fdi-bringup-flow-aou_top-only">FDI Bringup Flow (AOU_TOP only)</a></h4>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
@@ -2903,7 +2903,7 @@ state machine externally.</p>
 </blockquote>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-overview"><a class="anchor" href="#aou-ig-overview"></a><a class="link" href="#aou-ig-overview">6.6.1 Overview</a></h5>
+<h5 id="aou-ig-overview"><a class="anchor" href="#aou-ig-overview"></a><a class="link" href="#aou-ig-overview">Overview</a></h5>
 <div class="paragraph">
 <p><span class="monospaced">AOU_FDI_BRINGUP_CTRL</span> manages the UCIe 3.0 FDI state machine, handling
 the four handshake pairs required to bring the FDI link from RESET to
@@ -2918,11 +2918,11 @@ UCIe 3.0 FDI state encoding.</p>
 <div class="paragraph">
 <p>Once the bringup FSM reaches ACTIVE, it asserts <span class="monospaced">O_INT_FSM_IN_ACTIVE</span>
 into <span class="monospaced">AOU_CORE_TOP</span>, which enables protocol-level activation as
-described in <a href="#aou-ig-activation-flow">Section 6</a>.</p>
+described in <a href="#aou-ig-activation-flow">Activation Flow</a>.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-bringup-sequence"><a class="anchor" href="#aou-ig-bringup-sequence"></a><a class="link" href="#aou-ig-bringup-sequence">6.6.2 Bringup Sequence</a></h5>
+<h5 id="aou-ig-bringup-sequence"><a class="anchor" href="#aou-ig-bringup-sequence"></a><a class="link" href="#aou-ig-bringup-sequence">Bringup Sequence</a></h5>
 <div class="paragraph">
 <p>The normal (happy-path) bringup from cold reset proceeds as follows:</p>
 </div>
@@ -2971,13 +2971,13 @@ trigger. The trigger can be:</p>
 <li>
 <p><strong>ACTIVE</strong>: The FDI link is up. <span class="monospaced">O_FDI_LINK_UP</span> and
 <span class="monospaced">O_INT_FSM_IN_ACTIVE</span> are asserted. Protocol-level activation
-(<a href="#aou-ig-activation-flow">Section 6</a>) can now proceed.</p>
+(<a href="#aou-ig-activation-flow">Activation Flow</a>) can now proceed.</p>
 </li>
 </ol>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-supported-state-transitions"><a class="anchor" href="#aou-ig-supported-state-transitions"></a><a class="link" href="#aou-ig-supported-state-transitions">6.6.3 Supported State Transitions</a></h5>
+<h5 id="aou-ig-supported-state-transitions"><a class="anchor" href="#aou-ig-supported-state-transitions"></a><a class="link" href="#aou-ig-supported-state-transitions">Supported State Transitions</a></h5>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 34%;">
@@ -3057,7 +3057,7 @@ or <span class="monospaced">I_SW_LINKERROR_INJECT</span></p></td>
 </table>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-phy-type-mux"><a class="anchor" href="#aou-ig-phy-type-mux"></a><a class="link" href="#aou-ig-phy-type-mux">6.6.4 PHY Type Mux</a></h5>
+<h5 id="aou-ig-phy-type-mux"><a class="anchor" href="#aou-ig-phy-type-mux"></a><a class="link" href="#aou-ig-phy-type-mux">PHY Type Mux</a></h5>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
@@ -3111,7 +3111,7 @@ to <span class="monospaced">AOU_CORE_TOP</span> unchanged&#8201;&#8212;&#8201;th
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-software-bringup-control"><a class="anchor" href="#aou-ig-software-bringup-control"></a><a class="link" href="#aou-ig-software-bringup-control">6.6.5 Software Bringup Control</a></h5>
+<h5 id="aou-ig-software-bringup-control"><a class="anchor" href="#aou-ig-software-bringup-control"></a><a class="link" href="#aou-ig-software-bringup-control">Software Bringup Control</a></h5>
 <div class="paragraph">
 <p>The <span class="monospaced">I_SW_ACTIVATE_START</span> and <span class="monospaced">I_SW_DEACTIVATE_START</span> ports on <span class="monospaced">AOU_TOP</span>
 are <strong>not SFR-mapped</strong>. They are top-level pins that must be driven by
@@ -3133,7 +3133,7 @@ for PL to drive <span class="monospaced">pl_clk_req</span>.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-known-limitations"><a class="anchor" href="#aou-ig-known-limitations"></a><a class="link" href="#aou-ig-known-limitations">6.6.6 Known Limitations</a></h5>
+<h5 id="aou-ig-known-limitations"><a class="anchor" href="#aou-ig-known-limitations"></a><a class="link" href="#aou-ig-known-limitations">Known Limitations</a></h5>
 <div class="paragraph">
 <p>The current implementation covers the core FDI bringup happy path. The
 following limitations apply (see <span class="monospaced">RTL/fdi-bringup-todo.md</span> for the full
@@ -3180,7 +3180,7 @@ bringup FSM.</p></td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-verification-testbench"><a class="anchor" href="#aou-ig-verification-testbench"></a><a class="link" href="#aou-ig-verification-testbench">7 Verification Testbench</a></h3>
+<h3 id="aou-ig-verification-testbench"><a class="anchor" href="#aou-ig-verification-testbench"></a><a class="link" href="#aou-ig-verification-testbench">Verification Testbench</a></h3>
 <div class="paragraph">
 <p>The verification flow is built on <a href="https://www.cocotb.org/">cocotb</a> and
 <a href="https://github.com/alexforencich/cocotbext-axi"><span class="monospaced">cocotbext-axi</span></a>. All
@@ -3206,7 +3206,7 @@ use <span class="monospaced">AxiBus.from_prefix(dut, "&lt;prefix&gt;")</span> an
 the test list.</p>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-architecture"><a class="anchor" href="#aou-ig-architecture"></a><a class="link" href="#aou-ig-architecture">7.1 Architecture</a></h4>
+<h4 id="aou-ig-architecture"><a class="anchor" href="#aou-ig-architecture"></a><a class="link" href="#aou-ig-architecture">Architecture</a></h4>
 <div class="imageblock kroki">
 <div class="content">
 <img src="_images/gen_aou_dataflow.png-4097fc46aeacb27ed1aa4da34de3e21bbdd66dce.svg" alt="gen_aou_dataflow.png">
@@ -3257,7 +3257,7 @@ the RDL changes and surfaces RDL ↔ RTL drift on every run.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-components"><a class="anchor" href="#aou-ig-components"></a><a class="link" href="#aou-ig-components">7.2 Components</a></h4>
+<h4 id="aou-ig-components"><a class="anchor" href="#aou-ig-components"></a><a class="link" href="#aou-ig-components">Components</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 34%;">
@@ -3375,7 +3375,7 @@ slaves.</p></td>
 </table>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-running-the-testbench"><a class="anchor" href="#aou-ig-running-the-testbench"></a><a class="link" href="#aou-ig-running-the-testbench">7.3 Running the Testbench</a></h4>
+<h4 id="aou-ig-running-the-testbench"><a class="anchor" href="#aou-ig-running-the-testbench"></a><a class="link" href="#aou-ig-running-the-testbench">Running the Testbench</a></h4>
 <div class="paragraph">
 <p>From the repository root, set up the Python environment once and then
 invoke the testbench:</p>
@@ -3413,7 +3413,7 @@ SIM=vcs pytest -v               # force Synopsys VCS</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="aou-ig-ip-integration-collateral"><a class="anchor" href="#aou-ig-ip-integration-collateral"></a><a class="link" href="#aou-ig-ip-integration-collateral">8. IP Integration Collateral</a></h3>
+<h3 id="aou-ig-ip-integration-collateral"><a class="anchor" href="#aou-ig-ip-integration-collateral"></a><a class="link" href="#aou-ig-ip-integration-collateral">IP Integration Collateral</a></h3>
 <div class="paragraph">
 <p>Machine-readable integration collateral is generated from the SystemRDL
 register source (<span class="monospaced">csr/aou-core.rdl</span>) using PeakRDL. This section
@@ -3421,7 +3421,7 @@ describes the available outputs, the single-source workflow, and
 regeneration instructions.</p>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-generated-outputs-phase-1"><a class="anchor" href="#aou-ig-generated-outputs-phase-1"></a><a class="link" href="#aou-ig-generated-outputs-phase-1">8.1 Generated Outputs (Phase 1)</a></h4>
+<h4 id="aou-ig-generated-outputs-phase-1"><a class="anchor" href="#aou-ig-generated-outputs-phase-1"></a><a class="link" href="#aou-ig-generated-outputs-phase-1">Generated Outputs (Phase 1)</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 34%;">
@@ -3464,12 +3464,12 @@ only&#8201;&#8212;&#8201;<span class="monospaced">memoryMaps</span> element)</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Markdown register docs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><span class="monospaced">DOC/csr/aou-core-csrs.md</span></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Quick reference
-(also linked from <a href="#aou-ig-register-map">Section 4.1</a>)</p></td>
+(also linked from <a href="#aou-ig-register-map">Register Map</a>)</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Note: the in-repo cocotb testbench (Section 7) does not consume the
+<p>Note: the <a href="#aou-ig-verification-testbench">in-repo cocotb testbench</a> does not consume the
 generated UVM package&#8201;&#8212;&#8201;it parses <span class="monospaced">csr/aou-core.rdl</span> directly via
 <span class="monospaced">systemrdl-compiler</span> at runtime. The UVM package is shipped as
 collateral for integrators whose own verification environments are
@@ -3477,7 +3477,7 @@ UVM-based.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-single-source-of-truth"><a class="anchor" href="#aou-ig-single-source-of-truth"></a><a class="link" href="#aou-ig-single-source-of-truth">8.2 Single Source of Truth</a></h4>
+<h4 id="aou-ig-single-source-of-truth"><a class="anchor" href="#aou-ig-single-source-of-truth"></a><a class="link" href="#aou-ig-single-source-of-truth">Single Source of Truth</a></h4>
 <div class="paragraph">
 <p>All register information lives in the SystemRDL source file
 <span class="monospaced">csr/aou-core.rdl</span>. Every output listed above is derived from this
@@ -3497,7 +3497,7 @@ files will not be reflected in the design.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-regeneration"><a class="anchor" href="#aou-ig-regeneration"></a><a class="link" href="#aou-ig-regeneration">8.3 Regeneration</a></h4>
+<h4 id="aou-ig-regeneration"><a class="anchor" href="#aou-ig-regeneration"></a><a class="link" href="#aou-ig-regeneration">Regeneration</a></h4>
 <div class="paragraph">
 <p>From the repository root, activate the Python virtual environment and
 run the generation script:</p>
@@ -3529,7 +3529,7 @@ virtual-environment setup.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-planned-full-ip-xact-component-phase-2"><a class="anchor" href="#aou-ig-planned-full-ip-xact-component-phase-2"></a><a class="link" href="#aou-ig-planned-full-ip-xact-component-phase-2">8.4 Planned: Full IP-XACT Component (Phase 2)</a></h4>
+<h4 id="aou-ig-planned-full-ip-xact-component-phase-2"><a class="anchor" href="#aou-ig-planned-full-ip-xact-component-phase-2"></a><a class="link" href="#aou-ig-planned-full-ip-xact-component-phase-2">Planned: Full IP-XACT Component (Phase 2)</a></h4>
 <div class="paragraph">
 <p>The Phase 1 IP-XACT output contains the <span class="monospaced">&lt;memoryMaps&gt;</span> element only
 (registers, fields, access types, reset values). A full IP-XACT
@@ -3547,7 +3547,7 @@ component template via <span class="monospaced">scripts/merge_ipxact.py</span>.<
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-timing-constraints-sdc"><a class="anchor" href="#aou-ig-timing-constraints-sdc"></a><a class="link" href="#aou-ig-timing-constraints-sdc">8.5 Timing Constraints (SDC)</a></h4>
+<h4 id="aou-ig-timing-constraints-sdc"><a class="anchor" href="#aou-ig-timing-constraints-sdc"></a><a class="link" href="#aou-ig-timing-constraints-sdc">Timing Constraints (SDC)</a></h4>
 <div class="paragraph">
 <p>Constraint files are located in <span class="monospaced">INTEG/constraints/</span>.</p>
 </div>
@@ -3579,7 +3579,7 @@ budget variables are declared at the top of the file and can be
 overridden by the integrating project.</p>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-clock-definitions"><a class="anchor" href="#aou-ig-clock-definitions"></a><a class="link" href="#aou-ig-clock-definitions">8.5.1 Clock Definitions</a></h5>
+<h5 id="aou-ig-clock-definitions"><a class="anchor" href="#aou-ig-clock-definitions"></a><a class="link" href="#aou-ig-clock-definitions">Clock Definitions</a></h5>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
@@ -3618,7 +3618,7 @@ at 0 via <span class="monospaced">set_case_analysis</span> in functional mode.</
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-io-delay-budgeting-strategy"><a class="anchor" href="#aou-ig-io-delay-budgeting-strategy"></a><a class="link" href="#aou-ig-io-delay-budgeting-strategy">8.5.2 I/O Delay Budgeting Strategy</a></h5>
+<h5 id="aou-ig-io-delay-budgeting-strategy"><a class="anchor" href="#aou-ig-io-delay-budgeting-strategy"></a><a class="link" href="#aou-ig-io-delay-budgeting-strategy">I/O Delay Budgeting Strategy</a></h5>
 <div class="paragraph">
 <p>Two budgeting categories are used, based on whether the path between the
 I/O port and the nearest internal flop is combinational or registered:</p>
@@ -3694,7 +3694,7 @@ mux. <span class="monospaced">FLIT_CANCEL</span> drives both sequential and comb
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-clock-domain-crossings"><a class="anchor" href="#aou-ig-clock-domain-crossings"></a><a class="link" href="#aou-ig-clock-domain-crossings">8.5.3 Clock Domain Crossings</a></h5>
+<h5 id="aou-ig-clock-domain-crossings"><a class="anchor" href="#aou-ig-clock-domain-crossings"></a><a class="link" href="#aou-ig-clock-domain-crossings">Clock Domain Crossings</a></h5>
 <div class="paragraph">
 <p>The only CDC in AOU_CORE_TOP is between <span class="monospaced">clk_core</span> and <span class="monospaced">clk_apb</span>,
 handled by the <span class="monospaced">ASYNC_APB_BRIDGE</span> module which uses <span class="monospaced">AOU_SOC_SYNCHSR</span>
@@ -3704,7 +3704,7 @@ exclude cross-domain paths from STA.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-upf-power-intent"><a class="anchor" href="#aou-ig-upf-power-intent"></a><a class="link" href="#aou-ig-upf-power-intent">8.6 UPF Power Intent</a></h4>
+<h4 id="aou-ig-upf-power-intent"><a class="anchor" href="#aou-ig-upf-power-intent"></a><a class="link" href="#aou-ig-upf-power-intent">UPF Power Intent</a></h4>
 <div class="paragraph">
 <p>The current UPF defines a single always-on power domain (<span class="monospaced">PD_AOU_TOP</span>)
 covering the integration scope (the <span class="monospaced">AOU_TOP</span> instance, which includes
@@ -3718,7 +3718,7 @@ appropriate isolation and retention strategies.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-ig-library-cell-replacement"><a class="anchor" href="#aou-ig-library-cell-replacement"></a><a class="link" href="#aou-ig-library-cell-replacement">8.7 Library Cell Replacement</a></h4>
+<h4 id="aou-ig-library-cell-replacement"><a class="anchor" href="#aou-ig-library-cell-replacement"></a><a class="link" href="#aou-ig-library-cell-replacement">Library Cell Replacement</a></h4>
 <div class="paragraph">
 <p>The <span class="monospaced">RTL/LIB/</span> directory contains three behavioral reference models that
 are used by the design for reset infrastructure and clock-domain
@@ -3829,7 +3829,7 @@ functional equivalence of the replacements.</p>
 </ul>
 </div>
 <div class="sect4">
-<h5 id="aou-ig-scan-friendly-cell-requirements"><a class="anchor" href="#aou-ig-scan-friendly-cell-requirements"></a><a class="link" href="#aou-ig-scan-friendly-cell-requirements">8.7.1 Scan-Friendly Cell Requirements</a></h5>
+<h5 id="aou-ig-scan-friendly-cell-requirements"><a class="anchor" href="#aou-ig-scan-friendly-cell-requirements"></a><a class="link" href="#aou-ig-scan-friendly-cell-requirements">Scan-Friendly Cell Requirements</a></h5>
 <div class="paragraph">
 <p>Beyond functional correctness, each replacement cell must be compatible
 with ATPG scan insertion and pattern generation. The behavioral models
@@ -3872,7 +3872,7 @@ are pre-characterized for both metastability MTBF and scan testability.</p>
 </div>
 <div class="paragraph">
 <p>This cell sits on the scan-mode reset mux path (see
-<a href="#aou-ig-tiel_dft_modescan-usage">Section 3.13.1</a>). The replacement
+<a href="#aou-ig-tiel_dft_modescan-usage">TIEL_DFT_MODESCAN Usage</a>). The replacement
 must be recognized by the ATPG tool as a <strong>clock or reset mux cell</strong>, not
 a generic data mux. If the tool treats it as a regular mux, it may
 toggle <span class="monospaced">I_SEL</span> during scan patterns, causing reset glitches that corrupt

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-home" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Home</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../features.html">Feature Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../motivation.html">Motivation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../use-cases.html">Use Cases</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../license.html">License</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="sep-prod-rom-status-errors"><a class="anchor" href="#sep-prod-rom-status-errors"></a><a class="link" href="#sep-prod-rom-status-errors">Status and error reporting</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>BL0 uses SEP cold scratch registers for channels that must be reachable before
+the outbound fabric and C runtime are available.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 33.3333%;">
+<col style="width: 55.5556%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Channel</th>
+<th class="tableblock halign-left valign-top">Contract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Terminal verdict</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 writes the failure value only. A successful boot transfers to BL1, which
+owns the pass verdict.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[1]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine-readable status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carries encoded status and error values throughout assembly and C execution.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[2]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Virtual console</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carries packed debug characters when debug output is compiled in.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[7]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Warm-reset handler</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carries the BL1 ICCM re-entry address across a watchdog reset.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect2">
+<h3 id="status-encoding"><a class="anchor" href="#status-encoding"></a><a class="link" href="#status-encoding">Status encoding</a></h3>
+<div class="paragraph">
+<p><code>include/errors.h</code> encodes a status as an eight-bit type, an eight-bit firmware
+stage ID, and a 16-bit value. BL0 uses information, warning, error, debug, and
+extended-information types. <code>include/status_values.h</code> is the authoritative
+registry for <code>SEP_MSG_*</code> values; consumers should use its names rather than
+copying numeric values from this document.</p>
+</div>
+<div class="paragraph">
+<p>Every status is written to <code>cold_scratch[1]</code>. Debug values stop there. Other
+types are also offered to the SMC-SRAM ring when ring reporting is enabled and
+valid.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="status-ring"><a class="anchor" href="#status-ring"></a><a class="link" href="#status-ring">Status ring</a></h3>
+<div class="paragraph">
+<p>The status ring is lock-free: SEP advances <code>head</code>, and SMC advances <code>tail</code>.
+Before an entry write, BL0 validates the entry count, head, tail, remaining
+capacity, and destination address. An invalid state reports
+<code>SEP_MSG_STATUS_REPORTING_INVALID</code> through <code>cold_scratch[1]</code> and does not write
+the entry.</p>
+</div>
+<div class="paragraph">
+<p>Capacity is reserved by severity. Informational status preserves space for a
+warning and an error; warning status preserves space for an error. At the
+reservation boundary BL0 inserts the corresponding overflow marker. An error
+can use the final free entry.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trap-handling"><a class="anchor" href="#trap-handling"></a><a class="link" href="#trap-handling">Trap handling</a></h3>
+<div class="paragraph">
+<p>The reset path first installs a stack-free trap vector. It records a general
+exception status followed by <code>mcause</code>, <code>mtval</code>, and <code>mepc</code>, then restores the
+decodable status word and writes the failure verdict. It uses only SEP scratch
+registers, so an early exception does not depend on external address decode.</p>
+</div>
+<div class="paragraph">
+<p>After the stack is valid, BL0 installs the C-capable trap vector. It reports
+the same CSRs through the debug console, writes the terminal failure verdict,
+and stops.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="error-convergence"><a class="anchor" href="#error-convergence"></a><a class="link" href="#error-convergence">Error convergence</a></h3>
+<div class="paragraph">
+<p>C error paths converge on <code>rom_err_fail()</code>. When <code>bl0_state</code> is initialized,
+the function stores the full error code there. It also publishes an encoded
+error in <code>cold_scratch[1]</code>, writes the failure verdict in
+<code>cold_scratch[0]</code>, and enters a <code>wfi</code> loop.</p>
+</div>
+<div class="paragraph">
+<p>Manifest failures use the <code>MANIFEST_ERR_*</code> namespace, formed as
+<code>OCA_BOOT_ERR_BASE | oca_result_t</code>&#8201;&#8212;&#8201;the OCA library&#8217;s verdict carried in the
+low byte. The enumeration is
+<code>tools/tt-oca-manifest/validators/oca/lib/oca_validator.h</code>, and
+<code>status_for_result()</code> in <code>src/oca_boot.c</code> is the only bridge between it and the
+<code>SEP_MSG_*</code> codes the status ring carries.
+Other terminal firmware errors are defined next to their owning implementation
+or in <code>include/errors.h</code>. These registries, rather than this document, are the
+source of numeric values.</p>
+</div>
+<div class="paragraph">
+<p>Memory-repair and MBIST failure can occur before the C runtime and
+<code>bl0_state</code> exist. That path records the raw DFX word in SMC scratch register
+10, leaves a terminal status in <code>cold_scratch[1]</code>, and stops without relying on
+the outbound mailbox.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

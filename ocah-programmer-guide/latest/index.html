@@ -623,12 +623,12 @@ the entire internal chain.</p>
 <h2 id="aou-software-operation"><a class="anchor" href="#aou-software-operation"></a><a class="link" href="#aou-software-operation">3. AXI-over-UCIe Bridge (AoU) Software Operation</a></h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="aou-7-software-operation-guide"><a class="anchor" href="#aou-7-software-operation-guide"></a><a class="link" href="#aou-7-software-operation-guide">7. Software operation guide</a></h3>
+<h3 id="aou-software-operation-guide"><a class="anchor" href="#aou-software-operation-guide"></a><a class="link" href="#aou-software-operation-guide">Appendix C. Software operation guide</a></h3>
 <div class="paragraph">
 <p>This section gives information about operation guide for the AOU_CORE.</p>
 </div>
 <div class="sect3">
-<h4 id="aou-71-sfr-setting"><a class="anchor" href="#aou-71-sfr-setting"></a><a class="link" href="#aou-71-sfr-setting">7.1. SFR setting</a></h4>
+<h4 id="aou-sfr-setting"><a class="anchor" href="#aou-sfr-setting"></a><a class="link" href="#aou-sfr-setting">SFR setting</a></h4>
 <table id="table-7" class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 16.6666%;">
@@ -650,7 +650,7 @@ the entire internal chain.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">IP_VERSION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IP_VERSION</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0000</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -660,7 +660,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAJOR_VERSION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAJOR_VERSION</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:16]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001</p></td>
@@ -668,13 +668,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MINOR_VERSION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MINOR_VERSION</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0000</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AOU_CON0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AOU_CON0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0004</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -692,7 +692,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP3_ERROR_INFO_ACCESS_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP3_ERROR_INFO_ACCESS_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[27]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -700,7 +700,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP2_ERROR_INFO_ACCESS_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP2_ERROR_INFO_ACCESS_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[26]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -708,7 +708,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP1_ERROR_INFO_ACCESS_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP1_ERROR_INFO_ACCESS_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[25]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -716,7 +716,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP0_ERROR_INFO_ACCESS_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP0_ERROR_INFO_ACCESS_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[24]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -724,7 +724,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP3_AXI_AGGREGATOR_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP3_AXI_AGGREGATOR_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[23]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -732,7 +732,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP2_AXI_AGGREGATOR_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP2_AXI_AGGREGATOR_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[22]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -740,7 +740,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP1_AXI_AGGREGATOR_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP1_AXI_AGGREGATOR_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -748,7 +748,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP0_AXI_AGGREGATOR_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP0_AXI_AGGREGATOR_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[20]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -756,7 +756,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TX_LP_MODE_THRESHOLD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TX_LP_MODE_THRESHOLD</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[19:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x4</p></td>
@@ -764,7 +764,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TX_LP_MODE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TX_LP_MODE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -780,7 +780,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AOU_SW_RESET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AOU_SW_RESET</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[4]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -788,7 +788,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CREDIT_MANAGE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CREDIT_MANAGE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[3]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -796,7 +796,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SPLIT_TR_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SPLIT_TR_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -810,7 +810,7 @@ the entire internal chain.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AOU_INIT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AOU_INIT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0008</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -828,7 +828,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MST_TR_COMPLETE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MST_TR_COMPLETE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[10]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
@@ -836,7 +836,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SLV_TR_COMPLETE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SLV_TR_COMPLETE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[9]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
@@ -844,7 +844,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_ACTIVATE_START</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_ACTIVATE_START</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -852,7 +852,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_DEACTIVATE_START</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_DEACTIVATE_START</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -860,7 +860,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEACTIVATE_TIME_OUT_VALUE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEACTIVATE_TIME_OUT_VALUE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[6:4]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -868,7 +868,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ACTIVATE_STATE_DISABLED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ACTIVATE_STATE_DISABLED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[3]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
@@ -876,7 +876,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ACTIVATE_STATE_ENABLED</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ACTIVATE_STATE_ENABLED</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -884,7 +884,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEACTIVATE_START</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEACTIVATE_START</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -892,13 +892,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ACTIVATE_START</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ACTIVATE_START</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AOU_INTERRUPT_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AOU_INTERRUPT_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x000C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -916,7 +916,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_REQ_LINKRESET_ACT_ACK_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_REQ_LINKRESET_ACT_ACK_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -924,7 +924,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_REQ_LINKRESET_DEACT_ACK_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_REQ_LINKRESET_DEACT_ACK_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -932,7 +932,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_REQ_LINKRESET_INVALID_ACTMSG_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_REQ_LINKRESET_INVALID_ACTMSG_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[6]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -940,7 +940,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_REQ_LINKRESET_MSGCREDIT_TIMEOUT_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_REQ_LINKRESET_MSGCREDIT_TIMEOUT_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[5]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -948,7 +948,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_EARLY_RESP_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_EARLY_RESP_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[4]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -956,7 +956,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_MI0_ID_MISMATCH_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_MI0_ID_MISMATCH_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[3]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -964,7 +964,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INT_SI0_ID_MISMATCH_MASK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_SI0_ID_MISMATCH_MASK</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -986,7 +986,7 @@ the entire internal chain.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">LP_LINKRESET</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LP_LINKRESET</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0010</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1004,7 +1004,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ACK_TIME_OUT_VALUE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ACK_TIME_OUT_VALUE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[13:11]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x4</p></td>
@@ -1012,7 +1012,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MSGCREDIT_TIME_OUT_VALUE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MSGCREDIT_TIME_OUT_VALUE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[10:8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x4</p></td>
@@ -1020,7 +1020,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ACT_ACK_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ACT_ACK_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1028,7 +1028,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEACT_ACK_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEACT_ACK_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[6]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1036,7 +1036,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INVALID_ACTMSG_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INVALID_ACTMSG_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[5:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1044,7 +1044,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INVALID_ACTMSG_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INVALID_ACTMSG_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1052,13 +1052,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MSGCREDIT_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MSGCREDIT_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEST_RP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEST_RP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0014</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1076,7 +1076,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP3_DEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP3_DEST</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[13:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x3</p></td>
@@ -1092,7 +1092,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP2_DEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP2_DEST</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[9:8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x2</p></td>
@@ -1108,7 +1108,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP1_DEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP1_DEST</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[5:4]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
@@ -1124,13 +1124,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP0_DEST</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP0_DEST</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PRIOR_RP_AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PRIOR_RP_AXI</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0018</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1148,7 +1148,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_QOS_TO_NP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_QOS_TO_NP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[27:24]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xA</p></td>
@@ -1156,7 +1156,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_QOS_TO_HP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_QOS_TO_HP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[23:20]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x5</p></td>
@@ -1172,7 +1172,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP3_PRIOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP3_PRIOR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[17:16]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x3</p></td>
@@ -1188,7 +1188,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP2_PRIOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP2_PRIOR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[13:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x2</p></td>
@@ -1204,7 +1204,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP1_PRIOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP1_PRIOR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[9:8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1</p></td>
@@ -1220,7 +1220,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RP0_PRIOR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RP0_PRIOR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[5:4]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1236,13 +1236,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ARB_MODE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ARB_MODE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PRIOR_TIMER</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>PRIOR_TIMER</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x001C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1252,7 +1252,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TIMER_RESOLUTION</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_RESOLUTION</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:16]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1260,13 +1260,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TIMER_THRESHOLD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TIMER_THRESHOLD</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SPLIT_TR_RP0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SPLIT_TR_RP0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0020</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1284,7 +1284,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_AWBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_AWBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
@@ -1292,13 +1292,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_ARBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_ARBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_INFO_RP0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR_INFO_RP0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0024</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1316,7 +1316,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1324,7 +1324,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1332,7 +1332,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1340,13 +1340,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_EARLY_RESPONSE_RP0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_EARLY_RESPONSE_RP0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0028</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1364,7 +1364,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_DONE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_DONE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[14]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1372,7 +1372,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[13]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1380,7 +1380,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_TYPE_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_TYPE_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[12:11]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1388,7 +1388,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_ID_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_ID_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[10:1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1396,13 +1396,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EARLY_BRESP_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EARLY_BRESP_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO0_RP0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO0_RP0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x002C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1412,13 +1412,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_UPPER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_UPPER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO1_RP0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO1_RP0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0030</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1428,13 +1428,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_LOWER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_LOWER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_ID_MISMATCH_ERR_RP0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_ID_MISMATCH_ERR_RP0</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0034</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1452,7 +1452,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1460,7 +1460,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1468,7 +1468,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1476,13 +1476,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SPLIT_TR_RP1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SPLIT_TR_RP1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0038</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1500,7 +1500,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_AWBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_AWBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
@@ -1508,13 +1508,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_ARBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_ARBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_INFO_RP1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR_INFO_RP1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x003C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1532,7 +1532,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1540,7 +1540,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1548,7 +1548,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1556,13 +1556,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_EARLY_RESPONSE_RP1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_EARLY_RESPONSE_RP1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0040</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1580,7 +1580,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_DONE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_DONE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[14]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1588,7 +1588,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[13]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1596,7 +1596,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_TYPE_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_TYPE_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[12:11]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1604,7 +1604,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_ID_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_ID_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[10:1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1612,13 +1612,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EARLY_BRESP_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EARLY_BRESP_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO0_RP1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO0_RP1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0044</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1628,13 +1628,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_UPPER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_UPPER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO1_RP1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO1_RP1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0048</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1644,13 +1644,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_LOWER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_LOWER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_ID_MISMATCH_ERR_RP1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_ID_MISMATCH_ERR_RP1</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x004C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1668,7 +1668,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1676,7 +1676,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1684,7 +1684,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1692,13 +1692,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SPLIT_TR_RP2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SPLIT_TR_RP2</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0050</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1716,7 +1716,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_AWBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_AWBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
@@ -1724,13 +1724,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_ARBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_ARBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_INFO_RP2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR_INFO_RP2</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0054</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1748,7 +1748,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1756,7 +1756,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1764,7 +1764,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1772,13 +1772,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_EARLY_RESPONSE_RP2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_EARLY_RESPONSE_RP2</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0058</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1796,7 +1796,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_DONE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_DONE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[14]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1804,7 +1804,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[13]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1812,7 +1812,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_TYPE_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_TYPE_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[12:11]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1820,7 +1820,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_ID_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_ID_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[10:1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1828,13 +1828,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EARLY_BRESP_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EARLY_BRESP_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO0_RP2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO0_RP2</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x005C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1844,13 +1844,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_UPPER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_UPPER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO1_RP2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO1_RP2</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0060</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1860,13 +1860,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_LOWER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_LOWER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_ID_MISMATCH_ERR_RP2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_ID_MISMATCH_ERR_RP2</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0064</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1884,7 +1884,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1892,7 +1892,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1900,7 +1900,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1908,13 +1908,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SPLIT_TR_RP3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">`AXI_SPLIT_TR_RP3q</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0068</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1932,7 +1932,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_AWBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_AWBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[15:8]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
@@ -1940,13 +1940,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_ARBURSTLEN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_ARBURSTLEN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[7:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xF</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_INFO_RP3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ERROR_INFO_RP3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x006C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -1964,7 +1964,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1972,7 +1972,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1980,7 +1980,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -1988,13 +1988,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPLIT_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SPLIT_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_EARLY_RESPONSE_RP3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_EARLY_RESPONSE_RP3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0070</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -2012,7 +2012,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_DONE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_DONE</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[14]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2020,7 +2020,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[13]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2028,7 +2028,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_TYPE_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_TYPE_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[12:11]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2036,7 +2036,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WRITE_RESP_ERR_ID_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WRITE_RESP_ERR_ID_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[10:1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2044,13 +2044,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EARLY_BRESP_EN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EARLY_BRESP_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO0_RP3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO0_RP3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0074</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -2060,13 +2060,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_UPPER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_UPPER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_ERROR_INFO1_RP3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ERROR_INFO1_RP3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0078</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -2076,13 +2076,13 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_LOWER_ADDR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DEBUG_LOWER_ADDR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[31:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_ID_MISMATCH_ERR_RP3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_ID_MISMATCH_ERR_RP3</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x007C</p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
@@ -2100,7 +2100,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[21:12]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2108,7 +2108,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_INFO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_INFO</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[11:2]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RO</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2116,7 +2116,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_BID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_BID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[1]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2124,7 +2124,7 @@ the entire internal chain.</p>
 <tr>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_SLV_RID_MISMATCH_ERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_SLV_RID_MISMATCH_ERR</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W1C</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
@@ -2138,7 +2138,7 @@ the entire internal chain.</p>
 <p><strong>ERR SET is restricted to change the value while the system is running</strong></p>
 </div>
 <div class="paragraph">
-<p>For details on the ACTIVATE and DEACTIVATE SFRs, please refer to <a href="#aou-73-activation-deactivation-flow">Section 7.3</a>: Activation &amp; Deactivation Flow.</p>
+<p>For details on the ACTIVATE and DEACTIVATE SFRs, please refer to <a href="#aou-activation-deactivation-flow">Activation &amp; Deactivation Flow</a>.</p>
 </div>
 <div class="paragraph">
 <p><strong>AOU_INIT.ACTIVATE_START</strong></p>
@@ -2287,9 +2287,9 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-72-debugging-features"><a class="anchor" href="#aou-72-debugging-features"></a><a class="link" href="#aou-72-debugging-features">7.2. Debugging Features</a></h4>
+<h4 id="aou-debugging-features"><a class="anchor" href="#aou-debugging-features"></a><a class="link" href="#aou-debugging-features">Debugging Features</a></h4>
 <div class="sect4">
-<h5 id="aou-721-overview"><a class="anchor" href="#aou-721-overview"></a><a class="link" href="#aou-721-overview">7.2.1. Overview</a></h5>
+<h5 id="aou-debugging-features-overview"><a class="anchor" href="#aou-debugging-features-overview"></a><a class="link" href="#aou-debugging-features-overview">Overview</a></h5>
 <div class="paragraph">
 <p>AOU_CORE provides several error-detection and debug features, each with a dedicated interrupt output and a per-feature mask bit in the <span class="monospaced">AOU_INTERRUPT_MASK</span> register (0x000C). The table below summarises the mask bits and corresponding interrupt signals.</p>
 </div>
@@ -2349,7 +2349,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-722-axi-id-mismatch-error"><a class="anchor" href="#aou-722-axi-id-mismatch-error"></a><a class="link" href="#aou-722-axi-id-mismatch-error">7.2.2. AXI ID Mismatch Error</a></h5>
+<h5 id="aou-axi-id-mismatch-error"><a class="anchor" href="#aou-axi-id-mismatch-error"></a><a class="link" href="#aou-axi-id-mismatch-error">AXI ID Mismatch Error</a></h5>
 <div class="paragraph">
 <p>AOU_CORE can detect AXI ID mismatches on both the manager and subordinate interfaces. A mismatch occurs when a B or R response arrives with an AXI ID that does not correspond to any outstanding request.</p>
 </div>
@@ -2367,7 +2367,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-723-linkreset-error-reporting"><a class="anchor" href="#aou-723-linkreset-error-reporting"></a><a class="link" href="#aou-723-linkreset-error-reporting">7.2.3. LinkReset Error Reporting</a></h5>
+<h5 id="aou-linkreset-error-reporting"><a class="anchor" href="#aou-linkreset-error-reporting"></a><a class="link" href="#aou-linkreset-error-reporting">LinkReset Error Reporting</a></h5>
 <div class="paragraph">
 <p>When AOU_CORE detects a protocol-level error during activation or deactivation, it asserts <span class="monospaced">O_AOU_REQ_LINKRESET</span> (to FDI) and <span class="monospaced">INT_REQ_LINKRESET</span> (to SW). Both signals share the same net and are the logical OR of the four sub-conditions below. After handling the interrupt, SW must perform a LinkReset sequence.</p>
 </div>
@@ -2385,7 +2385,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-724-rb-response-error-debug-fifo"><a class="anchor" href="#aou-724-rb-response-error-debug-fifo"></a><a class="link" href="#aou-724-rb-response-error-debug-fifo">7.2.4. R/B Response Error Debug FIFO</a></h5>
+<h5 id="aou-rb-response-error-debug-fifo"><a class="anchor" href="#aou-rb-response-error-debug-fifo"></a><a class="link" href="#aou-rb-response-error-debug-fifo">R/B Response Error Debug FIFO</a></h5>
 <div class="paragraph">
 <p>When the manager interface receives an AXI B or R response with a non-OKAY status (SLVERR or DECERR), AOU_CORE captures the error details in a dedicated per-RP FIFO so that the remote die can retrieve them via AXI read.</p>
 </div>
@@ -2459,17 +2459,27 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-725-write-early-response-error"><a class="anchor" href="#aou-725-write-early-response-error"></a><a class="link" href="#aou-725-write-early-response-error">7.2.5. Write Early Response Error</a></h5>
+<h5 id="aou-write-early-response-error"><a class="anchor" href="#aou-write-early-response-error"></a><a class="link" href="#aou-write-early-response-error">Write Early Response Error</a></h5>
 <div class="paragraph">
 <p>When the early write-response feature is enabled (<span class="monospaced">EARLY_BRESP_EN = 1</span>) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the <span class="monospaced">INT_EARLY_RESP_ERR</span> interrupt. The failing transaction's AXI ID and BRESP type are captured in <span class="monospaced">WRITE_EARLY_RESPONSE_RPn</span>. SW clears the error by writing 1 to <span class="monospaced">WRITE_RESP_ERR</span> (W1C).</p>
 </div>
 <div class="paragraph">
-<p>For a detailed description of the early response error flow, see <a href="../../ocah-docs/latest/architecture.html#aou-373-transaction-flow----error-case" class="xref page">section 3.7.3 (Transaction Flow -- Error Case)</a> and <a href="../../ocah-docs/latest/architecture.html#aou-379-sfr-fields" class="xref page">section 3.7.9 (SFR Fields)</a>.</p>
+<p>+For a detailed description of the early response error flow, see
++ifdef::backend-pdf[]
++<a href="../../ocah-docs/latest/architecture.html#aou-transaction-flow----error-case" class="xref page">Transaction Flow -- Error Case</a>
++and
++<a href="../../ocah-docs/latest/architecture.html#aou-write-early-response-controller-sfr-fields" class="xref page">SFR Fields</a>.
++endif::backend-pdf[]
++ifdef::backend-html5[]
++<a href="../../ocah-docs/latest/aou-architecture.html#aou-transaction-flow----error-case" class="xref page">Transaction Flow -- Error Case</a>
++and
++<a href="../../ocah-docs/latest/aou-architecture.html#aou-write-early-response-controller-sfr-fields" class="xref page">SFR Fields</a>.
++endif::backend-html5[]</p>
 </div>
 </div>
 </div>
 <div class="sect3">
-<h4 id="aou-73-activation-deactivation-flow"><a class="anchor" href="#aou-73-activation-deactivation-flow"></a><a class="link" href="#aou-73-activation-deactivation-flow">7.3. Activation &amp; Deactivation Flow</a></h4>
+<h4 id="aou-activation-deactivation-flow"><a class="anchor" href="#aou-activation-deactivation-flow"></a><a class="link" href="#aou-activation-deactivation-flow">Activation &amp; Deactivation Flow</a></h4>
 <div class="paragraph">
 <p>The Activation of AOU_CORE begins after the UCIe Link-up process has been successfully completed. The completion of UCIe link-up is indicated by the <strong>I_INT_FSM_IN_ACTIVE</strong> signal of the <strong>AOU_CORE_TOP</strong>.</p>
 </div>
@@ -2486,7 +2496,7 @@ the entire internal chain.</p>
 <p>Regardless of its own activation state, a die must send an ActivateAck in response to an ActivateReq from the other die, to acknowledge receipt of the request.</p>
 </div>
 <div class="sect4">
-<h5 id="aou-731-credit-management-type"><a class="anchor" href="#aou-731-credit-management-type"></a><a class="link" href="#aou-731-credit-management-type">7.3.1. Credit Management Type</a></h5>
+<h5 id="aou-credit-management-type"><a class="anchor" href="#aou-credit-management-type"></a><a class="link" href="#aou-credit-management-type">Credit Management Type</a></h5>
 <div class="paragraph">
 <p>There are two types of Credit Management Type. Since current AOU_SPEC cannot resolve pending AXI response without Activate again. When Credit Management type is set to 1, During Deactivate state, AOU_CORE can resolve pending AXI response itself. It can be configured through AOU_CON0.CREDIT_MANAGE, and the default value is 0.</p>
 </div>
@@ -2540,7 +2550,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-732-activation-start"><a class="anchor" href="#aou-732-activation-start"></a><a class="link" href="#aou-732-activation-start">7.3.2. Activation start</a></h5>
+<h5 id="aou-activation-start"><a class="anchor" href="#aou-activation-start"></a><a class="link" href="#aou-activation-start">Activation start</a></h5>
 <div class="paragraph">
 <p>Activation can be initiated by setting ACTIVATE_START SFR: In the current implementation, credits are granted based on the depth of the RX FIFO, so it is required to ensure that all messages in the RX FIFO have been popped before sending the ActivateReq message.</p>
 </div>
@@ -2562,7 +2572,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-733-deactivation-start"><a class="anchor" href="#aou-733-deactivation-start"></a><a class="link" href="#aou-733-deactivation-start">7.3.3. Deactivation start</a></h5>
+<h5 id="aou-deactivation-start"><a class="anchor" href="#aou-deactivation-start"></a><a class="link" href="#aou-deactivation-start">Deactivation start</a></h5>
 <div class="paragraph">
 <p>Deactivation is initiated by setting the AOU_INIT.DEACTIVATE_START register. Setting this register does not immediately trigger sending a DeactivateReq message. The detailed conditions and sequence for deactivation can be found in the <strong>Deactivation Sequence Flow</strong> section. This section will only describe AOU_INIT.DEACTIVATE_TIME_OUT_VALUE SFR.</p>
 </div>
@@ -2600,7 +2610,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-734-deactivation-sequence-flow"><a class="anchor" href="#aou-734-deactivation-sequence-flow"></a><a class="link" href="#aou-734-deactivation-sequence-flow">7.3.4. Deactivation Sequence Flow</a></h5>
+<h5 id="aou-deactivation-sequence-flow"><a class="anchor" href="#aou-deactivation-sequence-flow"></a><a class="link" href="#aou-deactivation-sequence-flow">Deactivation Sequence Flow</a></h5>
 <div class="paragraph">
 <p>Once the local die issues a DeactivateReq, it can no longer provide responses to transactions initiated by the remote die. If the remote die continues to send requests or waits for responses without being notified, it may enter a hang state. To manage this safely, the remote die must take explicit action upon receiving a DeactivateReq: 1. Immediately generate an interrupt to the CPU to inform the system software that a DeactivateReq has been received and that it must set the DEACTIVATE_START SFR.</p>
 </div>
@@ -2649,7 +2659,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-735-activationdeactivation-interrupt"><a class="anchor" href="#aou-735-activationdeactivation-interrupt"></a><a class="link" href="#aou-735-activationdeactivation-interrupt">7.3.5. Activation/Deactivation Interrupt</a></h5>
+<h5 id="aou-activationdeactivation-interrupt"><a class="anchor" href="#aou-activationdeactivation-interrupt"></a><a class="link" href="#aou-activationdeactivation-interrupt">Activation/Deactivation Interrupt</a></h5>
 <div class="paragraph">
 <p><strong>INT_ACTIVATE_START</strong></p>
 </div>
@@ -2717,7 +2727,7 @@ the entire internal chain.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="aou-736-pm-entry--linkreset--linkdisabled-sequence"><a class="anchor" href="#aou-736-pm-entry--linkreset--linkdisabled-sequence"></a><a class="link" href="#aou-736-pm-entry--linkreset--linkdisabled-sequence">7.3.6. PM entry / LinkReset / LinkDisabled sequence</a></h5>
+<h5 id="aou-pm-entry--linkreset--linkdisabled-sequence"><a class="anchor" href="#aou-pm-entry--linkreset--linkdisabled-sequence"></a><a class="link" href="#aou-pm-entry--linkreset--linkdisabled-sequence">PM entry / LinkReset / LinkDisabled sequence</a></h5>
 <div class="paragraph">
 <p>For PM entry / LinkReset / LinkDisable entry sequence, UCIE_CORE check AOU_CORE state and try to change state. For this sequence, resolving pending AXI transactions is necessary.</p>
 </div>

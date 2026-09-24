@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>SEP Production ROM :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li><a href="index.html">SEP Production ROM</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">SEP Production ROM</h1>
+<div id="toc" class="toc">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#sep-prod-rom-overview">1. Overview</a></li>
+<li><a href="#sep-prod-rom-boot-flow">2. Boot flow</a>
+<ul class="sectlevel2">
+<li><a href="#assembly-entry">2.1. Assembly entry</a></li>
+<li><a href="#c-boot-sequence">2.2. C boot sequence</a></li>
+</ul>
+</li>
+<li><a href="#sep-prod-rom-hardware-initialization">3. Hardware initialization</a>
+<ul class="sectlevel2">
+<li><a href="#captured-straps">3.1. Captured straps</a></li>
+<li><a href="#early-cpu-and-fabric-setup">3.2. Early CPU and fabric setup</a></li>
+<li><a href="#memory-health-gate">3.3. Memory-health gate</a></li>
+<li><a href="#runtime-memory-initialization">3.4. Runtime memory initialization</a></li>
+<li><a href="#c-initialization">3.5. C initialization</a></li>
+</ul>
+</li>
+<li><a href="#sep-prod-rom-memory-security">4. Memory and security</a>
+<ul class="sectlevel2">
+<li><a href="#image-and-runtime-layout">4.1. Image and runtime layout</a></li>
+<li><a href="#security-ordering">4.2. Security ordering</a></li>
+<li><a href="#lifecycle-and-secure-boot-policy">4.3. Lifecycle and secure-boot policy</a></li>
+<li><a href="#manifest-authentication">4.4. Manifest authentication</a></li>
+<li><a href="#payload-protection">4.5. Payload protection</a></li>
+<li><a href="#secret-locking-demotion-and-measurement">4.6. Secret locking, demotion, and measurement</a></li>
+</ul>
+</li>
+<li><a href="#sep-prod-rom-spi-manifest">5. SPI and manifest processing</a>
+<ul class="sectlevel2">
+<li><a href="#flash-transports">5.1. Flash transports</a></li>
+<li><a href="#boot-source-and-slot-selection">5.2. Boot source and slot selection</a></li>
+<li><a href="#manifest-layout">5.3. Manifest layout</a></li>
+<li><a href="#per-slot-validation">5.4. Per-slot validation</a></li>
+<li><a href="#retry-behavior">5.5. Retry behavior</a></li>
+<li><a href="#verification-evidence">5.6. Verification evidence</a></li>
+</ul>
+</li>
+<li><a href="#sep-prod-rom-smc-coordination">6. SMC coordination</a>
+<ul class="sectlevel2">
+<li><a href="#shared-scratch-registers">6.1. Shared scratch registers</a></li>
+<li><a href="#manifest-handoff">6.2. Manifest handoff</a></li>
+<li><a href="#status-buffer-handoff">6.3. Status-buffer handoff</a></li>
+<li><a href="#probe-behavior">6.4. Probe behavior</a></li>
+</ul>
+</li>
+<li><a href="#sep-prod-rom-status-errors">7. Status and error reporting</a>
+<ul class="sectlevel2">
+<li><a href="#status-encoding">7.1. Status encoding</a></li>
+<li><a href="#status-ring">7.2. Status ring</a></li>
+<li><a href="#trap-handling">7.3. Trap handling</a></li>
+<li><a href="#error-convergence">7.4. Error convergence</a></li>
+</ul>
+</li>
+<li><a href="#sep-prod-rom-bl1-handoff">8. BL1 handoff</a>
+<ul class="sectlevel2">
+<li><a href="#iccm-copy">8.1. ICCM copy</a></li>
+<li><a href="#transfer-of-control">8.2. Transfer of control</a></li>
+<li><a href="#shared-state">8.3. Shared state</a></li>
+<li><a href="#warm-reset-return">8.4. Warm-reset return</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div id="preamble">
+<div class="sectionbody">
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The production ROM firmware and this documentation are works in progress and
+are not ready for production use.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-overview"><a class="anchor" href="#sep-prod-rom-overview"></a><a class="link" href="#sep-prod-rom-overview">1. Overview</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP production ROM is the immutable BL0 Root-of-Trust firmware. It starts
+at the SEP CPU reset vector, establishes a usable machine-mode environment,
+selects a manifest source, validates that manifest and its payload, and
+transfers control to SEP BL1 in ICCM.</p>
+</div>
+<div class="paragraph">
+<p>The firmware has three cold-boot modes. A primary chiplet in normal mode reads
+the primary or backup manifest from SPI flash. A primary chiplet in recovery
+mode and every secondary chiplet wait for the SMC to stage a manifest in SMC
+SRAM. A warm reset takes a separate assembly path and may return directly to a
+BL1 handler in ICCM.</p>
+</div>
+<div class="paragraph">
+<p>The implementation is divided into:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>reset, warm-dispatch, memory-health, PMP, and C-runtime setup in
+<code>src/vector.S</code>;</p>
+</li>
+<li>
+<p>boot orchestration in <code>src/rom_main.c</code>;</p>
+</li>
+<li>
+<p>manifest and payload processing in <code>src/oca_boot.c</code>, which drives the OCA
+validator library vendored at <code>tools/tt-oca-manifest/</code>, with this ROM&#8217;s
+platform callbacks (key authorization, revocation, anti-rollback, signature
+verification, payload decryption) in <code>src/oca_platform.c</code>;</p>
+</li>
+<li>
+<p>SPI, DMA, cryptographic, lifecycle, and SMC-interface support in <code>src/</code> and
+<code>include/</code>; and</p>
+</li>
+<li>
+<p>ROM and DCCM placement in <code>link/rom.ld</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>These implementation files are the source of truth for firmware ordering and
+policy. SEP RTL, generated register collateral, the SEP memory-map chapter,
+and <code>link/rom.ld</code> define hardware addresses and image placement. The production
+Makefile and <code>configs/</code> define build and packaging behavior. DV tests provide
+observable execution evidence but do not define the architecture.</p>
+</div>
+<div class="paragraph">
+<p>Successful BL0 execution does not return and does not report a BL0 pass.
+<code>rom_handoff_bl1()</code> transfers control to BL1, which owns the eventual success
+verdict. A terminal BL0 error records its status and parks the hart in <code>wfi</code>
+until reset.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-boot-flow"><a class="anchor" href="#sep-prod-rom-boot-flow"></a><a class="link" href="#sep-prod-rom-boot-flow">2. Boot flow</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The assembly entry path handles every operation that must run before a stack
+or trustworthy DCCM exists. The C path starts only after the memory-health gate,
+DCCM scrub, and runtime initialization complete.</p>
+</div>
+<div id="trm-figure-1" class="imageblock kroki">
+<div class="content">
+<img src="_images/diag-3f477f9867ff2d73ef8ce2773b0c10439bdff418.svg" alt="Cold and warm boot flow">
+</div>
+<div class="title">Figure 1. Cold and warm boot flow</div>
+</div>
+<p class="block-references">Figures and tables: <a href="#trm-figure-1">Figure 1</a>.</p>
+<div class="sect2">
+<h3 id="assembly-entry"><a class="anchor" href="#assembly-entry"></a><a class="link" href="#assembly-entry">2.1. Assembly entry</a></h3>
+<div class="paragraph">
+<p><code>_start</code> parks every hart except hart 0. Hart 0 installs a trap vector that
+does not use the stack, configures the CPU memory attributes, and examines
+<code>cold_scratch[7]</code> before touching DCCM. This ordering preserves the BL1 runtime
+state on a watchdog reset.</p>
+</div>
+<div class="paragraph">
+<p>The cold path establishes the stack and global pointer, installs the C-capable
+trap vector, opens the outbound filter window used by later firmware, and
+programs PMP. It then evaluates the SMC memory-repair and MBIST status. A
+failed check stops the boot unless the corresponding strap or
+<code>SKIP_MEM_CHECK</code> fuse policy permits it. Only after this gate passes does the
+ROM scrub DCCM, copy initialized data from ROM, clear BSS, and call
+<code>rom_main()</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="c-boot-sequence"><a class="anchor" href="#c-boot-sequence"></a><a class="link" href="#c-boot-sequence">2.2. C boot sequence</a></h3>
+<div class="paragraph">
+<p><code>rom_main()</code> performs these operations in order:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Verify that <code>.data</code> and <code>.bss</code> were initialized.</p>
+</li>
+<li>
+<p>Probe the SMC scratch round-trip and report the ROM version and hash.</p>
+</li>
+<li>
+<p>Read the captured straps and initialize status reporting and the selected
+clock.</p>
+</li>
+<li>
+<p>Initialize <code>bl0_state</code>, check that its DCCM reserve does not overlap the
+stack, validate the lifecycle state, and read the chip ID.</p>
+</li>
+<li>
+<p>Run the peripheral/bus reset sequence and the SHA-256 self-test, apply the
+configured SRAM and ICCM initialization, read <code>SBOOT_DIS</code>, install the stack
+canary, and initialize the DMA.</p>
+</li>
+<li>
+<p>Select SPI, recovery, or secondary mode.</p>
+</li>
+<li>
+<p>Probe the SMC coordination state and check the stack canary.</p>
+</li>
+<li>
+<p>Load and validate a manifest and payload.</p>
+</li>
+<li>
+<p>Decide demotion, lock sensitive fuse reads, verify the lock, and record the
+boot measurement.</p>
+</li>
+<li>
+<p>Copy BL1 to ICCM and transfer control.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Errors detected by C code converge on <code>rom_err_fail()</code>. The function records the
+error in <code>bl0_state</code> when available, publishes machine-readable status, writes
+the failure verdict, and enters a non-returning <code>wfi</code> loop.</p>
+</div>
+<div class="paragraph">
+<p>A trap takes a separate path. <code>trap_handler_c()</code> writes the failure verdict
+alone, so neither <code>bl0_state</code> nor the machine-readable status word records a
+trap-terminated boot. <a href="#sep-prod-rom-status-errors">Section 7</a> describes both trap
+vectors.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-hardware-initialization"><a class="anchor" href="#sep-prod-rom-hardware-initialization"></a><a class="link" href="#sep-prod-rom-hardware-initialization">3. Hardware initialization</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="captured-straps"><a class="anchor" href="#captured-straps"></a><a class="link" href="#captured-straps">3.1. Captured straps</a></h3>
+<div class="paragraph">
+<p>The ROM reads the captured GPIO straps through the SMC supplementary window.
+<code>include/sep_smc_interface.h</code> defines the SEP-visible offsets and bit
+positions.</p>
+</div>
+<table id="trm-table-1" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Captured straps</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Strap</th>
+<th class="tableblock halign-left valign-top">Register bit</th>
+<th class="tableblock halign-left valign-top">ROM field</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary chiplet</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[25]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>primary_chiplet</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Selects the SPI path when recovery is clear; otherwise selects the secondary
+SMC-SRAM path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot recovery</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[19]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot_recovery</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Makes a primary chiplet wait for an SMC-staged manifest.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 PLL clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[20]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bl0_pll_clk</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Selects the PLL initialization hook instead of the reference clock.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disable status reporting</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[21]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>status_report_disable</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skips the SMC-SRAM status ring; scratch-register status remains available.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass SRAM repair</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[13]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">assembly only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skips the memory-repair result check because repair did not run.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass MBIST result</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[22]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">assembly only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ignores the MBIST result.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rotate update</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[26]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rotate_update</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Swaps the order of the primary and backup SPI manifest slots.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="block-references">Figures and tables: <a href="#trm-table-1">Table 1</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="early-cpu-and-fabric-setup"><a class="anchor" href="#early-cpu-and-fabric-setup"></a><a class="link" href="#early-cpu-and-fabric-setup">3.2. Early CPU and fabric setup</a></h3>
+<div class="paragraph">
+<p>The reset path programs the VeeR EL2 memory-region attributes before its first
+scratch-register access. It then configures the outbound filter window used by
+later firmware status traffic and programs PMP regions for the Boot ROM, DCCM,
+status mailbox, SEP SRAM, SEP peripherals, and ICCM.</p>
+</div>
+<div class="paragraph">
+<p>The current <code>vector.S</code> labels PMP entry 6 as SMC MMIO, but programs
+<code>0xC000_0000</code> through <code>0xCFFF_FFFF</code>. SEP actually accesses SMC through
+<code>0x4000_0000</code>, so this entry does not protect the SEP-visible SMC aperture. The
+PMP table must be corrected before it can be treated as the final SMC access
+policy.</p>
+</div>
+<div class="paragraph">
+<p><code>PMP_ENABLE</code> controls whether these entries are programmed. <code>PMP_LOCK</code> controls
+their lock bits. The production Makefile defaults to PMP enabled and unlocked;
+an integrator must select the final lock policy for the immutable image.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="memory-health-gate"><a class="anchor" href="#memory-health-gate"></a><a class="link" href="#memory-health-gate">3.3. Memory-health gate</a></h3>
+<div class="paragraph">
+<p>Before writing DCCM, the assembly path reads the SMC DFX status. It checks that
+memory repair succeeded unless repair was bypassed, waits for MBIST completion,
+and checks that MBIST passed unless its result was bypassed. A failed, aborted,
+or timed-out check records the raw status in SMC scratch register 10.</p>
+</div>
+<div class="paragraph">
+<p>The current code uses a fixed <code>MBIST_DONE_WAIT_ITERS</code> bound. This value is an
+implementation limit rather than a calibrated silicon duration. If
+<code>STATUS_RPT.SKIP_MEM_CHECK</code> is clear, failure is terminal; if it is set, the
+boot continues. That bit is not allocated by the current SEP eFuse RDL and
+must not be treated as a production fuse contract without a corresponding
+register specification.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="runtime-memory-initialization"><a class="anchor" href="#runtime-memory-initialization"></a><a class="link" href="#runtime-memory-initialization">3.4. Runtime memory initialization</a></h3>
+<div class="paragraph">
+<p>The cold path scrubs <code>DCCM_SCRUB_BYTES</code>, then copies <code>.data</code> from its ROM load
+address and clears <code>.bss</code>. The default is the full 128 KiB DCCM, including the
+reserved <code>bl0_state</code> area, so each word receives valid ECC before C uses it.</p>
+</div>
+<div class="paragraph">
+<p>The C path can clear part or all of SEP SRAM according to <code>SRAM_SCRUB_BYTES</code>.
+The open build defaults this value to zero because the programmed simulation
+flow may preload data in that memory. The manifest load overwrites its staging
+region, but this simulation choice does not define a production sanitization
+policy.</p>
+</div>
+<div class="paragraph">
+<p>ICCM is initialized through the secure DMA because the CPU load/store path
+cannot write it. <code>ROM_ICCM_CLEAR_ENABLE</code> defaults to zero to control simulation
+cost. A release configuration should enable it so all ICCM fetch words have
+valid ECC, including words adjacent to the end of BL1, but the current Makefile
+does not define or enforce a release mode. <code>ROM_ICCM_CLEAR_ENABLE</code> is also
+absent from its build-flags stamp, so changing the variable requires a clean
+build to ensure <code>rom_main.c</code> is recompiled.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="c-initialization"><a class="anchor" href="#c-initialization"></a><a class="link" href="#c-initialization">3.5. C initialization</a></h3>
+<div class="paragraph">
+<p>The C path validates its runtime state, initializes the SMC-backed status
+channel when enabled, and selects the reference or PLL-derived clock. It then
+initializes <code>bl0_state</code>, validates the lifecycle state, reports the SMC chip ID,
+and runs SHA-256 over the NIST <code>"abc"</code> vector as a crypto-engine self-test.</p>
+</div>
+<div class="paragraph">
+<p>The peripheral/bus reset function currently reports that the sequence is not
+implemented. DMA setup and the selected SPI-controller initialization occur
+later, immediately before boot-source processing.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-memory-security"><a class="anchor" href="#sep-prod-rom-memory-security"></a><a class="link" href="#sep-prod-rom-memory-security">4. Memory and security</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="image-and-runtime-layout"><a class="anchor" href="#image-and-runtime-layout"></a><a class="link" href="#image-and-runtime-layout">4.1. Image and runtime layout</a></h3>
+<table id="trm-table-2" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Image and runtime layout</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Region</th>
+<th class="tableblock halign-left valign-top">Address</th>
+<th class="tableblock halign-left valign-top">Size</th>
+<th class="tableblock halign-left valign-top">Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1000_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manifest and payload staging.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x1004_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 code, metadata, read-only data, and the load image of <code>.data</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI XIP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x3000_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 MiB aperture</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-mapped flash source for the default controller path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP view <code>0x4006_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 MiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Recovery/secondary manifest source and status ring storage.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ICCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC000_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Validated BL1 execution image.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DCCM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC004_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 writable data, BSS, stack, and BL0-to-BL1 state.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The linker keeps <code>.text</code>, <code>.metadata</code>, and <code>.rodata</code> in ROM. <code>.data</code> executes
+from DCCM but has a ROM load image. <code>.bss</code> and the stack occupy only DCCM. A
+256-byte reserve at the top of DCCM holds <code>struct bl0_state</code>
+(<code>BL0_STATE_RESERVE_BYTES</code> in <code>include/bl0_state.h</code>, which <code>link/rom.ld</code> must
+match); runtime and compile-time checks keep the structure from overlapping the
+downward-growing stack.</p>
+</div>
+<div class="paragraph">
+<p><code>bl0_state</code> gives BL1 the validated manifest address, boot mode, secure-boot
+decision, lifecycle and feature-control values, last error, boot measurement,
+deferred BL2 demotion decision, and the SRAM address of the BL1 image.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#trm-table-2">Table 2</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="security-ordering"><a class="anchor" href="#security-ordering"></a><a class="link" href="#security-ordering">4.2. Security ordering</a></h3>
+<div class="paragraph">
+<p>The following ordering is part of the ROM security contract:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Memory repair and MBIST are evaluated before the ROM writes or trusts DCCM.</p>
+</li>
+<li>
+<p>The lifecycle state is validated before it can select secure-boot policy.</p>
+</li>
+<li>
+<p>Manifest bounds and structure are checked before payload addresses are used.</p>
+</li>
+<li>
+<p>For an encrypted image, the payload hash covers ciphertext and is checked
+before in-place decryption; the TOC is parsed only after decryption.</p>
+</li>
+<li>
+<p>Image ranges are checked before image data is hashed.</p>
+</li>
+<li>
+<p>Sensitive fuse reads are locked before the demotion register is written.</p>
+</li>
+<li>
+<p>The stack canary is checked before the non-returning manifest and handoff
+path.</p>
+</li>
+<li>
+<p>BL1 is copied only after the manifest, payload, TOC, and BL1 entry have all
+passed validation.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Hash and public-key digest comparisons accumulate differences over every byte
+instead of returning on the first mismatch.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="lifecycle-and-secure-boot-policy"><a class="anchor" href="#lifecycle-and-secure-boot-policy"></a><a class="link" href="#lifecycle-and-secure-boot-policy">4.3. Lifecycle and secure-boot policy</a></h3>
+<div class="paragraph">
+<p>The lifecycle controller accepts TEST_DEV, PROD, PROD_END, and the defined RMA
+encodings. An invalid value causes BL0 to hold the SMC cores in reset, report a
+terminal error, and stop.</p>
+</div>
+<div class="paragraph">
+<p><code>SBOOT_DIS</code> is an eFuse override that disables secure boot. When it is clear,
+PROD and PROD_END enforce secure boot regardless of the manifest request.
+TEST_DEV and RMA enable secure boot when the manifest requests it. An encrypted
+payload is rejected when secure boot is not active.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="manifest-authentication"><a class="anchor" href="#manifest-authentication"></a><a class="link" href="#manifest-authentication">4.4. Manifest authentication</a></h3>
+<div class="paragraph">
+<p>The ROM always checks the SHA-256 manifest hash over the to-be-signed region.
+When secure boot is active it additionally:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>compares the manifest security version with the thermometer-encoded
+<code>BL1_VERSION</code> fuse;</p>
+</li>
+<li>
+<p>selects a ROM-embedded or eFuse public-key digest;</p>
+</li>
+<li>
+<p>checks the corresponding revocation bit;</p>
+</li>
+<li>
+<p>binds the manifest RSA modulus to the selected digest; and</p>
+</li>
+<li>
+<p>verifies the RSA-3072 PKCS#1 v1.5 signature with OTBN.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>The public key in the manifest is therefore not trusted by itself. The Key
+Manager does not participate in this verification path.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="payload-protection"><a class="anchor" href="#payload-protection"></a><a class="link" href="#payload-protection">4.5. Payload protection</a></h3>
+<div class="paragraph">
+<p>The payload SHA-256 is checked on both secure and non-secure boots. Secure
+encrypted images derive an AES-128 key from the <code>CLASS_KEY</code> fuse with
+KBKDF-HMAC-SHA256 and decrypt the payload in place with AES-CBC. Temporary key,
+salt, and derivation buffers are explicitly cleared.</p>
+</div>
+<div class="paragraph">
+<p>After decryption, the ROM validates the TOC and every image extent, requires a
+usable SEP BL1 entry, verifies each image SHA-256, and clears bytes in gaps
+between described images and after the final image.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="secret-locking-demotion-and-measurement"><a class="anchor" href="#secret-locking-demotion-and-measurement"></a><a class="link" href="#secret-locking-demotion-and-measurement">4.6. Secret locking, demotion, and measurement</a></h3>
+<div class="paragraph">
+<p>Before handoff, BL0 read-locks <code>CLASS_KEY</code>, both RMA token digests, and the
+chiplet, SiP, and system UIDs. Failure to read back all requested lock bits is
+terminal.</p>
+</div>
+<div class="paragraph">
+<p>PROD_END prevents demotion and locks both demotion registers. Other lifecycle
+states apply the BL1 decision or preserve a deferred BL2 decision according to
+the manifest. BL0 records a SHA-256 boot measurement over the manifest hash,
+lifecycle, demotion decision, secure-boot state, and <code>SBOOT_DIS</code>. This digest
+reports the selected boot state to BL1; it does not itself bind a key to that
+state.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-spi-manifest"><a class="anchor" href="#sep-prod-rom-spi-manifest"></a><a class="link" href="#sep-prod-rom-spi-manifest">5. SPI and manifest processing</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="flash-transports"><a class="anchor" href="#flash-transports"></a><a class="link" href="#flash-transports">5.1. Flash transports</a></h3>
+<div class="paragraph">
+<p><code>include/boot_flash.h</code> presents one flash-offset interface to the manifest
+loader. <code>BOOT_SPI_CONTROLLER_OT</code> selects the implementation at build time:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The default path uses a memory-mapped SPI XIP aperture and the secure DMA.
+The open <code>src/sep_spi.c</code> implementation is a weak unavailable-device stub so
+an adopter can supply the controller integration when producing the final
+image.</p>
+</li>
+<li>
+<p>The OpenTitan SPI host issues command/FIFO transfers. Its receive FIFO can
+drain through the secure DMA (<code>BOOT_OT_SPI_USE_PIO=0</code>) or CPU programmed I/O
+(<code>BOOT_OT_SPI_USE_PIO=1</code>). These are separate ROM build variants over the
+same packed flash bytes.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Controller initialization receives the clock selected earlier in the boot.
+Failure is not immediately terminal because the loader can proceed to another
+configured slot.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="boot-source-and-slot-selection"><a class="anchor" href="#boot-source-and-slot-selection"></a><a class="link" href="#boot-source-and-slot-selection">5.2. Boot source and slot selection</a></h3>
+<div class="paragraph">
+<p>The SPI path uses fixed manifest offsets:</p>
+</div>
+<table id="trm-table-3" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Boot source and slot selection</caption>
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Slot</th>
+<th class="tableblock halign-left valign-top">Manifest offset</th>
+<th class="tableblock halign-left valign-top">Selection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0000_1000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First unless <code>rotate_update</code> is set.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Backup</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0004_1000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Second unless <code>rotate_update</code> is set.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>On recovery or secondary boot, the ROM does not use either SPI offset. It waits
+for <code>SMC_SEP_STATUS_MANIFEST_READY</code>, reads the manifest offset from SMC scratch
+register 8, and adds that offset to the SEP-visible SMC SRAM base.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#trm-table-3">Table 3</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="manifest-layout"><a class="anchor" href="#manifest-layout"></a><a class="link" href="#manifest-layout">5.3. Manifest layout</a></h3>
+<div class="paragraph">
+<p>The manifest is an OCA classic manifest with a 4096-byte body. Bytes
+<code>[0, 3172)</code> are the signed region&#8201;&#8212;&#8201;everything from the magic through the
+four-byte <code>0xCA</code> trailer at offset 3168&#8201;&#8212;&#8201;which both the RSA signature and the
+manifest hash cover. Bytes <code>[3172, 4096)</code> are the unsigned tail holding the
+signature, the manifest hash and the payload offset. Because the payload offset
+is in that tail it is attacker-controlled even on a validly signed manifest, so
+the ROM bounds it against the region the slot may reach rather than trusting it.
+The payload begins with a <code>PTOC</code> header followed by the image entries and their
+image data.</p>
+</div>
+<div class="paragraph">
+<p>The format and its numeric constants come from the OCA specification and its
+layout header, <code>tools/tt-oca-manifest/validators/oca/lib/oca_layout_classic.h</code>,
+vendored as a submodule. The YAML files under <code>configs/</code> are test-image producer
+inputs; they do not supersede the format the library consumes on BL0&#8217;s behalf.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="per-slot-validation"><a class="anchor" href="#per-slot-validation"></a><a class="link" href="#per-slot-validation">5.4. Per-slot validation</a></h3>
+<div class="paragraph">
+<p>For each selected slot, BL0 performs this sequence:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Read the fixed manifest header into SEP SRAM.</p>
+</li>
+<li>
+<p>Validate the identifier, major version, manifest length, alignment, payload
+offset and length, SRAM bounds, and non-overlap.</p>
+</li>
+<li>
+<p>Verify the manifest hash.</p>
+</li>
+<li>
+<p>Decide whether secure boot is active and apply selected lifecycle, chiplet
+ID, and package ID usage constraints.</p>
+</li>
+<li>
+<p>Read any permitted manifest extension and stage the payload.</p>
+</li>
+<li>
+<p>Under secure boot, check rollback, authorize and check the root key, verify
+RSA-3072, verify the payload hash, and decrypt an encrypted payload.
+Without secure boot, still verify the payload hash.</p>
+</li>
+<li>
+<p>Validate the TOC, image count, image order and bounds, per-image hashes, and
+the presence and placement of SEP BL1.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>An encrypted payload is authenticated as ciphertext before decryption. The TOC
+inside it is interpreted only after decryption.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="retry-behavior"><a class="anchor" href="#retry-behavior"></a><a class="link" href="#retry-behavior">5.5. Retry behavior</a></h3>
+<div class="paragraph">
+<p>The SPI path can attempt both slots. <code>rotate_update</code> exchanges their order. A
+failed attempt records its error; before another attempt BL0 clears the SEP
+SRAM staging region and reinitializes the flash controller. A failed
+reinitialization is terminal because the remaining slot cannot be read.</p>
+</div>
+<div class="paragraph">
+<p>The SMC-SRAM path has one source and no alternate slot. Exhausting the
+available attempts reports <code>SEP_MSG_MANIFEST_LOAD_FAILED</code> and enters the common
+failure path.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="verification-evidence"><a class="anchor" href="#verification-evidence"></a><a class="link" href="#verification-evidence">5.6. Verification evidence</a></h3>
+<div class="paragraph">
+<p><code>hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_ot_secure_boot_test.py</code> exercises
+the signed OpenTitan SPI-host DMA path. It requires evidence that the ROM took
+the SPI source, read the primary manifest at <code>0x1000</code>, started RSA
+verification, accepted the signature, and completed crypto validation. It also
+forbids <code>SBOOT_OFF</code>, so a silent downgrade cannot satisfy the test.</p>
+</div>
+<div class="paragraph">
+<p>That testcase supplies OTBN entropy through the
+<code>+sep_crypto_edn_force</code> DV shortcut because the current BL0 does not bring up
+the entropy-source, CSRNG, and EDN chain. The test therefore demonstrates the
+manifest, transport, OTBN RSA, and handoff path; it does not demonstrate ROM
+entropy-chain initialization.</p>
+</div>
+<div class="paragraph">
+<p>The DMA and PIO receive paths are covered separately because they are separate
+datapaths. <code>sep_rom_ot_pio_boot_test</code> runs the <code>build_ot_pio</code> image, which does
+not link <code>ot_spi_flash_read_dma</code> at all, so passing one of the two proves
+nothing about the other. <code>hw/sys/sep/dv/testlists/rom_fw.toml</code> lists the whole
+ROM regression; the cases named here are the ones that bear directly on
+manifest and transport processing, not the extent of ROM coverage.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-smc-coordination"><a class="anchor" href="#sep-prod-rom-smc-coordination"></a><a class="link" href="#sep-prod-rom-smc-coordination">6. SMC coordination</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>SEP reaches SMC resources through its outbound AXI path at
+<code>SEP_SMC_GLOBAL_BASE</code>, <code>0x4000_0000</code>. The offsets and status bits in
+<code>include/sep_smc_interface.h</code> form the SEP side of the interface contract.
+They are SEP-visible offsets and must not be replaced with SMC-local absolute
+addresses.</p>
+</div>
+<div class="sect2">
+<h3 id="shared-scratch-registers"><a class="anchor" href="#shared-scratch-registers"></a><a class="link" href="#shared-scratch-registers">6.1. Shared scratch registers</a></h3>
+<div class="paragraph">
+<p>SMC CPU-control scratch registers have an eight-byte stride. The table covers
+every low 32-bit entry SEP BL0 consumes or writes, together with the entries the
+shared interface reserves for SMC alone. <code>include/sep_smc_interface.h</code> names all
+of them except index 7, which BL0 addresses by literal index:</p>
+</div>
+<table id="trm-table-4" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Shared scratch registers</caption>
+<colgroup>
+<col style="width: 8.3333%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 41.6667%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Index</th>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">BL0 role</th>
+<th class="tableblock halign-left valign-top">Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POST code</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC boot-status publication.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Virtual console</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug text channel.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch round-trip probe</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 writes four test patterns, reads each back, and clears the entry to zero
+before it selects a boot source. A read-back mismatch is terminal. SMC must not
+keep its own state here.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manifest address</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Consumes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Byte offset of an SMC-staged manifest from the SMC SRAM base.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Status to SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Consumes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-to-SEP readiness flags.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">MBIST failure</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw DFX status recorded by the SEP pre-C memory-health gate.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Status-buffer address</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Consumes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Byte offset of the SEP status ring from the SMC SRAM base.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13, 14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP-safe SRAM start and size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-published range available to SEP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory-repair status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC memory-repair result.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Scratch register 9 defines four readiness flags: SRAM initialized, manifest
+ready, status buffer ready, and SRAM protected. BL0 reads the flags relevant to
+the operation it is about to perform rather than treating the word as one
+global ready indication.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#trm-table-4">Table 4</a>.</p>
+</div>
+<div class="sect2">
+<h3 id="manifest-handoff"><a class="anchor" href="#manifest-handoff"></a><a class="link" href="#manifest-handoff">6.2. Manifest handoff</a></h3>
+<div class="paragraph">
+<p>Recovery and secondary boot wait until the manifest-ready bit is set. BL0 then
+reads the offset from scratch register 8 and forms the source address as:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-c hljs" data-lang="c">SEP_SMC_GLOBAL_BASE + SMC_SRAM_OFFSET + manifest_offset</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The resulting manifest and payload must remain inside the one-MiB SMC SRAM
+window. The ROM copies them to SEP SRAM before validation and execution.</p>
+</div>
+<div class="paragraph">
+<p>The two halves of that window requirement are enforced differently, and an
+integrator has to account for both. The ROM checks the payload source range
+itself: a payload that starts below the SMC SRAM base or ends above it is
+rejected with <code>OCA_FAIL_PAYLOAD_LOCATION</code> (console <code>PAYLOAD_LOC_FAIL</code>), as is an address computation that
+overflows. The manifest header read is not checked. BL0 adds the offset from
+scratch register 8 to the SMC SRAM base and issues the header transfer without
+a range or overflow test, so keeping that offset inside the window is SMC&#8217;s
+obligation. A header read from outside the window is caught only afterwards, by
+the manifest identifier, version, length, and hash checks on the bytes it
+returned.</p>
+</div>
+<div class="paragraph">
+<p>The normal primary-chiplet SPI path does not consume the SMC manifest offset,
+but it still uses SMC for captured straps, DFX status, chip identity, and
+status reporting.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="status-buffer-handoff"><a class="anchor" href="#status-buffer-handoff"></a><a class="link" href="#status-buffer-handoff">6.3. Status-buffer handoff</a></h3>
+<div class="paragraph">
+<p>When status reporting is enabled, BL0 waits for the status-buffer-ready bit in
+scratch register 9. It reads the ring-buffer offset from scratch register 11,
+checks that the ring header lies within SMC SRAM, and then publishes
+non-debug status through that ring. SEP owns the ring head and SMC owns the
+tail.</p>
+</div>
+<div class="paragraph">
+<p>An invalid offset leaves the scratch-register status channel operational and
+prevents BL0 from writing through an untrusted ring pointer.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="probe-behavior"><a class="anchor" href="#probe-behavior"></a><a class="link" href="#probe-behavior">6.4. Probe behavior</a></h3>
+<div class="paragraph">
+<p>Before loading a manifest, <code>rom_smc_coordination_probe()</code> reports the status
+word, manifest offset, and status-buffer offset for diagnosis. The probe does
+not replace the blocking checks in manifest and status initialization; it
+records whether the corresponding SMC state was already ready at that point.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-status-errors"><a class="anchor" href="#sep-prod-rom-status-errors"></a><a class="link" href="#sep-prod-rom-status-errors">7. Status and error reporting</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>BL0 uses SEP cold scratch registers for channels that must be reachable before
+the outbound fabric and C runtime are available.</p>
+</div>
+<table id="trm-table-5" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. Status and error reporting</caption>
+<colgroup>
+<col style="width: 11.1111%;">
+<col style="width: 33.3333%;">
+<col style="width: 55.5556%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Register</th>
+<th class="tableblock halign-left valign-top">Channel</th>
+<th class="tableblock halign-left valign-top">Contract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Terminal verdict</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 writes the failure value only. A successful boot transfers to BL1, which
+owns the pass verdict.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[1]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Machine-readable status</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carries encoded status and error values throughout assembly and C execution.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[2]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Virtual console</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carries packed debug characters when debug output is compiled in.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cold_scratch[7]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Warm-reset handler</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Carries the BL1 ICCM re-entry address across a watchdog reset.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="block-references">Figures and tables: <a href="#trm-table-5">Table 5</a>.</p>
+<div class="sect2">
+<h3 id="status-encoding"><a class="anchor" href="#status-encoding"></a><a class="link" href="#status-encoding">7.1. Status encoding</a></h3>
+<div class="paragraph">
+<p><code>include/errors.h</code> encodes a status as an eight-bit type, an eight-bit firmware
+stage ID, and a 16-bit value. BL0 uses information, warning, error, debug, and
+extended-information types. <code>include/status_values.h</code> is the authoritative
+registry for <code>SEP_MSG_*</code> values; consumers should use its names rather than
+copying numeric values from this document.</p>
+</div>
+<div class="paragraph">
+<p>Every status is written to <code>cold_scratch[1]</code>. Debug values stop there. Other
+types are also offered to the SMC-SRAM ring when ring reporting is enabled and
+valid.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="status-ring"><a class="anchor" href="#status-ring"></a><a class="link" href="#status-ring">7.2. Status ring</a></h3>
+<div class="paragraph">
+<p>The status ring is lock-free: SEP advances <code>head</code>, and SMC advances <code>tail</code>.
+Before an entry write, BL0 validates the entry count, head, tail, remaining
+capacity, and destination address. An invalid state reports
+<code>SEP_MSG_STATUS_REPORTING_INVALID</code> through <code>cold_scratch[1]</code> and does not write
+the entry.</p>
+</div>
+<div class="paragraph">
+<p>Capacity is reserved by severity. Informational status preserves space for a
+warning and an error; warning status preserves space for an error. At the
+reservation boundary BL0 inserts the corresponding overflow marker. An error
+can use the final free entry.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trap-handling"><a class="anchor" href="#trap-handling"></a><a class="link" href="#trap-handling">7.3. Trap handling</a></h3>
+<div class="paragraph">
+<p>The reset path first installs a stack-free trap vector. It records a general
+exception status followed by <code>mcause</code>, <code>mtval</code>, and <code>mepc</code>, then restores the
+decodable status word and writes the failure verdict. It uses only SEP scratch
+registers, so an early exception does not depend on external address decode.</p>
+</div>
+<div class="paragraph">
+<p>After the stack is valid, BL0 installs the C-capable trap vector. It reports
+the same CSRs through the debug console, writes the terminal failure verdict,
+and stops.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="error-convergence"><a class="anchor" href="#error-convergence"></a><a class="link" href="#error-convergence">7.4. Error convergence</a></h3>
+<div class="paragraph">
+<p>C error paths converge on <code>rom_err_fail()</code>. When <code>bl0_state</code> is initialized,
+the function stores the full error code there. It also publishes an encoded
+error in <code>cold_scratch[1]</code>, writes the failure verdict in
+<code>cold_scratch[0]</code>, and enters a <code>wfi</code> loop.</p>
+</div>
+<div class="paragraph">
+<p>Manifest failures use the <code>MANIFEST_ERR_*</code> namespace, formed as
+<code>OCA_BOOT_ERR_BASE | oca_result_t</code>&#8201;&#8212;&#8201;the OCA library&#8217;s verdict carried in the
+low byte. The enumeration is
+<code>tools/tt-oca-manifest/validators/oca/lib/oca_validator.h</code>, and
+<code>status_for_result()</code> in <code>src/oca_boot.c</code> is the only bridge between it and the
+<code>SEP_MSG_*</code> codes the status ring carries.
+Other terminal firmware errors are defined next to their owning implementation
+or in <code>include/errors.h</code>. These registries, rather than this document, are the
+source of numeric values.</p>
+</div>
+<div class="paragraph">
+<p>Memory-repair and MBIST failure can occur before the C runtime and
+<code>bl0_state</code> exist. That path records the raw DFX word in SMC scratch register
+10, leaves a terminal status in <code>cold_scratch[1]</code>, and stops without relying on
+the outbound mailbox.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-prod-rom-bl1-handoff"><a class="anchor" href="#sep-prod-rom-bl1-handoff"></a><a class="link" href="#sep-prod-rom-bl1-handoff">8. BL1 handoff</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The payload TOC may describe SEP and SMC images. BL0 scans it for the first
+<code>IMAGE_TYPE_SEP_BL1</code> entry and validates that the complete image lies inside
+ICCM, that its length is nonzero and no larger than ICCM, and that its entry
+offset lies inside the image. These checks run during payload validation and
+are repeated at handoff.</p>
+</div>
+<div class="sect2">
+<h3 id="iccm-copy"><a class="anchor" href="#iccm-copy"></a><a class="link" href="#iccm-copy">8.1. ICCM copy</a></h3>
+<div class="paragraph">
+<p>The VeeR EL2 instruction-fetch unit can execute from ICCM, but the CPU
+load/store unit cannot read or write it. ICCM and DCCM occupy the same VeeR
+region, and load/store address checking treats ICCM addresses outside the DCCM
+offset as unmapped.</p>
+</div>
+<div class="paragraph">
+<p>BL0 therefore uses the secure DMA to copy the validated BL1 bytes from the
+payload in SEP SRAM to the entry&#8217;s ICCM load address. A CPU <code>memcpy</code> cannot
+replace this transfer.</p>
+</div>
+<div class="paragraph">
+<p>BL1&#8217;s binary contains executable code and the load image of its own read-only
+and writable data. Because BL1 also cannot read its ICCM copy, BL0 stores the
+payload source address in <code>bl0_state.bl1_image_src_addr</code>. BL1 startup uses that
+SRAM source when initializing DCCM.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="transfer-of-control"><a class="anchor" href="#transfer-of-control"></a><a class="link" href="#transfer-of-control">8.2. Transfer of control</a></h3>
+<div class="paragraph">
+<p>The entry address is the ICCM load address plus the TOC entry offset. After the
+DMA succeeds, BL0 writes the entry to <code>mepc</code>, executes <code>fence.i</code> and <code>fence</code>,
+and uses <code>mret</code> to transfer control. This makes the newly written instructions
+visible to the fetch unit and completes prior memory activity before BL1 runs.</p>
+</div>
+<div class="paragraph">
+<p>The handoff is non-returning. Reaching its caller again is an error. BL0 does
+not publish a success verdict before the transfer; BL1 proves successful
+execution through its own status path.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="shared-state"><a class="anchor" href="#shared-state"></a><a class="link" href="#shared-state">8.3. Shared state</a></h3>
+<div class="paragraph">
+<p>BL1 locates <code>struct bl0_state</code> at the top of DCCM and validates its leading and
+trailing magic words and size. The structure communicates:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the validated manifest and BL1 source addresses;</p>
+</li>
+<li>
+<p>selected boot mode and secure-boot state;</p>
+</li>
+<li>
+<p>lifecycle and feature-control values;</p>
+</li>
+<li>
+<p>the boot measurement and deferred BL2 demotion decision; and</p>
+</li>
+<li>
+<p>the last BL0 error, when execution did not reach handoff.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>BL0 and BL1 must use the same <code>include/bl0_state.h</code> layout.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="warm-reset-return"><a class="anchor" href="#warm-reset-return"></a><a class="link" href="#warm-reset-return">8.4. Warm-reset return</a></h3>
+<div class="paragraph">
+<p>BL1 may place an ICCM handler address in SEP <code>cold_scratch[7]</code> before enabling
+the watchdog. This register bank survives the warm watchdog reset. On reset,
+BL0 reads the slot before setting a stack or touching DCCM:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>zero selects a cold boot, after which BL0 poisons the slot with <code>-1</code>;</p>
+</li>
+<li>
+<p>an address inside ICCM transfers directly to the handler and remains in the
+slot for subsequent watchdog resets; and</p>
+</li>
+<li>
+<p>any other nonzero value reports an invalid target and stops.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The direct warm path preserves BL1 DCCM and ICCM state. The handler must
+restore any CPU state reset by the watchdog before resuming normal execution.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

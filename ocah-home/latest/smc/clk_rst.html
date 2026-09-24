@@ -200,6 +200,15 @@ through clock gating.</p>
 <div class="paragraph">
 <p>The SMC employs a multi-domain clocking architecture.</p>
 </div>
+<div class="paragraph">
+<p><a href="#smc-clock-tree">SMC clock tree and clock domains</a> shows the clocks distributed to the SMC subblocks.</p>
+</div>
+<div id="smc-clock-tree" class="imageblock">
+<div class="content">
+<img src="_images/SMC_CLOCKING_FIG029.svg" alt="SMC clock tree and clock domains" width="100%">
+</div>
+<div class="title">Figure 1. SMC clock tree and clock domains</div>
+</div>
 <div class="sect2">
 <h3 id="the-smc-clock-domain"><a class="anchor" href="#the-smc-clock-domain"></a><a class="link" href="#the-smc-clock-domain">The SMC Clock Domain</a></h3>
 <div class="paragraph">
@@ -224,28 +233,28 @@ filtering mechanisms also belong to this clock domain.</p>
 <div class="sect2">
 <h3 id="the-reference-clock-domain"><a class="anchor" href="#the-reference-clock-domain"></a><a class="link" href="#the-reference-clock-domain">The Reference Clock Domain</a></h3>
 <div class="paragraph">
-<p>The reference clock domain (clk_ref_i) provides a low-speed, stable
-timing foundation for operations that require consistent, predictable
-timing behavior.</p>
+<p>The reference clock (<code>clk_ref_i</code>) supplies reference-domain logic, including
+the DFD local time-tick source and peripheral reference-clock inputs. It is
+separate from the following timer and CPU-debug clocks.</p>
 </div>
-<div class="paragraph">
-<p>System timers, including the Core Local Interruptor (CLINT) and
-specialized system timer OCTS (Open Chiplet Time Synchronization), operate
-within this reference domain.</p>
 </div>
-<div class="paragraph">
-<p>This clock is used as reference clock for PLL control and frequency
-synthesis.</p>
-</div>
-<div class="paragraph">
-<p>The reference clock domain also serves as the synchronization anchor for
-reset domain crossings, providing the stable timing reference necessary
-for implementing robust reset synchronization mechanisms.</p>
-</div>
-<div class="paragraph">
-<p>Debug infrastructure, including JTAG interfaces and debug module
-operations, benefit from this stable timing reference to ensure reliable
-debug access independent of system operational state.</p>
+<div class="sect2">
+<h3 id="timer-and-debug-timebases"><a class="anchor" href="#timer-and-debug-timebases"></a><a class="link" href="#timer-and-debug-timebases">Timer and Debug Timebases</a></h3>
+<div class="ulist">
+<ul>
+<li>
+<p>The OCTS instance in the SMC peripheral wrapper runs on <code>clk_smc_i</code>.</p>
+</li>
+<li>
+<p>CLINT receives a tick every 1000 cycles of the CPU cluster&#8217;s <code>cbus</code> clock.
+The cluster uncore clock input runs off the main <code>clk_smc_i</code> input.</p>
+</li>
+<li>
+<p>The CPU debug module receives a gated version of the CPU wrapper&#8217;s <code>clk_i</code>.
+Its gate is controlled by debug activation (with a test override). JTAG TCK
+clocks the scan interface separately.</p>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect2">
@@ -316,16 +325,17 @@ systems.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The SMC employs a hierarchical reset strategy with multiple reset
-sources and synchronization mechanisms. The following diagram shows the
+sources and synchronization mechanisms. <a href="#smc-reset-distribution-figure">SMC reset distribution</a> shows the
 reset architecture.</p>
 </div>
-<div class="imageblock">
+<div id="smc-reset-distribution-figure" class="imageblock">
 <div class="content">
 <img src="_images/smc_reset_wrap.png" alt="SMC Reset Wrap Block Diagram">
 </div>
+<div class="title">Figure 2. SMC reset distribution</div>
 </div>
 <div class="paragraph">
-<p>The following table lists the reset sources and their characteristics.
+<p><a href="#smc-reset-sources-and-characteristics-table">SMC Reset Sources and Characteristics</a> lists the reset sources and their characteristics.
 <code>BP_POWERGOOD</code> is the board power-good indicator used as the power-on reset
 (POR) root: it is stretched into <code>powergood_stable</code>, which qualifies the SMC
 functional cold reset path, and it is also passed into the JTAG/DTP stack as
@@ -334,7 +344,7 @@ signal to form the effective TAP reset, so loss of power-good forces TAP/TDR
 logic into reset even when TRST is released. <code>BP_RESETN</code> drives the SMC
 functional cold reset path after power-good is stable.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="smc-reset-sources-and-characteristics-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. SMC Reset Sources and Characteristics</caption>
 <colgroup>
 <col style="width: 20%;">
@@ -405,9 +415,9 @@ registers. JTAG/TDR reset state is reset by POR, not by
 <code>rst_primary_no</code> alone.</p>
 </div>
 <div class="paragraph">
-<p>Primary reset is activated by reset sources in the following table:</p>
+<p>Primary reset is activated by reset sources in <a href="#primary-reset-activation-sources-table">Primary Reset Activation Sources</a>:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="primary-reset-activation-sources-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. Primary Reset Activation Sources</caption>
 <colgroup>
 <col style="width: 34%;">
@@ -446,9 +456,9 @@ Specifically, CPU cores and their private cache hierarchies, PLIC
 per-core watchdog timers and bus error units</p>
 </div>
 <div class="paragraph">
-<p>Warm reset is activated by reset sources in the following table:</p>
+<p>Warm reset is activated by reset sources in <a href="#warm-reset-activation-sources-table">Warm Reset Activation Sources</a>:</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="warm-reset-activation-sources-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. Warm Reset Activation Sources</caption>
 <colgroup>
 <col style="width: 34%;">
@@ -517,6 +527,43 @@ subsystems participate in FLR sequences</p>
 three sources, providing flexible control while maintaining clear
 precedence for safety-critical operations.</p>
 </div>
+<div class="paragraph">
+<p><a href="#smc-flr-isolation-diagram">SMC FLR isolation connections between chiplets</a> shows cool-reset and isolation connections between primary
+and secondary chiplets.</p>
+</div>
+<div id="smc-flr-isolation-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SMC_FLR_Isolate_Diagram_FIG016.png" alt="SMC FLR isolation connections between chiplets" width="100%">
+</div>
+<div class="title">Figure 3. SMC FLR isolation connections between chiplets</div>
+</div>
+<div class="paragraph">
+<p><a href="#smc-flr-software-diagram">SMC-driven FLR isolation</a> shows isolation propagation for an SMC software request.</p>
+</div>
+<div id="smc-flr-software-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SMC_FLR_Isolate_Diagram_SMC_Driven_FIG017.png" alt="SMC-driven FLR isolation" width="100%">
+</div>
+<div class="title">Figure 4. SMC-driven FLR isolation</div>
+</div>
+<div class="paragraph">
+<p><a href="#smc-flr-tile-diagram">Tile-request-driven FLR isolation</a> shows isolation propagation for a tile request.</p>
+</div>
+<div id="smc-flr-tile-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SMC_FLR_Isolate_Diagram_Tile_Request_Driven_FIG018.png" alt="Tile-request-driven FLR isolation" width="100%">
+</div>
+<div class="title">Figure 5. Tile-request-driven FLR isolation</div>
+</div>
+<div class="paragraph">
+<p><a href="#smc-flr-gpio-diagram">GPIO-driven FLR isolation</a> shows isolation propagation for a GPIO request.</p>
+</div>
+<div id="smc-flr-gpio-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SMC_FLR_Isolate_Diagram_GPIO_Driven_FIG019.png" alt="GPIO-driven FLR isolation" width="100%">
+</div>
+<div class="title">Figure 6. GPIO-driven FLR isolation</div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="programmable-reset-timing"><a class="anchor" href="#programmable-reset-timing"></a><a class="link" href="#programmable-reset-timing">Programmable Reset Timing</a></h4>
@@ -584,7 +631,11 @@ is asynchronous and deassertion is synchronous.</p>
 <p>The synchronization primitives include multiple flip-flop stages that
 provide metastability protection.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#reset-synchronization-domains-table">Reset Synchronization Domains</a> maps each synchronized reset output to its
+target clock domain.</p>
+</div>
+<table id="reset-synchronization-domains-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. Reset Synchronization Domains</caption>
 <colgroup>
 <col style="width: 30%;">
@@ -630,9 +681,9 @@ coordination for peripheral controllers</p></td>
 <h3 id="advanced-subsystem-reset-capabilities"><a class="anchor" href="#advanced-subsystem-reset-capabilities"></a><a class="link" href="#advanced-subsystem-reset-capabilities">Advanced Subsystem Reset Capabilities</a></h3>
 <div class="paragraph">
 <p>Beyond basic reset control, SMC supports several features for demanding
-system management needs:</p>
+system management needs (<a href="#advanced-reset-features-table">Advanced Reset Features</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="advanced-reset-features-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 5. Advanced Reset Features</caption>
 <colgroup>
 <col style="width: 30%;">
@@ -820,9 +871,9 @@ robust operation during complex reset scenarios.</p>
 <h2 id="clock-and-reset-based-power-management-integration"><a class="anchor" href="#clock-and-reset-based-power-management-integration"></a><a class="link" href="#clock-and-reset-based-power-management-integration">Clock and Reset-Based Power Management Integration</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The following table lists the clock gating control parameters.</p>
+<p><a href="#clock-gating-control-parameters-table">Clock Gating Control Parameters</a> lists the clock gating control parameters.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="clock-gating-control-parameters-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 6. Clock Gating Control Parameters</caption>
 <colgroup>
 <col style="width: 30%;">

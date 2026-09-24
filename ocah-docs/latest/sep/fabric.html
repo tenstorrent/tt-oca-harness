@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>SEP Interconnect :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <link rel="prev" href="overview.html">
-    <link rel="next" href="memory_map.html">
+    <link rel="next" href="cpu.html">
     <meta name="description" content="SEP internal fabric, external interfaces, address remapping, and mailboxes.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
@@ -90,7 +90,16 @@
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
@@ -126,42 +135,6 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="3">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
-<ul class="nav-list">
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
-  </li>
-</ul>
-  </li>
-  <li class="nav-item" data-depth="3">
-    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="index.html">Security Processor (SEP)</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="4">
@@ -181,9 +154,6 @@
   </li>
   <li class="nav-item is-current-page" data-depth="4">
     <a class="nav-link" href="fabric.html">SEP Interconnect</a>
-  </li>
-  <li class="nav-item" data-depth="4">
-    <a class="nav-link" href="memory_map.html">Memory Map and Registers</a>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="cpu.html">CPU Subsystem</a>
@@ -269,6 +239,9 @@
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="test_mode.html">Test Mode Entry</a>
   </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="memory_map.html">Memory Map and Registers</a>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="3">
@@ -343,6 +316,42 @@
   </li>
 </ul>
   </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
 </ul>
   </li>
   <li class="nav-item" data-depth="2">
@@ -371,6 +380,9 @@
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
   </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../aou-software-operation.html">Appendix C. Software Operation</a>
+  </li>
 </ul>
   </li>
 </ul>
@@ -381,10 +393,16 @@
     <a class="nav-link" href="../ip-reference.html">IP Reference</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
   </li>
   <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../dashboard.html">Verification Dashboard</a>
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
   </li>
 </ul>
   </li>
@@ -559,10 +577,45 @@ after POR and configured by SEP firmware.</p>
 </div>
 <div class="title">Figure 1. SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.</div>
 </div>
+<p class="block-references">Figures and tables: <a href="#sep-axi-connectivity">Figure 1</a>.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="subsystem-external-interfaces"><a class="anchor" href="#subsystem-external-interfaces"></a><a class="link" href="#subsystem-external-interfaces">2. Subsystem External Interfaces</a></h2>
+<h2 id="sep-fabric-topology"><a class="anchor" href="#sep-fabric-topology"></a><a class="link" href="#sep-fabric-topology">2. Fabric Topology</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The input fabric admits external traffic through the inbound filter and
+system-peripheral decode. The local fabric connects SEP initiators to local
+resources, while the output fabric selects remapped or direct outbound paths.</p>
+</div>
+<div class="paragraph">
+<p>The input paths are shown in <a href="#sep-input-fabric-diagram">Figure 2</a>, the local resource
+connections in <a href="#sep-local-fabric-diagram">Figure 3</a>, and the outbound paths in
+<a href="#sep-output-fabric-diagram">Figure 4</a>.</p>
+</div>
+<div id="sep-input-fabric-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_Input_Fabric_FIG005.svg" alt="SEP input fabric" width="100%">
+</div>
+<div class="title">Figure 2. SEP input fabric</div>
+</div>
+<div id="sep-local-fabric-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_Local_Fabric_FIG006.svg" alt="SEP local fabric" width="100%">
+</div>
+<div class="title">Figure 3. SEP local fabric</div>
+</div>
+<div id="sep-output-fabric-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_Output_Fabric_FIG007.svg" alt="SEP output fabric" width="100%">
+</div>
+<div class="title">Figure 4. SEP output fabric</div>
+</div>
+<p class="block-references">Figures and tables: <a href="#sep-input-fabric-diagram">Figure 2</a>; <a href="#sep-local-fabric-diagram">Figure 3</a>; <a href="#sep-output-fabric-diagram">Figure 4</a>.</p>
+</div>
+</div>
+<div class="sect1">
+<h2 id="subsystem-external-interfaces"><a class="anchor" href="#subsystem-external-interfaces"></a><a class="link" href="#subsystem-external-interfaces">3. Subsystem External Interfaces</a></h2>
 <div class="sectionbody">
 <div class="ulist">
 <ul>
@@ -587,15 +640,16 @@ OTBN IMEM, OTBN DMEM</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="local-and-external-axi4-traffic-remapping"><a class="anchor" href="#local-and-external-axi4-traffic-remapping"></a><a class="link" href="#local-and-external-axi4-traffic-remapping">3. Local and External AXI4 Traffic Remapping</a></h2>
+<h2 id="local-and-external-axi4-traffic-remapping"><a class="anchor" href="#local-and-external-axi4-traffic-remapping"></a><a class="link" href="#local-and-external-axi4-traffic-remapping">4. Local and External AXI4 Traffic Remapping</a></h2>
 <div class="sectionbody">
-<div class="imageblock">
+<div id="sep-system-peripheral-traffic-management-figure" class="imageblock">
 <div class="content">
 <img src="_images/SEP_System.png" alt="SEP_System">
 </div>
+<div class="title">Figure 5. SEP system-peripheral traffic management</div>
 </div>
 <div class="paragraph">
-<p>The figure above illustrates the AXI4 traffic management performed by
+<p><a href="#sep-system-peripheral-traffic-management-figure">Figure 5</a> illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
 the local masters from the SEP i.e. the CPU or the DMA controller.
 Traffic may be local to the SEP or outbound to external resources either
@@ -603,8 +657,9 @@ within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
 the chiplet or remote chiplets will bridge to the system NOC also known
 as the SMN.</p>
 </div>
+<p class="block-references">Figures and tables: <a href="#sep-system-peripheral-traffic-management-figure">Figure 5</a>.</p>
 <div class="sect2">
-<h3 id="transaction-routing"><a class="anchor" href="#transaction-routing"></a><a class="link" href="#transaction-routing">3.1. Transaction Routing</a></h3>
+<h3 id="transaction-routing"><a class="anchor" href="#transaction-routing"></a><a class="link" href="#transaction-routing">4.1. Transaction Routing</a></h3>
 <div class="paragraph">
 <p>Local resources can be addressed by SEP CPU direct internal addresses
 or by the SEP CPU local-alias view. Local resources include CSRs in SEP
@@ -680,7 +735,7 @@ source ID.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">3.2. Traffic Filter Decode</a></h3>
+<h3 id="sep-traffic-filter-decode"><a class="anchor" href="#sep-traffic-filter-decode"></a><a class="link" href="#sep-traffic-filter-decode">4.2. Traffic Filter Decode</a></h3>
 <div class="paragraph">
 <p>Both SEP filters are instances of the common <code>axi_filter_wrap</code> block. The
 inbound filter has 16 entries and the outbound filter has 32; each entry
@@ -703,7 +758,7 @@ documented once with the IP in <a href="../ip/axi_filter/doc/index.html#axi-traf
 </div>
 </div>
 <div class="sect2">
-<h3 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">3.3. Address Remapping</a></h3>
+<h3 id="address-remapping"><a class="anchor" href="#address-remapping"></a><a class="link" href="#address-remapping">4.3. Address Remapping</a></h3>
 <div class="paragraph">
 <p>Sixteen remap regions are available, each supported by an address
 remapper. Remappers define the following attributes:</p>
@@ -786,7 +841,16 @@ mapped IO, SEP’s traffic directly goes to the system fabric.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="mailboxes"><a class="anchor" href="#mailboxes"></a><a class="link" href="#mailboxes">3.4. Mailboxes</a></h3>
+<h3 id="mailboxes"><a class="anchor" href="#mailboxes"></a><a class="link" href="#mailboxes">4.4. Mailboxes</a></h3>
+<div class="paragraph">
+<p><a href="#sep-mailbox-diagram">Figure 6</a> shows the host mailbox connections and interrupt routing.</p>
+</div>
+<div id="sep-mailbox-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_AXILmailbox_FIG008.png" alt="SEP host mailbox architecture and interrupt routing" width="100%">
+</div>
+<div class="title">Figure 6. SEP host mailbox architecture and interrupt routing</div>
+</div>
 <div class="paragraph">
 <p>SEP uses mailboxes to communicate with the rest of the system such as AP
 cores for example. Each different agent has its own private mailbox in
@@ -847,11 +911,16 @@ covers its 4 kB aperture. The filter blocks by default, so a mailbox with no
 enabled entry over its aperture is unreachable from the fabric, and
 reprogramming an entry retypes that mailbox at run time. An entry pairs an
 address range with the qualification criteria below, plus separate read and
-write permissions and a write-once lock bit. See <a href="#sep-traffic-filter-decode">Traffic Filter Decode</a>
+write permissions and a write-once lock bit. See <a href="#sep-traffic-filter-decode">Section 4.2</a>
 for the SEP filter instances and <a href="../ip/axi_filter/doc/index.html#axi-traffic-filter" class="xref page">AXI Traffic Filter</a> for the entry
 registers and the decode algorithm used to program them.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#sep-mailbox-qualification-table">Table 1</a> describes the traffic qualifications used to
+distinguish mailbox types.</p>
+</div>
+<table id="sep-mailbox-qualification-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP mailbox qualification</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 80%;">
@@ -887,12 +956,13 @@ action required by SEP.</p></td>
 </tr>
 </tbody>
 </table>
+<p class="block-references">Figures and tables: <a href="#sep-mailbox-diagram">Figure 6</a>; <a href="#sep-mailbox-qualification-table">Table 1</a>.</p>
 </div>
 </div>
 </div>
 <nav class="pagination">
   <span class="prev"><a href="overview.html">Hardware Overview</a></span>
-  <span class="next"><a href="memory_map.html">Memory Map and Registers</a></span>
+  <span class="next"><a href="cpu.html">CPU Subsystem</a></span>
 </nav>
 </article>
   </div>

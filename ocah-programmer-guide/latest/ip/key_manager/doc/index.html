@@ -203,8 +203,10 @@
 <div id="preamble">
 <div class="sectionbody">
 <div id="key-manager-km-key-manager-km" class="paragraph">
-<p>The Key Manager provides isolated key derivation, storage, policy checking,
-and delivery to the cryptographic accelerators. The following sections
+<p>The Key Manager provides isolated key storage, random key generation, explicit
+revocation, and delivery to the cryptographic accelerators. UID-derived key
+hierarchies and automatic configuration-bound revocation are design targets,
+not implemented firmware services. The following sections
 describe its hardware architecture and firmware interface.</p>
 </div>
 </div>
@@ -213,79 +215,19 @@ describe its hardware architecture and firmware interface.</p>
 <h2 id="key-manager-architecture"><a class="anchor" href="#key-manager-architecture"></a><a class="link" href="#key-manager-architecture">1. Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The KM module aims to support a superset of the
-<a href="https://opentitan.org/book/hw/ip/keymgr/index.html">OpenTitan Key
-Manager</a> use cases. It utilizes a small RISC-V CPU for control which
-provides flexibility to implement all currently required key management
-operations:</p>
+<p>The KM uses a small RISC-V CPU to isolate key storage and delivery from the
+SEP host. Its architecture targets the
+<a href="https://opentitan.org/book/hw/ip/keymgr/index.html">OpenTitan Key Manager</a>
+use cases, including deterministic derivation and policy-bound key lifetimes.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>Derivation</p>
-</li>
-<li>
-<p>Storage and destruction</p>
-</li>
-<li>
-<p>Policy Checking</p>
-</li>
-<li>
-<p>Transfer to cryptographic accelerator</p>
-</li>
-</ul>
+<div id="km-implemented-services" class="paragraph">
+<p>The firmware in this tree implements random key generation from the DRBG,
+key loading, KPV storage, explicit revocation, transfer to engines, and engine
+shredding. Software explicitly manages key lifetime and revocation.</p>
 </div>
 <div class="paragraph">
-<p>The CPU implementation enables future key management feature
-enhancements to be delivered with firmware. One example of this is TPM
-2.0 attestation.</p>
-</div>
-<div class="paragraph">
-<p>The Key Manager register map is reported in the SEP detailed register map.</p>
-</div>
-<div class="paragraph">
-<p>To summarize, KM uses a collection of device identity and
-root key data to generate a set of keys using a derivation function.
-This data comes from the following sources:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>Entropy stream from DRBG</p>
-</li>
-<li>
-<p>Life Cycle (LC) state stored in OTP and managed by the LC controller</p>
-</li>
-<li>
-<p>Demotion state (CSR)</p>
-</li>
-<li>
-<p>OTP secret fields: CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Once these fields have been pushed into the Key Manager, the corresponding read lock bits will be set in order to prevent software from accessing these values</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>OTP public fields: SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Per-owner public identity values that personalize each owner&#8217;s identity root. Being public, only their integrity matters</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Test control signals</p>
-</li>
-<li>
-<p>Configuration parameters e.g. version numbers</p>
-</li>
-</ul>
+<p>The Key Manager register map is reported in the SEP detailed register map.
+The firmware command reference describes the implemented mailbox interface.</p>
 </div>
 <div class="paragraph">
 <p>The SEP cryptographic subsystem physically separates key and data
@@ -322,14 +264,24 @@ parity error interrupts the KM CPU, which treats it as an unrecoverable
 fault: the KM notifies the SEP host and halts (see
 <a href="#unrecoverable-faults">Unrecoverable Faults</a>).</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-architecture-figure">Key Manager architecture</a> shows the Key Manager CPU, vault, mailbox, and
+accelerator interfaces.</p>
+</div>
+<div id="key-manager-architecture-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/SEP_Key_Manager.png" alt="SEP_Key_Manager">
 </div>
+<div class="title">Figure 1. Key Manager architecture</div>
 </div>
 <div class="sect2">
 <h3 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1.1. Parameters</a></h3>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#key-manager-parameters-table">Key Manager parameters</a> lists the Key Manager memory dimensions and integration
+parameters.</p>
+</div>
+<table id="key-manager-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Key Manager parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 18%;">
@@ -386,7 +338,7 @@ bits and replaces the upper bits with the integration parameter
 <code>OTP_EFUSE_REMAP_BASE</code> before forwarding the transaction to SEP.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Key Manager CPU Memory Map</caption>
+<caption class="title">Table 2. Key Manager CPU Memory Map</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 16.6666%;">
@@ -604,12 +556,27 @@ bits and replaces the upper bits with the integration parameter
 <div class="sect2">
 <h3 id="reset-conditioning"><a class="anchor" href="#reset-conditioning"></a><a class="link" href="#reset-conditioning">1.3. Reset Conditioning</a></h3>
 <div class="paragraph">
+<p><a href="#key-manager-reset-diagram">Key Manager cold and warm reset conditioning</a> shows how cold and warm reset requests are conditioned for
+the Key Manager.</p>
+</div>
+<div id="key-manager-reset-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/SEP_KMResetDomains_FIG003.2.png" alt="Key Manager cold and warm reset conditioning" width="100%">
+</div>
+<div class="title">Figure 2. Key Manager cold and warm reset conditioning</div>
+</div>
+<div class="paragraph">
 <p>The KM exposes two independent external reset inputs that map to two
 distinct reset domains. This split allows the SEP host to recover the KM
 CPU and volatile state without disturbing non-volatile configuration or
 forcing a full power-on style reset of the subsystem.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#key-manager-reset-inputs-table">Key Manager reset inputs</a> identifies the two external reset inputs and their
+SEP connections.</p>
+</div>
+<table id="key-manager-reset-inputs-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Key Manager reset inputs</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 16%;">
@@ -686,8 +653,8 @@ posedge-only counter.)</p>
 <code>MIN_RESET_CYCLES</code> clock cycles (default 10) after the trigger deasserts.</p>
 </li>
 <li>
-<p>Scope: resets the KM CPU and volatile state only — see the domain table
-below.</p>
+<p>Scope: resets the KM CPU and volatile state only — see
+<a href="#key-manager-reset-domain-assignment-table">Key Manager reset-domain assignment</a>.</p>
 </li>
 </ul>
 </div>
@@ -701,9 +668,11 @@ is asserted.</p>
 <p><strong>Reset domain assignment</strong></p>
 </div>
 <div class="paragraph">
-<p>The two output resets are distributed across the KM components as follows:</p>
+<p><a href="#key-manager-reset-domain-assignment-table">Key Manager reset-domain assignment</a> lists the components reset by the cold and
+warm reset domains.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="key-manager-reset-domain-assignment-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. Key Manager reset-domain assignment</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -790,7 +759,12 @@ legality checks are entirely firmware-defined. The mailbox hardware does
 not parse message headers, compute or verify CRCs, or enforce command
 legality — it behaves as a raw 32-bit word FIFO transport.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#key-manager-message-with-payload-table">Key Manager message with payload</a> shows the firmware-defined header, payload
+words, and payload checksum.</p>
+</div>
+<table id="key-manager-message-with-payload-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. Key Manager message with payload</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -825,9 +799,10 @@ legality — it behaves as a raw 32-bit word FIFO transport.</p>
 </table>
 <div class="paragraph">
 <p>Command/response messages without a data payload (message_length = 0x00)
-drop the payload CRC32 and only contain the header:</p>
+drop the payload CRC32 and only contain the header (<a href="#key-manager-header-only-message-table">Key Manager header-only message</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="key-manager-header-only-message-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 6. Key Manager header-only message</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -894,10 +869,15 @@ will flush the entire mailbox and an interrupt will be transmitted to
 the sender. The SEP will perform the exact same message validations as
 the KM.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-mailbox-transport-figure">Key Manager mailbox transport</a> shows the mailbox paths used for SEP commands
+and Key Manager responses.</p>
+</div>
+<div id="key-manager-mailbox-transport-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/SEP_KM_Mailbox.png" alt="SEP_KM_Mailbox">
 </div>
+<div class="title">Figure 3. Key Manager mailbox transport</div>
 </div>
 <div class="paragraph">
 <p>Cryptographic keys are stored in the Key and Policy Vault (KPV) block.
@@ -925,7 +905,7 @@ windows is unallocated and returns a decode error.</p>
 <p>Separating the key and data domains explicitly as described above
 increases security as it makes it more difficult for an adversary to
 compromise the secret key information via a software based attack. In
-the figure below, the secrets which must be protected reside in the red
+<a href="#key-manager-accelerator-key-path-figure">Key Manager accelerator key path</a>, the secrets which must be protected reside in the red
 blocks. The secret data is physically separated from the software
 accessible bus.</p>
 </div>
@@ -938,10 +918,15 @@ accessible devices such as automobiles and not those in data centers. To
 detect faults, we recommend including a CRC32 checksum field to the key
 data structure as described below.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-accelerator-key-path-figure">Key Manager accelerator key path</a> shows the separation between accelerator key
+delivery and software-accessible data paths.</p>
+</div>
+<div id="key-manager-accelerator-key-path-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/SEP_Crypto_Block.png" alt="SEP_Crypto_Block">
 </div>
+<div class="title">Figure 4. Key Manager accelerator key path</div>
 </div>
 </div>
 <div class="sect2">
@@ -954,9 +939,10 @@ the KM drives into ABR, and one shared-key output ABR drives back into the KM.</
 </div>
 <div class="paragraph">
 <p><strong>Seed sideload inputs (KM → ABR).</strong> The four seed inputs carry key material the
-KM side-loads into ABR:</p>
+KM side-loads into ABR (<a href="#adams-bridge-seed-sideload-inputs-table">Adams Bridge seed sideload inputs</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="adams-bridge-seed-sideload-inputs-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 7. Adams Bridge seed sideload inputs</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -1081,7 +1067,25 @@ register to enable testing of interrupt service routines (ISR).</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="key-and-policy-vault-kpv"><a class="anchor" href="#key-and-policy-vault-kpv"></a><a class="link" href="#key-and-policy-vault-kpv">1.6. Key and Policy Vault (KPV)</a></h3>
+<h3 id="key-manager-host-coordination"><a class="anchor" href="#key-manager-host-coordination"></a><a class="link" href="#key-manager-host-coordination">1.6. Host Coordination</a></h3>
+<div class="paragraph">
+<p>The SEP host submits key-load and key-transfer commands through the mailbox.
+The Key Manager validates the request and policy before accessing the vault
+or delivering key material to a cryptographic engine.</p>
+</div>
+<div class="paragraph">
+<p><a href="#key-manager-coordination-diagram">SEP host and Key Manager key-load and key-transfer sequence</a> shows the command, validation, vault-access, and
+key-delivery sequence.</p>
+</div>
+<div id="key-manager-coordination-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/SEP_KM_Key_Load_Transfer_FIG017.png" alt="SEP host and Key Manager key-load and key-transfer sequence" width="100%">
+</div>
+<div class="title">Figure 5. SEP host and Key Manager key-load and key-transfer sequence</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="key-and-policy-vault-kpv"><a class="anchor" href="#key-and-policy-vault-kpv"></a><a class="link" href="#key-and-policy-vault-kpv">1.7. Key and Policy Vault (KPV)</a></h3>
 <div class="paragraph">
 <p>The Key and Policy Vault (KPV) is a custom implementation with a
 single-port AXI4-Lite interface for full read/write access by KM
@@ -1224,7 +1228,7 @@ must not connect reset to key entry storage flops.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="kpv-scrambling"><a class="anchor" href="#kpv-scrambling"></a><a class="link" href="#kpv-scrambling">1.7. KPV Scrambling</a></h3>
+<h3 id="kpv-scrambling"><a class="anchor" href="#kpv-scrambling"></a><a class="link" href="#kpv-scrambling">1.8. KPV Scrambling</a></h3>
 <div class="paragraph">
 <p>The KPV supports address and data scrambling during normal operation for
 all key entry data reads and writes, using the same PRESENT-based
@@ -1260,7 +1264,7 @@ control registers, and the KPV scrambler key and control registers.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="wipe-state"><a class="anchor" href="#wipe-state"></a><a class="link" href="#wipe-state">1.8. Wipe State</a></h3>
+<h3 id="wipe-state"><a class="anchor" href="#wipe-state"></a><a class="link" href="#wipe-state">1.9. Wipe State</a></h3>
 <div class="paragraph">
 <p>The KM has a <em>wipe_state</em> control input for emergency wipe. The
 <em>wipe_state</em> signal must be held high for at least one complete KM clock
@@ -1287,7 +1291,7 @@ hardware tamper or alarm source asserts <em>wipe_state</em>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="km-scan-and-scan-dump-protection"><a class="anchor" href="#km-scan-and-scan-dump-protection"></a><a class="link" href="#km-scan-and-scan-dump-protection">1.9. Scan and Scan-Dump Protection</a></h3>
+<h3 id="km-scan-and-scan-dump-protection"><a class="anchor" href="#km-scan-and-scan-dump-protection"></a><a class="link" href="#km-scan-and-scan-dump-protection">1.10. Scan and Scan-Dump Protection</a></h3>
 <div class="paragraph">
 <p>For simplicity, the <strong>entire</strong> KM&#8201;&#8212;&#8201;every register and downstream logic block,
 including the KPV, KMCSR, mailbox, and DRBG sampler&#8201;&#8212;&#8201;is treated
@@ -1353,7 +1357,7 @@ secret-bearing scan chain.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="remote-attestation-support-in-kpv-and-pcrv"><a class="anchor" href="#remote-attestation-support-in-kpv-and-pcrv"></a><a class="link" href="#remote-attestation-support-in-kpv-and-pcrv">1.10. Remote Attestation Support in KPV and PCRV</a></h3>
+<h3 id="remote-attestation-support-in-kpv-and-pcrv"><a class="anchor" href="#remote-attestation-support-in-kpv-and-pcrv"></a><a class="link" href="#remote-attestation-support-in-kpv-and-pcrv">1.11. Remote Attestation Support in KPV and PCRV</a></h3>
 <div class="paragraph">
 <p>This section describes facilities to support TPM 2.0 attestation. Here
 are the basic constraints and procedures:</p>
@@ -1392,7 +1396,7 @@ further keys, populating other KPV slots with the KDF results.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="pk-key-generation-support"><a class="anchor" href="#pk-key-generation-support"></a><a class="link" href="#pk-key-generation-support">1.11. PK Key Generation support</a></h3>
+<h3 id="pk-key-generation-support"><a class="anchor" href="#pk-key-generation-support"></a><a class="link" href="#pk-key-generation-support">1.12. PK Key Generation support</a></h3>
 <div class="paragraph">
 <p>KM must be able to generate a public-private key pair during device test
 and provisioning manufacturing steps. RSA is a complicated process as
@@ -1407,7 +1411,7 @@ mailbox path.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">1.12. Key Manager Control and Status Registers (KMCSR)</a></h3>
+<h3 id="key-manager-control-and-status-kmcsr"><a class="anchor" href="#key-manager-control-and-status-kmcsr"></a><a class="link" href="#key-manager-control-and-status-kmcsr">1.13. Key Manager Control and Status Registers (KMCSR)</a></h3>
 <div class="paragraph">
 <p>This block of 32-bit registers is separate from the Key and Policy
 register block. Its purpose is to manage the configuration and operation
@@ -1429,9 +1433,10 @@ fields and will be forwarded to the interrupt status register.</p>
 <p>The <code>VERSION</code> register (offset <code>0x000</code>) is a read-only register that reports
 the Key Manager hardware revision using semantic versioning. It uses the
 following canonical 32-bit layout, mandated so all software and testbenches
-decode the version identically:</p>
+decode the version identically (<a href="#key-manager-version-fields-table">Key Manager VERSION fields</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="key-manager-version-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. Key Manager VERSION fields</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -1480,7 +1485,12 @@ single CPU interrupt. Each source has a sticky status bit in <code>IRQ_STATUS</c
 <code>IRQ_SET</code> for ISR testing. The aggregated interrupt output is the logical OR of
 the masked status bits (<code>IRQ_STATUS &amp; IRQ_ENABLE</code>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#key-manager-interrupt-sources-table">Key Manager interrupt sources</a> maps hardware events to the sticky
+interrupt-status bits.</p>
+</div>
+<table id="key-manager-interrupt-sources-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 9. Key Manager interrupt sources</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 30%;">
@@ -1621,9 +1631,10 @@ is reported on <code>ROM_ACCESS_VIOLATION</code> instead, so the two bits are di
 </div>
 <div class="paragraph">
 <p>The whitelist mode is controlled by the <code>KMCSR.SRAM_EXEC_MODE.enable</code> bit
-(write-1-only, warm-reset domain):</p>
+(write-1-only, warm-reset domain) (<a href="#key-manager-executable-regions-table">Key Manager executable regions</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="key-manager-executable-regions-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 10. Key Manager executable regions</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 55%;">
@@ -2083,9 +2094,10 @@ assembled word buffer, response data slot) have no reset value: they
 power up with random (undefined) values.</p>
 </div>
 <div class="paragraph">
-<p>The sampler hardware is implemented as a five-state FSM in <code>km_drbg_sampler</code>. The states and their transitions are summarised in the table below.</p>
+<p>The sampler hardware is implemented as a five-state FSM in <code>km_drbg_sampler</code>. The states and their transitions are summarised in <a href="#key-manager-drbg-sampler-states-table">Key Manager DRBG sampler states</a>.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="key-manager-drbg-sampler-states-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 11. Key Manager DRBG sampler states</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -2131,8 +2143,7 @@ at the SEP-to-KM boundary (<code>{~value, value}</code>) from the sensed eFuse s
 <ul>
 <li>
 <p>the fuse-provisioned secrets — <code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code>,
-<code>CLASS_KEY</code> — the UIDs from which the KM derives the root keys, and the class
-root key;</p>
+<code>CLASS_KEY</code> — inputs intended for the root-key design described below;</p>
 </li>
 <li>
 <p>the three 256-bit public identities — <code>SEP_CHIPLET_ID</code>, <code>SEP_SIP_ID</code>,
@@ -2145,9 +2156,8 @@ root key;</p>
 </ul>
 </div>
 <div class="paragraph">
-<p><strong>UID delivery and protection.</strong> The UIDs are held in a KM-local copy. ROM reads
-that copy to derive the root keys, after which it is protected by the KM&#8217;s own
-warm-domain read-lock (see <a href="#uid-provisioning-and-access">[uid-provisioning-and-access]</a>) so mutable firmware
+<p><strong>UID delivery and protection.</strong> The UIDs are held in a KM-local copy. The KM&#8217;s own
+warm-domain read-lock protects that copy at mutable-firmware handover (see <a href="#uid-provisioning-and-access">[uid-provisioning-and-access]</a>) so mutable firmware
 cannot read it. This KM-local lock is separate from, and additional to, the
 eFuse controller&#8217;s own locks.</p>
 </div>
@@ -2163,22 +2173,21 @@ words only.</p>
 <div class="paragraph">
 <p><strong>Life-cycle state.</strong> The life-cycle state is hardwired into the KM as
 authoritative, software-readable status. Being non-secret it is neither locked
-nor wiped; the KM uses it directly when binding a key, and ROM can compare it
-against the value a live key was bound to (see <a href="#key-revocation">[key-revocation]</a>).</p>
+nor wiped. The design target uses it for key bindings (see <a href="#key-revocation">[key-revocation]</a>);
+the current registry does not track such bindings.</p>
 </div>
 <div class="paragraph">
 <p><strong>eFuse access path.</strong> The KM also has a programmatic (AXI-Lite) path to the eFuse
 controller — for example to request a read or a program operation. That path is
 treated exactly like a system-host access: same access filtering, and it honors
 the eFuse controller&#8217;s native per-field read/write locks, so the KM gains no
-read privilege over the fuse array beyond the SEP host&#8217;s. Key binding always
-uses the hardwired life-cycle value above, not a value fetched over this path.</p>
+read privilege over the fuse array beyond the SEP host&#8217;s. The key-binding design target uses the hardwired life-cycle value above.</p>
 </div>
 <div class="paragraph">
 <p><strong>Demotion and PCR.</strong> The owner demotion state is hardwired from the Life Cycle
-Controller (LCC); PCR values come from the KM&#8217;s internal PCR Vault (PCRV).
-Together with the life-cycle state, these are the life-cycle/runtime contexts a
-key can be bound to (see <a href="#chip-configuration">[chip-configuration]</a>).</p>
+Controller (LCC). A PCR Vault (PCRV) and PCR-change interrupt are not present
+in this integration. PCR binding in <a href="#chip-configuration">[chip-configuration]</a> requires additional
+hardware and firmware support.</p>
 </div>
 <div class="paragraph">
 <p><strong>KMCSR readout registers.</strong> The OTP-derived fields above are exposed to KM
@@ -2187,7 +2196,12 @@ is delivered to the KMCSR as dual-rail complementary values (<code>{~value, valu
 and decoded within the KMCSR, which continuously verifies the complement
 relationship.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#key-manager-otp-readout-registers-table">Key Manager OTP readout registers</a> lists the OTP-derived fields exposed to Key
+Manager firmware.</p>
+</div>
+<table id="key-manager-otp-readout-registers-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 12. Key Manager OTP readout registers</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 15%;">
@@ -2281,45 +2295,18 @@ has been captured after cold reset.</p>
 <p><strong>Unique Identifiers (UID) — provisioning and access</strong></p>
 </div>
 <div class="paragraph">
-<p>The KM consumes three fuse-provisioned Unique Identifiers — <code>CHIPLET_UID</code>,
+<p>The KM receives three fuse-provisioned Unique Identifiers — <code>CHIPLET_UID</code>,
 <code>SIP_UID</code>, and <code>SYS_UID</code> (256 bits each) — provisioned respectively by the
-chiplet creator, the SiP owner, and the system owner. Each UID is the root
-secret from which the KM derives that owner&#8217;s software and hardware root
-keys (see the <strong>Root keys and the key hierarchy</strong> section below).</p>
+chiplet creator, the SiP owner, and the system owner. The root-key design
+below proposes deriving each owner&#8217;s keys from its UID; the current firmware
+does not implement that derivation.</p>
 </div>
 <div class="paragraph">
-<p>The KM is a <strong>ROM-firmware-based key server</strong>: its CPU runs immutable ROM
-firmware as its steady-state firmware, at cold boot and throughout run time,
-and keeps servicing commands from ROM while the main SEP CPU is in its own
-run time. SRAM-loaded firmware is an <strong>optional future extension</strong> for adding
-KM functions; the baseline performs all required key-management functions,
-including run-time key derivation, from ROM alone. Consequently the UIDs and
-hardware root keys are only ever handled by trusted, immutable code.</p>
-</div>
-<div class="paragraph">
-<p>UIDs and hardware root keys are <strong>ROM-only secrets</strong>: they must never be
-readable by <strong>mutable</strong> (SRAM-loaded) KM firmware, nor by the SEP host. In the
-ROM-only baseline this holds by construction — no mutable firmware runs — and
-the SEP host has no access path to them. For the future SRAM-firmware
-extension the KM provides a confidentiality safeguard: a read-lock
-(write-one-to-set, <strong>warm</strong> reset domain) on the UID and hardware-root-key
-registers. Before ROM ever transfers control to SRAM-loaded firmware it wipes
-the hardware secrets and sets these locks, so the mutable firmware cannot read
-them; once locked, reads return zero and the lock cannot be cleared by
-software — only a reset clears it.</p>
-</div>
-<div class="paragraph">
-<p>The read-locks live in the <strong>warm</strong> (not cold) reset domain because the KM CPU
-core is itself warm-reset: any cold, warm, or soft reset restarts the CPU at
-its ROM reset vector and re-runs boot before any SRAM-loaded firmware can
-execute. ROM therefore re-establishes the protection on <strong>every</strong> boot — it
-re-reads the UIDs, re-derives key material, wipes the hardware key from any
-downstream crypto engine, and re-applies the read-locks before handing control
-to mutable firmware. Because
-the CPU is always forced back into ROM first, there is no window in which
-mutable firmware can run with the locks clear; the locks need not survive a
-warm reset, and no cold reset is required to restore keys in the ROM-only
-baseline.</p>
+<p>The CPU services mailbox commands from ROM and supports loading and executing
+SRAM firmware. Before handing control to that firmware, ROM applies the OTP
+read locks and wipes secrets from the shared execution environment. A warm
+reset returns the CPU to ROM, where the handover protections are re-established;
+it does not trigger an implemented UID-root derivation service.</p>
 </div>
 <div class="paragraph">
 <p>Concretely, this safeguard is the <code>OTP_READ_LOCK</code> register: one
@@ -2347,10 +2334,16 @@ to establish read-locks that persist across warm resets for the entire duration
 of a power cycle, independently of the warm-reset lock applied by ROM firmware.</p>
 </div>
 <div id="root-keys-and-hierarchy" class="paragraph">
-<p><strong>Root keys and the key hierarchy</strong></p>
+<p><strong>Root keys and the key hierarchy (design target)</strong></p>
 </div>
 <div class="paragraph">
-<p>From each UID the KM (ROM firmware) derives two domain-separated root keys.
+<p>The remainder of this design description, through ECC signing metadata,
+requires firmware and PCR integration beyond <a href="#km-implemented-services">[km-implemented-services]</a>.
+It specifies intended behavior, including automatic revocation, without
+providing a current software guarantee.</p>
+</div>
+<div class="paragraph">
+<p>The proposed ROM service derives two domain-separated root keys from each UID.
 The current life-cycle state is an input to both derivations:</p>
 </div>
 <div class="ulist">
@@ -2414,14 +2407,15 @@ but a read-lock renders it inaccessible and unusable), preserving this property.
 </ul>
 </div>
 <div id="chip-configuration" class="paragraph">
-<p><strong>Chip configuration and key lifetime</strong></p>
+<p><strong>Chip configuration and key lifetime (design target)</strong></p>
 </div>
 <div class="paragraph">
 <p>The <strong>chip configuration</strong> is the named bundle of context that a derived key is
 bound to. The requester <strong>selects the chip configuration</strong> for a derivation;
-together with <code>user_input</code> it determines the key:</p>
+together with <code>user_input</code> it determines the key (<a href="#key-derivation-chip-configuration-fields-table">Key derivation chip-configuration fields</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="key-derivation-chip-configuration-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 13. Key derivation chip-configuration fields</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 78%;">
@@ -2480,7 +2474,7 @@ unaffected. The life-cycle state is the exception: because the roots bind it,
 a life-cycle transition invalidates the roots and, with them, the entire
 UID-derived hierarchy — regardless of each key&#8217;s selected binding. A revoked
 key must be re-derived before use. The mechanism is described in
-<strong>Key revocation</strong> below.</p>
+<strong>Key revocation (design target)</strong> below.</p>
 </div>
 <div id="key-revocation" class="paragraph">
 <p><strong>Key revocation</strong></p>
@@ -2584,7 +2578,7 @@ key storage and shredded in the crypto engines — using the same parent-revoke
 mechanism as configuration-driven revocation (see <strong>Key revocation</strong> above).</p>
 </div>
 <div id="ecc-key-metadata" class="paragraph">
-<p><strong>ECC key metadata in signatures</strong></p>
+<p><strong>ECC key metadata in signatures (design target)</strong></p>
 </div>
 <div class="paragraph">
 <p>The <strong>metadata</strong> associated with a derived ECC private key is the <strong>selected chip
@@ -2602,7 +2596,7 @@ inclusion in the signed hash cryptographically attests the configuration.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="crc-accelerator"><a class="anchor" href="#crc-accelerator"></a><a class="link" href="#crc-accelerator">1.13. CRC Accelerator</a></h3>
+<h3 id="crc-accelerator"><a class="anchor" href="#crc-accelerator"></a><a class="link" href="#crc-accelerator">1.14. CRC Accelerator</a></h3>
 <div class="paragraph">
 <p>The KM CPU is fitted with a CRC accelerator attached through the PicoRV32
 PCPI (Pico Co-Processor Interface). It provides hardware versions of the
@@ -2619,8 +2613,12 @@ fallback path.</p>
 chaining state (<code>rs1</code>) and the next input unit (<code>rs2</code>) — and writes the
 updated chaining state to <code>rd</code>.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. CRC Accelerator Instructions</caption>
+<div class="paragraph">
+<p><a href="#crc-accelerator-instructions-table">CRC Accelerator Instructions</a> lists the instruction encodings and input units
+for the hardware CRC updates.</p>
+</div>
+<table id="crc-accelerator-instructions-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 14. CRC Accelerator Instructions</caption>
 <colgroup>
 <col style="width: 28%;">
 <col style="width: 17%;">
@@ -2712,7 +2710,7 @@ unchanged.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="key-manager-rom-code"><a class="anchor" href="#key-manager-rom-code"></a><a class="link" href="#key-manager-rom-code">1.14. Key Manager ROM Code</a></h3>
+<h3 id="key-manager-rom-code"><a class="anchor" href="#key-manager-rom-code"></a><a class="link" href="#key-manager-rom-code">1.15. Key Manager ROM Code</a></h3>
 <div class="paragraph">
 <p>The KM ROM will be as minimal as possible and support just a few
 functions described next. Any other functions will be loaded dynamically
@@ -2777,11 +2775,12 @@ unlock data or perform action if message is deemed to be valid and legal</p>
 </ul>
 </div>
 <div id="hmac-kdf" class="paragraph">
-<p><strong>Key derivation function (HMAC-SHA256)</strong></p>
+<p><strong>Key derivation function (HMAC-SHA256 design target)</strong></p>
 </div>
 <div class="paragraph">
-<p>HMAC-SHA256 is the underlying primitive for both deterministic key
-derivation and random key generation. The two uses are kept distinct:</p>
+<p>HMAC-SHA256 is the proposed deterministic derivation primitive. This KDF
+service is not implemented by the current ROM command dispatcher. Random
+key generation is implemented separately by filling the key buffer from the DRBG:</p>
 </div>
 <div class="paragraph">
 <p><strong>Deterministic derivation (root keys and the key hierarchy).</strong> Root keys and
@@ -2820,7 +2819,7 @@ deterministic derivation — is needed.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="rom-and-sram-error-detection"><a class="anchor" href="#rom-and-sram-error-detection"></a><a class="link" href="#rom-and-sram-error-detection">1.15. ROM and SRAM Error Detection</a></h3>
+<h3 id="rom-and-sram-error-detection"><a class="anchor" href="#rom-and-sram-error-detection"></a><a class="link" href="#rom-and-sram-error-detection">1.16. ROM and SRAM Error Detection</a></h3>
 <div class="paragraph">
 <p>Data will be stored with byte-wise odd parity. This feature cannot be
 turned off, but the interrupt mask register can disable this event from
@@ -2829,7 +2828,7 @@ external error event signal output.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="parity-error-protection"><a class="anchor" href="#parity-error-protection"></a><a class="link" href="#parity-error-protection">1.16. Parity Error Protection</a></h3>
+<h3 id="parity-error-protection"><a class="anchor" href="#parity-error-protection"></a><a class="link" href="#parity-error-protection">1.17. Parity Error Protection</a></h3>
 <div class="paragraph">
 <p>Parity bits will be ``out-of-band'' from the data and hence not part of
 the scrambled word. The motivation for this is to minimize any data path
@@ -2839,7 +2838,7 @@ bits next to the 32-bit data word.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sram-write-locking"><a class="anchor" href="#sram-write-locking"></a><a class="link" href="#sram-write-locking">1.17. SRAM Write Locking</a></h3>
+<h3 id="sram-write-locking"><a class="anchor" href="#sram-write-locking"></a><a class="link" href="#sram-write-locking">1.18. SRAM Write Locking</a></h3>
 <div class="paragraph">
 <p>The SRAM interface incorporates a write-locking mechanism to designate
 specific 1 KB memory regions as read-only; 32 regions cover the whole 32 KB
@@ -2863,7 +2862,7 @@ executes against an unlocked SRAM region.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="rom-warm-persist-region"><a class="anchor" href="#rom-warm-persist-region"></a><a class="link" href="#rom-warm-persist-region">1.18. ROM Warm-Persistent SRAM Region</a></h3>
+<h3 id="rom-warm-persist-region"><a class="anchor" href="#rom-warm-persist-region"></a><a class="link" href="#rom-warm-persist-region">1.19. ROM Warm-Persistent SRAM Region</a></h3>
 <div class="paragraph">
 <p>The highest 1 KB of KM SRAM (region 31, <code>0x0000_FC00</code>–<code>0x0000_FFFF</code>) are
 reserved as a ROM-managed warm-persistent data structure (<code>rom_persist</code>). The
@@ -2890,9 +2889,10 @@ all fields. On a warm or soft reset, <code>COLD_BOOT_DONE</code> already reads 1
 <code>rom_persist_cold_init()</code> is skipped, preserving the contents of the region.</p>
 </div>
 <div class="paragraph">
-<p><strong>Contents.</strong> The <code>rom_persist_t</code> structure currently contains one field:</p>
+<p><strong>Contents.</strong> The <code>rom_persist_t</code> structure currently contains one field (<a href="#key-manager-warm-persistent-sram-contents-table">Key Manager warm-persistent SRAM contents</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="key-manager-warm-persistent-sram-contents-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 15. Key Manager warm-persistent SRAM contents</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -2923,7 +2923,7 @@ before transferring control to mutable code.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="mutable-firmware-model"><a class="anchor" href="#mutable-firmware-model"></a><a class="link" href="#mutable-firmware-model">1.19. Mutable Firmware Model</a></h3>
+<h3 id="mutable-firmware-model"><a class="anchor" href="#mutable-firmware-model"></a><a class="link" href="#mutable-firmware-model">1.20. Mutable Firmware Model</a></h3>
 <div class="paragraph">
 <p>The KM ROM supports loading and executing a mutable software image from SRAM,
 controlled by the <code>CMD_SRAM_LOAD_EXEC</code> and <code>CMD_SRAM_EXEC</code> mailbox commands.</p>
@@ -3138,14 +3138,21 @@ zero within the message or payload shown. In the message layouts, <code>n</code>
 <div class="paragraph">
 <p>All command messages use the following container format.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-command-message-format-figure">Key Manager command-message format</a> shows the command header, payload words,
+and checksum placement.</p>
+</div>
+<div id="key-manager-command-message-format-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_command_message.svg" alt="Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: COMMAND_ID; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32." width="544">
 </div>
-<div class="title">Figure 1. Command Message</div>
+<div class="title">Figure 6. Key Manager command-message format</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Message Field Description</caption>
+<div class="paragraph">
+<p><a href="#key-manager-command-message-fields-table">Key Manager command-message fields</a> defines the command container fields.</p>
+</div>
+<table id="key-manager-command-message-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 16. Key Manager command-message fields</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 78%;">
@@ -3186,8 +3193,11 @@ zero within the message or payload shown. In the message layouts, <code>n</code>
 <div class="paragraph">
 <p>The rest of this section describes all valid commands and their payloads.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. KM Command Summary</caption>
+<div class="paragraph">
+<p><a href="#key-manager-command-summary-table">Key Manager command summary</a> lists the command IDs and their functions.</p>
+</div>
+<table id="key-manager-command-summary-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 17. Key Manager command summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -3299,11 +3309,15 @@ zero within the message or payload shown. In the message layouts, <code>n</code>
 <p>This command has a <code>RESP_CMD</code> response with a return code of <em>success</em>,
 and a return argument containing the version of the hardware.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-hardware-version-response-figure">Key Manager hardware-version response</a> shows the hardware-version fields
+returned on success.</p>
+</div>
+<div id="key-manager-hardware-version-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_hw_version.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: HW_MAJOR_REV; bits 15 to 8: HW_MINOR_REV; bits 7 to 0: HW_PATCH_REV." width="544">
 </div>
-<div class="title">Figure 2. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 7. Key Manager hardware-version response</div>
 </div>
 </div>
 <div class="sect3">
@@ -3327,11 +3341,15 @@ and a return argument containing the version of the hardware.</p>
 <p>This command has a <code>RESP_CMD</code> response with a return code of <em>success</em>,
 and a return argument containing the version of the ROM firmware.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-rom-version-response-figure">Key Manager ROM-version response</a> shows the ROM-version fields returned on
+success.</p>
+</div>
+<div id="key-manager-rom-version-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_rom_version.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: ROM_MAJOR_REV; bits 15 to 8: ROM_MINOR_REV; bits 7 to 0: ROM_PATCH_REV." width="544">
 </div>
-<div class="title">Figure 3. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 8. Key Manager ROM-version response</div>
 </div>
 </div>
 <div class="sect3">
@@ -3368,11 +3386,15 @@ a return code of <em>failure</em>, and no return argument.</p>
 response with a return code of <em>success</em>, and a return argument
 containing the version of the SRAM firmware.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-sram-version-response-figure">Key Manager SRAM-version response</a> shows the SRAM firmware-version fields
+returned on success.</p>
+</div>
+<div id="key-manager-sram-version-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_sram_version.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: SRAM_MAJOR_REV; bits 15 to 8: SRAM_MINOR_REV; bits 7 to 0: SRAM_PATCH_REV." width="544">
 </div>
-<div class="title">Figure 4. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 9. Key Manager SRAM-version response</div>
 </div>
 </div>
 <div class="sect3">
@@ -3396,14 +3418,21 @@ containing the version of the SRAM firmware.</p>
 <p>This command has a <code>RESP_CMD</code> response with a return code of <em>success</em>,
 and a return argument containing the KM status information.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-status-response-figure">Key Manager status response</a> shows the status word returned by CMD_STAT.</p>
+</div>
+<div id="key-manager-status-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_status.svg" alt="Word 0: bits 31 to 0: KM_STATUS." width="544">
 </div>
-<div class="title">Figure 5. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 10. Key Manager status response</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. KM_STATUS Payload</caption>
+<div class="paragraph">
+<p><a href="#key-manager-status-fields-table">Key Manager status fields</a> defines the recoverable-fault flag and reserved
+status bits.</p>
+</div>
+<table id="key-manager-status-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 18. Key Manager status fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3572,14 +3601,22 @@ This ordering is required because the assembly wipes the C stack.</p>
 <div class="paragraph">
 <p><strong>Payload</strong></p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-sram-load-command-payload-figure">Key Manager SRAM-load command payload</a> shows the image-size word sent with
+CMD_SRAM_LOAD_EXEC.</p>
+</div>
+<div id="key-manager-sram-load-command-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_sram_load_exec.svg" alt="Word 0: bits 31 to 16: RESERVED; bits 15 to 0: FW_WORDS." width="544">
 </div>
-<div class="title">Figure 6. CMD_SRAM_LOAD_EXEC Payload</div>
+<div class="title">Figure 11. Key Manager SRAM-load command payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. CMD_SRAM_LOAD_EXEC Payload Fields</caption>
+<div class="paragraph">
+<p><a href="#key-manager-sram-load-payload-fields-table">Key Manager SRAM-load payload fields</a> defines the firmware word count and
+reserved bits.</p>
+</div>
+<table id="key-manager-sram-load-payload-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 19. Key Manager SRAM-load payload fields</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3610,10 +3647,10 @@ This ordering is required because the assembly wipes the C stack.</p>
 </div>
 <div class="paragraph">
 <p>After receiving the <code>RESP_CMD</code> confirmation, the SEP sends exactly one
-mailbox frame with the following structure:</p>
+mailbox frame with the following structure (<a href="#key-manager-sram-image-frame-table">Key Manager SRAM image frame</a>).</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. CMD_SRAM_LOAD_EXEC Image Frame (sent by SEP after confirmation)</caption>
+<table id="key-manager-sram-image-frame-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 20. Key Manager SRAM image frame</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -3703,14 +3740,22 @@ is responsible for sending its own ready message to the SEP.</p>
 <p>The size of the requested key in multiples of 32-bit words (equal to
 <code>REQ_SIZE+1</code>), as well as the valid destinations for the key.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-generation-command-payload-figure">Key-generation command payload</a> shows the requested size and
+destination-policy words for CMD_KEY_GENERATE.</p>
+</div>
+<div id="key-generation-command-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_generate_payload.svg" alt="Word 0: bits 31 to 7: RESERVED; bits 6 to 0: REQ_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID." width="544">
 </div>
-<div class="title">Figure 7. Command Payload</div>
+<div class="title">Figure 12. Key-generation command payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. DEST_VALID Payload</caption>
+<div class="paragraph">
+<p><a href="#key-generation-destination-policy-table">Key-generation destination policy</a> defines the permitted-destination bits for a
+generated key.</p>
+</div>
+<table id="key-generation-destination-policy-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 21. Key-generation destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3790,11 +3835,15 @@ of the generated key, including its handle, its size, and its valid
 destinations. The granted size must always be equivalent to the requested
 size.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-generation-success-response-figure">Key-generation success response</a> shows the generated key handle, size, and
+destination policy returned on success.</p>
+</div>
+<div id="key-generation-success-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_result.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="title">Figure 8. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 13. Key-generation success response</div>
 </div>
 </div>
 <div class="sect3">
@@ -3812,11 +3861,14 @@ handle.</p>
 <div class="paragraph">
 <p>The handle for the key to invalidate.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-revoke-command-payload-figure">Key-revoke command payload</a> shows the key handle sent with CMD_KEY_REVOKE.</p>
+</div>
+<div id="key-revoke-command-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_handle.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="title">Figure 9. Command Payload</div>
+<div class="title">Figure 14. Key-revoke command payload</div>
 </div>
 <div class="paragraph">
 <p><strong>Response</strong></p>
@@ -3836,11 +3888,14 @@ argument.</p>
 return code of <em>success</em>, and a return argument containing the handle of
 the revoked key.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-revoke-success-response-figure">Key-revoke success response</a> shows the revoked key handle returned on success.</p>
+</div>
+<div id="key-revoke-success-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_handle.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="title">Figure 10. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 15. Key-revoke success response</div>
 </div>
 </div>
 <div class="sect3">
@@ -3861,14 +3916,22 @@ destination-policy bitmask stored for the key handle in the key registry.</p>
 <p>The handle of the key to transfer in the KPV and the bitmask of the
 destination crypto engines.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-transfer-command-payload-figure">Key-transfer command payload</a> shows the key handle and requested
+destination-engine mask.</p>
+</div>
+<div id="key-transfer-command-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_transfer_payload.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE." width="544">
 </div>
-<div class="title">Figure 11. Command Payload</div>
+<div class="title">Figure 16. Key-transfer command payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. DEST_ENGINE Payload</caption>
+<div class="paragraph">
+<p><a href="#key-transfer-requested-engines-table">Key-transfer requested engines</a> defines the destination-engine bits in the
+transfer request.</p>
+</div>
+<table id="key-transfer-requested-engines-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 22. Key-transfer requested engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -3943,14 +4006,22 @@ will result in <em>failure</em> and no requested key transfers will take place.<
 return code of <em>success</em>, and a return argument containing the key handle
 and a bitfield of the crypto engines to which the key was transferred.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-transfer-success-response-figure">Key-transfer success response</a> shows the key handle and completed-engine mask
+returned on success.</p>
+</div>
+<div id="key-transfer-success-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_transfer_result.svg" alt="Word 0: bits 31 to 16: RESERVED; bits 15 to 8: DEST_ENGINE; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="title">Figure 12. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 17. Key-transfer success response</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. DEST_ENGINE Payload</caption>
+<div class="paragraph">
+<p><a href="#key-transfer-completed-engines-table">Key-transfer completed engines</a> defines the destination-engine bits in the
+transfer response.</p>
+</div>
+<table id="key-transfer-completed-engines-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 23. Key-transfer completed engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4023,14 +4094,22 @@ number of engines may be selected.</p>
 <div class="paragraph">
 <p>A bitfield indicating the crypto engines to purge.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-purge-command-payload-figure">Key-purge command payload</a> shows the engine mask sent with the key-purge
+request.</p>
+</div>
+<div id="key-purge-command-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_engine_mask.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE." width="544">
 </div>
-<div class="title">Figure 13. Command Payload</div>
+<div class="title">Figure 18. Key-purge command payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. DEST_ENGINE Payload</caption>
+<div class="paragraph">
+<p><a href="#key-purge-requested-engines-table">Key-purge requested engines</a> defines the bits selecting the engines whose key
+registers are to be purged.</p>
+</div>
+<table id="key-purge-requested-engines-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 24. Key-purge requested engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4104,14 +4183,22 @@ argument.</p>
 return code of <em>success</em>, and a return argument indicating the crypto
 engines that were purged.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-purge-success-response-figure">Key-purge success response</a> shows the engine mask returned after a successful
+purge.</p>
+</div>
+<div id="key-purge-success-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_engine_mask.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE." width="544">
 </div>
-<div class="title">Figure 14. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 19. Key-purge success response</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. DEST_ENGINE Payload</caption>
+<div class="paragraph">
+<p><a href="#key-purge-completed-engines-table">Key-purge completed engines</a> defines the bits reporting which engines were
+purged.</p>
+</div>
+<table id="key-purge-completed-engines-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 25. Key-purge completed engines</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4185,14 +4272,22 @@ KPV.</p>
 key size is <code>KEY_SIZE+1</code>) and the valid destinations for the key,
 followed by the key material itself.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-load-command-payload-figure">Key-load command payload</a> shows the size, destination policy, and key words
+sent with CMD_KEY_LOAD.</p>
+</div>
+<div id="key-load-command-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_load_payload.svg" alt="Word 0: bits 31 to 7: RESERVED; bits 6 to 0: KEY_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID. Word 2: bits 31 to 0: KEY_DATA[0]. Intermediate words omitted. Word KEY_SIZE + 2: bits 31 to 0: KEY_DATA[KEY_SIZE]." width="544">
 </div>
-<div class="title">Figure 15. Command Payload</div>
+<div class="title">Figure 20. Key-load command payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 13. DEST_VALID Payload</caption>
+<div class="paragraph">
+<p><a href="#key-load-destination-policy-table">Key-load destination policy</a> defines the permitted-destination bits for a
+loaded key.</p>
+</div>
+<table id="key-load-destination-policy-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 26. Key-load destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4265,8 +4360,12 @@ The return argument is the fixed header-word index of the offending field
 (<code>0</code> for <code>KEY_SIZE</code> / length, <code>1</code> for <code>DEST_VALID</code>), not an arbitrary
 <code>KEY_DATA</code> position.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 14. CMD_KEY_LOAD Validation Order</caption>
+<div class="paragraph">
+<p><a href="#cmd-key-load-validation-order-table">CMD_KEY_LOAD Validation Order</a> lists the validation checks in order and the
+error returned at each failure.</p>
+</div>
+<table id="cmd-key-load-validation-order-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 27. CMD_KEY_LOAD Validation Order</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 55%;">
@@ -4340,11 +4439,15 @@ requested size, and the returned handle is usable by every other
 key-management command with no distinction from a <code>CMD_KEY_GENERATE</code>
 handle.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-load-success-response-figure">Key-load success response</a> shows the loaded key handle, size, and destination
+policy returned on success.</p>
+</div>
+<div id="key-load-success-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_result.svg" alt="Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="title">Figure 16. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 21. Key-load success response</div>
 </div>
 </div>
 <div class="sect3">
@@ -4373,14 +4476,22 @@ key-management command.</p>
 <div class="paragraph">
 <p>The valid crypto engine destinations for the captured key.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#adams-bridge-shared-key-capture-payload-figure">Adams Bridge shared-key capture payload</a> shows the destination policy supplied
+for the captured shared key.</p>
+</div>
+<div id="adams-bridge-shared-key-capture-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_destination_mask.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID." width="544">
 </div>
-<div class="title">Figure 17. Command Payload</div>
+<div class="title">Figure 22. Adams Bridge shared-key capture payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 15. DEST_VALID Payload</caption>
+<div class="paragraph">
+<p><a href="#adams-bridge-shared-key-destination-policy-table">Adams Bridge shared-key destination policy</a> defines the permitted destinations
+for the captured shared key.</p>
+</div>
+<table id="adams-bridge-shared-key-destination-policy-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 28. Adams Bridge shared-key destination policy</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -4453,11 +4564,15 @@ response is also returned if the KPV cannot allocate a slot for the key.</p>
 <p>If the request is granted, the command returns <code>RESP_CMD</code> <em>success</em> with a
 return argument containing the handle of the newly stored key.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#adams-bridge-shared-key-capture-response-figure">Adams Bridge shared-key capture response</a> shows the newly allocated key handle
+returned on success.</p>
+</div>
+<div id="adams-bridge-shared-key-capture-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_key_handle.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE." width="544">
 </div>
-<div class="title">Figure 18. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 23. Adams Bridge shared-key capture response</div>
 </div>
 </div>
 <div class="sect3">
@@ -4493,14 +4608,22 @@ reserved and must be zero; a non-zero reserved field returns
 word returns <em>invalid_len</em> rather than <em>invalid_arg</em>, because the length
 check precedes any inspection of the argument.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#otp-cold-read-lock-command-payload-figure">OTP cold-read-lock command payload</a> shows the lock bits sent with
+CMD_OTP_READ_LOCK_COLD.</p>
+</div>
+<div id="otp-cold-read-lock-command-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_otp_read_locks.svg" alt="Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC." width="544">
 </div>
-<div class="title">Figure 19. Command Payload</div>
+<div class="title">Figure 24. OTP cold-read-lock command payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. LOCK_BITS Field Encoding</caption>
+<div class="paragraph">
+<p><a href="#otp-cold-read-lock-bit-encoding-table">OTP cold-read-lock bit encoding</a> maps each payload bit to the OTP field whose
+reads it locks.</p>
+</div>
+<table id="otp-cold-read-lock-bit-encoding-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 29. OTP cold-read-lock bit encoding</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">
@@ -4579,21 +4702,29 @@ for the secret UID fields.</p>
 and returns <code>RESP_CMD</code> <em>success</em> with <code>return_arg</code> = the resulting
 <code>OTP_READ_LOCK_COLD</code> register value after the write.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#otp-cold-read-lock-success-response-figure">OTP cold-read-lock success response</a> shows the resulting lock-register value
+returned on success.</p>
+</div>
+<div id="otp-cold-read-lock-success-response-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_otp_read_locks.svg" alt="Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC." width="544">
 </div>
-<div class="title">Figure 20. RESP_CMD <em>Success</em> Return Argument</div>
+<div class="title">Figure 25. OTP cold-read-lock success response</div>
 </div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="km-firmware-response-message-reference"><a class="anchor" href="#km-firmware-response-message-reference"></a><a class="link" href="#km-firmware-response-message-reference">2.3. Response Message Reference</a></h3>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-response-message-format-figure">Key Manager response-message format</a> shows the response header, payload, and
+checksum placement.</p>
+</div>
+<div id="key-manager-response-message-format-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_response_message.svg" alt="Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: RESPONSE_ID; bits 7 to 0: RESP_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32." width="544">
 </div>
-<div class="title">Figure 21. Response Message</div>
+<div class="title">Figure 26. Key Manager response-message format</div>
 </div>
 <div class="paragraph">
 <p>The KM sends response messages to the SEP using the exact same basic
@@ -4604,8 +4735,12 @@ message container format as command messages.</p>
 sequence numbers of command messages. There is also no direct
 relationship between command IDs and response IDs.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. KM Response Summary</caption>
+<div class="paragraph">
+<p><a href="#key-manager-response-summary-table">Key Manager response summary</a> lists the response IDs and the events that
+generate them.</p>
+</div>
+<table id="key-manager-response-summary-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 30. Key Manager response summary</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 40%;">
@@ -4662,14 +4797,22 @@ direct commands from the SEP with this response.</p>
 <p>The sequence number from the source command, the source command ID, a
 signed 8-bit return code, and an optional argument.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-command-response-payload-figure">Key Manager command-response payload</a> shows the source command, return code,
+and optional return argument.</p>
+</div>
+<div id="key-manager-command-response-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_response_payload.svg" alt="Word 0: bits 31 to 8: RESERVED; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: COMMAND_ID. Word 2: bits 31 to 8: RESERVED; bits 7 to 0: RETURN_CODE. Word 3: bits 31 to 0: RETURN_ARG (optional)." width="544">
 </div>
-<div class="title">Figure 22. Response Payload</div>
+<div class="title">Figure 27. Key Manager command-response payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. Return Codes</caption>
+<div class="paragraph">
+<p><a href="#key-manager-command-return-codes-table">Key Manager command return codes</a> defines the command result codes and their
+return arguments.</p>
+</div>
+<table id="key-manager-command-return-codes-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 31. Key Manager command return codes</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 18%;">
@@ -4801,14 +4944,22 @@ recoverable fault.</p>
 full payload word. Only <code>[7:0]</code> is meaningful; because every code is negative,
 <code>[31:8]</code> reads as all ones rather than zero.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-recoverable-fault-payload-figure">Key Manager recoverable-fault payload</a> shows the sign-extended
+recoverable-fault code.</p>
+</div>
+<div id="key-manager-recoverable-fault-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_fault_code.svg" alt="Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE." width="544">
 </div>
-<div class="title">Figure 23. Response Payload</div>
+<div class="title">Figure 28. Key Manager recoverable-fault payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Fault Codes</caption>
+<div class="paragraph">
+<p><a href="#key-manager-recoverable-fault-codes-table">Key Manager recoverable-fault codes</a> lists the recoverable faults reported to
+the SEP host.</p>
+</div>
+<table id="key-manager-recoverable-fault-codes-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 32. Key Manager recoverable-fault codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -4867,14 +5018,22 @@ unrecoverable fault. Core execution has halted.</p>
 full payload word. Only <code>[7:0]</code> is meaningful; because every code is negative,
 <code>[31:8]</code> reads as all ones rather than zero.</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#key-manager-unrecoverable-fault-payload-figure">Key Manager unrecoverable-fault payload</a> shows the sign-extended
+unrecoverable-fault code.</p>
+</div>
+<div id="key-manager-unrecoverable-fault-payload-figure" class="imageblock">
 <div class="content">
 <img src="../../_images/km_packet_fault_code.svg" alt="Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE." width="544">
 </div>
-<div class="title">Figure 24. Response Payload</div>
+<div class="title">Figure 29. Key Manager unrecoverable-fault payload</div>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Fault Codes</caption>
+<div class="paragraph">
+<p><a href="#key-manager-unrecoverable-fault-codes-table">Key Manager unrecoverable-fault codes</a> lists the unrecoverable faults reported
+to the SEP host.</p>
+</div>
+<table id="key-manager-unrecoverable-fault-codes-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 33. Key Manager unrecoverable-fault codes</caption>
 <colgroup>
 <col style="width: 12%;">
 <col style="width: 28%;">
@@ -6796,8 +6955,12 @@ structure into the HMAC message verbatim. Structure fields use the
 PicoRV32 in-memory byte representation; only the surrounding counter and
 output-length fields are big-endian.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. KDF Fixed Input Layout</caption>
+<div class="paragraph">
+<p><a href="#kdf-fixed-input-layout-table">KDF Fixed Input Layout</a> defines the byte layout of the fixed input mixed into
+key derivation.</p>
+</div>
+<table id="kdf-fixed-input-layout-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 34. KDF Fixed Input Layout</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 25%;">
@@ -6936,8 +7099,11 @@ and engine behavior.</p>
 <div class="paragraph">
 <p>Compute the CRC-8/ROHC for a given block of data.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. CRC-8/ROHC Parameters</caption>
+<div class="paragraph">
+<p><a href="#crc-8-rohc-parameters-table">CRC-8/ROHC Parameters</a> specifies the CRC-8 parameters used for message headers.</p>
+</div>
+<table id="crc-8-rohc-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 35. CRC-8/ROHC Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -6989,8 +7155,12 @@ from least significant byte to most significant byte.</p>
 <div class="paragraph">
 <p>Compute the CRC-32C (Castagnoli) for a given block of data.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. CRC-32C Parameters</caption>
+<div class="paragraph">
+<p><a href="#crc-32c-parameters-table">CRC-32C Parameters</a> specifies the CRC-32C parameters used for payload
+integrity.</p>
+</div>
+<table id="crc-32c-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 36. CRC-32C Parameters</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">

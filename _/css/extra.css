@@ -304,10 +304,14 @@
     color: var(--oca-green);
 }
 
-.doc h4,
-.doc h5,
-.doc h6 {
-    font-size: 1.1em;
+.doc h3 { font-size: 1.3em; }
+.doc h4 { font-size: 1.2em; }
+.doc h5 { font-size: 1.1em; }
+.doc h6 { font-size: 1em; }
+
+.doc .block-references {
+    font-size: 0.85em;
+    color: var(--oca-text);
 }
 
 /* Body copy */

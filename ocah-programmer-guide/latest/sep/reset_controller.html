@@ -205,15 +205,27 @@
 <div id="sep-reset-controller" class="paragraph">
 <p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
 </div>
+<div class="paragraph">
+<p><a href="#sep-reset-domain-diagram">SEP reset domains and reset sequencing</a> shows the reset domains controlled by the SEP Reset
+Controller.</p>
+</div>
+<div id="sep-reset-domain-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_ResetDomains_FIG003.1.png" alt="SEP reset domains and reset sequencing" width="100%">
+</div>
+<div class="title">Figure 1. SEP reset domains and reset sequencing</div>
+</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="software-reset-register"><a class="anchor" href="#software-reset-register"></a><a class="link" href="#software-reset-register">1. Software Reset Register</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The controller contains a single 64-bit register <code>SW_RESET_N</code> at offset <code>0x0</code> with the following fields:</p>
+<p><a href="#sep-sw-reset-n-fields-table">SEP SW_RESET_N fields</a> defines the software reset controls and their reset
+values.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
+<table id="sep-sw-reset-n-fields-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SEP SW_RESET_N fields</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 20%;">

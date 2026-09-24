@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-appnotes" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../index.html">Application Notes</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas Harness (OCAH) Application Notes latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="sep-prod-rom-hardware-initialization"><a class="anchor" href="#sep-prod-rom-hardware-initialization"></a><a class="link" href="#sep-prod-rom-hardware-initialization">1. Hardware initialization</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="captured-straps"><a class="anchor" href="#captured-straps"></a><a class="link" href="#captured-straps">1.1. Captured straps</a></h3>
+<div class="paragraph">
+<p>The ROM reads the captured GPIO straps through the SMC supplementary window.
+<code>include/sep_smc_interface.h</code> defines the SEP-visible offsets and bit
+positions.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Strap</th>
+<th class="tableblock halign-left valign-top">Register bit</th>
+<th class="tableblock halign-left valign-top">ROM field</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary chiplet</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[25]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>primary_chiplet</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Selects the SPI path when recovery is clear; otherwise selects the secondary
+SMC-SRAM path.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot recovery</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[19]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>boot_recovery</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Makes a primary chiplet wait for an SMC-staged manifest.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BL0 PLL clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[20]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bl0_pll_clk</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Selects the PLL initialization hook instead of the reference clock.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disable status reporting</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[21]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>status_report_disable</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skips the SMC-SRAM status ring; scratch-register status remains available.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass SRAM repair</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_LO[13]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">assembly only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skips the memory-repair result check because repair did not run.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass MBIST result</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[22]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">assembly only</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Ignores the MBIST result.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Rotate update</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STRAPS_HI[26]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rotate_update</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Swaps the order of the primary and backup SPI manifest slots.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="early-cpu-and-fabric-setup"><a class="anchor" href="#early-cpu-and-fabric-setup"></a><a class="link" href="#early-cpu-and-fabric-setup">1.2. Early CPU and fabric setup</a></h3>
+<div class="paragraph">
+<p>The reset path programs the VeeR EL2 memory-region attributes before its first
+scratch-register access. It then configures the outbound filter window used by
+later firmware status traffic and programs PMP regions for the Boot ROM, DCCM,
+status mailbox, SEP SRAM, SEP peripherals, and ICCM.</p>
+</div>
+<div class="paragraph">
+<p>The current <code>vector.S</code> labels PMP entry 6 as SMC MMIO, but programs
+<code>0xC000_0000</code> through <code>0xCFFF_FFFF</code>. SEP actually accesses SMC through
+<code>0x4000_0000</code>, so this entry does not protect the SEP-visible SMC aperture. The
+PMP table must be corrected before it can be treated as the final SMC access
+policy.</p>
+</div>
+<div class="paragraph">
+<p><code>PMP_ENABLE</code> controls whether these entries are programmed. <code>PMP_LOCK</code> controls
+their lock bits. The production Makefile defaults to PMP enabled and unlocked;
+an integrator must select the final lock policy for the immutable image.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="memory-health-gate"><a class="anchor" href="#memory-health-gate"></a><a class="link" href="#memory-health-gate">1.3. Memory-health gate</a></h3>
+<div class="paragraph">
+<p>Before writing DCCM, the assembly path reads the SMC DFX status. It checks that
+memory repair succeeded unless repair was bypassed, waits for MBIST completion,
+and checks that MBIST passed unless its result was bypassed. A failed, aborted,
+or timed-out check records the raw status in SMC scratch register 10.</p>
+</div>
+<div class="paragraph">
+<p>The current code uses a fixed <code>MBIST_DONE_WAIT_ITERS</code> bound. This value is an
+implementation limit rather than a calibrated silicon duration. If
+<code>STATUS_RPT.SKIP_MEM_CHECK</code> is clear, failure is terminal; if it is set, the
+boot continues. That bit is not allocated by the current SEP eFuse RDL and
+must not be treated as a production fuse contract without a corresponding
+register specification.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="runtime-memory-initialization"><a class="anchor" href="#runtime-memory-initialization"></a><a class="link" href="#runtime-memory-initialization">1.4. Runtime memory initialization</a></h3>
+<div class="paragraph">
+<p>The cold path scrubs <code>DCCM_SCRUB_BYTES</code>, then copies <code>.data</code> from its ROM load
+address and clears <code>.bss</code>. The default is the full 128 KiB DCCM, including the
+reserved <code>bl0_state</code> area, so each word receives valid ECC before C uses it.</p>
+</div>
+<div class="paragraph">
+<p>The C path can clear part or all of SEP SRAM according to <code>SRAM_SCRUB_BYTES</code>.
+The open build defaults this value to zero because the programmed simulation
+flow may preload data in that memory. The manifest load overwrites its staging
+region, but this simulation choice does not define a production sanitization
+policy.</p>
+</div>
+<div class="paragraph">
+<p>ICCM is initialized through the secure DMA because the CPU load/store path
+cannot write it. <code>ROM_ICCM_CLEAR_ENABLE</code> defaults to zero to control simulation
+cost. A release configuration should enable it so all ICCM fetch words have
+valid ECC, including words adjacent to the end of BL1, but the current Makefile
+does not define or enforce a release mode. <code>ROM_ICCM_CLEAR_ENABLE</code> is also
+absent from its build-flags stamp, so changing the variable requires a clean
+build to ensure <code>rom_main.c</code> is recompiled.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="c-initialization"><a class="anchor" href="#c-initialization"></a><a class="link" href="#c-initialization">1.5. C initialization</a></h3>
+<div class="paragraph">
+<p>The C path validates its runtime state, initializes the SMC-backed status
+channel when enabled, and selects the reference or PLL-derived clock. It then
+initializes <code>bl0_state</code>, validates the lifecycle state, reports the SMC chip ID,
+and runs SHA-256 over the NIST <code>"abc"</code> vector as a crypto-engine self-test.</p>
+</div>
+<div class="paragraph">
+<p>The peripheral/bus reset function currently reports that the sequence is not
+implemented. DMA setup and the selected SPI-controller initialization occur
+later, immediately before boot-source processing.</p>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/register-sections.js"></script>
+<script src="../../../_/js/toc-collapse.js"></script>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script src="../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

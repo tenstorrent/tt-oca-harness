@@ -261,6 +261,16 @@ register-driven control and direct hardware guidance via the LSIO
 interface, all while maintaining strict access governance and flexible
 interrupt handling throughout.</p>
 </div>
+<div class="paragraph">
+<p><a href="#gpio-interface-diagram">GPIO controller and technology-specific interface shim</a> shows the controller, LSIO selection, and technology-specific
+pad interface.</p>
+</div>
+<div id="gpio-interface-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/SMC_GPIO_FIG021.jpeg" alt="GPIO controller and technology-specific interface shim" width="100%">
+</div>
+<div class="title">Figure 1. GPIO controller and technology-specific interface shim</div>
+</div>
 <div class="sect2">
 <h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">3.1. Functional Blocks</a></h3>
 <div class="paragraph">
@@ -416,7 +426,12 @@ integration for hardware protocols, and direct GPIO pad connections.</p>
 </div>
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
-<table class="tableblock frame-all grid-all stretch">
+<div class="paragraph">
+<p><a href="#gpio-configuration-parameters-table">GPIO configuration parameters</a> lists the GPIO dimensions and integration
+parameters.</p>
+</div>
+<table id="gpio-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. GPIO configuration parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 20%;">
@@ -460,8 +475,11 @@ APB4)</p></td>
 </div>
 <div class="sect2">
 <h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.3. Global Interface</a></h3>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Global Interface Signals</caption>
+<div class="paragraph">
+<p><a href="#gpio-global-interface-signals-table">GPIO Global Interface Signals</a> defines the GPIO clock and reset interface.</p>
+</div>
+<table id="gpio-global-interface-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. GPIO Global Interface Signals</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 10%;">
@@ -512,8 +530,12 @@ Test) support.</p></td>
 <p>The LSIO (Low Speed Input/Output) interface enables hardware-controlled
 GPIO operation for protocol processing.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. LSIO Interface Signals</caption>
+<div class="paragraph">
+<p><a href="#gpio-lsio-interface-signals-table">GPIO LSIO Interface Signals</a> defines the controls used to select
+hardware-driven GPIO functions.</p>
+</div>
+<table id="gpio-lsio-interface-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. GPIO LSIO Interface Signals</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 10%;">
@@ -597,8 +619,12 @@ gated by lsio_disable, so it reads 0 during a software-forced LSIO</p>
 <p>The GPIO pad interface provides direct connection to external pads with
 bidirectional capabilities.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. GPIO Pad Interface Signals</caption>
+<div class="paragraph">
+<p><a href="#gpio-pad-interface-signals-table">GPIO Pad Interface Signals</a> defines the data and control connections to the
+external pads.</p>
+</div>
+<table id="gpio-pad-interface-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 4. GPIO Pad Interface Signals</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 10%;">
@@ -647,8 +673,11 @@ bidirectional capabilities.</p>
 <p>The interrupt interface provides event notification capabilities with
 configurable trigger modes.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Interrupt Interface Signals</caption>
+<div class="paragraph">
+<p><a href="#gpio-interrupt-interface-signals-table">GPIO Interrupt Interface Signals</a> defines the GPIO interrupt output.</p>
+</div>
+<table id="gpio-interrupt-interface-signals-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 5. GPIO Interrupt Interface Signals</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 10%;">
@@ -742,23 +771,25 @@ enable concurrent access and modular functionality.</p>
 <div class="sect2">
 <h3 id="reset-behavior"><a class="anchor" href="#reset-behavior"></a><a class="link" href="#reset-behavior">5.2. Reset Behavior</a></h3>
 <div class="paragraph">
-<p>When the system reset (rst_ni) is asserted, the GPIO peripheral
-initializes each register bank to well-defined, safe starting values. In
-the Interface Register Bank, the ACCESS_FILTER register is set to
-0x00010100, enforcing default security protection levels, while the
-DATA_CTRL register clears all control bits to 0x00000000, ensuring no
-data path is active by default. Simultaneously, the Control Register
-Bank&#8217;s CONTROL register is initialized to 0x00100002, establishing a 6mA
-drive strength and enabling strap validity as the hardware default for the physical I/O.</p>
+<p><code>ACCESS_FILTER</code> resets to <code>0x00010100</code>. Both filter-enable bits are zero,
+so reads and writes are initially allowed regardless of AXI <code>PROT</code>. The stored
+read and write requirements are each <code>3&#8217;b001</code>; they apply only after software
+enables the corresponding filter. The filter compares transaction protection
+attributes, not initiator identity, and cannot by itself guarantee SEP-only access.</p>
 </div>
 <div class="paragraph">
-<p>During reset deassertion, the peripheral captures the pad state for
-configuration strap functionality, updating both the strap_valid and
-strap_value fields based on the observed pad logic level. At this stage,
-all GPIO operation modes remain inactive, and explicit software
-configuration is required to enable any functional path. Throughout
-reset, the hardware maintains a safe low-current output condition on the
-pads, minimizing the risk of unintended external drive or contention.</p>
+<p><code>DATA_CTRL</code> resets its software controls to zero, leaving register overrides
+disabled. This does not disable every pad path: with the default
+<code>INPUT_BY_DEFAULT = 1</code>, receive is enabled and transmit disabled while cold reset
+is asserted and when no interface owns the pad. After cold reset, a hardware
+LSIO request can select the pad without software enabling the register interface.
+Its direction signals then control transmit and receive.</p>
+</div>
+<div class="paragraph">
+<p>The control bank&#8217;s <code>strap_valid</code> reflects <code>INPUT_BY_DEFAULT</code>, not the sampled
+pad level. <code>strap_value</code> reports the captured strap level. The visible <code>CONTROL</code>
+value therefore depends on the parameter and captured input as well as the
+reset values of its software-controlled pad settings.</p>
 </div>
 </div>
 <div class="sect2">
@@ -814,8 +845,8 @@ pads, minimizing the risk of unintended external drive or contention.</p>
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10:8</td><td>awprot_requirement</td><td>RW</td><td>0x1</td><td>When write_filter_enable is set, only allow write accesses with this prot value<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 <tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
-<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 </table>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
@@ -903,8 +934,8 @@ pads, minimizing the risk of unintended external drive or contention.</p>
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10:8</td><td>awprot_requirement</td><td>RW</td><td>0x1</td><td>When write_filter_enable is set, only allow write accesses with this prot value<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 <tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
-<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 </table>
 <h3 id="CONTROL">CONTROL</h3>
 <table>

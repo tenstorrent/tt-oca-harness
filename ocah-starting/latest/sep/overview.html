@@ -209,13 +209,16 @@
 </aside>
 <article class="doc">
 <h1 class="page">Hardware Overview</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div id="hardware-overview" class="paragraph">
-<p>The diagram below shows the top level SEP architecture.</p>
+<p><a href="#sep-top-level-diagram">SEP top-level microarchitecture</a> shows the top level SEP architecture.</p>
 </div>
-<div class="imageblock">
+<div id="sep-top-level-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SEP_Platform.png" alt="SEP_Platform">
+<img src="_images/SEP_TopLevel_FIG001.drawio.png" alt="SEP top-level microarchitecture" width="100%">
 </div>
+<div class="title">Figure 1. SEP top-level microarchitecture</div>
 </div>
 <div class="paragraph">
 <p>SEP is hierarchically organized as follows:</p>
@@ -358,6 +361,23 @@ subsystems have AXI4-lite interfaces.</p>
 instantiated outside of SEP and have dedicated SEP interfaces. The goal
 is to cleanly separate the generic SEP IP from technology specific
 components in order to make integration and migration easier.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-clock-distribution"><a class="anchor" href="#sep-clock-distribution"></a><a class="link" href="#sep-clock-distribution">1. Clock Distribution</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#sep-clock-tree">SEP clock tree and clock domains</a> shows the SEP clock distribution and the domains used by its
+subblocks.</p>
+</div>
+<div id="sep-clock-tree" class="imageblock">
+<div class="content">
+<img src="_images/SEP_CLOCKING_FIG002.svg" alt="SEP clock tree and clock domains" width="100%">
+</div>
+<div class="title">Figure 2. SEP clock tree and clock domains</div>
+</div>
+</div>
 </div>
 </article>
   </div>

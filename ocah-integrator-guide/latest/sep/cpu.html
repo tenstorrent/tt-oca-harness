@@ -207,6 +207,16 @@ host. The core has been silicon proven by Western Digital and others. The
 Programmer’s Reference Manual</a> provides the details required for
 programming the CPU.</p>
 </div>
+<div class="paragraph">
+<p><a href="#sep-cpu-diagram">SEP VeeR EL2 CPU subsystem and memory interfaces</a> shows the CPU subsystem and its instruction, data, and external
+memory interfaces.</p>
+</div>
+<div id="sep-cpu-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_CPU_FIG004.svg" alt="SEP VeeR EL2 CPU subsystem and memory interfaces" width="100%">
+</div>
+<div class="title">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -245,19 +255,30 @@ for FUSA compliance</p>
 </div>
 </li>
 <li>
-<p>RISC-V PMP (Physical Memory Protection) - Privileged Architecture
-standard</p>
+<p>RISC-V PMP (Physical Memory Protection)</p>
 <div class="ulist">
 <ul>
 <li>
-<p>32-bit address space divided into 16 regions of 256 MB fixed size</p>
+<p><code>pmpcfg</code> and <code>pmpaddr</code> CSRs define address ranges and their read, write,
+and execute permissions</p>
 </li>
 <li>
-<p>Each region has execute, write and read permissions controlled by the
-Region Access Control Register (mrac)</p>
+<p>Access violations raise precise exceptions</p>
+</li>
+</ul>
+</div>
 </li>
 <li>
-<p>Precisely trapped exception on usage violation</p>
+<p>Memory attributes controlled separately by the Region Access Control
+Register (<code>mrac</code>)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Sixteen fixed 256 MiB regions cover the 32-bit address space</p>
+</li>
+<li>
+<p>Each region has cacheability and side-effect attributes; these do not
+grant or deny read, write, or execute access</p>
 </li>
 </ul>
 </div>
@@ -269,8 +290,8 @@ Region Access Control Register (mrac)</p>
 for the complete source-by-source mapping</p>
 </li>
 <li>
-<p>Two independent or linked internal timers with standard RV <em>mip</em>
-interrupts</p>
+<p>Two independent or linked internal timers with VeeR-specific
+<code>mip.MITIP0</code> and <code>mip.MITIP1</code> interrupts</p>
 </li>
 <li>
 <p>Debug unit with JTAG interface and internal AXI4 Debug Master</p>
@@ -345,14 +366,8 @@ features:</p>
 <p>64 kB capacity</p>
 </li>
 <li>
-<p>SECDED error correction - single-error correction, double-error detection</p>
-<div class="ulist">
-<ul>
-<li>
-<p>32-bit data + 7-bit ECC tag</p>
-</li>
-</ul>
-</div>
+<p>64-bit data path without ECC or an integrity-error sideband in the open
+generic ROM integration</p>
 </li>
 </ul>
 </div>
@@ -572,6 +587,16 @@ available to DMA for automatic flow control</p>
 </li>
 </ul>
 </div>
+<div id="sep-dma-reference-diagram" class="imageblock">
+<div class="content">
+<img src="_images/opentitan_dma.svg" alt="OpenTitan DMA core and inline hashing reference architecture" width="100%">
+</div>
+<div class="title">Figure 2. OpenTitan DMA core and inline hashing reference architecture</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-dma-reference-diagram">OpenTitan DMA core and inline hashing reference architecture</a> shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.</p>
+</div>
 <div class="sect2">
 <h3 id="och-modifications"><a class="anchor" href="#och-modifications"></a><a class="link" href="#och-modifications">8.1. OCAH Modifications</a></h3>
 <div class="ulist">
@@ -608,10 +633,15 @@ streaming interfaces</p>
 <p>Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)</p>
 </div>
-<div class="imageblock">
+<div class="paragraph">
+<p><a href="#proposed-sep-dma-extensions-figure">Proposed SEP DMA extensions</a> illustrates the proposed DMA datapath extensions
+described in this section.</p>
+</div>
+<div id="proposed-sep-dma-extensions-figure" class="imageblock">
 <div class="content">
 <img src="_images/SEP_DMA.png" alt="SEP_DMA">
 </div>
+<div class="title">Figure 3. Proposed SEP DMA extensions</div>
 </div>
 </div>
 </div>
