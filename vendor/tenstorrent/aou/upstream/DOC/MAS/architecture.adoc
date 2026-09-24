@@ -9,13 +9,13 @@ ifndef::aou-integration-xref[]
 :aou-integration-xref: ../integration_guide/integrator.adoc
 endif::[]
 
-[[aou-3-architecture]]
-== 3. Architecture
+[[aou-architecture]]
+== Architecture
 
 This section describes the block diagram of AOU_CORE.
 
-[[aou-31-block-diagram]]
-=== 3.1. Block diagram
+[[aou-block-diagram]]
+=== Block diagram
 
 [caption=""]
 .Figure 2. Architecture of AOU_CORE
@@ -26,10 +26,10 @@ xref:figure-2[] shows block diagram of current AOU_CORE. The AXI interface suppo
 
 Inside AXI4MUX_3X1_TOP, AXI aggregator is added for improving bus utilization. AXI aggregator combines narrow read & write data and send it to BUS. This functionality may modify AXI Len & Size. For example, AXI AR with 256-bit size & 16 burst length may transfer into 1024-bit size & 4 burst length. This operation can be controlled via SFR setting.
 
-AOU_CORE provides a parameterizable FDI interface; the data-path width is selected by [.monospaced]#++FDI_CONFIG++# ([.monospaced]#++FDI_CFG_SP_32B++# / [.monospaced]#++FDI_CFG_SP_64B++# / [.monospaced]#++FDI_CFG_SP_128B++# for single-PHY, [.monospaced]#++FDI_CFG_TP_32B_64B++# / [.monospaced]#++FDI_CFG_TP_64B_128B++# for two-PHY). See xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2] for the full table of [.monospaced]#++FDI_CONFIG++# values and resulting per-PHY widths.
+AOU_CORE provides a parameterizable FDI interface; the data-path width is selected by [.monospaced]#++FDI_CONFIG++# ([.monospaced]#++FDI_CFG_SP_32B++# / [.monospaced]#++FDI_CFG_SP_64B++# / [.monospaced]#++FDI_CFG_SP_128B++# for single-PHY, [.monospaced]#++FDI_CFG_TP_32B_64B++# / [.monospaced]#++FDI_CFG_TP_64B_128B++# for two-PHY). See xref:{aou-integration-xref}#aou-ig-parameter-list[the Integrator Guide] for the full table of [.monospaced]#++FDI_CONFIG++# values and resulting per-PHY widths.
 
-[[aou-32-tx_core]]
-=== 3.2. TX_CORE
+[[aou-tx_core]]
+=== TX_CORE
 
 [caption=""]
 .Figure 3. Block Diagram of Single RP AOU_TX_CORE
@@ -38,8 +38,8 @@ image::image3.png[Figure 3. Block Diagram of Single RP AOU_TX_CORE]
 
 xref:figure-3[] shows the simplified block diagram of single RP AOU_TX_CORE. The module receives AXI messages for Remote Die. AOU_TX_AXI_BUFFER captures AXI messages from the system bus. When AOU_TX_CORE obtains sufficient credit from AOU_CRD_CTRL, it packs the AXI message into an AOU message and stores it in the ring buffer. Once there is enough space to hold all messages, messages are stored to the ring buffer in parallel. The ring buffer subsequently performs handshake operations with the FDI interface.
 
-[[aou-321-tx_core-qos-scheme]]
-==== 3.2.1. TX_CORE QoS Scheme
+[[aou-tx_core-qos-scheme]]
+==== TX_CORE QoS Scheme
 
 <<figure-4>> shows the arbitration path used to select among resource-plane requests.
 
@@ -83,8 +83,8 @@ image::image6.png[Figure 6. Port QoS arbitration example]
 [[figure-7]]
 image::image7.png[Figure 7. AXI QoS arbitration example]
 
-[[aou-33-rx_core]]
-=== 3.3. RX_CORE
+[[aou-rx_core]]
+=== RX_CORE
 
 [caption=""]
 .Figure 8. Block Diagram of AOU_RX_CORE
@@ -108,8 +108,8 @@ xref:figure-9[] shows the architecture of the Chunk Decoder which is central sub
 
 For example, a B message has a size of 1 granule and can therefore be decoded immediately once a valid chunk is received from RX_FDI_IF. In contrast, Rdata or Wdata, which have a data width of 1024 bits, require 27-30 granules, and thus cannot be decoded immediately. Instead, they are decoded after approximately three cycles. Because messages of 27-30 granules may span up to four flits during transmission.
 
-[[aou-34-message-fifo]]
-=== 3.4. Message FIFO
+[[aou-message-fifo]]
+=== Message FIFO
 
 <<figure-10>> shows the data FIFO organization.
 
@@ -141,15 +141,15 @@ If the data received from the remote die has sdlen of 0(256bit data), the messag
 
 In addition, the depth of the Data FIFO is not 44. The depth has been determined under the assumption that the current bus data width is 512 bits. When the bus data width is 512 bits, a W message occupies 15 granules. Since the decoder in RX_CORE can decode 12 granules per cycle, the maximum W message can reach the FIFO once every 1.25 cycles (15G ÷ 12G/cycle = 1.25 cycles). Furthermore, as mentioned above, when the bus data width is 512 bits, each message is stored across two FIFO entries. Therefore, if the maximum turnaround time (TAT) to be covered is 50 ns (50 cycles), the depth can be set to 80 (50 / 1.25 x 2 = 80). Regarding the margin, Data FIFOpass:[']s depth is set to 88.
 
-When [.monospaced]#++FDI_CONFIG++# selects a 1024b (128B) FDI interface ([.monospaced]#++FDI_CFG_SP_128B++# or [.monospaced]#++FDI_CFG_TP_64B_128B++#), the per-chunk granule rate roughly doubles, so the per-RP [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# parameter defaults are bumped to 140 entries to keep the same effective TAT margin. See xref:{aou-integration-xref}#aou-ig-parameter-list[Section 2] for the parameter defaults.
+When [.monospaced]#++FDI_CONFIG++# selects a 1024b (128B) FDI interface ([.monospaced]#++FDI_CFG_SP_128B++# or [.monospaced]#++FDI_CFG_TP_64B_128B++#), the per-chunk granule rate roughly doubles, so the per-RP [.monospaced]#++RP*_RX_W_FIFO_DEPTH++# / [.monospaced]#++RP*_RX_R_FIFO_DEPTH++# parameter defaults are bumped to 140 entries to keep the same effective TAT margin. See xref:{aou-integration-xref}#aou-ig-parameter-list[the Integrator Guide] for the parameter defaults.
 
 FIFOs are allocated for each RP, and the depth of the FIFOs for each RP is configurable.
 
-[[aou-35-data-width-converter]]
-=== 3.5. Data width converter
+[[aou-data-width-converter]]
+=== Data width converter
 
-[[aou-351-overview]]
-==== 3.5.1. Overview
+[[aou-data-width-converter-overview]]
+==== Overview
 
 [caption=""]
 .Figure 12. AXI4MUX_3X1_TOP
@@ -160,8 +160,8 @@ According to the AoU specification, even if the data width differs between chips
 
 Within AOU_CORE_TOP, the [.monospaced]#++AOU_AXI4MUX_3X1_TOP++# module performs this function. xref:figure-12[] shows how the structure of the Bypass, AXI Downsizer, and AXI Upsizer varies depending on the AXI data width of the local die.
 
-[[aou-352-width-adaptation-paths]]
-==== 3.5.2. Width Adaptation Paths
+[[aou-width-adaptation-paths]]
+==== Width Adaptation Paths
 
 Three slave channel slots correspond to three possible remote data widths: 256 bits, 512 bits, and 1024 bits. Which slot uses an upsizer, bypass, or downsizer depends on the local diepass:[']s [.monospaced]#++AXI_DATA_WD++# parameter. A dedicated variant of the width-adapter module is instantiated for each supported local width:
 
@@ -184,8 +184,8 @@ path for each local and remote data width.
 
 The upsizer ([.monospaced]#++AOU_AXI_UP++#) packs multiple narrow beats into a single wider beat, recalculating [.monospaced]#++AWLEN++#/[.monospaced]#++ARLEN++# accordingly. The downsizer ([.monospaced]#++AOU_AXI_DOWN++#) splits a single wide beat into multiple narrower beats. Both modules regenerate [.monospaced]#++WLAST++# internally using a beat counter that compares the current W beat count against the recalculated burst length.
 
-[[aou-353-wlast-regeneration]]
-==== 3.5.3. WLAST Regeneration
+[[aou-wlast-regeneration]]
+==== WLAST Regeneration
 
 The AoU Write Data message does not carry a [.monospaced]#++WLAST++# signal. The [.monospaced]#++AOU_AXI_WLAST_GEN++# module regenerates [.monospaced]#++WLAST++# by aligning the phases of WriteReq and Write Data messages. It operates upstream of the width adapters in the RX-to-AXI path within [.monospaced]#++AOU_CORE_RP++#.
 
@@ -196,24 +196,24 @@ The module uses [.monospaced]#++I_S_WDLENGTH++# (derived from the [.monospaced]#
 
 In addition to [.monospaced]#++AOU_AXI_WLAST_GEN++#, the upsizer and downsizer modules ([.monospaced]#++AOU_AXI_UP++# and [.monospaced]#++AOU_AXI_DOWN++#) each contain their own WLAST generation logic to account for the changed burst length after width conversion.
 
-[[aou-36-axi-transaction-splitter]]
-=== 3.6. AXI Transaction Splitter
+[[aou-axi-transaction-splitter]]
+=== AXI Transaction Splitter
 
-[[aou-361-overview]]
-==== 3.6.1. Overview
+[[aou-axi-transaction-splitter-overview]]
+==== Overview
 
 In the AoU specification, the AXI LEN field is fixed at 8 bits, allowing the remote die to issue burst transactions up to the maximum supported by an 8-bit AXI LEN. However, because the local diepass:[']s bus may not support the full 8-bit burst length, inbound AXI transactions must be split into bursts that the local bus can handle and then reassembled to match the original request.
 
 Even if the burst length increases as a result of data-width conversion, the AXI transactions are always split to ensure they do not exceed the maximum burst length supported by the local bus.
 
-The splitter ([.monospaced]#++AOU_AXI_SPLIT_TR++#) sits between the 3:1 arbitration mux and the xref:aou-38-axi-aggregator[AXI Aggregator] inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP, and the maximum burst length can be configured independently for each RP through the [.monospaced]#++AOU_SPLIT_TR_RPn++# SFRs.
+The splitter ([.monospaced]#++AOU_AXI_SPLIT_TR++#) sits between the 3:1 arbitration mux and the xref:aou-axi-aggregator[AXI Aggregator] inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP, and the maximum burst length can be configured independently for each RP through the [.monospaced]#++AOU_SPLIT_TR_RPn++# SFRs.
 
 ______________________________________________________________________________________________________________________________________________________________________________________________
 *Note:* The [.monospaced]#++AOU_CON0.AXI_SPLIT_TR_EN++# field exists in the SFR but is currently tied to [.monospaced]#++1'b0++# in [.monospaced]#++AOU_CORE_RP++#, making the splitter always active. The enable bit is reserved for future use.
 ______________________________________________________________________________________________________________________________________________________________________________________________
 
-[[aou-362-burst-splitting]]
-==== 3.6.2. Burst Splitting
+[[aou-burst-splitting]]
+==== Burst Splitting
 
 The splitter uses internal address-generator submodules ([.monospaced]#++aou_axi_split_addrgen_ar++# for reads, [.monospaced]#++aou_axi_split_addrgen_aw++# for writes) to decompose a single long burst into multiple sub-bursts, each no longer than [.monospaced]#++MAX_AxBURSTLEN + 1++# beats. Addresses for each sub-burst are computed from the original base address, burst type, and size.
 
@@ -240,17 +240,17 @@ and resulting beat counts.
 
 *ID width:* The splitter reserves 2 bits from the AXI ID for internal sub-burst tracking. Master-side IDs are therefore [.monospaced]#++ID_WD - 2++# bits wide. The 2 extra bits allow the splitter to correlate responses from up to 4 outstanding sub-bursts per original transaction.
 
-[[aou-363-response-reassembly]]
-==== 3.6.3. Response Reassembly
+[[aou-response-reassembly]]
+==== Response Reassembly
 
 *Read path:* The [.monospaced]#++aou_split_tr_arch++# reorder buffer tracks the sub-burst sequence for each outstanding read. Slave-side [.monospaced]#++RLAST++# is asserted only when the final beat of the last sub-burst is received, reconstructing the original burst boundary. Intermediate [.monospaced]#++RLAST++# signals from the master side are consumed internally.
 
 *Write path:* B responses from sub-bursts are merged. The splitter tracks outstanding write sub-bursts with [.monospaced]#++r_wr_pending_cnt++# and returns a single B response to the slave side once all sub-bursts have completed. If any sub-burst returns an error ([.monospaced]#++|I_M_BRESP_RS++#), the merged [.monospaced]#++BRESP_ERR++# flag is set, propagating the error to the slave-side response.
 
-*ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-4-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
+*ID mismatch detection:* The splitter exports [.monospaced]#++DEST_TABLE_RID_ERR++# and [.monospaced]#++DEST_TABLE_BID_ERR++# signals that flag responses with IDs not matching any outstanding transaction. These feed the xref:aou-interrupt[INT_MI0_ID_MISMATCH] interrupt source via [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#.
 
-[[aou-364-sfr-configuration]]
-==== 3.6.4. SFR Configuration
+[[aou-sfr-configuration]]
+==== SFR Configuration
 
 <<aou-burst-splitter-sfr-controls-table>> identifies the SFR fields associated with
 burst splitting.
@@ -270,11 +270,11 @@ burst splitting.
 
 These SFRs must be configured before activation and must not be changed during normal operation.
 
-[[aou-37-write-early-response-controller]]
-=== 3.7. Write Early Response Controller
+[[aou-write-early-response-controller]]
+=== Write Early Response Controller
 
-[[aou-371-overview]]
-==== 3.7.1. Overview
+[[aou-write-early-response-controller-overview]]
+==== Overview
 
 The [.monospaced]#++AOU_EARLY_BRESP_CTRL_AWCACHE++# module sits between the local AXI subordinate interface and the AOU TX datapath. One instance exists per RP and can be independently enabled or disabled via the per-RP [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.EARLY_BRESP_EN++# SFR.
 
@@ -282,8 +282,8 @@ When enabled, the module returns an early B response ([.monospaced]#++BRESP = OK
 
 Early response applies only to *bufferable* writes ([.monospaced]#++AWCACHE[0] = 1++#). Non-bufferable writes ([.monospaced]#++AWCACHE[0] = 0++#) pass through the module unchanged: the AW, W, and B channels are forwarded directly between the local AXI interface and the AOU TX datapath with no early response generated, and the actual BRESP from the remote die is returned to the local AXI manager as normal.
 
-[[aou-372-transaction-flow----normal-case]]
-==== 3.7.2. Transaction Flow \-- Normal Case
+[[aou-transaction-flow----normal-case]]
+==== Transaction Flow \-- Normal Case
 
 <<aou-successful-early-write-response-figure>> shows the message flow for a bufferable write when the remote die returns a successful response.
 
@@ -293,8 +293,8 @@ image::early-response-normal-flow.svg[Message flow for a bufferable write with a
 
 When the actual B response arrives from the remote die for a transaction that already received an early response, the controller consumes it internally: [.monospaced]#++O_AXI_S_BVALID++# is held low (the local AXI manager sees no second response) while [.monospaced]#++O_AXI_M_BREADY++# is asserted high (the response is drained from the AOU RX path).
 
-[[aou-373-transaction-flow----error-case]]
-==== 3.7.3. Transaction Flow \-- Error Case
+[[aou-transaction-flow----error-case]]
+==== Transaction Flow \-- Error Case
 
 If the actual B response from the remote die carries an error ([.monospaced]#++BRESP[1] = 1++#, indicating SLVERR or DECERR), the error cannot be reported via the AXI B channel because the early OKAY response was already returned to the local AXI manager. Instead, the error is reported via interrupt and SFR capture.
 
@@ -311,8 +311,8 @@ The interrupt fires when the consumed response has [.monospaced]#++BRESP[1] = 1+
 2.  Read [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_ERR_TYPE_INFO++# to identify the error type (SLVERR or DECERR).
 3.  Write 1 to [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.WRITE_RESP_ERR++# (W1C) to clear the interrupt.
 
-[[aou-374-id-ordering]]
-==== 3.7.4. ID Ordering
+[[aou-id-ordering]]
+==== ID Ordering
 
 The [.monospaced]#++AOU_EARLY_TABLE++# inside the controller maintains a tracking table with [.monospaced]#++WR_MO_CNT++# entries (matching the subordinate write outstanding count). Each entry records:
 
@@ -334,8 +334,8 @@ outstanding write.
 
 The [.monospaced]#++early_go++# flag ensures that for transactions sharing the same AXI ID, early responses are issued strictly in order. A later bufferable transaction with the same ID waits until all prior same-ID transactions have been responded to (either via early response or actual remote BRESP). This preserves AXI ID ordering even when bufferable and non-bufferable writes with the same ID are interleaved.
 
-[[aou-375-write-outstanding-queue-backpressure]]
-==== 3.7.5. Write-Outstanding Queue Backpressure
+[[aou-write-outstanding-queue-backpressure]]
+==== Write-Outstanding Queue Backpressure
 
 The backpressure mechanism described in this section is only active when the early response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#). When disabled, the module is a transparent pass-through: all AW, W, and B signals are wired directly between the subordinate and manager interfaces with no outstanding-count gating, and write depth is bounded only by whatever the downstream AOU TX datapath can accept.
 
@@ -354,8 +354,8 @@ and draining as tracking entries become available.
 .AoU write-outstanding backpressure
 image::write-outstanding-backpressure.svg["Write-outstanding queue filling, stalling, and draining as early-table entries free up"]
 
-[[aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id]]
-==== 3.7.6. Mixed Ordering \-- Bufferable Before Non-Bufferable (Same ID)
+[[aou-mixed-ordering----bufferable-before-non-bufferable-same-id]]
+==== Mixed Ordering \-- Bufferable Before Non-Bufferable (Same ID)
 
 When a bufferable write (TXN0) is followed by a non-bufferable write (TXN1) on the same AWID, the controller handles them as follows:
 
@@ -375,8 +375,8 @@ bufferable write precedes a non-bufferable write on the same AXI ID.
 .AoU bufferable then non-bufferable writes
 image::mixed-order-bufferable-first.svg[Mixed-ordering flow with a bufferable write followed by a non-bufferable write on the same AXI ID]
 
-[[aou-377-mixed-ordering----non-bufferable-before-bufferable-same-id]]
-==== 3.7.7. Mixed Ordering \-- Non-Bufferable Before Bufferable (Same ID)
+[[aou-mixed-ordering----non-bufferable-before-bufferable-same-id]]
+==== Mixed Ordering \-- Non-Bufferable Before Bufferable (Same ID)
 
 When a non-bufferable write (TXN0) is followed by a bufferable write (TXN1) on the same AWID, the early response for TXN1 is *delayed* until TXN0pass:[']s actual B has been received.
 
@@ -394,8 +394,8 @@ non-bufferable write precedes a bufferable write on the same AXI ID.
 .AoU non-bufferable then bufferable writes
 image::mixed-order-nonbufferable-first.svg[Mixed-ordering flow with a non-bufferable write followed by a bufferable write on the same AXI ID]
 
-[[aou-378-enabledisable-procedure]]
-==== 3.7.8. Enable/Disable Procedure
+[[aou-enabledisable-procedure]]
+==== Enable/Disable Procedure
 
 The [.monospaced]#++EARLY_BRESP_EN++# SFR may be written at any time, but the internal enable ([.monospaced]#++r_early_bresp_en++#) only transitions when it is safe to do so:
 
@@ -403,8 +403,8 @@ The [.monospaced]#++EARLY_BRESP_EN++# SFR may be written at any time, but the in
 2.  Set or clear [.monospaced]#++EARLY_BRESP_EN++# via APB write.
 3.  The internal register transitions on the next clock edge where [.monospaced]#++O_BRESP_DONE++# is asserted and no AW handshake is in progress. This guarantees that the mode change does not occur mid-transaction.
 
-[[aou-379-sfr-fields]]
-==== 3.7.9. SFR Fields
+[[aou-sfr-fields]]
+==== SFR Fields
 
 The [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++# register (one per RP: RP0 at [.monospaced]#++0x0028++#, RP1 at [.monospaced]#++0x0040++#, RP2 at [.monospaced]#++0x0058++#, RP3 at [.monospaced]#++0x0070++#) contains:
 
@@ -423,22 +423,22 @@ controls.
 |WRITE_RESP_DONE |[14] |RO |1 when no write transactions are pending ([.monospaced]#++r_aw_cnt == 0++#).
 |==============================================================================================
 
-See the full register map in Section 7.1 for the complete SFR listing.
+See the xref:software-operation.adoc#aou-sfr-setting[full register map] for the complete SFR listing.
 
-[[aou-38-axi-aggregator]]
-=== 3.8. AXI Aggregator
+[[aou-axi-aggregator]]
+=== AXI Aggregator
 
-[[aou-381-overview]]
-==== 3.8.1. Overview
+[[aou-axi-aggregator-overview]]
+==== Overview
 
-The AXI Aggregator ([.monospaced]#++AOU_AGGREGATOR++#) combines narrow read and write data into full-width bus beats to improve bus utilization. It sits downstream of the xref:aou-36-axi-transaction-splitter[AXI Transaction Splitter] and is the last processing stage before the AXI manager port inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP.
+The AXI Aggregator ([.monospaced]#++AOU_AGGREGATOR++#) combines narrow read and write data into full-width bus beats to improve bus utilization. It sits downstream of the xref:aou-axi-transaction-splitter[AXI Transaction Splitter] and is the last processing stage before the AXI manager port inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP.
 
 When enabled, the aggregator promotes [.monospaced]#++AWSIZE++#/[.monospaced]#++ARSIZE++# to the full bus width and recalculates [.monospaced]#++AWLEN++#/[.monospaced]#++ARLEN++# accordingly. For example, an incoming AR with size 256 bits and burst length 16 is converted to size 1024 bits and burst length 4, then issued on the AXI manager interface. When R data returns, it is split to restore the original format. The same principle applies to writes.
 
 When disabled via the per-RP [.monospaced]#++AOU_CON0.RPn_AXI_AGGREGATOR_EN++# SFR, all master-side signals bypass the aggregator entirely and flow directly to the AXI manager port without modification.
 
-[[aou-382-write-aggregation]]
-==== 3.8.2. Write Aggregation
+[[aou-write-aggregation]]
+==== Write Aggregation
 
 Write aggregation is activated when *both* conditions are met:
 
@@ -461,15 +461,15 @@ A depth-16 synchronous FIFO decouples the AW and W channels. The AW is issued on
 [[figure-13]]
 image::write-aggregation.svg[Figure 13. Write Aggregation -- Narrow-to-Wide Beat Merging]
 
-[[aou-383-read-aggregation]]
-==== 3.8.3. Read Aggregation
+[[aou-read-aggregation]]
+==== Read Aggregation
 
 Read aggregation follows the same size-promotion logic as writes. [.monospaced]#++ARSIZE++# and [.monospaced]#++ARLEN++# are promoted to the full bus width, and [.monospaced]#++ARBURST++# is passed through (the aggregator does not restrict burst type to INCR).
 
 The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side [.monospaced]#++RLAST++# at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection.
 
-[[aou-384-sfr-fields]]
-==== 3.8.4. SFR Fields
+[[aou-sfr-fields]]
+==== SFR Fields
 
 <<aou-aggregation-sfr-fields-table>> identifies the resource-plane aggregation enables.
 
@@ -486,8 +486,8 @@ The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR trans
 
 These fields must be configured before activation and must not be changed during normal operation.
 
-[[aou-39-credit-controller]]
-=== 3.9. Credit Controller
+[[aou-credit-controller]]
+=== Credit Controller
 
 [caption=""]
 .Figure 14. Block Diagram of AOU_CRD_CTRL
@@ -606,17 +606,17 @@ Upon receipt of an ActivateReq from the remote die, AOU_CORE_TOP responds with a
 * The Tx Credit is increased immediately upon receipt of a credit message from the Rx Core, within the updated value taking effect in the following cycle. Credit is decremented when the Tx Core packs a message and places it into the ring buffer. The consumption point is defined at the time of insertion into the per-RP Tx FIFO.
 * The AOU_RX_CRD_CTRL exchanges credit messages (PLP protocol header MsgCredit field, dedicated Misc message) with the Tx core through valid/ready signaling. Tx core asserts CRDTGRANT_READY when the Tx core can pack a Misc Credit Message or asserts MSGCREDIT_CRED_READY when a protocol header is required to be transmitted. A credit is considered advertised at the point when the credit message handshake (valid and ready both asserted) occurs. At that instant, the advertised credits are treated as already reserved for the RX FIFO. Accordingly, a credit is not considered returned when a message leaves the RX Core, but only when data is actually dequeued from the RX FIFO, releasing the previously reserved credit.
 
-[[aou-310-rp-remapping]]
-=== 3.10. RP Remapping
+[[aou-rp-remapping]]
+=== RP Remapping
 
-[[aou-3101-configuration-rules]]
-==== 3.10.1. Configuration Rules
+[[aou-configuration-rules]]
+==== Configuration Rules
 
 The Resource Plane (RP) operates based on the smaller RP count between the local and remote dies and follows a strict one-to-one mapping. RP assignments are configured through the *DEST_RP* SFR. The values of [.monospaced]#++RP3_DEST++#, [.monospaced]#++RP2_DEST++#, [.monospaced]#++RP1_DEST++#, and [.monospaced]#++RP0_DEST++# must be unique, and for any RP that is utilized, the configuration on the local and remote dies must be symmetrical.
 
 This configuration must remain static and must be programmed before activation. It must not be altered during normal operation.
 
-When the local and remote dies have different [.monospaced]#++RP_COUNT++# values, the effective RP count is the smaller of the two. Unused RP slots in the [.monospaced]#++DEST_RP++# register are functionally donpass:[']t-care but should be set to non-overlapping values for clean credit routing (see xref:aou-3103-misconfiguration-behavior[Section 3.10.3]).
+When the local and remote dies have different [.monospaced]#++RP_COUNT++# values, the effective RP count is the smaller of the two. Unused RP slots in the [.monospaced]#++DEST_RP++# register are functionally donpass:[']t-care but should be set to non-overlapping values for clean credit routing (see xref:aou-misconfiguration-behavior[AOU Misconfiguration Behaviour]).
 
 <<figure-17>> shows how resource-plane identifiers are remapped across the link.
 
@@ -625,22 +625,22 @@ When the local and remote dies have different [.monospaced]#++RP_COUNT++# values
 [[figure-17]]
 image::image16.png[Figure 17. Resource Plane Remapping]
 
-[[aou-3102-header-encoding]]
-==== 3.10.2. Header Encoding
+[[aou-header-encoding]]
+==== Header Encoding
 
 For AXI messages (WriteReq, WriteData, ReadReq), the TX path ([.monospaced]#++AOU_TX_AXI_BUFFER++#) embeds the [.monospaced]#++DEST_RP++# field from the SFR into the destination RP field of every outgoing message header. The remote die uses this field to route the received message to the correct RP for processing.
 
 For credit grant messages, [.monospaced]#++AOU_TX_CRD_CTRL++# encodes the _local_ RP index (not the [.monospaced]#++DEST_RP++# value) so that the remote die can route returned credits to the correct local RPpass:[']s credit counter. This asymmetry \-- destination RP in data messages, source RP in credit messages \-- is fundamental to the RP remapping scheme.
 
-[[aou-3103-misconfiguration-behavior]]
-==== 3.10.3. Misconfiguration Behavior
+[[aou-misconfiguration-behavior]]
+==== Misconfiguration Behavior
 
 No hardware duplicate-detection logic exists for the [.monospaced]#++DEST_RP++# register. If [.monospaced]#++DEST_RP++# values are configured with overlapping (duplicate) entries, the credit routing logic in [.monospaced]#++AOU_TX_CRD_CTRL++# \-- which uses a [.monospaced]#++unique case++# statement on [.monospaced]#++I_RP_DEST_RP[i]++# \-- will fall through to the [.monospaced]#++default++# case, mapping to the RP0 credit view. This results in silent credit accounting errors rather than a flagged interrupt or error condition.
 
 Software is responsible for ensuring uniqueness and symmetry of the [.monospaced]#++DEST_RP++# configuration on both link partners before initiating activation.
 
-[[aou-311-ucie-flit-cancel-mechanism]]
-=== 3.11. UCIe Flit cancel mechanism
+[[aou-ucie-flit-cancel-mechanism]]
+=== UCIe Flit cancel mechanism
 
 AOU_CORE supports all UCIe flit cancel mechanisms. The three cases \-- retransmit, flit partially valid, and full flit cancel \-- are handled by the [.monospaced]#++AOU_RX_FDI_IF++# submodule within RX_CORE.
 
@@ -665,8 +665,8 @@ image::image18.png[Figure 19. UCIe Flit Cancel - Flit Partially Valid case]
 [[figure-20]]
 image::image19.png[Figure 20. UCIe Flit Cancel - Full Flit Cancel case]
 
-[[aou-3111-cancel-cases]]
-==== 3.11.1. Cancel Cases
+[[aou-cancel-cases]]
+==== Cancel Cases
 
 The [.monospaced]#++AOU_RX_FDI_IF++# module uses the FDI [.monospaced]#++pl_valid++# and [.monospaced]#++pl_flit_cancel++# signals to determine how to handle each incoming chunk. Three cases are distinguished:
 
@@ -682,8 +682,8 @@ The [.monospaced]#++AOU_RX_FDI_IF++# module uses the FDI [.monospaced]#++pl_vali
 |0 |1 |*Full Flit Cancel*: Phase counter decrements by 2. Staging buffer entries are cleared. This is the strongest rollback, discarding the entire in-progress half-flit.
 |=============================================================================================================================================================================================================================================
 
-[[aou-3112-rx_fdi_if-buffering]]
-==== 3.11.2. RX_FDI_IF Buffering
+[[aou-rx_fdi_if-buffering]]
+==== RX_FDI_IF Buffering
 
 The [.monospaced]#++AOU_RX_FDI_IF++# module maintains a staging buffer ([.monospaced]#++r_data++#) that is [.monospaced]#++HF_PHASE_CNT++# entries deep, where [.monospaced]#++HF_PHASE_CNT = PHASE_CNT / 2++#. For the default 512-bit FDI data width, [.monospaced]#++PHASE_CNT = 4++# and [.monospaced]#++HF_PHASE_CNT = 2++#, so the staging buffer holds 2 chunk entries \-- one half-flit of data.
 
@@ -695,8 +695,8 @@ rx_chunk_data_valid = r_data_valid[1] && !pl_flit_cancel
 
 This ensures that chunk presentation is suppressed whenever [.monospaced]#++pl_flit_cancel++# is asserted, even if valid data exists in the staging buffer. Downstream, [.monospaced]#++AOU_RX_CORE++# advances its phase counter ([.monospaced]#++r_aou_rx_phase++#) only when [.monospaced]#++rx_chunk_data_valid++# is high, so cancel-suppressed cycles stall the RX phase progression without data loss.
 
-[[aou-3113-timing]]
-==== 3.11.3. Timing
+[[aou-timing]]
+==== Timing
 
 Cancel handling is purely combinational on the same clock edge as the FDI input signals. No additional pipeline stages are introduced beyond the 2-entry staging buffer and the phase FSM. The latency from FDI input to valid chunk presentation at RX_CORE is therefore determined solely by the half-flit fill time under normal operation.
 

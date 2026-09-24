@@ -1,0 +1,40 @@
+diff --git a/DOC/MAS/architecture.adoc b/DOC/MAS/architecture.adoc
+index d55c6dfe2..6b843ae6d 100644
+--- a/DOC/MAS/architecture.adoc
++++ b/DOC/MAS/architecture.adoc
+@@ -148,7 +148,7 @@ FIFOs are allocated for each RP, and the depth of the FIFOs for each RP is confi
+ [[aou-data-width-converter]]
+ === Data width converter
+ 
+-[[aou-overview]]
++[[aou-data-width-converter-overview]]
+ ==== Overview
+ 
+ [caption=""]
+@@ -199,7 +199,7 @@ In addition to [.monospaced]#++AOU_AXI_WLAST_GEN++#, the upsizer and downsizer m
+ [[aou-axi-transaction-splitter]]
+ === AXI Transaction Splitter
+ 
+-[[aou-overview]]
++[[aou-axi-transaction-splitter-overview]]
+ ==== Overview
+ 
+ In the AoU specification, the AXI LEN field is fixed at 8 bits, allowing the remote die to issue burst transactions up to the maximum supported by an 8-bit AXI LEN. However, because the local diepass:[']s bus may not support the full 8-bit burst length, inbound AXI transactions must be split into bursts that the local bus can handle and then reassembled to match the original request.
+@@ -273,7 +273,7 @@ These SFRs must be configured before activation and must not be changed during n
+ [[aou-write-early-response-controller]]
+ === Write Early Response Controller
+ 
+-[[aou-overview]]
++[[aou-write-early-response-controller-overview]]
+ ==== Overview
+ 
+ The [.monospaced]#++AOU_EARLY_BRESP_CTRL_AWCACHE++# module sits between the local AXI subordinate interface and the AOU TX datapath. One instance exists per RP and can be independently enabled or disabled via the per-RP [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.EARLY_BRESP_EN++# SFR.
+@@ -428,7 +428,7 @@ See the xref:software-operation.adoc#aou-sfr-setting[full register map] for the
+ [[aou-axi-aggregator]]
+ === AXI Aggregator
+ 
+-[[aou-overview]]
++[[aou-axi-aggregator-overview]]
+ ==== Overview
+ 
+ The AXI Aggregator ([.monospaced]#++AOU_AGGREGATOR++#) combines narrow read and write data into full-width bus beats to improve bus utilization. It sits downstream of the xref:aou-axi-transaction-splitter[AXI Transaction Splitter] and is the last processing stage before the AXI manager port inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP.

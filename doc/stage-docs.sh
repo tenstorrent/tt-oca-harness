@@ -30,7 +30,7 @@ COMMON_ASSETS="$DOC/trm/assets"
 AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
 AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
-SUBSYSTEMS="smc sep dtp"
+SUBSYSTEMS="smc sep dtp smc/bootrom/prod sep/bootrom/prod"
 # The SMU chapter links into the TRM's ROOT module. Other products retain
 # their existing subsystem pages and the independent ROOT SMU port partial.
 if [ "${OCAH_DOC_PRODUCT_INCLUDE_SMU:-0}" = "1" ]; then
@@ -109,7 +109,8 @@ strip_drawio_switch_fallback() {
 
 # --- module skeleton ---
 for m in $MODULES; do
-  mkdir -p "$MOD/$m/pages" "$MOD/$m/partials" "$MOD/$m/assets/images"
+  mt=$(echo $m | tr / -)
+  mkdir -p "$MOD/$mt/pages" "$MOD/$mt/partials" "$MOD/$mt/assets/images"
 done
 
 # --- ROOT: product pages + meta tables ---
@@ -135,11 +136,12 @@ done
 
 # --- subsystems: pages + register partials ---
 for s in $SUBSYSTEMS; do
-  stage_adoc_tree "$ROOT/hw/sys/$s/doc" "$MOD/$s/pages"
-  stage_gen_adoc "$ROOT/hw/sys/$s/regs/gen/adoc" "$MOD/$s/partials/$s/regs/gen/adoc"
-  stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$s/partials/$s/regs/gen/html"
-  stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
-  stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
+  m=$(echo $s | tr / -)
+  stage_adoc_tree "$ROOT/hw/sys/$s/doc" "$MOD/$m/pages"
+  stage_gen_adoc "$ROOT/hw/sys/$s/regs/gen/adoc" "$MOD/$m/partials/$m/regs/gen/adoc"
+  stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$m/partials/$m/regs/gen/html"
+  stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$m/partials/$m/dv/models/regs/gen/adoc"
+  stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$m/partials/$m/dv/models/regs/gen/html"
 done
 # DTP and SMU port tables are private ROOT partials included by their owning pages.
 rm -f "$MOD/dtp/pages/port_table.adoc" "$MOD/smu/pages/port_table.adoc"

@@ -6,11 +6,11 @@ ifdef::aou-imagesdir[]
 :imagesdir: {aou-imagesdir}
 endif::[]
 
-[[aou-8-ppa]]
-== 8. PPA
+[[aou-ppa]]
+== PPA
 
-[[aou-81-performance]]
-=== 8.1. Performance
+[[aou-performance]]
+=== Performance
 
 Performance evaluation is conducted in both 512-bit local die and 512-bit remote die environments. The initial latency is measured from the AXI input of the local AOU_CORE to the AXI output of the remote AOU_CORE.
 
@@ -120,13 +120,13 @@ a|66.7%
 
 * 0.4% performance drop is not from IP, but just from transfer data size. If the transfer data size is the multiples of 6 burst such 132 beats, it shows the same performance number with the limit in AoU spec. Everything is the same case. Note that the efficiency is measured with 128/(cycle_from_1st_valid_to_last_valid + 1), where 1 is the hidden bubble right before the first valid. It is indispensable since AoU data message size can not covered in a single 64B chunk, unlike local AXI bus.
 
-[[aou-82-power]]
-=== 8.2. Power
+[[aou-power]]
+=== Power
 
 TBD
 
-[[aou-83-area]]
-=== 8.3. Area
+[[aou-area]]
+=== Area
 
 <<figure-31>> shows the area contribution of each submodule in a single-resource-plane
 AoU.

@@ -68,7 +68,9 @@ doc/*/modules/ROOT/pages/
 doc/*/modules/ROOT/partials/hw/
 doc/*/modules/ROOT/assets/
 doc/*/modules/smc/
+doc/*/modules/smc-bootrom-prod/
 doc/*/modules/sep/
+doc/*/modules/sep-bootrom-prod/
 doc/*/modules/dtp/
 doc/*/modules/aou/
 doc/*/modules/smu/

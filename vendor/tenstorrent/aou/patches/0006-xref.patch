@@ -1,0 +1,21 @@
+diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
+index dc16eee67..05c94ae1c 100644
+--- a/DOC/MAS/software-operation.adoc
++++ b/DOC/MAS/software-operation.adoc
+@@ -360,7 +360,15 @@ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Acce
+ 
+ When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++#. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C).
+ 
+-For a detailed description of the early response error flow, see xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case] and xref:{aou-architecture-xref}#aou-sfr-fields[SFR Fields].
++For a detailed description of the early response error flow, see
++ifdef::backend-pdf[]
++xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case]
++and
++xref:{aou-architecture-xref}#aou-sfr-fields[SFR Fields].
++endif::backend-pdf[]
++ifdef::backend-html5[]
++Transaction Flow Error case and SFR Fields.
++endif::backend-html5[]
+ 
+ [[aou-activation-deactivation-flow]]
+ === Activation & Deactivation Flow

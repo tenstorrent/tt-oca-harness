@@ -9,211 +9,211 @@ ifndef::aou-architecture-xref[]
 :aou-architecture-xref: architecture.adoc
 endif::[]
 
-[[aou-7-software-operation-guide]]
-== 7. Software operation guide
+[[aou-software-operation-guide]]
+== Software operation guide
 
 This section gives information about operation guide for the AOU_CORE.
 
-[[aou-71-sfr-setting]]
-=== 7.1. SFR setting
+[[aou-sfr-setting]]
+=== SFR setting
 
 [[table-7]]
 
 [cols="<,<,<,<,<,<",options="header",]
 |==========================================================================
 |*Register* |*Offset* |*Bit field name* |*Bit field* |*Type* |*Reset value*
-|IP_VERSION |0x0000 | | | |0x00010000
-| |　 |MAJOR_VERSION |[31:16] |RO |0x0001
-| |　 |MINOR_VERSION |[15:0] |RO |0x0000
-|AOU_CON0 |0x0004 | | | |0x00000000
+|`IP_VERSION` |0x0000 | | | |0x00010000
+| |　 |`MAJOR_VERSION` |[31:16] |RO |0x0001
+| |　 |`MINOR_VERSION` |[15:0] |RO |0x0000
+|`AOU_CON0` |0x0004 | | | |0x00000000
 | | |Rsvd |[31:28] |RO |0x0
-| | |RP3_ERROR_INFO_ACCESS_EN |[27] |RW |0x0
-| | |RP2_ERROR_INFO_ACCESS_EN |[26] |RW |0x0
-| | |RP1_ERROR_INFO_ACCESS_EN |[25] |RW |0x0
-| | |RP0_ERROR_INFO_ACCESS_EN |[24] |RW |0x0
-| | |RP3_AXI_AGGREGATOR_EN |[23] |RW |0x0
-| | |RP2_AXI_AGGREGATOR_EN |[22] |RW |0x0
-| | |RP1_AXI_AGGREGATOR_EN |[21] |RW |0x0
-| | |RP0_AXI_AGGREGATOR_EN |[20] |RW |0x0
-| | |TX_LP_MODE_THRESHOLD |[19:12] |RW |0x4
-| | |TX_LP_MODE |[11] |RW |0x0
+| | |`RP3_ERROR_INFO_ACCESS_EN` |[27] |RW |0x0
+| | |`RP2_ERROR_INFO_ACCESS_EN` |[26] |RW |0x0
+| | |`RP1_ERROR_INFO_ACCESS_EN` |[25] |RW |0x0
+| | |`RP0_ERROR_INFO_ACCESS_EN` |[24] |RW |0x0
+| | |`RP3_AXI_AGGREGATOR_EN` |[23] |RW |0x0
+| | |`RP2_AXI_AGGREGATOR_EN` |[22] |RW |0x0
+| | |`RP1_AXI_AGGREGATOR_EN` |[21] |RW |0x0
+| | |`RP0_AXI_AGGREGATOR_EN` |[20] |RW |0x0
+| | |`TX_LP_MODE_THRESHOLD` |[19:12] |RW |0x4
+| | |`TX_LP_MODE` |[11] |RW |0x0
 | | |Rsvd |[10:5] |RO |0x0
-| | |AOU_SW_RESET |[4] |RW |0x0
-| | |CREDIT_MANAGE |[3] |RW |0x0
-| | |AXI_SPLIT_TR_EN |[2] |RW |0x0
+| | |`AOU_SW_RESET` |[4] |RW |0x0
+| | |`CREDIT_MANAGE` |[3] |RW |0x0
+| | |`AXI_SPLIT_TR_EN` |[2] |RW |0x0
 | | |Rsvd |[1:0] |RO |0x0
-|AOU_INIT |0x0008 | | | |0x00004608
+|`AOU_INIT` |0x0008 | | | |0x00004608
 | | |Rsvd |[31:11] |RO |0x0
-| | |MST_TR_COMPLETE |[10] |RO |0x1
-| | |SLV_TR_COMPLETE |[9] |RO |0x1
-| | |INT_ACTIVATE_START |[8] |W1C |0x0
-| | |INT_DEACTIVATE_START |[7] |W1C |0x0
-| | |DEACTIVATE_TIME_OUT_VALUE |[6:4] |RW |0x0
-| | |ACTIVATE_STATE_DISABLED |[3] |RO |0x1
-| | |ACTIVATE_STATE_ENABLED |[2] |RO |0x0
-| | |DEACTIVATE_START |[1] |RW |0x0
-| | |ACTIVATE_START |[0] |RW |0x0
-|AOU_INTERRUPT_MASK |0x000C | | | |
+| | |`MST_TR_COMPLETE` |[10] |RO |0x1
+| | |`SLV_TR_COMPLETE` |[9] |RO |0x1
+| | |`INT_ACTIVATE_START` |[8] |W1C |0x0
+| | |`INT_DEACTIVATE_START` |[7] |W1C |0x0
+| | |`DEACTIVATE_TIME_OUT_VALUE` |[6:4] |RW |0x0
+| | |`ACTIVATE_STATE_DISABLED` |[3] |RO |0x1
+| | |`ACTIVATE_STATE_ENABLED` |[2] |RO |0x0
+| | |`DEACTIVATE_START` |[1] |RW |0x0
+| | |`ACTIVATE_START` |[0] |RW |0x0
+|`AOU_INTERRUPT_MASK` |0x000C | | | |
 | | |Rsvd |[31:9] |RO |0x0
-| | |INT_REQ_LINKRESET_ACT_ACK_MASK |[8] |RW |0x0
-| | |INT_REQ_LINKRESET_DEACT_ACK_MASK |[7] |RW |0x0
-| | |INT_REQ_LINKRESET_INVALID_ACTMSG_MASK |[6] |RW |0x0
-| | |INT_REQ_LINKRESET_MSGCREDIT_TIMEOUT_MASK |[5] |RW |0x0
-| | |INT_EARLY_RESP_MASK |[4] |RW |0x0
-| | |INT_MI0_ID_MISMATCH_MASK |[3] |RW |0x0
-| | |INT_SI0_ID_MISMATCH_MASK |[2] |RW |0x0
+| | |`INT_REQ_LINKRESET_ACT_ACK_MASK` |[8] |RW |0x0
+| | |`INT_REQ_LINKRESET_DEACT_ACK_MASK` |[7] |RW |0x0
+| | |`INT_REQ_LINKRESET_INVALID_ACTMSG_MASK` |[6] |RW |0x0
+| | |`INT_REQ_LINKRESET_MSGCREDIT_TIMEOUT_MASK` |[5] |RW |0x0
+| | |`INT_EARLY_RESP_MASK` |[4] |RW |0x0
+| | |`INT_MI0_ID_MISMATCH_MASK` |[3] |RW |0x0
+| | |`INT_SI0_ID_MISMATCH_MASK` |[2] |RW |0x0
 | | |Rsvd |[1] |RO |0x0
 | | |Rsvd |[0] |RO |0x0
-|LP_LINKRESET |0x0010 | | | |
+|`LP_LINKRESET` |0x0010 | | | |
 | | |Rsvd |[31:14] |RO |0x0
-| | |ACK_TIME_OUT_VALUE |[13:11] |RW |0x4
-| | |MSGCREDIT_TIME_OUT_VALUE |[10:8] |RW |0x4
-| | |ACT_ACK_ERR |[7] |W1C |0x0
-| | |DEACT_ACK_ERR |[6] |W1C |0x0
-| | |INVALID_ACTMSG_INFO |[5:2] |RO |0x0
-| | |INVALID_ACTMSG_ERR |[1] |W1C |0x0
-| | |MSGCREDIT_ERR |[0] |W1C |0x0
-|DEST_RP |0x0014 | | | |0x00000000
+| | |`ACK_TIME_OUT_VALUE` |[13:11] |RW |0x4
+| | |`MSGCREDIT_TIME_OUT_VALUE` |[10:8] |RW |0x4
+| | |`ACT_ACK_ERR` |[7] |W1C |0x0
+| | |`DEACT_ACK_ERR` |[6] |W1C |0x0
+| | |`INVALID_ACTMSG_INFO` |[5:2] |RO |0x0
+| | |`INVALID_ACTMSG_ERR` |[1] |W1C |0x0
+| | |`MSGCREDIT_ERR` |[0] |W1C |0x0
+|`DEST_RP` |0x0014 | | | |0x00000000
 | | |Rsvd |[31:14] |RO |0x0
-| | |RP3_DEST |[13:12] |RW |0x3
+| | |`RP3_DEST` |[13:12] |RW |0x3
 | | |Rsvd |[11:10] |RO |0x0
-| | |RP2_DEST |[9:8] |RW |0x2
+| | |`RP2_DEST` |[9:8] |RW |0x2
 | | |Rsvd |[7:6] |RO |0x0
-| | |RP1_DEST |[5:4] |RW |0x1
+| | |`RP1_DEST` |[5:4] |RW |0x1
 | | |Rsvd |[3:2] |RO |0x0
-| | |RP0_DEST |[1:0] |RW |0x0
-|PRIOR_RP_AXI |0x0018 | | | |
+| | |`RP0_DEST` |[1:0] |RW |0x0
+|`PRIOR_RP_AXI` |0x0018 | | | |
 | | |Rsvd |[31:28] |RO |0x0
-| | |AXI_QOS_TO_NP |[27:24] |RW |0xA
-| | |AXI_QOS_TO_HP |[23:20] |RW |0x5
+| | |`AXI_QOS_TO_NP` |[27:24] |RW |0xA
+| | |`AXI_QOS_TO_HP` |[23:20] |RW |0x5
 | | |Rsvd |[19:18] |RO |0x0
-| | |RP3_PRIOR |[17:16] |RW |0x3
+| | |`RP3_PRIOR` |[17:16] |RW |0x3
 | | |Rsvd |[15:14] |RO |0x0
-| | |RP2_PRIOR |[13:12] |RW |0x2
+| | |`RP2_PRIOR` |[13:12] |RW |0x2
 | | |Rsvd |[11:10] |RO |0x0
-| | |RP1_PRIOR |[9:8] |RW |0x1
+| | |`RP1_PRIOR` |[9:8] |RW |0x1
 | | |Rsvd |[7:6] |RO |0x0
-| | |RP0_PRIOR |[5:4] |RW |0x0
+| | |`RP0_PRIOR` |[5:4] |RW |0x0
 | | |Rsvd |[3:2] |RO |0x0
-| | |ARB_MODE |[1:0] |RW |0x0
-|PRIOR_TIMER |0x001C | | | |0x00000000
-| | |TIMER_RESOLUTION |[31:16] |RW |0x0
-| | |TIMER_THRESHOLD |[15:0] |RW |0x0
-|AXI_SPLIT_TR_RP0 |0x0020 | | | |0x00000F0F
+| | |`ARB_MODE` |[1:0] |RW |0x0
+|`PRIOR_TIMER` |0x001C | | | |0x00000000
+| | |`TIMER_RESOLUTION` |[31:16] |RW |0x0
+| | |`TIMER_THRESHOLD` |[15:0] |RW |0x0
+|`AXI_SPLIT_TR_RP0` |0x0020 | | | |0x00000F0F
 | | |Rsvd |[31:16] |RO |0x0
-| | |MAX_AWBURSTLEN |[15:8] |RW |0xF
-| | |MAX_ARBURSTLEN |[7:0] |RW |0xF
-|ERROR_INFO_RP0 |0x0024 | | | |0x0
+| | |`MAX_AWBURSTLEN` |[15:8] |RW |0xF
+| | |`MAX_ARBURSTLEN` |[7:0] |RW |0xF
+|`ERROR_INFO_RP0` |0x0024 | | | |0x0
 | | |Rsvd |[31:22] |RO |0x0
-| | |SPLIT_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |SPLIT_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |SPLIT_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |SPLIT_RID_MISMATCH_ERR |[0] |W1C |0x0
-|WRITE_EARLY_RESPONSE_RP0 |0x0028 | | | |0x0
+| | |`SPLIT_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`SPLIT_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
+|`WRITE_EARLY_RESPONSE_RP0` |0x0028 | | | |0x0
 | | |Rsvd |[31:15] |RO |0x0
-| | |WRITE_RESP_DONE |[14] |RO |0x0
-| | |WRITE_RESP_ERR |[13] |W1C |0x0
-| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
-| | |WRITE_RESP_ERR_ID_INFO |[10:1] |RO |0x0
-| | |EARLY_BRESP_EN |[0] |RW |0x0
-|AXI_ERROR_INFO0_RP0 |0x002C | | | |0x0
-| | |DEBUG_UPPER_ADDR |[31:0] |RW |0x0
-|AXI_ERROR_INFO1_RP0 |0x0030 | | | |0x0
-| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
-|AXI_SLV_ID_MISMATCH_ERR_RP0 |0x0034 | | | |
+| | |`WRITE_RESP_DONE` |[14] |RO |0x0
+| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
+| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
+| | |`WRITE_RESP_ERR_ID_INFO` |[10:1] |RO |0x0
+| | |`EARLY_BRESP_EN` |[0] |RW |0x0
+|`AXI_ERROR_INFO0_RP0` |0x002C | | | |0x0
+| | |`DEBUG_UPPER_ADDR` |[31:0] |RW |0x0
+|`AXI_ERROR_INFO1_RP0` |0x0030 | | | |0x0
+| | |`DEBUG_LOWER_ADDR` |[31:0] |RW |0x0
+|`AXI_SLV_ID_MISMATCH_ERR_RP0` |0x0034 | | | |
 | | |Rsvd |[31:22] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |AXI_SLV_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |AXI_SLV_RID_MISMATCH_ERR |[0] |W1C |0x0
-|AXI_SPLIT_TR_RP1 |0x0038 | | | |0x00000F0F
+| | |`AXI_SLV_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`AXI_SLV_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`AXI_SLV_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`AXI_SLV_RID_MISMATCH_ERR` |[0] |W1C |0x0
+|`AXI_SPLIT_TR_RP1` |0x0038 | | | |0x00000F0F
 | | |Rsvd |[31:16] |RO |0x0
-| | |MAX_AWBURSTLEN |[15:8] |RW |0xF
-| | |MAX_ARBURSTLEN |[7:0] |RW |0xF
-|ERROR_INFO_RP1 |0x003C | | | |0x0
+| | |`MAX_AWBURSTLEN` |[15:8] |RW |0xF
+| | |`MAX_ARBURSTLEN` |[7:0] |RW |0xF
+|`ERROR_INFO_RP1` |0x003C | | | |0x0
 | | |Rsvd |[31:22] |RO |0x0
-| | |SPLIT_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |SPLIT_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |SPLIT_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |SPLIT_RID_MISMATCH_ERR |[0] |W1C |0x0
-|WRITE_EARLY_RESPONSE_RP1 |0x0040 | | | |0x0
+| | |`SPLIT_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`SPLIT_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
+|`WRITE_EARLY_RESPONSE_RP1` |0x0040 | | | |0x0
 | | |Rsvd |[31:15] |RO |0x0
-| | |WRITE_RESP_DONE |[14] |RO |0x0
-| | |WRITE_RESP_ERR |[13] |W1C |0x0
-| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
-| | |WRITE_RESP_ERR_ID_INFO |[10:1] |RO |0x0
-| | |EARLY_BRESP_EN |[0] |RW |0x0
-|AXI_ERROR_INFO0_RP1 |0x0044 | | | |0x0
-| | |DEBUG_UPPER_ADDR |[31:0] |RW |0x0
-|AXI_ERROR_INFO1_RP1 |0x0048 | | | |0x0
-| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
-|AXI_SLV_ID_MISMATCH_ERR_RP1 |0x004C | | | |
+| | |`WRITE_RESP_DONE` |[14] |RO |0x0
+| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
+| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
+| | |`WRITE_RESP_ERR_ID_INFO` |[10:1] |RO |0x0
+| | |`EARLY_BRESP_EN` |[0] |RW |0x0
+|`AXI_ERROR_INFO0_RP1` |0x0044 | | | |0x0
+| | |`DEBUG_UPPER_ADDR` |[31:0] |RW |0x0
+|`AXI_ERROR_INFO1_RP1` |0x0048 | | | |0x0
+| | |`DEBUG_LOWER_ADDR` |[31:0] |RW |0x0
+|`AXI_SLV_ID_MISMATCH_ERR_RP1` |0x004C | | | |
 | | |Rsvd |[31:22] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |AXI_SLV_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |AXI_SLV_RID_MISMATCH_ERR |[0] |W1C |0x0
-|AXI_SPLIT_TR_RP2 |0x0050 | | | |0x00000F0F
+| | |`AXI_SLV_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`AXI_SLV_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`AXI_SLV_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`AXI_SLV_RID_MISMATCH_ERR` |[0] |W1C |0x0
+|`AXI_SPLIT_TR_RP2` |0x0050 | | | |0x00000F0F
 | | |Rsvd |[31:16] |RO |0x0
-| | |MAX_AWBURSTLEN |[15:8] |RW |0xF
-| | |MAX_ARBURSTLEN |[7:0] |RW |0xF
-|ERROR_INFO_RP2 |0x0054 | | | |0x0
+| | |`MAX_AWBURSTLEN` |[15:8] |RW |0xF
+| | |`MAX_ARBURSTLEN` |[7:0] |RW |0xF
+|`ERROR_INFO_RP2` |0x0054 | | | |0x0
 | | |Rsvd |[31:22] |RO |0x0
-| | |SPLIT_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |SPLIT_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |SPLIT_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |SPLIT_RID_MISMATCH_ERR |[0] |W1C |0x0
-|WRITE_EARLY_RESPONSE_RP2 |0x0058 | | | |0x0
+| | |`SPLIT_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`SPLIT_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
+|`WRITE_EARLY_RESPONSE_RP2` |0x0058 | | | |0x0
 | | |Rsvd |[31:15] |RO |0x0
-| | |WRITE_RESP_DONE |[14] |RO |0x0
-| | |WRITE_RESP_ERR |[13] |W1C |0x0
-| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
-| | |WRITE_RESP_ERR_ID_INFO |[10:1] |RO |0x0
-| | |EARLY_BRESP_EN |[0] |RW |0x0
-|AXI_ERROR_INFO0_RP2 |0x005C | | | |0x0
-| | |DEBUG_UPPER_ADDR |[31:0] |RW |0x0
-|AXI_ERROR_INFO1_RP2 |0x0060 | | | |0x0
-| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
-|AXI_SLV_ID_MISMATCH_ERR_RP2 |0x0064 | | | |
+| | |`WRITE_RESP_DONE` |[14] |RO |0x0
+| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
+| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
+| | |`WRITE_RESP_ERR_ID_INFO` |[10:1] |RO |0x0
+| | |`EARLY_BRESP_EN` |[0] |RW |0x0
+|`AXI_ERROR_INFO0_RP2` |0x005C | | | |0x0
+| | |`DEBUG_UPPER_ADDR` |[31:0] |RW |0x0
+|`AXI_ERROR_INFO1_RP2` |0x0060 | | | |0x0
+| | |`DEBUG_LOWER_ADDR` |[31:0] |RW |0x0
+|`AXI_SLV_ID_MISMATCH_ERR_RP2` |0x0064 | | | |
 | | |Rsvd |[31:22] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |AXI_SLV_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |AXI_SLV_RID_MISMATCH_ERR |[0] |W1C |0x0
-|AXI_SPLIT_TR_RP3 |0x0068 | | | |0x00000F0F
+| | |`AXI_SLV_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`AXI_SLV_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`AXI_SLV_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`AXI_SLV_RID_MISMATCH_ERR` |[0] |W1C |0x0
+|`AXI_SPLIT_TR_RP3q |0x0068 | | | |0x00000F0F
 | | |Rsvd |[31:16] |RO |0x0
-| | |MAX_AWBURSTLEN |[15:8] |RW |0xF
-| | |MAX_ARBURSTLEN |[7:0] |RW |0xF
-|ERROR_INFO_RP3 |0x006C | | | |0x0
+| | |`MAX_AWBURSTLEN` |[15:8] |RW |0xF
+| | |`MAX_ARBURSTLEN` |[7:0] |RW |0xF
+|`ERROR_INFO_RP3` |0x006C | | | |0x0
 | | |Rsvd |[31:22] |RO |0x0
-| | |SPLIT_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |SPLIT_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |SPLIT_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |SPLIT_RID_MISMATCH_ERR |[0] |W1C |0x0
-|WRITE_EARLY_RESPONSE_RP3 |0x0070 | | | |0x0
+| | |`SPLIT_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`SPLIT_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`SPLIT_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`SPLIT_RID_MISMATCH_ERR` |[0] |W1C |0x0
+|`WRITE_EARLY_RESPONSE_RP3` |0x0070 | | | |0x0
 | | |Rsvd |[31:15] |RO |0x0
-| | |WRITE_RESP_DONE |[14] |RO |0x0
-| | |WRITE_RESP_ERR |[13] |W1C |0x0
-| | |WRITE_RESP_ERR_TYPE_INFO |[12:11] |RO |0x0
-| | |WRITE_RESP_ERR_ID_INFO |[10:1] |RO |0x0
-| | |EARLY_BRESP_EN |[0] |RW |0x0
-|AXI_ERROR_INFO0_RP3 |0x0074 | | | |0x0
-| | |DEBUG_UPPER_ADDR |[31:0] |RW |0x0
-|AXI_ERROR_INFO1_RP3 |0x0078 | | | |0x0
-| | |DEBUG_LOWER_ADDR |[31:0] |RW |0x0
-|AXI_SLV_ID_MISMATCH_ERR_RP3 |0x007C | | | |
+| | |`WRITE_RESP_DONE` |[14] |RO |0x0
+| | |`WRITE_RESP_ERR` |[13] |W1C |0x0
+| | |`WRITE_RESP_ERR_TYPE_INFO` |[12:11] |RO |0x0
+| | |`WRITE_RESP_ERR_ID_INFO` |[10:1] |RO |0x0
+| | |`EARLY_BRESP_EN` |[0] |RW |0x0
+|`AXI_ERROR_INFO0_RP3` |0x0074 | | | |0x0
+| | |`DEBUG_UPPER_ADDR` |[31:0] |RW |0x0
+|`AXI_ERROR_INFO1_RP3` |0x0078 | | | |0x0
+| | |`DEBUG_LOWER_ADDR` |[31:0] |RW |0x0
+|`AXI_SLV_ID_MISMATCH_ERR_RP3` |0x007C | | | |
 | | |Rsvd |[31:22] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_INFO |[21:12] |RO |0x0
-| | |AXI_SLV_RID_MISMATCH_INFO |[11:2] |RO |0x0
-| | |AXI_SLV_BID_MISMATCH_ERR |[1] |W1C |0x0
-| | |AXI_SLV_RID_MISMATCH_ERR |[0] |W1C |0x0
+| | |`AXI_SLV_BID_MISMATCH_INFO` |[21:12] |RO |0x0
+| | |`AXI_SLV_RID_MISMATCH_INFO` |[11:2] |RO |0x0
+| | |`AXI_SLV_BID_MISMATCH_ERR` |[1] |W1C |0x0
+| | |`AXI_SLV_RID_MISMATCH_ERR` |[0] |W1C |0x0
 |==========================================================================
 
 _Table 7. Register Map_
 
 *ERR SET is restricted to change the value while the system is running*
 
-For details on the ACTIVATE and DEACTIVATE SFRs, please refer to xref:aou-73-activation-deactivation-flow[Section 7.3]: Activation & Deactivation Flow.
+For details on the ACTIVATE and DEACTIVATE SFRs, please refer to xref:aou-activation-deactivation-flow[Activation & Deactivation Flow].
 
 *AOU_INIT.ACTIVATE_START*
 
@@ -272,11 +272,11 @@ image::image21.png[Figure 22. Bubble inserted when Transmitter de-assert LP_VALI
 
 * Default value is 0. AOU_CORE always sends messages to FDI for lowering latency
 
-[[aou-72-debugging-features]]
-=== 7.2. Debugging Features
+[[aou-debugging-features]]
+=== Debugging Features
 
-[[aou-721-overview]]
-==== 7.2.1. Overview
+[[aou-overview]]
+==== Overview
 
 AOU_CORE provides several error-detection and debug features, each with a dedicated interrupt output and a per-feature mask bit in the [.monospaced]#++AOU_INTERRUPT_MASK++# register (0x000C). The table below summarises the mask bits and corresponding interrupt signals.
 
@@ -294,8 +294,8 @@ AOU_CORE provides several error-detection and debug features, each with a dedica
 
 Setting a mask bit to 1 masks (disables) the corresponding interrupt.
 
-[[aou-722-axi-id-mismatch-error]]
-==== 7.2.2. AXI ID Mismatch Error
+[[aou-axi-id-mismatch-error]]
+==== AXI ID Mismatch Error
 
 AOU_CORE can detect AXI ID mismatches on both the manager and subordinate interfaces. A mismatch occurs when a B or R response arrives with an AXI ID that does not correspond to any outstanding request.
 
@@ -307,8 +307,8 @@ AOU_CORE can detect AXI ID mismatches on both the manager and subordinate interf
 
 *Subordinate side.* An analogous pending-ID table exists in [.monospaced]#++AOU_SLV_AXI_INFO++#, with SFR fields in [.monospaced]#++AXI_SLV_ID_MISMATCH_ERR_RPn++# (RP0 at 0x0034, RP1 at 0x004C, RP2 at 0x0064, RP3 at 0x007C). However, the subordinate-side mismatch outputs are currently tied to 0 in RTL; the SFR fields are allocated but will always read 0. The aggregate interrupt [.monospaced]#++INT_SI0_ID_MISMATCH++# will therefore never fire in the current implementation.
 
-[[aou-723-linkreset-error-reporting]]
-==== 7.2.3. LinkReset Error Reporting
+[[aou-linkreset-error-reporting]]
+==== LinkReset Error Reporting
 
 When AOU_CORE detects a protocol-level error during activation or deactivation, it asserts [.monospaced]#++O_AOU_REQ_LINKRESET++# (to FDI) and [.monospaced]#++INT_REQ_LINKRESET++# (to SW). Both signals share the same net and are the logical OR of the four sub-conditions below. After handling the interrupt, SW must perform a LinkReset sequence.
 
@@ -320,8 +320,8 @@ All LinkReset-related SFR fields reside in [.monospaced]#++LP_LINKRESET++# (0x00
 
 *MsgCredit Timeout.* After the local die receives ActivateAck, it expects a CreditGrant message from the remote die indicating the number of resource planes. If no CreditGrant arrives within 2^([.monospaced]#++MSGCREDIT_TIME_OUT_VALUE++# + 18) core clock cycles, [.monospaced]#++MSGCREDIT_ERR++# [0] is set. [.monospaced]#++MSGCREDIT_TIME_OUT_VALUE++# [10:8] defaults to 4. Clear via W1C.
 
-[[aou-724-rb-response-error-debug-fifo]]
-==== 7.2.4. R/B Response Error Debug FIFO
+[[aou-rb-response-error-debug-fifo]]
+==== R/B Response Error Debug FIFO
 
 When the manager interface receives an AXI B or R response with a non-OKAY status (SLVERR or DECERR), AOU_CORE captures the error details in a dedicated per-RP FIFO so that the remote die can retrieve them via AXI read.
 
@@ -355,15 +355,23 @@ The typical access sequence is: read the head entry, then pop it, and repeat unt
 [[figure-23]]
 image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Access Sequence]
 
-[[aou-725-write-early-response-error]]
-==== 7.2.5. Write Early Response Error
+[[aou-write-early-response-error]]
+==== Write Early Response Error
 
 When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++#. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C).
 
-For a detailed description of the early response error flow, see xref:{aou-architecture-xref}#aou-373-transaction-flow----error-case[section 3.7.3 (Transaction Flow \-- Error Case)] and xref:{aou-architecture-xref}#aou-379-sfr-fields[section 3.7.9 (SFR Fields)].
+For a detailed description of the early response error flow, see
+ifdef::backend-pdf[]
+xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case]
+and
+xref:{aou-architecture-xref}#aou-sfr-fields[SFR Fields].
+endif::backend-pdf[]
+ifdef::backend-html5[]
+Transaction Flow Error case and SFR Fields.
+endif::backend-html5[]
 
-[[aou-73-activation-deactivation-flow]]
-=== 7.3. Activation & Deactivation Flow
+[[aou-activation-deactivation-flow]]
+=== Activation & Deactivation Flow
 
 The Activation of AOU_CORE begins after the UCIe Link-up process has been successfully completed. The completion of UCIe link-up is indicated by the *I_INT_FSM_IN_ACTIVE* signal of the *AOU_CORE_TOP*.
 
@@ -376,8 +384,8 @@ image::image23.png[Figure 24. Independent Activation Flow]
 
 Regardless of its own activation state, a die must send an ActivateAck in response to an ActivateReq from the other die, to acknowledge receipt of the request.
 
-[[aou-731-credit-management-type]]
-==== 7.3.1. Credit Management Type
+[[aou-credit-management-type]]
+==== Credit Management Type
 
 There are two types of Credit Management Type. Since current AOU_SPEC cannot resolve pending AXI response without Activate again. When Credit Management type is set to 1, During Deactivate state, AOU_CORE can resolve pending AXI response itself. It can be configured through AOU_CON0.CREDIT_MANAGE, and the default value is 0.
 
@@ -394,8 +402,8 @@ There are two types of Credit Management Type. Since current AOU_SPEC cannot res
 ** Credits for RDATA, WRESP messages must be sent after the DeactivateAck message is sent.
 ** The Deactivate interrupt only provides a hint indicating that the remote die has started activate/deactivate.
 
-[[aou-732-activation-start]]
-==== 7.3.2. Activation start
+[[aou-activation-start]]
+==== Activation start
 
 Activation can be initiated by setting ACTIVATE_START SFR: In the current implementation, credits are granted based on the depth of the RX FIFO, so it is required to ensure that all messages in the RX FIFO have been popped before sending the ActivateReq message.
 
@@ -405,8 +413,8 @@ Activation START(via SFR AOU_INIT.ACTIVATE_START SFR)
 * Activation does not proceed until I_INT_FSM_IN_ACTIVE is asserted, since no flits can be transmitted beforehand. Therefore, it is allowed to set the ACTIVATE_START SFR before I_INT_FSM_IN_ACTIVE is asserted. If it is set before the assertion, the activation process will automatically proceed after I_INT_FSM_IN_ACTIVE becomes asserted.
 * AOU_INIT.ACTIVATE_START SFR is automatically cleared to 0 once the activation is completed and AOU_ACTIVATE_STATE transitions to ENABLED.
 
-[[aou-733-deactivation-start]]
-==== 7.3.3. Deactivation start
+[[aou-deactivation-start]]
+==== Deactivation start
 
 Deactivation is initiated by setting the AOU_INIT.DEACTIVATE_START register. Setting this register does not immediately trigger sending a DeactivateReq message. The detailed conditions and sequence for deactivation can be found in the *Deactivation Sequence Flow* section. This section will only describe AOU_INIT.DEACTIVATE_TIME_OUT_VALUE SFR.
 
@@ -424,8 +432,8 @@ The ACTIVATION_OP field encodes deactivation messages as follows:
 [[figure-25]]
 image::image24.png[Figure 25. Deactivation sequence with DEACTIVATE_START]
 
-[[aou-734-deactivation-sequence-flow]]
-==== 7.3.4. Deactivation Sequence Flow
+[[aou-deactivation-sequence-flow]]
+==== Deactivation Sequence Flow
 
 Once the local die issues a DeactivateReq, it can no longer provide responses to transactions initiated by the remote die. If the remote die continues to send requests or waits for responses without being notified, it may enter a hang state. To manage this safely, the remote die must take explicit action upon receiving a DeactivateReq: 1. Immediately generate an interrupt to the CPU to inform the system software that a DeactivateReq has been received and that it must set the DEACTIVATE_START SFR.
 
@@ -456,8 +464,8 @@ Before sending a new ActivateReq, the Rx FIFO must be completely emptied - that 
 
 To meet satisfy the condition in the local diepass:[']s sequence 10.1, no backpressure must occur on the local diepass:[']s MI AW/AR/W channels.
 
-[[aou-735-activationdeactivation-interrupt]]
-==== 7.3.5. Activation/Deactivation Interrupt
+[[aou-activationdeactivation-interrupt]]
+==== Activation/Deactivation Interrupt
 
 *INT_ACTIVATE_START*
 
@@ -478,8 +486,8 @@ To meet satisfy the condition in the local diepass:[']s sequence 10.1, no backpr
 * When AOU_INIT.ACTIVATE_STATE_DISABLED becomes 1, write 1 to clear the AOU_INIT.INT_DEACTIVATE_START W1C SFR.
 * An interrupt is asserted when AOU_INIT.DEACTIVATE_START SFR is not set and the local die receives a DeactivateReq message from the remote die.
 
-[[aou-736-pm-entry--linkreset--linkdisabled-sequence]]
-==== 7.3.6. PM entry / LinkReset / LinkDisabled sequence
+[[aou-pm-entry--linkreset--linkdisabled-sequence]]
+==== PM entry / LinkReset / LinkDisabled sequence
 
 For PM entry / LinkReset / LinkDisable entry sequence, UCIE_CORE check AOU_CORE state and try to change state. For this sequence, resolving pending AXI transactions is necessary.
 
