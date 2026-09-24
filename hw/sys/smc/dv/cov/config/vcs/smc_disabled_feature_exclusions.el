@@ -27,6 +27,11 @@ Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)
 Condition 6 "2679841428" "(psel && penable && pready && (rsp_err || decode_miss)) 1 -1" (2 "1011")
 Condition 7 "4224431006" "(rsp_err || decode_miss) 1 -1" (3 "10")
 
+CHECKSUM: "3898876563 2769723830"
+ANNOTATION: "SMC-C12-POP-ONLY-NONEMPTY: the AVSBus readback FIFO is popped only with its empty flag low, and the command FIFO only one cycle after a launch decision that tests it non-empty, with no other pop between and every popping state followed by a non-popping one; a read-side empty flag only falls without a pop, so neither FIFO is read while empty."
+MODULE: avsbus_async_fifo
+Condition 4 "2759218582" "(rd_en_i & ((~rd_empty_o))) 1 -1" (2 "10")
+
 CHECKSUM: "3564686069 3785605357"
 ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
 ANNOTATION: "SMC-P24-DIVIDER-INIT-NEVER-SET: avsbus_controller assigns do_initial_divider_setting only 1'b0, under reset and on a divider update, so it is zero for the life of the design and a row that needs it high cannot occur."
@@ -35,10 +40,12 @@ ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access 
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The I2C controller ORs its SDA-unstable event into arbitration lost, and its halt input is the unmasked OR of the controller event fields that drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA N-D midend's first stage is its request valid, which its ready, last and busy all include. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
 ANNOTATION: "SMC-C8-APB-PHASE-ORDER: the APB bridges in front of these blocks, axi_lite_to_apb in the local crossbar and in avsbus_controller and prim_axi_lite_to_apb_single ahead of the eFuse demux, drive penable only together with psel and hold the request from setup through access until pready; apb_demux gates psel and penable with one select, and mmrs passes psel through the MMR interface clamp P13 holds at zero. apb2mmr raises pready only from psel, penable and rsp_vld, and mmr_req_ctrl answers MMR_PIPE_LAT cycles after a grant the setup phase raises at the earliest and grants nothing more until then, so no response meets a setup phase. A row that needs penable without psel, pready without penable, or a response in the setup phase cannot occur."
+ANNOTATION: "SMC-C11-AVS-IRQ-DETECT-REARM: avsbus_controller shifts the slave-interrupt detector only on negedges and changes state only on posedges, sets the interrupt flag at any posedge that sees an idle or resync state with the detector at 00, and re-arms the detector to 11 at the next negedge once the state has left those states with the flag set; so no posedge sees the detector at 00 outside them."
 MODULE: avsbus_controller
 Condition 3 "2211674544" "((do_initial_divider_setting == 1'b1) || (R_avs_cfg_1_F_clk_divider_value_resync != previous_clk_divider_value_q) || (R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync != previous_clk_divider_duty_cycle_numerator_q)) 1 -1" (4 "100")
 Condition 4 "30701402" "(do_initial_divider_setting == 1'b1) 1 -1" (2 "1")
 Condition 16 "45492393" "(avs_retry_condition_detected && (avs_retry_countdown == 8'b0)) 1 -1" (2 "10")
+Condition 46 "855346021" "(((cur_state == AVS_IDLE) || (cur_state == AVS_SLAVE_RESYNC) || (cur_state == AVS_LAUNCH_FRAME_POST_RESYNC)) && (avs_sdata_interrupt_detect == 2'b0)) 1 -1" (1 "01")
 Condition 69 "688776685" "(psel & penable) 1 -1" (1 "01")
 Condition 71 "1133592924" "(pwrite & R_avs_normal_status_F_cmd_fifo_full & R_avs_cmd_wr_en) 1 -1" (1 "011")
 Condition 72 "4077019754" "(((~pwrite)) & apb_readback_buf_empty & R_avs_readback_rd_en) 1 -1" (1 "011")
@@ -606,6 +613,11 @@ Branch 0 "2316299915" "MMR_Trfunnelcontrol_F_Trfunnelempty_WrEn" (0) "MMR_Trfunn
 Branch 11 "2747705060" "(instr_type == 2'b1)" (0) "(instr_type == 2'b1) 1,-"
 Branch 11 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 
+CHECKSUM: "2884589361 570709842"
+ANNOTATION: "SMC-P30-CCG-HYST-OFF: both generic_ccg instances, the DFD clock gate and the debug-bus mux gate, set HYST_EN to zero, so hyst_on is a constant zero and the row that needs it high cannot occur."
+MODULE: generic_ccg
+Condition 1 "1064322695" "(en[0] | ((~rst_n)) | force_en | hyst_on[0]) 1 -1" (2 "0001")
+
 CHECKSUM: "2595659922 289259634"
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes. Every instance takes one value for both its clamp and its fuse disable, the NTR sink's clock-disable value and control are tied to one as well, so its clock-enable select is zero, and the funnel's zero clamp enables every source it maps. The NTR sink is absent, so every block of mmrs's clamp vector is a zero clamp, clamp_hit is zero, and mmr_req_ctrl never returns rsp_err."
 MODULE: generic_ipx_clk_rst_ctrl
@@ -661,8 +673,13 @@ Condition 5 "3690119896" "(read_rsp_i.r.last & read_rsp_i.r_valid & read_req_o.r
 
 CHECKSUM: "2274786375 3175097258"
 ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
+ANNOTATION: "SMC-C13-COUNTER-VALID-PAIRED: the iDMA write unit resets its beat counter and its valid flag together, loads them together, and clears the flag in the cycle the counter steps from one to zero, so with the flag low the counter is zero."
+ANNOTATION: "SMC-C14-STROBE-MASK-NONZERO: the iDMA write unit's first-beat mask is all ones shifted by an offset below the strobe width, and a beat that is both first and last covers the bytes from its offset to its tailer, the offset plus a burst length of at least one, so neither mask is zero and an empty buffer never covers it."
 MODULE: idma_axi_write
+Condition 5 "671903146" "(w_cnt_valid_q & (w_num_beats_q == 8'b1)) 1 -1" (1 "01")
 Condition 10 "2958787609" "((ready_to_write == 1'b1) & ((!dp_poison_i))) 1 -1" (2 "10")
+Condition 12 "2367116148" "(w_dp_valid_i & ((buffer_out_valid_i & mask_out) == mask_out) & (buffer_out_valid_i != '0)) 1 -1" (3 "110")
+Condition 15 "724343310" "(((buffer_out_valid_i & w_first_mask) == w_first_mask) & (buffer_out_valid_i != '0)) 1 -1" (2 "10")
 
 CHECKSUM: "957701396 3863102128"
 ANNOTATION: "SMC-C6-EARLIER-ARM-TAKES: an else arm or a later else-if runs only when the tests before it fail, and a statement inside an arm only when that arm's test holds, so a row of its condition that an earlier or enclosing test already decides is never evaluated. smc_cpu_ctrl_wrap reloads each core's second-stage watchdog count while reset_wdt_count is high, and reset_wdt_count includes the negated first-stage timeout, so the decrement test runs only with that timeout high; vlt_packet_compression takes a timestamp packet without a grant first and sets packet_lost only inside its timestamp-retry arm; avsbus_controller takes a retry with a countdown above zero first; efuse_shadow_regs takes a setup-only write outside the lifecycle-state field first; the I2C controller takes a disabled host, a lost start and a disable mid-transaction first, and the bus monitor a disabled monitor; and the iDMA channel coupler takes a ready first AW, and the read path a non-last beat, first."
@@ -843,6 +860,12 @@ ANNOTATION: "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the 
 MODULE: smc_dfd_wrap
 Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (2 "10")
 Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (3 "11")
+
+CHECKSUM: "971393395 3278115879"
+ANNOTATION: "SMC-C15-UNSIGNED-WRAP-DECODE: the padring decodes its GPIO window with a 32-bit subtraction from a base of 0xC0003000, so an address below the base wraps to at least 0x3FFFD000 and its index is far above the 65 GPIO wraps; the in-window test never passes below the base."
+MODULE: smc_padring
+Condition 1 "1405087489" "((axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.aw.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
+Condition 2 "2357600340" "((axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR) && (((axil_req_i.ar.addr - GPIO_INTF_BASE_ADDR) >> 4) < smc_pkg::NUM_GPIO_WRAPS)) 1 -1" (1 "01")
 
 CHECKSUM: "2716617997 3184480883"
 ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked value, so they are never high together; and efuse_shadow_reg_access_control raises write_locked_o only on the arm that forwards no request, so the shadow registers never see a forwarded write with it high. The I2C controller ORs its SDA-unstable event into arbitration lost, and its halt input is the unmasked OR of the controller event fields that drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA N-D midend's first stage is its request valid, which its ready, last and busy all include. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."

@@ -930,6 +930,40 @@ P26 = (
     "row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode "
     "arm that tests it at 0 never executes."
 )
+C11 = (
+    "SMC-C11-AVS-IRQ-DETECT-REARM: avsbus_controller shifts the slave-interrupt detector only on "
+    "negedges and changes state only on posedges, sets the interrupt flag at any posedge that "
+    "sees an idle or resync state with the detector at 00, and re-arms the detector to 11 at "
+    "the next negedge once the state has left those states with the flag set; so no posedge "
+    "sees the detector at 00 outside them."
+)
+C12 = (
+    "SMC-C12-POP-ONLY-NONEMPTY: the AVSBus readback FIFO is popped only with its empty flag low, "
+    "and the command FIFO only one cycle after a launch decision that tests it non-empty, with no "
+    "other pop between and every popping state followed by a non-popping one; a read-side empty "
+    "flag only falls without a pop, so neither FIFO is read while empty."
+)
+C13 = (
+    "SMC-C13-COUNTER-VALID-PAIRED: the iDMA write unit resets its beat counter and its valid flag "
+    "together, loads them together, and clears the flag in the cycle the counter steps from one "
+    "to zero, so with the flag low the counter is zero."
+)
+C14 = (
+    "SMC-C14-STROBE-MASK-NONZERO: the iDMA write unit's first-beat mask is all ones shifted by an "
+    "offset below the strobe width, and a beat that is both first and last covers the bytes from "
+    "its offset to its tailer, the offset plus a burst length of at least one, so neither mask is "
+    "zero and an empty buffer never covers it."
+)
+C15 = (
+    "SMC-C15-UNSIGNED-WRAP-DECODE: the padring decodes its GPIO window with a 32-bit subtraction "
+    "from a base of 0xC0003000, so an address below the base wraps to at least 0x3FFFD000 and "
+    "its index is far above the 65 GPIO wraps; the in-window test never passes below the base."
+)
+P30 = (
+    "SMC-P30-CCG-HYST-OFF: both generic_ccg instances, the DFD clock gate and the debug-bus mux "
+    "gate, set HYST_EN to zero, so hyst_on is a constant zero and the row that needs it high "
+    "cannot occur."
+)
 P28 = (
     "SMC-P28-LOG-WRITE-OKAY: uart_log_engine_wrap wires the log engine's write port only to its "
     "own UART, whose demux sends every write to one of three PeakRDL register blocks generated "
@@ -1752,6 +1786,61 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         )
     ],
+    "avsbus_async_fifo": [
+        (C12, lambda terms, vector: terms == ("rd_en_i", "((~rd_empty_o))") and vector == "10")
+    ],
+    "idma_axi_write": [
+        (
+            C13,
+            lambda terms, vector: (
+                terms == ("w_cnt_valid_q", "(w_num_beats_q == 8'b1)") and vector == "01"
+            ),
+        ),
+        (
+            C14,
+            lambda terms, vector: (
+                (
+                    terms
+                    == (
+                        "w_dp_valid_i",
+                        "((buffer_out_valid_i & mask_out) == mask_out)",
+                        "(buffer_out_valid_i != '0)",
+                    )
+                    and vector == "110"
+                )
+                or (
+                    terms
+                    == (
+                        "((buffer_out_valid_i & w_first_mask) == w_first_mask)",
+                        "(buffer_out_valid_i != '0)",
+                    )
+                    and vector == "10"
+                )
+            ),
+        ),
+    ],
+    "smc_padring": [
+        (
+            C15,
+            lambda terms, vector: (
+                len(terms) == 2
+                and terms[0]
+                in (
+                    "(axil_req_i.aw.addr >= GPIO_INTF_BASE_ADDR)",
+                    "(axil_req_i.ar.addr >= GPIO_INTF_BASE_ADDR)",
+                )
+                and vector == "01"
+            ),
+        )
+    ],
+    "generic_ccg": [
+        (
+            P30,
+            lambda terms, vector: any(
+                t == "hyst_on[0]" and b == "1" for t, b in zip(terms, vector)
+            ),
+        )
+    ],
     "generic_ipx_clk_rst_ctrl": [
         (
             P13,
@@ -1862,6 +1951,18 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         ),
         (C8, lambda terms, vector: terms == ("psel", "penable") and vector == "01"),
+        (
+            C11,
+            lambda terms, vector: (
+                terms
+                == (
+                    "((cur_state == AVS_IDLE) || (cur_state == AVS_SLAVE_RESYNC) || "
+                    "(cur_state == AVS_LAUNCH_FRAME_POST_RESYNC))",
+                    "(avs_sdata_interrupt_detect == 2'b0)",
+                )
+                and vector == "01"
+            ),
+        ),
         (
             C5,
             lambda terms, vector: (
@@ -3408,6 +3509,7 @@ FEATURE_CLASSES = (
     P27,
     P28,
     P29,
+    P30,
     A2,
     C4,
     C5,
@@ -3416,6 +3518,11 @@ FEATURE_CLASSES = (
     C8,
     C9,
     C10,
+    C11,
+    C12,
+    C13,
+    C14,
+    C15,
     F3,
     B6,
     B8,
