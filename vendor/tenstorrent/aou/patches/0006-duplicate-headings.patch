@@ -29,12 +29,44 @@ index d55c6dfe2..6b843ae6d 100644
  ==== Overview
  
  The [.monospaced]#++AOU_EARLY_BRESP_CTRL_AWCACHE++# module sits between the local AXI subordinate interface and the AOU TX datapath. One instance exists per RP and can be independently enabled or disabled via the per-RP [.monospaced]#++WRITE_EARLY_RESPONSE_RPn.EARLY_BRESP_EN++# SFR.
+@@ -403,7 +403,7 @@ The [.monospaced]#++EARLY_BRESP_EN++# SFR may be written at any time, but the in
+ 2.  Set or clear [.monospaced]#++EARLY_BRESP_EN++# via APB write.
+ 3.  The internal register transitions on the next clock edge where [.monospaced]#++O_BRESP_DONE++# is asserted and no AW handshake is in progress. This guarantees that the mode change does not occur mid-transaction.
+
+-[[aou-sfr-fields]]
++[[aou-write-early-response-controller-sfr-fields]]
+ ==== SFR Fields
+
+ The [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++# register (one per RP: RP0 at [.monospaced]#++0x0028++#, RP1 at [.monospaced]#++0x0040++#, RP2 at [.monospaced]#++0x0058++#, RP3 at [.monospaced]#++0x0070++#) contains:
 @@ -428,7 +428,7 @@ See the xref:software-operation.adoc#aou-sfr-setting[full register map] for the
  [[aou-axi-aggregator]]
  === AXI Aggregator
- 
+
 -[[aou-overview]]
 +[[aou-axi-aggregator-overview]]
  ==== Overview
- 
+
  The AXI Aggregator ([.monospaced]#++AOU_AGGREGATOR++#) combines narrow read and write data into full-width bus beats to improve bus utilization. It sits downstream of the xref:aou-axi-transaction-splitter[AXI Transaction Splitter] and is the last processing stage before the AXI manager port inside [.monospaced]#++AOU_AXI4MUX_3X1_TOP++#. One instance exists per RP.
+@@ -475,7 +475,7 @@ Read aggregation follows the same size-promotion logic as writes. [.monospaced]#
+
+ The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side [.monospaced]#++RLAST++# at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection.
+
+-[[aou-sfr-fields]]
++[[aou-axi-aggregator-sfr-fields]]
+ ==== SFR Fields
+
+ <<aou-aggregation-sfr-fields-table>> identifies the resource-plane aggregation enables.
+
+diff --git a/DOC/MAS/software-operation.adoc b/DOC/MAS/software-operation.adoc
+index 51530a13b..ef7bbdccd 100644
+--- a/DOC/MAS/software-operation.adoc
++++ b/DOC/MAS/software-operation.adoc
+@@ -275,7 +275,7 @@ image::image21.png[Figure 22. Bubble inserted when Transmitter de-assert LP_VALI
+ [[aou-debugging-features]]
+ === Debugging Features
+
+-[[aou-overview]]
++[[aou-debugging-features-overview]]
+ ==== Overview
+
+ AOU_CORE provides several error-detection and debug features, each with a dedicated interrupt output and a per-feature mask bit in the [.monospaced]#++AOU_INTERRUPT_MASK++# register (0x000C). The table below summarises the mask bits and corresponding interrupt signals.

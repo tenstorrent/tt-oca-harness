@@ -91,6 +91,7 @@ ifndef::release[]
 **** xref:aou-records-of-changes.adoc[Appendix A. Records of Changes]
 endif::release[]
 **** xref:aou-referenced-documents.adoc[Appendix B. Referenced Documents]
+**** xref:aou-software-operation.adoc[Appendix C. Software Operation]
 * xref:ip-reference.adoc[IP Reference]
 * xref:dashboard.adoc[Verification Dashboard]
 * Appendices

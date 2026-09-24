@@ -403,7 +403,7 @@ The [.monospaced]#++EARLY_BRESP_EN++# SFR may be written at any time, but the in
 2.  Set or clear [.monospaced]#++EARLY_BRESP_EN++# via APB write.
 3.  The internal register transitions on the next clock edge where [.monospaced]#++O_BRESP_DONE++# is asserted and no AW handshake is in progress. This guarantees that the mode change does not occur mid-transaction.
 
-[[aou-sfr-fields]]
+[[aou-write-early-response-controller-sfr-fields]]
 ==== SFR Fields
 
 The [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++# register (one per RP: RP0 at [.monospaced]#++0x0028++#, RP1 at [.monospaced]#++0x0040++#, RP2 at [.monospaced]#++0x0058++#, RP3 at [.monospaced]#++0x0070++#) contains:
@@ -423,7 +423,14 @@ controls.
 |WRITE_RESP_DONE |[14] |RO |1 when no write transactions are pending ([.monospaced]#++r_aw_cnt == 0++#).
 |==============================================================================================
 
-See the xref:software-operation.adoc#aou-sfr-setting[full register map] for the complete SFR listing.
+See the
+ifdef::backend-pdf[]
+xref:#aou-sfr-setting[full register map]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:aou-software-operation.adoc#aou-sfr-setting[full register map]
+endif::backend-html5[]
+for the complete SFR listing.
 
 [[aou-axi-aggregator]]
 === AXI Aggregator
@@ -468,7 +475,7 @@ Read aggregation follows the same size-promotion logic as writes. [.monospaced]#
 
 The [.monospaced]#++AOU_AGGREGATOR_INFO++# submodule tracks outstanding AR transactions. For each issued AR, it records the original burst geometry (size, length) so that when wide R data returns from the manager side, the module can regenerate the correct slave-side [.monospaced]#++RLAST++# at the original burst boundaries. Wide R beats are presented to the slave side multiple times (once per original narrow beat) with the appropriate byte-lane selection.
 
-[[aou-sfr-fields]]
+[[aou-axi-aggregator-sfr-fields]]
 ==== SFR Fields
 
 <<aou-aggregation-sfr-fields-table>> identifies the resource-plane aggregation enables.

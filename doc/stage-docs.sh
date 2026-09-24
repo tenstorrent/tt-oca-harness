@@ -152,7 +152,7 @@ mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
 case "$(basename "$PRODUCT")" in
 trm)
   mkdir -p "$MOD/aou/partials/pdf"
-  for page in overview architecture interrupts-errors ppa-appendices; do
+  for page in overview architecture interrupts-errors ppa-appendices software-operation; do
     sed -E 's/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
       >"$MOD/aou/partials/$page.adoc"
     # The PDF inherits book numbering instead of the standalone specification's numbers.
@@ -166,7 +166,7 @@ trm)
     >"$MOD/aou/partials/records-of-changes.adoc"
   sed -n '/^\[\[appendix-b-referenced-documents\]\]/,$p' "$AOU_DOC/ppa-appendices.adoc" \
     >"$MOD/aou/partials/referenced-documents.adoc"
-  aou_pages="overview architecture interrupts-errors ppa-appendices records-of-changes referenced-documents"
+  aou_pages="overview architecture interrupts-errors ppa-appendices records-of-changes referenced-documents software-operation"
   for page in $aou_pages; do
     # Published fragments land beside the link to their owning topic page.
     {

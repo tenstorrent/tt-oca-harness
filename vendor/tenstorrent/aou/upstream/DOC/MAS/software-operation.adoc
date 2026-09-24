@@ -10,7 +10,7 @@ ifndef::aou-architecture-xref[]
 endif::[]
 
 [[aou-software-operation-guide]]
-== Software operation guide
+== Appendix C. Software operation guide
 
 This section gives information about operation guide for the AOU_CORE.
 
@@ -275,7 +275,7 @@ image::image21.png[Figure 22. Bubble inserted when Transmitter de-assert LP_VALI
 [[aou-debugging-features]]
 === Debugging Features
 
-[[aou-overview]]
+[[aou-debugging-features-overview]]
 ==== Overview
 
 AOU_CORE provides several error-detection and debug features, each with a dedicated interrupt output and a per-feature mask bit in the [.monospaced]#++AOU_INTERRUPT_MASK++# register (0x000C). The table below summarises the mask bits and corresponding interrupt signals.
@@ -360,15 +360,17 @@ image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Acce
 
 When the early write-response feature is enabled ([.monospaced]#++EARLY_BRESP_EN = 1++#) and the actual BRESP from the remote die carries an error for a transaction that already received an early OKAY, the error is reported via the [.monospaced]#++INT_EARLY_RESP_ERR++# interrupt. The failing transactionpass:[']s AXI ID and BRESP type are captured in [.monospaced]#++WRITE_EARLY_RESPONSE_RPn++#. SW clears the error by writing 1 to [.monospaced]#++WRITE_RESP_ERR++# (W1C).
 
-For a detailed description of the early response error flow, see
-ifdef::backend-pdf[]
-xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case]
-and
-xref:{aou-architecture-xref}#aou-sfr-fields[SFR Fields].
-endif::backend-pdf[]
-ifdef::backend-html5[]
-Transaction Flow Error case and SFR Fields.
-endif::backend-html5[]
++For a detailed description of the early response error flow, see
++ifdef::backend-pdf[]
++xref:{aou-architecture-xref}#aou-transaction-flow----error-case[Transaction Flow \-- Error Case]
++and
++xref:{aou-architecture-xref}#aou-write-early-response-controller-sfr-fields[SFR Fields].
++endif::backend-pdf[]
++ifdef::backend-html5[]
++xref:ocah-docs:ROOT:aou-architecture.adoc#aou-transaction-flow----error-case[Transaction Flow \-- Error Case]
++and
++xref:ocah-docs:ROOT:aou-architecture.adoc#aou-write-early-response-controller-sfr-fields[SFR Fields].
++endif::backend-html5[]
 
 [[aou-activation-deactivation-flow]]
 === Activation & Deactivation Flow

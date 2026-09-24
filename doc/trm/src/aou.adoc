@@ -25,6 +25,8 @@ include::../modules/aou/partials/pdf/interrupts-errors.adoc[leveloffset=+1]
 
 include::../modules/aou/partials/pdf/ppa-appendices.adoc[leveloffset=+1]
 
+include::../modules/aou/partials/pdf/software-operation.adoc[leveloffset=+1]
+
 For references from all TRM chapters, see
 <<trm-referenced-documents,Referenced Documents>>.
 
@@ -59,6 +61,10 @@ endif::release[]
 include::aou:partial$referenced-documents-anchors.adoc[]
 
 * xref:aou-referenced-documents.adoc[Appendix B. Referenced Documents] -- reference list.
+
+include::aou:partial$software-operation-anchors.adoc[]
+
+* xref:aou-software-operation.adoc[Appendix C. Software Operation] -- software operation guide.
 
 Integration details are in the xref:ocah-integrator-guide:ROOT:aou.adoc[Integrator Guide].
 Register programming and activation flows are in the
