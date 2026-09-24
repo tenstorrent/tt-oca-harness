@@ -53,7 +53,6 @@ __pycache__/
 # (see doc/stage-docs.sh); source of truth stays outside staged module output.
 doc/_build/
 doc/*/_build/
-doc/*/dist/
 doc/*/assets/*
 doc/*/src/assets
 # Most assets in these directories are automatically copied from the block hw
