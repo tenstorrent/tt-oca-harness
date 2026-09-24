@@ -110,6 +110,7 @@ module zeroer #(
   logic [63:0] size;
   logic        int_en;
   logic [1:0] status_swacc;
+  logic        start;
 
   logic [31:0] outstanding_reqs;
 
@@ -129,7 +130,7 @@ module zeroer #(
   always_comb begin
     zeroer_busy_o = 1'b1;
     if (cur_state == ST_IDLE) begin
-      zeroer_busy_o = status_swacc[1] | (|outstanding_reqs);
+      zeroer_busy_o = start | (|outstanding_reqs);
     end
   end
 
@@ -215,6 +216,8 @@ module zeroer #(
     hwif_out.CTRL_STATUS.INT_EN.wr_swacc, hwif_out.CTRL_STATUS.STATUS.rd_swacc
   };
 
+  assign start = status_swacc[1] & (|size);
+
   // ----------
 
   axi_addr_t cur_dest_addr, nxt_dest_addr;
@@ -268,7 +271,7 @@ module zeroer #(
     unique case (cur_state)
       ST_IDLE: begin
         // when command is triggered, lock in values
-        if (status_swacc[1]) begin
+        if (start) begin
           nxt_state = ST_ISSUE_ADDR;
           nxt_dest_addr = dest_addr[AXI_ADDR_WIDTH-1:0];
           nxt_size = size;
