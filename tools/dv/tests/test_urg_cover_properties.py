@@ -122,22 +122,6 @@ class UrgCoverPropertiesTest(unittest.TestCase):
         self.assertEqual(user.raw_percent, 60.0)
         self.assertEqual(user.effective_percent, 75.0)
 
-    def test_an_accepted_waiver_leaves_the_effective_population(self) -> None:
-        (self.report / "asserts.txt").write_text(ASSERTS)
-        details = self.parse()
-        waived = next(
-            observation
-            for observation in details.observations
-            if observation.hierarchy == "top.u_clk_fcov.c_clk_periph_stalled_window"
-        )
-        waived.disposition = "waive"
-        waived.status = "accepted"
-        details.finalize()
-        user = next(record for record in details.metrics if record.metric_family == "user")
-        self.assertEqual((user.covered, user.total, user.excluded), (3, 5, 0))
-        self.assertEqual(user.raw_percent, 60.0)
-        self.assertEqual(user.effective_percent, 75.0)
-
     def test_raw_report_supplies_the_raw_user_figure(self) -> None:
         (self.report / "asserts.txt").write_text(ASSERTS_WITH_EXCLUSION)
         raw = Path(self.tmp.name) / "report_raw"

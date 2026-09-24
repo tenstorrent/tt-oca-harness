@@ -130,38 +130,8 @@ class CoverageDetails:
         if self.observations and self.observations_complete:
             self.metrics = metrics_from_observations(self.observations)
         else:
-            # A family whose observations enumerate every point its summary
-            # counted is complete on its own: its accepted waivers leave the
-            # effective population the way they do in a fully enumerated
-            # report. The tool's own exclusions stay in `excluded`; the waivers
-            # are read from the observations each time, so grading twice
-            # counts them once.
-            observed: dict[tuple[str, str], list[CoverageObservation]] = {}
-            for observation in self.observations:
-                observed.setdefault(
-                    (observation.metric_family, observation.native_metric), []
-                ).append(observation)
             for metric in self.metrics:
                 metric.finalize()
-                points = observed.get((metric.metric_family, metric.native_metric))
-                if (
-                    not points
-                    or metric.total is None
-                    or metric.covered is None
-                    or len(points) != metric.total
-                ):
-                    continue
-                waived = sum(
-                    1
-                    for point in points
-                    if not point.covered
-                    and point.status == "accepted"
-                    and point.disposition in {"waive", "exclude_scope"}
-                )
-                if waived:
-                    metric.effective_percent = percentage(
-                        metric.covered, metric.total - metric.excluded - waived
-                    )
         self.comparison_key = coverage_comparison_key(
             dut=self.dut,
             tool=self.tool,
