@@ -26,7 +26,7 @@ Three more facts belong to one block each rather than to a family:
   on a write (`wr_err` is gated on `reg_we`) or on an access that hits
   nothing (`addrmiss` requires no hit), and read and write are mutually
   exclusive, so the per-address read term crossed with an error cannot occur.
-* A5 INPUT-UNCONNECTED: the same block's `devmode_i` is left unconnected by
+* A5 INPUT-UNCONNECTED: the same block's `devmode_i` is tied to zero by
   the SMC integration, so the explicit-error-on-unmapped-access term it gates
   never evaluates true.
 
@@ -180,6 +180,14 @@ timestamp input and sdtrig control (P22 DFD-CONTROL-TIED), and the bench ties th
 CLA crosstrigger and TDR clock-stop inputs (B8 DFD-BENCH-INPUTS-TIED). The signals
 these classes hold decide condition rows as well as branch paths, operand tables
 included.
+
+Four more are the register blocks' own. Where an integration acks every
+external register in the cycle it is requested, the pending flag never sets and
+the stalls hold zero (A8 EXTERNAL-ACK-SAME-CYCLE); two single-register blocks
+only ever see address zero (A9 ADDRESS-FIXED); the main UART map has no external
+write ack (C3 NO-EXTERNAL-WRITE); and a read-only or write-only register's strobe
+or external req carries its direction, in the block and in the logic that
+consumes the req (C4 STROBE-CARRIES-DIRECTION).
 The bench ties the four DFX status inputs the boot sequencer waits on high, so
 the input-low arms of their sticky fields have no stimulus (B7
 DFX-INPUTS-TIED, the bench's own).
@@ -506,9 +514,9 @@ A4 = (
     "read that hits an address always sees reg_error low and the crossed term cannot occur."
 )
 A5 = (
-    "SMC-REGBLOCK-A5-INPUTUNCONNECTED: the SMC integration leaves this block's devmode_i "
-    "unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates "
-    "true."
+    "SMC-REGBLOCK-A5-INPUTUNCONNECTED: the SMC integration ties this block's devmode_i to "
+    "zero, so the explicit-error-on-unmapped-access term it gates never evaluates true, in the "
+    "expression or in its operand table."
 )
 A6 = (
     "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the "
@@ -519,6 +527,34 @@ A6 = (
     "Fields of the same block that keep their value between writes stay graded."
 )
 
+A8 = (
+    "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked "
+    "in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the "
+    "register's own req and direction, and PeakRDL gates that req and the is_external term on "
+    "the same direction. decoded_req_is_external therefore always meets an ack, external_pending "
+    "never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the "
+    "pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
+)
+A9 = (
+    "SMC-REGBLOCK-A9-ADDRESS-FIXED: the integration presents this single-register block only "
+    "address zero at the bit its cpuif decodes (output_remap_reg is fed {1'b0, addr[2:0]}, and "
+    "uart_log_engine_ctrl_reg is selected only inside a four-byte window at an eight-byte "
+    "aligned base), so cpuif_addr and rd_mux_addr hold zero and a row that needs either "
+    "nonzero cannot occur."
+)
+C3 = (
+    "SMC-REGBLOCK-C3-NO-EXTERNAL-WRITE: the block's only external register is read-only, so "
+    "PeakRDL gives external_wr_ack a constant zero, and a row that needs an external write "
+    "acknowledged cannot occur."
+)
+C4 = (
+    "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the "
+    "decode strobe of a read-only or write-only register, and into the req it presents for an "
+    "external one, so the strobe or req is never high in the other direction. A row that needs "
+    "it high in that direction, in the block or in the logic that consumes the req, cannot "
+    "occur; the test rewrites each strobe or req as itself and its direction, and takes a row "
+    "only when that makes it unsatisfiable."
+)
 B7 = (
     "SMC-REGBLOCK-B7-DFX-INPUTS-TIED: a property of this bench, not of the design. The SMC "
     "passes mem_repair_done, mem_repair_success, mbist_done and mbist_pass straight to the DFX "
@@ -1288,7 +1324,35 @@ I2C_SINGLEPULSE = (
 # arvalid register or ar_accept, every request it sees is a write, and its read
 # acks (readback_done and the external read ack, which it generates as zero)
 # never rise.
+# Blocks whose external registers are all acked the cycle they are requested.
+EXTERNAL_ACK_BLOCKS = frozenset(
+    {
+        "i2c_reg",
+        "cpu_ctrl_reg",
+        "uart_16550_main_reg",
+        "uart_16550_main_wo_reg",
+        "system_timer_octs_reg",
+        "reset_unit_reg",
+        "avsbus_controller_reg",
+    }
+)
+STALL_OR_PENDING = re.compile(r"^(?:cpuif_req_stall_(?:rd|wr)|external_pending)\b")
+PENDING_SET = re.compile(
+    r"^\(decoded_req_is_external & \(\(~external_wr_ack\)\) & \(\(~external_rd_ack\)\)\)$"
+)
+
+# Logic that consumes a register block's external req, and the blocks whose req it reads.
+REQ_CONSUMERS: "dict[str, tuple[str, ...]]" = {
+    "i2c_core": ("i2c_reg",),
+    "uart_core": ("uart_16550_main_reg", "uart_16550_main_wo_reg"),
+    "avsbus_controller": ("avsbus_controller_reg",),
+}
+
 REGBLOCK_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
+    "idma_reg64_2d_reg_top": [(A5, re.compile(r"^devmode_i$"), 0)],
+    "output_remap_reg": [(A9, re.compile(r"^(?:cpuif_addr|rd_mux_addr)$"), 0)],
+    "uart_log_engine_ctrl_reg": [(A9, re.compile(r"^(?:cpuif_addr|rd_mux_addr)$"), 0)],
+    "uart_16550_main_reg": [(C3, re.compile(r"^external_wr_ack$"), 0)],
     "dfx_ctrl_status_reg": [
         (
             B7,
@@ -2031,6 +2095,64 @@ def singlepulse_load_fields(source: str) -> frozenset[str]:
     return frozenset(out)
 
 
+def register_directions(source: str) -> "dict[str, str]":
+    """Register name -> the direction its strobe or external req carries, "1" write, "0" read."""
+    path = Path(source.split(":")[0])
+    if not path.is_file():
+        return {}
+    text = path.read_text(errors="replace")
+    out: dict[str, str] = {}
+    for m in re.finditer(
+        r"decoded_reg_strb\.([\w.]+)\s*=\s*cpuif_req_masked\s*&\s*\([^;]*\)\s*&\s*(!?)cpuif_req_is_wr;",
+        text,
+    ):
+        out[m.group(1)] = "0" if m.group(2) else "1"
+    for m in re.finditer(
+        r"assign hwif_out\.([\w.]+)\.req\s*=\s*(!?)decoded_req_is_wr\s*\?\s*decoded_reg_strb\.",
+        text,
+    ):
+        out[m.group(1)] = "0" if m.group(2) else "1"
+    return out
+
+
+def _directed(term: str, directions: "dict[str, str]", consumer: bool) -> str:
+    """A term with each directed strobe or req written as itself and its direction."""
+    if consumer:
+
+        def req(m: re.Match) -> str:
+            name = m.group(1).rsplit(".", 1)[-1]
+            d = directions.get(name)
+            if d is None:
+                return m.group(0)
+            neg = "" if d == "1" else "!"
+            return f"({m.group(0)} && {neg}{m.group(1)}.req_is_wr)"
+
+        return re.sub(r"\b((?:[A-Za-z_]\w*\.)*[A-Za-z_]\w*)\.req\b(?!_is_wr)", req, term)
+
+    def strobe(m: re.Match) -> str:
+        d = directions.get(m.group(1))
+        if d is None:
+            return m.group(0)
+        neg = "" if d == "1" else "!"
+        return f"({m.group(0)} && {neg}decoded_req_is_wr)"
+
+    return re.sub(r"decoded_reg_strb\.([\w.]+?)(?=[\s)&|]|$)", strobe, term)
+
+
+def direction_row(
+    terms: "tuple[str, ...] | None", vector: str, directions: "dict[str, str]", consumer: bool
+) -> bool:
+    """Whether a row is satisfiable as written but not with each strobe or req directed."""
+    if not terms or len(terms) != len(vector) or not directions:
+        return False
+    directed = tuple(_directed(t, directions, consumer) for t in terms)
+    if directed == tuple(terms):
+        return False
+    return _row_satisfiable(directed, vector, None, 0) is False and bool(
+        _row_satisfiable(tuple(terms), vector, None, 0)
+    )
+
+
 def singlepulse_skip_path(
     construct: BranchConstruct, values: tuple[str, ...], fields: frozenset[str]
 ) -> bool:
@@ -2171,7 +2293,7 @@ def select_extra(
     return None
 
 
-REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, B1, B7, C1)
+REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, A8, A9, B1, B7, C1, C3, C4)
 FEATURE_CLASSES = (
     P1,
     P2,
@@ -2280,14 +2402,36 @@ def render_regblock(
         width = cpuif_data_width(tpoints[0].source) if tpoints else None
         aligned = align_points(report_points_by_module.get(module, []), tpoints)
         stall0 = bool(tpoints) and regblock_facts(module, tpoints[0].source)[0]
-        for tp, rp in aligned if stall0 else ():
-            if not is_regblock_source(tp.source) or not STALL_RE.search(tp.text):
+        stall_class = A1 if stall0 else A8 if module in EXTERNAL_ACK_BLOCKS else None
+        for tp, rp in aligned if stall_class else ():
+            if not is_regblock_source(tp.source):
                 continue
             for vector, entry in tp.rows:
                 if entry in taken or vector not in rp.uncovered:
                     continue
-                if needs_forced_away(rp.terms, vector, STALL_OPERAND, 0):
-                    block.append((A1, entry))
+                if (STALL_RE.search(tp.text) or stall_class == A8) and needs_forced_away(
+                    rp.terms, vector, STALL_OR_PENDING if stall_class == A8 else STALL_OPERAND, 0
+                ):
+                    block.append((stall_class, entry))
+                    taken.add(entry)
+                elif stall_class == A8 and PENDING_SET.match(tp.text) and vector == "111":
+                    block.append((A8, entry))
+                    taken.add(entry)
+        # Directed strobes and reqs, in the block and in the logic consuming its reqs.
+        if tpoints and is_regblock_source(tpoints[0].source):
+            directions, consumer = register_directions(tpoints[0].source), False
+        else:
+            directions, consumer = {}, True
+            for owner in REQ_CONSUMERS.get(module, ()):
+                owned = template_points_by_module.get(owner, [])
+                if owned:
+                    directions.update(register_directions(owned[0].source))
+        for tp, rp in aligned if directions else ():
+            for vector, entry in tp.rows:
+                if entry in taken or vector not in rp.uncovered:
+                    continue
+                if direction_row(rp.terms, vector, directions, consumer):
+                    block.append((C4, entry))
                     taken.add(entry)
         for tp, rp in aligned:
             for vector, entry in tp.rows:
@@ -2329,6 +2473,10 @@ def render_regblock(
                     reason = C1
                 elif stall and path_needs_forced_away(construct, values, STALL_OPERAND, 0):
                     reason = A1
+                elif module in EXTERNAL_ACK_BLOCKS and path_needs_forced_away(
+                    construct, values, STALL_OR_PENDING, 0
+                ):
+                    reason = A8
                 elif singlepulse_skip_path(construct, values, pulses):
                     reason = A7
                 else:

@@ -35,10 +35,18 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
+CHECKSUM: "3564686069 3785605357"
+ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur; the test rewrites each strobe or req as itself and its direction, and takes a row only when that makes it unsatisfiable."
+MODULE: avsbus_controller
+Condition 79 "3153649340" "(hwif_out.AVS_CMD.req && hwif_out.AVS_CMD.req_is_wr) 1 -1" (2 "10")
+Condition 80 "2470372776" "(hwif_out.AVS_READBACK.req && ((!hwif_out.AVS_READBACK.req_is_wr))) 1 -1" (2 "10")
+
 CHECKSUM: "3896755233 3909592511"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur; the test rewrites each strobe or req as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: avsbus_controller_reg
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
@@ -52,6 +60,24 @@ Condition 95 "795222567" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVE
 Condition 99 "1413304740" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
 Condition 103 "2792596154" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
 Condition 114 "4205383914" "((field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
+Condition 32 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 141 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 141 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 142 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 143 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 143 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 144 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 145 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 145 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 70 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 74 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 78 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 82 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 86 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 90 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 94 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 98 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
+Condition 102 "3248563974" "(decoded_reg_strb.AVS_INTERRUPT_CLEAR && decoded_req_is_wr) 1 -1" (2 "10")
 Condition 37 "4138482005" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 41 "3264178128" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
 Condition 45 "1652416381" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
@@ -134,11 +160,21 @@ Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "4071069113 1776738744"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 MODULE: cpu_ctrl_reg
 Condition 54 "2648555519" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 58 "938649821" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 62 "2710835096" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
 Condition 66 "196810938" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 42 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 126 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 126 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 127 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 128 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 128 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 129 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 130 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 130 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 55 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 55 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
 Condition 59 "3378087292" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
@@ -150,9 +186,13 @@ Condition 67 "1468756286" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.
 
 CHECKSUM: "4071069113 3052565341"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: cpu_ctrl_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "4047357563 3105227975"
@@ -304,6 +344,18 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2)
 Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
+CHECKSUM: "3754834557 640076495"
+ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur; the test rewrites each strobe or req as itself and its direction, and takes a row only when that makes it unsatisfiable."
+MODULE: i2c_core
+Condition 23 "2316705117" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr) 1 -1" (2 "10")
+Condition 24 "1991555225" "(reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr && ((|reg_out_i.FDATA.wr_biten))) 1 -1" (2 "101")
+Condition 36 "200185853" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 37 "3365045754" "(reg_out_i.RDATA.req && ((!reg_out_i.RDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 40 "2297625995" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr) 1 -1" (2 "10")
+Condition 43 "1244734509" "(reg_out_i.TXDATA.req && reg_out_i.TXDATA.req_is_wr && ((|reg_out_i.TXDATA.wr_biten))) 1 -1" (2 "101")
+Condition 45 "1859700326" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
+Condition 47 "1170022099" "(reg_out_i.ACQDATA.req && ((!reg_out_i.ACQDATA.req_is_wr))) 1 -1" (2 "10")
+
 CHECKSUM: "1461514841 2927016927"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
@@ -366,6 +418,7 @@ Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "1943968615 3380696541"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: i2c_reg
 Condition 237 "4237267917" "((field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
@@ -386,6 +439,15 @@ Condition 349 "2590629755" "((field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_
 Condition 353 "2238378298" "((field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
 Condition 357 "1195032021" "((field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
 Condition 409 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (3 "10")
+Condition 90 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 484 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 485 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 486 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 487 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 488 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 147 "3785315650" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 151 "2696797505" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
 Condition 155 "2625372358" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
@@ -499,9 +561,13 @@ Condition 416 "756734046" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2
 CHECKSUM: "1943968615 3039478896"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: i2c_reg
 Branch 9 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Branch 6 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
+Branch 6 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
+Branch 6 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 7 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 Branch 84 "1657689446" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 88 "2363467371" "(~arst_n)" (2) "(~arst_n) 0,0"
@@ -524,7 +590,7 @@ Branch 206 "163551211" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "3355438513 3938785771"
 ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a read that hits an address always sees reg_error low and the crossed term cannot occur."
-ANNOTATION: "SMC-REGBLOCK-A5-INPUTUNCONNECTED: the SMC integration leaves this block's devmode_i unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates true."
+ANNOTATION: "SMC-REGBLOCK-A5-INPUTUNCONNECTED: the SMC integration ties this block's devmode_i to zero, so the explicit-error-on-unmapped-access term it gates never evaluates true, in the expression or in its operand table."
 MODULE: idma_reg64_2d_reg_top
 Condition 127 "583269373" "((devmode_i & addrmiss) | wr_err) 1 -1" (3 "10")
 Condition 139 "4149940944" "(addr_hit[2] & reg_re & ((!reg_error))) 1 -1" (3 "110")
@@ -574,6 +640,8 @@ Condition 182 "4219352736" "(addr_hit[45] & reg_re & ((!reg_error))) 1 -1" (3 "1
 Condition 183 "47252534" "(addr_hit[46] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 184 "458639587" "(addr_hit[47] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 Condition 185 "1262529806" "(addr_hit[48] & reg_re & ((!reg_error))) 1 -1" (3 "110")
+Condition 128 "3814650125" "(devmode_i & addrmiss) 1 -1" (2 "10")
+Condition 128 "3814650125" "(devmode_i & addrmiss) 1 -1" (3 "11")
 
 CHECKSUM: "2067798497 84113796"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
@@ -641,6 +709,7 @@ Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "4060298550 1539976365"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
+ANNOTATION: "SMC-REGBLOCK-A9-ADDRESS-FIXED: the integration presents this single-register block only address zero at the bit its cpuif decodes (output_remap_reg is fed {1'b0, addr[2:0]}, and uart_log_engine_ctrl_reg is selected only inside a four-byte window at an eight-byte aligned base), so cpuif_addr and rd_mux_addr hold zero and a row that needs either nonzero cannot occur."
 MODULE: output_remap_reg
 Condition 21 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 21 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
@@ -650,6 +719,9 @@ Condition 23 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 
 Condition 24 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
 Condition 25 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 25 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 16 "4082264844" "(cpuif_req_masked & (cpuif_addr == 4'b0)) 1 -1" (2 "10")
+Condition 17 "610652891" "(cpuif_addr == 4'b0) 1 -1" (1 "0")
+Condition 19 "3847193581" "(rd_mux_addr == 4'b0) 1 -1" (1 "0")
 
 CHECKSUM: "4060298550 675217217"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
@@ -663,15 +735,29 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "3271107167 1345162332"
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: reset_unit_reg
+Condition 70 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 104 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 104 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 105 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 106 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 106 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 107 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 108 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 108 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 83 "3228717886" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
 CHECKSUM: "3271107167 2051533637"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: reset_unit_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "2083532214 1989962094"
@@ -745,9 +831,19 @@ Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "1018686372 837048839"
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: system_timer_octs_reg
 Condition 39 "3493643897" "((field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 36 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 61 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 61 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 62 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 63 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 63 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 64 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 65 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 65 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
 Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
 Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
@@ -756,9 +852,13 @@ Condition 50 "1941977297" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "
 
 CHECKSUM: "1018686372 1324937556"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: system_timer_octs_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
+Branch 2 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "656852128 1067758899"
@@ -832,8 +932,33 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "3055559241 4290674178"
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-C3-NO-EXTERNAL-WRITE: the block's only external register is read-only, so PeakRDL gives external_wr_ack a constant zero, and a row that needs an external write acknowledged cannot occur."
+ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur; the test rewrites each strobe or req as itself and its direction, and takes a row only when that makes it unsatisfiable."
 MODULE: uart_16550_main_reg
+Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 154 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 155 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 156 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 157 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 158 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 109 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 110 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 111 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 112 "2956378180" "(decoded_reg_strb.LSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 113 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 114 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 115 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 116 "4089057337" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 160 "3787437522" "(decoded_reg_strb.IIR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 162 "3203674146" "(decoded_reg_strb.MSR && ((!decoded_req_is_wr))) 1 -1" (2 "10")
+Condition 38 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (2 "101")
+Condition 39 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (3 "10")
+Condition 164 "3607769644" "(external_wr_ack | (decoded_req & decoded_req_is_wr & ((~decoded_req_is_external)))) 1 -1" (3 "10")
 Condition 43 "1040506279" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 47 "3171620908" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
 Condition 51 "424183414" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
@@ -860,14 +985,19 @@ Condition 142 "3234267788" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 
 
 CHECKSUM: "3055559241 2946310052"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_16550_main_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
+Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
+Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "2964910200 3918030293"
 ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite demux raises a port's AR valid only when that port is selected, so this block's arvalid is never asserted. Its arvalid register and ar_accept therefore stay low, every request it sees is a write, and its read acks never rise; a row or branch path that needs any of them high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write channel produces it."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_16550_main_wo_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -878,6 +1008,15 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (4 "111")
+Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
+Condition 41 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
+Condition 42 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
+Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (1 "01")
+Condition 43 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 "11")
+Condition 44 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
+Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
+Condition 45 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 Condition 5 "1728812250" "(axil_ar_accept || axil_aw_accept) 1 -1" (3 "10")
 Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (3 "10")
 Condition 14 "1950024504" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (3 "10")
@@ -905,6 +1044,7 @@ CHECKSUM: "2964910200 2953287278"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite demux raises a port's AR valid only when that port is selected, so this block's arvalid is never asserted. Its arvalid register and ar_accept therefore stay low, every request it sees is a write, and its read acks never rise; a row or branch path that needs any of them high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write channel produces it."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
+ANNOTATION: "SMC-REGBLOCK-A8-EXTERNAL-ACK-SAME-CYCLE: every external register of this block is acked in the cycle it is requested, since its integration drives each wr_ack and rd_ack from the register's own req and direction, and PeakRDL gates that req and the is_external term on the same direction. decoded_req_is_external therefore always meets an ack, external_pending never sets, and the stall inputs it drives hold zero: the stall rows and paths, and the pending-set row, cannot occur. The handshake's valid-without-ready rows stay graded."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_16550_main_wo_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
@@ -912,6 +1052,7 @@ Branch 2 "4213977320" "(~arst_n)" (1) "(~arst_n) 0,1,-,-,-,-,-,-"
 Branch 2 "4213977320" "(~arst_n)" (3) "(~arst_n) 0,-,1,-,-,-,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (0) "(axil_n_in_flight < 2'd2) 1,1,1,-,-,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
+Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (3) "(axil_n_in_flight < 2'd2) 1,0,-,1,0,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (4) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,1"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
 Branch 4 "3078954377" "(~arst_n)" (1) "(~arst_n) 0,1,1,-,-"
@@ -919,8 +1060,17 @@ Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 Branch 11 "1764768895" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 13 "2429376722" "(~arst_n)" (2) "(~arst_n) 0,0"
 
+CHECKSUM: "2535161971 656965095"
+ANNOTATION: "SMC-REGBLOCK-C4-STROBE-CARRIES-DIRECTION: PeakRDL folds the access direction into the decode strobe of a read-only or write-only register, and into the req it presents for an external one, so the strobe or req is never high in the other direction. A row that needs it high in that direction, in the block or in the logic that consumes the req, cannot occur; the test rewrites each strobe or req as itself and its direction, and takes a row only when that makes it unsatisfiable."
+MODULE: uart_core
+Condition 50 "616401281" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 51 "241523009" "(reg_out_i.main.RBR.req && ((!reg_out_i.main.RBR.req_is_wr))) 1 -1" (2 "10")
+Condition 52 "2019871000" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr) 1 -1" (2 "10")
+Condition 53 "1284311563" "(reg_out_i.main_wo.THR.req && reg_out_i.main_wo.THR.req_is_wr && ((|reg_out_i.main_wo.THR.wr_biten[7:0]))) 1 -1" (2 "101")
+
 CHECKSUM: "225643378 1423410759"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
+ANNOTATION: "SMC-REGBLOCK-A9-ADDRESS-FIXED: the integration presents this single-register block only address zero at the bit its cpuif decodes (output_remap_reg is fed {1'b0, addr[2:0]}, and uart_log_engine_ctrl_reg is selected only inside a four-byte window at an eight-byte aligned base), so cpuif_addr and rd_mux_addr hold zero and a row that needs either nonzero cannot occur."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_log_engine_ctrl_reg
 Condition 24 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
@@ -931,6 +1081,9 @@ Condition 26 "1170080477" "(((!cpuif_req_is_wr)) & cpuif_req_stall_rd) 1 -1" (3 
 Condition 27 "333285110" "( ! (cpuif_req_is_wr & cpuif_req_stall_wr) ) 1 -1" (2 "1")
 Condition 28 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 28 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
+Condition 16 "1797526384" "(cpuif_req_masked & (cpuif_addr == 3'b0)) 1 -1" (2 "10")
+Condition 17 "2037860155" "(cpuif_addr == 3'b0) 1 -1" (1 "0")
+Condition 22 "1785071699" "(rd_mux_addr == 3'b0) 1 -1" (1 "0")
 Condition 19 "3596939294" "((field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 20 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
 Condition 20 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
