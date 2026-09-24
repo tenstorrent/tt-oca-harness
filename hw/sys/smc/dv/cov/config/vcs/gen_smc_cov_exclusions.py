@@ -2558,6 +2558,9 @@ def align_points(
     pairs = []
     cursor: dict[int, int] = {}
     for tp in template:
+        if not tp.rows:
+            # urg lists a negation wrapper with no rows ahead of the operand it negates.
+            continue
         candidates = by_line.get(tp.line, [])
         k = cursor.get(tp.line, 0)
         while k < len(candidates) and not _same_point(candidates[k].text, tp.text):
