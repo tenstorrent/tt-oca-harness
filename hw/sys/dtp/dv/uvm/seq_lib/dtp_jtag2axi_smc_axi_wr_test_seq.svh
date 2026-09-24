@@ -344,6 +344,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
 
   // -- random_ops: randomized single writes --------------------------------
   task run_random_ops(dtp_j2a_target_t t);
+    bit [7:0] image[bit [63:0]];
     `uvm_info(get_type_name(), "SMC_AXI_SINGLE_OP Randomized Writes", UVM_LOW)
     for (int unsigned idx = 1; idx <= random_count; idx++) begin
       int unsigned size = $urandom_range(3);
@@ -359,10 +360,13 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
                 data,
                 wstrb
                 ), UVM_LOW)
+      snapshot_target_word(t, image, addr, size);
       write_target_single_and_check(t, addr, data, status, size, wstrb, $sformatf(
                                     "random_write#%0d", idx));
+      image_write(image, addr, data, wstrb, size);
       operation_count++;
     end
+    check_memory_image(t, image, "random_write");
   endtask
 
   // -- write_security_gating: smc_jtag2axi disable gates the bridge --------

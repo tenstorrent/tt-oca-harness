@@ -75,8 +75,8 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
   endtask
 
   protected task run_sib_all_on();
-    sep_lifecycle_ctrl_pkg::dbg_disable_t gate_masks[3];
-    int unsigned order[3] = '{0, 1, 2};
+    sep_lifecycle_ctrl_pkg::dbg_disable_t gate_masks[4];
+    int unsigned order[4] = '{0, 1, 2, 3};
     `uvm_info(get_type_name(), "iJTAG SIB all-on", UVM_LOW)
     check_ijtag_pattern(3'b111, '0, "all_on.nominal");
     gate_masks[0] = '0;
@@ -85,9 +85,13 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     gate_masks[1].dft_nonsecure = 1'b1;
     gate_masks[2] = '0;
     gate_masks[2].dfd           = 1'b1;
+    gate_masks[3] = '0;
+    gate_masks[3].dft_secure    = 1'b1;
+    gate_masks[3].dft_nonsecure = 1'b1;
+    gate_masks[3].dfd           = 1'b1;
     // Seeded per-pass order: each loop exercises a different gate
     // sequence.
-    for (int unsigned i = 2; i > 0; i--) begin
+    for (int unsigned i = 3; i > 0; i--) begin
       int unsigned j = $urandom_range(i);
       int unsigned tmp = order[i];
       order[i] = order[j];
@@ -95,6 +99,8 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     end
     foreach (order[i])
       check_ijtag_pattern(3'b111, gate_masks[order[i]], $sformatf("all_on.gated#%0d", order[i]));
+    // Full chain and scan controls again once every disable is clear.
+    check_ijtag_pattern(3'b111, '0, "all_on.restore");
   endtask
 
   protected task run_sib_random();
@@ -128,6 +134,7 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     `uvm_info(get_type_name(), "iJTAG DFT secure/non-secure access", UVM_LOW)
     check_ijtag_pattern(3'b010, '0, "dft.nonsecure_only");
     check_ijtag_pattern(3'b100, '0, "dft.secure_only");
+    check_ijtag_pattern(3'b110, '0, "dft.parallel");
     cases[0] = '{"secure_gated", 3'b100, 1'b1, 1'b0};
     cases[1] = '{"nonsecure_gated", 3'b010, 1'b0, 1'b1};
     // Cross-resource isolation: gating one DFT SIB must leave the other

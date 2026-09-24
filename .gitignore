@@ -59,9 +59,11 @@ doc/*/dist/*
 doc/*/assets/*
 doc/*/src/assets
 !doc/trm/assets/.gitignore
-doc/trm/assets/*
-doc/integrator/assets/*
-!doc/integrator/assets/.gitignore
+!doc/trm/assets/*.png
+!doc/integrator/assets/
+!doc/integrator/assets/*.png
+!doc/datasheets/assets/
+!doc/datasheets/assets/*.svg
 doc/*/modules/ROOT/pages/
 doc/*/modules/ROOT/partials/hw/
 doc/*/modules/ROOT/assets/

@@ -11,5 +11,7 @@ module prim_gray2bin #(
   input  logic [N-1:0] a_i,
   output logic [N-1:0] z_o
 );
-  for (genvar i = 0; i < N; i++) assign z_o[i] = ^a_i[N-1:i];
+  for (genvar i = 0; i < N; i++) begin : gen_gray2bin
+    assign z_o[i] = ^a_i[N-1:i];
+  end
 endmodule
