@@ -44,7 +44,7 @@ The OCAH repository is organised as below
 | `hw/top/` | Top-level integration.
 | `doc/` | Documentation products (TRM, Integrator Guide, …)
 | `vendor/` | Third-party IP vendored via Bender
-| `tools/`, `scripts/` | Register-flow, documentation, and container helpers.
+| `tools/`, `scripts/`, `nix/` | Register-flow, documentation, and container helpers.
 |====================
 
 

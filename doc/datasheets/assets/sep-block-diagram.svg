@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="560" viewBox="0 0 1100 560" role="img" aria-labelledby="title desc">
+  <title id="title">SEP system context</title>
+  <desc id="desc">Within the chiplet, the Security Processor connects its VeeR EL2 CPU,
+    crypto and key management, DMA, watchdog, SPI host, system interface, and lifecycle
+    controller through a local 64-bit AXI4 fabric. An external JTAG debugger reaches
+    the CPU through DTP and the SEP STAP. External SPI flash connects to the SPI host.
+    The system interface connects through the SMU crossbar and SMN to a peer OCA
+    chiplet over die-to-die transport. The adopter supplies memory, OTP, entropy IP,
+    and pads; dedicated macro interfaces connect to the owning SEP blocks.</desc>
+  <defs>
+    <marker id="end" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M 0 0 L 7 3.5 L 0 7 Z" fill="#484848"/>
+    </marker>
+    <marker id="start" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto">
+      <path d="M 7 0 L 0 3.5 L 7 7 Z" fill="#484848"/>
+    </marker>
+  </defs>
+
+  <g font-family="Arial, sans-serif" fill="#103525" text-anchor="middle">
+    <rect x="190" y="8" width="720" height="544" rx="8" fill="#fafaf8" stroke="#77736b" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="550" y="30" font-size="20" font-weight="bold">OCAH chiplet</text>
+
+    <rect x="210" y="102" width="680" height="278" rx="6" fill="#ffffff" stroke="#103525" stroke-width="2"/>
+    <path d="M 216 102 H 884 Q 890 102 890 108 V 134 H 210 V 108 Q 210 102 216 102 Z" fill="#e4eee8"/>
+    <text x="620" y="125" font-size="20" font-weight="bold">Security Processor (SEP)</text>
+
+    <g fill="#f8f4eb" stroke="#937027" stroke-width="1.5">
+      <rect x="230" y="146" width="160" height="70" rx="5"/>
+      <rect x="410" y="146" width="240" height="70" rx="5"/>
+      <rect x="670" y="146" width="90" height="70" rx="5"/>
+      <rect x="780" y="146" width="95" height="70" rx="5"/>
+      <rect x="230" y="298" width="165" height="70" rx="5"/>
+      <rect x="415" y="298" width="205" height="70" rx="5"/>
+      <rect x="640" y="298" width="235" height="70" rx="5"/>
+    </g>
+    <g font-size="19" font-weight="bold">
+      <text x="310" y="171">VeeR EL2</text>
+      <text x="530" y="166">Crypto / Key Manager</text>
+      <text x="715" y="171">DMA</text>
+      <text x="827.5" y="171">WDT</text>
+      <text x="312.5" y="323">I/O peripherals</text>
+      <text x="517.5" y="320">System interface</text>
+      <text x="757.5" y="323">Lifecycle</text>
+    </g>
+    <g font-size="17">
+      <text x="310" y="198">CPU · ICCM/DCCM</text>
+      <text x="530" y="188">AES · HMAC · KMAC · OTBN</text>
+      <text x="530" y="208">Adams Bridge (PQC)</text>
+      <text x="715" y="198">Inline hash</text>
+      <text x="827.5" y="198">Watchdog</text>
+      <text x="312.5" y="349">SPI host</text>
+      <text x="517.5" y="341">Filters · remap</text>
+      <text x="517.5" y="361">Mailboxes</text>
+      <text x="757.5" y="349">OTP · control</text>
+    </g>
+
+    <rect x="230" y="240" width="645" height="34" rx="5" fill="#e4eee8" stroke="#103525" stroke-width="1.5"/>
+    <text x="552.5" y="263" font-size="19" font-weight="bold">Local AXI4 interconnect · 64-bit data</text>
+    <g fill="none" stroke="#484848" stroke-width="1.8">
+      <path d="M 310 216 V 240" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 530 216 V 240" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 715 216 V 240" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 827.5 216 V 240" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 312.5 274 V 298" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 517.5 274 V 298" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 757.5 274 V 298" marker-start="url(#start)" marker-end="url(#end)"/>
+    </g>
+
+    <g fill="#ffffff" stroke="#77736b" stroke-width="1.5">
+      <rect x="10" y="48" width="155" height="42" rx="5"/>
+      <rect x="10" y="298" width="155" height="70" rx="5"/>
+      <rect x="935" y="404" width="155" height="64" rx="5"/>
+      <rect x="230" y="48" width="190" height="42" rx="5"/>
+      <rect x="415" y="404" width="250" height="64" rx="5"/>
+    </g>
+    <g font-size="19" font-weight="bold">
+      <text x="87.5" y="75">JTAG debugger</text>
+      <text x="87.5" y="325">External I/O</text>
+      <text x="1012.5" y="430">Peer OCA</text>
+      <text x="325" y="75">DTP · SEP STAP</text>
+      <text x="540" y="430">SMU crossbar / SMN</text>
+    </g>
+    <g font-size="17">
+      <text x="87.5" y="349">SPI flash</text>
+      <text x="1012.5" y="455">chiplet</text>
+      <text x="540" y="455">System traffic to D2D</text>
+      <text x="800" y="426">System AXI4</text>
+      <text x="800" y="464">via D2D / PHY</text>
+      <text x="177" y="287">SPI pins</text>
+    </g>
+    <g fill="none" stroke="#484848" stroke-width="1.8">
+      <path d="M 165 69 H 230" marker-end="url(#end)"/>
+      <path d="M 310 90 V 146" marker-end="url(#end)"/>
+      <path d="M 165 333 H 230" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 517.5 368 V 404" marker-start="url(#start)" marker-end="url(#end)"/>
+      <path d="M 665 440 H 935" marker-start="url(#start)" marker-end="url(#end)"/>
+    </g>
+
+    <path d="M 230 484 H 875" stroke="#d6d2c8" stroke-width="1"/>
+    <text x="550" y="511" font-size="18">Adopter supplies ROM/SRAM, OTP, entropy IP and pads.</text>
+    <text x="550" y="536" font-size="17">Dedicated macro interfaces connect to their owning SEP blocks.</text>
+  </g>
+</svg>

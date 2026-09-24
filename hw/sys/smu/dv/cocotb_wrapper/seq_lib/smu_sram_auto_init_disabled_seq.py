@@ -13,6 +13,13 @@ whether and when it rose, and how it held -- and carries no token: a
 specification statement, not a reading of the implementation, is what would
 turn that record into a claim.
 
+That gap also bounds what the cold-reset leg here may claim. Requiring the
+output high before the reset would claim the same unspecified behaviour from
+the other side, so this leaf compares only that the output reads low while the
+reset is asserted and records what it read beforehand. The clear of an output
+known to be high is the sibling's: it runs the sweep to completion, requires
+the output high, and only then asserts the cold reset.
+
 The bench raises the input when a test supplies ``+smc_scratch_ram_hex``,
 because the sweep would otherwise overwrite the image; the testlist entry
 supplies one and the sequence refuses to run without it.
@@ -63,6 +70,8 @@ class smu_sram_auto_init_disabled_seq:
             evidence="CHK-SMU-MEMINIT-DISABLED",
         )
 
+        done_before_reset = sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o")
+
         dut.rst_cold_ni.value = 0
         for cycle in range(RESET_BOUND_REF_CYCLES):
             await RisingEdge(dut.clk_ref_i)
@@ -77,10 +86,17 @@ class smu_sram_auto_init_disabled_seq:
         for _ in range(HOLD_REF_CYCLES):
             await RisingEdge(dut.clk_ref_i)
         sb.expect_eq(
-            "smc_init_mem_done_o clears under cold reset",
+            "smc_init_mem_done_o reads low while the cold reset is asserted",
             sample(dut.smc_init_mem_done_o, "smc_init_mem_done_o"),
             0,
             evidence="CHK-SMU-MEMINIT-DISABLED",
+        )
+        self.log.info(
+            "OBSERVED-ONLY smc_init_mem_done_o read %d before the cold reset. Whether it was "
+            "high with the sweep held off is the unspecified behaviour above, so this leg "
+            "requires only the low level under reset; smu_sram_auto_init_done_test carries the "
+            "clear of an output it first requires high",
+            done_before_reset,
         )
         writes_before = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
         dut.rst_cold_ni.value = 1

@@ -29,13 +29,16 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold 104 of the 105. The
-# remaining leaf, sep_periph_bus_err_misaligned_test, is in `all` and
-# in neither class group. Its checker contract is the VPLAN card. `rom_fw`
-# is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 105.
+# (full-CPU target) are disjoint and together hold 105 of the 107. The two
+# remaining leaves, sep_periph_bus_err_misaligned_test and
+# sep_abr_pipelined_read_test, are in `all` and in neither class group: each
+# grades a contract the RTL fails today, under an open issue, so a class group
+# that must go green does not carry it. Their checker contracts are their VPLAN
+# cards. `rom_fw` is not a member: a different owner, a third RTL target, and
+# firmware rather than hardware contracts. `all` is the coverage set.
+# expected_count is 107.
 name = "all"
-expected_count = 105
+expected_count = 107
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -142,6 +145,8 @@ tests = [
     "sep_abr_mldsa_keygen_kat_test",
     "sep_abr_mldsa_sign_verify_kat_test",
     "sep_abr_mlkem_kat_test",
+    "sep_crypto_csr_wide_access_test",
+    "sep_abr_pipelined_read_test",
 ]
 
 [[groups]]
@@ -260,6 +265,7 @@ tests = [
     "sep_abr_mldsa_keygen_kat_test",
     "sep_abr_mldsa_sign_verify_kat_test",
     "sep_abr_mlkem_kat_test",
+    "sep_crypto_csr_wide_access_test",
 ]
 
 [[groups]]

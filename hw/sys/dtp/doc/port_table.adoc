@@ -18,7 +18,7 @@ endif::backend-html5[]
 |`clk_i` |`logic` |In |1 |System clock for cross trigger logic and JTAG2AXI bridges. |System clock
 |`rst_n_i` |`logic` |In |1 |System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller. |System reset
 |`pwr_on_rst_ni` |`logic` |In |1 |Power-on reset for JTAG state machine (active low, asynchronous). |Power-on reset
-|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |In |- |Per-path debug/test disables. Active-high (1 = path disabled). |SEP
+|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |In |- |Per-path lifecycle controls for disabling debug and test interfaces. Active-high (1 = path disabled). DTP synchronizes each field into the JTAG TCK domain. |SEP lifecycle controller or adopter-equivalent policy source
 
 |`jtag_ptap_client_tap_ctrl_i` |`jtag_tap_ctrl_t` |In |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads
 |`jtag_ptap_client_tdi_i` |`logic` |In |1 |Primary JTAG TDI. |External JTAG pads
