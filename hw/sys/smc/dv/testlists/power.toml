@@ -100,6 +100,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_telemetry_buffer_overflow_test"
+module = "smc_telemetry_buffer_overflow_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_telemetry_receiver_csr_test"
 module = "smc_telemetry_receiver_csr_test"
 seed = 1
