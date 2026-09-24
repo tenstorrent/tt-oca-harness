@@ -199,10 +199,12 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         # Responding level: the reply the master buffered is now a good one,
         # so it resynchronises the slave instead of retrying that frame too.
         set_avs_sdata(0)
-        await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES * 8)
+        for _ in range(POLL_LIMIT):
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+            if "AVS_SLAVE_RESYNC" in fsm.names():
+                break
         fsm.stop()
         self.buffered_states = set(fsm.names())
-
         assert "AVS_SLAVE_RESYNC" in self.buffered_states, (
             f"{label}: the debug bus never held AVS_SLAVE_RESYNC after the retry sequence "
             f"(states seen: {sorted(self.buffered_states)})"
