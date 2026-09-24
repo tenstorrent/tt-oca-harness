@@ -422,13 +422,18 @@ module smc_fabric_fcov #(
     option.per_instance = 1;
     // SEP_IN is a 64-bit port, so AxSIZE above 3 names a beat wider than the
     // bus and no manager may drive it.
-    cp_awsize: coverpoint awsize {bins sizes[] = {[0 : 3]}; ignore_bins wide = {[4 : 7]};}
+    cp_awsize: coverpoint awsize {
+      bins sizes[] = {[0 : 3]}; ignore_bins wide = {[4 : 7]};
+    }
     // 2'b11 is the reserved AxBURST encoding, which no manager drives. An
     // ignore bin, not illegal_bins: an illegal bin turns a hit into a runtime
     // error, which would let this coverage module end a simulation and change
     // a test's verdict. Rejecting the encoding is an assertion's job.
     cp_awburst: coverpoint awburst {
-      bins fixed = {2'b00}; bins incr = {2'b01}; bins wrap = {2'b10}; ignore_bins reserved = {2'b11};
+      bins fixed = {2'b00};
+      bins incr = {2'b01};
+      bins wrap = {2'b10};
+      ignore_bins reserved = {2'b11};
     }
     cp_wstrb: coverpoint wstrb {bins none = {8'h00}; bins full = {8'hFF}; bins partial = default;}
     x_size_burst: cross cp_awsize, cp_awburst;

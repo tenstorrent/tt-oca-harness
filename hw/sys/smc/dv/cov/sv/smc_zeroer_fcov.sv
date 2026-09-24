@@ -261,13 +261,13 @@ module smc_zeroer_fcov (
     // for ST_ISSUE_DATA; ST_ERROR is entered only from an encoding outside the
     // enum and is never left. The remaining pairs are not transitions the
     // FSM can make.
-    x_transition: cross cp_prev, cp_cur {
+    x_transition: cross cp_prev, cp_cur{
       ignore_bins from_idle = binsof(cp_prev.idle) &&
           (binsof(cp_cur.issue_data) || binsof(cp_cur.error_s));
       ignore_bins from_issue_addr = binsof(cp_prev.issue_addr) &&
           (binsof(cp_cur.idle) || binsof(cp_cur.error_s));
-      ignore_bins from_issue_data = binsof(cp_prev.issue_data) && binsof(cp_cur.error_s);
-      ignore_bins leaving_error = binsof(cp_prev.error_s) && !binsof(cp_cur.error_s);
+      ignore_bins from_issue_data = binsof (cp_prev.issue_data) && binsof (cp_cur.error_s);
+      ignore_bins leaving_error = binsof (cp_prev.error_s) && !binsof (cp_cur.error_s);
     }
   endgroup
 
