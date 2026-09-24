@@ -996,7 +996,13 @@ D1 = (
     "raises W valid only while its B FIFO, pushed at the W handshake and popped at B, is not "
     "full. The block answers R or B only after the accept that empties its AR or W holding "
     "register, so each AR and W arrives with the register empty and ready high: the "
-    "valid-without-ready rows of AR and W cannot occur."
+    "valid-without-ready rows of AR and W cannot occur. "
+    "The write-only UART map takes no reads, and its demux's W FIFO holds an AW's select "
+    "until that AW's W is taken while its B FIFO holds each W back until the previous B, so "
+    "when the next AW can first arrive the block holds the previous AW and W with no response "
+    "in flight and accepts them that cycle, and an accept never meets a response ack. The "
+    "zeroer's axi_to_axi_lite gates AW on a depth-one ID FIFO, pushed at the AW handshake and "
+    "popped at B, so its second AW arrives only after the block answered the first."
 )
 D2 = (
     "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux "
@@ -1590,6 +1596,27 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         (P6, re.compile(r"."), None, ("efuse_shadow_reg_access_control.sv", 115, 117)),
     ],
     "mmr_req_ctrl": [(P16, re.compile(r"."), None, ("mmr_req_ctrl.sv", 167, 167))],
+    # An accept in the cycle a response is acked, on the write-only UART map.
+    "uart_16550_main_wo_reg": [
+        (
+            D1,
+            re.compile(r"^\(\(axil_ar_accept \|\| axil_aw_accept\) && \(\(!axil_resp_acked\)\)\)$"),
+            re.compile(r"^10$"),
+            ("uart_16550_main_wo_reg.sv", 107, 107),
+        ),
+        (
+            D1,
+            re.compile(r"^\(\( ! \(axil_ar_accept \|\| axil_aw_accept\) \) && axil_resp_acked\)$"),
+            re.compile(r"^01$"),
+            ("uart_16550_main_wo_reg.sv", 109, 109),
+        ),
+        (
+            D1,
+            re.compile(r"^\(axil_ar_accept \|\| axil_aw_accept\)$"),
+            re.compile(r"^01$"),
+            ("uart_16550_main_wo_reg.sv", 109, 109),
+        ),
+    ],
     # Both points sit behind a test that takes FUSE_COMMAND_READ first.
     "efuse_interface_shim": [
         (C7, PROGRAM_COMMAND, re.compile(r"^0+$"), ("efuse_interface_shim.sv", 514, 514)),
@@ -1939,6 +1966,12 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                 and vector == "101"
             ),
         )
+    ],
+    "zeroer_ctrl_reg": [
+        (D1, lambda terms, vector: terms == ("s_axil_awvalid", "s_axil_awready") and vector == "10")
+    ],
+    "uart_16550_main_wo_reg": [
+        (D1, lambda terms, vector: terms == ("s_axil_awvalid", "s_axil_awready") and vector == "10")
     ],
     "i2c_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
     "i2c_core": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
