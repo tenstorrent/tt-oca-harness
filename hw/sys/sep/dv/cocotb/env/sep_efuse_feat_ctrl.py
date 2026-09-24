@@ -76,6 +76,10 @@ def feat_ctrl_nonvacuous_fixed(
         "post-sense FEAT_CTRL would be 0 and the fail-closed contrast vacuous; "
         "enabled bit %d in both vectors -> SIP_DIS=0x%016x SYS_DIS=0x%016x "
         "(FEAT_CTRL=0x%016x)",
-        seed, bit, sip, sys_dis, feat_ctrl_expected(lc, sip, sys_dis),
+        seed,
+        bit,
+        sip,
+        sys_dis,
+        feat_ctrl_expected(lc, sip, sys_dis),
     )
     return base
