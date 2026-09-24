@@ -59,14 +59,18 @@ doc/*/dist/*
 doc/*/assets/*
 doc/*/src/assets
 !doc/trm/assets/.gitignore
-doc/trm/assets/*
-doc/integrator/assets/*
-!doc/integrator/assets/.gitignore
+!doc/trm/assets/*.png
+!doc/integrator/assets/
+!doc/integrator/assets/*.png
+!doc/datasheets/assets/
+!doc/datasheets/assets/*.svg
 doc/*/modules/ROOT/pages/
 doc/*/modules/ROOT/partials/hw/
 doc/*/modules/ROOT/assets/
 doc/*/modules/smc/
+doc/*/modules/smc-bootrom-prod/
 doc/*/modules/sep/
+doc/*/modules/sep-bootrom-prod/
 doc/*/modules/dtp/
 doc/*/modules/aou/
 doc/*/modules/smu/
@@ -113,6 +117,17 @@ vendor/**/Bender.lock
 /flow_runs_*.tar.gz
 /packaged_ip/
 /weekly_packaged_ip/
+
+# DV runner run trees at the harness root, named after the simulator, when a job
+# passes --run-dir instead of taking the per-DUT default (that one lands in
+# <dut>/dv/build/runs and is already covered by **/build/ above). The runner
+# writes a generated launcher and shell wrapper per leaf into the run tree, and
+# the build-model-identity guard counts every untracked file in its scope as a
+# dirty model input -- so a run tree that is not ignored fails every leaf of the
+# regression on the flow's own output.
+/vcs/
+/verilator/
+/xcelium/
 
 # npm install target for a11y
 tools/a11y/node_mo#dules/

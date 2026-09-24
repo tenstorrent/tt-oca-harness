@@ -131,7 +131,7 @@ module aes_wrapper (
 
   prim_mubi_pkg::mubi4_t aes_idle;
 
-  aes tt_aes (
+  aes u_tt_aes (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
     .rst_shadowed_ni(rst_ni),

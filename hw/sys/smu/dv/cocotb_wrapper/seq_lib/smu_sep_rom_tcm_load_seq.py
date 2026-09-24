@@ -48,10 +48,14 @@ SETTLE_CYCLES = 2000
 class SmuSepRomTcmLoadSeq:
     """Require the SEP to DMA code into ICCM and execute it, unaided."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_ROM_TCM_LOAD_OK", "SEP_SELF_LOADED_ICCM_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -169,7 +173,7 @@ class SmuSepRomTcmLoadSeq:
             "traces=%d)",
             traces,
         )
-        for token in ("SEP_ROM_TCM_LOAD_OK", "SEP_SELF_LOADED_ICCM_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

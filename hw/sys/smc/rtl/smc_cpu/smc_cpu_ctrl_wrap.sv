@@ -64,7 +64,7 @@ module smc_cpu_ctrl_wrap #(
 
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(RefCountWidth)
-  ) refclk_counter (
+  ) u_refclk_counter (
     .refclk_i(clk_ref_i),
     .prst_ni(rst_primary_ni),
     .cnt_en_i(1'b1),
@@ -233,7 +233,7 @@ module smc_cpu_ctrl_wrap #(
 
   logic [31:0] test_ctrl;
 
-  cpu_ctrl_reg cpu_ctrl_reg (
+  cpu_ctrl_reg u_cpu_ctrl_reg (
     .clk(clk_smc_i),
     .arst_n(rst_primary_ni),
 
@@ -548,36 +548,8 @@ module smc_cpu_ctrl_wrap #(
   // Test Control //
   //////////////////
 
-`ifdef SYNTHESIS
+  // Tied off in RTL. A testbench can deposit onto this signal to hand test control
+  // values to firmware, which reads them back through the TEST_CTRL register.
   assign test_ctrl = 32'h0;
-`else
-  assign test_ctrl = get_test_ctrl();
-`endif
-
-`ifndef SYNTHESIS
-  typedef struct packed {
-    bit skip_pll_init;
-    bit fast_i3c;
-    bit fast_efuse;
-    bit fast_uart;
-    bit [27:0] reserved;
-  } smc_embedded_test_ctrl_t;
-  function automatic smc_embedded_test_ctrl_t get_test_ctrl;
-    smc_embedded_test_ctrl_t input_test_ctrl;
-    if ($test$plusargs("smc_skip_pll_init")) begin
-      input_test_ctrl.skip_pll_init = 1'b1;
-    end
-    if ($test$plusargs("smc_fast_i3c")) begin
-      input_test_ctrl.fast_i3c = 1'b1;
-    end
-    if ($test$plusargs("smc_fast_efuse")) begin
-      input_test_ctrl.fast_efuse = 1'b1;
-    end
-    if ($test$plusargs("smc_fast_uart")) begin
-      input_test_ctrl.fast_uart = 1'b1;
-    end
-    return input_test_ctrl;
-  endfunction
-`endif
 
 endmodule

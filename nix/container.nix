@@ -32,6 +32,8 @@
         mkdir -m 1777 tmp
         mkdir -p usr
         ln -sr bin usr/bin
+        ln -sr lib usr/lib
+        ln -sr include usr/include
       '';
       # Base system tools plus project packages; extraDeps allows callsites to extend the image.
       contents = with pkgs;
@@ -49,13 +51,11 @@
         ++ extraDeps;
       config = {
         # Convert ocah_env attrset to Docker ENV strings, then append container-specific vars.
-        Env =
-          builtins.attrValues (builtins.mapAttrs (e: v: "${e}=${v}") ocah.ocah_env)
-          ++ [
-            "PS1=${PS1}"
-            "TMPDIR=/tmp"
-            "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-          ];
+        Env = builtins.attrValues (builtins.mapAttrs (e: v: "${e}=${v}") (ocah.ocah_env
+          // {
+            inherit PS1;
+            TMPDIR = "/tmp";
+          }));
         WorkingDir = workDir;
       };
     }

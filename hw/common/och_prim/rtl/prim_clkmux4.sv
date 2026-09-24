@@ -17,7 +17,7 @@ module prim_clkmux4 (
 
   generate
     for (i = 0; i < 2; i = i + 1) begin : gen_clk_mux_0
-      prim_clock_mux2 clkmux_0 (
+      prim_clock_mux2 u_clkmux_0 (
         .clk0_i (clk_i[2*i]),
         .clk1_i (clk_i[2*i+1]),
         .sel_i(clksel_i[0]),
@@ -26,7 +26,7 @@ module prim_clkmux4 (
     end
   endgenerate
 
-  prim_clock_mux2 clkmux_1 (
+  prim_clock_mux2 u_clkmux_1 (
     .clk0_i (clk_mux_0[0]),
     .clk1_i (clk_mux_0[1]),
     .sel_i(clksel_i[1]),

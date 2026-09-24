@@ -357,7 +357,7 @@ regfile BaseRegs #(
         } CMD_QUEUE_RST[1:1];
         field {
             name = "SOFT_RST";
-            desc = "Reset controller from software.";
+            desc = "Reset controller from software. Not supported currently";
             sw = rw;
             hw = rw;
             we = true;

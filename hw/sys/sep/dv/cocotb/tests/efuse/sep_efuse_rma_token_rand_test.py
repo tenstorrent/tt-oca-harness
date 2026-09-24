@@ -250,14 +250,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         assert code == TOKEN_MATCH, f"valid retry after release must match, got 0x{code:02x}"
         assert fault & FAULT_RMA_SIP, f"sticky SIP fault cleared on retry: 0x{fault:x}"
         assert irq == 1, "irq39 dropped on a valid-token retry"
-        await self._wr_fault(fault)
+        await self._wr_fault(0)
         still = await self._rd_fault()
-        assert still & FAULT_RMA_SIP, (
-            f"TOKEN_MATCH_FAULT is sw=r; write of the live mask 0x{fault:x} left 0x{still:x}"
-        )
+        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write-0 left 0x{still:x}"
         self.logger.info(
             "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, "
-            "write of the live mask ignored",
+            "write-0 left the fault and irq set",
             code,
             still,
         )

@@ -124,7 +124,7 @@ module uart_wrap #(
     .SpillB          (1'b0),
     .SpillAr         (1'b1),
     .SpillR          (1'b0)
-  ) csr_axi_lite_demux (
+  ) u_csr_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (1'b0),
@@ -145,7 +145,7 @@ module uart_wrap #(
     .RESP_WIDTH     (uart_wrap_pkg::REG_DATA_WIDTH),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
-  ) csr_axi_lite_err_slv (
+  ) u_csr_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
@@ -177,7 +177,7 @@ module uart_wrap #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) log_fetch_axi_lite_mux (
+  ) u_log_fetch_axi_lite_mux (
     .clk_i,
     .rst_ni,
     .test_i      (1'b0),
@@ -207,7 +207,7 @@ module uart_wrap #(
       .LOG_ENGINE_REG_MAP_SIZE      (LOG_ENGINE_REG_MAP_SIZE),
       .UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR (UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR + i * UART_LOG_ENGINE_WRAP_SPACING),
       .UART_LOG_ENGINE_CTRL_REG_MAP_SIZE (UART_LOG_ENGINE_CTRL_REG_MAP_SIZE)
-    ) uart_log_engine_wrap (
+    ) u_uart_log_engine_wrap (
       // Global Interface
       .clk_i,
       .rst_ni,

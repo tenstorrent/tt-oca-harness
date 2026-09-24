@@ -288,7 +288,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>32</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -545,7 +545,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>16</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Target</ipxact:name>
@@ -580,7 +580,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>15</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>UpperTarget</ipxact:name>
@@ -602,7 +602,7 @@
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -620,7 +620,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>16</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Target</ipxact:name>
@@ -655,7 +655,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>15</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>UpperTarget</ipxact:name>
@@ -677,7 +677,7 @@
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -695,7 +695,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>16</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Target</ipxact:name>
@@ -730,7 +730,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>15</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>UpperTarget</ipxact:name>
@@ -752,7 +752,7 @@
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -770,7 +770,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>16</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>Target</ipxact:name>
@@ -805,7 +805,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>15</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>UpperTarget</ipxact:name>
@@ -827,7 +827,7 @@
                 </ipxact:reset>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -5167,7 +5167,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>8</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TimestampUpper</ipxact:name>
@@ -5180,7 +5180,7 @@
               </ipxact:resets>
               <ipxact:bitWidth>56</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
+              <ipxact:access>read-write</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>

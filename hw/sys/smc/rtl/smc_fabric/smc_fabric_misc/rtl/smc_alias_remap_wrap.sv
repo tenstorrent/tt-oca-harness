@@ -77,7 +77,7 @@ module smc_alias_remap_wrap (
     .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
     .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
-  ) smc_mmio_alias_remap (
+  ) u_smc_mmio_alias_remap (
     .remap_regions_i    (remap_table),
     .remap_debug_o      (remap_debug_mmio_o),
     .axi_in_req_i       (axi_in_mmio_req_i),
@@ -96,7 +96,7 @@ module smc_alias_remap_wrap (
     .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
     .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
-  ) smc_jtag_alias_remap (
+  ) u_smc_jtag_alias_remap (
     .remap_regions_i    (remap_table),
     .remap_debug_o      (remap_debug_jtag_o),
     .axi_in_req_i       (axi_in_jtag_req_i),
@@ -115,7 +115,7 @@ module smc_alias_remap_wrap (
     .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
     .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
-  ) smc_log_alias_remap (
+  ) u_smc_log_alias_remap (
     .remap_regions_i    (remap_table),
     .remap_debug_o      (remap_debug_log_o),
     .axi_in_req_i       (axi_in_log_req_i),
@@ -134,7 +134,7 @@ module smc_alias_remap_wrap (
     .ALIAS_REMAP_IDX_START         (smc_pkg::ALIAS_REMAP_IDX_START),
     .AXI_ADDR_WIDTH                (smc_pkg::AXI_ADDR_WIDTH),
     .NUM_CHUNKS_CARRY_SELECT_ADDER (smc_pkg::NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER)
-  ) smc_dma_alias_remap (
+  ) u_smc_dma_alias_remap (
     .remap_regions_i    (remap_table),
     .remap_debug_o      (remap_debug_dma_o),
     .axi_in_req_i       (axi_in_data_accel_req_i),

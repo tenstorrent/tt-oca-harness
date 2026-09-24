@@ -69,10 +69,14 @@ SETTLE_CYCLES = 2000
 class SmuDtpSepSmcChainSeq:
     """SEP sets the posture, DTP gates on it, SMC answers the resulting read."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SMU_DTP_SEP_SMC_CHAIN_OK", "SEP_POSTURE_GOVERNS_DTP_TO_SMC_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -264,7 +268,7 @@ class SmuDtpSepSmcChainSeq:
                 state,
                 dbg_disable,
             )
-        for token in ("SMU_DTP_SEP_SMC_CHAIN_OK", "SEP_POSTURE_GOVERNS_DTP_TO_SMC_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

@@ -73,7 +73,7 @@ module smc_dfd_wrap #(
   generic_ccg #(
     .HYST_EN(0),
     .HYST_CYC(0)
-  ) dfd_clk_gate (
+  ) u_dfd_clk_gate (
     .out_clk(clk_gated_i),
     .clk(clk_smc_i),
     .rst_n(rst_primary_ni),

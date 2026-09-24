@@ -32,11 +32,17 @@ dependencies:
 
 # Third-party IP vendored under vendor/<org>/<pkg>/upstream via `bender vendor init`.
 vendor_package:
-  # OpenTitan: prim, per-IP rtl/hjson, and the reggen/mubi file set.
+  # OpenTitan: prim, per-IP rtl/hjson, reference figures, and reggen/mubi.
   - name: opentitan
     target_dir: vendor/lowRISC/opentitan/upstream
     upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "d1ce369cb357a7a4718c75f11567742a78a7ed07" }
     include_from_upstream:
+      # Core reference figures used by the SEP documentation.
+      - "hw/ip/aes/doc/aes_block_diagram.svg"
+      - "hw/ip/hmac/doc/hmac_block_diagram.svg"
+      - "hw/ip/kmac/doc/kmac-block-diagram.svg"
+      - "hw/ip/otbn/doc/otbn_blockarch.svg"
+      - "hw/ip/dma/doc/block_diagram.svg"
       - "hw/ip/prim/rtl"
       - "hw/ip/prim_generic/rtl"
       - "hw/ip/prim_generic/lint"
@@ -213,13 +219,15 @@ vendor_package:
     patch_dir: "vendor/pulp-platform/register_interface/patches"
 
   # Adams Bridge post-quantum engine (ML-DSA-87 / ML-KEM-1024).
-  # Only the RTL reachable from abr_top; the testbench and coverage collateral
-  # are left out.
+  # RTL reachable from abr_top and reference figures for the SEP documentation;
+  # testbench and coverage collateral are left out.
   - name: adams_bridge
     target_dir: "vendor/chipsalliance/adams-bridge/upstream"
     upstream: { git: "https://github.com/chipsalliance/adams-bridge.git", rev: "e59eba955eac2a1adcb059f250641ede78e304be" }
     include_from_upstream:
       - "LICENSE"
+      - "docs/images/MLDSA/image3.png"
+      - "docs/images/MLKEM/AdamsBridge_MLKEM.png"
       - "src/abr_top/rtl"
       - "src/abr_libs/rtl"
       - "src/abr_prim/rtl"
@@ -323,7 +331,7 @@ vendor_package:
   # this tree supplies its own through i3ccore_wrap.
   - name: i3c-core
     target_dir: "vendor/chipsalliance/i3c-core/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "a6361105cd3432699da636f1f5e6f1eb4df09ed2" }
+    upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "288f00ea21caf929b17ec1234abc3317b7ec071f" }
     include_from_upstream:
       - "LICENSE"
       - "src"
@@ -468,9 +476,6 @@ sources:
       - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
       - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
       - hw/ip/axi_filter/rtl/axi_filter_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
   # The cross_trigger family compiles inside the DTP DUT and standalone in the
   # per-IP benches under hw/ip/cross_trigger/*/dv (target `cross_trigger`).
   - target: any(dtp, cross_trigger)
@@ -611,10 +616,18 @@ sources:
     files:
       - hw/common/axi/axi4lite_intf.sv
       - hw/common/axi/axi_cg_snoop.sv
+  # axi_lite_to_ahb compiles inside SEP and standalone in its unit bench under
+  # hw/common/axi/dv (target `axi_lite_to_ahb`).
+  - target: any(sep, axi_lite_to_ahb)
+    files:
+      - hw/common/axi/axi_lite_to_ahb.sv
   - target: sep
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, axi_hang_detector)
+    files:
+      - hw/common/och_prim/rtl/prim_axi_snoop.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     files:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
@@ -630,10 +643,8 @@ sources:
       - hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
       - hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
       - hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-      - hw/common/och_prim/rtl/prim_axi_snoop.sv
       - hw/common/och_prim/rtl/prim_axi_user_override.sv
       - hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-      - hw/common/och_prim/rtl/prim_axil_err_slv.sv
       - hw/common/och_prim/rtl/prim_axil_prot_filter.sv
       - hw/common/och_prim/rtl/prim_bin2gray.sv
       - hw/common/och_prim/rtl/prim_carry_select_adder.sv
@@ -679,6 +690,15 @@ sources:
     files:
       - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
       - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
+  # Adopter synthesis flows read `+define+` lines from the generated filelist;
+  # SYNTHESIS selects the implementation view in every source it compiles.
+  # Bender drops a fileless group's defines, so the group carries the vendor
+  # alias header, which compiles as an empty unit.
+  - target: synth
+    defines:
+      SYNTHESIS: 1
+    files:
+      - hw/common/defs/ocah_vendor_defines.svh
   - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
     files:
       - hw/common/och_prim_generic/rtl/prim_ao222.sv
@@ -732,14 +752,11 @@ sources:
       - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
       - hw/ip/axi_filter/rtl/axi_filter_wrap.sv
       - hw/ip/axi_filter/rtl/traffic_filter.sv
-  - target: smc
+  - target: any(smc, axi_hang_detector)
     files:
       - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg.sv
-      - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg.sv
       - hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
   # See the cross_trigger package group above: shared by the DTP DUT and the
   # per-IP benches (target `cross_trigger`).
@@ -1228,13 +1245,6 @@ sources:
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_top.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv
-          # --- Reused VeeR AXI4->AHB bridge for the AB control/status path.
-          #     The el2 dependency does NOT compile this file for the AXI-mode
-          #     SEP config, so it is pulled in here explicitly from the tracked
-          #     el2 vendor tree (el2_pkg + el2_param.vh come from the el2 dep,
-          #     already in the build). NOTE: use the git-tracked vendor path,
-          #     not deps/el2 (a generated, gitignored dir absent in CI). ---
-          - vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/axi4_to_ahb.sv
           # --- SEP integration: KV shim + crypto wrapper ---
           - hw/sys/sep/rtl/sep_abr_kv_shim.sv
           - hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv

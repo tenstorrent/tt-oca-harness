@@ -6,9 +6,9 @@
 // public flow records them in the `user` metric family instead of a static
 // test-name-to-bin table.
 //
-// One passive, signal-driven module in the shared tb_top. Every port is a
-// smu_tb_signal_list.svh signal, so the module needs no hierarchical
-// reference and no public-scope change.
+// One passive, signal-driven module. Every port is a signal of the bench
+// top, so the module needs no hierarchical reference and no public-scope
+// change.
 //
 // DISABLE CONVENTION, unlike the other SMU cov/sv modules: the gate is
 // powergood, not reset. A reset-assertion point behind `disable iff (in
@@ -207,11 +207,25 @@ module smu_boot_fcov #(
     x_sources: cross cp_jtag_ovrd, cp_gpio_drive;
   endgroup
 
+  // lc_state is the differential pair {~state, state} of the 4-bit lifecycle
+  // state (prim_diff_decode_multi), so of its 256 codes only the seven
+  // efuse_pkg::lc_state_raw_e encodings are states; every other code is an
+  // integrity error, which c_lc_sigint_err records, and falls in the default
+  // bin ungraded.
   covergroup cg_lifecycle with function sample (
       logic [7:0] lc_state, logic [1:0] demote1, logic [1:0] demote2
   );
     option.per_instance = 1;
-    cp_lc_state: coverpoint lc_state;
+    cp_lc_state: coverpoint lc_state {
+      bins test_dev = {8'hF0};  // LC_TEST_DEV   4'b0000
+      bins prod = {8'hE1};  // LC_PROD       4'b0001
+      bins rma_sip_0 = {8'hD2};  // LC_RMA_SIP_0  4'b0010
+      bins rma_sip_1 = {8'hC3};  // LC_RMA_SIP_1  4'b0011
+      bins rma_chip_0 = {8'h96};  // LC_RMA_CHIP_0 4'b0110
+      bins rma_chip_1 = {8'h87};  // LC_RMA_CHIP_1 4'b0111
+      bins prod_end = {8'h78};  // LC_PROD_END   4'b1000
+      bins invalid = default;
+    }
     cp_demote1: coverpoint demote1;
     cp_demote2: coverpoint demote2;
     x_demote: cross cp_demote1, cp_demote2;

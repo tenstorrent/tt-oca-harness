@@ -21,6 +21,23 @@ https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/inde
 Programmer’s Reference Manual] provides the details required for
 programming the CPU.
 
+<<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
+memory interfaces.
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-cpu-diagram]]
+.SEP VeeR EL2 CPU subsystem and memory interfaces
+image::SEP_CPU_FIG004.svg[alt="SEP VeeR EL2 CPU subsystem and memory interfaces",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=portrait]
+<<<
+endif::backend-pdf[]
+
 [[cpu-feature-summary]]
 == CPU Feature Summary
 
@@ -32,12 +49,15 @@ for FUSA compliance
 ** Configurable, constant delay between the two cores
 * Closely coupled instruction and data memory
 ** Parity and ECC (32+7)
-* RISC-V PMP (Physical Memory Protection) - Privileged Architecture
-standard
-** 32-bit address space divided into 16 regions of 256 MB fixed size
-** Each region has execute, write and read permissions controlled by the
-Region Access Control Register (mrac)
-** Precisely trapped exception on usage violation
+* RISC-V PMP (Physical Memory Protection)
+** `pmpcfg` and `pmpaddr` CSRs define address ranges and their read, write,
+and execute permissions
+** Access violations raise precise exceptions
+* Memory attributes controlled separately by the Region Access Control
+Register (`mrac`)
+** Sixteen fixed 256 MiB regions cover the 32-bit address space
+** Each region has cacheability and side-effect attributes; these do not
+grant or deny read, write, or execute access
 * PIC (Programmable Interrupt Controller) is integrated supporting up to
 255 external interrupts; see
 ifdef::backend-html5[]
@@ -47,8 +67,8 @@ ifdef::backend-pdf[]
 <<sep-cpu-interrupt-vector-map>>
 endif::backend-pdf[]
 for the complete source-by-source mapping
-* Two independent or linked internal timers with standard RV _mip_
-interrupts
+* Two independent or linked internal timers with VeeR-specific
+`mip.MITIP0` and `mip.MITIP1` interrupts
 * Debug unit with JTAG interface and internal AXI4 Debug Master
 * Hardware Secure Boot Unlock
 
@@ -99,8 +119,8 @@ first code running on the SEP host upon power on. It has the following
 features:
 
 * 64 kB capacity
-* SECDED Error Correction - single error detect double error correct
-** 32-bit data + 7-bit ECC tag
+* 64-bit data path without ECC or an integrity-error sideband in the open
+generic ROM integration
 
 See {sep-rom-reference} for the hardware and firmware-image layout.
 
@@ -120,9 +140,8 @@ The complete boot flow is specified by the production ROM documentation under
 fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
 manifest and payload validation, secure boot, demotion, attestation and
 hand-off, with requirement identifiers and an implementation-status matrix.
-The summary below exists to place the ROM in the context of this chapter; it is
-deliberately not a second description of the same flow, because two would
-drift.
+The summary below places the ROM in the context of this chapter, the definitive
+description is in  the production ROM documentation
 
 * SEP initialization -- read configuration straps, determine boot options
 * Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
@@ -209,6 +228,13 @@ SPI
 ** Peripheral signals read FIFO data available and transmit FIFO space
 available to DMA for automatic flow control
 
+[[sep-dma-reference-diagram]]
+.OpenTitan DMA core and inline hashing reference architecture
+image::opentitan_dma.svg[alt="OpenTitan DMA core and inline hashing reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-dma-reference-diagram>> shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.
+
 [[och-modifications]]
 === OCAH Modifications
 
@@ -230,6 +256,11 @@ streaming interfaces
 Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)
 
+<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
+described in this section.
+
+[[proposed-sep-dma-extensions-figure]]
+.Proposed SEP DMA extensions
 image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
 [[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]

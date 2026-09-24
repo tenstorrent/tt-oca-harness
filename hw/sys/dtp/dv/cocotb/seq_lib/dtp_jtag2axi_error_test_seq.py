@@ -14,7 +14,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus, pack_single_op, unpack_series_data
+from env.dtp_types import (
+    FAULT_STATUS_CHECK_ID,
+    DtpJtag2AxiOp,
+    DtpJtag2AxiStatus,
+    pack_single_op,
+    unpack_series_data,
+)
 
 from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
 
@@ -24,7 +30,6 @@ ERROR_RESPONSES = (AXI_SLVERR, AXI_DECERR)
 ERROR_BASE = 0x1800
 RECOVERY_BASE = 0x2800
 SERIES_BEATS = 3
-FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
 
 
 def _series_mode(*, increment: bool, with_status: bool) -> str:

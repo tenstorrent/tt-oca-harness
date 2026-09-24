@@ -411,10 +411,10 @@ module smc_uvm_top
     // compile timescale is 1ns/1ps, and Xcelium rejects $assertcontrol(4, 31).
 `ifndef VERILATOR
     initial begin
-        $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+        $assertoff(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
         wait (rst_cold_n_int === 1'b1);
         @(posedge clk_smc);
-        $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+        $asserton(0, u_dut.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.noXOnCsI);
     end
 `endif
 
@@ -759,6 +759,14 @@ module smc_uvm_top
 
     // UART0 TX: the DUT drives one line out to the external world.
     assign tb_uart0_tx_from_dut = u_dut.u_smc.core2pad_o[UART0_TX_PAD];
+    assign tb_uart0_tx_ready = u_dut.u_smc.u_smc_peripherals.u_uart_wrap
+        .gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.uart_txrdy_o;
+    // A fetched byte waits at the head of the engine's read-data FIFO while the
+    // UART cannot accept it: the write FSM stays in its request state on these
+    // cycles (log_engine.sv advances only on rdata valid AND uart_tx_ready).
+    assign tb_uart0_log_write_stalled = u_dut.u_smc.u_smc_peripherals.u_uart_wrap
+        .gen_uart_log_engine_wraps[0].u_uart_log_engine_wrap.gen_log_engine.u_log_engine.rdata_fifo_rd_valid
+        & ~tb_uart0_tx_ready;
     // I2C0 SMBALERT#: OE-aware resolve (active-low when DUT drives).
     // core2pad_en_o is active-high (~lsio_core2pad_en_ni); data is 0 when OE.
     // Under +smc_i2c_shared_bus the pad is TB-driven with the shared OD net.
@@ -1313,7 +1321,7 @@ module smc_uvm_top
     assign tb_dma_cg_en = u_dut.u_smc.u_smc_base.cg_ctrl_dma_cg_en;
     assign tb_dma_gated_clk =
         u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
-            .request_maneger_cg.gated_clk_o;
+            .u_request_maneger_cg.gated_clk_o;
     assign tb_dma_busy = u_dut.u_smc.u_smc_base.dma_busy;
     assign tb_dma_frontend_busy =
         u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
@@ -1509,6 +1517,8 @@ module smc_uvm_top
     `define SMC_HART0_CSR u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
     assign tb_cpu_core_reset_n = u_dut.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
     assign tb_cpu_trace_valid  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign tb_cpu_trace_valid_unmasked = `SMC_HART0_CSR.io_trace_0_valid;
+    assign tb_cpu_trace_pc_unmasked    = `SMC_HART0_CSR.io_trace_0_iaddr;
     assign tb_cpu_trace_pc     = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_iaddr : '0;
     assign tb_cpu_trace_insn   = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_insn : '0;
     assign tb_cpu_trace_exc    = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_exception : 1'b0;
@@ -1599,8 +1609,8 @@ module smc_uvm_top
     // AXI master port the transfer moves on.
     // ------------------------------------------------------------------
     `define SMC_DMA u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_dma_wrap
-    `define SMC_DMA_FE `SMC_DMA.idma_frontend_wrapper
-    `define SMC_DMA_REG `SMC_DMA_FE.gen_axi_to_iDMA_fe[0].iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
+    `define SMC_DMA_FE `SMC_DMA.u_idma_frontend_wrapper
+    `define SMC_DMA_REG `SMC_DMA_FE.gen_axi_to_iDMA_fe[0].u_iDMA_frontend.gen_core_regs[0].i_idma_reg64_2d_reg_top
     assign tb_dma_next_id_re = `SMC_DMA_REG.next_id_0_re;
     assign tb_dma_next_id    = `SMC_DMA_REG.next_id_0_qs;
     assign tb_dma_status0    = `SMC_DMA_REG.status_0_qs;
@@ -1644,9 +1654,9 @@ module smc_uvm_top
     assign tb_zeroer_size        = `SMC_ZEROER.size;
     assign tb_zeroer_trigger     = `SMC_ZEROER.status_swacc[1];
     assign tb_zeroer_status_read = `SMC_ZEROER.status_swacc[0];
-    assign tb_zeroer_strb_dest   = `SMC_ZEROER.zeroer_reg.decoded_reg_strb.DEST_ADDR;
-    assign tb_zeroer_strb_size   = `SMC_ZEROER.zeroer_reg.decoded_reg_strb.SIZE;
-    assign tb_zeroer_req_is_wr   = `SMC_ZEROER.zeroer_reg.decoded_req_is_wr;
+    assign tb_zeroer_strb_dest   = `SMC_ZEROER.u_zeroer_reg.decoded_reg_strb.DEST_ADDR;
+    assign tb_zeroer_strb_size   = `SMC_ZEROER.u_zeroer_reg.decoded_reg_strb.SIZE;
+    assign tb_zeroer_req_is_wr   = `SMC_ZEROER.u_zeroer_reg.decoded_req_is_wr;
     assign tb_zeroer_disable_cg  = `SMC_ZEROER.disable_cg;
     assign tb_zeroer_axi_clk_enable = `SMC_ZEROER.axi_clk_enable;
     `undef SMC_ZEROER
@@ -1665,14 +1675,14 @@ module smc_uvm_top
 
     // Inbound fabric filter decisions, and the JTAG leg of the alias remap.
     `define SMC_INB u_dut.u_smc.u_smc_base.u_smc_fabric.u_smc_input_fabric
-    assign tb_inb_write_hit     = `SMC_INB.smc_sys_inbound_filter.write_filter_hit;
-    assign tb_inb_read_hit      = `SMC_INB.smc_sys_inbound_filter.read_filter_hit;
-    assign tb_inb_isolate_write = `SMC_INB.smc_sys_inbound_filter.isolate_write;
-    assign tb_inb_isolate_read  = `SMC_INB.smc_sys_inbound_filter.isolate_read;
+    assign tb_inb_write_hit     = `SMC_INB.u_smc_sys_inbound_filter.write_filter_hit;
+    assign tb_inb_read_hit      = `SMC_INB.u_smc_sys_inbound_filter.read_filter_hit;
+    assign tb_inb_isolate_write = `SMC_INB.u_smc_sys_inbound_filter.isolate_write;
+    assign tb_inb_isolate_read  = `SMC_INB.u_smc_sys_inbound_filter.isolate_read;
     assign tb_remap_jtag_aw_hit =
-        `SMC_INB.smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
+        `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
     assign tb_remap_jtag_ar_hit =
-        `SMC_INB.smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
+        `SMC_INB.u_smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
     `undef SMC_INB
 
     // Isolation / FLR sequencing state. The two watchdog timeout pins are
@@ -1694,12 +1704,12 @@ module smc_uvm_top
     assign tb_telem_atid0   = `SMC_PERIPH.telemetry_atid_i[0];
     assign tb_telem_atid1   = `SMC_PERIPH.telemetry_atid_i[1];
     assign tb_telem_atid2   = `SMC_PERIPH.telemetry_atid_i[2];
-    assign tb_i2c_host_enable[0] = `SMC_PERIPH.i2c_wrap.gen_i2cs[0].i2c.i2c_core.host_enable;
-    assign tb_i2c_host_enable[1] = `SMC_PERIPH.i2c_wrap.gen_i2cs[1].i2c.i2c_core.host_enable;
-    assign tb_i2c_host_enable[2] = `SMC_PERIPH.i2c_wrap.gen_i2cs[2].i2c.i2c_core.host_enable;
-    assign tb_i2c_target_enable[0] = `SMC_PERIPH.i2c_wrap.gen_i2cs[0].i2c.i2c_core.target_enable;
-    assign tb_i2c_target_enable[1] = `SMC_PERIPH.i2c_wrap.gen_i2cs[1].i2c.i2c_core.target_enable;
-    assign tb_i2c_target_enable[2] = `SMC_PERIPH.i2c_wrap.gen_i2cs[2].i2c.i2c_core.target_enable;
+    assign tb_i2c_host_enable[0] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.host_enable;
+    assign tb_i2c_host_enable[1] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.host_enable;
+    assign tb_i2c_host_enable[2] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.host_enable;
+    assign tb_i2c_target_enable[0] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[0].u_i2c.u_i2c_core.target_enable;
+    assign tb_i2c_target_enable[1] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[1].u_i2c.u_i2c_core.target_enable;
+    assign tb_i2c_target_enable[2] = `SMC_PERIPH.u_i2c_wrap.gen_i2cs[2].u_i2c.u_i2c_core.target_enable;
     assign tb_uart_tx = `SMC_PERIPH.uart_tx;
     assign tb_periph_cdc_awvalid = `SMC_PERIPH.axil_i2c_req_periph_clk.aw_valid;
     assign tb_periph_cdc_awready = `SMC_PERIPH.axil_i2c_resp_periph_clk.aw_ready;
@@ -1720,7 +1730,7 @@ module smc_uvm_top
     assign tb_efuse_shim_resp_status =
         `SMC_PERIPH.u_smc_efuse_wrapper.efuse_shim_command_resp_i.status;
     assign tb_efuse_locks = shadow_regs.locks.locks;
-    `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].axi_lite_mailbox
+    `define SMC_MBX0 u_dut.u_smc.u_smc_base.u_internal_regs.u_smc_axil_mailbox.gen_mailbox[0].u_axi_lite_mailbox
     assign tb_mbx0_full  = `SMC_MBX0.mbox_full;
     assign tb_mbx0_empty = `SMC_MBX0.mbox_empty;
     `undef SMC_MBX0
@@ -2797,7 +2807,7 @@ module smc_uvm_top
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_peek_bank
         assign peek_bank_data[b] =
             u_dut.u_smc_wrapper.u_smc_ip_integration.u_mems
-                .gen_scratch_rams[b].mem.mem.mem[peek_entry];
+                .gen_scratch_rams[b].u_mem.u_mem.mem[peek_entry];
     end
 
     always_comb begin
@@ -2810,7 +2820,7 @@ module smc_uvm_top
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_bfm_peek_bank
         assign bfm_peek_bank_data[b] =
             u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems
-                .gen_scratch_rams[b].mem.mem.mem[bfm_peek_entry];
+                .gen_scratch_rams[b].u_mem.u_mem.mem[bfm_peek_entry];
     end
 
     assign bfm_peek_word            = bfm_peek_bank_data[bfm_peek_bank];
@@ -2843,7 +2853,7 @@ module smc_uvm_top
             if (bfm_rom_fd != 0) begin
                 $fclose(bfm_rom_fd);
                 $readmemh(bfm_rom_path,
-                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.rom_mem.mem.mem);
+                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.mem);
                 $display("[tb_top:dual] u_bfm ROM override (hex) %s", bfm_rom_path);
             end else begin
                 $error("[tb_top:dual] missing +bfm_rom_hex image %s", bfm_rom_path);
@@ -2853,7 +2863,7 @@ module smc_uvm_top
             if (bfm_rom_fd != 0) begin
                 $fclose(bfm_rom_fd);
                 $readmemb(bfm_rom_path,
-                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.rom_mem.mem.mem);
+                          u_bfm.u_smc_wrapper.u_smc_ip_integration.u_mems.u_rom_mem.u_mem.mem);
                 $display("[tb_top:dual] u_bfm ROM override (bin64) %s", bfm_rom_path);
             end else begin
                 $error("[tb_top:dual] missing +bfm_rom_bin64 image %s", bfm_rom_path);

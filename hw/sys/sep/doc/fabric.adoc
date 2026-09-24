@@ -35,7 +35,7 @@ handle
 [[top-level-axi4]]
 == Top Level AXI4
 
-The diagram below shows the crossbar connectivity implemented in
+xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity implemented in
 `hw/sys/sep/rtl/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
@@ -70,8 +70,52 @@ else back into this crossbar's System Interface initiator. The inbound filter
 controls which addresses the external master may reach; it is block-by-default
 after POR and configured by SEP firmware.
 
+[[sep-axi-connectivity]]
 .SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
 image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
+
+[[sep-fabric-topology]]
+== Fabric Topology
+
+The input fabric admits external traffic through the inbound filter and
+system-peripheral decode. The local fabric connects SEP initiators to local
+resources, while the output fabric selects remapped or direct outbound paths.
+
+The input paths are shown in <<sep-input-fabric-diagram>>, the local resource
+connections in <<sep-local-fabric-diagram>>, and the outbound paths in
+<<sep-output-fabric-diagram>>.
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-input-fabric-diagram]]
+.SEP input fabric
+image::SEP_Input_Fabric_FIG005.svg[alt="SEP input fabric",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-local-fabric-diagram]]
+.SEP local fabric
+image::SEP_Local_Fabric_FIG006.svg[alt="SEP local fabric",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-output-fabric-diagram]]
+.SEP output fabric
+image::SEP_Output_Fabric_FIG007.svg[alt="SEP output fabric",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=portrait]
+<<<
+endif::backend-pdf[]
 
 [[subsystem-external-interfaces]]
 == Subsystem External Interfaces
@@ -86,7 +130,11 @@ OTBN IMEM, OTBN DMEM
 [[local-and-external-axi4-traffic-remapping]]
 == Local and External AXI4 Traffic Remapping
 
-The figure below illustrates the AXI4 traffic management performed by
+[[sep-system-peripheral-traffic-management-figure]]
+.SEP system-peripheral traffic management
+image::SEP_System.png[SEP_System,scaledwidth=90.0%]
+
+<<sep-system-peripheral-traffic-management-figure>> illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
 the local masters from the SEP i.e. the CPU or the DMA controller.
 Traffic may be local to the SEP or outbound to external resources either
@@ -123,12 +171,12 @@ SMN system NoC.
 SEP’s outbound traffic serves to:
 
 1.  Provide security services and
-2.  extend its protection to the reset of the system
+2.  Extend its protection to the rest of the system
 
-For 1 the outbound traffic traverses the AP controlled remappers and for
-2 the traffic goes directly to the SMN system fabric. SEP differentiates
-between the two scenarios 1 and 2 and enforces that the correct path is
-used.
+Outbound security service traffic traverses the AP controlled remappers.
+When protecting the rest of the system, SEP traffic goes directly to the
+SMN system fabric. The SEP differentiates between these two cases and
+enforces that the correct path is used.
 
 When SEP accesses shared resources such as shared memory for example,
 the traffic goes through the AP or STEE controlled remappers to get the
@@ -229,6 +277,12 @@ mapped IO, SEP’s traffic directly goes to the system fabric.
 [[mailboxes]]
 === Mailboxes
 
+<<sep-mailbox-diagram>> shows the host mailbox connections and interrupt routing.
+
+[[sep-mailbox-diagram]]
+.SEP host mailbox architecture and interrupt routing
+image::SEP_AXILmailbox_FIG008.png[alt="SEP host mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
+
 SEP uses mailboxes to communicate with the rest of the system such as AP
 cores for example. Each different agent has its own private mailbox in
 order to separate the contexts. Each mailbox resides in its own 4 kB
@@ -272,7 +326,12 @@ write permissions and a write-once lock bit. See <<sep-traffic-filter-decode>>
 for the SEP filter instances and {axi-traffic-filter-ref} for the entry
 registers and the decode algorithm used to program them.
 
+<<sep-mailbox-qualification-table>> describes the traffic qualifications used to
+distinguish mailbox types.
+
+[[sep-mailbox-qualification-table]]
 [width="100%",cols="<20%,<80%",options="header",]
+.SEP mailbox qualification
 |=======================================================================
 |Mailbox Type |Description
 |ISS |Uses fabric source ID to qualify incoming transactions. Legal
@@ -289,5 +348,3 @@ to qualify this.
 |Regular |Relies on PMA/PMP or page table for protection. No special
 action required by SEP.
 |=======================================================================
-
-image::SEP_System.png[SEP_System,scaledwidth=90.0%]

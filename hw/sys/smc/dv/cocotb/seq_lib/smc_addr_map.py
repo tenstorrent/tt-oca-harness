@@ -30,6 +30,7 @@ _DMA_CTRL_ADDR_H = (
     / "c"
     / "dma_ctrl_addr.h"
 )
+_ALIAS_REMAP_H = _REPO / "hw" / "ip" / "axi_alias_remap" / "regs" / "gen" / "c" / "alias_remap.h"
 _DMA_CTRL_H = (
     _REPO / "vendor" / "pulp-platform" / "idma" / "overlay" / "rdl" / "gen" / "c" / "dma_ctrl.h"
 )
@@ -224,6 +225,25 @@ def reg_reset_word(header: Path, block: str, reg: str) -> int:
 
 # SMC_BASE_CONFIG reset words used as goldens by the fabric/decode testcases.
 GLOBAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "GLOBAL_BASE")
+LOCAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "LOCAL_BASE")
+
+# The window table the register generator writes from the RDL address map and
+# `doc/memmap.adoc` includes: one row per unit, `|BASE + <lo> - BASE + <hi> |...|<unit>|`.
+_MEMORY_MAP_ADOC = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "adoc" / "memory_map.adoc"
+_WINDOW_ROW = re.compile(
+    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|[^|]*\|([^|]+)\|"
+)
+
+
+def generated_window(unit: str) -> tuple[int, int]:
+    """Return ``(first, last)`` offsets of the window the generated memory map gives ``unit``."""
+    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
+        m = _WINDOW_ROW.match(line)
+        if m and m.group(3).strip() == unit:
+            return int(m.group(1), 16), int(m.group(2), 16)
+    raise KeyError(f"{unit} has no window row in {_MEMORY_MAP_ADOC}")
+
+
 REGION_SIZE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "REGION_SIZE")
 CLOCK_GATE_CONTROL_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "CLOCK_GATE_CONTROL")
 
@@ -269,6 +289,17 @@ CG_HYST_SHIFT = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bp"
 )
 DMA_CONFIG_ENABLED_ND = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__ENABLED_ND_bm")
+DMA_CONFIG_DECOUPLE_RW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_RW_bm")
+
+ALIAS_REMAP_ATTRS_CACHEABLE = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm"
+)
+ALIAS_REMAP_ATTRS_VALID = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm"
+)
+ALIAS_REMAP_ATTRS_OFFSET = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bm"
+)
 
 # Zeroer CSR absolute addresses (generated smc_addr.h).
 ZEROER_CTRL_DEST_ADDR = smc_addr("SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR")
@@ -293,6 +324,72 @@ _GPIO_INTF_H = _REPO / "hw" / "ip" / "gpio" / "regs" / "gen" / "c" / "gpio_intf.
 def gpio_intf_u32(symbol: str) -> int:
     """Field mask/position from generated ``gpio_intf.h``."""
     return _field_mask(_GPIO_INTF_H, symbol)
+
+
+_UART_16550_DL_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl.h"
+)
+_UART_16550_DL_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl_addr.h"
+)
+
+
+_UART_16550_MAIN_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
+)
+_UART_16550_WO_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
+)
+_UART_16550_WO_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo_addr.h"
+)
+_LOG_ENGINE_H = _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c" / "log_engine.h"
+_UART_LOG_ENGINE_CTRL_H = (
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
+    / "uart_log_engine_ctrl.h"
+)
+
+
+def uart_16550_main_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main.h``."""
+    return _field_mask(_UART_16550_MAIN_H, symbol)
+
+
+def uart_16550_wo_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main_wo.h``."""
+    return _field_mask(_UART_16550_WO_H, symbol)
+
+
+def uart_16550_wo_offset(symbol: str) -> int:
+    """Register offset inside the write-only window from ``uart_16550_main_wo_addr.h``."""
+    return _field_mask(_UART_16550_WO_ADDR_H, symbol)
+
+
+def log_engine_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``log_engine.h``."""
+    return _field_mask(_LOG_ENGINE_H, symbol)
+
+
+def uart_log_engine_ctrl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_log_engine_ctrl.h``."""
+    return _field_mask(_UART_LOG_ENGINE_CTRL_H, symbol)
+
+
+def uart_16550_dl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_dl.h``."""
+    return _field_mask(_UART_16550_DL_H, symbol)
+
+
+def uart_16550_dl_offset(symbol: str) -> int:
+    """Register offset inside the divisor-latch window from ``uart_16550_dl_addr.h``."""
+    return _field_mask(_UART_16550_DL_ADDR_H, symbol)
 
 
 _GPIO_POC_H = (

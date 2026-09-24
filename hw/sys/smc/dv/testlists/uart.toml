@@ -4,6 +4,15 @@ schema_version = 1
 
 # BFM rebuilds of the commercial UART depth tests.
 [[tests]]
+name = "smc_uart_rbr_error_path_test"
+module = "smc_uart_rbr_error_path_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+args = ["+smc_uart_cross_3to0"]
+
+[[tests]]
 name = "smc_uart_fifo_basic_trigger_reset_test"
 module = "smc_uart_fifo_basic_trigger_reset_test"
 seed = 1
@@ -106,3 +115,43 @@ tests = [
     "smc_uart_sanity_test",
     "smc_log_engine_intr_mask_test",
 ]
+
+[[tests]]
+name = "smc_uart_log_engine_field_sweep_test"
+module = "smc_uart_log_engine_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_log_engine_transfer_test"
+module = "smc_log_engine_transfer_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_log_engine_abort_test"
+module = "smc_log_engine_abort_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_char_loopback_test"
+module = "smc_uart_char_loopback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_core_mode_select_test"
+module = "smc_uart_core_mode_select_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]

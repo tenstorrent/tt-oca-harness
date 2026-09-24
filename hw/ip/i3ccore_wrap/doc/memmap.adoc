@@ -32,6 +32,23 @@ includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
 * *DCT Section* (0x800-0xFFF): Device Characteristic Table, 128-entry address window
 (4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=16 (usable index 0-15)
 
+=== Integration Limits
+
+The SoC Management Interface header at `0x300` reports `CAP_LENGTH = 0x1A`
+DWORDs. This is inconsistent with the next capability header at `0x398`: the
+span is `0x98` bytes, or `0x26` DWORDs. A generic walker that trusts the reported
+length advances to `0x368`, inside the timing registers, and misinterprets data
+as a capability header. Software for this implementation must account for the
+fixed layout above rather than discovering that boundary from `CAP_LENGTH`.
+
+The DAT and DCT capability fields advertise `TABLE_SIZE = 127`, but only 16
+independent entries are implemented. Index decoding retains four bits, so
+higher window slots alias lower entries rather than providing extra storage.
+For example, DAT slot 16 at `0x480` aliases slot 0 at `0x400`; DCT slot 16 at
+`0x900` aliases slot 0 at `0x800`. Limit accesses to indexes 0–15. The complete
+windows in the generated map describe address decoding, not independent
+128-entry capacity.
+
 === Address Alignment and Access
 
 *Address Alignment:*
@@ -116,5 +133,5 @@ include::partial$i3ccore_wrap/regs/gen/html/oca_i3c_wrap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/oca_i3c_wrap.adoc[]
+include::../regs/gen/adoc/oca_i3c_wrap.adoc[leveloffset=+2]
 endif::backend-pdf[]

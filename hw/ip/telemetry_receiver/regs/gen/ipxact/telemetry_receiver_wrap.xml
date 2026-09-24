@@ -44,8 +44,10 @@ registers.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>TELEMETRY_RX_FLUSH</ipxact:name>
-              <ipxact:description>Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and
-all other storage elements in the Telemetry Receiver.</ipxact:description>
+              <ipxact:description>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+pointer. Stored payload bytes are not cleared. In particular, a later short
+message can retain trailing counter values and validity from an earlier
+message. This operation does not erase storage.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

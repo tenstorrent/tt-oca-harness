@@ -54,11 +54,13 @@ endif
 # doc/trm/src/dashboard.adoc fetches this JSON in the browser at page load.
 OCAH_DASHBOARD_DATA_DIR ?= $(OCAH_DOC_DIR)/_build/dashboard-data
 OCAH_DASHBOARD_DATA_REF ?= origin/dv-dashboard-data
-OCAH_DASHBOARD_DATA_PATH ?= latest/summary.json
+OCAH_DASHBOARD_PUBLISHERS ?= vcs
+OCAH_DASHBOARD_RUNS_LIMIT ?= 0
 OCAH_DASHBOARD_STAGE := OCAH_ROOT="$(OCAH_ROOT)" \
 	OCAH_DASHBOARD_DATA_DIR="$(OCAH_DASHBOARD_DATA_DIR)" \
 	OCAH_DASHBOARD_DATA_REF="$(OCAH_DASHBOARD_DATA_REF)" \
-	OCAH_DASHBOARD_DATA_PATH="$(OCAH_DASHBOARD_DATA_PATH)" \
+	OCAH_DASHBOARD_PUBLISHERS="$(OCAH_DASHBOARD_PUBLISHERS)" \
+	OCAH_DASHBOARD_RUNS_LIMIT="$(OCAH_DASHBOARD_RUNS_LIMIT)" \
 	bash $(OCAH_ROOT)/tools/doc/stage_dashboard_data.sh
 
 ## Stage dashboard JSON from the local clone of the data branch.
@@ -79,6 +81,7 @@ endef
 -include $(OCAH_DOC_DIR)/appnotes/doc.mk
 -include $(OCAH_DOC_DIR)/starting/doc.mk
 -include $(OCAH_DOC_DIR)/home/doc.mk
+-include $(OCAH_DOC_DIR)/datasheets/doc.mk
 
 # GitHub Pages publish.
 -include $(OCAH_DOC_DIR)/gh-pages.mk
@@ -89,11 +92,11 @@ ocah-doc-setup: ocah-doc-trm-setup
 ocah-doc-html: ocah-doc-trm-html
 ocah-doc-pdf: ocah-doc-trm-pdf
 ocah-doc-serve: ocah-doc-trm-serve
-ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-starting-clean ocah-doc-home-clean
+ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-starting-clean ocah-doc-home-clean ocah-doc-datasheets-clean
 
 ## Stage all books (registers + symlinks) without running Antora/asciidoctor-pdf.
 .PHONY: ocah-doc-all-setup
-ocah-doc-all-setup: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-starting-setup ocah-doc-home-setup
+ocah-doc-all-setup: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-starting-setup ocah-doc-home-setup ocah-doc-datasheets-setup
 
 ## Build combined Antora HTML site - alias of doc-combined-html for consistency
 .PHONY: ocah-doc-all-html
@@ -101,7 +104,7 @@ ocah-doc-all-html: ocah-doc-combined-html
 
 ## Build PDFs for every book that has one (home is HTML-only).
 .PHONY: ocah-doc-all-pdf
-ocah-doc-all-pdf: ocah-doc-trm-pdf ocah-doc-integrator-pdf ocah-doc-programmer-pdf ocah-doc-appnotes-pdf ocah-doc-starting-pdf
+ocah-doc-all-pdf: ocah-doc-trm-pdf ocah-doc-integrator-pdf ocah-doc-programmer-pdf ocah-doc-appnotes-pdf ocah-doc-starting-pdf ocah-doc-datasheets-pdf
 
 # Construct combined Antora HTML site, and then manually serve
 .PHONY: ocah-doc-all-serve

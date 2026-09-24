@@ -47,14 +47,14 @@ async def make_smu_axi_master(
 ) -> OcahAxiMasterSequence:
     """Master on the SMU AXI slave, named by whichever TB top is loaded.
 
-    tb/tb_top.sv flattens it as ``s_axi_*``; tb/tb_wrapper_top.sv exposes the
-    same interface -- ``smu_axi_in_req_i`` / ``smu_axi_in_resp_o`` on
-    smu_wrapper.sv -- as ``ext_in_*``. The prefix is detected rather than
-    passed, so a shared sequence runs on either DUT unchanged.
+    tb/tb_wrapper_top.sv exposes the interface -- ``smu_axi_in_req_i`` /
+    ``smu_axi_in_resp_o`` on smu_wrapper.sv -- as ``ext_in_*``; a top that
+    flattens it as ``s_axi_*`` resolves too. The prefix is detected rather
+    than passed.
 
-    The wrapper side carries the required AXI4 signals but not the optional
+    The wrapper carries the required AXI4 signals but not the optional
     qualifiers (prot/cache/qos/region/lock, and the user fields), which
-    cocotbext-axi treats as optional, so a master builds on either prefix. A
+    cocotbext-axi treats as optional, so a master builds without them. A
     test that asserts on those qualifiers needs them wired out first.
     """
     agent = OcahAxiMasterAgent.from_prefix(dut, prefix or smu_axi_in_prefix(dut), clk, reset)

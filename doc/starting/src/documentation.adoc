@@ -33,6 +33,33 @@ Documents are published in GitHub Pages at [https://tenstorrent.github.io/tt-oca
 
 Downloadable PDFs are also accessible from the above location.
 
+Generated register maps provide links from register names to their field tables,
+with each register listed in the contents and PDF bookmarks. The AsciiDoc
+partials contain a level-one address-map heading and level-two register headings.
+When including one, set `leveloffset` to the level of the containing section so
+both stay beneath it; for example, beneath `=== Detailed Register Map`, use
+`include::../regs/gen/adoc/example.adoc[leveloffset=+2]`.
+
+The TRM PDF build checks every generated register map in the open register
+inventory against the assembled document. A missing map, missing register
+section, or section deeper than the contents or bookmark limit fails the build.
+Include new maps under their owning block and keep integration reference models
+labelled as such.
+
+The TRM builds linked lists of figures and tables, including generated
+register tables. Prefer an explicit block title and stable anchor for each
+authored figure or table, and reference that anchor from the explanatory text.
+Use automatic cross-reference text instead of hard-coded figure or table
+numbers. Untitled figures use their alternative text; untitled tables use
+their containing section and, for register tables, the table's purpose.
+Each section also provides local links to its figures and tables.
+
+`tools/doc/block_catalog.rb` numbers and indexes blocks across the PDF book.
+The Antora extensions `tools/doc/block-captions.js` and
+`tools/doc/block-indexes.js` number blocks within each TRM topic and assemble
+the HTML indexes. Keep these extensions enabled in both the standalone and
+combined playbooks. Other documentation products retain their own captions.
+
 === Updating documentation
 
 Document updates are made by pushing changes to `main`.

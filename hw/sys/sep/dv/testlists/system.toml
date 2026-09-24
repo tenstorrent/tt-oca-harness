@@ -127,7 +127,19 @@ args = ["+skip_fuse_sense"]
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the
 # entropy) -- then pulse one engine's SW_RESET_N (0x1080_3000, active-low) and prove the
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
-# clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
+# clears; reverse the roles. Once URND is being acknowledged, a KMAC software
+# reset is stepped across that acknowledge period. The KMAC endpoint's edn_ack
+# and edn_bus stay 0 on every gated-reset edge, and URND may complete its own
+# beat. The software reset write outlasts one KMAC seed, so the in-request
+# sample is the JTAG leg: the same walk from the JTAG KMAC override, with
+# SW_RESET_N still showing KMAC released, including one edge taken while KMAC
+# edn_req is high. CHK-EDN-HOLD arms on an edge that still presents a URND
+# word staged with edn_ack low. An empty-FIFO gap, where the next cycle reads
+# 0, is not that arm. An edge that presents a different word fails, and so
+# does every candidate edge zeroing the word. CHK-EDN-HOLD-KEEP requires that
+# same word to be the one URND is acknowledged with, including when the
+# acknowledge is the edge cycle.
+# Then, while HMAC SW_RESET_N is held, the same DIGEST_0
 # address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
 # DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
 # CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),
@@ -241,16 +253,15 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# EXPECTED FAIL. Asserts the misaligned-offset latch condition that
-# sep_cpu_ctrl.rdl:383 and doc/interrupts.adoc:241 state for
-# PERIPH_BUS_ERR_STATUS; the DUT refuses the beat at the fabric instead, so
-# nothing latches. Left unmarked so `all` stays a visible fail; a spec-vs-RTL
-# gap is not masked as expect_fail.
-name = "sep_periph_bus_err_misaligned_reveal_test"
-module = "system.sep_periph_bus_err_misaligned_reveal_test"
+# Misaligned in-extent register access. sep_cpu_ctrl.rdl and
+# doc/interrupts.adoc require SLVERR and the owning block's
+# PERIPH_BUS_ERR_STATUS bit. The fabric returns DECERR and the bit stays 0.
+# The VPLAN card owns the checker contract.
+name = "sep_periph_bus_err_misaligned_test"
+module = "system.sep_periph_bus_err_misaligned_test"
 seed = 1
 timeout_sec = 600
-tags = ["interrupt", "aggregator", "system", "subsystem", "reveal"]
+tags = ["interrupt", "aggregator", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
@@ -406,6 +417,22 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "strobe", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# A 64-bit CSR read must survive the crypto width converter unchanged. The
+# fabric is 64-bit and each crypto register block is 32-bit, so AxSIZE=3 takes
+# the converter's downsize arm and must be reassembled in order. Every other
+# leaf issues 32-bit beats and takes the passthrough arm, so the conversion has
+# never been tested. Golden is the DUT's own single-beat path. No burst: the
+# crypto demux routes any AxLEN != 0 to its error slave by design.
+name = "sep_crypto_csr_wide_access_test"
+module = "system.sep_crypto_csr_wide_access_test"
+seed = 1
+timeout_sec = 900
+tags = ["fabric", "axi", "crypto", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

@@ -192,6 +192,31 @@ extra_args = ["-fno-dfg"]
 # so the post-compile check looks in a directory the compile does not write.
 # Point the check at the database the compile actually writes.
 design_artifact = "{build_dir}/../cov_build.vdb"
+
+# Assertion coverage is collected and scored whatever the `-cm` list says: in
+# this VCS version `-cm assert` does not gate it, and the compile-time
+# `-cm_common_hier` below is what keeps it inside the graded hierarchy. So the
+# metric is dropped HERE, at report time, which is the only place that works.
+#
+# Why it is dropped: SEP assertions are predominantly negative controls, where
+# the implication antecedent is an illegal condition. This environment drives
+# legal stimulus only, so those assertions can never record a successful
+# attempt. They are uncoverable by construction rather than by a stimulus gap,
+# and grading them reports the absence of traffic the stimulus policy forbids.
+#
+# This changes the SCORE only. Every assertion stays compiled, evaluating and
+# able to fail a test; nothing here touches checking. Restore `+assert` to the
+# metric list if SEP ever gains an illegal-stimulus environment.
+#
+# Overrides the shared [vcs] report_cmd in hw/common/dv/configs/simulators.toml
+# by adding `-metric`; the rest of the command is copied from it verbatim.
+report_cmd = [
+  "urg", "-full64",
+  "-dir", "{merged}",
+  "-report", "{report}",
+  "-format", "both",
+  "-metric", "line+cond+tgl+fsm+branch+group",
+]
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",
@@ -451,13 +476,15 @@ outputs = [
 #
 # Toolchain: $RISCV_TOOLCHAIN when that gcc has picolibc, else the OCAH
 # container via scripts/docker-run.sh run-here. No site, $HOME, or PATH probe.
+# The sandbox make sets PYTHON=python3: add_rom_parity.py is stdlib, and the
+# toolchain image has no uv. The host path keeps the locked uv default.
 # argv goes through str.format() and rejects every placeholder except
 # {fw_target}, so use "$VAR" and $(...), never shell ${...}.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$KM_FW\" rom_main RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset or has no picolibc; building KM rom_main in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$KM_FW\" rom_main; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; KM_FW=hw/sys/sep/dv/cocotb/tests/km_fw; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$KM_FW\" rom_main RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset or has no picolibc; building KM rom_main in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$KM_FW\" rom_main PYTHON=python3; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex",

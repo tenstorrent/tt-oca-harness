@@ -10,10 +10,12 @@ nav:
 asciidoc:
   attributes:
     source-highlighter: highlight.js
-    page-toclevels: 4
+    page-toclevels: 5
     sectanchors: ''
     sectlinks: ''
     sectnums: ''
+    sectnumlevels: 9
+    xrefstyle: short
     idprefix: ''
     idseparator: '-'
     safe-mode: unsafe

@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary-TAP access for the wrapper flow.
 
-The wrapper testbench exposes the same `jtag_tck/tms/trst/tdi/tdo` pins the
-bare `--dut smu_block` harness does, so `OcahJtagMasterDriver` binds to either DUT
-unchanged. This module carries the wrapper-side binding: the TAP factory and
+The wrapper testbench exposes the primary TAP as the `jtag_tck/tms/trst/tdi/tdo`
+pins `OcahJtagMasterDriver` binds to. This module carries the TAP factory and
 the IR opcodes, taken from the DV-owned DTP instruction table. The full DTP
 register map is `make_smu_jtag_tap` in `seq_lib/smu_jtag_helpers.py`.
 """

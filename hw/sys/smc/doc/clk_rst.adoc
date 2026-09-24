@@ -14,6 +14,12 @@ through clock gating.
 
 The SMC employs a multi-domain clocking architecture.
 
+<<smc-clock-tree>> shows the clocks distributed to the SMC subblocks.
+
+[[smc-clock-tree]]
+.SMC clock tree and clock domains
+image::SMC_CLOCKING_FIG029.svg[alt="SMC clock tree and clock domains",width=100%,pdfwidth=100%]
+
 === The SMC Clock Domain
 
 The primary SMC clock domain (clk_smc_i) serves as the operational clock
@@ -32,24 +38,18 @@ filtering mechanisms also belong to this clock domain.
 
 === The Reference Clock Domain
 
-The reference clock domain (clk_ref_i) provides a low-speed, stable
-timing foundation for operations that require consistent, predictable
-timing behavior.
+The reference clock (`clk_ref_i`) supplies reference-domain logic, including
+the DFD local time-tick source and peripheral reference-clock inputs. It is
+separate from the following timer and CPU-debug clocks.
 
-System timers, including the Core Local Interruptor (CLINT) and
-specialized system timer OCTS (Open Chiplet Time Synchronization), operate
-within this reference domain.
+=== Timer and Debug Timebases
 
-This clock is used as reference clock for PLL control and frequency
-synthesis.
-
-The reference clock domain also serves as the synchronization anchor for
-reset domain crossings, providing the stable timing reference necessary
-for implementing robust reset synchronization mechanisms.
-
-Debug infrastructure, including JTAG interfaces and debug module
-operations, benefit from this stable timing reference to ensure reliable
-debug access independent of system operational state.
+* The OCTS instance in the SMC peripheral wrapper runs on `clk_smc_i`.
+* CLINT receives a tick every 1000 cycles of the CPU cluster's `cbus` clock.
+  The cluster uncore clock input runs off the main `clk_smc_i` input.
+* The CPU debug module receives a gated version of the CPU wrapper's `clk_i`.
+  Its gate is controlled by debug activation (with a test override). JTAG TCK
+  clocks the scan interface separately.
 
 === The Peripheral Clock Domain
 
@@ -96,12 +96,14 @@ systems.
 == Reset Architecture
 
 The SMC employs a hierarchical reset strategy with multiple reset
-sources and synchronization mechanisms. The following diagram shows the
+sources and synchronization mechanisms. <<smc-reset-distribution-figure>> shows the
 reset architecture.
 
+[[smc-reset-distribution-figure]]
+.SMC reset distribution
 image::smc_reset_wrap.png[SMC Reset Wrap Block Diagram,scaledwidth=90.0%]
 
-The following table lists the reset sources and their characteristics.
+<<smc-reset-sources-and-characteristics-table>> lists the reset sources and their characteristics.
 `BP_POWERGOOD` is the board power-good indicator used as the power-on reset
 (POR) root: it is stretched into `powergood_stable`, which qualifies the SMC
 functional cold reset path, and it is also passed into the JTAG/DTP stack as
@@ -110,6 +112,7 @@ signal to form the effective TAP reset, so loss of power-good forces TAP/TDR
 logic into reset even when TRST is released. `BP_RESETN` drives the SMC
 functional cold reset path after power-good is stable.
 
+[[smc-reset-sources-and-characteristics-table]]
 .SMC Reset Sources and Characteristics
 [width="100%",cols="20%,25%,25%,30%",options="header",]
 |=======================================================================
@@ -141,8 +144,9 @@ controllers and interfaces, and SMC control and configuration
 registers. JTAG/TDR reset state is reset by POR, not by
 `rst_primary_no` alone.
 
-Primary reset is activated by reset sources in the following table:
+Primary reset is activated by reset sources in <<primary-reset-activation-sources-table>>:
 
+[[primary-reset-activation-sources-table]]
 .Primary Reset Activation Sources
 [width="100%",cols="34%,66%",options="header",]
 |===========================================================
@@ -161,8 +165,9 @@ Specifically, CPU cores and their private cache hierarchies, PLIC
 (Platform-Level Interrupt Controller), CLINT (Core Local Interruptor),
 per-core watchdog timers and bus error units
 
-Warm reset is activated by reset sources in the following table:
+Warm reset is activated by reset sources in <<warm-reset-activation-sources-table>>:
 
+[[warm-reset-activation-sources-table]]
 .Warm Reset Activation Sources
 [width="100%",cols="34%,66%",options="header",]
 |==========================================================
@@ -200,6 +205,32 @@ subsystems participate in FLR sequences
 The final isolation state for each subsystem is the logical OR of all
 three sources, providing flexible control while maintaining clear
 precedence for safety-critical operations.
+
+<<smc-flr-isolation-diagram>> shows cool-reset and isolation connections between primary
+and secondary chiplets.
+
+[[smc-flr-isolation-diagram]]
+.SMC FLR isolation connections between chiplets
+image::SMC_FLR_Isolate_Diagram_FIG016.png[alt="SMC FLR isolation connections between chiplets",width=100%,pdfwidth=100%]
+
+<<smc-flr-software-diagram>> shows isolation propagation for an SMC software request.
+
+[[smc-flr-software-diagram]]
+.SMC-driven FLR isolation
+image::SMC_FLR_Isolate_Diagram_SMC_Driven_FIG017.png[alt="SMC-driven FLR isolation",width=100%,pdfwidth=100%]
+
+<<smc-flr-tile-diagram>> shows isolation propagation for a tile request.
+
+[[smc-flr-tile-diagram]]
+.Tile-request-driven FLR isolation
+image::SMC_FLR_Isolate_Diagram_Tile_Request_Driven_FIG018.png[alt="Tile-request-driven FLR isolation",width=100%,pdfwidth=100%]
+
+<<smc-flr-gpio-diagram>> shows isolation propagation for a GPIO request.
+
+[[smc-flr-gpio-diagram]]
+.GPIO-driven FLR isolation
+image::SMC_FLR_Isolate_Diagram_GPIO_Driven_FIG019.png[alt="GPIO-driven FLR isolation",width=100%,pdfwidth=100%]
+
 
 ==== Programmable Reset Timing
 
@@ -249,6 +280,10 @@ is asynchronous and deassertion is synchronous.
 The synchronization primitives include multiple flip-flop stages that
 provide metastability protection.
 
+<<reset-synchronization-domains-table>> maps each synchronized reset output to its
+target clock domain.
+
+[[reset-synchronization-domains-table]]
 .Reset Synchronization Domains
 [width="100%",cols="30%,25%,45%",options="header",]
 |=======================================================================
@@ -269,8 +304,9 @@ coordination for peripheral controllers
 === Advanced Subsystem Reset Capabilities
 
 Beyond basic reset control, SMC supports several features for demanding
-system management needs:
+system management needs (<<advanced-reset-features-table>>).
 
+[[advanced-reset-features-table]]
 .Advanced Reset Features
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
@@ -302,13 +338,14 @@ include::partial$smc/regs/gen/html/blocks/reset_unit.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/reset_unit.adoc[]
+include::../regs/gen/adoc/blocks/reset_unit.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 == Clock and Reset-Based Power Management Integration
 
-The following table lists the clock gating control parameters.
+<<clock-gating-control-parameters-table>> lists the clock gating control parameters.
 
+[[clock-gating-control-parameters-table]]
 .Clock Gating Control Parameters
 [width="100%",cols="30%,35%,35%",options="header",]
 |====

@@ -1,158 +1,164 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-km_csr]
+== Address Map: km_csr
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | VERSION | R a| Hardware version register (semantic versioning: major.minor.patch)
-| 0x4 | CTRL | R a| Control register (reserved for future use)
-| 0x8 | SOFT_RST_CODE | RW a| Software reset code register. Write 0x53525354 ('SRST') to trigger soft reset. Any other value has no effect.
-| 0xC | IRQ_STATUS | RW a| Interrupt status register. Sticky bits cleared by writing 1.
-| 0x10 | IRQ_ENABLE | RW a| Interrupt enable/mask register
-| 0x14 | SCRAMBLER_KEY | RW a| 32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.
-| 0x18 | SCRAMBLER_CTRL | RW a| Scrambler control register
-| 0x1C | SRAM_LOCK | RW a| SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
-| 0x20 | IRQ_SET | W a| Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.
-| 0x24 | SRAM_WRITE_LOCK_VIOLATION | RW a| Which SRAM region(s) had write attempts while locked. Bit[i]=region i. Sticky, write 1 to clear each bit.
-| 0x28 | RECOVERABLE_ERR | RW a| Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.
-| 0x2C | BOOT_STATUS | RW a| Boot status. Firmware writes 1 to COLD_BOOT_DONE after cold-boot init completes; bit remains set until next cold reset.
-| 0x30 | OTP_LIFE_CYCLE | R a| Life cycle state. 8-bit (4-bit value differentially encoded). Read-through from OTP port; no reset.
-| 0x34 | OTP_DEMOTION_STATE | R a| Demotion state. 2-bit, differentially encoded. Read-through from OTP port; no reset.
-| 0x38 | SRAM_EXEC_MODE | RW a| Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.
-| 0xB8 | IRQ_ENTRY_ADDR | RW a| Effective IRQ entry address for subsequent interrupts. Writable while unlocked; any 32-bit value accepted.
-| 0xBC | IRQ_ENTRY_LOCK | RW a| Write-one-only lock for IRQ_ENTRY_ADDR. Separate readable register; cleared only on KM reset.
-| 0x100 | VUART_TX | RW a| Virtual UART transmit register. Write a byte to send to testbench. DATA_VALID is set on write and self-clears.
-| 0x104 | VUART_RX | R a| Virtual UART receive register. Testbench writes bytes here for firmware to read.
-| 0x108 | VUART_STATUS | R a| Virtual UART status register for flow control
-| 0x110 | TB_RESULT | RW a| Test result register. Firmware writes 0=fail, 1=pass.
-| 0x114 | TB_SIGNATURE | RW a| Test completion signature. Firmware writes 0x600D600D (pass) or 0xBADBADBA (fail).
-| 0x118 | TB_ERRCODE | RW a| Test error code register. Firmware writes optional error code for debugging.
-| 0x11C | TB_SUBTEST | RW a| Current subtest number register. Firmware increments for each subtest.
-| 0x120 | TB_CMD | RW a| Testbench command register. Firmware writes command, testbench reads and clears.
-| 0x124 | TB_CMD_ARG | RW a| Testbench command argument register. Firmware writes optional argument.
-| 0x128 | TB_CMD_STATUS | RW a| Testbench command status register. Testbench writes status, firmware reads.
-| 0x12C | TB_CMD_RESULT | R a| Testbench command result register. Testbench writes result value.
-| 0x1FC | DEBUG | R a| Debug register with known constant value for verification
-| 0x200 | OTP_CHIPLET_UID_VAL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x204 | OTP_CHIPLET_UID_VAL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x208 | OTP_CHIPLET_UID_VAL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x20C | OTP_CHIPLET_UID_VAL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x210 | OTP_CHIPLET_UID_VAL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x214 | OTP_CHIPLET_UID_VAL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x218 | OTP_CHIPLET_UID_VAL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x21C | OTP_CHIPLET_UID_VAL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x220 | OTP_CHIPLET_UID_CPL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x224 | OTP_CHIPLET_UID_CPL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x228 | OTP_CHIPLET_UID_CPL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x22C | OTP_CHIPLET_UID_CPL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x230 | OTP_CHIPLET_UID_CPL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x234 | OTP_CHIPLET_UID_CPL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x238 | OTP_CHIPLET_UID_CPL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x23C | OTP_CHIPLET_UID_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x240 | OTP_SIP_UID_VAL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x244 | OTP_SIP_UID_VAL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x248 | OTP_SIP_UID_VAL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x24C | OTP_SIP_UID_VAL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x250 | OTP_SIP_UID_VAL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x254 | OTP_SIP_UID_VAL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x258 | OTP_SIP_UID_VAL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x25C | OTP_SIP_UID_VAL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x260 | OTP_SIP_UID_CPL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x264 | OTP_SIP_UID_CPL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x268 | OTP_SIP_UID_CPL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x26C | OTP_SIP_UID_CPL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x270 | OTP_SIP_UID_CPL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x274 | OTP_SIP_UID_CPL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x278 | OTP_SIP_UID_CPL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x27C | OTP_SIP_UID_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x280 | OTP_SYS_UID_VAL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x284 | OTP_SYS_UID_VAL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x288 | OTP_SYS_UID_VAL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x28C | OTP_SYS_UID_VAL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x290 | OTP_SYS_UID_VAL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x294 | OTP_SYS_UID_VAL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x298 | OTP_SYS_UID_VAL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x29C | OTP_SYS_UID_VAL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2A0 | OTP_SYS_UID_CPL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2A4 | OTP_SYS_UID_CPL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2A8 | OTP_SYS_UID_CPL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2AC | OTP_SYS_UID_CPL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2B0 | OTP_SYS_UID_CPL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2B4 | OTP_SYS_UID_CPL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2B8 | OTP_SYS_UID_CPL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2BC | OTP_SYS_UID_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2C0 | OTP_CLASS_KEY_VAL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2C4 | OTP_CLASS_KEY_VAL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2C8 | OTP_CLASS_KEY_VAL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2CC | OTP_CLASS_KEY_VAL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2D0 | OTP_CLASS_KEY_VAL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2D4 | OTP_CLASS_KEY_VAL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2D8 | OTP_CLASS_KEY_VAL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2DC | OTP_CLASS_KEY_VAL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2E0 | OTP_CLASS_KEY_CPL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2E4 | OTP_CLASS_KEY_CPL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2E8 | OTP_CLASS_KEY_CPL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2EC | OTP_CLASS_KEY_CPL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2F0 | OTP_CLASS_KEY_CPL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2F4 | OTP_CLASS_KEY_CPL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2F8 | OTP_CLASS_KEY_CPL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x2FC | OTP_CLASS_KEY_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x300 | OTP_READ_LOCK | RW a| OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK \| OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.
-| 0x304 | OTP_CHANGE_STATUS | RW a| OTP field change status. A bit is set when the corresponding field's decoded value changes. Sticky, write 1 to clear. Valid after IRQ_STATUS.OTP_CHANGE fires.
-| 0x308 | OTP_READ_LOCK_COLD | RW a| OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK \| OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.
-| 0x400 | OTP_SEP_CHIPLET_ID_VAL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x404 | OTP_SEP_CHIPLET_ID_VAL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x408 | OTP_SEP_CHIPLET_ID_VAL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x40C | OTP_SEP_CHIPLET_ID_VAL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x410 | OTP_SEP_CHIPLET_ID_VAL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x414 | OTP_SEP_CHIPLET_ID_VAL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x418 | OTP_SEP_CHIPLET_ID_VAL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x41C | OTP_SEP_CHIPLET_ID_VAL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x420 | OTP_SEP_CHIPLET_ID_CPL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x424 | OTP_SEP_CHIPLET_ID_CPL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x428 | OTP_SEP_CHIPLET_ID_CPL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x42C | OTP_SEP_CHIPLET_ID_CPL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x430 | OTP_SEP_CHIPLET_ID_CPL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x434 | OTP_SEP_CHIPLET_ID_CPL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x438 | OTP_SEP_CHIPLET_ID_CPL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x43C | OTP_SEP_CHIPLET_ID_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x440 | OTP_SEP_SIP_ID_VAL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x444 | OTP_SEP_SIP_ID_VAL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x448 | OTP_SEP_SIP_ID_VAL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x44C | OTP_SEP_SIP_ID_VAL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x450 | OTP_SEP_SIP_ID_VAL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x454 | OTP_SEP_SIP_ID_VAL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x458 | OTP_SEP_SIP_ID_VAL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x45C | OTP_SEP_SIP_ID_VAL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x460 | OTP_SEP_SIP_ID_CPL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x464 | OTP_SEP_SIP_ID_CPL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x468 | OTP_SEP_SIP_ID_CPL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x46C | OTP_SEP_SIP_ID_CPL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x470 | OTP_SEP_SIP_ID_CPL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x474 | OTP_SEP_SIP_ID_CPL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x478 | OTP_SEP_SIP_ID_CPL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x47C | OTP_SEP_SIP_ID_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x480 | OTP_SEP_SYS_ID_VAL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x484 | OTP_SEP_SYS_ID_VAL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x488 | OTP_SEP_SYS_ID_VAL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x48C | OTP_SEP_SYS_ID_VAL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x490 | OTP_SEP_SYS_ID_VAL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x494 | OTP_SEP_SYS_ID_VAL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x498 | OTP_SEP_SYS_ID_VAL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x49C | OTP_SEP_SYS_ID_VAL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4A0 | OTP_SEP_SYS_ID_CPL_0 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4A4 | OTP_SEP_SYS_ID_CPL_1 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4A8 | OTP_SEP_SYS_ID_CPL_2 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4AC | OTP_SEP_SYS_ID_CPL_3 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4B0 | OTP_SEP_SYS_ID_CPL_4 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4B4 | OTP_SEP_SYS_ID_CPL_5 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4B8 | OTP_SEP_SYS_ID_CPL_6 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
-| 0x4BC | OTP_SEP_SYS_ID_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x0 | <<reg-{regmap-instance}-km_csr-VERSION,VERSION>> | R a| Hardware version register (semantic versioning: major.minor.patch)
+| 0x4 | <<reg-{regmap-instance}-km_csr-CTRL,CTRL>> | R a| Control register (reserved for future use)
+| 0x8 | <<reg-{regmap-instance}-km_csr-SOFT_RST_CODE,SOFT_RST_CODE>> | RW a| Software reset code register. Write 0x53525354 ('SRST') to trigger soft reset. Any other value has no effect.
+| 0xC | <<reg-{regmap-instance}-km_csr-IRQ_STATUS,IRQ_STATUS>> | RW a| Interrupt status register. Sticky bits cleared by writing 1.
+| 0x10 | <<reg-{regmap-instance}-km_csr-IRQ_ENABLE,IRQ_ENABLE>> | RW a| Interrupt enable/mask register
+| 0x14 | <<reg-{regmap-instance}-km_csr-SCRAMBLER_KEY,SCRAMBLER_KEY>> | RW a| 32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.
+| 0x18 | <<reg-{regmap-instance}-km_csr-SCRAMBLER_CTRL,SCRAMBLER_CTRL>> | RW a| Scrambler control register
+| 0x1C | <<reg-{regmap-instance}-km_csr-SRAM_LOCK,SRAM_LOCK>> | RW a| SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
+| 0x20 | <<reg-{regmap-instance}-km_csr-IRQ_SET,IRQ_SET>> | W a| Interrupt set register. Write 1 to trigger corresponding interrupt (for ISR testing). Write-only, reads return 0.
+| 0x24 | <<reg-{regmap-instance}-km_csr-SRAM_WRITE_LOCK_VIOLATION,SRAM_WRITE_LOCK_VIOLATION>> | RW a| Which SRAM region(s) had write attempts while locked. Bit[i]=region i. Sticky, write 1 to clear each bit.
+| 0x28 | <<reg-{regmap-instance}-km_csr-RECOVERABLE_ERR,RECOVERABLE_ERR>> | RW a| Recoverable error status. Firmware writes 1 to set (after recovering in ISR), writes 0 to clear (e.g. when SEP requests clear). Drives recoverable error event output.
+| 0x2C | <<reg-{regmap-instance}-km_csr-BOOT_STATUS,BOOT_STATUS>> | RW a| Boot status. Firmware writes 1 to COLD_BOOT_DONE after cold-boot init completes; bit remains set until next cold reset.
+| 0x30 | <<reg-{regmap-instance}-km_csr-OTP_LIFE_CYCLE,OTP_LIFE_CYCLE>> | R a| Life cycle state. 8-bit (4-bit value differentially encoded). Read-through from OTP port; no reset.
+| 0x34 | <<reg-{regmap-instance}-km_csr-OTP_DEMOTION_STATE,OTP_DEMOTION_STATE>> | R a| Demotion state. 2-bit, differentially encoded. Read-through from OTP port; no reset.
+| 0x38 | <<reg-{regmap-instance}-km_csr-SRAM_EXEC_MODE,SRAM_EXEC_MODE>> | RW a| Execute-permission whitelist mode. Write-1-only (woset); cleared by warm or cold reset. 0=ROM executable; 1=write-locked SRAM regions executable, and the ROM lockout is armed. Set by ROM stack-less handover immediately before jumping to mutable firmware.
+| 0xB8 | <<reg-{regmap-instance}-km_csr-IRQ_ENTRY_ADDR,IRQ_ENTRY_ADDR>> | RW a| Effective IRQ entry address for subsequent interrupts. Writable while unlocked; any 32-bit value accepted.
+| 0xBC | <<reg-{regmap-instance}-km_csr-IRQ_ENTRY_LOCK,IRQ_ENTRY_LOCK>> | RW a| Write-one-only lock for IRQ_ENTRY_ADDR. Separate readable register; cleared only on KM reset.
+| 0x100 | <<reg-{regmap-instance}-km_csr-VUART_TX,VUART_TX>> | RW a| Virtual UART transmit register. Write a byte to send to testbench. DATA_VALID is set on write and self-clears.
+| 0x104 | <<reg-{regmap-instance}-km_csr-VUART_RX,VUART_RX>> | R a| Virtual UART receive register. Testbench writes bytes here for firmware to read.
+| 0x108 | <<reg-{regmap-instance}-km_csr-VUART_STATUS,VUART_STATUS>> | R a| Virtual UART status register for flow control
+| 0x110 | <<reg-{regmap-instance}-km_csr-TB_RESULT,TB_RESULT>> | RW a| Test result register. Firmware writes 0=fail, 1=pass.
+| 0x114 | <<reg-{regmap-instance}-km_csr-TB_SIGNATURE,TB_SIGNATURE>> | RW a| Test completion signature. Firmware writes 0x600D600D (pass) or 0xBADBADBA (fail).
+| 0x118 | <<reg-{regmap-instance}-km_csr-TB_ERRCODE,TB_ERRCODE>> | RW a| Test error code register. Firmware writes optional error code for debugging.
+| 0x11C | <<reg-{regmap-instance}-km_csr-TB_SUBTEST,TB_SUBTEST>> | RW a| Current subtest number register. Firmware increments for each subtest.
+| 0x120 | <<reg-{regmap-instance}-km_csr-TB_CMD,TB_CMD>> | RW a| Testbench command register. Firmware writes command, testbench reads and clears.
+| 0x124 | <<reg-{regmap-instance}-km_csr-TB_CMD_ARG,TB_CMD_ARG>> | RW a| Testbench command argument register. Firmware writes optional argument.
+| 0x128 | <<reg-{regmap-instance}-km_csr-TB_CMD_STATUS,TB_CMD_STATUS>> | RW a| Testbench command status register. Testbench writes status, firmware reads.
+| 0x12C | <<reg-{regmap-instance}-km_csr-TB_CMD_RESULT,TB_CMD_RESULT>> | R a| Testbench command result register. Testbench writes result value.
+| 0x1FC | <<reg-{regmap-instance}-km_csr-DEBUG,DEBUG>> | R a| Debug register with known constant value for verification
+| 0x200 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_0,OTP_CHIPLET_UID_VAL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x204 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_1,OTP_CHIPLET_UID_VAL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x208 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_2,OTP_CHIPLET_UID_VAL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x20C | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_3,OTP_CHIPLET_UID_VAL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x210 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_4,OTP_CHIPLET_UID_VAL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x214 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_5,OTP_CHIPLET_UID_VAL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x218 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_6,OTP_CHIPLET_UID_VAL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x21C | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_7,OTP_CHIPLET_UID_VAL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x220 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_0,OTP_CHIPLET_UID_CPL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x224 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_1,OTP_CHIPLET_UID_CPL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x228 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_2,OTP_CHIPLET_UID_CPL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x22C | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_3,OTP_CHIPLET_UID_CPL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x230 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_4,OTP_CHIPLET_UID_CPL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x234 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_5,OTP_CHIPLET_UID_CPL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x238 | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_6,OTP_CHIPLET_UID_CPL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x23C | <<reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_7,OTP_CHIPLET_UID_CPL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x240 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_0,OTP_SIP_UID_VAL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x244 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_1,OTP_SIP_UID_VAL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x248 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_2,OTP_SIP_UID_VAL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x24C | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_3,OTP_SIP_UID_VAL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x250 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_4,OTP_SIP_UID_VAL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x254 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_5,OTP_SIP_UID_VAL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x258 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_6,OTP_SIP_UID_VAL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x25C | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_7,OTP_SIP_UID_VAL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x260 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_0,OTP_SIP_UID_CPL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x264 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_1,OTP_SIP_UID_CPL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x268 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_2,OTP_SIP_UID_CPL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x26C | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_3,OTP_SIP_UID_CPL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x270 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_4,OTP_SIP_UID_CPL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x274 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_5,OTP_SIP_UID_CPL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x278 | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_6,OTP_SIP_UID_CPL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x27C | <<reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_7,OTP_SIP_UID_CPL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x280 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_0,OTP_SYS_UID_VAL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x284 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_1,OTP_SYS_UID_VAL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x288 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_2,OTP_SYS_UID_VAL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x28C | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_3,OTP_SYS_UID_VAL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x290 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_4,OTP_SYS_UID_VAL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x294 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_5,OTP_SYS_UID_VAL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x298 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_6,OTP_SYS_UID_VAL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x29C | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_7,OTP_SYS_UID_VAL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2A0 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_0,OTP_SYS_UID_CPL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2A4 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_1,OTP_SYS_UID_CPL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2A8 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_2,OTP_SYS_UID_CPL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2AC | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_3,OTP_SYS_UID_CPL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2B0 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_4,OTP_SYS_UID_CPL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2B4 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_5,OTP_SYS_UID_CPL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2B8 | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_6,OTP_SYS_UID_CPL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2BC | <<reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_7,OTP_SYS_UID_CPL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2C0 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_0,OTP_CLASS_KEY_VAL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2C4 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_1,OTP_CLASS_KEY_VAL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2C8 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_2,OTP_CLASS_KEY_VAL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2CC | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_3,OTP_CLASS_KEY_VAL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2D0 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_4,OTP_CLASS_KEY_VAL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2D4 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_5,OTP_CLASS_KEY_VAL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2D8 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_6,OTP_CLASS_KEY_VAL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2DC | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_7,OTP_CLASS_KEY_VAL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2E0 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_0,OTP_CLASS_KEY_CPL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2E4 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_1,OTP_CLASS_KEY_CPL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2E8 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_2,OTP_CLASS_KEY_CPL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2EC | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_3,OTP_CLASS_KEY_CPL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2F0 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_4,OTP_CLASS_KEY_CPL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2F4 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_5,OTP_CLASS_KEY_CPL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2F8 | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_6,OTP_CLASS_KEY_CPL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x2FC | <<reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_7,OTP_CLASS_KEY_CPL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x300 | <<reg-{regmap-instance}-km_csr-OTP_READ_LOCK,OTP_READ_LOCK>> | RW a| OTP field warm-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK \| OTP_READ_LOCK_COLD). Warm-reset domain: cleared by warm or cold reset.
+| 0x304 | <<reg-{regmap-instance}-km_csr-OTP_CHANGE_STATUS,OTP_CHANGE_STATUS>> | RW a| OTP field change status. A bit is set when the corresponding field's decoded value changes. Sticky, write 1 to clear. Valid after IRQ_STATUS.OTP_CHANGE fires.
+| 0x308 | <<reg-{regmap-instance}-km_csr-OTP_READ_LOCK_COLD,OTP_READ_LOCK_COLD>> | RW a| OTP field cold-reset-domain read-lock bits. Write 1 to set; writing 0 has no effect. Locked reads of the corresponding OTP field return zero (effective lock = OTP_READ_LOCK \| OTP_READ_LOCK_COLD). Cold-reset domain: survives warm reset.
+| 0x400 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_0,OTP_SEP_CHIPLET_ID_VAL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x404 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_1,OTP_SEP_CHIPLET_ID_VAL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x408 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_2,OTP_SEP_CHIPLET_ID_VAL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x40C | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_3,OTP_SEP_CHIPLET_ID_VAL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x410 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_4,OTP_SEP_CHIPLET_ID_VAL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x414 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_5,OTP_SEP_CHIPLET_ID_VAL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x418 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_6,OTP_SEP_CHIPLET_ID_VAL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x41C | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_7,OTP_SEP_CHIPLET_ID_VAL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x420 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_0,OTP_SEP_CHIPLET_ID_CPL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x424 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_1,OTP_SEP_CHIPLET_ID_CPL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x428 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_2,OTP_SEP_CHIPLET_ID_CPL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x42C | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_3,OTP_SEP_CHIPLET_ID_CPL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x430 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_4,OTP_SEP_CHIPLET_ID_CPL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x434 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_5,OTP_SEP_CHIPLET_ID_CPL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x438 | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_6,OTP_SEP_CHIPLET_ID_CPL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x43C | <<reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_7,OTP_SEP_CHIPLET_ID_CPL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x440 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_0,OTP_SEP_SIP_ID_VAL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x444 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_1,OTP_SEP_SIP_ID_VAL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x448 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_2,OTP_SEP_SIP_ID_VAL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x44C | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_3,OTP_SEP_SIP_ID_VAL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x450 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_4,OTP_SEP_SIP_ID_VAL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x454 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_5,OTP_SEP_SIP_ID_VAL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x458 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_6,OTP_SEP_SIP_ID_VAL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x45C | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_7,OTP_SEP_SIP_ID_VAL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x460 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_0,OTP_SEP_SIP_ID_CPL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x464 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_1,OTP_SEP_SIP_ID_CPL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x468 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_2,OTP_SEP_SIP_ID_CPL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x46C | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_3,OTP_SEP_SIP_ID_CPL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x470 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_4,OTP_SEP_SIP_ID_CPL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x474 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_5,OTP_SEP_SIP_ID_CPL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x478 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_6,OTP_SEP_SIP_ID_CPL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x47C | <<reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_7,OTP_SEP_SIP_ID_CPL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x480 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_0,OTP_SEP_SYS_ID_VAL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x484 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_1,OTP_SEP_SYS_ID_VAL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x488 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_2,OTP_SEP_SYS_ID_VAL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x48C | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_3,OTP_SEP_SYS_ID_VAL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x490 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_4,OTP_SEP_SYS_ID_VAL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x494 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_5,OTP_SEP_SYS_ID_VAL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x498 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_6,OTP_SEP_SYS_ID_VAL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x49C | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_7,OTP_SEP_SYS_ID_VAL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4A0 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_0,OTP_SEP_SYS_ID_CPL_0>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4A4 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_1,OTP_SEP_SYS_ID_CPL_1>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4A8 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_2,OTP_SEP_SYS_ID_CPL_2>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4AC | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_3,OTP_SEP_SYS_ID_CPL_3>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4B0 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_4,OTP_SEP_SYS_ID_CPL_4>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4B4 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_5,OTP_SEP_SYS_ID_CPL_5>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4B8 | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_6,OTP_SEP_SYS_ID_CPL_6>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
+| 0x4BC | <<reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_7,OTP_SEP_SYS_ID_CPL_7>> | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
 |===
 
+[#reg-{regmap-instance}-km_csr-VERSION]
+=== VERSION
+
 [cols="1,3,1,1,6", options="header"]
-.VERSION Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `rsvd` | R | 0x0 a| Reserved; must read as zero
@@ -161,22 +167,28 @@
 | 7:0 | `patch` | R | 0x0 a| Patch version number
 |===
 
+[#reg-{regmap-instance}-km_csr-CTRL]
+=== CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `rsvd` | R | 0x0 a| Reserved
 |===
 
+[#reg-{regmap-instance}-km_csr-SOFT_RST_CODE]
+=== SOFT_RST_CODE
+
 [cols="1,3,1,1,6", options="header"]
-.SOFT_RST_CODE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `code` | RW | 0x0 a| 32-bit reset code. Write 0x53525354 to trigger soft reset.
 |===
 
+[#reg-{regmap-instance}-km_csr-IRQ_STATUS]
+=== IRQ_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.IRQ_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `rsvd` | R | 0x0 a| Reserved
@@ -194,8 +206,10 @@
 | 0 | `rom_parity_err` | RW | 0x0 a| ROM parity error detected. Sticky, write 1 to clear.
 |===
 
+[#reg-{regmap-instance}-km_csr-IRQ_ENABLE]
+=== IRQ_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.IRQ_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `rsvd` | R | 0x0 a| Reserved
@@ -213,15 +227,19 @@
 | 0 | `rom_parity_en` | RW | 0x0 a| Enable ROM parity error interrupt
 |===
 
+[#reg-{regmap-instance}-km_csr-SCRAMBLER_KEY]
+=== SCRAMBLER_KEY
+
 [cols="1,3,1,1,6", options="header"]
-.SCRAMBLER_KEY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `key` | RW | - a| Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0). No reset for security; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-SCRAMBLER_CTRL]
+=== SCRAMBLER_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.SCRAMBLER_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `rsvd` | R | 0x0 a| Reserved
@@ -229,15 +247,19 @@
 | 0 | `enable` | RW | 0x0 a| Enable SRAM scrambling. When 0, data passes through unmodified. Locked when LOCK=1 (security requirement).
 |===
 
+[#reg-{regmap-instance}-km_csr-SRAM_LOCK]
+=== SRAM_LOCK
+
 [cols="1,3,1,1,6", options="header"]
-.SRAM_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `lock_bits` | RW | 0x0 a| One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
+[#reg-{regmap-instance}-km_csr-IRQ_SET]
+=== IRQ_SET
+
 [cols="1,3,1,1,6", options="header"]
-.IRQ_SET Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `rsvd` | W | 0x0 a| Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
@@ -255,39 +277,49 @@
 | 0 | `rom_parity_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
 |===
 
+[#reg-{regmap-instance}-km_csr-SRAM_WRITE_LOCK_VIOLATION]
+=== SRAM_WRITE_LOCK_VIOLATION
+
 [cols="1,3,1,1,6", options="header"]
-.SRAM_WRITE_LOCK_VIOLATION Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `violation_bits` | RW | 0x0 a| Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
 |===
 
+[#reg-{regmap-instance}-km_csr-RECOVERABLE_ERR]
+=== RECOVERABLE_ERR
+
 [cols="1,3,1,1,6", options="header"]
-.RECOVERABLE_ERR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
 | 0 | `recoverable_err` | RW | 0x0 a| 1 = recoverable fault occurred and was handled by ISR; 0 = clear. Write 1 to set, write 0 to clear.
 |===
 
+[#reg-{regmap-instance}-km_csr-BOOT_STATUS]
+=== BOOT_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.BOOT_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
 | 0 | `cold_boot_done` | RW | 0x0 a| Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_LIFE_CYCLE]
+=== OTP_LIFE_CYCLE
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_LIFE_CYCLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `rsvd` | R | 0x0 a| Reserved
 | 7:0 | `value` | R | - a| 8-bit life cycle state from OTP. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_DEMOTION_STATE]
+=== OTP_DEMOTION_STATE
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_DEMOTION_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `rsvd` | R | 0x0 a| Reserved
@@ -295,31 +327,39 @@
 | 1:0 | `demote_1_value` | R | - a| 2-bit demotion 1 state from OTP. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-SRAM_EXEC_MODE]
+=== SRAM_EXEC_MODE
+
 [cols="1,3,1,1,6", options="header"]
-.SRAM_EXEC_MODE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
 | 0 | `enable` | RW | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
+[#reg-{regmap-instance}-km_csr-IRQ_ENTRY_ADDR]
+=== IRQ_ENTRY_ADDR
+
 [cols="1,3,1,1,6", options="header"]
-.IRQ_ENTRY_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `addr` | RW | 0x10 a| IRQ handler entry PC. Reset matches ROM vector at 0x10. When locked, SW writes do not update storage.
 |===
 
+[#reg-{regmap-instance}-km_csr-IRQ_ENTRY_LOCK]
+=== IRQ_ENTRY_LOCK
+
 [cols="1,3,1,1,6", options="header"]
-.IRQ_ENTRY_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved; reads as zero.
 | 0 | `lock` | RW | 0x0 a| Write 1 to set; write 0 has no effect; sticky until reset.
 |===
 
+[#reg-{regmap-instance}-km_csr-VUART_TX]
+=== VUART_TX
+
 [cols="1,3,1,1,6", options="header"]
-.VUART_TX Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `data_valid` | RW | 0x0 a| Data valid strobe. Set by firmware on write, cleared by hardware after one cycle.
@@ -327,8 +367,10 @@
 | 7:0 | `tx_byte` | RW | 0x0 a| Byte to transmit (write to send character to testbench)
 |===
 
+[#reg-{regmap-instance}-km_csr-VUART_RX]
+=== VUART_RX
+
 [cols="1,3,1,1,6", options="header"]
-.VUART_RX Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `data_valid` | R | 0x0 a| RX data valid. Set by testbench, cleared by firmware read.
@@ -336,8 +378,10 @@
 | 7:0 | `rx_byte` | R | 0x0 a| Received byte from testbench
 |===
 
+[#reg-{regmap-instance}-km_csr-VUART_STATUS]
+=== VUART_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.VUART_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `rsvd` | R | 0x0 a| Reserved
@@ -346,519 +390,667 @@
 | 0 | `tx_ready` | R | 0x1 a| TX ready to accept data (always 1 in simulation)
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_RESULT]
+=== TB_RESULT
+
 [cols="1,3,1,1,6", options="header"]
-.TB_RESULT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `result` | RW | 0x0 a| Test result: 0=fail, 1=pass
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_SIGNATURE]
+=== TB_SIGNATURE
+
 [cols="1,3,1,1,6", options="header"]
-.TB_SIGNATURE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `signature` | RW | 0x0 a| Completion signature value
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_ERRCODE]
+=== TB_ERRCODE
+
 [cols="1,3,1,1,6", options="header"]
-.TB_ERRCODE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `errcode` | RW | 0x0 a| Error code value
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_SUBTEST]
+=== TB_SUBTEST
+
 [cols="1,3,1,1,6", options="header"]
-.TB_SUBTEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `subtest` | RW | 0x0 a| Current subtest number
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_CMD]
+=== TB_CMD
+
 [cols="1,3,1,1,6", options="header"]
-.TB_CMD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `cmd` | RW | 0x0 a| Command code (0=NOP, 1=ROM_PARITY_EN, 2=ROM_PARITY_DIS, 3=SRAM_PARITY_EN, 4=SRAM_PARITY_DIS)
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_CMD_ARG]
+=== TB_CMD_ARG
+
 [cols="1,3,1,1,6", options="header"]
-.TB_CMD_ARG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `arg` | RW | 0x0 a| Command argument value
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_CMD_STATUS]
+=== TB_CMD_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.TB_CMD_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `status` | RW | 0x0 a| Command status: 0=IDLE, 1=ACK, 0xFFFFFFFF=ERR
 |===
 
+[#reg-{regmap-instance}-km_csr-TB_CMD_RESULT]
+=== TB_CMD_RESULT
+
 [cols="1,3,1,1,6", options="header"]
-.TB_CMD_RESULT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `result` | R | 0x0 a| Command result value
 |===
 
+[#reg-{regmap-instance}-km_csr-DEBUG]
+=== DEBUG
+
 [cols="1,3,1,1,6", options="header"]
-.DEBUG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `magic` | R | 0xCAFEBEEF a| Magic constant: 0xCAFEBEEF
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_0]
+=== OTP_CHIPLET_UID_VAL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_1]
+=== OTP_CHIPLET_UID_VAL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_2]
+=== OTP_CHIPLET_UID_VAL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_3]
+=== OTP_CHIPLET_UID_VAL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_4]
+=== OTP_CHIPLET_UID_VAL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_5]
+=== OTP_CHIPLET_UID_VAL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_6]
+=== OTP_CHIPLET_UID_VAL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_VAL_7]
+=== OTP_CHIPLET_UID_VAL_7
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_0]
+=== OTP_CHIPLET_UID_CPL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_1]
+=== OTP_CHIPLET_UID_CPL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_2]
+=== OTP_CHIPLET_UID_CPL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_3]
+=== OTP_CHIPLET_UID_CPL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_4]
+=== OTP_CHIPLET_UID_CPL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_5]
+=== OTP_CHIPLET_UID_CPL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_6]
+=== OTP_CHIPLET_UID_CPL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CHIPLET_UID_CPL_7]
+=== OTP_CHIPLET_UID_CPL_7
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHIPLET_UID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_0]
+=== OTP_SIP_UID_VAL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_1]
+=== OTP_SIP_UID_VAL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_2]
+=== OTP_SIP_UID_VAL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_3]
+=== OTP_SIP_UID_VAL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_4]
+=== OTP_SIP_UID_VAL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_5]
+=== OTP_SIP_UID_VAL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_6]
+=== OTP_SIP_UID_VAL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_VAL_7]
+=== OTP_SIP_UID_VAL_7
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_0]
+=== OTP_SIP_UID_CPL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_1]
+=== OTP_SIP_UID_CPL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_2]
+=== OTP_SIP_UID_CPL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_3]
+=== OTP_SIP_UID_CPL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_4]
+=== OTP_SIP_UID_CPL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_5]
+=== OTP_SIP_UID_CPL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_6]
+=== OTP_SIP_UID_CPL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SIP_UID_CPL_7]
+=== OTP_SIP_UID_CPL_7
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SIP_UID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_0]
+=== OTP_SYS_UID_VAL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_1]
+=== OTP_SYS_UID_VAL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_2]
+=== OTP_SYS_UID_VAL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_3]
+=== OTP_SYS_UID_VAL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_4]
+=== OTP_SYS_UID_VAL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_5]
+=== OTP_SYS_UID_VAL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_6]
+=== OTP_SYS_UID_VAL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_VAL_7]
+=== OTP_SYS_UID_VAL_7
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_0]
+=== OTP_SYS_UID_CPL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_1]
+=== OTP_SYS_UID_CPL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_2]
+=== OTP_SYS_UID_CPL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_3]
+=== OTP_SYS_UID_CPL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_4]
+=== OTP_SYS_UID_CPL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_5]
+=== OTP_SYS_UID_CPL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_6]
+=== OTP_SYS_UID_CPL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_SYS_UID_CPL_7]
+=== OTP_SYS_UID_CPL_7
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_SYS_UID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_0]
+=== OTP_CLASS_KEY_VAL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_1]
+=== OTP_CLASS_KEY_VAL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_2]
+=== OTP_CLASS_KEY_VAL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_3]
+=== OTP_CLASS_KEY_VAL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_4]
+=== OTP_CLASS_KEY_VAL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_5]
+=== OTP_CLASS_KEY_VAL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_6]
+=== OTP_CLASS_KEY_VAL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_VAL_7]
+=== OTP_CLASS_KEY_VAL_7
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_0]
+=== OTP_CLASS_KEY_CPL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_1]
+=== OTP_CLASS_KEY_CPL_1
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_2]
+=== OTP_CLASS_KEY_CPL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_3]
+=== OTP_CLASS_KEY_CPL_3
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_4]
+=== OTP_CLASS_KEY_CPL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_5]
+=== OTP_CLASS_KEY_CPL_5
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_6]
+=== OTP_CLASS_KEY_CPL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CLASS_KEY_CPL_7]
+=== OTP_CLASS_KEY_CPL_7
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CLASS_KEY_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
+
+[#reg-{regmap-instance}-km_csr-OTP_READ_LOCK]
+=== OTP_READ_LOCK
 
 [cols="1,3,1,1,6", options="header"]
-.OTP_READ_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
@@ -873,8 +1065,10 @@
 | 0 | `life_cycle` | RW | 0x0 a| Lock OTP_LIFE_CYCLE reads (returns zero when locked)
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_CHANGE_STATUS]
+=== OTP_CHANGE_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_CHANGE_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
@@ -889,8 +1083,10 @@
 | 0 | `life_cycle` | RW | 0x0 a| OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_READ_LOCK_COLD]
+=== OTP_READ_LOCK_COLD
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_READ_LOCK_COLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
@@ -905,337 +1101,433 @@
 | 0 | `life_cycle` | RW | 0x0 a| Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle \| OTP_READ_LOCK_COLD.life_cycle.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_0]
+=== OTP_SEP_CHIPLET_ID_VAL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_1]
+=== OTP_SEP_CHIPLET_ID_VAL_1
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_2]
+=== OTP_SEP_CHIPLET_ID_VAL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_3]
+=== OTP_SEP_CHIPLET_ID_VAL_3
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_4]
+=== OTP_SEP_CHIPLET_ID_VAL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_5]
+=== OTP_SEP_CHIPLET_ID_VAL_5
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_6]
+=== OTP_SEP_CHIPLET_ID_VAL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_7]
+=== OTP_SEP_CHIPLET_ID_VAL_7
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_0]
+=== OTP_SEP_CHIPLET_ID_CPL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_1]
+=== OTP_SEP_CHIPLET_ID_CPL_1
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_2]
+=== OTP_SEP_CHIPLET_ID_CPL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_3]
+=== OTP_SEP_CHIPLET_ID_CPL_3
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_4]
+=== OTP_SEP_CHIPLET_ID_CPL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_5]
+=== OTP_SEP_CHIPLET_ID_CPL_5
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_6]
+=== OTP_SEP_CHIPLET_ID_CPL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_CPL_7]
+=== OTP_SEP_CHIPLET_ID_CPL_7
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_CHIPLET_ID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_0]
+=== OTP_SEP_SIP_ID_VAL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_1]
+=== OTP_SEP_SIP_ID_VAL_1
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_2]
+=== OTP_SEP_SIP_ID_VAL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_3]
+=== OTP_SEP_SIP_ID_VAL_3
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_4]
+=== OTP_SEP_SIP_ID_VAL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_5]
+=== OTP_SEP_SIP_ID_VAL_5
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_6]
+=== OTP_SEP_SIP_ID_VAL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_VAL_7]
+=== OTP_SEP_SIP_ID_VAL_7
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_0]
+=== OTP_SEP_SIP_ID_CPL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_1]
+=== OTP_SEP_SIP_ID_CPL_1
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_2]
+=== OTP_SEP_SIP_ID_CPL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_3]
+=== OTP_SEP_SIP_ID_CPL_3
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_4]
+=== OTP_SEP_SIP_ID_CPL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_5]
+=== OTP_SEP_SIP_ID_CPL_5
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_6]
+=== OTP_SEP_SIP_ID_CPL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SIP_ID_CPL_7]
+=== OTP_SEP_SIP_ID_CPL_7
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SIP_ID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_0]
+=== OTP_SEP_SYS_ID_VAL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_1]
+=== OTP_SEP_SYS_ID_VAL_1
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_2]
+=== OTP_SEP_SYS_ID_VAL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_3]
+=== OTP_SEP_SYS_ID_VAL_3
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_4]
+=== OTP_SEP_SYS_ID_VAL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_5]
+=== OTP_SEP_SYS_ID_VAL_5
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_6]
+=== OTP_SEP_SYS_ID_VAL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_VAL_7]
+=== OTP_SEP_SYS_ID_VAL_7
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_0]
+=== OTP_SEP_SYS_ID_CPL_0
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_1]
+=== OTP_SEP_SYS_ID_CPL_1
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_2]
+=== OTP_SEP_SYS_ID_CPL_2
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_3]
+=== OTP_SEP_SYS_ID_CPL_3
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_4]
+=== OTP_SEP_SYS_ID_CPL_4
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_5]
+=== OTP_SEP_SYS_ID_CPL_5
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_6]
+=== OTP_SEP_SYS_ID_CPL_6
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
+[#reg-{regmap-instance}-km_csr-OTP_SEP_SYS_ID_CPL_7]
+=== OTP_SEP_SYS_ID_CPL_7
+
 [cols="1,3,1,1,6", options="header"]
-.OTP_SEP_SYS_ID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.

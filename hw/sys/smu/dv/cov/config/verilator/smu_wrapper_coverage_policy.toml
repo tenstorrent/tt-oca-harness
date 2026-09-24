@@ -7,22 +7,27 @@
 # graded run left unhit, each carried with a category, a rationale, an owner
 # and an expiry. Regenerate them from a fresh coverage-details.json rather
 # than editing them by hand; this header is the only part written by a person.
-# They were measured from `--dut smu --items hosted --cov` on the single
-# `compile_smu_chiplet` target.
+# They were measured from `--dut smu --items all --cov` on the single
+# `compile_smu_chiplet` target (102 leaves, Verilator 5.050:
+# user 98 of 107 points hit, 98.00 effective after the seven rows below).
+# `all` is the coverage set, as it is for SEP; `hosted` is its toolchain-free
+# subset and leaves the SEP firmware and lifecycle stimulus out. The four
+# `g_sep` rows are the points that measurement left unhit: one
+# unreachable from the wrapper boundary, two waiting on a SEP-firmware leaf,
+# one whose model wants the last-word form first.
 #
 # No floor is set on the `user` family; one is set only from a measured
 # weekly `--cov` database, by the SMU DV owner, together with
 # `max_unclassified_points` -- see SMU_COVERAGE_POLICY.adoc. The effective
-# percentage is still reported, just not gated. The wrapper interface toggle
-# rate is not a runner family either: cov/interface_toggle.py folds the
-# bit-edge toggle points of smu_wrapper's ports into one figure per port.
+# percentage is still reported, just not gated. The Verilator set does not
+# collect toggle; the wrapper's toggle is graded on the VCS flow by
+# ../vcs/smu_wrapper_coverage_policy.toml.
 #
 # The wrapper has one target, `compile_smu_chiplet`, with SEP elaborated. An
 # accepted waiver whose selector matches a COVERED point is a hard
 # ConfigError, so a hole may only name a point the graded database leaves
-# unhit. The `g_sep` generate blocks in cov/sv/*_fcov.sv keep the points that
-# need SEP out of the SEP=0 block bench (`--dut smu_block`), which has its own
-# policy file.
+# unhit. The `g_sep` generate blocks in cov/sv/*_fcov.sv elaborate the points
+# that need SEP only when SEP is present.
 #
 # Three mechanisms, do not confuse them:
 #
@@ -35,9 +40,8 @@
 #                              selectors include `hierarchy`, which the .vlt
 #                              cannot express.
 #
-# Two DUTs share this DV root, so the policy is named per DUT rather than
-# discovered at cov/config/verilator/coverage_policy.toml; the block bench
-# carries smu_block_coverage_policy.toml.
+# smu_sim_cfg.toml names this file explicitly rather than relying on the
+# cov/config/verilator/coverage_policy.toml discovery.
 
 schema_version = 1
 dut = "smu"
@@ -96,3 +100,93 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_rresp_exokay"
+
+[[holes]]
+id = "fcov-smu-c_lc_sigint_err"
+title = "lc sigint err"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "unreachable from this bench boundary: lc_sigint_err rises only when the lifecycle state's differential encoding disagrees with itself, which needs a fault injected inside the SEP; the wrapper bench has no injector on that path and the SEP bench grades it, the fact the toggle exclusion file records for lc_sigint_err_o (SMU-BOOT-LC.S3:lc-sigint-err)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_boot_fcov.g_sep__DOT__c_lc_sigint_err"
+
+[[holes]]
+id = "fcov-smu-c_map_sep_base_programmed"
+title = "map sep base programmed"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - SEP_GLOBAL_BASE_ADDR is a SEP CPU_CTRL register that only SEP firmware writes; no image the all group loads programs it, and the wrapper has no other path to sep_global_base_o. The anchor is a SEP-firmware leaf on this bench, smu_sep_remap_test being the nearest (SMU-XBAR-MAP.S4:map-sep-base-programmed)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.g_sep__DOT__c_map_sep_base_programmed"
+
+[[holes]]
+id = "fcov-smu-c_alias_base_address_remapped"
+title = "alias base address remapped"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - the point needs a SEP transfer at the alias window's first byte, SEP-view 0x4000_0000, which is SMC WDT0's first register; the SEP firmware images the all group loads use the CPU_CTRL and SRAM aliases above it (sep_smc_bringup.h). The anchor is a SEP-firmware leaf on this bench, smu_sep_bidirect_test being the nearest (SMU-ALIAS.S2:alias-base-address-remapped)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_alias_fcov.g_sep__DOT__c_alias_base_address_remapped"
+
+[[holes]]
+id = "fcov-smu-c_alias_top_address_remapped"
+title = "alias top address remapped"
+category = "coverage_model_gap"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "the point compares the transfer address with the window's last byte, SEP-view 0x7FFF_FFFF, which only a byte-sized access can present; an aligned word access to the last word starts at 0x7FFF_FFF8 and never matches. The window's top also lies past every SMC-side mapping, so the access answers DECERR. The point wants the last-word form smc_map_fcov uses (in_win over the last eight bytes) before a leaf can be asked to walk it (SMU-ALIAS.S2:alias-top-address-remapped)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_alias_fcov.g_sep__DOT__c_alias_top_address_remapped"
+
+[[holes]]
+id = "fcov-smu-c_map_smc_size_zero"
+title = "c map smc size zero"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withheld pending a design answer: smu_axi_xbar forms the SMC crossbar rule as end = base + size, so REGION_SIZE = 0 gives start == end, and the decoder's own map check (addr_decode_dync check_start: start < end or end == 0) fails the leaf that writes it on VCS. The point calls the zero window a legal state that denies the whole region; the decoder calls the rule invalid. Until the SMU owner says which, no leaf drives the value (SMU-XBAR-MAP.S3:map-smc-size-zero)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_map_smc_size_zero"

@@ -64,13 +64,13 @@ module avsbus_async_fifo #(
     end
   end
 
-  prim_sync3 wr_ptr_gray_sync_to_rd_clk[PointerWidth-1:0] (
+  prim_sync3 u_wr_ptr_gray_sync_to_rd_clk[PointerWidth-1:0] (
     .clk_i(rd_clk_i),
     .d_i  (wr_ptr_gray),
     .q_o  (wr_ptr_gray_rd_clk)
   );
 
-  prim_sync3 rd_ptr_gray_sync_to_wr_clk[PointerWidth-1:0] (
+  prim_sync3 u_rd_ptr_gray_sync_to_wr_clk[PointerWidth-1:0] (
     .clk_i(wr_clk_i),
     .d_i  (rd_ptr_gray),
     .q_o  (rd_ptr_gray_wr_clk)

@@ -1,32 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-telemetry_receiver]
+== Address Map: telemetry_receiver
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *TELEMETRY_COUNTER[32]*: 32 registers
-  ** Base Address: 0x80
-  ** Address Increment: 0x4 per register
-
+* *TELEMETRY_COUNTER[32]*: 32 registers, base 0x80, stride 0x4
 ======
 
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CTRL | RW a| Control Register
-| 0x4 | STATUS | R a| Status Register
-| 0x8 | INTR_STATUS | RW a| Interrupt Status Register
-| 0xC | INTR_ENABLE | RW a| Interrupt Enable Register
-| 0x10 | INTR_TEST | RW a| Interrupt Test Register
-| 0x14 | TELEMETRY_PROBE_ID | R a| Telemetry Probe ID Register
-| 0x18 | TELEMETRY_COUNTER_VLDS | R a| Telemetry Counter Valid Bits Register
-| 0x80 - 0xFC | TELEMETRY_COUNTER[32] | R a| Telemetry Counter Register
+| 0x0 | <<reg-{regmap-instance}-telemetry_receiver-CTRL,CTRL>> | RW a| Control Register
+| 0x4 | <<reg-{regmap-instance}-telemetry_receiver-STATUS,STATUS>> | R a| Status Register
+| 0x8 | <<reg-{regmap-instance}-telemetry_receiver-INTR_STATUS,INTR_STATUS>> | RW a| Interrupt Status Register
+| 0xC | <<reg-{regmap-instance}-telemetry_receiver-INTR_ENABLE,INTR_ENABLE>> | RW a| Interrupt Enable Register
+| 0x10 | <<reg-{regmap-instance}-telemetry_receiver-INTR_TEST,INTR_TEST>> | RW a| Interrupt Test Register
+| 0x14 | <<reg-{regmap-instance}-telemetry_receiver-TELEMETRY_PROBE_ID,TELEMETRY_PROBE_ID>> | R a| Telemetry Probe ID Register
+| 0x18 | <<reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER_VLDS,TELEMETRY_COUNTER_VLDS>> | R a| Telemetry Counter Valid Bits Register
+| 0x80 - 0xFC | <<reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER-0-,TELEMETRY_COUNTER[32]>> | R a| Telemetry Counter Register
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-CTRL]
+=== CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
@@ -37,8 +40,10 @@ asserted when the number of entries in the buffer is greater than this value.
 transmitter. The flushing is done via the ATB AF interface. This bit clears
 itself after the flush completes.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `TELEMETRY_RX_FLUSH` | W | 0x0 a| Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and
-all other storage elements in the Telemetry Receiver.
+| 4 | `TELEMETRY_RX_FLUSH` | W | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+pointer. Stored payload bytes are not cleared. In particular, a later short
+message can retain trailing counter values and validity from an earlier
+message. This operation does not erase storage.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUFFER_POP` | W | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
 Writing `1` pops the buffer and thus updates the data in the
@@ -46,8 +51,10 @@ Writing `1` pops the buffer and thus updates the data in the
 registers.
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-STATUS]
+=== STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -56,8 +63,10 @@ registers.
 | 0 | `BUFFER_EMPTY` | R | 0x1 a| Telemetry Message Buffer Empty.
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-INTR_STATUS]
+=== INTR_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -70,8 +79,10 @@ received a Last Packet flag when the maximum number of packets a message can
 consist of has been received.
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-INTR_ENABLE]
+=== INTR_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -80,8 +91,10 @@ consist of has been received.
 | 0 | `MISSING_LAST` | RW | 0x0 a| Last Packet Missing Interrupt Enable.
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-INTR_TEST]
+=== INTR_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -91,8 +104,10 @@ interrupt and writing `0` releases it.
 | 0 | `MISSING_LAST` | W | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-TELEMETRY_PROBE_ID]
+=== TELEMETRY_PROBE_ID
+
 [cols="1,3,1,1,6", options="header"]
-.TELEMETRY_PROBE_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -100,8 +115,10 @@ interrupt and writing `0` releases it.
 the Telemetry Message Buffer.
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER_VLDS]
+=== TELEMETRY_COUNTER_VLDS
+
 [cols="1,3,1,1,6", options="header"]
-.TELEMETRY_COUNTER_VLDS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `COUNTER_VLDS` | R | 0x0 a| Counter Valid Bits. Indicates which of the counter values in the telemetry
@@ -109,8 +126,10 @@ message at the bottom of the Telemetry Message Buffer are valid. Bit `i` is for
 the `i`-th counter.
 |===
 
+[#reg-{regmap-instance}-telemetry_receiver-TELEMETRY_COUNTER-0-]
+=== TELEMETRY_COUNTER[32]
+
 [cols="1,3,1,1,6", options="header"]
-.TELEMETRY_COUNTER[32] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `COUNTER` | R | 0x0 a| Counter Value. Contains one of the 32 counter values in the telemetry message
