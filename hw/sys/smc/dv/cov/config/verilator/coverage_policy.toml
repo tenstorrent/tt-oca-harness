@@ -38,16 +38,16 @@
 # stimulus that no hosted leaf drives.
 #
 # Floors: line 78.0 / branch 75.9 / expression 69.0 were set from the
-# 2026-09-22 hosted measurement (Verilator 5.050, 168 leaves: line 78.0977,
+# hosted measurement (Verilator 5.050, 168 leaves: line 78.0977,
 # branch 75.9964, expression 69.0966) and stay as regression guards; the
-# 2026-09-23 `hosted fw` measurement (192 leaves) read line 97.50, branch
+# `hosted fw` measurement (192 leaves) read line 97.50, branch
 # 89.07, expression 86.46 and user 407 of 467. The `[[holes]]` below are
 # the points that measurement left unhit; two PLIC points the hosted
 # measurement had waived are hit by smc_fw_plic_claim_test and carry no
 # row. This file carries 56 accepted user rows (every `expected_matches`
-# is 1); the four rows dated 2026-09-23 classify what the `hosted fw`
-# measurement left unhit and unclassified beside the map points #2226
-# re-derives.
+# is 1); the four rows added for the `hosted fw` set classify what that
+# measurement left unhit and unclassified beside the map points taken
+# from the generated map.
 #
 # Hole categories in this file:
 #   missing_stimulus  no enrolled test drives the condition; the rationale

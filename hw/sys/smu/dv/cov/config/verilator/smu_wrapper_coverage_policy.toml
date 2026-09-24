@@ -8,11 +8,11 @@
 # and an expiry. Regenerate them from a fresh coverage-details.json rather
 # than editing them by hand; this header is the only part written by a person.
 # They were measured from `--dut smu --items all --cov` on the single
-# `compile_smu_chiplet` target (2026-09-23, 102 leaves, Verilator 5.050:
+# `compile_smu_chiplet` target (102 leaves, Verilator 5.050:
 # user 98 of 107 points hit, 98.00 effective after the seven rows below).
 # `all` is the coverage set, as it is for SEP; `hosted` is its toolchain-free
-# subset and leaves the SEP firmware and lifecycle stimulus out. The four rows
-# dated 2026-09-23 are the `g_sep` points that measurement left unhit: one
+# subset and leaves the SEP firmware and lifecycle stimulus out. The four
+# `g_sep` rows are the points that measurement left unhit: one
 # unreachable from the wrapper boundary, two waiting on a SEP-firmware leaf,
 # one whose model wants the last-word form first.
 #
