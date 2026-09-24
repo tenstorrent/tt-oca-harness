@@ -21,7 +21,7 @@ grading rules and the waiver fields are in
 |Framework |PyUVM on cocotb
 |Simulator that collects |Verilator (`--cov`) and, on the licensed flow no public job runs, VCS through the `[coverage.vcs]` table and `cov/config/vcs/smu_wrapper_cov_scope.hier`
 |Coverage set |`--items all`, the 102-leaf package regression, as SEP grades its `all`; the SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run. The weekly `--cov` in `regress.yml` grades the toolchain-free `hosted` subset only
-|What `--dut smu` collects |line, expression and `user` over a scope that drops everything the wrapper instantiates; toggle on the VCS flow only, over the wrapper's ports after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
+|What `--dut smu` collects |line, expression and `user` over a scope that drops everything the wrapper instantiates; on the VCS flow, line, condition, FSM, branch and toggle over the SMU's own logic (`cov/config/vcs/README.md`) after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
 |Scope file |`cov/config/verilator/smu_wrapper_cov_scope.vlt`
 |Policy file |`cov/config/verilator/smu_wrapper_coverage_policy.toml` (Verilator `user`); `cov/config/vcs/smu_wrapper_coverage_policy.toml` (VCS `toggle` / `assertion`)
 |Cover-property modules |10 under `cov/sv/`, 111 points in all; see <<smu-fcov-points>>
@@ -43,10 +43,12 @@ up was exercised -- so the metric this package intends is *toggle*, with the
 `cov/sv` cover properties as *functional (`user`)* coverage beside it. Each
 subsystem grades its own internals in its own DV package.
 
-Toggle is measured over `smu_wrapper` alone on the VCS flow, where `-cm_hier`
-drops the SMU block, SEP, SMC and DTP at compile time and `-cm_tgl portsonly`
-keeps the wrapper's ports; the release figure is the runner's `toggle` family,
-every port bit in both directions after the exclusion file, and
+Toggle is measured on the VCS flow over the SMU's own logic: `-cm_hier`
+drops SEP, SMC and DTP, the bench and the library and interconnect cells at
+compile time and keeps `smu_wrapper`, `smu`, `smu_axi_xbar` and the other
+SMU-owned units (`cov/config/vcs/README.md`); the release figure is the
+runner's `toggle` family, every bit of every kept net in both directions after
+the exclusion files, and
 `SMU_COVERAGE_POLICY.adoc` states the target and the last measured value. The
 Verilator set for `--dut smu` leaves toggle out, as the DTP set does.
 
