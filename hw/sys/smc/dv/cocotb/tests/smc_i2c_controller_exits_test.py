@@ -21,9 +21,11 @@ class smc_i2c_controller_exits_test(smc_base_test):
     required_evidence = (
         "CHK-I2C-CTRL-EVENTS-RETAIN",
         "CHK-I2C-CTRL-NACK-TIMEOUT",
+        "CHK-I2C-CTRL-READ-256",
         "CHK-I2C-CTRL-READ-CONTINUES",
+        "CHK-I2C-CTRL-READ-RCONT",
     )
-    min_evidence = 3
+    min_evidence = 5
 
     auto_protocol_vip = False
 

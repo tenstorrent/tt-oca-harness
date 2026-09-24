@@ -9875,6 +9875,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 * A read whose last byte carries no stop. The controller returns to the format FIFO for the entries queued behind it instead of stopping, which is the only way it leaves the read acknowledge into `PopFmtFifo`. The target has to see a single stop for the whole sequence, not one per entry.
 * A NACK left unhandled. `i2c.rdl` describes `HOST_NACK_HANDLER_TIMEOUT` as the limit on how long software may leave the controller halted on an unexpected NACK; past it `CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT` is raised beside the NACK. Every other leaf clears a NACK as soon as it sees one.
+* A read split across two format entries, the first carrying `FDATA.RCONT`. The flag makes the controller acknowledge that entry's last byte rather than NACK it and carry on reading from the next entry, so the three bytes come back as one read with one start pair and one stop.
+* A read count of zero. `i2c.rdl` gives `FBYTE` of zero with `READB` as a 256-byte read -- one more than any nonzero count can express, and four times the depth of the controller's receive FIFO, so software drains `RDATA` while it runs. The controller's bit period is shortened for this leg so the read costs a few hundred microseconds; the bench target samples on the SMC clock, far faster.
 * `CONTROLLER_EVENTS` clears on a written one, so two writes that must *not* clear it are made first: a word of zeros over a set bit, and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled. The bit is read back set after each, and only a written one clears it. Both set fields are checked this way.
 
 *Known limitation*: the controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is not driven. `i2c_controller_fsm.sv:291` clears `trans_started` in the same cycle the enable drops, so the `trans_started && !host_enable_i` arms in `Idle` and in `PopFmtFifo` are each one cycle wide. With the controller parked mid-transaction -- every entry consumed, no stop given, `STATUS.HOSTIDLE` clear -- clearing the enable returned it to idle without the bench target seeing a stop.
@@ -9895,6 +9897,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |`CHK-I2C-CTRL-READ-CONTINUES` |A read whose last byte carried no stop returned to the format FIFO, the entry behind it reached the target, and the target saw a single stop
 |`CHK-I2C-CTRL-NACK-TIMEOUT` |A NACK left unhandled past the programmed limit raised `UNHANDLED_NACK_TIMEOUT` beside it
 |`CHK-I2C-CTRL-EVENTS-RETAIN` |Both set fields survived a word of zeros and a byte write that left their lane disabled, and cleared only on a written one
+|`CHK-I2C-CTRL-READ-RCONT` |A read split across two format entries, the first carrying `RCONT`, came back as one continuous read inside a single transaction
+|`CHK-I2C-CTRL-READ-256` |A read with a count of zero returned 256 bytes, the target's whole memory in order
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
