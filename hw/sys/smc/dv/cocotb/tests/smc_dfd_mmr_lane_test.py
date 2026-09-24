@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Byte-write the DST and DST-sink MMRs and touch an unmapped offset of each block.
+"""Byte-write the DST, DST-sink and funnel MMRs and touch unmapped offsets of each block.
 
-Writes the low byte of 18 registers of the `dst` and `dst_sink` sub-blocks
-one byte at a time and requires no other byte to move, then reads and writes
-one offset inside each block's register hole and requires the neighbouring
-registers to hold.
+Writes the low byte of every register of the `dst`, `dst_sink` and `funnel`
+sub-blocks but the sink's RAM data port (23 in the current map) one byte at a
+time and requires no other byte to move, then reads and writes offsets inside
+each block's register hole and requires the neighbouring registers to hold.
 """
 
 from __future__ import annotations
@@ -20,18 +20,18 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses. No polling, every leg
 # directed.
 #
-#   18 registers x (the before read, the byte write, the read after it, the
-#     whole write-back and its readback)                                     90
-#   2 blocks x (2 neighbour reads, the hole read, the hole write, 2
-#     neighbour reads)                                                       12
+#   23 registers in the current map x (the before read, the byte write, the
+#     read after it, the whole write-back and its readback)                 115
+#   6 unmapped offsets x (2 neighbour reads, the hole read, the hole write,
+#     2 neighbour reads)                                                     36
 #                                                                         ------
-#                                                                            102
-MMR_LANE_MIN_CSR_ACCESSES = 102
+#                                                                            151
+MMR_LANE_MIN_CSR_ACCESSES = 151
 
 
 @pyuvm.test()
 class smc_dfd_mmr_lane_test(smc_base_test):
-    """Byte-write every DST and sink MMR, and touch each block's unmapped offset."""
+    """Byte-write every DST, sink and funnel MMR, and touch each block's unmapped offsets."""
 
     required_evidence = (
         "CHK-DFD-MMR-BYTE",

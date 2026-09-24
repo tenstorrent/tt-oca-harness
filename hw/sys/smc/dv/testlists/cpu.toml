@@ -196,6 +196,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfd_cla_live_bus_test"
+module = "smc_dfd_cla_live_bus_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dfd_dbm_mode_lock_test"
 module = "smc_dfd_dbm_mode_lock_test"
 seed = 1

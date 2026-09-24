@@ -131,6 +131,9 @@ _ODD_SWITCHES = 160
 # the sink's staging threshold. Then the writes that restart the stream after
 # the sink returns to RAM mode.
 _MEMORY_HOLD_WRITES = 100
+# dfd_dst.rdl Trdstsyncmode: the one value its description names, which sends a
+# timestamp.
+_SYNC_MODE_TIMESTAMP = 2
 _MEMORY_EXIT_WRITES = 8
 # Sink control reads in memory mode after the stop, each after the settle time,
 # and action writes after the recovery, each followed by four data-port reads.
@@ -170,6 +173,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.odd_pointer = (0, 0)
         self.memory_exit_pointer = 0
         self.high_pointer = 0
+        self.frame_off_empty_poll = 0
 
     # -- register helpers -------------------------------------------------
 
@@ -602,14 +606,22 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         hold = pack_fields(
             eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": self.odd_start_action}
         )
+        # Uncompressed, so a packet asks for space every sample, with the periodic
+        # timestamp on at its shortest period and the traced bus switching under
+        # every hold write, so data and timestamp packets keep asking for space the
+        # backpressured sink does not free and have to be retried.
+        timestamped = {
+            "Trdstactive": 1,
+            "Trdstformat": _DST_FORMAT_NONE,
+            "Trdstsyncmode": _SYNC_MODE_TIMESTAMP,
+            "Trdstsyncmax": 0,
+        }
         await self._open_sink(1, "memory")
-        await self._write_check(
-            control,
-            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
-            "memory",
-        )
+        await self._write_check(control, {**timestamped, "Trdstenable": 1}, "memory")
+        modes = (DBM_MODE_IDENTIFIER, DBM_MODE_NORMAL)
         for step in range(_MEMORY_HOLD_WRITES):
             await self._write(eap, hold, f"memory{step}")
+            await self._set_mux_mode(self.sampled_mux, modes[step % 2], f"memory{step}_bus")
             await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
         held = await self._read(control, "memory_held")
         assert not held & empty.mask, (
@@ -633,19 +645,11 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             },
             "memory_stop",
         )
-        await self._write_check(
-            control,
-            {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_NONE},
-            "memory_stop",
-        )
+        await self._write_check(control, {**timestamped, "Trdstenable": 0}, "memory_stop")
         for poll in range(_MEMORY_STOP_READS):
             await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
             await self._read(sink_control, f"memory_stop{poll}")
-        await self._write_check(
-            control,
-            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
-            "memory_restart",
-        )
+        await self._write_check(control, {**timestamped, "Trdstenable": 1}, "memory_restart")
         wp = sink_register("Trdstramwplow")
         pointer = reg_field(wp, "Trdstramwplow")
         await self._open_sink(0, "memexit")
@@ -677,6 +681,55 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             "write pointer to 0x%x",
             _MEMORY_HOLD_WRITES,
             self.memory_exit_pointer,
+        )
+
+    async def _frame_mode_off(self, logical_op: int) -> None:
+        """Run and stop the trace with frame mode off; nothing is claimed about emptying.
+
+        ``FrameModeEnable`` is cleared, the uncompressed stream is held on and the
+        enable cleared with the DST active, and ``Trdstempty`` is read over a
+        bounded number of polls and recorded. It runs last because the stop is
+        not required to empty the packetizer here.
+        """
+        await self._write_check(
+            dst_register("CDbgDebugTraceCfg"),
+            {
+                "FrameClosureMode": 0,
+                "FrameModeEnable": 0,
+                "TraceSourceId": 0,
+                "TraceFrameFillByte": 0,
+                "FrameLenghtInBytes": 0,
+            },
+            "frameoff",
+        )
+        control = dst_register("Trdstcontrol")
+        empty = reg_field(control, "Trdstempty")
+        eap = cla_register("CDbgNode0Eap0")
+        hold = pack_fields(
+            eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": self.odd_start_action}
+        )
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
+            "frameoff_run",
+        )
+        for step in range(_MEMORY_EXIT_WRITES):
+            await self._write(eap, hold, f"frameoff{step}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        await self._write_check(
+            control,
+            {"Trdstactive": 1, "Trdstenable": 0, "Trdstformat": _DST_FORMAT_NONE},
+            "frameoff_stop",
+        )
+        for poll in range(_DELIVER_POLLS):
+            if await self._read(control, f"frameoff_stop{poll}") & empty.mask:
+                self.frame_off_empty_poll = poll + 1
+                break
+        cocotb.log.info(
+            "Frame mode off: after the stop Trdstempty read 1 on poll %d (0 means not within "
+            "%d polls)",
+            self.frame_off_empty_poll,
+            _DELIVER_POLLS,
         )
 
     # -- stopping the trace -----------------------------------------------
@@ -984,6 +1037,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         # A software stop after memory mode does not empty the packetizer, so
         # nothing may follow that needs it to.
         await self._memory_backpressure(logical_op)
+        await self._frame_mode_off(logical_op)
 
         for reg in (
             dst_register("Trdstcontrol"),

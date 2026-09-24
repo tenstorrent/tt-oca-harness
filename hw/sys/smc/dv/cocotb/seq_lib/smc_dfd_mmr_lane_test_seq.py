@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Write the DST and DST-sink MMRs one byte at a time, and touch their unmapped offsets.
+"""Byte-write the DST, DST-sink and funnel MMRs, and touch their unmapped offsets.
 
 Every address, field position, width, reset value and software-access type
 comes from the generated register map through :mod:`seq_lib.smc_rdl_regmap`.
@@ -8,16 +8,19 @@ The vendored RTL is not a source for any value this sequence programs or
 compares against.
 
 The DFD MMR leaves on this branch write whole registers. Two parts of the
-write and read decode of the DST and DST-sink blocks are never exercised:
+write and read decode of the DST, DST-sink and funnel blocks are never
+exercised:
 
 * **Byte writes.** A one-byte store covers only part of a register's 4-byte
-  lane. Every register of the two blocks except the sink's RAM data port takes
+  lane. Every register of the three blocks except the sink's RAM data port takes
   one: the low byte is written with its complement. What a register may do is
   either ignore the write or take the byte in its software-writable bits; what
   it must not do is change any other byte. The readback is held to exactly
   those outcomes, and the register is then written back whole.
 * **Unmapped offsets.** The RDL leaves holes inside each block's register
-  range. One offset in each block's hole is read and written: the access has
+  range. Offsets in each block's hole are read and written: one each in the DST
+  and sink blocks, and in the funnel block the four words at the offsets the
+  sink block gives its window start and limit registers. the access has
   to complete, a read of an unmapped offset has to return 0 in every bit, as
   any bit no field occupies does, and the registers on either side of the hole
   have to hold their values across the write. The DST offset chosen is the
@@ -36,16 +39,18 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import RdlReg, rdl_registers_under
 
 _CLA_ADDRMAP = "smc_cla"
-_BLOCKS = ("dst", "dst_sink")
-# Registers of the two blocks the byte sweep leaves out: the sink's RAM data
+_BLOCKS = ("dst", "dst_sink", "funnel")
+# Registers of the three blocks the byte sweep leaves out: the sink's RAM data
 # port, whose read has a side effect on the RAM read side. Everything else the
-# generated map declares in the two blocks is swept.
+# generated map declares in the three blocks is swept.
 _NOT_SWEPT = ("Trdstramdata",)
 # Unmapped offsets, relative to each block's first register: inside the hole
 # between the DST's last low register and its trace configuration register,
-# and inside the hole between the sink's implementation and window registers.
-# The DST one is the sink's RAM data port offset.
-_UNMAPPED = {"dst": 0x40, "dst_sink": 0x8}
+# inside the hole between the sink's implementation and window registers, and
+# the four words of the funnel's hole that sit where the sink's window start
+# and limit registers sit in the sink block. The DST one is the sink's RAM data
+# port offset.
+_UNMAPPED = {"dst": (0x40,), "dst_sink": (0x8,), "funnel": (0x10, 0x14, 0x18, 0x1C)}
 _BYTE_MASK = 0xFF
 
 
@@ -84,7 +89,7 @@ def _swept() -> tuple[RdlReg, ...]:
 
 
 class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
-    """Byte-write every DST and sink MMR, and touch each block's unmapped offset."""
+    """Byte-write every DST, sink and funnel MMR, and touch each block's unmapped offsets."""
 
     def __init__(self, name: str = "smc_dfd_mmr_lane_test_seq") -> None:
         super().__init__(name)
@@ -144,13 +149,13 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         )
         self.value_checks += 1
 
-    async def _unmapped(self, block: str) -> None:
+    async def _unmapped(self, block: str, offset: int) -> None:
         regs = _block_registers()[block]
         base = regs[0].addr
-        addr = base + _UNMAPPED[block]
+        addr = base + offset
         assert all(r.addr != addr for r in regs), (
-            f"offset 0x{_UNMAPPED[block]:x} of {block} is a declared register in the "
-            f"generated map, not a hole"
+            f"offset 0x{offset:x} of {block} is a declared register in the generated map, "
+            f"not a hole"
         )
         below = max((r for r in regs if r.addr < addr), key=lambda r: r.addr)
         above = min((r for r in regs if r.addr > addr), key=lambda r: r.addr)
@@ -158,7 +163,7 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         rd = await self._access(SmcSysAxiOp.READ, f"{block}_hole", addr)
         if rd.resp_code == 0:
             assert rd.rdata == 0, (
-                f"{block} unmapped offset 0x{_UNMAPPED[block]:x} (0x{addr:08x}) read back "
+                f"{block} unmapped offset 0x{offset:x} (0x{addr:08x}) read back "
                 f"0x{rd.rdata:x}; no field occupies it, so every bit has to read 0"
             )
         wr = await self._access(SmcSysAxiOp.WRITE, f"{block}_hole", addr, 0xFFFFFFFF)
@@ -168,7 +173,7 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
                 f"{reg.path} @ 0x{reg.addr:08x} read 0x{held[reg.path]:x} before and 0x{now:x} "
                 f"after an all-ones write to the {block} unmapped offset 0x{addr:08x}"
             )
-        self.unmapped[block] = (addr, rd.resp_code, wr.resp_code)
+        self.unmapped[f"{block}+0x{offset:x}"] = (addr, rd.resp_code, wr.resp_code)
         self.value_checks += 3
 
     async def body(self) -> None:
@@ -181,7 +186,8 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
             f"the byte sweep wrote {self.byte_written} of the {len(regs)} writable registers"
         )
         cocotb.log.info(
-            "CHK-DFD-MMR-BYTE: every one of the %d DST and DST-sink registers other than the "
+            "CHK-DFD-MMR-BYTE: every one of the %d DST, DST-sink and funnel registers other than "
+            "the "
             "sink's RAM data port took a one-byte write of its low byte's complement and "
             "changed no other byte (%d ignored the write, %d took it in their writable bits), "
             "then was written back whole and read back",
@@ -191,9 +197,10 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         )
 
         for block in _BLOCKS:
-            await self._unmapped(block)
+            for offset in _UNMAPPED[block]:
+                await self._unmapped(block, offset)
         cocotb.log.info(
-            "CHK-DFD-MMR-UNMAPPED: an unmapped offset of each block was read and written "
+            "CHK-DFD-MMR-UNMAPPED: unmapped offsets of each block were read and written "
             "(%s, as address and read/write response codes); every access completed, a read "
             "that completed without error returned 0, and the registers on either side of "
             "each hole held their values across an all-ones write",
