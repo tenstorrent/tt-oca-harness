@@ -209,7 +209,7 @@ Branch 12 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 Branch 13 "3318605108" "cla_gated_func_clamp[0]" (0) "cla_gated_func_clamp[0] 1"
 
 CHECKSUM: "705672635 932150476"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 MODULE: clk_rst_wrapper
@@ -547,7 +547,7 @@ Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
 
 CHECKSUM: "3895468110 949337104"
 ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
-ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, and the arm of each if on those enables that the constant does not select never executes."
+ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, with CLA_EN, DST_EN and TRACE_SINK_SUPPORT at one and NTR_EN at zero; the arm of each if or ternary on those enables that the constant does not select never executes."
 MODULE: mmr_req_ctrl
 Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 -1" (1 "00")
 Condition 1 "463493103" "(MmrCs[NTR_SINK_BLK_IDX] | (ram_cs & ram_cs_is_ntr)) 1 -1" (2 "01")
@@ -574,7 +574,7 @@ Condition 30 "3052420147" "(rsp_done & rsp_is_jtag) 1 -1" (3 "11")
 
 CHECKSUM: "3895468110 1001217158"
 ANNOTATION: "SMC-P14-JTAG-MMR-TIED: smc_dfd_wrap ties i_jtag_mmr_req_vld to zero, mmrs tests it directly, and mmr_req_ctrl grants the JTAG requester exactly when it is high (gnt_is_jtag = jt_req_vld), so no arm that selects the JTAG request executes."
-ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, and the arm of each if on those enables that the constant does not select never executes."
+ANNOTATION: "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and DST_SINK_EN as one, with CLA_EN, DST_EN and TRACE_SINK_SUPPORT at one and NTR_EN at zero; the arm of each if or ternary on those enables that the constant does not select never executes."
 MODULE: mmr_req_ctrl
 Branch 0 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
 Branch 1 "1629411845" "gnt_is_jtag" (0) "gnt_is_jtag 1"
@@ -587,7 +587,7 @@ Branch 10 "1128284310" "NTR_SINK_EN" (0) "NTR_SINK_EN 1"
 Branch 11 "1891817966" "DST_SINK_EN" (1) "DST_SINK_EN 0"
 
 CHECKSUM: "3001181867 1671278051"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
 ANNOTATION: "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or path that needs one of them high cannot occur."
 MODULE: mmrs
@@ -623,8 +623,13 @@ Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp))
 Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (5 "111101")
 Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (6 "111110")
 Condition 8 "2717019605" "(((&cla_gated_func_clamp)) & ((&dst_gated_func_clamp)) & ((&ntr_gated_func_clamp)) & ((DST_SINK_EN ? dst_sink_gated_func_clamp : 1'b1)) & ((NTR_SINK_EN ? ntr_sink_gated_func_clamp : 1'b1)) & ((TRACE_SINK_SUPPORT ? funnel_gated_func_clamp : 1'b1))) 1 -1" (7 "111111")
+Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (1 "011111")
+Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (2 "101111")
 Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (3 "110111")
+Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (4 "111011")
 Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (5 "111101")
+Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (6 "111110")
+Condition 9 "3282649791" "(((CLA_EN ? (&i_cla_fuse_dis) : 1'b1)) & ((DST_EN ? (&i_dst_fuse_dis) : 1'b1)) & ((NTR_EN ? (&i_ntr_fuse_dis) : 1'b1)) & ((DST_SINK_EN ? i_dst_sink_fuse_dis : 1'b1)) & ((NTR_SINK_EN ? i_ntr_sink_fuse_dis : 1'b1)) & ((TRACE_SINK_SUPPORT ? i_funnel_fuse_dis : 1'b1))) 1 -1" (7 "111111")
 Condition 10 "2210533721" "(({NUM_CLA_INST_SAFE {i_critical_signal_hold}}) | cla_gated_reset_n) 1 -1" (3 "10")
 Condition 11 "3880404188" "(({NUM_DST_INST_SAFE {i_critical_signal_hold}}) | dst_gated_reset_n) 1 -1" (3 "10")
 Condition 12 "1992160571" "(({NUM_NTRACE_INST_SAFE {i_critical_signal_hold}}) | ntr_gated_reset_n) 1 -1" (2 "01")
@@ -663,7 +668,7 @@ MODULE: system_timer_octs_core
 Condition 7 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (1 "011")
 
 CHECKSUM: "4226918805 2330986106"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 MODULE: tnif
 Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (1 "011")
 Condition 1 "117586802" "(tr_gnt_in & ntr_req_in & dst_req_in) 1 -1" (3 "110")
@@ -678,6 +683,8 @@ Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & n
 Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & ntr_req_in & ((dst_req_in & ( ~ (dst_bp_in & ((~dst_flush_in))) )) ? (prev_gnt == tnifState_e'(NTR_GNT)) : 1'b1)) 1 -1" (2 "1011")
 Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & ntr_req_in & ((dst_req_in & ( ~ (dst_bp_in & ((~dst_flush_in))) )) ? (prev_gnt == tnifState_e'(NTR_GNT)) : 1'b1)) 1 -1" (4 "1110")
 Condition 10 "351636543" "(tr_gnt_in & ( ~ (ntr_bp_in & ((~ntr_flush_in))) ) & ntr_req_in & ((dst_req_in & ( ~ (dst_bp_in & ((~dst_flush_in))) )) ? (prev_gnt == tnifState_e'(NTR_GNT)) : 1'b1)) 1 -1" (5 "1111")
+Condition 17 "1611113724" "(prev_gnt == tnifState_e'(NTR_GNT)) 1 -1" (1 "0")
+Condition 18 "191604408" "((prev_gnt inside {NTR_GNT}) ? DST_GNT : NTR_GNT) 1 -1" (1 "0")
 Condition 19 "4168576200" "(dst_pull_out | ntr_pull_out) 1 -1" (2 "01")
 Condition 20 "220599304" "(ntr_pull_out == 1'b1) 1 -1" (2 "1")
 
@@ -726,7 +733,7 @@ Branch 0 "1918024820" "state" (10) "state RESP_HANDSHAKE ,-,-,-,-,-,-,1"
 Branch 0 "1918024820" "state" (11) "state RESP_HANDSHAKE ,-,-,-,-,-,-,0"
 
 CHECKSUM: "3643492222 1006470345"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
 MODULE: trace_hop
 Condition 17 "3721999652" "(upstrm_tr_ntrace_bp & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (2 "10")
 Condition 17 "3721999652" "(upstrm_tr_ntrace_bp & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (3 "11")
@@ -734,9 +741,9 @@ Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELA
 Condition 19 "2081685874" "(upstrm_tr_ntrace_flush & upstrm_tr_enabled_srcs[RELATIVE_CORE_IDX]) 1 -1" (3 "11")
 
 CHECKSUM: "3354362860 3417673543"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
-ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free. The pending RAM's source field is RAM content and is left free, so a row that holds the dead signals at zero and turns on another term stays graded, as ordinary trace traffic reaches it."
-ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. The pending entries are flops reset to zero and written only by a pending write, so their source, way and address fields, and the read inhibits set from them, never read one. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free."
+ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable."
 ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 MODULE: trace_sink
 Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (1 "011")
@@ -907,10 +914,6 @@ Condition 210 "447919583" "((TrRamNorthTraceWrEn_TS0 & ((~TrRamNorthTraceWrSrc_T
 Condition 210 "447919583" "((TrRamNorthTraceWrEn_TS0 & ((~TrRamNorthTraceWrSrc_TS0))) | (TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) | ((|(TrRamPendRdEn_ANY & TrRamPendDstPktVld_ANY)))) 1 -1" (3 "010")
 Condition 213 "333783216" "((TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) | (TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) | ((|(TrRamPendRdEn_ANY & TrRamPendNtracePktVld_ANY)))) 1 -1" (2 "001")
 Condition 213 "333783216" "((TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) | (TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) | ((|(TrRamPendRdEn_ANY & TrRamPendNtracePktVld_ANY)))) 1 -1" (3 "010")
-Condition 218 "3330478163" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (2 "01")
-Condition 218 "3330478163" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (3 "10")
-Condition 234 "3814235686" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (2 "01")
-Condition 234 "3814235686" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (3 "10")
 Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (1 "011")
 Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (3 "110")
 Condition 251 "2211361253" "(TrMemAxiWrRdy_ANY & TrntrMemRdBufferFull_ANY & (TrdstMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1) : 1'b1)) 1 -1" (4 "111")
@@ -1078,6 +1081,7 @@ Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_s
 Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrntrMemRamRdEn_TS2[7])) & ((~TrntrMemRdBufferVld_TS3[7])) & ((~TrntrMemRdBufferVld_TS4[7])) & ((~TrntrMemRdBufferVld_TS5[7])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (8 "111111101")
 Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrntrMemRamRdEn_TS2[7])) & ((~TrntrMemRdBufferVld_TS3[7])) & ((~TrntrMemRdBufferVld_TS4[7])) & ((~TrntrMemRdBufferVld_TS5[7])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (9 "111111110")
 Condition 528 "3417904114" "(TrntrMemRamRdRamEn_ANY & TrRamFreeWayMaskPend_ANY_stg[(7 / 2)] & ((~TrntrRamPendPktInhibitRamRd_ANY_stg[(7 / 2)])) & ((~TrntrMemRamRdEn_TS2[7])) & ((~TrntrMemRdBufferVld_TS3[7])) & ((~TrntrMemRdBufferVld_TS4[7])) & ((~TrntrMemRdBufferVld_TS5[7])) & ((&trntrMemRamRdEnFromCore_ANY)) & ((|trntrNumFramesFilledInSRAM_ANY_d1))) 1 -1" (10 "111111111")
+Condition 1 "2350228744" "(((~|TrRamPendNtracePktVld_ANY)) & TrntrFlushTimeoutDone_ANY & (((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))))) 1 -1" (2 "101")
 Condition 2 "641947095" "(((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY)))) 1 -1" (1 "00")
 Condition 2 "641947095" "(((~trntrRamMode_ANY)) | (trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY)))) 1 -1" (2 "01")
 Condition 3 "938877714" "(trntrRamMode_ANY & ((~|trntrNumFramesFilledInSRAM_ANY))) 1 -1" (2 "10")
@@ -1108,11 +1112,16 @@ Condition 68 "548386414" "(trntrRamEnableStart_ANY_d1 | (52'(TrntrMemAxiWrAddr_A
 Condition 71 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (1 "01")
 Condition 71 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (2 "10")
 Condition 71 "1212348271" "(trntrMemModeEnable_ANY & TrntrMemAxiWrVld_ANY) 1 -1" (3 "11")
+Condition 76 "404381369" "(TrntrFlushTimeoutStart_ANY & ((~TrntrFlushTimeoutDone_ANY))) 1 -1" (1 "01")
+Condition 82 "1612027973" "(((|trdstcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trdstStoponWrap_ANY)) & Trdstramwplow.Trdstramwrap) 1 -1" (2 "101")
+Condition 82 "1612027973" "(((|trdstcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trdstStoponWrap_ANY)) & Trdstramwplow.Trdstramwrap) 1 -1" (3 "110")
+Condition 82 "1612027973" "(((|trdstcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trdstStoponWrap_ANY)) & Trdstramwplow.Trdstramwrap) 1 -1" (4 "111")
 Condition 85 "3781501857" "(trntrRamMode_ANY ? trntrRamSMEMStartLow_ANY : trntrRamStartLow_ANY) 1 -1" (1 "0")
 Condition 85 "3781501857" "(trntrRamMode_ANY ? trntrRamSMEMStartLow_ANY : trntrRamStartLow_ANY) 1 -1" (2 "1")
 Condition 86 "473197811" "(((|trntrcoreptrmatchesanypendingframeafteroverflow_ANY[0])) & ((~trntrStoponWrap_ANY)) & Trramwplow.Trramwrap) 1 -1" (1 "011")
 Condition 168 "391229778" "(InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY))) 1 -1" (2 "10")
 Condition 168 "391229778" "(InsnTraceWrEnPerCore_TS0 & ((~trntrcoreframefillpendingwhileoverflow_ANY))) 1 -1" (3 "11")
+Condition 170 "1348239468" "(DataTraceWrEnPerCore_TS0 & ((~trdstcoreframefillpendingwhileoverflow_ANY))) 1 -1" (2 "10")
 Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (1 "0111")
 Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (2 "1011")
 Condition 174 "3529384326" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_Vld_stg)) & (TrRamNorthTraceWrWay_TS0 == TrRamSouthTraceWrWay_TS0) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamNorthTraceWrWay_TS0]))) 1 -1" (3 "1101")
@@ -1126,6 +1135,11 @@ Condition 178 "4113069550" "(((|Eff_TR_TS_North_Vld_stg)) & ((|Eff_TR_TS_South_V
 Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (1 "01")
 Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (2 "10")
 Condition 180 "1025732124" "(((|Eff_TR_TS_South_Vld_stg)) & ((|TrRamPerWayPendToWriteCnt_TS1[TrRamSouthTraceWrWay_TS0]))) 1 -1" (3 "11")
+Condition 186 "2269833293" "((trdstnextlocaltoupdateRamWpWrapOneNewFrame_ANY & (((|trdstnorthcoresNewFrameStart_ANY_d1)) | ((|trdstsouthcoresNewFrameStart_ANY_d1)))) | (trdstnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trdstnorthcoresNewFrameStart_ANY_d1)) & ((|trdstsouthcoresNewFrameStart_ANY_d1)))) 1 -1" (2 "01")
+Condition 188 "877010333" "(((|trdstnorthcoresNewFrameStart_ANY_d1)) | ((|trdstsouthcoresNewFrameStart_ANY_d1))) 1 -1" (2 "01")
+Condition 189 "3854493019" "(trdstnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trdstnorthcoresNewFrameStart_ANY_d1)) & ((|trdstsouthcoresNewFrameStart_ANY_d1))) 1 -1" (1 "011")
+Condition 189 "3854493019" "(trdstnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trdstnorthcoresNewFrameStart_ANY_d1)) & ((|trdstsouthcoresNewFrameStart_ANY_d1))) 1 -1" (2 "101")
+Condition 189 "3854493019" "(trdstnextlocaltoupdateRamWpWrapTwoNewFrame_ANY & ((|trdstnorthcoresNewFrameStart_ANY_d1)) & ((|trdstsouthcoresNewFrameStart_ANY_d1))) 1 -1" (4 "111")
 Condition 190 "2767061626" "((trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY) ? trdstnextlocalRamWpLow_ANY[2] : ((trdstnorthcoresNewFrameStart_ANY | trdstsouthcoresNewFrameStart_ANY) ? trdstnextlocalRamWpLow_ANY[1] : trdstnextlocalRamWpLow_ANY[0])) 1 -1" (2 "1")
 Condition 191 "3444410989" "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY) 1 -1" (1 "01")
 Condition 191 "3444410989" "(trdstnorthcoresNewFrameStart_ANY & trdstsouthcoresNewFrameStart_ANY) 1 -1" (3 "11")
@@ -1153,17 +1167,24 @@ Condition 206 "3382680641" "(trntrnorthcoresNewFrameStart_ANY | trntrsouthcoresN
 Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (1 "01")
 Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (2 "10")
 Condition 208 "3197379096" "(TrRamPendPktNorthWrEn_TS0 & TrRamPendPktSouthWrEn_TS0) 1 -1" (3 "11")
+Condition 211 "3517823297" "(TrRamNorthTraceWrEn_TS0 & ((~TrRamNorthTraceWrSrc_TS0))) 1 -1" (2 "10")
 Condition 212 "1497109905" "(TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) 1 -1" (2 "10")
 Condition 212 "1497109905" "(TrRamSouthTraceWrEn_TS0 & ((~TrRamSouthTraceWrSrc_TS0))) 1 -1" (3 "11")
+Condition 213 "333783216" "((TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) | (TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) | ((|(TrRamPendRdEn_ANY & TrRamPendNtracePktVld_ANY)))) 1 -1" (4 "100")
+Condition 214 "3774167124" "(TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) 1 -1" (1 "01")
+Condition 214 "3774167124" "(TrRamNorthTraceWrEn_TS0 & TrRamNorthTraceWrSrc_TS0) 1 -1" (3 "11")
 Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (1 "01")
 Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (2 "10")
 Condition 215 "1427848943" "(TrRamSouthTraceWrEn_TS0 & TrRamSouthTraceWrSrc_TS0) 1 -1" (3 "11")
 Condition 217 "2484997170" "(trRamDataRdEn_ANY ? trntrRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH] : trdstRamRpLow_ANY[6+:TRC_RAM_INDEX_WIDTH]) 1 -1" (2 "1")
+Condition 218 "3330478163" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (2 "01")
+Condition 218 "3330478163" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (3 "10")
 Condition 219 "1349485583" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (1 "011")
 Condition 219 "1349485583" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (3 "110")
 Condition 219 "1349485583" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (4 "111")
 Condition 220 "738352040" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (1 "00")
 Condition 220 "738352040" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (2 "01")
+Condition 220 "738352040" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (3 "10")
 Condition 221 "2752063877" "(trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (1 "01")
 Condition 221 "2752063877" "(trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (2 "10")
 Condition 221 "2752063877" "(trntrRamMode_ANY & ((TrntrMemModeRamBackPressure_ANY & ((~TrntrMemModeRamFlush_ANY))) | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (3 "11")
@@ -1175,11 +1196,15 @@ Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY))
 Condition 224 "765035039" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
 Condition 225 "177503260" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (1 "00")
 Condition 225 "177503260" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (2 "01")
+Condition 225 "177503260" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (3 "10")
+Condition 234 "3814235686" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (2 "01")
+Condition 234 "3814235686" "((((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) | (trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY))))) 1 -1" (3 "10")
 Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (1 "011")
 Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (3 "110")
 Condition 235 "183357726" "(((~trntrRamMode_ANY)) & trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY)) 1 -1" (4 "111")
 Condition 236 "4148929162" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (1 "00")
 Condition 236 "4148929162" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (2 "01")
+Condition 236 "4148929162" "(((~trntrRamActiveEnable_ANY)) | trntrRamModeBP_ANY) 1 -1" (3 "10")
 Condition 237 "490412319" "(trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (1 "01")
 Condition 237 "490412319" "(trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (2 "10")
 Condition 237 "490412319" "(trntrRamMode_ANY & (TrntrMemModeRamFlush_ANY | (trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)))) 1 -1" (3 "11")
@@ -1189,6 +1214,7 @@ Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)
 Condition 239 "2874380621" "(trntrStoponWrap_ANY & (((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY)) 1 -1" (3 "11")
 Condition 240 "2086714443" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (1 "00")
 Condition 240 "2086714443" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (2 "01")
+Condition 240 "2086714443" "(((~trntrRamActiveEnable_ANY)) | trntrMemModeBP_ANY) 1 -1" (3 "10")
 Condition 248 "2541592002" "(TrMemAxiWrRdy_ANY & TrdstMemRdBufferFull_ANY & (TrntrMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) : 1'b1)) 1 -1" (3 "110")
 Condition 249 "2223440153" "(TrntrMemRdBufferFull_ANY ? (TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) : 1'b1) 1 -1" (2 "1")
 Condition 250 "600193053" "(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0) 1 -1" (1 "0")
@@ -1198,17 +1224,32 @@ Condition 255 "2533328945" "(((|TrntrMemRamRdEn_TS1)) ? (TrMemRamRd_NtraceOrDst_
 Condition 256 "1229818309" "(TrMemRamRd_NtraceOrDst_ANY == 1'b0) 1 -1" (1 "0")
 Condition 256 "1229818309" "(TrMemRamRd_NtraceOrDst_ANY == 1'b0) 1 -1" (2 "1")
 Condition 266 "2239230046" "(Trramcontrol.Trramactive & trntrRamEnable_ANY) 1 -1" (2 "10")
+Condition 272 "2599483927" "(TrntrFlushTimeoutCntr_ANY == TR_SINK_FLUSH_TIMEOUT) 1 -1" (2 "1")
 Condition 274 "435609100" "((TR_TS_North_Src & Eff_InsnTraceWrEnPerCore_TS0[(0 << 1)]) | (((~TR_TS_North_Src)) & Eff_DataTraceWrEnPerCore_TS0[(0 << 1)])) 1 -1" (3 "10")
 Condition 275 "2355327014" "(TR_TS_North_Src & Eff_InsnTraceWrEnPerCore_TS0[(0 << 1)]) 1 -1" (1 "01")
+Condition 275 "2355327014" "(TR_TS_North_Src & Eff_InsnTraceWrEnPerCore_TS0[(0 << 1)]) 1 -1" (2 "10")
 Condition 275 "2355327014" "(TR_TS_North_Src & Eff_InsnTraceWrEnPerCore_TS0[(0 << 1)]) 1 -1" (3 "11")
+Condition 276 "3548495666" "(((~TR_TS_North_Src)) & Eff_DataTraceWrEnPerCore_TS0[(0 << 1)]) 1 -1" (1 "01")
+Condition 277 "685580104" "(TR_TS_North_Vld[0] & ((~TR_TS_North_Src))) 1 -1" (2 "10")
+Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (1 "01")
+Condition 278 "19802203" "(TR_TS_North_Vld[0] & TR_TS_North_Src) 1 -1" (3 "11")
 Condition 283 "4175957272" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (2 "10")
 Condition 283 "4175957272" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) 1 -1" (3 "11")
+Condition 287 "4259321149" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
+Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
 Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (2 "10")
 Condition 289 "607568580" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (3 "11")
+Condition 290 "4236336466" "(TrRamSouthTraceWrWay_TS0 == 1[1:0]) 1 -1" (2 "1")
+Condition 293 "1906905296" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
+Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
 Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (2 "10")
 Condition 295 "2826946345" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (3 "11")
+Condition 296 "4265150923" "(TrRamSouthTraceWrWay_TS0 == 2[1:0]) 1 -1" (2 "1")
+Condition 299 "2910314252" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
+Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
 Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (2 "10")
 Condition 301 "1956710645" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (3 "11")
+Condition 302 "450405283" "(TrRamSouthTraceWrWay_TS0 == 3[1:0]) 1 -1" (2 "1")
 Condition 317 "1889701566" "(trntrcoreNewFrameStart_ANY[0] ? (trntrfirstcoreNewFrameStart_ANY[0] ? trntrnextlocalRamWpLow_ANY[0] : trntrnextlocalRamWpLow_ANY[1]) : ({(trntrcorenextRamWpLow_ANY[0][31:4] + 28'b1), 2'b0})) 1 -1" (2 "1")
 Condition 318 "2872829392" "(trntrfirstcoreNewFrameStart_ANY[0] ? trntrnextlocalRamWpLow_ANY[0] : trntrnextlocalRamWpLow_ANY[1]) 1 -1" (1 "0")
 Condition 318 "2872829392" "(trntrfirstcoreNewFrameStart_ANY[0] ? trntrnextlocalRamWpLow_ANY[0] : trntrnextlocalRamWpLow_ANY[1]) 1 -1" (2 "1")
@@ -1222,6 +1263,14 @@ Condition 327 "1725718112" "((TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY
 Condition 328 "1177968682" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (2 "01")
 Condition 328 "1177968682" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (3 "10")
 Condition 328 "1177968682" "(TrntrMemRamRdAddrWrap_ANY ^ trntrcoreRamWpWrap_ANY_d1[0]) 1 -1" (4 "11")
+Condition 329 "2162652259" "(TrRamPendPktVld_ANY[0] & TrRamPendPktRd_ANY[0].TrRamPendSrc_ANY) 1 -1" (1 "01")
+Condition 331 "75269814" "(TrRamPendPktVld_ANY[1] & TrRamPendPktRd_ANY[1].TrRamPendSrc_ANY) 1 -1" (1 "01")
+Condition 333 "2120407792" "(TrRamPendPktVld_ANY[2] & TrRamPendPktRd_ANY[2].TrRamPendSrc_ANY) 1 -1" (1 "01")
+Condition 335 "4210632741" "(TrRamPendPktVld_ANY[3] & TrRamPendPktRd_ANY[3].TrRamPendSrc_ANY) 1 -1" (1 "01")
+Condition 337 "2747992949" "(TrRamPendPktVld_ANY[4] & TrRamPendPktRd_ANY[4].TrRamPendSrc_ANY) 1 -1" (1 "01")
+Condition 339 "659618208" "(TrRamPendPktVld_ANY[5] & TrRamPendPktRd_ANY[5].TrRamPendSrc_ANY) 1 -1" (1 "01")
+Condition 341 "1565435366" "(TrRamPendPktVld_ANY[6] & TrRamPendPktRd_ANY[6].TrRamPendSrc_ANY) 1 -1" (1 "01")
+Condition 343 "3654637363" "(TrRamPendPktVld_ANY[7] & TrRamPendPktRd_ANY[7].TrRamPendSrc_ANY) 1 -1" (1 "01")
 Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0]))) 1 -1" (2 "0000000001")
 Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0]))) 1 -1" (3 "0000000010")
 Condition 345 "1950638914" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 0[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 0[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 0[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 0[1:0]))) 1 -1" (4 "0000000100")
@@ -1258,24 +1307,43 @@ Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS
 Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]))) 1 -1" (8 "0001000000")
 Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]))) 1 -1" (9 "0010000000")
 Condition 367 "3698977707" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]))) 1 -1" (10 "0100000000")
+Condition 368 "2683461616" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
+Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (1 "01")
 Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (2 "10")
 Condition 370 "3901754353" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 1[1:0])) 1 -1" (3 "11")
+Condition 371 "2149653968" "(TrRamSouthTraceWrWay_TS0 == 1[1:0]) 1 -1" (2 "1")
+Condition 372 "2513135843" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 372 "2513135843" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 372 "2513135843" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 373 "3988177846" "(TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
+Condition 374 "1381899765" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 374 "1381899765" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 374 "1381899765" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 375 "1899864535" "(TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
+Condition 376 "1957434224" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 376 "1957434224" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 376 "1957434224" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 377 "3581455347" "(TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
+Condition 378 "3006883430" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 378 "3006883430" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 378 "3006883430" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 379 "1240713618" "(TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
+Condition 380 "3767883041" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 380 "3767883041" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 380 "3767883041" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 381 "3750900333" "(TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
+Condition 382 "654319671" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 382 "654319671" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 382 "654319671" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 383 "1125732364" "(TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
+Condition 384 "32648882" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 384 "32648882" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 384 "32648882" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 385 "3881589288" "(TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
+Condition 386 "3328662436" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (1 "01")
 Condition 386 "3328662436" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (2 "10")
 Condition 386 "3328662436" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0])) 1 -1" (3 "11")
+Condition 387 "2077702217" "(TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 1[1:0]) 1 -1" (2 "1")
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (2 "0000000001")
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (3 "0000000010")
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (4 "0000000100")
@@ -1285,24 +1353,43 @@ Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (8 "0001000000")
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (9 "0010000000")
 Condition 389 "2390646387" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]))) 1 -1" (10 "0100000000")
+Condition 390 "1674586973" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
+Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (1 "01")
 Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (2 "10")
 Condition 392 "347242332" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 2[1:0])) 1 -1" (3 "11")
+Condition 393 "3932140440" "(TrRamSouthTraceWrWay_TS0 == 2[1:0]) 1 -1" (2 "1")
+Condition 394 "1776884814" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 394 "1776884814" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 394 "1776884814" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 395 "2278059518" "(TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
+Condition 396 "2927389016" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 396 "2927389016" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 396 "2927389016" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 397 "457379743" "(TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
+Condition 398 "2291034077" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 398 "2291034077" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 398 "2291034077" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 399 "3204842939" "(TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
+Condition 400 "1327174347" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 400 "1327174347" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 400 "1327174347" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 401 "596469722" "(TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
+Condition 402 "481763724" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 402 "481763724" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 402 "481763724" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 403 "3052182565" "(TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
+Condition 404 "3676460186" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 404 "3676460186" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 404 "3676460186" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 405 "694681156" "(TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
+Condition 406 "4258290207" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 406 "4258290207" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 406 "4258290207" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 407 "2367878240" "(TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
+Condition 408 "977612553" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (1 "01")
 Condition 408 "977612553" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (2 "10")
 Condition 408 "977612553" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0])) 1 -1" (3 "11")
+Condition 409 "296326657" "(TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 2[1:0]) 1 -1" (2 "1")
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (2 "0000000001")
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (3 "0000000010")
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (4 "0000000100")
@@ -1312,24 +1399,43 @@ Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (8 "0001000000")
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (9 "0010000000")
 Condition 411 "641980058" "((TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) | (TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) | (TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) | (TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]))) 1 -1" (10 "0100000000")
+Condition 412 "3165185695" "(TrRamNorthTraceWrEn_TS0 & (TrRamNorthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
+Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (1 "01")
 Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (2 "10")
 Condition 414 "3419058846" "(TrRamSouthTraceWrEn_TS0 & (TrRamSouthTraceWrWay_TS0 == 3[1:0])) 1 -1" (3 "11")
+Condition 415 "21041530" "(TrRamSouthTraceWrWay_TS0 == 3[1:0]) 1 -1" (2 "1")
+Condition 416 "3063009676" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 416 "3063009676" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 416 "3063009676" "(TrRamPendRdEn_ANY[0] & (TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 417 "1826017052" "(TrRamPendPktRd_ANY[0].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
+Condition 418 "1896129690" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 418 "1896129690" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 418 "1896129690" "(TrRamPendRdEn_ANY[1] & (TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 419 "4032671101" "(TrRamPendPktRd_ANY[1].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
+Condition 420 "1475783199" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 420 "1475783199" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 420 "1475783199" "(TrRamPendRdEn_ANY[2] & (TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 421 "1410901849" "(TrRamPendPktRd_ANY[2].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
+Condition 422 "2422464265" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 422 "2422464265" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 422 "2422464265" "(TrRamPendRdEn_ANY[3] & (TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 423 "3365127480" "(TrRamPendPktRd_ANY[3].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
+Condition 424 "3285183566" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 424 "3285183566" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 424 "3285183566" "(TrRamPendRdEn_ANY[4] & (TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 425 "1592934087" "(TrRamPendPktRd_ANY[4].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
+Condition 426 "73046360" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 426 "73046360" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 426 "73046360" "(TrRamPendRdEn_ANY[5] & (TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 427 "3262733478" "(TrRamPendPktRd_ANY[5].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
+Condition 428 "581474269" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 428 "581474269" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 428 "581474269" "(TrRamPendRdEn_ANY[6] & (TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 429 "1715230338" "(TrRamPendPktRd_ANY[6].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
+Condition 430 "3846038219" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (1 "01")
 Condition 430 "3846038219" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (2 "10")
 Condition 430 "3846038219" "(TrRamPendRdEn_ANY[7] & (TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0])) 1 -1" (3 "11")
+Condition 431 "4206310627" "(TrRamPendPktRd_ANY[7].TrRamPendWayIdx_ANY == 3[1:0]) 1 -1" (2 "1")
 Condition 433 "542349036" "(((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) & trRamDataRdEn_ANY & (trntrRamRpLow_ANY[5:3] == 0[2:0])) 1 -1" (2 "101")
 Condition 434 "1900598036" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (2 "01")
 Condition 434 "1900598036" "((trntrRamWpLow_ANY != trntrRamRpLow_ANY) | Trramwplow.Trramwrap) 1 -1" (3 "10")
@@ -1373,9 +1479,9 @@ Condition 506 "59168117" "(trntrRamRpLow_ANY[5:3] == 7[2:0]) 1 -1" (2 "1")
 Condition 512 "1552913216" "(trRamDataRdEn_ANY ? InsnTraceRdEn_TS1[7] : DataTraceRdEn_TS1[7]) 1 -1" (2 "1")
 
 CHECKSUM: "3354362860 1334787416"
-ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
-ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free. The pending RAM's source field is RAM content and is left free, so a row that holds the dead signals at zero and turns on another term stays graded, as ordinary trace traffic reaches it."
-ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default."
+ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero, save three the tie-off leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space of zero against an N-trace threshold of zero with <=. The NTR sink register block is absent, so every register-derived N-trace term follows, the north source flag never selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous grant holds its N-trace reset value. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
+ANNOTATION: "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which only increments from those enables, stays at zero for the life of the design; every pending valid, write and read enable, and every south-port valid, reads zero. The pending entries are flops reset to zero and written only by a pending write, so their source, way and address fields, and the read inhibits set from them, never read one. A row is taken only where the report's own term list shows it out of reach with those held at zero and within reach with them free."
+ANNOTATION: "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it guards stays at its zero default. The south write pointer is an OR over no cores, so the south write way and its staged copies read zero; a core's pointer never matches its own pending frame, so with one core the overflow-pending flop never sets; and the north write way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero way comes with the north write enable."
 ANNOTATION: "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 MODULE: trace_sink
 Branch 0 "127462735" "trntrRamMode_ANY" (0) "trntrRamMode_ANY 1"

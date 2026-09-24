@@ -658,7 +658,13 @@ def is_regblock_source(src: str) -> bool:
 P1 = (
     "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and "
     "NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at "
-    "zero instances, so every N-trace signal of the sink reads zero. A row is taken only where "
+    "zero instances, so every N-trace signal of the sink reads zero, save three the tie-off "
+    "leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the "
+    "N-trace RAM enable start, and the two backpressure flags, which compare an N-trace space "
+    "of zero against an N-trace threshold of zero with <=. The NTR sink register block is "
+    "absent, so every register-derived N-trace term follows, the north source flag never "
+    "selects N-trace, the flush-timeout counter never counts, and the TNIF arbiter's previous "
+    "grant holds its N-trace reset value. A row is taken only where "
     "the report's own term list shows it asking one of those signals for a value that zero "
     "forbids; a row every N-trace term of which sits at zero stays graded, whatever the "
     "expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
@@ -673,11 +679,11 @@ P4 = (
     "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the "
     "two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which "
     "only increments from those enables, stays at zero for the life of the design; every "
-    "pending valid, write and read enable, and every south-port valid, reads zero. A row is "
-    "taken only where the report's own term list shows it out of reach with those held at zero "
-    "and within reach with them free. The pending RAM's source field is RAM content and is "
-    "left free, so a row that holds the dead signals at zero and turns on another term stays "
-    "graded, as ordinary trace traffic reaches it."
+    "pending valid, write and read enable, and every south-port valid, reads zero. The pending "
+    "entries are flops reset to zero and written only by a pending write, so their source, way "
+    "and address fields, and the read inhibits set from them, never read one. A row is taken "
+    "only where the report's own term list shows it out of reach with those held at zero and "
+    "within reach with them free."
 )
 P5 = (
     "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR "
@@ -792,14 +798,19 @@ P15 = (
 P16 = (
     "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the "
     "default TRACE_SINK_SUPPORT and DST_SUPPORT of one, so mmrs derives NTR_SINK_EN as zero and "
-    "DST_SINK_EN as one, and the arm of each if on those enables that the constant does not "
-    "select never executes."
+    "DST_SINK_EN as one, with CLA_EN, DST_EN and TRACE_SINK_SUPPORT at one and NTR_EN at "
+    "zero; the arm of each if or ternary on those enables that the constant does not select "
+    "never executes."
 )
 P17 = (
     "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of "
     "NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so "
     "NUM_CORES > 1 is false, its then arm never executes, and the south-channel frame start it "
-    "guards stays at its zero default."
+    "guards stays at its zero default. The south write pointer is an OR over no cores, so the "
+    "south write way and its staged copies read zero; a core's pointer never matches its own "
+    "pending frame, so with one core the overflow-pending flop never sets; and the north write "
+    "way is the staged OR of each valid core's pointer, staged with the valid, so a non-zero "
+    "way comes with the north write enable."
 )
 P19 = (
     "SMC-P19-NTR-RAM-READ-TIED: the DFD top connects the trace wrapper's trRamDataRdEn to a "
@@ -930,6 +941,11 @@ def in_region(src: str, region: "tuple[str, int, int] | None") -> bool:
 NTRACE_NAME = re.compile(r"^(trntr|insntrace)|ntrace", re.I)
 # A name carrying both halves is the mux between them, not the N-trace side.
 SHARED_NAME = re.compile(r"ntraceordst|dstorntrace", re.I)
+# N-trace signals the tie-off leaves at one rather than zero: the flush-timeout
+# done flag resets to one and only the RAM enable start (itself zero) clears it,
+# and each backpressure flag compares an N-trace space of zero against an N-trace
+# threshold of zero with <=.
+NTRACE_AT_ONE = re.compile(r"^(?:TrntrFlushTimeoutDone_ANY|trntrRamModeBP_ANY|trntrMemModeBP_ANY)$")
 TERM_IDENT = re.compile(r"[A-Za-z_][A-Za-z_0-9]*(?:\.[A-Za-z_][A-Za-z_0-9]*)*")
 LITERAL = re.compile(r"^\d*'[bhdo]?[0-9a-fA-F_]+(\[[^\]]*\])?$")
 COMPARE = re.compile(r"^(.+?)\s*(!=|==|>=|<=|>|<)\s*(.+)$", re.S)
@@ -979,7 +995,10 @@ def term_identifiers(term: str) -> "list[str]":
 def is_ntrace_term(term: str) -> bool:
     """Whether every signal the term reads is one the tie-off leaves at zero."""
     ids = term_identifiers(term)
-    return bool(ids) and all(NTRACE_NAME.search(i) and not SHARED_NAME.search(i) for i in ids)
+    return bool(ids) and all(
+        NTRACE_NAME.search(i) and not SHARED_NAME.search(i) and not NTRACE_AT_ONE.match(i)
+        for i in ids
+    )
 
 
 def _numeric(term: str) -> "int | None":
@@ -1386,7 +1405,12 @@ FEATURE_BRANCH_FACTS: "dict[str, list[tuple[str, object, str]]]" = {
 # Facts over the decisions of a multi-decision branch path, as (class, signals,
 # value): a path is written when one of its decisions is out of reach with the
 # signals held at that value and within reach with them free.
-NTRACE_SIGNAL = re.compile(r"^(?!.*(?:ntraceordst|dstorntrace))(?:trntr|insntrace|.*ntrace)", re.I)
+NTRACE_SIGNAL = re.compile(
+    r"^(?!.*(?:ntraceordst|dstorntrace))"
+    r"(?!(?:TrntrFlushTimeoutDone_ANY|trntrRamModeBP_ANY|trntrMemModeBP_ANY)$)"
+    r"(?:trntr|insntrace|.*ntrace)",
+    re.I,
+)
 LC_STATE_OFF = re.compile(r"^(?:HAS_LC_STATE|is_lc_state_access)$")
 SECURE_TM = re.compile(r"^secure_tm_i$")
 BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
@@ -1404,11 +1428,30 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     "idma_legalizer_rw_axi": [(P7, re.compile(r"^(?:flush_i|kill_i)$"), 0)],
     "idma_axi_write": [(P7, re.compile(r"^dp_poison_i$"), 0)],
     "trace_sink": [
+        (P1, NTRACE_AT_ONE, 1),
         (P1, NTRACE_SIGNAL, 0),
         (P1, re.compile(r"^Tr(?:ram|customram)\w*\.\w+"), 0),
         (P4, SINGLE_SOURCE_DEAD, 0),
         (P19, NTR_RAM_READ, 0),
-        (P17, re.compile(r"^trdstsouthcoresNewFrameStart_ANY$"), 0),
+        (P17, re.compile(r"^trdstsouthcoresNewFrameStart_ANY(?:_d1)?$"), 0),
+        (P1, re.compile(r"^(?:TR_TS_North_Src(?:_stg)?|TrRamNorthTraceWrSrc_TS0)$"), 0),
+        (P17, re.compile(r"^(?:TrRamSouthTraceWr\w*|trsouthcoreRamWpLow\w*)$"), 0),
+        (
+            P17,
+            re.compile(
+                r"^(?:trdstcoreptrmatchesanypendingframeafteroverflow_ANY"
+                r"|trdstcoreframefillpendingwhileoverflow_ANY)\b"
+            ),
+            0,
+        ),
+        (
+            P4,
+            re.compile(
+                r"^(?:TrRamPendPktRd_ANY\[\d+\]\.TrRamPend\w+|TrRamPendWrEn\w*"
+                r"|Tr(?:dst|ntr)RamPendPktInhibitRamRd_ANY\w*)$"
+            ),
+            0,
+        ),
     ],
     "mmr_req_ctrl": [
         (
@@ -1460,6 +1503,8 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
         (P22, re.compile(r"^i_critical_signal_hold$"), 0),
         (P1, re.compile(r"^i_ntr(?:_sink)?_(?:fuse_dis|clk_dis|clk_dis_ctrl|func_clamp)\b"), 1),
         (P1, re.compile(r"^ntr(?:_sink)?_gated_reset_n\b"), 0),
+        (P16, re.compile(r"^(?:CLA_EN|DST_EN|DST_SINK_EN|TRACE_SINK_SUPPORT)$"), 1),
+        (P16, re.compile(r"^(?:NTR_EN|NTR_SINK_EN)$"), 0),
     ],
     "dst_mmr": [(P13, re.compile(r"^MMR_Trdstcontrol_F_Trdstempty_WrEn$"), 1)],
     "dst_sink_mmr": [
@@ -1502,8 +1547,49 @@ BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
 
 
 # Per-module row predicates over the report's own terms: (class, test(terms, vector)).
+NORTH_WAY_NONZERO = re.compile(r"^\(TrRamNorthTraceWrWay_TS0 == [123]\[1:0\]\)$")
 AVS_MIXED_ACK = re.compile(r"^\(slave_ack == SlaveAck(?:ResourceUnavailable|BadCRC)\)$")
 ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
+    # The north write way is the staged OR of each valid core's pointer, staged on
+    # the same clock as the valid, so a non-zero way comes with a staged valid, and
+    # with no pending write that valid is the north write enable.
+    "trace_sink": [
+        # The N-trace flush-timeout counter only counts after a start the tie-off
+        # never raises, so it stays at zero and never meets TR_SINK_FLUSH_TIMEOUT (16'hFF).
+        (
+            P1,
+            lambda terms, vector: any(
+                t == "(TrntrFlushTimeoutCntr_ANY == TR_SINK_FLUSH_TIMEOUT)" and b == "1"
+                for t, b in zip(terms, vector)
+            ),
+        ),
+        (
+            P17,
+            lambda terms, vector: (
+                len(terms) == 2
+                and terms[0] == "TrRamNorthTraceWrEn_TS0"
+                and bool(NORTH_WAY_NONZERO.match(terms[1]))
+                and vector == "01"
+            ),
+        ),
+    ],
+    # prev_gnt resets to NTR_GNT and loads only while an N-trace request is up,
+    # which the tie-off never raises, so it holds NTR_GNT.
+    "tnif": [
+        (
+            P1,
+            lambda terms, vector: any(
+                (
+                    re.fullmatch(
+                        r"\(prev_gnt (?:== tnifState_e'\(NTR_GNT\)|inside \{NTR_GNT\})\)", t
+                    )
+                    and b == "0"
+                )
+                or (re.fullmatch(r"\(prev_gnt == tnifState_e'\(DST_GNT\)\)", t) and b == "1")
+                for t, b in zip(terms, vector)
+            ),
+        )
+    ],
     "avsbus_controller": [
         (
             B10,
@@ -1568,6 +1654,49 @@ def region_facts(module: str) -> "list[tuple[str, str, tuple[str, int, int]]]":
         for name, param, reason, region in SECTION_REGION_FACTS
         if _in_section(module, name, param)
     ]
+
+
+def _held_number(side: str, facts: "list[tuple[str, re.Pattern[str], int]]") -> "int | None":
+    """A comparison side's value when it is a literal or a signal a fact holds."""
+    side = side.strip()
+    while side.startswith("(") and _parenthesised(side, 0) == side:
+        side = side[1:-1].strip()
+    m = re.fullmatch(r"(\d+)(?:\[[^\]]*\])?", side)
+    if m:
+        return int(m.group(1))
+    m = SIZED_LITERAL.fullmatch(side)
+    if m:
+        base = {"b": 2, "h": 16, "d": 10, "o": 8}[m.group(1).lower()]
+        return int(m.group(2).replace("_", ""), base)
+    if LANE_IDENTIFIER.fullmatch(side):
+        for _, forced, value in facts:
+            if _scoped(forced).search(side):
+                return value
+    return None
+
+
+def _tie_held(term: str, facts: "list[tuple[str, re.Pattern[str], int]]") -> str:
+    """A term with each comparison whose sides are literals or held signals evaluated."""
+
+    def tie(m: re.Match) -> str:
+        left, op, right = (
+            _held_number(m.group(1), facts),
+            m.group(2),
+            _held_number(m.group(3), facts),
+        )
+        if left is None or right is None:
+            return m.group(0)
+        value = {
+            "==": left == right,
+            "!=": left != right,
+            ">": left > right,
+            "<": left < right,
+            ">=": left >= right,
+            "<=": left <= right,
+        }[op]
+        return "1'b1" if value else "1'b0"
+
+    return COMPARISON.sub(tie, term) if facts else term
 
 
 def _tie_ntrace(term: str) -> str:
@@ -1681,6 +1810,7 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     names: dict[str, str] = {}
     plain = []
     for term in terms:
+        term = _tie_held(term, facts)
         text = _opaque(_one_bit(_tie_ntrace(term) if ntrace else term), names)
         if text is None:
             return None
@@ -1705,7 +1835,7 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
             _row_satisfiable_held(tuple(plain), vector, held) is False
             and _row_satisfiable(tuple(free), vector, None, 0) is not False
         ):
-            ids = [n for t in plain for n in LANE_IDENTIFIER.findall(t)]
+            ids = [n for t in terms for n in LANE_IDENTIFIER.findall(t)]
             for reason, forced, _ in facts:
                 if any(_scoped(forced).search(n) for n in ids):
                     return reason
