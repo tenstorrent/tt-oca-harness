@@ -15,12 +15,24 @@
 // values: 1.25 or 10 ns; default 1.25 = 800 MHz).  The ref and periph
 // periods are fixed and not configurable via plusarg.
 //
-// For sys and periph, each oscillator passes through a prim_clock_mux2
-// (test-mode bypass) then a prim_ag_clk_mux (glitch-free output) before
-// reaching the output port.  sel=0 on both muxes keeps the PLL oscillator
-// path.  ag_rst_n starts high for 1 ps then tracks rst_ni; the falling
-// edge initialises the AG mux set/reset flops before functional reset
-// deasserts.  clk_ref passes straight through -- no mux needed.
+// Clock path for sys and periph:
+//
+//   osc_ref ──> clk0 \                                  clk0 \
+//                     prim_clock_mux2 ──> clk_XXX_mux2 ──────  prim_ag_clk_mux ──> clk_XXX_o
+//   osc_XXX ──> clk1 /  sel=1 selects PLL (default)           /  sel=0 keeps clk0
+//
+// prim_clock_mux2 (refclk mux): clk0 carries the always-on reference clock,
+// clk1 carries the PLL oscillator.  In hardware, software holds sel=0 until
+// the PLL has locked, then asserts sel=1 to switch over.  In this behavioral
+// model the PLL is always considered locked, so sel is permanently 1.
+//
+// prim_ag_clk_mux (anti-glitch mux): prevents glitches on the output during
+// the clk0→clk1 transition in the mux above.  ag_rst_n starts 1 for 1 ps
+// then tracks rst_ni; the resulting falling edge initialises the set/reset
+// flops before functional reset deasserts.  sel=0 permanently selects clk0
+// (the post-refclk-mux path) so the AG mux is transparent at steady state.
+//
+// clk_ref passes straight through — it is the reference and needs no mux.
 //
 // The AXI-Lite register interface (axil_pll_req_o/resp_i from
 // regs/pll_wrap.rdl) is terminated with an OKAY stub.  A real integration
@@ -36,6 +48,7 @@ module pll_wrap
 ) (
   input  logic       clk_i,
   input  logic       rst_ni,
+  input  logic       test_en_i,
 
   input  axil_req_t  axil_req_i,
   output axil_resp_t axil_resp_o,
@@ -98,9 +111,9 @@ module pll_wrap
   logic clk_sys_mux2;
 
   prim_clock_mux2 u_sys_clk_mux2 (
-    .clk0_i (osc_sys),
+    .clk0_i (osc_ref),
     .clk1_i (osc_sys),
-    .sel_i  (1'b0),
+    .sel_i  (1'b1),
     .clk_o  (clk_sys_mux2)
   );
 
@@ -111,7 +124,7 @@ module pll_wrap
     .clk1_i     (osc_sys),
     .rst_clk0_ni(ag_rst_n),
     .rst_clk1_ni(ag_rst_n),
-    .test_en_i  (1'b0),
+    .test_en_i  (test_en_i),
     .sel_i      (1'b0),
     .clk_o      (clk_sys_o)
   );
@@ -123,9 +136,9 @@ module pll_wrap
   logic clk_periph_mux2;
 
   prim_clock_mux2 u_periph_clk_mux2 (
-    .clk0_i (osc_periph),
+    .clk0_i (osc_ref),
     .clk1_i (osc_periph),
-    .sel_i  (1'b0),
+    .sel_i  (1'b1),
     .clk_o  (clk_periph_mux2)
   );
 
@@ -136,7 +149,7 @@ module pll_wrap
     .clk1_i     (osc_periph),
     .rst_clk0_ni(ag_rst_n),
     .rst_clk1_ni(ag_rst_n),
-    .test_en_i  (1'b0),
+    .test_en_i  (test_en_i),
     .sel_i      (1'b0),
     .clk_o      (clk_periph_o)
   );
