@@ -180,6 +180,10 @@ timestamp input and sdtrig control (P22 DFD-CONTROL-TIED), and the bench ties th
 CLA crosstrigger and TDR clock-stop inputs (B8 DFD-BENCH-INPUTS-TIED). The signals
 these classes hold decide condition rows as well as branch paths, operand tables
 included.
+A module's held signals are also tried together, each comparison over N-trace
+signals alone at its tied value, so the trace sink's N-trace read path and its
+pending buffer, and the MMR fabric's JTAG and NTR-sink paths, are read as the
+facts that hold them.
 
 Four more are the register blocks' own. Where an integration acks every
 external register in the cycle it is requested, the pending flag never sets and
@@ -746,10 +750,11 @@ P19 = (
 )
 P22 = (
     "SMC-P22-DFD-CONTROL-TIED: smc_dfd_wrap ties the DFD top's i_critical_signal_hold, "
-    "i_dst_clk_dis and i_timestamp to zero and its i_sdtrig_control to TRIG_TRACE_NONE. So the "
-    "warm-reset override terms, the DST clock-disable extension, the CLA time-match event (a "
-    "timestamp of zero never reaches a nonzero match value) and the DST sdtrig start and stop "
-    "hold zero, and a row or path that needs one of them high cannot occur."
+    "i_timestamp and every CLA, DST, DST-sink and funnel fuse and clock disable to zero, and "
+    "its i_sdtrig_control to TRIG_TRACE_NONE. So the warm-reset override terms, the fuse and "
+    "clock-disable terms and extensions, the CLA time-match event (a timestamp of zero never "
+    "reaches a nonzero match value) and the DST sdtrig start and stop hold zero, and a row or "
+    "path that needs one of them high cannot occur."
 )
 B8 = (
     "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The "
@@ -1049,6 +1054,46 @@ def _row_satisfiable(
     return False
 
 
+def _row_satisfiable_held(
+    terms: "tuple[str, ...]", vector: str, held: "list[tuple[re.Pattern[str], int]]"
+) -> "bool | None":
+    """Whether some value of the free signals gives the row, every held signal at its value."""
+    compiled = []
+    names: list[str] = []
+    for term in terms:
+        local: list[str] = []
+        body = _python_condition(term, local)
+        if body is None:
+            return None
+        try:
+            compiled.append((local, compile(body, "<term>", "eval")))
+        except SyntaxError:
+            return None
+        names += [n for n in local if n not in names]
+    fixed: dict[str, int] = {}
+    for n in names:
+        for pattern, value in held:
+            if pattern.search(n):
+                fixed[n] = value
+                break
+    free = [n for n in names if n not in fixed]
+    if len(free) > 12:
+        return None
+    for bits in itertools.product((0, 1), repeat=len(free)):
+        env = dict(zip(free, bits))
+        env.update(fixed)
+        try:
+            got = "".join(
+                str(int(bool(eval(code, {}, {"v": [env[n] for n in local]}))))
+                for local, code in compiled
+            )
+        except Exception:
+            return None
+        if got == vector:
+            return True
+    return False
+
+
 def needs_forced_away(
     terms: "tuple[str, ...] | list[str] | None",
     vector: str,
@@ -1078,7 +1123,7 @@ def needs_lane_off(terms: "tuple[str, ...] | None", vector: str) -> bool:
 # tied signal, so it is left free, as is every north-side signal.
 SINGLE_SOURCE_DEAD = re.compile(
     r"TrRamPend(?:Pkt)?(?:Vld|WrEn|RdEn|NorthWrEn|SouthWrEn)|TrRamPend\w*PktVld|"
-    r"South\w*Vld|TrRamSouth\w*|TR_TS_South\w*"
+    r"South\w*Vld|TrRamSouth\w*|TR_TS_South\w*|TrRamPerWayPendToWriteCnt\w*"
 )
 
 
@@ -1171,6 +1216,7 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "efuse_shadow_reg_access_control": [
         (P6, re.compile(r"."), None, ("efuse_shadow_reg_access_control.sv", 115, 117)),
     ],
+    "mmr_req_ctrl": [(P16, re.compile(r"."), None, ("mmr_req_ctrl.sv", 167, 167))],
     "idma_legalizer_rw_axi": [
         (P7, re.compile(r"\| kill_i\)$"), re.compile(r"^01$"), None),
         (P7, re.compile(r"& \(\(!flush_i\)\)\)$"), re.compile(r"^1+0$"), None),
@@ -1209,11 +1255,20 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     "idma_axi_write": [(P7, re.compile(r"^dp_poison_i$"), 0)],
     "trace_sink": [
         (P1, NTRACE_SIGNAL, 0),
+        (P1, re.compile(r"^Tr(?:ram|customram)\w*\.\w+"), 0),
         (P4, SINGLE_SOURCE_DEAD, 0),
         (P19, NTR_RAM_READ, 0),
         (P17, re.compile(r"^trdstsouthcoresNewFrameStart_ANY$"), 0),
     ],
     "mmr_req_ctrl": [
+        (
+            P14,
+            re.compile(
+                r"^(?:jt_req_vld|gnt_is_jtag|launch_is_jtag|rsp_is_jtag|ram_is_jtag_q|ram_cs_is_jtag)$"
+            ),
+            0,
+        ),
+        (P16, re.compile(r"^(?:gnt_ram_rd_ntr|ram_is_ntr_q|ram_cs_is_ntr|ram_rd_en_ntr)$"), 0),
         (P14, re.compile(r"^gnt_is_jtag$"), 0),
         (P16, re.compile(r"^NTR_SINK_EN$"), 0),
         (P16, re.compile(r"^DST_SINK_EN$"), 1),
@@ -1248,9 +1303,16 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     ],
     "tnif_wrapper": [(P13, re.compile(r"^(?:dst|tnif)_gated_func_clamp\b"), 0)],
     "mmrs": [
-        (P13, re.compile(r"^intf_gated_func_clamp$"), 0),
+        (P13, re.compile(r"^(?:intf|cla|dst|dst_sink|funnel)_gated_func_clamp\b"), 0),
+        (P13, re.compile(r"^(?:ntr|ntr_sink)_gated_func_clamp\b"), 1),
         (P14, re.compile(r"^i_jtag_mmr_req_vld$"), 0),
+        (P22, re.compile(r"^i_(?:cla|dst|dst_sink|funnel)_(?:fuse_dis|clk_dis)\b"), 0),
+        (P22, re.compile(r"^i_critical_signal_hold$"), 0),
+        (P1, re.compile(r"^i_ntr(?:_sink)?_(?:fuse_dis|clk_dis|clk_dis_ctrl|func_clamp)\b"), 1),
+        (P1, re.compile(r"^ntr(?:_sink)?_gated_reset_n\b"), 0),
     ],
+    "dst_mmr": [(P13, re.compile(r"^MMR_Trdstcontrol_F_Trdstempty_WrEn$"), 1)],
+    "dst_sink_mmr": [(P13, re.compile(r"^MMR_Trdstramcontrol_F_Trdstramempty_WrEn$"), 1)],
     "trace_wrapper": [
         (P13, re.compile(r"^(?:dst_sink|funnel|dst)_gated_func_clamp\b"), 0),
         (P13, re.compile(r"^(?:ntr_sink|ntr)_gated_func_clamp\b"), 1),
@@ -1279,7 +1341,30 @@ BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
 SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
     "uart_core": [(C5, "rx_enable", "tx_enable")],
     "system_timer_octs_core": [(C5, "credit_gen_pulse", "(credit_gen_pulse && enable)")],
+    # smc_dfd_wrap drives every present block's clock-disable control from one net.
+    "mmrs": [
+        (P22, "i_dst_clk_dis_ctrl", "i_cla_clk_dis_ctrl"),
+        (P22, "i_dst_sink_clk_dis_ctrl", "i_cla_clk_dis_ctrl"),
+        (P22, "i_funnel_clk_dis_ctrl", "i_cla_clk_dis_ctrl"),
+    ],
 }
+
+
+def _tie_ntrace(term: str) -> str:
+    """A term with each comparison over N-trace signals alone replaced by its tied value."""
+
+    def tie(m: re.Match) -> str:
+        body = re.sub(r"\$bits\([^()]*\)'\s*", "", m.group(0))
+        if not is_ntrace_term(body):
+            return m.group(0)
+        value = tied_value(body)
+        return m.group(0) if value is None else ("1'b1" if value else "1'b0")
+
+    before = None
+    while before != term:
+        before = term
+        term = COMPARISON.sub(tie, term)
+    return term
 
 
 def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str) -> "str | None":
@@ -1289,21 +1374,50 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     """
     if not terms:
         return None
+    facts = BRANCH_PATH_FACTS.get(module, [])
+    ntrace = any(r == P1 for r, _, _ in facts)
     names: dict[str, str] = {}
     plain = []
     for term in terms:
-        text = _opaque(_one_bit(term), names)
+        text = _opaque(_one_bit(_tie_ntrace(term) if ntrace else term), names)
         if text is None:
             return None
         plain.append(text)
     for reason, forced, value in BRANCH_PATH_FACTS.get(module, []):
         if needs_forced_away(plain, vector, _scoped(forced), value):
             return reason
-    for reason, name, meaning in SIGNAL_IDENTITIES.get(module, []):
-        rewritten = tuple(re.sub(rf"\b{re.escape(name)}\b", meaning, t) for t in plain)
-        if rewritten != tuple(plain) and _row_satisfiable(rewritten, vector, None, 0) is False:
+    if facts:
+        # Held together: a row out of reach only jointly is credited to the first
+        # class whose signals it names, or to P1 when an N-trace comparison decided it.
+        free = []
+        opened: dict[str, str] = {}
+        for term in terms:
+            text = _opaque(_one_bit(term), opened)
+            if text is None:
+                return None
+            free.append(text)
+        held = [(_scoped(forced), value) for _, forced, value in facts]
+        # A row too wide to enumerate free is still out of reach when the held signals
+        # alone rule it out; only a row the free check shows impossible is left to C1.
+        if (
+            _row_satisfiable_held(tuple(plain), vector, held) is False
+            and _row_satisfiable(tuple(free), vector, None, 0) is not False
+        ):
+            ids = [n for t in plain for n in LANE_IDENTIFIER.findall(t)]
+            for reason, forced, _ in facts:
+                if any(_scoped(forced).search(n) for n in ids):
+                    return reason
+            if ntrace:
+                return P1
+    identities = SIGNAL_IDENTITIES.get(module, [])
+    if identities:
+        rewritten = tuple(plain)
+        for _, name, meaning in identities:
+            rewritten = tuple(re.sub(rf"\b{re.escape(name)}\b", meaning, t) for t in rewritten)
+        held = [(_scoped(forced), value) for _, forced, value in facts]
+        if rewritten != tuple(plain) and _row_satisfiable_held(rewritten, vector, held) is False:
             if _row_satisfiable(tuple(plain), vector, None, 0):
-                return reason
+                return identities[0][0]
     return None
 
 

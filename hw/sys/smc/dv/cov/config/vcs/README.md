@@ -126,7 +126,7 @@ columns come from the annotated source (a ternary whose `?` opens its own line t
 its selector from the line above), it is paired with its template entry by
 its column values, and it is written only when one of its own decisions is out
 of reach under a class's fact, or when its decisions have no common solution
-(C1). A comparison is one opaque truth value to that test. The signals a feature class holds decide condition rows the same way, operand tables included: a row is written when it is out of reach with them held and within reach with them free. Condition and
+(C1). A comparison is one opaque truth value to that test. The signals a feature class holds decide condition rows the same way, operand tables included: a row is written when it is out of reach with them held and within reach with them free. The held signals of one module are also tried together, with each comparison over N-trace signals alone at the value P1 gives it, and a row out of reach only jointly is credited to the first class whose signals it names. Condition and
 branch entries of one module are written as separate blocks, each under its
 own metric's checksum, since urg checks a block against the metric it holds. Where a
 fact turns on which term of an expression a row holds away from a tied value,
