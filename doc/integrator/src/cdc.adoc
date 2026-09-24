@@ -10,22 +10,34 @@ required for the assembled SoC. This section explains what those constraints do,
 are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.
 
-The collateral ships with the harness. `integration/constraint/<block>/synth/`
-groups it by system while preserving the original filenames and relative path
-depth:
+To give the different systems a unified view of how the constraints are defined,
+these constraints are collected with symlinks under `integration/constraint`
+using a common hierarchy, described below. If the collateral inventory changes,
+run `scripts/update_integration_symlinks.py` to regenerate the index.
 
-* `constraints.sdc` -- the block's full timing intent, including the clock
-definitions and the asynchronous clock groups. It sources the two files below.
-* `<block>_cdc_max_delay.tcl` -- generated-clock periods and any hand-written
-overrides.
-* `<block>_cdc_max_delay_generated.tcl` -- the per-instance calls.
+The constraints for each system can build on some shared code, linked at
+`integration/constraint/shared`. This consists of two files:
+`async_clock_groups.tcl` (which defines clock groups with default bounds) and
+`cdc_max_delay_procs.tcl` (which defines procs for emitting CDC constraints).
 
-The shared `async_clock_groups.tcl` and `cdc_max_delay_procs.tcl` helpers are
-under `integration/constraint/shared/`. These are symlink indexes: the
-canonical per-system files remain under `hw/sys/<block>/synth/`, and the
-canonical shared helpers remain under `flows/synth/constraints/`. Regenerate
-the index with `python3 scripts/update_integration_symlinks.py` after changing the
-collateral inventory.
+The constraints for each system can use this shared code and are visible through
+symlinks at `integration/constraint/<block>/synth`. This directory contains the
+following files:
+
+* `constraints.sdc`:
+  The block's full timing intent, including the clock definitions and the
+  asynchronous clock groups. This sources `cdc_max_delay_procs.tcl` from the
+  shared code and then sources the next script.
+
+* `<block>_cdc_max_delay.tcl`:
+  This defines periods for generated clocks and any hand-written overrides and
+  then sources the next script.
+
+* `<block>_cdc_max_delay_generated.tcl`:
+  This auto-generated file defines maximum delays for instances of
+  synchronization structures in the system. It expects to be sourced by a file
+  that has already sourced `cdc_max_delay_procs.tcl` to define the procs that
+  it uses.
 
 == Why crossings are bounded rather than timed
 
