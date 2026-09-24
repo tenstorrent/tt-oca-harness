@@ -4,21 +4,21 @@
     "coverage_policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "coverage_report": "artifacts/sep/coverage/report",
     "coverage_summary": "artifacts/sep/coverage/report/summary.json",
-    "log": "vcs/sep_cocotb/runs/sep_periph_bus_err_misaligned_test/seed_526261968/attempt_0/logs/sep_periph_bus_err_misaligned_test.log",
+    "log": "vcs/sep_cocotb/runs/sep_periph_bus_err_misaligned_test/seed_439715113/attempt_0/logs/sep_periph_bus_err_misaligned_test.log",
     "regression_json": "vcs/sep_cocotb/runs/stages/regress/regression.json",
     "result_json": "vcs/sep_cocotb/runs/result.json",
     "run_dir": "vcs/sep_cocotb/runs"
   },
   "coverage": {
-    "comparison_key": "COVCMP-ad9f3a8629e2f5af",
+    "comparison_key": "COVCMP-0cac2f5e03ff9025",
     "details_available": true,
     "effective_metrics": {
-      "branch": 81.51,
-      "condition": 62.41,
-      "fsm_state": 63.7,
-      "functional": 95.25,
-      "line": 89.86,
-      "toggle": 61.44
+      "branch": 81.79,
+      "condition": 62.77,
+      "fsm_state": 63.96,
+      "functional": 98.57,
+      "line": 90.14,
+      "toggle": 62.54
     },
     "holes_summary": {
       "accepted": 0,
@@ -37,12 +37,12 @@
     "policy_application": "artifacts/sep/coverage/report/policy-application.json",
     "policy_thresholds": [],
     "raw_metrics": {
-      "branch": 81.51,
-      "condition": 62.41,
-      "fsm_state": 63.7,
-      "functional": 95.25,
-      "line": 89.86,
-      "toggle": 61.35
+      "branch": 81.79,
+      "condition": 62.77,
+      "fsm_state": 63.96,
+      "functional": 98.57,
+      "line": 90.14,
+      "toggle": 62.45
     },
     "report": "artifacts/sep/coverage/report",
     "source_manifest": "vcs/sep_cocotb/runs/cov/coverage.json",
@@ -54,13 +54,13 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": true,
-    "total_percent": 75.7
+    "total_percent": 76.63
   },
   "failure_buckets": [
     {
-      "count": 4,
+      "count": 2,
       "examples": [
-        "vcs/sep_cocotb/runs/sep_periph_bus_err_misaligned_test/seed_526261968/attempt_0/logs/sep_periph_bus_err_misaligned_test.log"
+        "vcs/sep_cocotb/runs/sep_periph_bus_err_misaligned_test/seed_439715113/attempt_0/logs/sep_periph_bus_err_misaligned_test.log"
       ],
       "kind": "sim_failure",
       "signature": "1 testcase failure/error node(s)"
@@ -68,68 +68,8 @@
     {
       "affected": [
         {
-          "item": "sep_boot_rom_smoke_test",
-          "seed": 1881057155,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_efuse_jtag_window_allow_test",
-          "seed": 1237554694,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000012-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000012-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-          "seed": 252696985,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000024-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000024-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-          "seed": 1573567096,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000034-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000034-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
           "item": "sep_esrc_e2e_smoke_test",
-          "seed": 247621282,
+          "seed": 2076382885,
           "status": "ERROR",
           "target": "default"
         }
@@ -139,301 +79,46 @@
       "kind": "unknown",
       "reason": "environment_error: attempt sim-000037-a0 ended failed: failed reported but no result.json appeared within 120s",
       "signature": "environment_error: attempt sim-000037-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_fabric_remap_filter_csr_bank_test",
-          "seed": 1048185739,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000060-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000060-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_wdt_aon_timer_internals_test",
-          "seed": 224940885,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000063-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000063-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_otbn_compute_rand_test",
-          "seed": 419202855,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000101-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000101-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_efuse_set_only_monotonicity_test",
-          "seed": 1571615592,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000104-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000104-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_lcc_demote_feat_ctrl_matrix_test",
-          "seed": 1030737966,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000105-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000105-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_efuse_rma_token_rand_test",
-          "seed": 780225345,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_efuse_illegal_state_fail_closed_test",
-          "seed": 1334283125,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000108-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000108-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_reg_bit_bash_rand_test",
-          "seed": 1679101758,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000132-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000132-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_reg_bit_bash_rand_test",
-          "seed": 2143300279,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "sep_axi_map_refuse_test",
-          "seed": 1636946034,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000136-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000136-a0 ended failed: failed reported but no result.json appeared within 120s"
     }
   ],
   "flow": "sep",
   "framework": "cocotb",
-  "generated_at": "2026-09-24T00:26:55+00:00",
+  "generated_at": "2026-09-24T14:11:26+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "e3ee969741c5aa492c79bfab8623e79904572b9d",
-    "short_sha": "e3ee96974"
+    "sha": "bcfdc5b29b0ef22c8b35271c1c3986fdc25ea86c",
+    "short_sha": "bcfdc5b29"
   },
   "junit_xml": {
     "missing": 0,
-    "total": 154
+    "total": 173
   },
   "kind": "dv",
   "regression": {
     "failed_tests": [
       {
-        "item": "sep_boot_rom_smoke_test",
-        "reason": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_boot_rom_smoke_test --stage sim --tool vcs --seed 1881057155 --target default --cov",
-        "seed": 1881057155,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_efuse_jtag_window_allow_test",
-        "reason": "environment_error: attempt sim-000012-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_jtag_window_allow_test --stage sim --tool vcs --seed 1237554694 --target default --cov",
-        "seed": 1237554694,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-        "reason": "environment_error: attempt sim-000024-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_lc_state_w1s_rma_chiplet_test --stage sim --tool vcs --seed 252696985 --target default --cov",
-        "seed": 252696985,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-        "reason": "environment_error: attempt sim-000034-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_clock_uvm_wdt_rst_input_reset_path_test --stage sim --tool vcs --seed 1573567096 --target default --cov",
-        "seed": 1573567096,
-        "status": "ERROR"
+        "item": "sep_periph_bus_err_misaligned_test",
+        "reason": "1 testcase failure/error node(s)",
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_periph_bus_err_misaligned_test --stage sim --tool vcs --seed 439715113 --target default --cov",
+        "seed": 439715113,
+        "status": "FAIL"
       },
       {
         "item": "sep_esrc_e2e_smoke_test",
         "reason": "environment_error: attempt sim-000037-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_esrc_e2e_smoke_test --stage sim --tool vcs --seed 247621282 --target default --cov",
-        "seed": 247621282,
+        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_esrc_e2e_smoke_test --stage sim --tool vcs --seed 2076382885 --target default --cov",
+        "seed": 2076382885,
         "status": "ERROR"
-      },
-      {
-        "item": "sep_periph_bus_err_misaligned_test",
-        "reason": "1 testcase failure/error node(s)",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_periph_bus_err_misaligned_test --stage sim --tool vcs --seed 526261968 --target default --cov",
-        "seed": 526261968,
-        "status": "FAIL"
-      },
-      {
-        "item": "sep_fabric_remap_filter_csr_bank_test",
-        "reason": "environment_error: attempt sim-000060-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_fabric_remap_filter_csr_bank_test --stage sim --tool vcs --seed 1048185739 --target default --cov",
-        "seed": 1048185739,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_wdt_aon_timer_internals_test",
-        "reason": "environment_error: attempt sim-000063-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_wdt_aon_timer_internals_test --stage sim --tool vcs --seed 224940885 --target default --cov",
-        "seed": 224940885,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_otbn_compute_rand_test",
-        "reason": "environment_error: attempt sim-000101-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_otbn_compute_rand_test --stage sim --tool vcs --seed 419202855 --target default --cov",
-        "seed": 419202855,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_efuse_set_only_monotonicity_test",
-        "reason": "environment_error: attempt sim-000104-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_set_only_monotonicity_test --stage sim --tool vcs --seed 1571615592 --target default --cov",
-        "seed": 1571615592,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_lcc_demote_feat_ctrl_matrix_test",
-        "reason": "environment_error: attempt sim-000105-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_lcc_demote_feat_ctrl_matrix_test --stage sim --tool vcs --seed 1030737966 --target default --cov",
-        "seed": 1030737966,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_efuse_rma_token_rand_test",
-        "reason": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_rma_token_rand_test --stage sim --tool vcs --seed 780225345 --target default --cov",
-        "seed": 780225345,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_efuse_illegal_state_fail_closed_test",
-        "reason": "environment_error: attempt sim-000108-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_efuse_illegal_state_fail_closed_test --stage sim --tool vcs --seed 1334283125 --target default --cov",
-        "seed": 1334283125,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_reg_bit_bash_rand_test",
-        "reason": "environment_error: attempt sim-000132-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_reg_bit_bash_rand_test --stage sim --tool vcs --seed 1679101758 --target default --cov",
-        "seed": 1679101758,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_reg_bit_bash_rand_test",
-        "reason": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_reg_bit_bash_rand_test --stage sim --tool vcs --seed 2143300279 --target default --cov",
-        "seed": 2143300279,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_axi_map_refuse_test",
-        "reason": "environment_error: attempt sim-000136-a0 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_axi_map_refuse_test --stage sim --tool vcs --seed 1636946034 --target default --cov",
-        "seed": 1636946034,
-        "status": "ERROR"
-      },
-      {
-        "item": "sep_abr_pipelined_read_test",
-        "reason": "1 testcase failure/error node(s)",
-        "rerun": "python3 tools/dv/run_dv.py --dut sep --items sep_abr_pipelined_read_test --stage sim --tool vcs --seed 1484666058 --target default --cov",
-        "seed": 1484666058,
-        "status": "FAIL"
       }
     ],
     "flaky_tests": []
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-09-24T00:26:54.073988+00:00",
+    "generated_at": "2026-09-24T14:11:26.250641+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "e3ee969741c5aa492c79bfab8623e79904572b9d",
+      "commit": "bcfdc5b29b0ef22c8b35271c1c3986fdc25ea86c",
       "dirty": "false"
     },
     "label": "all",
@@ -451,401 +136,421 @@
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 17,
-    "pass_rate": 89.94,
-    "passing": 152,
-    "total": 169
+    "failing": 2,
+    "pass_rate": 98.85,
+    "passing": 172,
+    "total": 174
   },
   "tests_detail": [
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 12.686,
+      "duration_sec": 14.27,
       "name": "sep_axi_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 2123681775,
+      "seed": 1987787002,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 14.891,
+      "duration_sec": 16.188,
       "name": "sep_address_map_test",
       "reason": "positive pass evidence matched",
-      "seed": 914084611,
+      "seed": 1380887221,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 15.605,
+      "duration_sec": 16.25,
       "name": "sep_hello_world_test",
       "reason": "positive pass evidence matched",
-      "seed": 449336329,
+      "seed": 1597132323,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "all",
-      "duration_sec": 20.938,
+      "duration_sec": 20.872,
       "name": "sep_cpu_trace_diag_test",
       "reason": "positive pass evidence matched",
-      "seed": 433351064,
+      "seed": 1184661612,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 13.786,
+      "duration_sec": 14.975,
+      "name": "sep_boot_rom_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1048875115,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 16.181,
       "name": "sep_sram_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 1084474867,
+      "seed": 1455609586,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 15.607,
+      "duration_sec": 15.498,
       "name": "sep_km_mem_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 1641337998,
+      "seed": 1096744148,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 14.566,
+      "duration_sec": 15.802,
       "name": "sep_otbn_mem_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 847694856,
+      "seed": 1729284459,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 11.619,
+      "duration_sec": 12.658,
       "name": "sep_efuse_sense_test",
       "reason": "positive pass evidence matched",
-      "seed": 634408498,
+      "seed": 885071026,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 12.839,
+      "duration_sec": 13.452,
       "name": "sep_spi_flash_jedec_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 978359532,
+      "seed": 1908924581,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 21.998,
+      "duration_sec": 22.826,
       "name": "sep_efuse_lcc_lc_state_stitch_test",
       "reason": "positive pass evidence matched",
-      "seed": 1074189309,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.484,
-      "name": "sep_lcc_lc_state_w1s_prod_test",
-      "reason": "positive pass evidence matched",
-      "seed": 201164461,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.894,
-      "name": "sep_lcc_lc_state_w1s_prod_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1336878047,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 31.744,
-      "name": "sep_efuse_image_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1583980720,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.579,
-      "name": "sep_lcc_lc_state_w1s_prod_test",
-      "reason": "positive pass evidence matched",
-      "seed": 331250635,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.285,
-      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1442631314,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 14.059,
-      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
-      "reason": "positive pass evidence matched",
-      "seed": 429185492,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 17.435,
-      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1069296485,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 17.392,
-      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
-      "reason": "positive pass evidence matched",
-      "seed": 418835863,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.541,
-      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
-      "reason": "positive pass evidence matched",
-      "seed": 950568663,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.743,
-      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
-      "reason": "positive pass evidence matched",
-      "seed": 918892445,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.842,
-      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1837210718,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 12.901,
-      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1921550937,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.072,
-      "name": "sep_lcc_lc_state_w1s_prod_end_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1105812296,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 0.0,
-      "name": "sep_boot_rom_smoke_test",
-      "reason": "environment_error: attempt sim-000004-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1881057155,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 14.088,
-      "name": "sep_lcc_lc_state_w1s_prod_end_test",
-      "reason": "positive pass evidence matched",
-      "seed": 525498440,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.3,
-      "name": "sep_lcc_lc_state_w1s_prod_end_test",
-      "reason": "positive pass evidence matched",
-      "seed": 18582956,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 13.817,
-      "name": "sep_lcc_lc_state_w1s_transient_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1634845933,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.524,
-      "name": "sep_lcc_lc_state_w1s_transient_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1604271405,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.293,
-      "name": "sep_lcc_lc_state_w1s_transient_test",
-      "reason": "positive pass evidence matched",
-      "seed": 747343476,
+      "seed": 83890425,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "all",
-      "duration_sec": 0.0,
+      "duration_sec": 13.297,
       "name": "sep_efuse_jtag_window_allow_test",
-      "reason": "environment_error: attempt sim-000012-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1237554694,
+      "reason": "positive pass evidence matched",
+      "seed": 1923977248,
       "stage": "sim",
-      "status": "ERROR"
+      "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 30.411,
+      "duration_sec": 15.801,
+      "name": "sep_lcc_lc_state_w1s_prod_test",
+      "reason": "positive pass evidence matched",
+      "seed": 685860134,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 17.259,
+      "name": "sep_lcc_lc_state_w1s_prod_test",
+      "reason": "positive pass evidence matched",
+      "seed": 403118304,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 16.512,
+      "name": "sep_lcc_lc_state_w1s_prod_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1209304633,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 34.237,
+      "name": "sep_efuse_image_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1619129556,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 12.826,
+      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1805398070,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 13.025,
+      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
+      "reason": "positive pass evidence matched",
+      "seed": 809014384,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 14.005,
+      "name": "sep_lcc_lc_state_w1s_prod_demote_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1900926999,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 14.725,
+      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2119265972,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 13.928,
+      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
+      "reason": "positive pass evidence matched",
+      "seed": 687334848,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 15.326,
+      "name": "sep_lcc_lc_state_w1s_rma_sip_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1190995904,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 15.22,
+      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1271771115,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 11.109,
+      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+      "reason": "positive pass evidence matched",
+      "seed": 533839744,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 10.968,
+      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
+      "reason": "positive pass evidence matched",
+      "seed": 498016175,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 11.606,
+      "name": "sep_lcc_lc_state_w1s_prod_end_test",
+      "reason": "positive pass evidence matched",
+      "seed": 935597414,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 12.126,
+      "name": "sep_lcc_lc_state_w1s_prod_end_test",
+      "reason": "positive pass evidence matched",
+      "seed": 763403623,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 11.595,
+      "name": "sep_lcc_lc_state_w1s_prod_end_test",
+      "reason": "positive pass evidence matched",
+      "seed": 772775028,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 11.259,
+      "name": "sep_lcc_lc_state_w1s_transient_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1055240396,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 11.555,
+      "name": "sep_lcc_lc_state_w1s_transient_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1193653256,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 13.202,
+      "name": "sep_lcc_lc_state_w1s_transient_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1625819571,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 9.03,
+      "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1609428842,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 29.651,
       "name": "sep_rom_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 1312047217,
+      "seed": 1193128657,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 0.0,
-      "name": "sep_lcc_lc_state_w1s_rma_chiplet_test",
-      "reason": "environment_error: attempt sim-000024-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 252696985,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 71.971,
-      "name": "sep_dma_cpu_contention_test",
-      "reason": "positive pass evidence matched",
-      "seed": 905979841,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 57.256,
+      "duration_sec": 46.689,
       "name": "sep_spi_ot_dma_rx_test",
       "reason": "positive pass evidence matched",
-      "seed": 1873626698,
+      "seed": 654815983,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 13.085,
+      "duration_sec": 47.073,
+      "name": "sep_esrc_ht_watermark_arming_test",
+      "reason": "positive pass evidence matched",
+      "seed": 786990665,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 12.304,
       "name": "sep_esrc_fips_lock_test",
       "reason": "positive pass evidence matched",
-      "seed": 799188686,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.645,
-      "name": "sep_esrc_alert_delivery_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1360268455,
+      "seed": 265730478,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 0.0,
-      "name": "sep_clock_uvm_wdt_rst_input_reset_path_test",
-      "reason": "environment_error: attempt sim-000034-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1573567096,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 53.57,
-      "name": "sep_esrc_ht_watermark_arming_test",
+      "duration_sec": 65.362,
+      "name": "sep_dma_cpu_contention_test",
       "reason": "positive pass evidence matched",
-      "seed": 992427030,
+      "seed": 825519196,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 55.042,
+      "duration_sec": 13.976,
+      "name": "sep_esrc_alert_delivery_test",
+      "reason": "positive pass evidence matched",
+      "seed": 994150519,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 37.0,
       "name": "sep_drbg_gen_segmentation_test",
       "reason": "positive pass evidence matched",
-      "seed": 1601522014,
+      "seed": 1064903186,
       "stage": "sim",
       "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 13.42,
+      "name": "sep_irq_ip_to_aggregator_test",
+      "reason": "positive pass evidence matched",
+      "seed": 314621699,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 11.891,
+      "name": "sep_periph_bus_err_misaligned_test",
+      "reason": "1 testcase failure/error node(s)",
+      "seed": 439715113,
+      "stage": "sim",
+      "status": "FAIL"
     },
     {
       "attempt": 0,
@@ -853,1322 +558,1338 @@
       "duration_sec": 0.0,
       "name": "sep_esrc_e2e_smoke_test",
       "reason": "environment_error: attempt sim-000037-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 247621282,
+      "seed": 2076382885,
       "stage": "sim",
       "status": "ERROR"
     },
     {
       "attempt": 0,
-      "category": "system",
-      "duration_sec": 14.181,
-      "name": "sep_irq_ip_to_aggregator_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1448160186,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 11.6,
-      "name": "sep_periph_bus_err_misaligned_test",
-      "reason": "1 testcase failure/error node(s)",
-      "seed": 526261968,
-      "stage": "sim",
-      "status": "FAIL"
-    },
-    {
-      "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 209.792,
-      "name": "sep_dma_hash_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1147602237,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 100.995,
+      "duration_sec": 96.049,
       "name": "sep_efuse_km_axil_cpu_mux_coexist_test",
       "reason": "positive pass evidence matched",
-      "seed": 1326071516,
+      "seed": 1606542346,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 205.796,
+      "name": "sep_dma_hash_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1685014916,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 11.871,
+      "duration_sec": 13.741,
       "name": "sep_lcc_uvm_inbound_filter_gating_test",
       "reason": "positive pass evidence matched",
-      "seed": 1200781212,
+      "seed": 98025985,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 33.088,
-      "name": "sep_nmi_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1775398062,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 354.394,
+      "duration_sec": 295.775,
       "name": "sep_mailbox_plic_test",
       "reason": "positive pass evidence matched",
-      "seed": 1260425677,
+      "seed": 825048261,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 218.413,
-      "name": "sep_drbg_real_sink_multi_km_aes_test",
+      "duration_sec": 34.342,
+      "name": "sep_nmi_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 2103571492,
+      "seed": 1813825763,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 18.073,
-      "name": "sep_efuse_jtag_axil_el2_cpu_mux_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1921857188,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 282.515,
+      "duration_sec": 250.478,
       "name": "sep_hmac_kmac_cpu_crypto_smoke_test",
       "reason": "positive pass evidence matched",
-      "seed": 851583381,
+      "seed": 1441553234,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 224.117,
+      "duration_sec": 191.373,
+      "name": "sep_drbg_real_sink_multi_km_aes_test",
+      "reason": "positive pass evidence matched",
+      "seed": 666592193,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 16.889,
+      "name": "sep_efuse_jtag_axil_el2_cpu_mux_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1715824125,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 224.663,
       "name": "sep_km_aes_sideload_kat_test",
       "reason": "positive pass evidence matched",
-      "seed": 1969353791,
+      "seed": 571984544,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 75.808,
-      "name": "sep_reset_wdt_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 628505127,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 13.007,
+      "duration_sec": 13.837,
       "name": "sep_irq_simultaneous_fanin_no_alias_test",
       "reason": "positive pass evidence matched",
-      "seed": 1926730170,
+      "seed": 544284186,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 13.06,
+      "name": "sep_irq_simultaneous_fanin_no_alias_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1781428370,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 247.273,
-      "name": "sep_km_hmac_sideload_kat_test",
-      "reason": "positive pass evidence matched",
-      "seed": 769496756,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 32.431,
-      "name": "sep_cpu_ifu_lsu_alias_remap_matrix_test",
-      "reason": "positive pass evidence matched",
-      "seed": 366253179,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 12.278,
-      "name": "sep_irq_simultaneous_fanin_no_alias_test",
-      "reason": "positive pass evidence matched",
-      "seed": 163169574,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 12.122,
-      "name": "sep_irq_simultaneous_fanin_no_alias_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2071763736,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 272.36,
+      "duration_sec": 250.447,
       "name": "sep_km_otbn_sideload_kat_test",
       "reason": "positive pass evidence matched",
-      "seed": 1188620982,
+      "seed": 1534041933,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 66.391,
+      "name": "sep_reset_wdt_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1062637449,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 236.053,
+      "duration_sec": 32.7,
+      "name": "sep_cpu_ifu_lsu_alias_remap_matrix_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1357359436,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 9.476,
+      "name": "sep_irq_simultaneous_fanin_no_alias_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1158021835,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 23.388,
+      "name": "sep_fabric_remap_filter_csr_bank_test",
+      "reason": "positive pass evidence matched",
+      "seed": 137154393,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 24.779,
+      "name": "sep_fabric_remap_filter_csr_bank_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1055221410,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 243.183,
+      "name": "sep_km_hmac_sideload_kat_test",
+      "reason": "positive pass evidence matched",
+      "seed": 686359820,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 226.297,
       "name": "sep_km_kmac_sideload_kat_test",
       "reason": "positive pass evidence matched",
-      "seed": 244657168,
+      "seed": 1028834458,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 26.396,
+      "duration_sec": 24.535,
       "name": "sep_fabric_remap_filter_csr_bank_test",
       "reason": "positive pass evidence matched",
-      "seed": 744884622,
+      "seed": 1468805891,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 25.677,
-      "name": "sep_fabric_remap_filter_csr_bank_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1536442460,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 30.276,
+      "duration_sec": 27.743,
       "name": "sep_wdt_aon_timer_internals_test",
       "reason": "positive pass evidence matched",
-      "seed": 448412100,
+      "seed": 1594874853,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 28.392,
+      "duration_sec": 26.875,
       "name": "sep_wdt_aon_timer_internals_test",
       "reason": "positive pass evidence matched",
-      "seed": 937202669,
+      "seed": 1051566325,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 12.874,
+      "duration_sec": 10.512,
       "name": "sep_axil_mailbox_iface_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 930605374,
+      "seed": 1687923004,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 12.857,
+      "duration_sec": 10.551,
       "name": "sep_axil_mailbox_iface_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 316280064,
+      "seed": 730988548,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 13.518,
+      "duration_sec": 29.251,
+      "name": "sep_wdt_aon_timer_internals_test",
+      "reason": "positive pass evidence matched",
+      "seed": 340856423,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 11.644,
       "name": "sep_axil_mailbox_iface_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 2026283593,
+      "seed": 326160325,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 13.147,
+      "duration_sec": 11.429,
       "name": "sep_mailbox_peer_rx_rirqt_test",
       "reason": "positive pass evidence matched",
-      "seed": 1402744604,
+      "seed": 540154070,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 13.531,
+      "duration_sec": 12.615,
       "name": "sep_sram_datapath_breadth_test",
       "reason": "positive pass evidence matched",
-      "seed": 465987062,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 0.0,
-      "name": "sep_fabric_remap_filter_csr_bank_test",
-      "reason": "environment_error: attempt sim-000060-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1048185739,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 29.793,
-      "name": "sep_fabric_inbound_filter_rule_matrix_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1686081070,
+      "seed": 1174424826,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 24.485,
+      "duration_sec": 24.519,
       "name": "sep_boot_rom_lsu_read_test",
       "reason": "positive pass evidence matched",
-      "seed": 1398105400,
+      "seed": 102567252,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 0.0,
-      "name": "sep_wdt_aon_timer_internals_test",
-      "reason": "environment_error: attempt sim-000063-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 224940885,
+      "duration_sec": 29.056,
+      "name": "sep_fabric_inbound_filter_rule_matrix_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1788874871,
       "stage": "sim",
-      "status": "ERROR"
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 17.763,
+      "name": "sep_spi_ot_host_csr_irq_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2818100,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 18.533,
+      "name": "sep_spi_ot_host_csr_irq_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 121416499,
+      "stage": "sim",
+      "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 63.45,
+      "duration_sec": 67.674,
       "name": "sep_trng_reset_recovery_test",
       "reason": "positive pass evidence matched",
-      "seed": 821684399,
+      "seed": 1712896831,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 21.013,
+      "duration_sec": 21.689,
       "name": "sep_spi_ot_host_csr_irq_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 837237005,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 19.201,
-      "name": "sep_spi_ot_host_csr_irq_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 231411903,
+      "seed": 283500198,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 103.861,
+      "duration_sec": 104.381,
       "name": "sep_crypto_per_ip_reset_isolation_test",
       "reason": "positive pass evidence matched",
-      "seed": 1478765038,
+      "seed": 777981837,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 17.556,
-      "name": "sep_spi_ot_host_csr_irq_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1759157204,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 92.382,
-      "name": "sep_spi_ot_flash_cmd_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1294432506,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 14.911,
+      "duration_sec": 16.198,
       "name": "sep_warm_cold_reset_scratch_test",
       "reason": "positive pass evidence matched",
-      "seed": 63227170,
+      "seed": 1604843926,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 149.457,
+      "duration_sec": 112.875,
       "name": "sep_spi_ot_flash_cmd_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 246901662,
+      "seed": 77082650,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 120.046,
+      "duration_sec": 128.403,
+      "name": "sep_spi_ot_dma_tx_test",
+      "reason": "positive pass evidence matched",
+      "seed": 662108281,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 143.893,
+      "name": "sep_spi_ot_dma_tx_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1439507093,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 204.211,
       "name": "sep_spi_ot_flash_cmd_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 1223543108,
+      "seed": 1198494674,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 135.703,
+      "duration_sec": 135.955,
       "name": "sep_spi_ot_dma_tx_test",
       "reason": "positive pass evidence matched",
-      "seed": 1748924269,
+      "seed": 466235704,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 137.472,
-      "name": "sep_spi_ot_dma_tx_test",
+      "duration_sec": 210.401,
+      "name": "sep_spi_ot_flash_cmd_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 1591444916,
+      "seed": 338275725,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 150.304,
-      "name": "sep_spi_ot_dma_tx_test",
+      "duration_sec": 145.334,
+      "name": "sep_pic_irq_source_map_delivery_test",
       "reason": "positive pass evidence matched",
-      "seed": 310567178,
+      "seed": 227486297,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 41.234,
+      "duration_sec": 46.573,
       "name": "sep_efuse_token_match_fault_pic_test",
       "reason": "positive pass evidence matched",
-      "seed": 1394564759,
+      "seed": 1140837922,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 165.992,
+      "duration_sec": 156.702,
       "name": "sep_pic_irq_source_map_delivery_test",
       "reason": "positive pass evidence matched",
-      "seed": 108121930,
+      "seed": 1679838759,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 12.368,
+      "duration_sec": 143.771,
+      "name": "sep_pic_irq_source_map_delivery_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1141394890,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 10.931,
       "name": "sep_cpu_dbg_reset_independence_test",
       "reason": "positive pass evidence matched",
-      "seed": 469300393,
+      "seed": 769438339,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 158.959,
-      "name": "sep_pic_irq_source_map_delivery_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1403154522,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 162.019,
-      "name": "sep_pic_irq_source_map_delivery_test",
-      "reason": "positive pass evidence matched",
-      "seed": 823997065,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 38.175,
+      "duration_sec": 37.463,
       "name": "sep_hmac_sha_variant_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 1050628547,
+      "seed": 1942025800,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 169.086,
-      "name": "sep_dma_basic_test",
+      "duration_sec": 50.059,
+      "name": "sep_crypto_edn_multisink_arbitration_test",
       "reason": "positive pass evidence matched",
-      "seed": 1773878493,
+      "seed": 834616471,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 83.821,
+      "duration_sec": 95.127,
       "name": "sep_aes_mode_keysize_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 19451144,
+      "seed": 1735366618,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 82.548,
+      "duration_sec": 71.901,
       "name": "sep_kmac_mode_strength_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 344806533,
+      "seed": 802498189,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 166.133,
+      "duration_sec": 55.928,
+      "name": "sep_crypto_edn_multisink_arbitration_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1347020709,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 50.55,
+      "name": "sep_crypto_edn_multisink_arbitration_test",
+      "reason": "positive pass evidence matched",
+      "seed": 261881416,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 197.209,
       "name": "sep_dma_basic_test",
       "reason": "positive pass evidence matched",
-      "seed": 854096618,
+      "seed": 1065699491,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 55.867,
-      "name": "sep_crypto_edn_multisink_arbitration_test",
-      "reason": "positive pass evidence matched",
-      "seed": 111578675,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 53.949,
-      "name": "sep_crypto_edn_multisink_arbitration_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1928226445,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 58.907,
-      "name": "sep_crypto_edn_multisink_arbitration_test",
-      "reason": "positive pass evidence matched",
-      "seed": 963741681,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 53.436,
-      "name": "sep_otbn_compute_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 290324211,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 207.278,
+      "duration_sec": 161.336,
       "name": "sep_dma_basic_test",
       "reason": "positive pass evidence matched",
-      "seed": 1931518107,
+      "seed": 334816475,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 63.671,
+      "duration_sec": 164.25,
+      "name": "sep_dma_basic_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1225318412,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 49.029,
       "name": "sep_crypto_edn_round_robin_grant_test",
       "reason": "positive pass evidence matched",
-      "seed": 448186889,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 53.526,
-      "name": "sep_otbn_compute_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1307077178,
+      "seed": 395440608,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 10.493,
+      "duration_sec": 17.033,
       "name": "sep_clock_gate_control_test",
       "reason": "positive pass evidence matched",
-      "seed": 161947440,
+      "seed": 1417281777,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 47.222,
-      "name": "sep_efuse_program_lock_matrix_test",
+      "duration_sec": 23.209,
+      "name": "sep_efuse_rma_token_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 2084062989,
+      "seed": 1871918045,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 14.581,
+      "duration_sec": 11.084,
       "name": "sep_efuse_digest_latch_fault_test",
       "reason": "positive pass evidence matched",
-      "seed": 1231496464,
+      "seed": 1648360749,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 12.93,
+      "duration_sec": 60.889,
+      "name": "sep_otbn_compute_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1360633060,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 65.686,
+      "name": "sep_otbn_compute_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1163306829,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 64.665,
+      "name": "sep_otbn_compute_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2050441781,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 51.249,
+      "name": "sep_efuse_program_lock_matrix_test",
+      "reason": "positive pass evidence matched",
+      "seed": 448639644,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 25.685,
+      "name": "sep_efuse_set_only_monotonicity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 343916792,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 24.884,
+      "name": "sep_lcc_demote_feat_ctrl_matrix_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1181280755,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 14.499,
+      "name": "sep_efuse_illegal_state_fail_closed_test",
+      "reason": "positive pass evidence matched",
+      "seed": 989942931,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 12.966,
       "name": "sep_sec_dis_override_test",
       "reason": "positive pass evidence matched",
-      "seed": 1320286392,
+      "seed": 2065262305,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 0.0,
-      "name": "sep_otbn_compute_rand_test",
-      "reason": "environment_error: attempt sim-000101-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 419202855,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
       "category": "system",
-      "duration_sec": 10.715,
+      "duration_sec": 9.624,
       "name": "sep_fabric_output_remap_datapath_proxy_test",
       "reason": "positive pass evidence matched",
-      "seed": 2099187046,
+      "seed": 1049837438,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 11.109,
+      "duration_sec": 9.534,
       "name": "sep_fabric_local_alias_datapath_test",
       "reason": "positive pass evidence matched",
-      "seed": 1398948060,
+      "seed": 789369121,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 11.816,
+      "duration_sec": 10.457,
       "name": "sep_km_key_policy_vault_test",
       "reason": "positive pass evidence matched",
-      "seed": 2043238154,
+      "seed": 2142837884,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 12.673,
+      "duration_sec": 11.015,
       "name": "sep_km_key_policy_vault_test",
       "reason": "positive pass evidence matched",
-      "seed": 794060656,
+      "seed": 738316539,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 12.646,
+      "duration_sec": 11.107,
       "name": "sep_km_key_policy_vault_test",
       "reason": "positive pass evidence matched",
-      "seed": 1195464062,
+      "seed": 55259617,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 13.532,
+      "duration_sec": 12.348,
       "name": "sep_km_isolate_termination_test",
       "reason": "positive pass evidence matched",
-      "seed": 1492918182,
+      "seed": 1522491101,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 0.0,
-      "name": "sep_efuse_set_only_monotonicity_test",
-      "reason": "environment_error: attempt sim-000104-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1571615592,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 0.0,
-      "name": "sep_lcc_demote_feat_ctrl_matrix_test",
-      "reason": "environment_error: attempt sim-000105-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1030737966,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 0.0,
-      "name": "sep_efuse_rma_token_rand_test",
-      "reason": "environment_error: attempt sim-000106-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 780225345,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 0.0,
-      "name": "sep_efuse_illegal_state_fail_closed_test",
-      "reason": "environment_error: attempt sim-000108-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1334283125,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 39.687,
+      "duration_sec": 12.592,
       "name": "sep_km_mailbox_protocol_rand_test",
       "reason": "positive pass evidence matched",
-      "seed": 38231314,
+      "seed": 425160894,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 297.823,
+      "duration_sec": 12.92,
+      "name": "sep_km_mailbox_protocol_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1817401773,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 16.303,
+      "name": "sep_km_mailbox_protocol_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1820303370,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 38.243,
+      "name": "sep_km_crc_pcpi_kat_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1526514252,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 18.389,
+      "name": "sep_km_crc_pcpi_kat_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2112339687,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 15.273,
+      "name": "sep_km_crc_pcpi_kat_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1374004037,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 291.663,
       "name": "sep_km_wipe_reset_test",
       "reason": "positive pass evidence matched",
-      "seed": 1506002375,
+      "seed": 1583605352,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 26.687,
-      "name": "sep_km_mailbox_protocol_rand_test",
+      "duration_sec": 231.342,
+      "name": "sep_km_kpv_scrambler_test",
       "reason": "positive pass evidence matched",
-      "seed": 340631613,
+      "seed": 809169382,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 545.522,
+      "duration_sec": 195.218,
+      "name": "sep_km_kpv_scrambler_test",
+      "reason": "positive pass evidence matched",
+      "seed": 524204377,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 527.698,
       "name": "sep_km_handover_test",
       "reason": "positive pass evidence matched",
-      "seed": 1869146118,
+      "seed": 1258255680,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 608.873,
+      "duration_sec": 540.719,
       "name": "sep_km_abr_seed_sideload_test",
       "reason": "positive pass evidence matched",
-      "seed": 1353211535,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 997.187,
-      "name": "sep_km_command_set_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1645178130,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 1119.249,
-      "name": "sep_km_command_set_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 812977844,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 1150.245,
-      "name": "sep_km_command_set_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1727437297,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 1200.909,
-      "name": "sep_km_abr_mlkem_sideload_test",
-      "reason": "positive pass evidence matched",
-      "seed": 977830935,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 12.635,
-      "name": "sep_km_mailbox_protocol_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1162014758,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 16.839,
-      "name": "sep_km_crc_pcpi_kat_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1284790639,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.155,
-      "name": "sep_km_crc_pcpi_kat_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1773269713,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 16.143,
-      "name": "sep_km_crc_pcpi_kat_test",
-      "reason": "positive pass evidence matched",
-      "seed": 41950553,
+      "seed": 1940658341,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 41.375,
+      "duration_sec": 62.98,
+      "name": "sep_reg_bit_bash_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 115569218,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 176.998,
+      "name": "sep_km_kpv_scrambler_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2128635003,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 65.606,
+      "name": "sep_reg_bit_bash_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2094715888,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 74.959,
+      "name": "sep_reg_bit_bash_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 231978226,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 29.233,
       "name": "sep_fabric_deadspace_decode_test",
       "reason": "positive pass evidence matched",
-      "seed": 1848751480,
+      "seed": 1999530668,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 60.242,
-      "name": "sep_reg_bit_bash_rand_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1028829699,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 10.853,
+      "duration_sec": 12.44,
       "name": "sep_axi_map_refuse_test",
       "reason": "positive pass evidence matched",
-      "seed": 547961340,
+      "seed": 1429047003,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 0.0,
-      "name": "sep_reg_bit_bash_rand_test",
-      "reason": "environment_error: attempt sim-000132-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1679101758,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 10.155,
+      "duration_sec": 12.641,
       "name": "sep_axi_map_refuse_test",
       "reason": "positive pass evidence matched",
-      "seed": 2038003269,
+      "seed": 1461881640,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 16.331,
+      "duration_sec": 12.618,
+      "name": "sep_axi_map_refuse_test",
+      "reason": "positive pass evidence matched",
+      "seed": 796961865,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 8.883,
       "name": "sep_axi_id_routing_test",
       "reason": "positive pass evidence matched",
-      "seed": 737071013,
+      "seed": 1113578638,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 0.0,
-      "name": "sep_reg_bit_bash_rand_test",
-      "reason": "environment_error: attempt sim-000134-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 2143300279,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 0.0,
-      "name": "sep_axi_map_refuse_test",
-      "reason": "environment_error: attempt sim-000136-a0 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1636946034,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 13.192,
+      "duration_sec": 10.187,
       "name": "sep_axi_strobe_window_test",
       "reason": "positive pass evidence matched",
-      "seed": 1820973292,
+      "seed": 434996196,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 15.816,
+      "duration_sec": 10.597,
       "name": "sep_axi_strobe_window_test",
       "reason": "positive pass evidence matched",
-      "seed": 2099391155,
+      "seed": 992191639,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 20.279,
+      "duration_sec": 10.407,
       "name": "sep_axi_strobe_window_test",
       "reason": "positive pass evidence matched",
-      "seed": 1225664749,
+      "seed": 895490354,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 19.133,
+      "name": "sep_axi_partial_lane_read_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1422321516,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 17.143,
+      "name": "sep_axi_partial_lane_read_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1804943153,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 21.462,
+      "name": "sep_axi_partial_lane_read_test",
+      "reason": "positive pass evidence matched",
+      "seed": 200974023,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 172.669,
-      "name": "sep_km_kpv_scrambler_test",
+      "duration_sec": 743.647,
+      "name": "sep_km_abr_mlkem_sideload_test",
       "reason": "positive pass evidence matched",
-      "seed": 1818053733,
+      "seed": 111365466,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 16.727,
-      "name": "sep_axi_partial_lane_read_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2096965092,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 17.295,
-      "name": "sep_axi_partial_lane_read_test",
-      "reason": "positive pass evidence matched",
-      "seed": 263711073,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 13.507,
-      "name": "sep_axi_partial_lane_read_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1112398842,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 206.977,
-      "name": "sep_km_kpv_scrambler_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1632772507,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 211.604,
-      "name": "sep_km_kpv_scrambler_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1556669643,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 56.16,
+      "duration_sec": 50.073,
       "name": "sep_axi_order_sweep_m_axi_test",
       "reason": "positive pass evidence matched",
-      "seed": 943769432,
+      "seed": 823260337,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 10.342,
+      "duration_sec": 97.175,
+      "name": "sep_axi_order_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 638740163,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 79.844,
+      "name": "sep_axi_order_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1893613062,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 83.255,
+      "name": "sep_axi_order_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 674125872,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 49.393,
+      "name": "sep_axi_order_sweep_m_axi_test",
+      "reason": "positive pass evidence matched",
+      "seed": 531572938,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 47.721,
+      "name": "sep_axi_order_sweep_m_axi_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1527987672,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 12.033,
       "name": "sep_drbg_axil_adapter_port_arbitration_test",
       "reason": "positive pass evidence matched",
-      "seed": 295305814,
+      "seed": 1080640696,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 13.374,
+      "duration_sec": 12.198,
       "name": "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
       "reason": "positive pass evidence matched",
-      "seed": 1375766284,
+      "seed": 673905339,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 89.897,
-      "name": "sep_axi_order_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 115528364,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 71.525,
-      "name": "sep_axi_order_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 986503480,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 58.011,
-      "name": "sep_axi_order_sweep_m_axi_test",
-      "reason": "positive pass evidence matched",
-      "seed": 844731963,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 11.279,
+      "duration_sec": 12.423,
       "name": "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
       "reason": "positive pass evidence matched",
-      "seed": 614247670,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 116.552,
-      "name": "sep_axi_order_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1190553593,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 82.403,
-      "name": "sep_entropy_pool_aperture_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2029963947,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 79.135,
-      "name": "sep_entropy_pool_aperture_test",
-      "reason": "positive pass evidence matched",
-      "seed": 131296550,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 68.285,
-      "name": "sep_entropy_pool_aperture_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1920044393,
+      "seed": 1672627351,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 14.77,
+      "duration_sec": 891.745,
+      "name": "sep_km_command_set_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 783540747,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 12.686,
       "name": "sep_locked_field_access_irq_path_test",
       "reason": "positive pass evidence matched",
-      "seed": 143614455,
+      "seed": 1592352037,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 11.7,
+      "duration_sec": 13.167,
       "name": "sep_locked_field_access_irq_path_test",
       "reason": "positive pass evidence matched",
-      "seed": 485640710,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 12.358,
-      "name": "sep_locked_field_access_irq_path_test",
-      "reason": "positive pass evidence matched",
-      "seed": 114258267,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.022,
-      "name": "sep_efuse_secure_tm_write_lock_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1004171887,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.598,
-      "name": "sep_efuse_secure_tm_write_lock_test",
-      "reason": "positive pass evidence matched",
-      "seed": 521306150,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "subsystem",
-      "duration_sec": 15.633,
-      "name": "sep_efuse_secure_tm_write_lock_test",
-      "reason": "positive pass evidence matched",
-      "seed": 495488208,
+      "seed": 691612229,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "system",
-      "duration_sec": 12.286,
+      "duration_sec": 72.944,
+      "name": "sep_entropy_pool_aperture_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2053656045,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 20.821,
+      "name": "sep_locked_field_access_irq_path_test",
+      "reason": "positive pass evidence matched",
+      "seed": 471010529,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 22.623,
+      "name": "sep_efuse_secure_tm_write_lock_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2003234138,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 22.773,
+      "name": "sep_efuse_secure_tm_write_lock_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1803827452,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 69.243,
+      "name": "sep_entropy_pool_aperture_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1027683571,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 68.32,
+      "name": "sep_entropy_pool_aperture_test",
+      "reason": "positive pass evidence matched",
+      "seed": 903647505,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 15.271,
+      "name": "sep_efuse_secure_tm_write_lock_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1205159335,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "system",
+      "duration_sec": 15.123,
       "name": "sep_crypto_csr_wide_access_test",
       "reason": "positive pass evidence matched",
-      "seed": 1369906537,
+      "seed": 835209151,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 10.995,
+      "duration_sec": 14.268,
       "name": "sep_abr_pipelined_read_test",
-      "reason": "1 testcase failure/error node(s)",
-      "seed": 1484666058,
+      "reason": "positive pass evidence matched",
+      "seed": 619250203,
       "stage": "sim",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 103.023,
+      "duration_sec": 14.925,
+      "name": "sep_abr_pipelined_read_matrix_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2002637357,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 1015.796,
+      "name": "sep_km_command_set_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 611956965,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 984.024,
+      "name": "sep_km_command_set_rand_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1923958808,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 15.332,
+      "name": "sep_abr_access_size_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1740448440,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 15.369,
+      "name": "sep_abr_concurrent_rw_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1888567742,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 15.433,
+      "name": "sep_abr_concurrent_rw_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2073739459,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 106.996,
       "name": "sep_abr_mldsa_keygen_kat_test",
       "reason": "positive pass evidence matched",
-      "seed": 1138892971,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "system",
-      "duration_sec": 271.814,
-      "name": "sep_axi_order_sweep_m_axi_test",
-      "reason": "positive pass evidence matched",
-      "seed": 786041946,
+      "seed": 1067262424,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 193.182,
+      "duration_sec": 14.535,
+      "name": "sep_abr_concurrent_rw_test",
+      "reason": "positive pass evidence matched",
+      "seed": 130730615,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "subsystem",
+      "duration_sec": 204.261,
       "name": "sep_abr_mlkem_kat_test",
       "reason": "positive pass evidence matched",
-      "seed": 1392831562,
+      "seed": 645183585,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "subsystem",
-      "duration_sec": 557.819,
+      "duration_sec": 563.984,
       "name": "sep_abr_mldsa_sign_verify_kat_test",
       "reason": "positive pass evidence matched",
-      "seed": 75274952,
+      "seed": 542549292,
       "stage": "sim",
       "status": "PASS"
     }
   ],
   "timing": {
-    "duration_sec": 15135.229,
-    "end_time": "2026-09-24T00:26:53.693058+00:00",
-    "start_time": "2026-09-23T23:23:27.486261+00:00"
+    "duration_sec": 14286.715,
+    "end_time": "2026-09-24T14:11:25.772692+00:00",
+    "start_time": "2026-09-24T13:25:13.641068+00:00"
   },
   "tool": "vcs",
   "warnings": [
-    "JUnit XML not recorded for sep_boot_rom_smoke_test",
-    "JUnit XML not recorded for sep_efuse_jtag_window_allow_test",
-    "JUnit XML not recorded for sep_lcc_lc_state_w1s_rma_chiplet_test",
-    "JUnit XML not recorded for sep_clock_uvm_wdt_rst_input_reset_path_test",
-    "JUnit XML not recorded for sep_esrc_e2e_smoke_test",
-    "JUnit XML not recorded for sep_fabric_remap_filter_csr_bank_test",
-    "JUnit XML not recorded for sep_wdt_aon_timer_internals_test",
-    "JUnit XML not recorded for sep_otbn_compute_rand_test",
-    "JUnit XML not recorded for sep_efuse_set_only_monotonicity_test",
-    "JUnit XML not recorded for sep_lcc_demote_feat_ctrl_matrix_test",
-    "JUnit XML not recorded for sep_efuse_rma_token_rand_test",
-    "JUnit XML not recorded for sep_efuse_illegal_state_fail_closed_test",
-    "JUnit XML not recorded for sep_reg_bit_bash_rand_test",
-    "JUnit XML not recorded for sep_reg_bit_bash_rand_test",
-    "JUnit XML not recorded for sep_axi_map_refuse_test"
+    "JUnit XML not recorded for sep_esrc_e2e_smoke_test"
   ]
 }
