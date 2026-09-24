@@ -5454,12 +5454,13 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 
 *BFM / Model*: ocah_axi_vip (AXI), ocah_axi_vip (AXI-Lite)
 
-*Objective*: GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write).
+*Objective*: GPIO0/1 ACCESS_FILTER: only the AxPROT equal to the programmed requirement passes (read + write).
 
 *Test Coverage*:
 
 * READ half -- an unprivileged read is refused with DECERR, the code the GPIO programming guide specifies for a blocked transaction, and the error-slave signature 0xBADCAB1E, while the privileged read returns the programmed word.
 * WRITE half -- an unprivileged write of the value that would DISARM the filter is refused, and a privileged read afterwards shows the register unchanged, so the refusal is proven to have taken no effect. The refusal code is asserted as "an error response" rather than an exact code: the GPIO programming guide (`hw/ip/gpio/doc/programming.adoc`, "Filter Configuration") specifies DECERR for a blocked transaction, which the read half requires exactly, while the write half is observed at the SEP_IN AXI port as SLVERR and no document this bench can cite fixes how the SMC fabric forwards a write-channel refusal.
+* SWEEP -- each of the eight AxPROT requirement values is programmed into GPIO0 in turn and every AxPROT value is driven against it on both halves; only the value equal to the requirement is admitted, every other one is refused, and a readback with the admitted value shows the refused writes left the register unchanged.
 
 *Test Procedure*:
 
@@ -5475,12 +5476,13 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 |`CHK-GPIO-FILTER-PRE` |Named compare in `smc_gpio_filter_access_sep_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-FILTER-PRIV` |Named compare in `smc_gpio_filter_access_sep_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-FILTER-SCOREBOARD` |Named compare in `smc_gpio_filter_access_sep_test.py`; the run fails if it mismatches
+|`CHK-GPIO-FILTER-SWEEP` |Named compare in `smc_gpio_filter_access_sep_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-FILTER-UNPRIV` |Named compare in `smc_gpio_filter_access_sep_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-FILTER-WR-DENY` |Named compare in `smc_gpio_filter_access_sep_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-FILTER-GPIO1`, `CHK-GPIO-FILTER-PRE`, `CHK-GPIO-FILTER-PRIV`, `CHK-GPIO-FILTER-SCOREBOARD`, `CHK-GPIO-FILTER-UNPRIV`, `CHK-GPIO-FILTER-WR-DENY` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
+*Pass Criteria*: `CHK-GPIO-FILTER-GPIO1`, `CHK-GPIO-FILTER-PRE`, `CHK-GPIO-FILTER-PRIV`, `CHK-GPIO-FILTER-SCOREBOARD`, `CHK-GPIO-FILTER-SWEEP`, `CHK-GPIO-FILTER-UNPRIV`, `CHK-GPIO-FILTER-WR-DENY` hold after their compares. Enrolled in: `all`, `hosted`, `gpio`.
 '''''
 
 [[sec-104-smc_gpio_intf_full_sweep_test]]
