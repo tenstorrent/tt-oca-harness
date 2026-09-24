@@ -118,8 +118,8 @@ module efuse_interface_controller #(
   output logic                                  is_efuse_req_err_o,
   output logic                                  is_secure_tm_blocked_o,
 
-  output logic [5:0]                            is_rma_sip_token_match_debug,
-  output logic [5:0]                            is_rma_chiplet_token_match_debug,
+  output logic [5:0]                            is_rma_sip_token_match_debug_o,
+  output logic [5:0]                            is_rma_chiplet_token_match_debug_o,
 
   output logic [7:0][31:0]                      sec_disable_token_o,
 
@@ -448,8 +448,8 @@ module efuse_interface_controller #(
     end
   endgenerate
 
-  assign is_rma_sip_token_match_debug = rma_sip_token_match;
-  assign is_rma_chiplet_token_match_debug = rma_chiplet_token_match;
+  assign is_rma_sip_token_match_debug_o = rma_sip_token_match;
+  assign is_rma_chiplet_token_match_debug_o = rma_chiplet_token_match;
 
   ///////////////////////////////////////////////
   // Efuse Interface CSR
@@ -728,8 +728,8 @@ module efuse_interface_controller #(
     .rma_sip_token_match_i     (rma_sip_token_match),
 
     // Fuse Command Request/Response to populate shadow registers during fuse sensing
-    .fuse_command_req     (fuse_command_req_shadow_regs),
-    .fuse_command_resp    (fuse_command_resp_shadow_regs),
+    .fuse_command_req_o   (fuse_command_req_shadow_regs),
+    .fuse_command_resp_i  (fuse_command_resp_shadow_regs),
 
     // Debug ports
     .is_write_locked_o        (is_write_locked_shadow_regs_o),

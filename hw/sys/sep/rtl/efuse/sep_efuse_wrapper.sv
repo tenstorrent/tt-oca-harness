@@ -396,8 +396,8 @@ module sep_efuse_wrapper #(
     .is_program_timeout_debug_o   (sep_efuse_debug_o[7]),
     .is_efuse_req_err_o           (sep_efuse_debug_o[8]),
     .is_secure_tm_blocked_o       (sep_efuse_debug_o[9]),
-    .is_rma_sip_token_match_debug (sep_efuse_token_match_sip_debug_o),
-    .is_rma_chiplet_token_match_debug (sep_efuse_token_match_chiplet_debug_o),
+    .is_rma_sip_token_match_debug_o (sep_efuse_token_match_sip_debug_o),
+    .is_rma_chiplet_token_match_debug_o (sep_efuse_token_match_chiplet_debug_o),
 
     .sec_disable_token_o          (),
 
