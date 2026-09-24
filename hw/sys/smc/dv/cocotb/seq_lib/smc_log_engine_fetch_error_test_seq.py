@@ -27,7 +27,10 @@ engine or zeroing the length mid-log would do.
 
 The companion `LOG_WRITE_ERR` has no bus to come from: the engine's write port
 reaches only its own wrapper's UART register blocks, which answer every
-address without error.
+address without error. Its status is set instead through `INTR_TEST`
+(`sw = w`, `singlepulse`), with only `INTR_ENABLE.LOG_WRITE_ERR` set: the
+status must set alone, the interrupt line must rise, and the written one must
+clear the status and drop the line.
 """
 
 from __future__ import annotations
@@ -60,6 +63,8 @@ CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_A
 FETCH_ERR = log_engine_u32("LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm")
 WRITE_ERR = log_engine_u32("LOG_ENGINE__INTR_STATUS__LOG_WRITE_ERR_bm")
 ENABLE_FETCH = log_engine_u32("LOG_ENGINE__INTR_ENABLE__LOG_FETCH_ERR_bm")
+ENABLE_WRITE = log_engine_u32("LOG_ENGINE__INTR_ENABLE__LOG_WRITE_ERR_bm")
+WRITE_ERR_TEST = log_engine_u32("LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm")
 #: The I2C0 instance's stride runs past its SIZE; the wrapper refuses accesses
 #: in between (the decode `smc_deadspace_decode_test` holds it to).
 REFUSING_ADDR = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR", 0) + 0x100
@@ -163,6 +168,34 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
         await self._await_irq(f"{label}_DROP", 0)
         await self.csr_write(f"{label}_INTR_EN_OFF", engine_reg(WRAP, "INTR_ENABLE"), 0)
 
+    async def _write_err_test_leg(self) -> None:
+        """Set LOG_WRITE_ERR through INTR_TEST, with only its interrupt enabled."""
+        label = "WRITE_TEST"
+        status = await self.csr_read(f"{label}_ENTRY", engine_reg(WRAP, "INTR_STATUS"))
+        assert not status & (FETCH_ERR | WRITE_ERR), (
+            f"{label}: INTR_STATUS=0x{status:08x} before the forced event"
+        )
+        await self.csr_write(f"{label}_ENABLE", engine_reg(WRAP, "INTR_ENABLE"), ENABLE_WRITE)
+        await ClockCycles(cocotb.top.clk_smc_i, 20)
+        assert self._irq() == 0, f"{label}: tb_uart_irq_combined[0] is high before the event"
+        await self.csr_write(f"{label}_TEST", engine_reg(WRAP, "INTR_TEST"), WRITE_ERR_TEST)
+        status = await self.csr_read(f"{label}_SET", engine_reg(WRAP, "INTR_STATUS"))
+        assert status & WRITE_ERR and not status & FETCH_ERR, (
+            f"{label}: INTR_TEST.LOG_WRITE_ERR left INTR_STATUS=0x{status:08x}; the write "
+            f"status sets alone"
+        )
+        await self._await_irq(f"{label}_RAISE", 1)
+        await self.csr_write(f"{label}_W1C", engine_reg(WRAP, "INTR_STATUS"), WRITE_ERR)
+        cleared = await self.csr_read(f"{label}_CLEARED", engine_reg(WRAP, "INTR_STATUS"))
+        assert not cleared & WRITE_ERR, f"{label}: the written one left 0x{cleared:08x}"
+        await self._await_irq(f"{label}_DROP", 0)
+        await self.csr_write(f"{label}_ENABLE_OFF", engine_reg(WRAP, "INTR_ENABLE"), 0)
+        cocotb.log.info(
+            "CHK-LOG-ENGINE-WRITE-ERR-TEST: INTR_TEST.LOG_WRITE_ERR set INTR_STATUS.LOG_WRITE_ERR "
+            "alone, which raised tb_uart_irq_combined[0] with only that interrupt enabled; "
+            "its written one cleared it and the line dropped"
+        )
+
     async def body(self) -> None:
 
         await self.wait_fuse_sense_done()
@@ -194,5 +227,6 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
 
         await self.csr_write("WRITE_ADDR_CLR", engine_reg(WRAP, "LOG_WRITE_ADDR"), 0)
         await self.csr_write("REGION_SIZE_CLR", engine_reg(WRAP, "LOG_REGION_SIZE"), 0)
+        await self._write_err_test_leg()
         await restore_uart(self, WRAP)
         await self.csr_write("UART_REGATE", CLOCK_GATE_CONTROL, cg)

@@ -13,8 +13,11 @@ from smc_base_test import smc_base_test
 class smc_log_engine_fetch_error_test(smc_base_test):
     """Point the log engine's fetch at an address that refuses it."""
 
-    required_evidence = ("CHK-LOG-ENGINE-FETCH-ERR",)
-    min_evidence = 1
+    required_evidence = (
+        "CHK-LOG-ENGINE-FETCH-ERR",
+        "CHK-LOG-ENGINE-WRITE-ERR-TEST",
+    )
+    min_evidence = 2
 
     auto_protocol_vip = False
 
