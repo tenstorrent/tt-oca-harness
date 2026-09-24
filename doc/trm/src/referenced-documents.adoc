@@ -19,7 +19,12 @@ the latest edition.
 
 == OCAH Documentation
 
+<<ocah-documentation-references-table>> identifies the companion guides used for
+integration and programming details.
+
+[[ocah-documentation-references-table]]
 [cols="2,3",options="header"]
+.OCAH documentation references
 |===
 |Document |Referenced for
 
@@ -30,7 +35,12 @@ TRNG aperture's register decode and error-response requirements.
 
 == OCA Specifications
 
+<<oca-specification-references-table>> identifies the OCA specifications cited by this
+manual.
+
+[[oca-specification-references-table]]
 [cols="2,3",options="header"]
+.OCA specification references
 |===
 |Document |Referenced for
 
@@ -49,7 +59,12 @@ revision 0.7 (2025).
 
 == Interface and Security Standards
 
+<<interface-and-security-standard-references-table>> identifies the standards used by
+the interfaces and security functions.
+
+[[interface-and-security-standard-references-table]]
 [cols="2,3",options="header"]
+.Interface and security standard references
 |===
 |Document |Referenced for
 
@@ -106,7 +121,12 @@ chapter cites revision 6 for electrical and timing requirements.
 
 == External Design Documentation
 
+<<external-design-documentation-references-table>> identifies the upstream design
+documentation used by the subsystem chapters.
+
+[[external-design-documentation-references-table]]
 [cols="2,3",options="header"]
+.External design documentation references
 |===
 |Document or project |Referenced for
 

@@ -17,7 +17,15 @@ The SMN lives in its own clock domain with respect to the SMU --- as highlighted
 by the clock domain crossing in the top level diagram --- and with respect
 to the application logic.
 
-The following table summarises the clock domains present in OCAH.
+The CDC boundaries are shown in the
+ifdef::backend-html5[]
+xref:overview.adoc#ocah-top-block-diagram[OCAH top-level block diagram].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-top-block-diagram,OCAH top-level block diagram>>.
+endif::backend-pdf[]
+
+<<ocah-clock-domain-table>> summarises the clock domains present in OCAH.
 
 [[ocah-clock-domain-table]]
 .OCAH Clock Domains

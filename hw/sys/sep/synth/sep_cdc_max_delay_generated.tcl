@@ -24,8 +24,10 @@
 # corrupting the path. Only the length rule is disabled; the rest still apply.
 # tclint-disable line-length
 
-# ---- prim_sync2r (1 instances) ----
+# ---- prim_sync2r (3 instances) ----
 set_cdc_max_delay_prim_sync2 u_sep_cpu/u_mpc_reset_run_req_sync SEPCLK
+set_cdc_max_delay_prim_sync2 u_sep_reset_ctrl/u_jtag_ip_ovrd_sync SEPCLK
+set_cdc_max_delay_prim_sync2 u_sep_reset_ctrl/u_jtag_ip_val_sync SEPCLK
 
 # ---- prim_sync3 (2 instances) ----
 set_cdc_max_delay_prim_sync3 u_sep_system_peripherals/u_sep_system_csr/u_reference_counter_counter/u_sync_cnt_en_count REFCLK

@@ -6,6 +6,9 @@
 :sectanchors:
 :sectlinks:
 :sectnums:
+:sectnumlevels: 9
+:xrefstyle: short
+:block-catalog:
 :source-highlighter: highlight.js
 :revnumber: 0.5.33
 :revdate: 2026-09-11
@@ -25,15 +28,23 @@ System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 
 This manual is the architecture and register-level reference for those
 blocks. Motivation, use cases, and the OCA-layer feature overview are on
+ifdef::backend-html5[]
 xref:ocah-home::index.adoc[Home].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-home/latest/index.html[the OCAH documentation home page].
+endif::backend-pdf[]
 
 ifdef::backend-html5[]
 == Documentation Overview
 
 This documentation is organized into the following sections:
 
+* Documentation Overview
+** xref:list-of-figures.adoc[List of Figures]
+** xref:list-of-tables.adoc[List of Tables]
 ifndef::release[]
-* xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
+** xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
 ** xref:overview.adoc[Platform Overview]
@@ -43,18 +54,28 @@ endif::release[]
 ** xref:reset.adoc[Reset]
 * OCAH Platform Components - The subsystems that make up the OCAH platform
 ** xref:smu:index.adoc[System Management Unit (SMU)] - SMU composition, AXI crossbar and child subsystems
-*** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
 *** xref:sep:index.adoc[Security Processor (SEP)]
 *** xref:smc:index.adoc[System Management Controller (SMC)]
+*** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
 ** xref:smn.placeholder.adoc[System Management Network (SMN)]
 ** xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
 * xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
-* xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual
 * xref:dashboard.adoc[Verification Dashboard]
+* Appendices
+** xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: ../assets
+
+[[list-of-figures]]
+[preface]
+== List of Figures
+
+[[list-of-tables]]
+[preface]
+== List of Tables
+
 ifndef::release[]
 include::revision.adoc[leveloffset=+1]
 endif::release[]
@@ -63,25 +84,12 @@ include::architecture.adoc[leveloffset=+1]
 == OCAH Platform Components
 include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+2]
 
-include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=+3]
-include::../../../hw/sys/dtp/doc/overview.adoc[leveloffset=+4]
-include::../../../hw/sys/dtp/doc/jtag.adoc[leveloffset=+4]
-include::../../../hw/ip/jtag/jtag_intf_unit/doc/index.adoc[leveloffset=+4]
-include::../../../hw/ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=+4]
-include::../../../hw/ip/jtag/jtag_stap/doc/index.adoc[leveloffset=+4]
-include::../../../hw/ip/cross_trigger/cross_trigger_network/doc/index.adoc[leveloffset=+4]
-include::../../../hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloffset=+4]
-include::../../../hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=+4]
-include::../../../hw/sys/dtp/doc/clock_stop.adoc[leveloffset=+4]
-include::../../../hw/sys/dtp/doc/reference.adoc[leveloffset=+4]
-
 include::../../../hw/sys/sep/doc/index.adoc[leveloffset=+3]
 include::../../../hw/sys/sep/doc/introduction.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/threat_model.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/attack_countermeasures.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/overview.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/fabric.adoc[leveloffset=+4]
-include::../../../hw/sys/sep/doc/memory_map.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/cpu.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/rom.adoc[leveloffset=+4]
 include::../../../hw/sys/sep/doc/interrupts.adoc[leveloffset=+4]
@@ -107,6 +115,7 @@ include::../../../hw/sys/sep/doc/token_processing.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/security_disable.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/lifecycle_controller.adoc[leveloffset=+5]
 include::../../../hw/sys/sep/doc/test_mode.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/memory_map.adoc[leveloffset=+4]
 
 include::../../../hw/sys/smc/doc/index.adoc[leveloffset=+3]
 include::../../../hw/sys/smc/doc/overview.adoc[leveloffset=+4]
@@ -121,6 +130,18 @@ include::../../../hw/sys/smc/doc/dfd.adoc[leveloffset=+4]
 include::../../../hw/sys/smc/doc/zeroer.adoc[leveloffset=+4]
 include::../../../hw/sys/smc/doc/scan_protection.adoc[leveloffset=+4]
 include::../../../hw/sys/smc/doc/memmap.adoc[leveloffset=+4]
+
+include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=+3]
+include::../../../hw/sys/dtp/doc/overview.adoc[leveloffset=+4]
+include::../../../hw/sys/dtp/doc/jtag.adoc[leveloffset=+4]
+include::../../../hw/ip/jtag/jtag_intf_unit/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/jtag/jtag_stap/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/cross_trigger/cross_trigger_network/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=+4]
+include::../../../hw/sys/dtp/doc/clock_stop.adoc[leveloffset=+4]
+include::../../../hw/sys/dtp/doc/reference.adoc[leveloffset=+4]
 
 include::smn.placeholder.adoc[leveloffset=+2]
 include::aou.adoc[leveloffset=+2]

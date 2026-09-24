@@ -51,7 +51,7 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 	fi
 
 .PHONY: ocah-doc-trm-html
-ocah-doc-trm-html: ocah-doc-trm-setup
+ocah-doc-trm-html: ocah-doc-all-setup
 	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
 	@echo "Building TRM HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
@@ -70,6 +70,7 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 	@rm -rf "$(OCAH_TRM_SRC)/assets" && ln -s ../assets "$(OCAH_TRM_SRC)/assets"
 	@cd "$(OCAH_TRM_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-r "$(OCAH_ROOT)/tools/doc/register_map_coverage.rb" \
+		-r "$(OCAH_ROOT)/tools/doc/block_catalog.rb" \
 		-a register-map-manifest="$(OCAH_TRM_BUILD)/register-maps.txt" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=9 -a outlinelevels=9 \
