@@ -41,7 +41,13 @@ DV_ROOT  := $(SEP_ROOT)/dv
 OCAH_ROOT := $(abspath $(SEP_ROOT)/../../..)
 
 UV ?= uv
-MANIFEST_PYTHON ?= uv --project "$(OCAH_ROOT)" run --locked --group manifest python
+# The manylinux_2_34 cryptography wheel requires GLIBC_2.30. A host whose glibc
+# is older installs the manylinux_2_28 wheel, or the 2.17 wheel below that.
+# An environment created without the cap keeps the incompatible wheel, so the
+# capped invocation reinstalls it.
+MANIFEST_UV_PLATFORM := $(shell python3 -c 'import platform; libc, ver = platform.libc_ver(); parts = tuple(int(x) for x in ver.split(".")[:2]) if ver else (0, 0); machine = platform.machine(); print("" if libc != "glibc" or parts >= (2, 34) else f"{machine}-manylinux_2_28" if parts >= (2, 28) else f"{machine}-manylinux_2_17")' 2>/dev/null)
+MANIFEST_UV_FLAGS := $(if $(MANIFEST_UV_PLATFORM),--python-platform $(MANIFEST_UV_PLATFORM) --reinstall-package cryptography,)
+MANIFEST_PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked --group manifest $(MANIFEST_UV_FLAGS) python
 
 # Generated SEP register headers, read from the register flow's own output so
 # they cannot drift from the RDL the RTL is built from.
