@@ -98,17 +98,16 @@ CORE_CLK_NS = 10
 # payload is all ones, and therefore a high the controller is driving, which
 # is what makes the pull-down interference rather than anything else.
 #
-# The point was a delay measured in bit periods from a poll of STATUS before.
-# That poll returns some cycles after the controller left idle, and how many
-# depends on the bus traffic of the run, so the pull-down landed in a
-# different part of the bit loop from seed to seed: at some offsets the byte
-# is corrupted early enough that the target NACKs first and the controller
-# halts on the NACK instead of reporting the interference. Counting edges on
-# the pads removes the dependence.
+# The anchor has to be a bus edge, not a poll of STATUS: a poll returns some
+# cycles after the controller leaves idle, and how many depends on the run's
+# bus traffic, so a point measured from it lands in a different part of the
+# bit loop from run to run. At some offsets the byte is corrupted early enough
+# that the target NACKs first and the controller halts on the NACK instead of
+# reporting the interference.
 CONFLICT_RISES = (12,)
 # The pull-down is released inside the same SCL high window: one that outlasts
 # it reaches the next bit, where the controller may be driving a low and the
-# pull is no longer a conflict.
+# pull is not a conflict.
 CONFLICT_HOLD_NS = T_HIGH * CORE_CLK_NS * 3 // 4
 
 POLL_CYCLES = 100

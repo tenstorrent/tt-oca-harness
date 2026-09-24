@@ -96,14 +96,11 @@ ADDR_POINTS = [("addr", k) for k in range(1, 8)]
 DATA_POINTS = [("addrack", 0)] + [("data", k) for k in range(1, 8)] + [("dataack", 0)]
 KINDS = ("stop", "restart")
 
-# Delays, in VIP bit periods, at which the target enable is cleared while a
-# byte is on the wire. Spread across the address byte, the acknowledge slot and
-# the payload byte so the write lands in different states.
 #: Where the bench stops clocking before it clears the target enable. A slot
 #: is a number of payload bits driven after the address acknowledge, so the
 #: target is parked waiting for the next bit and the disable lands in the same
-#: state every run. Delays measured from a poll of STATUS were used before,
-#: which put the disable in a different state from seed to seed.
+#: state every run; a delay measured from a poll of STATUS would land it in a
+#: state that depends on the run's bus traffic.
 DISABLE_PARK_SLOTS = (("EARLY", 1), ("MID", 4), ("LATE", 7))
 
 # Bounds on the DUT-side observations, in clk_smc_i cycles so they scale with
