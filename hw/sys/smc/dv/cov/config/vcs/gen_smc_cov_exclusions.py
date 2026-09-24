@@ -882,8 +882,9 @@ C5 = (
 )
 B9 = (
     "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench "
-    "ties sep_security_disable_i to zero in both instances, and it reaches the eFuse shadow "
-    "registers unchanged, so the security-disable term of the fuse-sense load holds zero here. "
+    "ties sep_security_disable_i to zero in both instances, and it reaches the eFuse interface "
+    "controller and its shadow registers unchanged, so the security-disable terms of the "
+    "requester mux, the sense-done status and the fuse-sense load hold zero here. "
     "A bench port that drives the input retires the class."
 )
 P20 = (
@@ -1525,7 +1526,10 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     "log_engine": [(P28, re.compile(r"^log_write_(?:mem_resp_error|err)$"), 0)],
     "uart_core": [(P11, re.compile(r"^fifo_thr_rbr_err$"), 0)],
     "efuse_guard": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
-    "efuse_interface_controller": [(P6, LC_STATE_OFF, 0)],
+    "efuse_interface_controller": [
+        (P6, LC_STATE_OFF, 0),
+        (B9, re.compile(r"^security_disable_i$"), 0),
+    ],
     "efuse_shadow_reg_access_control": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
     "efuse_shadow_regs": [
         (P6, LC_STATE_OFF, 0),
