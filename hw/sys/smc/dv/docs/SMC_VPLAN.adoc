@@ -10486,6 +10486,56 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
+[[sec-255-smc_i2c_controller_queue_shapes_test]]
+===== 255 `smc_i2c_controller_queue_shapes_test`
+
+*Source Module*: `smc_i2c_controller_queue_shapes_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads, and a pad watcher that counts SCL rises and STOPs; observation on `CONTROLLER_EVENTS`, `INTR_STATE`, `STATUS`, `HOST_FIFO_STATUS`, `RDATA` and the target's memory
+
+*Objective*: Six shapes of the controller's format queue that no leaf had written. Every other controller leaf queues one transaction at a time, gives it a STOP, and drains the receive FIFO while the read runs.
+
+*Test Coverage*:
+
+* `FDATA.NAKOK` on an address nobody answers. `i2c.rdl` says the controller then does not halt, set `CONTROLLER_EVENTS.NACK`, or raise `CONTROLLER_HALT`. The transfer must run to its STOP with `CMD_COMPLETE`.
+* Two transactions queued together, each with its own START and STOP. The controller leaves the first STOP for the format FIFO with the second transaction already waiting. The target must see two STARTs, two STOPs and both bytes.
+* A transaction queued without its last entry, which runs dry and parks holding SCL low. The entry queued afterwards must finish it as one transaction.
+** `CTRL.MULTI_CONTROLLER_MONITOR_EN` is set together with `ENABLEHOST`, as the RDL requires, so the controller sees the bus it parked on as busy and continues because it owns the open transaction.
+** `HOST_TIMEOUT_CTRL.VAL` gives the monitor its bus-free time.
+** `TIMEOUT_CTRL` is in bus mode with `EN` clear across the park, and no `BUS_TIMEOUT` may result.
+* A NACK left pending across a disable. `HOST_NACK_HANDLER_TIMEOUT` is armed, the controller is NACKed, and `CTRL.ENABLEHOST` is cleared before the timeout runs out.
+** The controller closes the transaction with one STOP of its own.
+** The handler timeout must not run while the controller is disabled.
+** Re-enabled with the NACK still set, the timeout runs out, but with no transaction open nothing reaches the pads. The disable waits a fixed settle after the NACK is seen, because the controller reaches Idle only after the hold that follows the acknowledge.
+* `CTRL.LLPBK` in controller mode, which `i2c.rdl` limits to the SMBus alert input. A transfer made with it set must reach the target unchanged.
+* A read longer than the receive FIFO, with no `RDATA` reads until it ends.
+** `INTR_STATE.RX_OVERFLOW` and `STATUS.RXFULL` must be raised.
+** The FIFO, whose depth is read off `HOST_FIFO_STATUS.RXLVL`, must hold the first bytes read, in order.
+** `RX_OVERFLOW` must clear on a written one.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads.
+. For each shape, re-enable the controller, queue the entries, and check the result above.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-NAKOK` |NACKs that `NAKOK` allowed left `CONTROLLER_EVENTS` at 0 and `CONTROLLER_HALT` clear, and the transfer ended in one STOP with `CMD_COMPLETE`
+|`CHK-I2C-CTRL-BACK-TO-BACK` |Two transactions queued together reached the target as two STARTs and two STOPs, with both bytes written
+|`CHK-I2C-CTRL-PARK-CONTINUE` |A parked transaction held SCL low with `HOSTIDLE` clear, raised no `BUS_TIMEOUT` with the timeout disabled, and the later entry finished it as one transaction
+|`CHK-I2C-CTRL-NACK-DISABLED` |A NACKed transaction closed with one STOP on disable, the handler timeout did not run while disabled, and once re-enabled it ran out with nothing on the pads
+|`CHK-I2C-CTRL-LOOPBACK-HOST` |A write made with `LLPBK` set in controller mode reached the target unchanged, with no event
+|`CHK-I2C-CTRL-RX-OVERFLOW` |An undrained over-long read raised `RX_OVERFLOW` and `RXFULL`, the FIFO held the first bytes in order, and the interrupt cleared on a written one
+|===
+
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
