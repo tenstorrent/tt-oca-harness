@@ -130,6 +130,14 @@ state variable as a transition:
   `transmitting_o` at zero, or holds SCL low, makes the term identically false
   and the override it feeds cannot fire from it. A state whose own arm assigns
   the same destination for another reason keeps that edge graded.
+* B2 UNAIMED-OVERRIDE, the bench's own like B1: the same fan-in overrides are
+  taken on bus events and register writes that the SMC bench, driving the bus
+  through the pads and the registers, cannot place in a chosen one of the
+  sub-bit states the block's counters time. The edge an override would take
+  out of a given state is uncovered for want of that aim. A bench that can
+  place a bus event or a write in a chosen sub-bit state retires the class. An
+  edge the source state's own case arm assigns, read from the FSM source at
+  generation time, stays graded.
 * F5 RESET-EDGE: a state register's reset assignment is expanded into a
   transition from every state. Where no case arm assigns the reset state, the
   only way to cover such an edge is to assert the block's reset while the FSM
@@ -259,6 +267,58 @@ F8 = (
     "named here."
 )
 
+B2 = (
+    "SMC-FSM-B2-UNAIMED-OVERRIDE: a property of this bench, not of the design. The I2C "
+    "FSMs end their next-state logic with fan-in overrides taken on a bus event or a register "
+    "write: start detect to AcquireStart; stop detect, bus timeout or target disable to Idle; "
+    "arbitration loss to WaitForStop; controller interference or a failed symbol to Idle. The "
+    "states those overrides leave are timed below one bit by the block's own counters, and "
+    "the SMC bench drives the bus through the pads and the registers, so it cannot place a "
+    "bus event or a write in a chosen one of them; the edge an override would take out of a "
+    "given state is uncovered for want of that aim. A bench that can place a bus event or a "
+    "register write in a chosen sub-bit state retires the class. An edge the source state's "
+    "own case arm assigns is reachable another way and stays graded, and F7 and F8 name the "
+    "edges the design itself forbids."
+)
+ARM_LABEL = re.compile(r"^(\s+)([A-Za-z_]\w*)\s*:\s*begin\b")
+STATE_ASSIGN = re.compile(r"\bstate_d\s*=\s*(\w+)")
+_ARMS: dict[tuple[str, str], frozenset[str]] = {}
+
+
+def arms_assigning(source: str, dst: str) -> frozenset[str]:
+    """The states whose own case arm in an FSM source assigns state_d = dst.
+
+    Only assignments inside a `unique case (state_q)` arm count; the fan-in
+    overrides after the `endcase` are what B2 is about, so they are not an arm.
+    """
+    path = Path(source.rpartition(":")[0])
+    key = (str(path), dst)
+    if key in _ARMS:
+        return _ARMS[key]
+    if not path.is_file():
+        raise SystemExit(f"{path} not found: the FSM source the template names must be readable")
+    arms: set[str] = set()
+    case_indent: int | None = None
+    arm = ""
+    for line in path.read_text(errors="replace").splitlines():
+        if case_indent is None:
+            m = re.match(r"^(\s*)unique case \(state_q\)", line)
+            if m:
+                case_indent, arm = len(m.group(1)), ""
+            continue
+        if line.strip().startswith("endcase") and len(line) - len(line.lstrip()) == case_indent:
+            case_indent = None
+            continue
+        m = ARM_LABEL.match(line)
+        if m and len(m.group(1)) == case_indent + 2:
+            arm = m.group(2)
+            continue
+        if arm and dst in STATE_ASSIGN.findall(line):
+            arms.add(arm)
+    _ARMS[key] = frozenset(arms)
+    return _ARMS[key]
+
+
 # Target states that drive scl_d = 1'b0 for their whole duration, so the bus
 # monitor cannot see a start in them.
 I2C_SCL_LOW = (
@@ -303,7 +363,8 @@ AVS_IDLE_ARMS = ("AVS_IDLE", "AVS_SLAVE_RESYNC", "AVS_END_LAST_SUBFRAME")
 # into S; ("to_default", (S, arms)) those into S from a state that is not in
 # arms, for where only some of the source's states reach S through a case arm;
 # ("state", S) the state S and the transitions that touch it; ("edges", (...))
-# exactly those transitions. A selector of None takes every point of the FSM and
+# exactly those transitions; ("override", S) the transitions into S from every
+# state whose own case arm, read from the FSM source, does not assign S. A selector of None takes every point of the FSM and
 # is used by no fact: a fact that cannot name its points is too wide to state.
 FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" = {
     ("avsbus_controller", "cur_state"): [
@@ -325,9 +386,13 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
     ("i2c_target_fsm", "state_q"): [
         (F7, ("edges", tuple(f"{s}->AcquireStart" for s in I2C_SCL_LOW))),
         (F8, ("edges", tuple(f"{s}->WaitForStop" for s in I2C_NO_ARB_LOSS))),
+        (B2, ("override", "AcquireStart")),
+        (B2, ("override", "Idle")),
+        (B2, ("override", "WaitForStop")),
     ],
     ("i2c_controller_fsm", "state_q"): [
         (F8, ("edges", tuple(f"{s}->Idle" for s in I2C_NO_SYMBOL_FAIL))),
+        (B2, ("override", "Idle")),
     ],
 }
 
@@ -1184,18 +1249,19 @@ def render_fsm(
         "// always_comb default's state that no case arm of the source produces, F3 the",
         "// states a tied-off response never lets the master enter, F4 a state whose",
         "// decode arm a parameter leaves unelaborated, F5 the edges that exist only as",
-        "// a state register's reset assignment, and F6 the edge an enable-edge load",
-        "// cannot supply. The generator's docstring and the ANNOTATION before each",
-        "// block state the facts.",
+        "// a state register's reset assignment, F6 the edge an enable-edge load cannot",
+        "// supply, F7 and F8 the I2C override edges the design forbids from a state, and",
+        "// B2 the rest of those override edges, which this bench cannot aim. The",
+        "// generator's docstring and the ANNOTATION before each block state the facts.",
         "//==================================================",
     ]
     count = 0
     for module, section in sorted(templates["fsm"].items()):
-        fsm = ""
+        fsm = fsm_source = ""
         block: list[tuple[str, str]] = []
-        for _, entry in section.entries:
+        for where, entry in section.entries:
             if entry.startswith("Fsm "):
-                fsm = entry.split()[1]
+                fsm, fsm_source = entry.split()[1], where
                 if (module, fsm) in FSM_FACTS:
                     block.append(("", entry))
                 continue
@@ -1218,6 +1284,11 @@ def render_fsm(
                         block.append((reason, entry))
                         break
                     continue
+                if mode == "override":
+                    if dst == target and src not in arms_assigning(fsm_source, target):
+                        block.append((reason, entry))
+                        break
+                    continue
                 if mode == "to_default":
                     state, arms = target
                     if dst == state and src not in arms:
@@ -1234,7 +1305,7 @@ def render_fsm(
         if not any(r for r, _ in block):
             continue
         out += ["", f"CHECKSUM: {section.checksum}"]
-        for reason in (F2, F3, F4, F5, F6, F7, F8):
+        for reason in (F2, F3, F4, F5, F6, F7, F8, B2):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
         out.append(f"MODULE: {module}")

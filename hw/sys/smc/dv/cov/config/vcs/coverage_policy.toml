@@ -42,7 +42,10 @@ args = ["-elfile", "{path}"]
 # inputs to zero, a decode state whose arm a parameter leaves unelaborated, the
 # edges that exist only as a state register's reset assignment, and the one an
 # enable-edge load cannot supply, the I2C fan-in overrides a state holding SCL
-# low cannot take, and those a state that never drives the bus cannot.
+# low cannot take, and those a state that never drives the bus cannot. B2
+# UNAIMED-OVERRIDE is the bench's own: the rest of those override edges wait on
+# a bus event or write landing in a chosen sub-bit state, which the bench cannot
+# place.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
