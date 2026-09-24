@@ -148,6 +148,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfd_cla_snapshot_capture_test"
+module = "smc_dfd_cla_snapshot_capture_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dfd_trace_sink_window_test"
 module = "smc_dfd_trace_sink_window_test"
 seed = 1
@@ -182,6 +190,14 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_dfd_dbm_mode_lock_test"
 module = "smc_dfd_dbm_mode_lock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_concurrent_test"
+module = "smc_dfd_trace_sink_concurrent_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
