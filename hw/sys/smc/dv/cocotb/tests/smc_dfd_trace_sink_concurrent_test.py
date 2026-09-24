@@ -51,6 +51,8 @@ from smc_base_test import smc_base_test
 #     write, two mux writes, the empty read), the two pointer reads around
 #     160 mux writes, the closing two-word snapshot and 64 normal-mode
 #     writes                                                                373
+#   window above the RAM: a sink arm (9), DST control write + readback,
+#     8 held action writes, one pointer poll, the start restore write        21
 #   memory mode: a sink arm (9), DST control write + readback, 100 held
 #     action writes, the empty read, a RAM-mode sink arm (9), 8 held action
 #     writes and one pointer poll                                            130
@@ -66,8 +68,8 @@ from smc_base_test import smc_base_test
 #   restore: DST control, DST impl, frame config, EAP, CLA control, CLA
 #     mux, funnel, sink control, DEBUG_BUS_MUX, DEBUG_CTRL                   10
 #                                                                         ------
-#                                                                          1538
-TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1538
+#                                                                          1559
+TRACE_SINK_CONCURRENT_MIN_CSR_ACCESSES = 1559
 
 
 @pyuvm.test()
@@ -77,6 +79,7 @@ class smc_dfd_trace_sink_concurrent_test(smc_base_test):
     required_evidence = (
         "CHK-DST-CONCURRENT-DRAIN",
         "CHK-DST-CONCURRENT-FRAMEWALK",
+        "CHK-DST-CONCURRENT-HIGHSTART",
         "CHK-DST-CONCURRENT-IDLE",
         "CHK-DST-CONCURRENT-MEMORY",
         "CHK-DST-CONCURRENT-MODE",
@@ -85,7 +88,7 @@ class smc_dfd_trace_sink_concurrent_test(smc_base_test):
         "CHK-DST-CONCURRENT-STOPWRAP",
         "CHK-DST-CONCURRENT-SYNCWALK",
     )
-    min_evidence = 9
+    min_evidence = 10
 
     auto_protocol_vip = False
 

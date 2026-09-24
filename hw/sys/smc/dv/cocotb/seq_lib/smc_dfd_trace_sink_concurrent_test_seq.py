@@ -61,6 +61,10 @@ After both, ``Trdstsyncmode`` is walked through every value of its field under
 each timestamp source, on a fresh sink with the uncompressed stream running and
 the restarting action held so the stream runs for many frames under each.
 
+Before that, a RAM-mode window is placed with ``Trdstramstartlow`` one trace
+RAM size above the RAM, a legal value for the field and out of the RAM's range
+by construction, and the write pointer has to run through it.
+
 The leaf ends in the sink's memory mode. The memory write-out is never
 accepted in this bench, so the frames the sink stages in its local RAM are
 never drained and it backpressures the DST. The trace is held on well past
@@ -128,6 +132,9 @@ _ODD_SWITCHES = 160
 # the sink returns to RAM mode.
 _MEMORY_HOLD_WRITES = 100
 _MEMORY_EXIT_WRITES = 8
+# A RAM-mode window start one trace RAM size (16 KB) up: a legal value for the
+# byte-address field, out of the RAM's range by construction.
+_HIGH_START_BYTES = 0x4000
 # Writes of the restarting action per sync-mode value, each followed by the
 # settle time: long enough at 64-byte frames to pass the shortest stream length
 # more than once.
@@ -158,6 +165,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.odd_start_action = -1
         self.odd_pointer = (0, 0)
         self.memory_exit_pointer = 0
+        self.high_pointer = 0
 
     # -- register helpers -------------------------------------------------
 
@@ -200,14 +208,19 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         )
 
     async def _open_sink(
-        self, mode: int, label: str, window: int = _SINK_WINDOW_BYTES, stop_on_wrap: int = 0
+        self,
+        mode: int,
+        label: str,
+        window: int = _SINK_WINDOW_BYTES,
+        stop_on_wrap: int = 0,
+        start: int = 0,
     ) -> None:
         control = sink_register("Trdstramcontrol")
         await self._write(control, control.reset_word, f"{label}_off")
         for name, value in (
-            ("Trdstramstartlow", 0),
+            ("Trdstramstartlow", start),
             ("Trdstramstarthigh", 0),
-            ("Trdstramlimitlow", window),
+            ("Trdstramlimitlow", start + window),
             ("Trdstramlimithigh", 0),
             ("Trdstramwplow", 0),
             ("Trdstramrplow", 0),
@@ -512,6 +525,56 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             _ODD_SWITCHES,
             self.odd_pointer[0],
             self.odd_pointer[1],
+        )
+
+    # -- a window above the RAM --------------------------------------------
+
+    async def _high_start(self, logical_op: int) -> None:
+        """Run the trace into a RAM-mode window that starts above the sink RAM.
+
+        ``Trdstramstartlow`` is a plain byte-address field, so a start past the
+        end of the 16 KB trace RAM is a legal register value even though no RAM
+        word lives there. The window is placed at 0x4000 bytes, one RAM size up;
+        the RAM indexes the low address bits, so the trace still lands in it,
+        and the write pointer has to run from the programmed start through the
+        window, which is what the register view shows.
+        """
+        wp = sink_register("Trdstramwplow")
+        pointer = reg_field(wp, "Trdstramwplow")
+        eap = cla_register("CDbgNode0Eap0")
+        hold = pack_fields(
+            eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": self.odd_start_action}
+        )
+        await self._open_sink(0, "high", start=_HIGH_START_BYTES)
+        await self._write_check(
+            dst_register("Trdstcontrol"),
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_NONE},
+            "high",
+        )
+        for step in range(_MEMORY_EXIT_WRITES):
+            await self._write(eap, hold, f"high{step}")
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        for poll in range(_DELIVER_POLLS):
+            self.high_pointer = await self._read(wp, f"high{poll}") & pointer.mask
+            if self.high_pointer > _HIGH_START_BYTES:
+                break
+        limit = _HIGH_START_BYTES + _SINK_WINDOW_BYTES
+        assert _HIGH_START_BYTES < self.high_pointer <= limit, (
+            f"the write pointer reads 0x{self.high_pointer:x} with the window programmed at "
+            f"0x{_HIGH_START_BYTES:x}..0x{limit:x} and the trace held on, so it did not run "
+            f"from the programmed start through that window"
+        )
+        start = sink_register("Trdstramstartlow")
+        await self._write(start, start.reset_word, "high_restore")
+        self.value_checks += 1
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-HIGHSTART: with Trdstramstartlow at 0x%x, one trace RAM size "
+            "above the RAM's own range, and the limit 0x%x bytes past it, the held trace moved "
+            "the write pointer to 0x%x inside that window; the start register was then "
+            "written back to its reset",
+            _HIGH_START_BYTES,
+            _SINK_WINDOW_BYTES,
+            self.high_pointer,
         )
 
     # -- memory mode ------------------------------------------------------
@@ -876,6 +939,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         await self._stop_in_software(logical_op)
         await self._stop_on_wrap(logical_op)
         await self._walk_sync_modes(logical_op)
+        await self._high_start(logical_op)
         # A software stop after memory mode does not empty the packetizer, so
         # nothing may follow that needs it to.
         await self._memory_backpressure(logical_op)
