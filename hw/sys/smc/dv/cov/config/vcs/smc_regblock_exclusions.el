@@ -115,7 +115,6 @@ Condition 104 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OV
 Condition 104 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
 Condition 105 "1844794179" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
 Condition 112 "569785034" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
-Condition 115 "2518759583" "(field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) 1 -1" (2 "10")
 Condition 115 "2518759583" "(field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
 Condition 116 "1090530673" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
 Condition 120 "3777697814" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
