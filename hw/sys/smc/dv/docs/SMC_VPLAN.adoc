@@ -10422,8 +10422,9 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 *Test Coverage*:
 
 * The integration shell keeps each I3C instance's DAT and DCT in a single-port RAM, with a read-valid flop that a read reaching the RAM sets. No leaf had read either table on any instance. The I3C CSR window maps both tables (`registers.rdl`: `external DAT` at `0x400`, `external DCT` at `0x800`), and `smc_addr.h` gives their per-instance bases and the instance count, six.
-* **DAT.** `DAT_structure.rdl` makes every field of an entry `sw = rw`. The leaf records entry 0 of every instance, writes each instance a pattern of its own over the fields the RDL declares, and then reads all six back after all six are written. A read answered without reaching the RAM, or from another instance's RAM, returns the wrong pattern. Each entry is then restored and read back.
-* **DCT.** `DCT_structure.rdl` makes every field `sw = r`. Only dynamic address assignment writes the table, and this bench does not run it, so its content is not specified. The leaf reads entry 0 of every instance twice, as four 32-bit words, and requires every read to complete and the two passes to agree.
+* **DAT.** `DAT_structure.rdl` makes every field of an entry `sw = rw`. The leaf reads entry 0 of every instance, writes each instance a pattern of its own over the fields the RDL declares, and then reads all six back after all six are written. A read answered without reaching the RAM, or from another instance's RAM, returns the wrong pattern. Each entry is then cleared and read back 0. Nothing writes the RAM before the leaf, so a four-state simulator reads the first read as X. That read only has to show that the entry does not already hold the pattern on every declared bit.
+* **DCT.** `DCT_structure.rdl` makes every field `sw = r`. Only dynamic address assignment writes the table, and this bench does not run it, so its content is not specified: X under a four-state simulator, 0 under a two-state one. The leaf reads entry 0 of every instance twice, as four 32-bit words. Every read must complete with RRESP OKAY, and the two passes must agree on every bit known in both; an X matches anything. The read completing is what sets the RAM's read-valid flop.
+* The SEP_IN master converts each read beat to an int and cannot hold X, so the reads of unwritten entries are taken from a tap on its R channel. The tap records each beat's RRESP and data as sampled and hands the master a copy with unresolvable data zeroed; the master's return value is not used for those reads.
 * The I3C cores themselves are outside this plan's scope; the leaf credits the shell's table RAMs and the CSR-window path to them, not I3C protocol.
 
 *Test Procedure*:
@@ -10435,8 +10436,8 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-I3C-DAT-TABLE-RW` |DAT entry 0 of each of the six instances read back its own pattern over the declared fields after all six were written, and each was restored and read back
-|`CHK-I3C-DCT-TABLE-READ` |DCT entry 0 of each of the six instances was read twice, every read completed, and the two passes agreed
+|`CHK-I3C-DAT-TABLE-RW` |DAT entry 0 of each of the six instances read back its own pattern over the declared fields after all six were written, and each was cleared and read back 0
+|`CHK-I3C-DCT-TABLE-READ` |DCT entry 0 of each of the six instances was read twice, every read completed with RRESP OKAY, and the two passes agreed on every bit known in both
 |===
 
 *Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.

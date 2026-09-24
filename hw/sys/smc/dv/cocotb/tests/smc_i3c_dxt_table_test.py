@@ -4,9 +4,10 @@
 
 On each of the six I3C instances, DAT entry 0 is written with a pattern of its
 own over the fields `DAT_structure.rdl` declares, and all six are read back
-after all six are written. Each entry is then restored. DCT entry 0, which only
-dynamic address assignment writes, is read twice on every instance, and the two
-reads must agree.
+after all six are written. Each entry is then cleared and read back 0. DCT
+entry 0, which only dynamic address assignment writes, is read twice on every
+instance. Every read must complete OKAY, and the two reads must agree on every
+bit known in both; unwritten RAM reads X under a four-state simulator.
 """
 
 from __future__ import annotations
