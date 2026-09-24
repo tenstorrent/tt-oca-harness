@@ -8421,6 +8421,43 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-237-smc_i2c_controller_stretch_test]]
+===== 237 `smc_i2c_controller_stretch_test`
+
+*Source Module*: `smc_i2c_controller_stretch_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that holds the clock; observation on the transfer's own length and on what the target received
+
+*Objective*: The DUT's I2C controller must wait out a held clock and still deliver the transfer.
+
+*Test Coverage*:
+
+* The controller's wait for SCL to rise, which no leaf had taken: every controller leaf in the package talks to a device that never holds the clock.
+* Six hold points across one transfer, so the wait is taken from the address byte, its acknowledge and the payload bytes rather than from one place in the bit loop.
+* The hold is a second driver on the open-drain bus, so the controller's own release cannot lift the line -- the same thing a stretching target does.
+* No timeout is enabled. A controller that gave up instead of waiting would show as a byte the target never received, not as a timeout the leaf could read as success, and `CONTROLLER_EVENTS` is required to stay clear on every leg.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads.
+. Queue a three-entry write and time it with nothing holding the line.
+. For each hold point: queue the same write to a fresh offset, hold SCL low for a fixed span starting that far into the transfer, then release.
+. Require each held transfer to run at least three quarters of the hold longer than the clean one, to deliver the queued bytes, and to leave `CONTROLLER_EVENTS` clear.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-STRETCH-CLEAN` |The unheld transfer's length, which the held ones are measured against
+|`CHK-I2C-CTRL-STRETCH-HELD` |At every hold point the transfer ran longer by about the hold and still delivered every byte
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan
