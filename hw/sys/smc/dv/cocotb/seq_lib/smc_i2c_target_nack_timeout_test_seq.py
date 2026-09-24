@@ -17,7 +17,11 @@ short enough that nothing has to wait for it:
   here, so the limit expires and the byte is NACKed.
 * **Outgoing.** A read from an empty transmit FIFO leaves the target with
   nothing to send, so it holds the clock; the limit expires and it releases
-  SDA, which the bench reads as all ones.
+  SDA, which the bench reads as all ones. That leg also sets
+  `CTRL.TX_STRETCH_CTRL_EN`, so the target records the read it stretched for
+  in `TARGET_EVENTS.TX_PENDING`, and the register's own contract is checked
+  there: a word of zeros and a byte write that leaves the field's lane
+  disabled must both leave it set, and only a written one clears it.
 
 Every instance is driven. `+smc_i2c_shared_bus` puts all three on one
 open-drain bus, so the bench controller on I2C0's pads reaches each of them by
@@ -44,9 +48,11 @@ from .smc_i2c_field_masks import (
     I2C_CTRL_ACK_CTRL_EN,
     I2C_CTRL_ACQ_START_STOP_EN,
     I2C_CTRL_ENABLETARGET,
+    I2C_CTRL_TX_STRETCH_CTRL_EN,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
     I2C_STATUS_ACQEMPTY,
+    I2C_TARGET_EVENTS_TX_PENDING,
     I2C_TARGET_FIFO_STATUS_ACQLVL_BM,
     I2C_TARGET_FIFO_STATUS_ACQLVL_BP,
     I2C_TARGET_TIMEOUT_CTRL_EN,
@@ -88,6 +94,7 @@ _REGS = {
     "target_id": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR",
     "timeout": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_TIMEOUT_CTRL_BASE_ADDR",
     "nack_count": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR",
+    "target_events": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_EVENTS_BASE_ADDR",
     "fifo_status": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR",
     "acqdata": "SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR",
     "timing0": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR",
@@ -118,6 +125,7 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_i2c_target_nack_timeout_test_seq") -> None:
         super().__init__(name)
         self.results: dict[tuple[int, str], tuple[list[int], list[tuple[int, int]], int]] = {}
+        self.retained: list[str] = []
 
     async def _pop_all(self, r: dict[str, int], into: list[tuple[int, int]]) -> None:
         await Timer(STOP_DETECT_DWELL_NS, unit="ns")
@@ -133,11 +141,15 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
             if other != idx:
                 await self.csr_write(f"I2C{other}_OFF", _regs(other)["ctrl"], 0)
 
-    async def _bring_up(self, idx: int, label: str, ack_ctrl: bool) -> dict[str, int]:
+    async def _bring_up(
+        self, idx: int, label: str, ack_ctrl: bool, tx_stretch: bool = False
+    ) -> dict[str, int]:
         r = _regs(idx)
         ctrl = I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN
         if ack_ctrl:
             ctrl |= I2C_CTRL_ACK_CTRL_EN
+        if tx_stretch:
+            ctrl |= I2C_CTRL_TX_STRETCH_CTRL_EN
         await self.csr_write(f"I2C{idx}_DISABLE_{label}", r["ctrl"], 0)
         await self.csr_write(f"I2C{idx}_WRAP_TARGET", r["wrap"], I2C_WRAP_CTRL_TARGET)
         await self.arm_i2c_gpio_lsio(idx, f"I2C{idx}_NACK_TIMEOUT_{label}")
@@ -217,9 +229,45 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
         )
         self.results[(idx, "rx")] = (acks, entries, count)
 
+    async def _tx_pending_retain(self, r: dict[str, int], label: str) -> None:
+        """TARGET_EVENTS.TX_PENDING clears on a written one and nothing else.
+
+        The read above sets it: with `CTRL.TX_STRETCH_CTRL_EN` the target
+        records the read command it stretched for. Two writes that must not
+        clear it are made first -- a word of zeros over the set bit, and a
+        byte-sized write to the far end of the register, which leaves the lane
+        carrying the bit disabled -- and each is read back against the mask
+        from the generated header.
+        """
+        set_by_dut = await self.csr_read(f"{label}_TXPEND", r["target_events"])
+        assert set_by_dut & I2C_TARGET_EVENTS_TX_PENDING, (
+            f"{label}: TARGET_EVENTS.TX_PENDING is not set although the target stretched a "
+            f"read with TX_STRETCH_CTRL_EN set (0x{set_by_dut:08x})"
+        )
+        await self.csr_write(f"{label}_TXPEND_ZERO", r["target_events"], 0)
+        after_zero = await self.csr_read(f"{label}_TXPEND_AFTER_ZERO", r["target_events"])
+        assert after_zero & I2C_TARGET_EVENTS_TX_PENDING, (
+            f"{label}: TX_PENDING cleared on a word of zeros (0x{after_zero:08x}); the field "
+            f"clears on a written one"
+        )
+        await self.csr_write(f"{label}_TXPEND_LANE", r["target_events"] + 3, 0xFF, length=1)
+        after_lane = await self.csr_read(f"{label}_TXPEND_AFTER_LANE", r["target_events"])
+        assert after_lane & I2C_TARGET_EVENTS_TX_PENDING, (
+            f"{label}: TX_PENDING cleared on a byte write to the far end of the register "
+            f"(0x{after_lane:08x}); that write leaves its lane disabled"
+        )
+        await self.csr_write(
+            f"{label}_TXPEND_CLEAR", r["target_events"], I2C_TARGET_EVENTS_TX_PENDING
+        )
+        cleared = await self.csr_read(f"{label}_TXPEND_CLEARED", r["target_events"])
+        assert cleared & I2C_TARGET_EVENTS_TX_PENDING == 0, (
+            f"{label}: TX_PENDING survived a written one (0x{cleared:08x})"
+        )
+        self.retained.append(label)
+
     async def _outgoing_leg(self, idx: int) -> None:
         label = f"I2C{idx}_OUTGOING"
-        r = await self._bring_up(idx, "OUTGOING", ack_ctrl=False)
+        r = await self._bring_up(idx, "OUTGOING", ack_ctrl=False, tx_stretch=True)
         master = SmcI2cMasterVip(speed=VIP_SPEED, name=f"smc_i2c{idx}_nack_timeout_read")
         data = bytearray()
 
@@ -243,6 +291,7 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
             f"{label}: the acquisition FIFO does not end with the NACK-stop entry "
             f"(acquired {entries})"
         )
+        await self._tx_pending_retain(r, label)
         self.results[(idx, "tx")] = ([], entries, count)
 
     async def body(self) -> None:
@@ -268,6 +317,14 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
             ", I2C".join(str(i) for i in sorted(rx)),
             NACK_TIMEOUT_CYCLES,
             {f"I2C{i}": self.results[(i, "rx")][0] for i in sorted(rx)},
+        )
+        cocotb.log.info(
+            "CHK-I2C-TGT-EVENTS-RETAIN: on %d instances TARGET_EVENTS.TX_PENDING, set by the "
+            "target itself on the read it stretched for, survived a word of zeros written "
+            "over it and a byte write that left its lane disabled, and cleared only on a "
+            "written one: %s",
+            len(self.retained),
+            ", ".join(self.retained),
         )
         cocotb.log.info(
             "CHK-I2C-TGT-NACK-TIMEOUT-TX: asked to transmit with an empty transmit FIFO, each "

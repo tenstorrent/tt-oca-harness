@@ -9546,7 +9546,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 * The address phase, which `smc_i2c_target_acq_stretch_test` does not reach: that leaf fills the FIFO part-way through a transfer, so the target stretches at a data byte. Holding the address phase needs the FIFO to still be out of room when a new address arrives, which only a repeated START can arrange -- a STOP would end the transfer and let software drain at leisure.
 * Both settings of `CTRL.NACK_ADDR_AFTER_TIMEOUT`, which `i2c.rdl` gives as ACK the address byte even if a stretch timeout occurs (`0`, for SMBus) or NACK it (`1`). The two settings take the target down different paths to the same hold, and in both the transfer has to complete once the FIFO is drained.
-* A third leg where the repeated START asks the target to *transmit*. The target leaves the address-phase stretch into the transmit stretch rather than into byte acquisition, and stays there until software supplies a byte: the drain alone does not release it, and the leg requires that.
+* A third leg where the repeated START asks the target to *transmit*. `TARGET_EVENTS.TX_PENDING` is not raised on this path and the leg does not look for it: `i2c_core.sv:1062` gates the event on `event_read_cmd_received`, which `i2c_target_fsm.sv` emits from `AddrAckHold` only on the branch where the address phase did *not* stretch. The register's own contract is checked in `smc_i2c_target_nack_timeout_test`, on a read whose address phase was acknowledged normally. The target leaves the address-phase stretch into the transmit stretch rather than into byte acquisition, and stays there until software supplies a byte: the drain alone does not release it, and the leg requires that.
 * All three instances. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 * No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
 * `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
@@ -9674,6 +9674,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * `TARGET_NACK_COUNT` is the register witness. `i2c_core.sv` increments it on the edge where the target decides to NACK the transaction, and the field is read-to-clear, so each leg reads it clear beforehand and requires exactly one afterwards -- not merely non-zero.
 * The acquisition stream must end with the NACK-stop entry, so software can see the transaction ended badly rather than inferring it from the missing data.
 * All three instances, reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
+* `TARGET_EVENTS` as a register rather than a flag. The outgoing leg sets `CTRL.TX_STRETCH_CTRL_EN`, so the target records the read it stretched for in `TARGET_EVENTS.TX_PENDING`; a word of zeros and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled, must both leave it set, and only a written one clears it. Each read is compared against the mask from the generated header.
 
 *Test Procedure*:
 
@@ -9691,9 +9692,10 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |Checker |Description
 |`CHK-I2C-TGT-NACK-TIMEOUT-RX` |The allowance ran out at a held incoming byte: the byte was NACKed, the transaction counted once, and the stream closed with a NACK-stop entry
 |`CHK-I2C-TGT-NACK-TIMEOUT-TX` |The allowance ran out with nothing to transmit: SDA was released so the bench read all ones, the transaction counted once, and the stream closed with a NACK-stop entry
+|`CHK-I2C-TGT-EVENTS-RETAIN` |`TARGET_EVENTS.TX_PENDING`, set by the target on the read it stretched for, survived a word of zeros and a byte write that left its lane disabled, and cleared only on a written one
 |===
 
-*Pass Criteria*: both checkers hold after their compares on every instance, and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares on every instance, and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
