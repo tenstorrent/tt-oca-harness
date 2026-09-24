@@ -241,12 +241,21 @@ module smc_input_fabric #(
   assign local_region_end  = {1'b0, local_base_addr_i}  + region_size_i;
   assign global_region_end = {1'b0, global_base_addr_i} + region_size_i;
 
-  always_comb begin
-    local_space_write = (axi_from_input_mux_req.aw.addr >= local_base_addr_i)  && ({1'b0, axi_from_input_mux_req.aw.addr} < local_region_end) ||
-                            (axi_from_input_mux_req.aw.addr >= global_base_addr_i) && ({1'b0, axi_from_input_mux_req.aw.addr} < global_region_end);
-    local_space_read  = (axi_from_input_mux_req.ar.addr >= local_base_addr_i)  && ({1'b0, axi_from_input_mux_req.ar.addr} < local_region_end) ||
-                            (axi_from_input_mux_req.ar.addr >= global_base_addr_i) && ({1'b0, axi_from_input_mux_req.ar.addr} < global_region_end);
-  end
+  // Takes the bounds as arguments: a continuous assign is not sensitive to module signals a
+  // function reads implicitly.
+  function automatic logic in_smc_region(smc_pkg::smc_axi_addr_t           addr,
+                                         smc_pkg::smc_axi_addr_t           local_base,
+                                         logic [smc_pkg::AXI_ADDR_WIDTH:0] local_end,
+                                         smc_pkg::smc_axi_addr_t           global_base,
+                                         logic [smc_pkg::AXI_ADDR_WIDTH:0] global_end);
+    return (addr >= local_base)  && ({1'b0, addr} < local_end) ||
+           (addr >= global_base) && ({1'b0, addr} < global_end);
+  endfunction
+
+  assign local_space_write = in_smc_region(axi_from_input_mux_req.aw.addr, local_base_addr_i,
+                                           local_region_end, global_base_addr_i, global_region_end);
+  assign local_space_read  = in_smc_region(axi_from_input_mux_req.ar.addr, local_base_addr_i,
+                                           local_region_end, global_base_addr_i, global_region_end);
 
   // The demux should be 56 bit address width
   // Using struct to access local_fabric and output_fabric paths
@@ -392,14 +401,141 @@ module smc_input_fabric #(
   );
 
 
+  ////////////////////////////
+  // SYS / SEP Region Check //
+  ////////////////////////////
+
+  // Both paths truncate to the 32-bit local fabric, so an address outside the local and global
+  // windows would otherwise alias into the local map. Port 0 of each demux takes those to DECERR.
+
+  logic sys_space_write;
+  logic sys_space_read;
+
+  assign sys_space_write = in_smc_region(sys_axi_in_filtered_req.aw.addr, local_base_addr_i,
+                                         local_region_end, global_base_addr_i, global_region_end);
+  assign sys_space_read  = in_smc_region(sys_axi_in_filtered_req.ar.addr, local_base_addr_i,
+                                         local_region_end, global_base_addr_i, global_region_end);
+
+  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_region_req;
+  smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_region_resp;
+  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_err_slv_req;
+  smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_err_slv_resp;
+
+  axi_demux #(
+    .AxiIdWidth     (smc_pkg::SYS_IN_ID_WIDTH),
+    .AtopSupport    (1'b0),
+    .aw_chan_t      (smc_pkg::smc_sys_in_56_64_6_12_axi_aw_chan_t),
+    .w_chan_t       (smc_pkg::smc_sys_in_56_64_6_12_axi_w_chan_t),
+    .b_chan_t       (smc_pkg::smc_sys_in_56_64_6_12_axi_b_chan_t),
+    .ar_chan_t      (smc_pkg::smc_sys_in_56_64_6_12_axi_ar_chan_t),
+    .r_chan_t       (smc_pkg::smc_sys_in_56_64_6_12_axi_r_chan_t),
+    .axi_req_t      (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
+    .axi_resp_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t),
+    .NoMstPorts     (2),
+    .MaxTrans       (smc_pkg::FABRIC_MAX_TRANS),
+    .AxiLookBits    (smc_pkg::FABRIC_ID_LOOKUP_BITS),
+    .UniqueIds      (1'b0),
+    .SpillAw        (1'b0),
+    .SpillW         (1'b0),
+    .SpillB         (1'b0),
+    .SpillAr        (1'b0),
+    .SpillR         (1'b0)
+  ) u_sys_region_demux (
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .test_i          (test_en_i),
+    .sel_hash_i      (2'd0),  // unused
+    .slv_req_i       (sys_axi_in_filtered_req),
+    .slv_aw_select_i (sys_space_write),
+    .slv_ar_select_i (sys_space_read),
+    .slv_resp_o      (sys_axi_in_filtered_resp),
+    .mst_reqs_o      ({sys_axi_in_region_req, sys_err_slv_req}),
+    .mst_resps_i     ({sys_axi_in_region_resp, sys_err_slv_resp})
+  );
+
+  axi_err_slv #(
+    .AxiIdWidth (smc_pkg::SYS_IN_ID_WIDTH),
+    .axi_req_t  (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
+    .axi_resp_t (smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t),
+    .Resp       (axi_pkg::RESP_DECERR),
+    .ATOPs      (1'b0),
+    .MaxTrans   (smc_pkg::ERR_SLV_MAX_TRANS)
+  ) u_sys_region_err_slv (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_req_i  (sys_err_slv_req),
+    .slv_resp_o (sys_err_slv_resp)
+  );
+
+  logic sep_space_write;
+  logic sep_space_read;
+
+  assign sep_space_write = in_smc_region(sep_axi_in_req_i.aw.addr, local_base_addr_i,
+                                         local_region_end, global_base_addr_i, global_region_end);
+  assign sep_space_read  = in_smc_region(sep_axi_in_req_i.ar.addr, local_base_addr_i,
+                                         local_region_end, global_base_addr_i, global_region_end);
+
+  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_region_req;
+  smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_region_resp;
+  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_err_slv_req;
+  smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_err_slv_resp;
+
+  axi_demux #(
+    .AxiIdWidth     (smc_pkg::SEP_IN_ID_WIDTH),
+    .AtopSupport    (1'b0),
+    .aw_chan_t      (smc_pkg::smc_sep_in_56_64_6_12_axi_aw_chan_t),
+    .w_chan_t       (smc_pkg::smc_sep_in_56_64_6_12_axi_w_chan_t),
+    .b_chan_t       (smc_pkg::smc_sep_in_56_64_6_12_axi_b_chan_t),
+    .ar_chan_t      (smc_pkg::smc_sep_in_56_64_6_12_axi_ar_chan_t),
+    .r_chan_t       (smc_pkg::smc_sep_in_56_64_6_12_axi_r_chan_t),
+    .axi_req_t      (smc_pkg::smc_sep_in_56_64_6_12_axi_req_t),
+    .axi_resp_t     (smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t),
+    .NoMstPorts     (2),
+    .MaxTrans       (smc_pkg::FABRIC_MAX_TRANS),
+    .AxiLookBits    (smc_pkg::FABRIC_ID_LOOKUP_BITS),
+    .UniqueIds      (1'b0),
+    .SpillAw        (1'b0),
+    .SpillW         (1'b0),
+    .SpillB         (1'b0),
+    .SpillAr        (1'b0),
+    .SpillR         (1'b0)
+  ) u_sep_region_demux (
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
+    .test_i          (test_en_i),
+    .sel_hash_i      (2'd0),  // unused
+    .slv_req_i       (sep_axi_in_req_i),
+    .slv_aw_select_i (sep_space_write),
+    .slv_ar_select_i (sep_space_read),
+    .slv_resp_o      (sep_axi_in_resp_o),
+    .mst_reqs_o      ({sep_axi_in_region_req, sep_err_slv_req}),
+    .mst_resps_i     ({sep_axi_in_region_resp, sep_err_slv_resp})
+  );
+
+  axi_err_slv #(
+    .AxiIdWidth (smc_pkg::SEP_IN_ID_WIDTH),
+    .axi_req_t  (smc_pkg::smc_sep_in_56_64_6_12_axi_req_t),
+    .axi_resp_t (smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t),
+    .Resp       (axi_pkg::RESP_DECERR),
+    .ATOPs      (1'b0),
+    .MaxTrans   (smc_pkg::ERR_SLV_MAX_TRANS)
+  ) u_sep_region_err_slv (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_req_i  (sep_err_slv_req),
+    .slv_resp_o (sep_err_slv_resp)
+  );
+
   // SYS IN AXI Address Width Converter (56 -> 32)
   `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(filtered_sys_axi_out_req_o, filtered_sys_axi_out_resp_i,
-                                     sys_axi_in_filtered_req, sys_axi_in_filtered_resp,
+                                     sys_axi_in_region_req, sys_axi_in_region_resp,
                                      smc_pkg::smc_axi_local_addr_t)
 
   // SEP AXI Address Width Converter (56 -> 32)
   `AXI_ASSIGN_ADDR_WIDTH_ADJ_CASTING(sep_axi_id_remap_req_o, sep_axi_id_remap_resp_i,
-                                     sep_axi_in_req_i, sep_axi_in_resp_o,
+                                     sep_axi_in_region_req, sep_axi_in_region_resp,
                                      smc_pkg::smc_axi_local_addr_t)
 
 endmodule
