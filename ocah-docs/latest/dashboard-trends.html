@@ -486,8 +486,7 @@
 <div class="paragraph">
 <p>Published regression results over time, from the trend history on the
 <a href="https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data"><code>dv-dashboard-data</code></a>
-branch. The window defaults to the most recent runs; use the control below to
-widen it.</p>
+branch. Choose how many runs to show, and which series each chart plots.</p>
 </div>
 <div class="dashboard">
   <p class="dashboard-back"><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
@@ -505,12 +504,24 @@ widen it.</p>
 
   <div id="dashboard-trends" hidden>
     <h3>Test Pass Rate</h3>
+    <p class="dashboard-window">
+      <label for="dashboard-series-tests">Series</label>
+      <select id="dashboard-series-tests"></select>
+    </p>
     <div id="dashboard-trend-tests" class="dashboard-chart"></div>
 
     <h3>Coverage</h3>
+    <p class="dashboard-window">
+      <label for="dashboard-series-coverage">Series</label>
+      <select id="dashboard-series-coverage"></select>
+    </p>
     <div id="dashboard-trend-coverage" class="dashboard-chart"></div>
 
     <h3>Failing and Flaky Tests</h3>
+    <p class="dashboard-window">
+      <label for="dashboard-series-failures">Series</label>
+      <select id="dashboard-series-failures"></select>
+    </p>
     <div id="dashboard-trend-failures" class="dashboard-chart"></div>
   </div>
 
