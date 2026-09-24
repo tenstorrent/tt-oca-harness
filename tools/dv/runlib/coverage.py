@@ -55,8 +55,6 @@ _METRIC_ALIASES = {
     "expr": "expression",
     "expression": "expression",
     "user": "user",
-    "cover_property": "user",
-    "cover_properties": "user",
 }
 _OVERALL_ALIASES = {"overall", "total", "score"}
 _PERCENT_RE = re.compile(r"(?P<value>\d+(?:\.\d+)?)\s*%?")
