@@ -1,0 +1,124 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# axi_lite_to_ahb IP-level scenarios. Every leaf runs every parameter set
+# (tb/tb_top.sv) and every transaction passes the always-on AXI monitor, AHB
+# slave-model rules and scoreboard, on top of the scenario's own checks.
+
+[[tests]]
+name = "a2h_smoke_test"
+module = { cocotb = "a2h_smoke_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "a2h_strobe_matrix_test"
+module = { cocotb = "a2h_strobe_matrix_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "strobe"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "a2h_wait_states_test"
+module = { cocotb = "a2h_wait_states_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "ahb"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "a2h_error_response_test"
+module = { cocotb = "a2h_error_response_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "ahb"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "a2h_backpressure_test"
+module = { cocotb = "a2h_backpressure_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "axi"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "a2h_arbitration_test"
+module = { cocotb = "a2h_arbitration_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "axi"]
+run_modes = ["functional"]
+
+# Queued reads must each carry their full address.
+[[tests]]
+name = "a2h_pipelined_read_test"
+module = { cocotb = "a2h_pipelined_read_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "pipelined"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "a2h_hprot_signals_test"
+module = { cocotb = "a2h_hprot_signals_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "ahb"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "a2h_reset_test"
+module = { cocotb = "a2h_reset_test" }
+seed = 1
+timeout_sec = 600
+tags = ["ci", "reset"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "a2h_random_stress_test"
+module = { cocotb = "a2h_random_stress_test" }
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["ci", "stress"]
+run_modes = ["stress"]
+
+# Negative control for the converter's SVA. It disturbs the RTL on purpose, so
+# it stays out of `all`: it grades PASS only when AddrPhaseHeld_A fires.
+[[tests]]
+name = "a2h_sva_live_test"
+module = { cocotb = "a2h_sva_live_test" }
+seed = 1
+timeout_sec = 600
+tags = ["sva"]
+run_modes = ["functional"]
+expect_fail = "negative control: a deposited HADDR change inside a stalled address phase must fire AddrPhaseHeld_A; a pass means the converter SVA are not compiled in"
+
+[[groups]]
+name = "smoke"
+tests = ["a2h_smoke_test"]
+
+[[groups]]
+name = "all"
+tests = [
+  "a2h_smoke_test",
+  "a2h_strobe_matrix_test",
+  "a2h_wait_states_test",
+  "a2h_error_response_test",
+  "a2h_backpressure_test",
+  "a2h_arbitration_test",
+  "a2h_pipelined_read_test",
+  "a2h_hprot_signals_test",
+  "a2h_reset_test",
+  "a2h_random_stress_test",
+]
+
+[[groups]]
+name = "sva_live"
+tests = ["a2h_sva_live_test"]

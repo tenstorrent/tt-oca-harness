@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= List of Tables
+
+Select a table to open its topic. Table numbers are local to each HTML
+topic; the PDF numbers tables consecutively across the book. Generated
+register lists, bit layouts, and field tables are included.

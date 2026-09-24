@@ -187,14 +187,13 @@
 <tr><td>19:17</td><td>sbaccess</td><td>RW</td><td>0x2</td><td>Access size for system bus accesses: 0=8-bit, 1=16-bit, 2=32-bit, 3=64-bit, 4=128-bit. If unsupported, access fails, sberror=4.</td></tr>
 <tr><td>16</td><td>sbautoincrement</td><td>RW</td><td>0x0</td><td>1: sbaddress is incremented by access size (from sbaccess) after every system bus access.</td></tr>
 <tr><td>15</td><td>sbreadondata</td><td>RW</td><td>0x0</td><td>1: Every read from sbdata0 automatically triggers a system bus read at (possibly auto-incremented) address.</td></tr>
-<tr><td>14:12</td><td>_reserved_14_12</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>11:9</td><td>sberror</td><td>RW</td><td>0x0</td><td>System bus master error flags. No new access if non-zero. 0=none, 1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.</td></tr>
-<tr><td>8:5</td><td>sbasize</td><td>R</td><td>0x0</td><td>Width of system bus addresses in bits (e.g., 32 for 32-bit addresses). 0 indicates no bus access support. NOTE: This field is 4 bits wide ([8:5]), which is insufficient to directly store typical bus widths like 32 or 64. This implies the value is an encoding or there is a spec issue. The text implies it stores values like 32, 64, etc (e.g. &#x27;if sbasize &lt; 33&#x27;).</td></tr>
+<tr><td>14:12</td><td>sberror</td><td>RW</td><td>0x0</td><td>System bus master error flags. No new access if non-zero. 0=none, 1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.</td></tr>
+<tr><td>11:5</td><td>sbasize</td><td>R</td><td>0x38</td><td>Width of system bus addresses in bits. The integrated debug module reports 56. Zero indicates no system bus access support.</td></tr>
 <tr><td>4</td><td>sbaccess128</td><td>R</td><td>0x0</td><td>1: 128-bit system bus accesses are supported.</td></tr>
-<tr><td>3</td><td>sbaccess64</td><td>R</td><td>0x0</td><td>1: 64-bit system bus accesses are supported.</td></tr>
-<tr><td>2</td><td>sbaccess32</td><td>R</td><td>0x0</td><td>1: 32-bit system bus accesses are supported.</td></tr>
-<tr><td>1</td><td>sbaccess16</td><td>R</td><td>0x0</td><td>1: 16-bit system bus accesses are supported.</td></tr>
-<tr><td>0</td><td>sbaccess8</td><td>R</td><td>0x0</td><td>1: 8-bit system bus accesses are supported.</td></tr>
+<tr><td>3</td><td>sbaccess64</td><td>R</td><td>0x1</td><td>1: 64-bit system bus accesses are supported.</td></tr>
+<tr><td>2</td><td>sbaccess32</td><td>R</td><td>0x1</td><td>1: 32-bit system bus accesses are supported.</td></tr>
+<tr><td>1</td><td>sbaccess16</td><td>R</td><td>0x1</td><td>1: 16-bit system bus accesses are supported.</td></tr>
+<tr><td>0</td><td>sbaccess8</td><td>R</td><td>0x1</td><td>1: 8-bit system bus accesses are supported.</td></tr>
 </table>
 <h3 id="sbaddress0">sbaddress0</h3>
 <table>

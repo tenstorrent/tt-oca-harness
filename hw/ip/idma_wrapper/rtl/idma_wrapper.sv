@@ -17,6 +17,7 @@ module idma_wrapper #(
 
   parameter  int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, otherwise dma ctrl read bus will stall on cmd start
   parameter  int unsigned M2B_FIFO_DEPTH = 0,
+  parameter  int unsigned BUFFER_DEPTH = 3,  // realignment buffer depth in beats, must be >= 2
 
   parameter  bit EN_R_AW_COUPLING = 1,  // recommended
 
@@ -253,6 +254,7 @@ module idma_wrapper #(
     .NUM_MST_INTERFACES(NUM_MST_INTERFACES),
     .DMA_MST_MAX_TXNS(DMA_MST_MAX_TXNS),
     .M2B_FIFO_DEPTH(M2B_FIFO_DEPTH),
+    .BUFFER_DEPTH(BUFFER_DEPTH),
     .EN_R_AW_COUPLING(EN_R_AW_COUPLING),
     .BYPASS_DMA_MST_FLOPS(BYPASS_DMA_MST_FLOPS),
     .TFLenWidth(TFLenWidth),

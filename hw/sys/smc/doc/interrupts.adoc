@@ -13,7 +13,7 @@ interrupt routing and priority handling.
 
 This chapter is the single place for interrupt **address maps**, the
 **`cpu_interrupts_o` vector**, **PLIC/CLINT register** includes, and **bus
-error (NMI)** behavior.
+error** behavior.
 
 == Interrupt controllers (MMIO)
 
@@ -22,13 +22,18 @@ standardized interfaces. PLIC (AXI4-Lite) and CLINT (AXI4-Lite) are used
 for external and timer/software interrupts, respectively. Base addresses
 and interfaces (SMC-local view):
 
+<<smc-interrupt-controller-addresses-table>> lists the interrupt-related MMIO blocks and
+their address ranges.
+
 ifdef::backend-html5[]
 ++++
 <div class="smc-interrupt-table-scroll" role="region" aria-label="Interrupt controller address map" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[smc-interrupt-controller-addresses-table]]
 [cols="30%,40%,12%,18%",options="header",role="smc-interrupt-table"]
+.SMC interrupt-controller addresses
 |===================================================================
 |Block |Base Addr |Size |Interface
 |CPU Control Regs |0xC001_0000 |8 KB |AXI4-Lite
@@ -54,11 +59,17 @@ additional globals (for example per-core Chipyard watchdog timers at indices
 
 === Bus Error Unit interrupts
 
-The Bus Error Units (BEU) provide per-core bus error monitoring. Unlike
-other interrupt sources, BEU interrupts bypass the PLIC and connect
-directly to each CPU core's interrupt input as a non-maskable interrupt
-(NMI-like behavior). This ensures immediate notification of bus errors
-regardless of PLIC configuration or interrupt masking.
+A Bus Error Unit (BEU) accumulates error events for one core. The register
+named `ACCRUED_ENABLE` is sticky status, not an enable mask: events set its bits
+independently of `ENABLE`. Ordinary writes replace those bits; write zero to
+clear them. `ENABLE` instead gates capture of the first error's `CAUSE` and
+`PHYS_ADDR` while `CAUSE` is zero. Software can also write `PHYS_ADDR`.
+
+`LOCAL_ENABLE` selects accrued errors for direct delivery to the core, bypassing
+the PLIC and the ordinary per-source `mie` bits. This is not an unconditionally
+non-maskable interrupt: in machine mode, `mstatus.MIE = 0` suppresses delivery.
+The machine interrupt is enabled while executing in lower privilege modes.
+The BEU also has a separate output selected by `PLIC_ENABLE`.
 
 For the raw `cpu_interrupts_o` bit map traced back to the SMC RTL,
 including the distinction between raw vector bits and PLIC source IDs,
@@ -98,7 +109,7 @@ cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+3]     = zeroer_intp;
 
 === Exact Indexed Map
 
-The table below shows the exact raw `cpu_interrupts_o` indexing. The
+<<smc-indexed-interrupt-map-table>> shows the exact raw `cpu_interrupts_o` indexing. The
 `Source` column is intentionally human-readable; implementation signal
 names are called out in the `RTL trace` column instead.
 
@@ -108,7 +119,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[smc-indexed-interrupt-map-table]]
 [width="100%",cols="12%,20%,28%,40%",options="header",role="smc-interrupt-table smc-interrupt-table-wide"]
+.SMC indexed interrupt map
 |=======================================================================
 |Bit(s) |Source |Description |RTL trace
 
@@ -416,7 +429,7 @@ individual enable bits and `mstatus.MIE`.
 
 The SMC interrupt system brings together a broad set of interrupt
 sources that support reliable and responsive system monitoring and
-control, summarized in the following table.
+control, summarized in <<smc-interrupt-sources-table>>.
 
 ifdef::backend-html5[]
 ++++
@@ -424,6 +437,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[smc-interrupt-sources-table]]
 .SMC interrupt sources
 [width="100%",cols="24%,28%,25%,23%",options="header",role="smc-interrupt-table"]
 |=======================================================================
@@ -446,7 +460,7 @@ external intervention
 
 |Bus Error Detection Units |0xC801_0000 + (N × 0x1000), 4 per-core AXI
 monitoring instances, direct to cores (not PLIC) |Bus infrastructure integrity monitoring and fault
-isolation |Immediate fault reporting as NMI-like interrupt
+isolation |Direct core delivery, subject to machine-mode global interrupt masking
 |=======================================================================
 
 ifdef::backend-html5[]

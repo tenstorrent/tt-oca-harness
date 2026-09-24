@@ -20,6 +20,13 @@ _round_ value depends on the key size used.
 * 192 bit key: 12 rounds
 * 256 bit key: 14 rounds
 
+[[sep-aes-reference-diagram]]
+.OpenTitan AES core reference architecture
+image::opentitan_aes.svg[alt="OpenTitan AES core reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-aes-reference-diagram>> shows the upstream core. The OCAH bus, key-delivery, and entropy
+connections are described in the integration details below.
+
 [[och-modifications-2]]
 == OCAH Modifications
 

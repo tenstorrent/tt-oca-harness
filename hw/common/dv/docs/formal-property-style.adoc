@@ -8,8 +8,8 @@ This chapter fixes how formal properties are written, attached, labelled and
 placed so that one property file elaborates on the open-source path and on the
 licensed backends alike. The open-source path is SymbiYosys (`sby`) driving
 Yosys with the yosys-slang frontend (`read_slang`). Licensed backends run from
-the `nonfree` companion and read the same property files. The DTP DV root is
-the adopter of this style; no other DUT DV root carries formal collateral.
+separate integrations and read the same property files. The DTP DV root is the
+adopter of this style; no other DUT DV root carries formal collateral.
 
 [IMPORTANT]
 ====
@@ -238,7 +238,7 @@ code belongs to the design's property module. The checker files join the formal 
 report: sby prints `Assert failed in <top>: <instance path>.ast_...` and
 writes the same path as the JUnit `id`; licensed backends report the same
 hierarchical name. Every `ast_` whose antecedent is not trivially reachable
-has a companion `cov_` on the antecedent, and every `asm_` carries a one-line
+has a paired `cov_` on the antecedent, and every `asm_` carries a one-line
 rationale naming the protocol or design fact that makes it legal.
 
 [[formal-style-reset]]
@@ -316,8 +316,8 @@ before it is unconstrained.
 
 `<app>` names the check the tasks implement: `fpv` for property checking; the
 connectivity, register, unreachability and X-propagation apps follow the same
-shape. The `nonfree` companion mirrors the path for licensed backends:
-`<dut-dv-root>/formal/<app>/<tool>/` there holds that tool's script, which reads
+shape. Optional backend integrations mirror the path under
+`<dut-dv-root>/formal/<app>/<tool>/`; each tool script reads
 the same `props/` files from the open tree. `formal/build/` falls under the
 repository's `**/build/` ignore rule.
 

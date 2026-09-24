@@ -34,6 +34,7 @@ module system_timer_octs_core
     input  logic [7:0]            timer_cnt_step_i,
 
     // Credit expired counter (SECONDARY only)
+    input  logic                  credit_expired_clr_i,
     output logic [31:0]           credit_expired_o,
 
     // Timer outputs
@@ -68,6 +69,9 @@ module system_timer_octs_core
 
     // Credit counter signals (SECONDARY only)
     logic [8:0]                cur_credits; // 9 bits to handle the case where cur_credits = reg_credit_val_i
+    logic                      credits_left;
+
+    assign credits_left = (cur_credits < {1'b0, reg_credit_val_i});
 
     // Carry-select adder outputs
     logic [63:0]               timer_count_plus_one;
@@ -191,7 +195,7 @@ module system_timer_octs_core
                 timer_count_d = timer_preset;
             end else if (timer_cnt_credit_sync_posedge) begin
                 timer_count_d = expected_count_plus_credit;
-            end else if (cur_credits < {1'b0, reg_credit_val_i}) begin // Lint Fix F2
+            end else if (credits_left) begin
                 timer_count_d = timer_count_plus_step;
             end
         end
@@ -276,10 +280,13 @@ module system_timer_octs_core
             expected_count_q <= expected_count_d;
             if (timer_cnt_credit_sync_posedge | timer_sync_load_sync_posedge) begin
                 cur_credits <= 8'h0;
+            end else if (credits_left) begin
+                cur_credits <= cur_credits[7:0] + timer_cnt_step_i;
+            end
+
+            if (timer_cnt_credit_sync_posedge | timer_sync_load_sync_posedge | credit_expired_clr_i) begin
                 credit_expired_o <= 32'h0;
-            end else if (cur_credits < {1'b0, reg_credit_val_i}) begin // Lint Fix F2
-                cur_credits <= cur_credits[7:0] + timer_cnt_step_i; // Lint Fix F7: slice prevents lint warning; upstream mux guarantees overflow cannot occur on this path
-            end else begin
+            end else if (!credits_left) begin
                 credit_expired_o <= credit_expired_o + 32'h1;
             end
         end
@@ -346,6 +353,6 @@ module system_timer_octs_core
 
     // Debug outputs
     assign cur_credits_debug_o      = cur_credits;
-    assign credits_left_debug_o     = (cur_credits < {1'b0, reg_credit_val_i}); // Lint Fix F2
+    assign credits_left_debug_o     = credits_left;
 
 endmodule

@@ -6,8 +6,10 @@
 
 [[key-manager-km-key-manager-km]]
 
-The Key Manager provides isolated key derivation, storage, policy checking,
-and delivery to the cryptographic accelerators. The following sections
+The Key Manager provides isolated key storage, random key generation, explicit
+revocation, and delivery to the cryptographic accelerators. UID-derived key
+hierarchies and automatic configuration-bound revocation are design targets,
+not implemented firmware services. The following sections
 describe its hardware architecture and firmware interface.
 
 ifdef::backend-html5[]
