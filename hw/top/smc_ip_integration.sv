@@ -253,7 +253,6 @@ module smc_ip_integration (
     pll_wrap u_pll_wrap (
         .clk_i        (clk_sys),
         .rst_ni       (rst_primary_smc_clk_ni),
-        .test_en_i    (test_en_i),
         .axil_req_i   (ext_req[ExtPll]),
         .axil_resp_o  (ext_resp[ExtPll]),
         .clk_ref_o    (clk_ref),

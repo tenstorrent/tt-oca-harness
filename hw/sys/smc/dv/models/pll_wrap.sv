@@ -36,7 +36,6 @@ module pll_wrap
 ) (
   input  logic       clk_i,
   input  logic       rst_ni,
-  input  logic       test_en_i,
 
   input  axil_req_t  axil_req_i,
   output axil_resp_t axil_resp_o,
@@ -101,7 +100,7 @@ module pll_wrap
   prim_clock_mux2 u_sys_clk_mux2 (
     .clk0_i (osc_sys),
     .clk1_i (osc_sys),
-    .sel_i  (test_en_i),
+    .sel_i  (1'b0),
     .clk_o  (clk_sys_mux2)
   );
 
@@ -112,7 +111,7 @@ module pll_wrap
     .clk1_i     (osc_sys),
     .rst_clk0_ni(ag_rst_n),
     .rst_clk1_ni(ag_rst_n),
-    .test_en_i  (test_en_i),
+    .test_en_i  (1'b0),
     .sel_i      (1'b0),
     .clk_o      (clk_sys_o)
   );
@@ -126,7 +125,7 @@ module pll_wrap
   prim_clock_mux2 u_periph_clk_mux2 (
     .clk0_i (osc_periph),
     .clk1_i (osc_periph),
-    .sel_i  (test_en_i),
+    .sel_i  (1'b0),
     .clk_o  (clk_periph_mux2)
   );
 
@@ -137,7 +136,7 @@ module pll_wrap
     .clk1_i     (osc_periph),
     .rst_clk0_ni(ag_rst_n),
     .rst_clk1_ni(ag_rst_n),
-    .test_en_i  (test_en_i),
+    .test_en_i  (1'b0),
     .sel_i      (1'b0),
     .clk_o      (clk_periph_o)
   );
