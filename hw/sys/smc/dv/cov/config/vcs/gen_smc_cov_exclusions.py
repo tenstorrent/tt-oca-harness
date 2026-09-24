@@ -192,6 +192,10 @@ only ever see address zero (A9 ADDRESS-FIXED); the main UART map has no external
 write ack (C3 NO-EXTERNAL-WRITE); and a read-only or write-only register's strobe
 or external req carries its direction, in the block and in the logic that
 consumes the req (C4 STROBE-CARRIES-DIRECTION).
+A module urg reports as one section per parameter set is keyed by the set, so
+`tt_debug_bus_mux`'s constant `DISABLE_OUTPUT_FLOP` comparisons are read per
+section (P26 OUTPUT-FLOP-PARAM).
+
 The bench ties the four DFX status inputs the boot sequencer waits on high, so
 the input-low arms of their sticky fields have no stimulus (B7
 DFX-INPUTS-TIED, the bench's own).
@@ -257,7 +261,35 @@ FEATURE_OUT = HERE / "smc_disabled_feature_exclusions.el"
 FSM_OUT = HERE / "smc_fsm_exclusions.el"
 
 CHECKSUM_RE = re.compile(r"^// CHECKSUM: (\"[^\"]*\")")
-MODULE_RE = re.compile(r"^// MODULE: (\S+)")
+MODULE_RE = re.compile(r"^// MODULE: (\S.*?)\s*$")
+REPORT_MODULE_RE = re.compile(r"^(\w+) Coverage for (Module|Instance) : (\S.*?)\s*$")
+
+
+def module_key(header: str) -> str:
+    """A module's key, as both the template and the report name it.
+
+    urg reports a module elaborated with different parameters as one section
+    per parameter set, each with its own checksum, and names the section by
+    its parameters; such a section keeps them in its key, since a fact can
+    hold for one set and not another. Every other module is its bare name.
+    """
+    header = re.sub(r"\s+", " ", header.strip())
+    if "( parameter " in header:
+        return header
+    return re.split(r"[\s(]", header, maxsplit=1)[0]
+
+
+def module_line(key: str) -> str:
+    """The MODULE line of an exclusion block: urg matches a parameter section by its
+    header as the template prints it, trailing space included."""
+    return f"MODULE: {key} " if "( parameter " in key else f"MODULE: {key}"
+
+
+def module_name(key: str) -> str:
+    """The bare module name of a key."""
+    return re.split(r"[\s(]", key, maxsplit=1)[0]
+
+
 FILE_RE = re.compile(r'^// ANNOTATION: "FileName: (\S+), LineNumber: (\d+)"')
 ENTRY_RE = re.compile(r"^// ((?:Condition|Block|Branch|Line|Fsm|State|Transition) .*)$")
 FSM_ENTRY_RE = re.compile(r'^(State|Transition) (\S+?)(?:->(\S+))? "[^"]*"$')
@@ -798,6 +830,13 @@ P25 = (
     "structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and "
     "read-pointer-high enables the DST sink MMR ORs with a software write hold zero, and the "
     "hardware-write row of each cannot occur."
+)
+P26 = (
+    "SMC-P26-OUTPUT-FLOP-PARAM: each tt_debug_bus_mux section urg reports is one parameter set "
+    "whose members agree on DISABLE_OUTPUT_FLOP: the L3 muxes elaborate it at 1 and the L2 and "
+    "CLA muxes at 0. In each section the comparisons on the parameter are constant, so the "
+    "row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode "
+    "arm that tests it at 0 never executes."
 )
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
@@ -1380,6 +1419,49 @@ SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
 }
 
 
+# Facts that hold for one parameter set of a module urg reports per section:
+# (module, member parameter, class, signals, value) and (module, member parameter, class, region).
+SECTION_PATH_FACTS: "list[tuple[str, str, str, re.Pattern[str], int]]" = [
+    ("tt_debug_bus_mux", "DISABLE_OUTPUT_FLOP=1", P26, re.compile(r"^DISABLE_OUTPUT_FLOP$"), 1),
+    ("tt_debug_bus_mux", "DISABLE_OUTPUT_FLOP=0", P26, re.compile(r"^DISABLE_OUTPUT_FLOP$"), 0),
+]
+SECTION_REGION_FACTS: "list[tuple[str, str, str, tuple[str, int, int]]]" = [
+    ("tt_debug_bus_mux", "DISABLE_OUTPUT_FLOP=1", P26, ("tt_debug_bus_mux.sv", 169, 173)),
+]
+
+
+def _section_members(module: str) -> "list[str]":
+    m = re.search(r"\( parameter (.*) \)$", module)
+    return m.group(1).split(" + ") if m else []
+
+
+def _in_section(module: str, name: str, param: str) -> bool:
+    members = _section_members(module)
+    return (
+        module_name(module) == name
+        and bool(members)
+        and all(re.search(rf"(?:^|,){re.escape(param)}(?:,|$)", member) for member in members)
+    )
+
+
+def path_facts(module: str) -> "list[tuple[str, re.Pattern[str], int]]":
+    """The held-signal facts of a module, its parameter section's included."""
+    return list(BRANCH_PATH_FACTS.get(module, [])) + [
+        (reason, forced, value)
+        for name, param, reason, forced, value in SECTION_PATH_FACTS
+        if _in_section(module, name, param)
+    ]
+
+
+def region_facts(module: str) -> "list[tuple[str, str, tuple[str, int, int]]]":
+    """The source regions a fact holds for in a module's parameter section."""
+    return [
+        (reason, param, region)
+        for name, param, reason, region in SECTION_REGION_FACTS
+        if _in_section(module, name, param)
+    ]
+
+
 def _tie_ntrace(term: str) -> str:
     """A term with each comparison over N-trace signals alone replaced by its tied value."""
 
@@ -1404,7 +1486,7 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     """
     if not terms:
         return None
-    facts = BRANCH_PATH_FACTS.get(module, [])
+    facts = path_facts(module)
     ntrace = any(r == P1 for r, _, _ in facts)
     names: dict[str, str] = {}
     plain = []
@@ -1413,7 +1495,7 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
         if text is None:
             return None
         plain.append(text)
-    for reason, forced, value in BRANCH_PATH_FACTS.get(module, []):
+    for reason, forced, value in path_facts(module):
         if needs_forced_away(plain, vector, _scoped(forced), value):
             return reason
     if facts:
@@ -1466,10 +1548,10 @@ def feature_path_class(
         for (_, text), taken in zip(construct.decisions, values):
             if _bare(text) == condition and taken in ("0", "1") and int(taken) != value:
                 return reason
-    for reason, forced, value in BRANCH_PATH_FACTS.get(module, []):
+    for reason, forced, value in path_facts(module):
         if path_needs_forced_away(construct, values, forced, value):
             return reason
-    if any(r == P1 for r, _, _ in BRANCH_PATH_FACTS.get(module, [])):
+    if any(r == P1 for r, _, _ in path_facts(module)):
         # A decision over N-trace signals alone holds the value P1's tie-off
         # gives it, comparisons included; a width cast does not change it.
         for (kind, text), taken in zip(construct.decisions, values):
@@ -1646,12 +1728,12 @@ def report_points(modinfo: Path) -> dict[str, list[Point]]:
             )
 
     for line in modinfo.read_text(errors="replace").splitlines():
-        m = re.match(r"^(\w+) Coverage for Module : (\S+)", line)
+        m = re.match(r"^(\w+) Coverage for Module : (\S.*?)\s*$", line)
         if m:
             close()
             cur = None
             in_cond = m.group(1) == "Cond"
-            module = m.group(2).split("(")[0]
+            module = module_key(m.group(2))
             continue
         if not in_cond:
             continue
@@ -1733,7 +1815,7 @@ def template_points(template: Path) -> dict[str, list[TemplatePoint]]:
     for line in template.read_text(errors="replace").splitlines():
         m = MODULE_RE.match(line)
         if m:
-            module = m.group(1)
+            module = module_key(m.group(1))
             continue
         m = TEMPLATE_SOURCE.match(line)
         if m:
@@ -1870,10 +1952,10 @@ def branch_status(modinfo: Path) -> dict[tuple[str, int, str], str]:
     construct: int | None = None
     table: str | None = None
     for line in modinfo.read_text(errors="replace").splitlines():
-        m = re.match(r"^(\w+) Coverage for (Module|Instance) : (\S+)", line)
+        m = REPORT_MODULE_RE.match(line)
         if m:
             in_branch = m.group(1) == "Branch" and m.group(2) == "Module"
-            module = m.group(3).split("(")[0]
+            module = module_key(m.group(3))
             last_src = construct = table = None
             continue
         if not in_branch:
@@ -2023,9 +2105,10 @@ def branch_constructs(modinfo: Path) -> dict[str, list[BranchConstruct]]:
     i = 0
     while i < len(lines):
         line = lines[i]
-        m = re.match(r"^(\w+) Coverage for (Module|Instance) : (\S+?)(?:\(|\s|$)", line)
+        m = REPORT_MODULE_RE.match(line)
         if m:
-            module = m.group(3) if m.group(1) == "Branch" and m.group(2) == "Module" else None
+            branch = m.group(1) == "Branch" and m.group(2) == "Module"
+            module = module_key(m.group(3)) if branch else None
             last, decisions, first = None, {}, None
             i += 1
             continue
@@ -2092,7 +2175,7 @@ def branch_templates(template: Path) -> dict[str, list[BranchTemplate]]:
     for line in template.read_text(errors="replace").splitlines():
         m = MODULE_RE.match(line)
         if m:
-            module = m.group(1)
+            module = module_key(m.group(1))
             continue
         m = TEMPLATE_SOURCE.match(line)
         if m:
@@ -2243,9 +2326,11 @@ def path_needs_forced_away(
 def _one_bit(condition: str) -> str:
     """A condition with plusarg tests named and one-bit literal compares read as the bit.
 
-    `X == 1'b1` holds exactly when X is one wherever X is held at zero or one,
-    which is all a forced-signal test asks of it.
+    `X == 1'b1` or `X == 1` holds exactly when X is one wherever X is held at
+    zero or one, which is all a forced-signal test asks of it, and `X == 0` is
+    `!X` at any width.
     """
+    condition = re.sub(r"(?<![\w'])'([01])\b", r"1'b\1", condition)
     condition = re.sub(r'\$test\$plusargs\("(\w+)"\)', r"plusarg_\1", condition)
     names: dict[str, str] = {}
     condition = re.sub(
@@ -2253,8 +2338,8 @@ def _one_bit(condition: str) -> str:
         lambda m: names.setdefault(m.group(0), f"value_plusarg{len(names)}"),
         condition,
     )
-    condition = re.sub(r"\b([A-Za-z_]\w*)\s*==\s*1'b1\b", r"\1", condition)
-    condition = re.sub(r"\b([A-Za-z_]\w*)\s*==\s*1'b0\b", r"!\1", condition)
+    condition = re.sub(r"\b([A-Za-z_]\w*)\s*==\s*(?:1'b1|1)(?![\w'\[])", r"\1", condition)
+    condition = re.sub(r"\b([A-Za-z_]\w*)\s*==\s*(?:1'b0|0)(?![\w'\[])", r"!\1", condition)
     # A width cast and a replication keep a one-bit value's truth.
     condition = re.sub(r"\$bits\([^()]*\)'\s*(?=\()|\b\d+'(?=\()", "", condition)
     return re.sub(r"\{\s*\w+\s*\{([^{}]*)\}\s*\}", r"(\1)", condition)
@@ -2387,7 +2472,8 @@ def parse(template: Path) -> dict[str, Section]:
             continue
         m = MODULE_RE.match(line)
         if m:
-            current = sections.setdefault(m.group(1), Section(checksum, m.group(1)))
+            key = module_key(m.group(1))
+            current = sections.setdefault(key, Section(checksum, key))
             continue
         m = FILE_RE.match(line)
         if m:
@@ -2509,6 +2595,7 @@ FEATURE_CLASSES = (
     P22,
     P24,
     P25,
+    P26,
     C5,
     F3,
     B6,
@@ -2535,7 +2622,7 @@ def metric_blocks(
             continue
         out += ["", f"CHECKSUM: {templates[metric][module].checksum}"]
         out += [f'ANNOTATION: "{r}"' for r in order if any(x == r for x, _ in entries)]
-        out.append(f"MODULE: {module}")
+        out.append(module_line(module))
         out += [e for _, e in entries]
     return out
 
@@ -2722,7 +2809,7 @@ def render_xor(
             if XOR_TERM_RE.match(expr) and vec in uncovered.get((module, expr), set()):
                 rows.append(entry)
         if rows:
-            out += ["", f"CHECKSUM: {section.checksum}", f'ANNOTATION: "{X1}"', f"MODULE: {module}"]
+            out += ["", f"CHECKSUM: {section.checksum}", f'ANNOTATION: "{X1}"', module_line(module)]
             out += rows
             count += len(rows)
     return "\n".join(out) + "\n", count
@@ -2734,10 +2821,10 @@ def uncovered_fsm(modinfo: Path) -> dict[tuple[str, str], set[str]]:
     module = fsm = ""
     in_fsm = False
     for line in modinfo.read_text(errors="replace").splitlines():
-        m = re.match(r"^(\w+) Coverage for (Module|Instance) : (\S+)", line)
+        m = REPORT_MODULE_RE.match(line)
         if m:
             in_fsm = m.group(1) == "FSM" and m.group(2) == "Module"
-            module = m.group(3).split("(")[0]
+            module = module_key(m.group(3))
             continue
         if not in_fsm:
             continue
@@ -2826,7 +2913,7 @@ def render_fsm(
         for reason in (F2, F3, F4, F5, F6, F7, F8, F9, B2, B4):
             if any(r == reason for r, _ in block):
                 out.append(f'ANNOTATION: "{reason}"')
-        out.append(f"MODULE: {module}")
+        out.append(module_line(module))
         out += [e for _, e in block]
         count += sum(1 for r, _ in block if r)
     return "\n".join(out) + "\n", count
@@ -2863,6 +2950,7 @@ def render_feature(
         | set(BRANCH_DEAD_ITEMS)
         | set(BRANCH_DEAD_CASE_ITEMS)
         | set(SIGNAL_IDENTITIES)
+        | {k for t in templates.values() for k in t if path_facts(k) or region_facts(k)}
     )
     for module in modules:
         block: list[tuple[str, str]] = []
@@ -2910,11 +2998,17 @@ def render_feature(
                     taken.add(entry)
         # The same held signals decide condition rows, operand tables included.
         taken = {e for _, e in block}
+        regions = [
+            (reason, region)
+            for name, param, reason, region in SECTION_REGION_FACTS
+            if _in_section(module, name, param)
+        ]
         for tp, rp in points.get(module, []):
             for vector, entry in tp.rows:
                 if entry in taken or vector not in rp.uncovered:
                     continue
-                reason = feature_row_class(module, rp.terms, vector)
+                reason = next((r for r, g in regions if in_region(tp.source, g)), None)
+                reason = reason or feature_row_class(module, rp.terms, vector)
                 if reason:
                     block.append((reason, entry))
                     taken.add(entry)
@@ -2965,7 +3059,7 @@ def main() -> int:
         {
             m: align_points(report_points_by_module.get(m, []), tps)
             for m, tps in template_points_by_module.items()
-            if m in BRANCH_PATH_FACTS or m in SIGNAL_IDENTITIES
+            if path_facts(m) or m in SIGNAL_IDENTITIES
         },
     )
     outputs = (

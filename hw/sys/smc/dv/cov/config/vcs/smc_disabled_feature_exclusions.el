@@ -1399,6 +1399,42 @@ Branch 6 "763729257" "dst_sink_gated_func_clamp" (0) "dst_sink_gated_func_clamp 
 Branch 7 "1389124165" "funnel_gated_func_clamp" (0) "funnel_gated_func_clamp 1"
 Branch 8 "1389124165" "funnel_gated_func_clamp" (0) "funnel_gated_func_clamp 1"
 
+CHECKSUM: "2078871858 2490058488"
+ANNOTATION: "SMC-P26-OUTPUT-FLOP-PARAM: each tt_debug_bus_mux section urg reports is one parameter set whose members agree on DISABLE_OUTPUT_FLOP: the L3 muxes elaborate it at 1 and the L2 and CLA muxes at 0. In each section the comparisons on the parameter are constant, so the row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode arm that tests it at 0 never executes."
+MODULE: tt_debug_bus_mux ( parameter DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=17,DEBUG_MUX_ID=0,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=3,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=4,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=5,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=6,DISABLE_OUTPUT_FLOP=0,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 ) 
+Condition 2 "3151685355" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
+Condition 6 "3691080703" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
+Condition 10 "1915277040" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
+Condition 14 "2016040840" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
+Condition 18 "754953066" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
+Condition 22 "2425753254" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
+Condition 26 "3842868081" "((enable_mode_d1 == 2'b10) || (((enable_mode_d1 == 2'b11) && (DISABLE_OUTPUT_FLOP == 1)))) 1 -1" (2 "01")
+Condition 30 "884814545" "(DISABLE_OUTPUT_FLOP == '0) 1 -1" (1 "0")
+
+CHECKSUM: "2078871858 4074834647"
+ANNOTATION: "SMC-P26-OUTPUT-FLOP-PARAM: each tt_debug_bus_mux section urg reports is one parameter set whose members agree on DISABLE_OUTPUT_FLOP: the L3 muxes elaborate it at 1 and the L2 and CLA muxes at 0. In each section the comparisons on the parameter are constant, so the row that needs the other value cannot occur, and with the parameter at 1 the toggle-mode arm that tests it at 0 never executes."
+MODULE: tt_debug_bus_mux ( parameter DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=7,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=8,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=9,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=10,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=11,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=12,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=13,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 + DEBUG_MUX_OUTPUT_WIDTH=64,LANE_WIDTH=16,NUM_INPUT_LANES=8,DEBUG_MUX_ID=14,DISABLE_OUTPUT_FLOP=1,NUM_OUTPUT_LANES=4,MUX_SEL_WIDTH=6 ) 
+Condition 6 "2740153241" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
+Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (1 "0")
+Condition 7 "198242192" "((enable_mode_d2 != 2'b11) ? (((0 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[0]))) 1 -1" (2 "1")
+Condition 8 "4276634619" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
+Condition 8 "4276634619" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
+Condition 14 "2210644695" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
+Condition 15 "2735224258" "((enable_mode_d2 != 2'b11) ? (((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[1]))) 1 -1" (1 "0")
+Condition 15 "2735224258" "((enable_mode_d2 != 2'b11) ? (((1 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[1]))) 1 -1" (2 "1")
+Condition 16 "1446025641" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
+Condition 16 "1446025641" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
+Condition 22 "3799136517" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
+Condition 23 "194475037" "((enable_mode_d2 != 2'b11) ? (((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[2]))) 1 -1" (1 "0")
+Condition 23 "194475037" "((enable_mode_d2 != 2'b11) ? (((2 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[2]))) 1 -1" (2 "1")
+Condition 24 "4272937078" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
+Condition 24 "4272937078" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
+Condition 30 "3269627979" "(DISABLE_OUTPUT_FLOP == 1) 1 -1" (1 "0")
+Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[3]))) 1 -1" (1 "0")
+Condition 31 "2739908175" "((enable_mode_d2 != 2'b11) ? (((3 == 0) ? 16'(DEBUG_MUX_ID) : 16'(0))) : ((~debug_bus_q[3]))) 1 -1" (2 "1")
+Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (1 "0")
+Condition 32 "1450639908" "(enable_mode_d2 != 2'b11) 1 -1" (2 "1")
+
 CHECKSUM: "2535161971 656965095"
 ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well; the row that needs break_err alone has no stimulus."
