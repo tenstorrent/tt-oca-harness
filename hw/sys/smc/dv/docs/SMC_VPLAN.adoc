@@ -4363,7 +4363,7 @@ Drive `smc_dfd_cla_node_eap_sweep_test_seq`. Each checker below is a named compa
 *Test Coverage*:
 
 * The DFD clock held on through `DFX_CTRL.DEBUG_CTRL.force_clk_en`, and every value of the 6-bit `DEBUG_BUS_MUX.Dbmid` field written in the normal debug mode its RDL description names, so every debug-bus mux of the array passes its lanes.
-* The DST enabled with `Trdstformat` at the uncompressed value its own RDL description names, the trace funnel enabled, and the trace RAM sink given a window and activated.
+* The DST enabled with `Trdstformat` at the uncompressed value its own RDL description names, the trace funnel enabled, and the trace RAM sink given a 0x1000-byte window, written through the limit field's own bit positions, and activated.
 * The CLA armed and `CDbgNode0Eap0.Action0` driven over all 64 values of its 6-bit field. Which action code starts a trace is published by no RDL, generated header or MMR specification, so the sweep names none and reads the outcome off the DUT.
 * `Trdstcontrol.Trdstempty` and `Trdstramwplow`, both read at their RDL reset first, are the two hardware-driven witnesses that the accumulator bank left the empty state and that a filled bank was taken by the sink.
 
@@ -4379,7 +4379,7 @@ Drive `smc_dfd_trace_accumulator_fill_test_seq`. Each checker below is a named c
 |Checker |Description
 |`CHK-DST-TRACE-IDLE` |`Trdstcontrol.Trdstempty` reads its RDL reset of 1 and `Trdstramwplow` reads its RDL reset of 0 with the DFD clock held on and no trace running; either one already off its reset fails it and makes the later observations unattributable
 |`CHK-DST-TRACE-ACCUMULATE` |At least one value of the 6-bit `Action0` field made the DUT clear `Trdstcontrol.Trdstempty`, so the debug bus reached the packetizer and its accumulator bank left the empty state; a sweep in which the bit never clears fails it
-|`CHK-DST-TRACE-BANK-HANDOFF` |`Trdstramwplow` left its RDL reset, so the trace RAM sink took at least one filled bank from the accumulator and the bank went empty again; a pointer still at its reset fails it
+|`CHK-DST-TRACE-BANK-HANDOFF` |The `Trdstramwplow` write pointer field moved off 0 and stays inside the 0x1000-byte window, so the trace RAM sink took at least one filled bank from the accumulator and the bank went empty again; a pointer still at its reset, or a word that changed only in the wrap flag, fails it
 |===
 
 
@@ -4447,12 +4447,12 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 0. Each checker be
 |===
 |Checker |Description
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
-|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer off the value it was given, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move fails it and reports the packetizer and funnel state
+|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
 |`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
 |`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
 
-*Known limitation*: one compression mode per run. Once a mode has run the packetizer keeps a partial bank that the register interface offers no way to flush -- measured with the funnel reading empty and the sink having taken a full window while `Trdstempty` stayed 0 -- and a second mode programmed afterwards then delivers nothing. The three modes therefore have one leaf each rather than one leaf walking all three.
+*Known limitation*: one compression mode per run, one leaf per mode. The packetizer can be emptied from software by clearing `Trdstenable` alone with `Trdstactive` held at 1, which `smc_dfd_trace_sink_concurrent_test` witnesses; clearing both together stops the DST clock first and leaves a partial bank behind. Re-running a second mode after that flush is not measured, so the modes keep a leaf each.
 
 
 
@@ -4486,7 +4486,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 1. Each checker be
 |===
 |Checker |Description
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
-|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer off the value it was given, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move fails it and reports the packetizer and funnel state
+|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
 |`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
 |`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
@@ -4522,7 +4522,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 3. Each checker be
 |===
 |Checker |Description
 |`CHK-DST-FORMAT-IDLE` |With the DST enabled in this format and the sink armed, the packetizer reads empty and the sink write pointer reads its reset before the trace starts, so everything the run delivers is its own; either one already non-empty fails it
-|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer off the value it was given, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move fails it and reports the packetizer and funnel state
+|`CHK-DST-FORMAT-STREAM` |This format moved the sink write pointer field off 0 to a position inside the 0x4000-byte window, so the compression the field selects carried a live stream to the trace RAM; a pointer that does not move, or a word that changed only in the wrap flag, fails it and reports the packetizer and funnel state
 |`CHK-DST-FORMAT-PAYLOAD` |The mux array was walked through every segment select the `Muxselseg` description names while the trace was running; a rotation that does not run fails it
 |`CHK-DST-FORMAT-FRAMELEN` |The frame length took both programmed values during the live trace, each read back exactly; a frame length that does not change fails it
 |===
@@ -4544,7 +4544,7 @@ Drive `smc_dfd_trace_format_sweep_test_seq` with `fmt` set to 3. Each checker be
 
 * `Trfunneldisinput`, which the RDL splits into a low half for the N-trace sources and a high half for the DST sources, set over its whole DST half and then cleared, giving a deny leg and an allow leg on the same stimulus.
 * The deny leg runs first because the sink's wrap flag is hardware-set and sticky, so a sink that has once taken data cannot be shown empty again.
-* Two sink window sizes programmed through `Trdstramlimitlow`.
+* Two sink window sizes programmed through `Trdstramlimitlow`, 0x4000 and 0x400 bytes, written through the field's own bit positions because the register's plain read-write mask leaves the hardware-written limit field out. The allow leg runs the stream on until the write pointer has passed 0x400 without wrapping; the 0x400-byte window must then hold the same stream under its limit until the wrap flag sets.
 
 *Test Procedure*:
 
@@ -4557,8 +4557,8 @@ Drive `smc_dfd_trace_sink_window_test_seq`. Each checker below is a named compar
 |===
 |Checker |Description
 |`CHK-DST-FUNNEL-DENY` |With the DST half of `Trfunneldisinput` set, the sink write pointer stayed at its RDL reset across the whole `Action0` range; a pointer that moves fails it
-|`CHK-DST-FUNNEL-ALLOW` |Clearing that field moved the sink write pointer off its reset under the same stimulus, which is what makes the deny leg distinguishable from a dead trace path; a pointer that still does not move fails it
-|`CHK-DST-SINK-WINDOW` |The sink took the stream into each of the two window sizes programmed through `Trdstramlimitlow`, so the window bound is re-read rather than fixed at the first value; a window that takes nothing fails it
+|`CHK-DST-FUNNEL-ALLOW` |Clearing that field moved the sink write pointer field off 0 under the same stimulus, which is what makes the deny leg distinguishable from a dead trace path; a pointer field still at 0 fails it, even with the wrap flag set
+|`CHK-DST-SINK-WINDOW` |In the 0x4000-byte window the write pointer passes 0x400 without wrapping; re-armed over 0x400 bytes, the same stream sets the wrap flag with every pointer sample at or under 0x400, so `Trdstramlimitlow` bounds the pointer; a pointer that never passes 0x400 in the large window, crosses 0x400 in the small one, or never wraps it fails it
 |===
 
 
@@ -4608,7 +4608,8 @@ Drive `smc_dfd_cla_event_type_sweep_test_seq`. Each checker below is a named com
 
 *Test Coverage*:
 
-* The sink's read side, which the other trace leaves never use: `Trdstramrplow` driven across the window and `Trdstramdata` read at each position, after an all-zero baseline is taken from the same port before any trace has run.
+* The sink's read side, which the other trace leaves never use: `Trdstramrplow` driven across the 0x400-byte window and `Trdstramdata` read at each position, after an all-zero baseline is taken from the same port before any trace has run. The trace first runs until the sink's wrap flag reports one pass of the window, so every position read holds a word the trace wrote.
+* The window and pointer fields sit above two reserved bits and hardware writes them too, so the register's plain read-write mask leaves them out; they are written through each field's own bit positions.
 * `Trdstrammode` at both values of its one-bit field, each written with the sink active and enabled and read back.
 * `Trdstramactive` taken from 1 to 0 with `Trdstramenable` held at 1, with a captured trace still in the window.
 
@@ -4628,7 +4629,6 @@ Drive `smc_dfd_trace_sink_readout_test_seq`. Each checker below is a named compa
 |`CHK-DST-SINK-DEACTIVATE` |`Trdstramactive` went from 1 to 0 with the enable held and the change read back; a sink already inactive beforehand fails it
 |===
 
-*Known limitation*: `Trdstramrplow` is `hw = rw` and the sink keeps most of it, so only a couple of the written read-pointer positions read back. The read-out is held to the words the data port returns, not to the pointer landing at every position.
 
 
 *Pass Criteria*: `CHK-DST-SINK-BASELINE`, `CHK-DST-SINK-DEACTIVATE`, `CHK-DST-SINK-MODE`, `CHK-DST-SINK-READOUT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.

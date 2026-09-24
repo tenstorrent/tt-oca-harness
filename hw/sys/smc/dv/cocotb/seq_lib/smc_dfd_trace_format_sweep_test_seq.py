@@ -9,14 +9,18 @@ programmed into a field comes from that field's own RDL description. The
 vendored RTL is not a source for any value this sequence programs or compares
 against.
 
-**One mode per run, and why.** The DST packet path cannot be re-run in a
-second compression mode inside one simulation. Measured twice: after a mode
-has run, the funnel reads empty and the sink has taken a full window, yet
-``Trdstcontrol.Trdstempty`` stays 0 -- the packetizer keeps a partial bank and
-nothing the register interface offers flushes it -- and a second mode
-programmed afterwards then delivers nothing to the sink at all. The only
-empty packetizer this bench can provide is the one a run starts with, so the
-sequence takes the format as a parameter and each mode gets its own leaf.
+**One mode per run.** The sequence takes the format as a parameter and each
+mode gets its own leaf, starting from the empty packetizer a run begins with.
+Clearing ``Trdstcontrol.Trdstenable`` alone, with ``Trdstactive`` held at 1,
+empties the packetizer from software; clearing both together stops the DST
+clock first and leaves a partial bank behind. Re-running a second mode after
+that flush is not measured here.
+
+The sink window registers are written through each field's own bit
+positions: the limit and pointer fields sit above two reserved bits and
+hardware writes them too, so the register's plain read-write mask leaves them
+out. The stream witness requires the write pointer field itself to move and
+stay inside the window, not only the hardware-set wrap flag.
 
 Three things have to be true at once for the XOR and VLT compressors behind
 ``debug_sig_trace_gen`` to do any work, and each has an RDL handle:
@@ -50,8 +54,10 @@ from cocotb.triggers import ClockCycles
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import (
+    checked_mask,
     dfd_register,
     dst_register,
+    field_word,
     funnel_register,
     pack_fields,
     reg_field,
@@ -115,9 +121,10 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self._write(reg, word, label)
         readback = await self._read(reg, f"{label}_rb")
-        assert readback & reg.rw_mask == word & reg.rw_mask, (
-            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & reg.rw_mask:x} into its "
-            f"software-writable bits, reads 0x{readback & reg.rw_mask:x}"
+        mask = checked_mask(reg, values)
+        assert readback & mask == word & mask, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into its "
+            f"software-writable bits, reads 0x{readback & mask:x}"
         )
         self.value_checks += 1
 
@@ -146,7 +153,7 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
             ("Trdstramrplow", 0),
         ):
             reg = sink_register(name)
-            await self._write(reg, value & reg.rw_mask, "window")
+            await self._write(reg, field_word(reg, name, value), "window")
         await self._write_check(control, {"Trdstramactive": 1, "Trdstramenable": 1}, "sink")
 
     async def _set_frame_length(self, length: int) -> None:
@@ -276,6 +283,12 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
             f"mode delivered nothing. Trdstcontrol reads "
             f"0x{await self._read(dst, 'stall'):08x} and the funnel control "
             f"0x{await self._read(funnel, 'stall'):08x}"
+        )
+        pointer = reg_field(wp, "Trdstramwplow")
+        assert 0 < word & pointer.mask <= _SINK_WINDOW_BYTES, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads 0x{word:08x}: the write pointer "
+            f"field is 0x{word & pointer.mask:x}, not inside the 0x{_SINK_WINDOW_BYTES:x}-byte "
+            f"window, so what moved is not the pointer running through the window"
         )
         self.delivered = word
         self.value_checks += 1

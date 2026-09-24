@@ -37,6 +37,12 @@ read at their RDL reset first so what changes is attributable to the sweep:
 * ``DST_SINK.Trdstramwplow`` (reset 0, carrying the write pointer and the
   hardware-set wrap flag) leaves its reset once the sink has taken a filled
   bank, which is the accumulator bank handing data on and going empty again.
+  The write pointer field itself has to move and stay inside the window; the
+  wrap flag alone does not say where the sink wrote.
+
+The sink's limit field sits above two reserved bits and hardware writes it
+too, so the register's plain read-write mask leaves it out; the window is
+written through the field's own bit positions.
 """
 
 from __future__ import annotations
@@ -93,6 +99,36 @@ def pack_fields(reg: RdlReg, values: dict[str, int]) -> int:
         )
         word |= value << field.offset
     return word
+
+
+def field_word(reg: RdlReg, name: str, value: int) -> int:
+    """Register word carrying ``value`` in the bit positions of one field.
+
+    For the sink pointer and limit registers, whose field starts above two
+    reserved bits and holds a byte address, ``value`` is that byte address.
+    Those fields are written by hardware as well, so they are not in the
+    register's plain read-write mask and masking with it would send zero.
+    """
+    field = reg_field(reg, name)
+    assert value & ~field.mask == 0, (
+        f"0x{value:x} does not fit {reg.path}.{name}, bits {field.offset} to "
+        f"{field.offset + field.width - 1}"
+    )
+    return value
+
+
+def checked_mask(reg: RdlReg, values: dict[str, int]) -> int:
+    """Bits a write/readback must return: the plain read-write fields plus the named ones.
+
+    A named field that hardware also writes is still compared, because the
+    readback directly follows the write.
+    """
+    mask = reg.rw_mask
+    for name in values:
+        field = reg_field(reg, name)
+        if field.access == "read-write":
+            mask |= field.mask
+    return mask
 
 
 @lru_cache(maxsize=None)
@@ -157,9 +193,10 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self.csr_write(f"{self._short(reg)}:{label}", reg.addr, word, length=reg.width_bytes)
         readback = await self._read(reg, f"{label}_rb")
-        assert readback & reg.rw_mask == word & reg.rw_mask, (
-            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & reg.rw_mask:x} into "
-            f"its software-writable bits, reads 0x{readback & reg.rw_mask:x}"
+        mask = checked_mask(reg, values)
+        assert readback & mask == word & mask, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into "
+            f"its software-writable bits, reads 0x{readback & mask:x}"
         )
         self.value_checks += 1
 
@@ -224,7 +261,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         ):
             reg = sink_register(name)
             await self.csr_write(
-                f"{name}:window", reg.addr, value & reg.rw_mask, length=reg.width_bytes
+                f"{name}:window", reg.addr, field_word(reg, name, value), length=reg.width_bytes
             )
         await self._write_check(
             sink_register("Trdstramcontrol"),
@@ -348,6 +385,11 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
             f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} still reads its RDL reset of "
             f"0x{wp.reset_word:08x} after the action sweep, so the trace RAM sink never "
             f"took a bank and the packetizer accumulator never handed one on"
+        )
+        assert 0 < word & pointer.mask <= _SINK_WINDOW_BYTES, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads 0x{word:08x}: the write pointer "
+            f"field is 0x{word & pointer.mask:x}, not inside the 0x{_SINK_WINDOW_BYTES:x}-byte "
+            f"window; a wrap flag alone does not show where the sink wrote"
         )
         self.sink_pointer = word
         self.value_checks += 1

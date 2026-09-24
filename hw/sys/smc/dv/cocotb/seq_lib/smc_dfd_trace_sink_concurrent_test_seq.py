@@ -62,8 +62,10 @@ from cocotb.triggers import ClockCycles
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import (
+    checked_mask,
     dfd_register,
     dst_register,
+    field_word,
     funnel_register,
     pack_fields,
     reg_field,
@@ -132,13 +134,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self._write(reg, word, label)
         readback = await self._read(reg, f"{label}_rb")
-        # Named read-write fields are compared even where hardware also writes
-        # them: the readback directly follows the write.
-        mask = reg.rw_mask
-        for name in values:
-            field = reg_field(reg, name)
-            if field.access == "read-write":
-                mask |= field.mask
+        mask = checked_mask(reg, values)
         assert readback & mask == word & mask, (
             f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into its "
             f"software-writable bits, reads 0x{readback & mask:x}"
@@ -176,7 +172,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             ("Trdstramrplow", 0),
         ):
             reg = sink_register(name)
-            await self._write(reg, value & reg_field(reg, name).mask, label)
+            await self._write(reg, field_word(reg, name, value), label)
         await self._write_check(
             control,
             {
@@ -324,9 +320,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
             if value % step == 0:
                 offset = _READ_POSITIONS[value // step]
-                await self._write(
-                    rp, offset & reg_field(rp, "Trdstramrplow").mask, f"seek{offset:x}"
-                )
+                await self._write(rp, field_word(rp, "Trdstramrplow", offset), f"seek{offset:x}")
                 self.positions_driven += 1
                 word = await self._read(data, f"data{offset:x}")
                 self.words_read += 1
