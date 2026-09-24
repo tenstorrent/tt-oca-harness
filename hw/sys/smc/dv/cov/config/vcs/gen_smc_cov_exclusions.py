@@ -666,8 +666,9 @@ P11 = (
     "~^data beside it, written together with the valid flag and cleared together with it, and "
     "each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so "
     "a valid stored entry always has odd parity and the check ~^{parity, data} reads one only "
-    "on corrupted storage. No access produces that, so the rows that need a self-check error "
-    "at one have no stimulus."
+    "on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their "
+    "err_o reads one only on corruption too. No access produces that, so the rows that need a "
+    "self-check or FIFO error at one have no stimulus."
 )
 P12 = (
     "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame "
@@ -700,8 +701,9 @@ P6 = (
 )
 P7 = (
     "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = "
-    "NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs a constant "
-    "zero, so a term that needs either of them asserted is false for the life of the design. "
+    "NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write "
+    "datapath's poison a constant zero, so a term that needs one of them asserted is false for "
+    "the life of the design. "
     "The read and write backpressure rows of the same expressions stay graded."
 )
 
@@ -722,7 +724,8 @@ P14 = (
 P15 = (
     "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the "
     "secure-test-mode arms of the shadow registers, their access control and the guard never "
-    "execute. The program-lock and read-lock arms beside them stay graded."
+    "execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. "
+    "The program-lock and read-lock arms beside them stay graded."
 )
 P16 = (
     "SMC-P16-SINK-ENABLE-CONST: the DFD top elaborates mmrs with NTRACE_SUPPORT(0) and the "
@@ -754,6 +757,24 @@ B8 = (
     "instances, and they reach the CLA crosstrigger input and the DFD clock-stop gate "
     "unchanged. The CLA crosstrigger edge, the timestamp load it arms and the TDR clock-stop "
     "term therefore hold zero here. Bench ports that drive those inputs retire the class."
+)
+P24 = (
+    "SMC-P24-DIVIDER-INIT-NEVER-SET: avsbus_controller assigns do_initial_divider_setting only "
+    "1'b0, under reset and on a divider update, so it is zero for the life of the design and a "
+    "row that needs it high cannot occur."
+)
+C5 = (
+    "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs "
+    "them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, "
+    "baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as "
+    "one of its terms. The test rewrites the dependent signal in those terms and takes a row "
+    "only when that makes it unsatisfiable."
+)
+B9 = (
+    "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench "
+    "ties sep_security_disable_i to zero in both instances, and it reaches the eFuse shadow "
+    "registers unchanged, so the security-disable term of the fuse-sense load holds zero here. "
+    "A bench port that drives the input retires the class."
 )
 P20 = (
     "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only "
@@ -1176,7 +1197,16 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
     "efuse_guard": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
     "efuse_interface_controller": [(P6, LC_STATE_OFF, 0)],
     "efuse_shadow_reg_access_control": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0)],
-    "efuse_shadow_regs": [(P6, LC_STATE_OFF, 0), (P15, SECURE_TM, 0), (B6, SIM_SKIP, 0)],
+    "efuse_shadow_regs": [
+        (P6, LC_STATE_OFF, 0),
+        (P15, SECURE_TM, 0),
+        (B6, SIM_SKIP, 0),
+        (B9, re.compile(r"^security_disable_i$"), 0),
+    ],
+    "efuse_program_interface": [(P15, re.compile(r"^secure_tm_blocked_i$"), 0)],
+    "i2c_core": [(P11, re.compile(r"^(?:controller|target)_(?:tx|rx)_fifo_error$"), 0)],
+    "idma_legalizer_rw_axi": [(P7, re.compile(r"^(?:flush_i|kill_i)$"), 0)],
+    "idma_axi_write": [(P7, re.compile(r"^dp_poison_i$"), 0)],
     "trace_sink": [
         (P1, NTRACE_SIGNAL, 0),
         (P4, SINGLE_SOURCE_DEAD, 0),
@@ -1188,7 +1218,10 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
         (P16, re.compile(r"^NTR_SINK_EN$"), 0),
         (P16, re.compile(r"^DST_SINK_EN$"), 1),
     ],
-    "avsbus_controller": [(P18, re.compile(r"^i_tdr_peripherals_apb2avsbus_postdiv_override$"), 0)],
+    "avsbus_controller": [
+        (P18, re.compile(r"^i_tdr_peripherals_apb2avsbus_postdiv_override$"), 0),
+        (P24, re.compile(r"^do_initial_divider_setting$"), 0),
+    ],
     "cla_wrapper": [(P13, re.compile(r"^cla_gated_func_clamp\b"), 0)],
     "clk_rst_wrapper": [
         (P13, re.compile(r"^(?:dst_func_clamp_ext|dst_fuse_dis_ext)\b"), 0),
@@ -1242,6 +1275,13 @@ BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
 }
 
 
+# Signals the source defines from others: (class, name, what it stands for).
+SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
+    "uart_core": [(C5, "rx_enable", "tx_enable")],
+    "system_timer_octs_core": [(C5, "credit_gen_pulse", "(credit_gen_pulse && enable)")],
+}
+
+
 def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str) -> "str | None":
     """The feature class whose held signals put a condition row out of reach, or None.
 
@@ -1259,6 +1299,11 @@ def feature_row_class(module: str, terms: "tuple[str, ...] | None", vector: str)
     for reason, forced, value in BRANCH_PATH_FACTS.get(module, []):
         if needs_forced_away(plain, vector, _scoped(forced), value):
             return reason
+    for reason, name, meaning in SIGNAL_IDENTITIES.get(module, []):
+        rewritten = tuple(re.sub(rf"\b{re.escape(name)}\b", meaning, t) for t in plain)
+        if rewritten != tuple(plain) and _row_satisfiable(rewritten, vector, None, 0) is False:
+            if _row_satisfiable(tuple(plain), vector, None, 0):
+                return reason
     return None
 
 
@@ -2316,9 +2361,12 @@ FEATURE_CLASSES = (
     P19,
     P20,
     P22,
+    P24,
+    C5,
     F3,
     B6,
     B8,
+    B9,
 )
 
 
@@ -2667,6 +2715,7 @@ def render_feature(
         | set(BRANCH_CONSTANT_DECISIONS)
         | set(BRANCH_DEAD_ITEMS)
         | set(BRANCH_DEAD_CASE_ITEMS)
+        | set(SIGNAL_IDENTITIES)
     )
     for module in modules:
         block: list[tuple[str, str]] = []
@@ -2769,7 +2818,7 @@ def main() -> int:
         {
             m: align_points(report_points_by_module.get(m, []), tps)
             for m, tps in template_points_by_module.items()
-            if m in BRANCH_PATH_FACTS
+            if m in BRANCH_PATH_FACTS or m in SIGNAL_IDENTITIES
         },
     )
     outputs = (

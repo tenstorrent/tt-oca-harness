@@ -18,7 +18,10 @@ Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target
 
 CHECKSUM: "3564686069 3785605357"
 ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
+ANNOTATION: "SMC-P24-DIVIDER-INIT-NEVER-SET: avsbus_controller assigns do_initial_divider_setting only 1'b0, under reset and on a divider update, so it is zero for the life of the design and a row that needs it high cannot occur."
 MODULE: avsbus_controller
+Condition 3 "2211674544" "((do_initial_divider_setting == 1'b1) || (R_avs_cfg_1_F_clk_divider_value_resync != previous_clk_divider_value_q) || (R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync != previous_clk_divider_duty_cycle_numerator_q)) 1 -1" (4 "100")
+Condition 4 "30701402" "(do_initial_divider_setting == 1'b1) 1 -1" (2 "1")
 Condition 73 "2122482897" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_update_clk_divider_value : update_clk_divider_value) 1 -1" (2 "1")
 Condition 76 "715597411" "(i_tdr_peripherals_apb2avsbus_postdiv_override ? i_tdr_peripherals_apb2avsbus_postdiv_mux_sel : postdiv_mux_sel) 1 -1" (2 "1")
 
@@ -265,7 +268,7 @@ Condition 13 "1172051810" "(pro_read_intf_rm_lc_state_write_lock || pro_read_int
 
 CHECKSUM: "671687310 829883966"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute. The program-lock and read-lock arms beside them stay graded."
+ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 MODULE: efuse_guard
 Branch 0 "1329950090" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
 Branch 0 "1329950090" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1"
@@ -288,9 +291,14 @@ Branch 3 "1184457743" "HAS_LC_STATE" (1) "HAS_LC_STATE 1,0,1,-,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (2) "HAS_LC_STATE 1,0,0,1,-,-"
 Branch 3 "1184457743" "HAS_LC_STATE" (3) "HAS_LC_STATE 1,0,0,0,-,-"
 
+CHECKSUM: "1705828286 2700233996"
+ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
+MODULE: efuse_program_interface
+Condition 4 "2745518814" "(efuse_req_err_i || (fuse_command_resp_i.status == 1'b1) || secure_tm_blocked_i) 1 -1" (2 "001")
+
 CHECKSUM: "2470957733 3469611085"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute. The program-lock and read-lock arms beside them stay graded."
+ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 MODULE: efuse_shadow_reg_access_control
 Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (1 "0")
 Condition 3 "2094635369" "((field_index == '0) ? 1'b0 : efuse_shadow_reg_access_control.write_locked(field_index)) 1 -1" (2 "1")
@@ -300,7 +308,7 @@ Condition 12 "2044479785" "(secure_tm_i ? (is_write_locked | (sw_lock_bits[2:1] 
 
 CHECKSUM: "2470957733 3321935136"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute. The program-lock and read-lock arms beside them stay graded."
+ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 MODULE: efuse_shadow_reg_access_control
 Branch 0 "3091259679" "secure_tm_i" (0) "secure_tm_i 1"
 Branch 1 "465878905" "HAS_LC_STATE" (0) "HAS_LC_STATE 1,1,-"
@@ -312,6 +320,7 @@ Branch 2 "2952040438" "(HAS_LC_STATE && (field_index == '0))" (0) "(HAS_LC_STATE
 CHECKSUM: "3035079037 1696817153"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high never run here. A policy change admitting the plusarg retires the class."
+ANNOTATION: "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench ties sep_security_disable_i to zero in both instances, and it reaches the eFuse shadow registers unchanged, so the security-disable term of the fuse-sense load holds zero here. A bench port that drives the input retires the class."
 MODULE: efuse_shadow_regs
 Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (2 "10")
 Condition 1 "2693873921" "((sim_skip_fuse_sense == 1'b1) && (preload_plusarg_found == 1'b0)) 1 -1" (3 "11")
@@ -372,13 +381,14 @@ Condition 37 "2519050848" "((rma_sip_token_match_i == TOKEN_MATCH_CODE) && ((!so
 Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (1 "0")
 Condition 38 "128110367" "(rma_sip_token_match_i == TOKEN_MATCH_CODE) 1 -1" (2 "1")
 Condition 2 "4011173503" "(sim_skip_fuse_sense == 1'b1) 1 -1" (2 "1")
+Condition 27 "3307276254" "(((!fuse_sense_done)) && ((!security_disable_i))) 1 -1" (2 "10")
 Condition 31 "3715707245" "(write_setup_only && ((!is_lc_state_access))) 1 -1" (2 "10")
 Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (1 "01")
 Condition 32 "1161017333" "(write_setup_only && is_lc_state_access) 1 -1" (3 "11")
 
 CHECKSUM: "3035079037 2392609755"
 ANNOTATION: "SMC-P6-LC-STATE-OFF: smc_efuse_wrapper instantiates the eFuse with HAS_LC_STATE = 0, so the lifecycle-state arms of the interface controller, the shadow registers, their access control and the guard are never entered and the RMA token comparisons they hold have no access that can reach them. The fuse-sense, security-disable and image-lock terms outside those arms stay graded."
-ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute. The program-lock and read-lock arms beside them stay graded."
+ANNOTATION: "SMC-P15-SECURE-TM-TIED: smc_efuse_wrapper ties the eFuse's secure_tm_i to zero, so the secure-test-mode arms of the shadow registers, their access control and the guard never execute, and the guard's secure_tm_blocked, which the program interface reads, holds zero. The program-lock and read-lock arms beside them stay graded."
 ANNOTATION: "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and ties sim_skip_fuse_sense to zero outside simulation; with the plusarg set, the shadow registers take a preload file or zeros in place of the sensed fuse image. The DV policy (section 1.6) forbids a skipped fuse sense as evidence, and no SMC testlist entry passes the plusarg, so the plusarg arms and every row or path that needs sim_skip_fuse_sense high never run here. A policy change admitting the plusarg retires the class."
 MODULE: efuse_shadow_regs
 Branch 0 "372284962" "secure_tm_i" (0) "secure_tm_i 1"
@@ -419,14 +429,31 @@ ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload wi
 MODULE: i2c_controller_fsm
 Branch 0 "3901164169" "load_tcount" (10) "load_tcount 1,default,-"
 
+CHECKSUM: "3754834557 640076495"
+ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
+MODULE: i2c_core
+Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (2 "0001")
+Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (3 "0010")
+Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (4 "0100")
+Condition 11 "3152547532" "(controller_tx_fifo_error || controller_rx_fifo_error || target_tx_fifo_error || target_rx_fifo_error) 1 -1" (5 "1000")
+Condition 97 "715861344" "(controller_tx_fifo_error || controller_tx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 98 "1371919471" "(controller_rx_fifo_error || controller_rx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 99 "4062216539" "(target_tx_fifo_error || target_tx_fifo_error_intr_test) 1 -1" (3 "10")
+Condition 100 "2062372808" "(target_rx_fifo_error || target_rx_fifo_error_intr_test) 1 -1" (3 "10")
+
 CHECKSUM: "66702530 4067735016"
 ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
 MODULE: i2c_target_fsm
 Branch 0 "2471614216" "load_tcount" (2) "load_tcount 1,tNoDelay ,-"
 Branch 0 "2471614216" "load_tcount" (3) "load_tcount 1,default,-"
 
+CHECKSUM: "2274786375 3175097258"
+ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
+MODULE: idma_axi_write
+Condition 10 "2958787609" "((ready_to_write == 1'b1) & ((!dp_poison_i))) 1 -1" (2 "10")
+
 CHECKSUM: "768735472 3557211807"
-ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs a constant zero, so a term that needs either of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
+ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
 MODULE: idma_legalizer_rw_axi
 Condition 3 "1004549731" "((r_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
 Condition 5 "2025270838" "((w_ready_i & ((!flush_i))) | kill_i) 1 -1" (2 "01")
@@ -437,9 +464,13 @@ Condition 11 "1365128112" "((r_ready_i & w_ready_i & ((!flush_i))) | kill_i) 1 -
 Condition 13 "3221125229" "(r_tf_q.valid & w_ready_i & r_ready_i & ((!flush_i))) 1 -1" (4 "1110")
 Condition 14 "168225130" "(w_tf_q.valid & r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (4 "1110")
 Condition 16 "1766034539" "(r_done & w_done & r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (5 "11110")
+Condition 4 "1767126548" "(r_ready_i & ((!flush_i))) 1 -1" (2 "10")
+Condition 6 "1055243132" "(w_ready_i & ((!flush_i))) 1 -1" (2 "10")
+Condition 10 "2147812021" "(r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (3 "110")
+Condition 12 "3283239150" "(r_ready_i & w_ready_i & ((!flush_i))) 1 -1" (3 "110")
 
 CHECKSUM: "768735472 2441372980"
-ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs a constant zero, so a term that needs either of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
+ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs and the write datapath's poison a constant zero, so a term that needs one of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
 MODULE: idma_legalizer_rw_axi
 Branch 4 "3737172707" "kill_i" (0) "kill_i 1"
 
@@ -496,6 +527,11 @@ ANNOTATION: "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the 
 MODULE: smc_dfd_wrap
 Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (2 "10")
 Condition 2 "795375981" "(tdr_dbg_ctrl_clock_stop_en_i && halt_clock_global_or_o) 1 -1" (3 "11")
+
+CHECKSUM: "1526613778 3247183741"
+ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
+MODULE: system_timer_octs_core
+Condition 7 "932262737" "(enable && credit_gen_pulse && (pulse_active == PULSE_IDLE)) 1 -1" (1 "011")
 
 CHECKSUM: "4226918805 2330986106"
 ANNOTATION: "SMC-P1-NTRACE-OFF: the DFD top instantiates the trace wrapper with NUM_NTRACE_INST(0) and NTRACE_SUPPORT(0), and trace_wrapper.sv gives Core_fuse_enable_Ntrace a constant zero at zero instances, so every N-trace signal of the sink reads zero. A row is taken only where the report's own term list shows it asking one of those signals for a value that zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are, and so does the NTR-sink MMR decode of mmrs."
@@ -1191,8 +1227,9 @@ Branch 7 "1389124165" "funnel_gated_func_clamp" (0) "funnel_gated_func_clamp 1"
 Branch 8 "1389124165" "funnel_gated_func_clamp" (0) "funnel_gated_func_clamp 1"
 
 CHECKSUM: "2535161971 656965095"
-ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. No access produces that, so the rows that need a self-check error at one have no stimulus."
+ANNOTATION: "SMC-P11-UART-SELF-CHECK: each UART holding register stores its data with the parity bit ~^data beside it, written together with the valid flag and cleared together with it, and each parity FIFO stores {~^data, data} and guards its pointers with a redundant count, so a valid stored entry always has odd parity and the check ~^{parity, data} reads one only on corrupted storage. The I2C core's four FIFOs are the same secure parity FIFO, so their err_o reads one only on corruption too. No access produces that, so the rows that need a self-check or FIFO error at one have no stimulus."
 ANNOTATION: "SMC-P12-BREAK-IMPLIES-FRAMING: uart_core forms break_err as the framing error of a frame whose data is all zeros and stores it in the same entry as that framing error, in the FIFO and in the holding register alike, so an entry carrying break_err always carries framing_err as well; the row that needs break_err alone has no stimulus."
+ANNOTATION: "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, baud_rate_divisor != 0, and system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test rewrites the dependent signal in those terms and takes a row only when that makes it unsatisfiable."
 MODULE: uart_core
 Condition 5 "3926131334" "(rx_fifo_rdata.break_err || rx_fifo_rdata.framing_err || rx_fifo_rdata.parity_err) 1 -1" (4 "100")
 Condition 6 "1576871296" "(rbr_rdata.break_err || rbr_rdata.framing_err || rbr_rdata.parity_err) 1 -1" (4 "100")
@@ -1200,3 +1237,7 @@ Condition 20 "2137222570" "(thr_rvalid && ((~^{thr_parity, thr_rdata}))) 1 -1" (
 Condition 27 "406227617" "(rbr_rvalid && ((~^{rbr_parity, rbr_rdata}))) 1 -1" (3 "11")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (2 "01")
 Condition 30 "3531289681" "(tx_fifo_thr_err || rx_fifo_rbr_err) 1 -1" (3 "10")
+Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (1 "01")
+Condition 1 "636464552" "(((!tx_enable)) && ((!rx_enable))) 1 -1" (2 "10")
+Condition 17 "2934452335" "(tx_enable || rx_enable) 1 -1" (2 "01")
+Condition 17 "2934452335" "(tx_enable || rx_enable) 1 -1" (3 "10")
