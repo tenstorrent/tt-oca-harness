@@ -475,7 +475,7 @@ treat the remaining banks as reserved.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Linear Transfers</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Straightforward source-to-destination data movement</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One <code>LENGTH</code>-byte copy; program <code>REPS_2</code> = 1</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2D Transfers</p></td>
@@ -488,8 +488,8 @@ source/destination stride</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scatter-Gather</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">No hardware descriptor-chain fetcher in this integration.
-Software submits separate register-programmed requests for unrelated regions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Strided only: independent source and destination
+strides gather or scatter evenly spaced blocks. No descriptor-list fetcher</p></td>
 </tr>
 </tbody>
 </table>
@@ -501,6 +501,11 @@ Software submits separate register-programmed requests for unrelated regions</p>
 repetition registers. Reading <code>NEXT_ID_0</code> submits that configuration to the
 2D midend, which expands the repetitions into linear backend requests.
 No memory-resident descriptor chain is fetched or interpreted.</p>
+</div>
+<div class="paragraph">
+<p>Every transfer, linear included, needs <code>CONF.ENABLE_ND</code> = 1 and <code>REPS_2</code> &gt;= 1.
+Otherwise the midend issues no request and completes the command with an
+error.</p>
 </div>
 <div class="paragraph">
 <p>FIFO buffering between the frontend and midend ensures pipelined
