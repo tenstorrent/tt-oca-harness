@@ -60,13 +60,19 @@ WDT_CMP_BM = wdt_bm("WDT__CMP__WDOGCMP0_bm")
 WDT_TIMEOUT_BM = cpu_ctrl_bm("CPU_CTRL__WDT_TIMEOUT__DATA_bm")
 
 CMP_SMALL = 0x10
+# Second-stage count at a 5 ns sys clock, the register's reset value; scaled to
+# the period in use so the window between the two timeouts keeps its length
+# and the JTAG read of the pending bit lands inside it.
+WDT_TIMEOUT_5NS_CYCLES = 16384
 WDT_TIMEOUT_RESET = c_header_u32(_CPU_CTRL_H, "CPU_CTRL__WDT_TIMEOUT__DATA_reset")
 # smu_smc_wdt_timeout_irq_test needs up to ~17k clk_smu to see the same
 # watchdog reach its pending bit, so the bound here is well past that and the
 # poll steps in blocks: both outputs are levels, not pulses.
 POLL_STEP = 32
-FIRST_TIMEOUT_BOUND = 65536
-SECOND_TIMEOUT_BOUND = 32768
+# Bound on the first timeout, in time; the wait converts it to clk_smu cycles.
+FIRST_TIMEOUT_BOUND_NS = 650_000
+# Bound on the second timeout, in time; the wait converts it to clk_smu cycles.
+SECOND_TIMEOUT_BOUND_NS = 330_000
 WARM_RESET_PATH = "u_smc.rst_warm_smc_clk_n"
 CPU_PATH = "u_smc.u_smc_cpu_wrapper.u_smc_cpu"
 
@@ -171,8 +177,8 @@ class smu_smc_wdt_boundary_timeout_seq:
         )
 
         # The second stage counts down from CPU_CTRL.WDT_TIMEOUT once the
-        # cluster timeout stops reloading it, and the reset value is the count
-        # this leaf waits out; it is read, not rewritten.
+        # cluster timeout stops reloading it. Its reset value is checked, then
+        # the count this leaf waits out is written scaled to the sys period.
         timeout_rb = await self._rd32(CPU_CTRL_WDT_TIMEOUT, "CPU_CTRL WDT_TIMEOUT")
         self.sb.expect_eq(
             "the second-stage counter is at its reset count",
@@ -180,6 +186,8 @@ class smu_smc_wdt_boundary_timeout_seq:
             WDT_TIMEOUT_RESET,
             evidence="CHK-SMU-WDT-SECOND",
         )
+        second_stage = int(WDT_TIMEOUT_5NS_CYCLES * 5 / self.cfg.smu_clk_period_ns)
+        await self._wr32(CPU_CTRL_WDT_TIMEOUT, second_stage, "CPU_CTRL WDT_TIMEOUT")
 
         # S2: arm CORE0 with the reset enable the pending-bit leaf omits.
         status = await wdt_unlock(self.jtag)
@@ -212,7 +220,10 @@ class smu_smc_wdt_boundary_timeout_seq:
             evidence="CHK-SMU-WDT-FIRST",
         )
         cycles = await self._wait_pin(
-            "tb_smc_wdt_first_timeout", 1, FIRST_TIMEOUT_BOUND, "first watchdog timeout"
+            "tb_smc_wdt_first_timeout",
+            1,
+            int(FIRST_TIMEOUT_BOUND_NS / self.cfg.smu_clk_period_ns),
+            "first watchdog timeout",
         )
         self.log.info("smc_wdt_first_timeout_o rose %d clk_smu after arming", cycles)
         self.sb.expect_eq(
@@ -245,7 +256,8 @@ class smu_smc_wdt_boundary_timeout_seq:
         second_seen = 0
         warm_low_seen = 0
         second_cycle = None
-        for cycle in range(SECOND_TIMEOUT_BOUND):
+        second_bound = int(SECOND_TIMEOUT_BOUND_NS / self.cfg.smu_clk_period_ns)
+        for cycle in range(second_bound):
             await RisingEdge(dut.clk_smu_i)
             if self._bit("tb_smc_wdt_second_timeout"):
                 if second_cycle is None:
@@ -258,7 +270,7 @@ class smu_smc_wdt_boundary_timeout_seq:
         if not second_seen:
             raise AssertionError(
                 f"TIMEOUT second watchdog timeout: tb_smc_wdt_second_timeout never rose "
-                f"in {SECOND_TIMEOUT_BOUND} clk_smu cycles; {self._cpu_state()}"
+                f"in {second_bound} clk_smu cycles; {self._cpu_state()}"
             )
         self.log.info(
             "smc_wdt_second_timeout_o rose %d clk_smu after the first timeout was confirmed",

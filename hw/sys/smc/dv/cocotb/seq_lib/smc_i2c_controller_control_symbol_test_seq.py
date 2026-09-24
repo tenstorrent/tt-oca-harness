@@ -104,12 +104,16 @@ INJECTIONS = (
     ("ADDR_ACK", ABSENT_ADDR, False, 9),
     ("READ_BIT", EEPROM_ADDR, True, 30),
 )
-#: How long SDA is held low once the edge has been made. Long enough for the
-#: core to sample the change on two consecutive cycles of its own clock, and
-#: short enough to be released inside the same SCL high window: a pull that
+#: TIMING0 of the controller under test, in cycles of its peripheral clock.
+THIGH_CYCLES = 0x1A
+TLOW_CYCLES = 0x32
+#: How long SDA is held low once the edge has been made, as a share of the SCL
+#: high window (THIGH_CYCLES at the peripheral clock period). Long enough for
+#: the core to sample the change on two consecutive cycles of its own clock,
+#: and short enough to be released inside the same SCL high window: a pull that
 #: outlasted the slot would reach a state where the controller is driving the
 #: line, where it is interference rather than a control symbol.
-HOLD_NS = 150
+HOLD_HIGH_FRACTION = 0.5
 EDGE_WAIT_CYCLES = 200_000
 POLL_CYCLES = 200
 IDLE_POLLS = 2000
@@ -153,7 +157,9 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
     async def _enable_host(self, label: str) -> None:
         await self.csr_write(f"{label}_DISABLE", I2C0_CTRL, 0)
         await self.csr_write(f"{label}_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
-        await self.csr_write(f"{label}_TIMING0", I2C0_TIMING0, _pack_timing0(0x1A, 0x32))
+        await self.csr_write(
+            f"{label}_TIMING0", I2C0_TIMING0, _pack_timing0(THIGH_CYCLES, TLOW_CYCLES)
+        )
         await self.csr_write(f"{label}_TIMING1", I2C0_TIMING1, _pack_timing1(2, 2))
         await self.csr_write(f"{label}_TIMING2", I2C0_TIMING2, _pack_timing2(5, 4))
         await self.csr_write(f"{label}_TIMING3", I2C0_TIMING3, _pack_timing3(2, 5))
@@ -221,7 +227,10 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
                         sda_before,
                     )
                     self.injector._pull_sda(True)
-                    await Timer(HOLD_NS, unit="ns")
+                    await Timer(
+                        int(THIGH_CYCLES * self.cfg.periph_clk_period_ns * HOLD_HIGH_FRACTION),
+                        unit="ns",
+                    )
                     self.injector._pull_sda(False)
                     return
             prev = now

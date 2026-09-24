@@ -8,6 +8,7 @@
 `timescale 1ps / 1fs
 
 module smu_wrapper_uvm_top (
+  input  wire logic clk_smu_i,
   output logic clk_smu_o,
   // Primary JTAG TAP, driven from cocotb through the pad-level TCK/TMS/TDI/TDO.
   input  wire logic jtag_tck,
@@ -57,6 +58,8 @@ module smu_wrapper_uvm_top (
   output logic [31:0] dtp_smc_dbg_aw_count_o,
   output logic [31:0] dtp_smc_dbg_ar_count_o,
   output logic [31:0] dtp_smc_dbg_b_count_o,
+  input  wire logic clk_ref_i,
+  input  wire logic clk_periph_i,
   output logic        clk_ref_o,
   output logic        clk_periph_o,
   input  wire logic clk_sep_wdt_i,
@@ -1576,7 +1579,7 @@ module smu_wrapper_uvm_top (
     .gpio_pad_io (gpio_pad_io),
     .rst_cool_n_from_pin_i (~tb_cool_reset_pin),
 
-    .clk_telemetry_i (clk_smu),
+    .clk_telemetry_i (clk_ref),
     .rst_telemetry_ni (rst_cold_ni),
     .telemetry_atdata_i (tel_atdata_w),
     .telemetry_atid_i (tel_atid_w),
@@ -1654,6 +1657,13 @@ module smu_wrapper_uvm_top (
   assign clk_smu    = u_dut.clk_sys;
   assign clk_ref    = u_dut.clk_ref;
   assign clk_periph = u_dut.clk_periph;
+
+  // cocotb toggles the model oscillators through the clock inputs, with
+  // +pll_osc_bench keeping pll_wrap's own generators off: under Verilator,
+  // cocotb observes the pre-edge state only on a clock its own write toggles.
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smu_i;
+  assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
 
   // ------------------------------------------------------------------
   // Functional coverage (cov/sv/): the same modules tb_top.sv carries, on

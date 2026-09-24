@@ -74,11 +74,11 @@ PAYLOAD = bytes((0x90 + i) & 0xFF for i in range(2))
 #: controller's programmed timing, so the wait is unmistakable in the transfer
 #: time, and far short of any timeout -- none is enabled.
 HOLD_NS = 20_000
-#: Where the hold starts, measured from the moment the transfer is queued.
-#: The spread walks it across the address byte, its acknowledge and the
-#: payload bytes rather than landing in one place; the last one is still
-#: inside the unheld transfer, whose length the leaf measures first.
-HOLD_OFFSETS_NS = (2_000, 6_000, 10_000, 14_000, 18_000, 22_000)
+#: Where the hold starts, as a share of the clean transfer's length measured
+#: first, from the moment the transfer is queued. The spread walks it across
+#: the address byte, its acknowledge and the payload bytes rather than landing
+#: in one place; the last one is still inside the unheld transfer.
+HOLD_OFFSET_FRACTIONS = (0.07, 0.20, 0.33, 0.46, 0.60, 0.73)
 #: The held transfer must be longer than the clean one by at least this much
 #: of the hold. It cannot be the whole hold, because the clean transfer's own
 #: length varies with where the controller was when the hold began.
@@ -179,7 +179,8 @@ class smc_i2c_controller_stretch_test_seq(SmcCsrSeq):
             self.clean_ns,
         )
 
-        for i, delay in enumerate(HOLD_OFFSETS_NS):
+        for i, fraction in enumerate(HOLD_OFFSET_FRACTIONS):
+            delay = int(self.clean_ns * fraction)
             elapsed = await self._transfer(f"HELD{i}", EEPROM_OFFSET + 1 + i, delay)
             extension = elapsed - self.clean_ns
             assert extension >= MIN_EXTENSION_NS, (

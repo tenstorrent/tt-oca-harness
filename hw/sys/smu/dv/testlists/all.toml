@@ -2563,7 +2563,7 @@ module = "smu_smc_ss_reset_ctrl_sweep_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 3600
+timeout_sec = 7200
 tags = ["smc", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
@@ -2588,7 +2588,7 @@ module = "smu_smc_boundary_lane_sweep_test"
 target = "compile_smu_chiplet"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
-timeout_sec = 3600
+timeout_sec = 7200
 tags = ["smc", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [

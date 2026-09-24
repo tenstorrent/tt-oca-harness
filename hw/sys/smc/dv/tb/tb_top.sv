@@ -61,10 +61,14 @@ module smc_uvm_top
     // ==================================================================
     // Dual-instance port surface.
     //
-    // Only the surface the OCCP boot flow needs is lifted: resets, one
+    // Only the surface the OCCP boot flow needs is lifted: clocks/resets, one
     // inbound AXI manager per instance, the shared I3C pads, and
-    // scratch/ROM-fetch observability. Clocks come from each instance's
-    // pll_wrap; clk_*_i below are aliases of u_dut's generated clocks.
+    // scratch/ROM-fetch observability. The clock inputs toggle both
+    // instances' pll_wrap oscillators; clk_*_o export the target instance's
+    // generated clocks.
+    input wire logic clk_smc_i /*verilator public_flat_rw*/,
+    input wire logic clk_ref_i /*verilator public_flat_rw*/,
+    input wire logic clk_periph_i /*verilator public_flat_rw*/,
     output logic clk_smc_o /*verilator public_flat_rw*/,
     output logic clk_ref_o /*verilator public_flat_rw*/,
     output logic clk_periph_o /*verilator public_flat_rw*/,
@@ -343,6 +347,10 @@ module smc_uvm_top
 `undef SMC_TB_IN
 `undef SMC_TB_OUT
 
+    // The three domain clocks, taken from the pll_wrap inside the DUT (the
+    // target instance under SMC_DUAL) and exported on clk_*_o.
+    logic clk_smc, clk_ref, clk_periph;
+
 `ifndef SMC_DUAL
     /* verilator public_module */
 
@@ -420,8 +428,6 @@ module smc_uvm_top
 
     localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
     localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;
-
-    logic clk_smc, clk_ref, clk_periph;
 
     smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req;
     smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp;
@@ -1296,6 +1302,15 @@ module smc_uvm_top
     assign clk_smc    = u_dut.clk_sys;
     assign clk_ref    = u_dut.clk_ref;
     assign clk_periph = u_dut.clk_periph;
+
+`ifndef UVM
+    // cocotb toggles the model oscillators through the clock inputs, with
+    // +pll_osc_bench keeping pll_wrap's own generators off: under Verilator,
+    // cocotb observes the pre-edge state only on a clock its own write toggles.
+    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
+    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
+    assign u_dut.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+`endif
 
     // Sense-done pin and the sensed eFuse shadow (XMR into the controller
     // shadow regs under u_dut.u_smc.u_smc_peripherals).
@@ -2667,6 +2682,15 @@ module smc_uvm_top
     assign clk_ref    = u_dut.u_smc_wrapper.clk_ref;
     assign clk_periph = u_dut.u_smc_wrapper.clk_periph;
 
+    // Both instances' model oscillators follow the bench clock inputs (see the
+    // single-instance half); the two run in lockstep, as one clock tree.
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
+    assign u_dut.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_ref    = clk_ref_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_sys    = clk_smc_i;
+    assign u_bfm.u_smc_wrapper.u_smc_ip_integration.u_pll_wrap.osc_periph = clk_periph_i;
+
     // ------------------------------------------------------------------
     // Firmware observability (scratch 0/1 and retired PC per instance).
     // ------------------------------------------------------------------
@@ -2891,6 +2915,11 @@ module smc_uvm_top
     import uvm_pkg::*;
 
     smc_tb_if u_tb_if ();
+
+    // The model free-runs under SV-UVM; the bench-side clock nets mirror it.
+    assign clk_ref_i    = clk_ref;
+    assign clk_smc_i    = clk_smc;
+    assign clk_periph_i = clk_periph;
 
     // Power-good and the cold/cool reset pins are test-sequenced through
     // smc_tb_if; the reset-unit outputs and the fuse-sense / warm-domain
@@ -3176,21 +3205,6 @@ module smc_uvm_top
 
     // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
-    assign tb_cpu_isolate_req       = 1'b0;
-    assign tb_cpu_drained           = 1'b0;
-    assign tb_cpu_reset_timeout     = 1'b0;
-    assign tb_cpu_reset_applied     = 1'b0;
-    assign tb_cpu_uncore_reset_n    = 1'b0;
-    assign tb_cpu_l2_isolated       = 1'b0;
-    assign tb_cpu_l2_pending_aw     = '0;
-    assign tb_cpu_l2_pending_w      = '0;
-    assign tb_cpu_l2_pending_ar     = '0;
-    assign tb_cpu_l2_flush_active   = 1'b0;
-    assign tb_cpu_mmio_isolated     = 1'b0;
-    assign tb_cpu_mmio_pending_aw   = '0;
-    assign tb_cpu_mmio_pending_w    = '0;
-    assign tb_cpu_mmio_pending_ar   = '0;
-    assign tb_cpu_mmio_flush_active = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
     // parked (TMS high, reset asserted); UART0 RX idle-high.

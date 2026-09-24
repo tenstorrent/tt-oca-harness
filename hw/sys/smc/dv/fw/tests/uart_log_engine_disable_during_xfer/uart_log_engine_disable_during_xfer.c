@@ -150,9 +150,10 @@ static void check_retrigger_delivers(const char *tag, uint8_t (*expect)(uint32_t
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, RETRIGGER_ENTRY_BYTES);
     {
-        /* Poll bound: a 16-byte entry completes in far fewer than 200 register
-         * reads, and the bound must expire before the harness timeout. */
-        uint32_t timeout = 200u;
+        /* Poll bound: a 16-byte entry takes ~2600 peripheral clocks at the
+         * fastest divisor, about 650 register reads at the 1.25 ns core clock;
+         * the bound must expire before the harness timeout. */
+        uint32_t timeout = 4000u;
         while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) & 0xFFFFu) != 0u) {
             timeout--;
         }
@@ -408,9 +409,10 @@ int main(void) {
 
     // Let replica[1] complete naturally
     {
-        /* Poll bound: a 16-byte entry completes in far fewer than 200 register
-         * reads, and the bound must expire before the harness timeout. */
-        uint32_t timeout = 200u;
+        /* Poll bound: a 16-byte entry takes ~2600 peripheral clocks at the
+         * fastest divisor, about 650 register reads at the 1.25 ns core clock;
+         * the bound must expire before the harness timeout. */
+        uint32_t timeout = 4000u;
         while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) & 0xFFFFu) != 0u) {
             timeout--;
         }

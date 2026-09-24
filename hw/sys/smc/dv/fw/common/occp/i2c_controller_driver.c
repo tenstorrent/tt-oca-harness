@@ -14,7 +14,7 @@
 
 #define debug_mode 1
 
-#define I2C_CLOCK_PERIOD_NS 10u
+#define I2C_CLOCK_PERIOD_NS 5u
 // Effective SCL period is controlled directly by I2C_SCL_PERIOD_NS.
 // debug_mode shortens the SCL period to speed up simulation.
 #if debug_mode

@@ -24,7 +24,14 @@ from cocotb.clock import Clock
 from cocotb.regression import Test
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
-from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE
+from env.smc_env_cfg import (
+    PLL_PERIPH_CLK_PERIOD_NS,
+    PLL_REF_CLK_PERIOD_NS,
+    SYS_OUT_AXI_GEOMETRY,
+    SYS_OUT_MEM_SIZE,
+    check_pll_clock_periods,
+    pll_sys_clk_period_ns,
+)
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
 from smc_base_test import _EvidenceRecorder, log_build_model_identity
 
@@ -36,14 +43,12 @@ _DV_ROOT = Path(__file__).resolve().parents[2]
 _EFUSE_DIR = _DV_ROOT / "efuse_preload"
 assert _EFUSE_DIR.is_dir(), f"eFuse tooling not found at {_EFUSE_DIR}"
 
-# Clock periods in ns and the post-reset settle, taken from the single-instance
-# defaults in hw/sys/smc/dv/cocotb/env/smc_env_cfg.py. The dual top shares one
-# clock tree across both instances, so one set applies to both. The settle is
-# 500 ref cycles because powergood_stable is the end of a reset-sync chain and
-# is still low at 200.
-REF_CLK_PERIOD_NS = 10
-SMC_CLK_PERIOD_NS = 5
-PERIPH_CLK_PERIOD_NS = 10
+# Clock periods in ns, the pll_wrap values of hw/sys/smc/dv/cocotb/env/
+# smc_env_cfg.py; the bench drives both instances' oscillators from one set.
+# The settle is 500 ref cycles because powergood_stable is the end of a
+# reset-sync chain and is still low at 200.
+REF_CLK_PERIOD_NS = PLL_REF_CLK_PERIOD_NS
+PERIPH_CLK_PERIOD_NS = PLL_PERIPH_CLK_PERIOD_NS
 
 POST_RESET_SETTLE_CYCLES = 500
 
@@ -321,10 +326,11 @@ class SmcDualHarness:
             require_clean_tree=self.require_clean_tree, expect_target=DUAL_TARGET
         )
         dut = self.dut
+        smc_clk_period_ns = pll_sys_clk_period_ns()
         self.log.info(
-            "dual bring-up: ref=%dns smc=%dns periph=%dns (seed=%d)",
+            "dual bring-up (pll_wrap): ref=%sns smc=%sns periph=%sns (seed=%d)",
             REF_CLK_PERIOD_NS,
-            SMC_CLK_PERIOD_NS,
+            smc_clk_period_ns,
             PERIPH_CLK_PERIOD_NS,
             random_seed(),
         )
@@ -349,7 +355,7 @@ class SmcDualHarness:
             ).sequence
 
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
-        cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_smc_i, smc_clk_period_ns, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_periph_i, PERIPH_CLK_PERIOD_NS, unit="ns").start())
         self._attach_cpu_symbols()
         for inst, state in self.cpu_trace.items():
@@ -370,6 +376,14 @@ class SmcDualHarness:
         self.log.info("releasing cold reset on both instances")
         dut.rst_cold_ni.value = 1
         await ClockCycles(dut.clk_ref_i, POST_RESET_SETTLE_CYCLES)
+        await check_pll_clock_periods(
+            self.log,
+            {
+                "clk_ref_o": (dut.clk_ref_o, REF_CLK_PERIOD_NS),
+                "clk_smc_o": (dut.clk_smc_o, smc_clk_period_ns),
+                "clk_periph_o": (dut.clk_periph_o, PERIPH_CLK_PERIOD_NS),
+            },
+        )
 
     async def release_cpu(self, csr: DualCsr, instance: str, reset_vector: int) -> None:
         """Program the reset vector, release RESET_CTRL, then drop boot_stall.

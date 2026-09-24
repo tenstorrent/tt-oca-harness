@@ -61,10 +61,19 @@ module pll_wrap
 
   logic osc_ref, osc_sys, osc_periph;
 
+  // With +pll_osc_bench the model leaves the oscillator nets to the bench,
+  // which toggles them at the same periods through hierarchical assigns, and
+  // the sys and periph outputs follow the oscillators directly: the clock the
+  // bench drives is then the clock the core runs on at every instant, reset
+  // included, which the bench's synchronous drivers depend on. The mux chains
+  // below are exercised when the model free-runs.
+  logic osc_bench;
+  initial osc_bench = $test$plusargs("pll_osc_bench");
+
   // 100 MHz reference clock (10 ns = 10000 ps period, fixed).
   initial begin : gen_clk_ref
     osc_ref = 1'b0;
-    forever #5000ps osc_ref = ~osc_ref;
+    if (!osc_bench) forever #5000ps osc_ref = ~osc_ref;
   end
 
   // Sys clock: 800 MHz (1.25 ns) default; override with +pll_sys_period_ns.
@@ -77,13 +86,13 @@ module pll_wrap
       $fatal(1, "pll_wrap +pll_sys_period_ns must be 1.25 or 10, got %g", period_ns);
     period_ps = period_ns * 1000.0;
     osc_sys = 1'b0;
-    forever #(period_ps * 0.5) osc_sys = ~osc_sys;
+    if (!osc_bench) forever #(period_ps * 0.5) osc_sys = ~osc_sys;
   end
 
   // 200 MHz peripheral clock (5 ns = 5000 ps period, fixed).
   initial begin : gen_clk_periph
     osc_periph = 1'b0;
-    forever #2500ps osc_periph = ~osc_periph;
+    if (!osc_bench) forever #2500ps osc_periph = ~osc_periph;
   end
 
   /////////////////////////////
@@ -97,6 +106,7 @@ module pll_wrap
   /////////////////////////////
 
   logic clk_sys_mux2;
+  logic clk_sys_muxed;
 
   prim_clock_mux2 u_sys_clk_mux2 (
     .clk0_i (osc_ref),
@@ -114,14 +124,17 @@ module pll_wrap
     .rst_clk1_ni(rst_ni),
     .test_en_i  (1'b0),
     .sel_i      (1'b1),
-    .clk_o      (clk_sys_o)
+    .clk_o      (clk_sys_muxed)
   );
+
+  assign clk_sys_o = osc_bench ? osc_sys : clk_sys_muxed;
 
   /////////////////////////////
   // periph -- mux chain
   /////////////////////////////
 
   logic clk_periph_mux2;
+  logic clk_periph_muxed;
 
   prim_clock_mux2 u_periph_clk_mux2 (
     .clk0_i (osc_ref),
@@ -139,8 +152,10 @@ module pll_wrap
     .rst_clk1_ni(rst_ni),
     .test_en_i  (1'b0),
     .sel_i      (1'b1),
-    .clk_o      (clk_periph_o)
+    .clk_o      (clk_periph_muxed)
   );
+
+  assign clk_periph_o = osc_bench ? osc_periph : clk_periph_muxed;
 
   ////////////////////
   // AXI-Lite stub

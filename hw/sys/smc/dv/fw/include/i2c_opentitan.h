@@ -311,7 +311,7 @@ void i2c_get_default_timing(uint8_t speed, uint32_t sys_clk_mhz, i2c_timing_conf
  * @code
  *   i2c_timing_physical_t physical = {
  *       .speed = I2C_SPEED_STANDARD,
- *       .clock_period_nanos = 10,      // 100MHz system clock
+ *       .clock_period_nanos = 5, // 200 MHz peripheral clock
  *       .sda_rise_nanos = 300,         // Typical for 4.7k pullup
  *       .sda_fall_nanos = 100,         // Typical
  *       .scl_period_nanos = 0          // Auto (10us for standard mode)
