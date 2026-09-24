@@ -44,10 +44,9 @@ from cocotb.triggers import with_timeout
 from env.sep_axi_agent import SepAxiOp
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
+from seq_lib.sep_abr_keygen_seq import ABR_BASE, ABR_VERSION1, VER1_EXP
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_inbound_filter_rule_seq import SepInboundFilter, SepInboundFilterCfg
-
-from seq_lib.sep_abr_keygen_seq import ABR_BASE, ABR_VERSION1, VER1_EXP
 
 SIZE_4B = 2
 RESP_OKAY = 0
