@@ -30,7 +30,15 @@ class smu_axi_in_attribute_sweep_test(smu_base_test):
         self.logger.info("DUT_TAG=WRAPPER smu_axi_in_attribute_sweep_test AXI-ATTR")
         seq = smu_axi_in_attribute_sweep_test_seq(self)
         await seq.run()
-        assert seq.s1_ok and seq.s2_ok and seq.s3_ok and seq.s4_ok and seq.s5_ok and seq.s6_ok, (
+        assert (
+            seq.s1_ok
+            and seq.s2_ok
+            and seq.s3_ok
+            and seq.s4_ok
+            and seq.s5_ok
+            and seq.s6_ok
+            and seq.s7_ok
+        ), (
             f"attribute sweep incomplete s1={seq.s1_ok} s2={seq.s2_ok} s3={seq.s3_ok} "
-            f"s4={seq.s4_ok} s5={seq.s5_ok} s6={seq.s6_ok}"
+            f"s4={seq.s4_ok} s5={seq.s5_ok} s6={seq.s6_ok} s7={seq.s7_ok}"
         )

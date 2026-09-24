@@ -5,8 +5,9 @@
 Aperture base is the ABR row of ``hw/sys/sep/doc/memory_map.adoc``.
 Register offsets come from the Caliptra ``abr_reg.rdl``. Identity words
 are the ASCII of ML-DSA-87 from ``crypto.adoc``. 32-bit beats (size=2)
-on the 64-bit port; STATUS at +0x14 is an odd-word offset with no width
-converter.
+on the 64-bit port, one register per access; STATUS at +0x14 is an odd-word
+offset. ``[[abr-access-size]]`` in ``hw/sys/sep/doc/adams_bridge.adoc`` gives
+the rules for other access sizes.
 """
 
 from __future__ import annotations

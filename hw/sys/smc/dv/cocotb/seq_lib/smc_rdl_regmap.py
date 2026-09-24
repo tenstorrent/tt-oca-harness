@@ -35,12 +35,35 @@ _NS = {"i": "http://www.accellera.org/XMLSchema/IPXACT/1685-2014"}
 
 # IP-XACT numbers are SystemVerilog-style literals ('h1000) or plain integers.
 _VERILOG_HEX = re.compile(r"^'h([0-9A-Fa-f_]+)$")
+# A path component "name[i]" is instance i of a register or a register file.
+_INDEXED = re.compile(r"^(.+)\[(\d+)\]$")
 
 
 def _num(text: str) -> int:
     text = text.strip()
     match = _VERILOG_HEX.match(text)
     return int(match.group(1).replace("_", ""), 16) if match else int(text, 0)
+
+
+def _symbol(parts: list[str]) -> str:
+    """``smc_reg.py`` name for one IP-XACT path.
+
+    A register-file instance is ``{file}_{index}__`` and a register-array element
+    is ``{reg}_{index}__``. The ``__`` is the separator PeakRDL emits before the
+    next component, so the following name is concatenated rather than joined
+    with another underscore.
+    """
+    stem = ""
+    for part in parts:
+        match = _INDEXED.fullmatch(part)
+        token = f"{match.group(1).upper()}_{match.group(2)}__" if match else part.upper()
+        if not stem:
+            stem = token
+        elif stem.endswith("__"):
+            stem += token
+        else:
+            stem = f"{stem}_{token}"
+    return f"{stem}REG_ADDR" if stem.endswith("__") else f"{stem}_REG_ADDR"
 
 
 @dataclass(frozen=True)
@@ -174,22 +197,36 @@ def _registers() -> dict[str, RdlReg]:
         for sub in node.findall("i:registerFile", _NS):
             name = sub.find("i:name", _NS).text
             offset = _num(sub.find("i:addressOffset", _NS).text)
-            walk(sub, prefix + [name], base + offset)
+            origin = base + offset
+            # The path without an index stays element 0, so a lookup of the
+            # declaration keeps resolving. A dim also emits name[i], whose
+            # symbol matches the per-instance smc_reg.py name.
+            walk(sub, prefix + [name], origin)
+            dim = sub.find("i:dim", _NS)
+            if dim is not None:
+                span = sub.find("i:range", _NS)
+                if span is None or not span.text:
+                    raise RuntimeError(f"register file {name} has dim but no range")
+                stride = _num(span.text)
+                for i in range(int(dim.text)):
+                    walk(sub, prefix + [f"{name}[{i}]"], origin + i * stride)
         for reg in node.findall("i:register", _NS):
             name = reg.find("i:name", _NS).text
             addr = base + _num(reg.find("i:addressOffset", _NS).text)
             width_bytes = _num(reg.find("i:size", _NS).text) // 8
             dim = reg.find("i:dim", _NS)
             fields = tuple(_field_of(f) for f in reg.findall("i:field", _NS))
-            stem = "_".join(part.upper() for part in prefix + [name])
-            path = "/".join(prefix + [name])
             if dim is None:
-                out[path] = RdlReg(path, f"{stem}_REG_ADDR", addr, width_bytes, None, fields)
+                parts = prefix + [name]
+                path = "/".join(parts)
+                out[path] = RdlReg(path, _symbol(parts), addr, width_bytes, None, fields)
             else:
                 for i in range(int(dim.text)):
-                    out[f"{path}[{i}]"] = RdlReg(
-                        f"{path}[{i}]",
-                        f"{stem}_{i}__REG_ADDR",
+                    parts = prefix + [f"{name}[{i}]"]
+                    path = "/".join(parts)
+                    out[path] = RdlReg(
+                        path,
+                        _symbol(parts),
                         addr + i * width_bytes,
                         width_bytes,
                         i,
