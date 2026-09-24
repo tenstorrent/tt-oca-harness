@@ -761,7 +761,13 @@ Hardware populates DCT during ENTDAA from the PID/BCR/DCR each target emits.
 *Depth*: both tables expose a 128-entry address window, and DAT_SECTION_OFFSET /
 DCT_SECTION_OFFSET advertise TABLE_SIZE=127, but the physical memories are
 `DAT_DEPTH`/`DCT_DEPTH` = 16 entries deep (i3c_defines.svh). Only indexes 0-15
-are backed by storage.
+are independent. Higher indexes alias modulo 16 because the memory index is
+four bits wide; accessing slot 16 reads or overwrites slot 0. Software must not
+allocate additional devices based on the advertised table size.
+
+The SoC Management Interface capability length is also inconsistent with the
+implemented next-header address. See <<i3ccore-wrap-memory-map>> for the exact
+boundary and table-aliasing limitations.
 
 === PHY Layer and Clock Domain Crossing
 

@@ -43,8 +43,15 @@ interfaces. While this does physically separate key and data transport
 it is not scalable and requires modifications to the Key Manager
 whenever a new accelerator is added to the subsystem.
 
-.SEP cryptographic subsystem and external memories. Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9 with masking disabled.
-image::SEP_Crypto_Complex.png[alt="SEP cryptographic subsystem with integrator-supplied Key Manager, OTBN and Adams Bridge memories",scaledwidth=100%]
+Adams Bridge requires 13 SRAM macros with masking enabled (default), or 9
+with masking disabled.
+
+<<sep-crypto-diagram>> shows the accelerator interconnect, Key Manager paths, and
+external memory interfaces.
+
+[[sep-crypto-diagram]]
+.SEP cryptographic subsystem and external memory interfaces
+image::SEP_Crypto_TopLevel_FIG010.drawio.png[alt="SEP cryptographic subsystem and external memory interfaces",width=100%,pdfwidth=100%]
 
 The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
 connect them through the dedicated `abr_mem` request/response interface.
@@ -86,11 +93,13 @@ and pulses `alert_o` when the handshake starts; a malformed encoding raises
 unused.
 
 PIC sources are in {sep-interrupt-map-ref}. A receiver's pulse and
-integrity-fail stay per-block at the receiver. The table shows which of those,
+integrity-fail stay per-block at the receiver. <<sep-crypto-alert-and-fault-routing-table>> shows which of those,
 the native error IRQs, and the bridge faults are OR'd onto a PIC source and
 which are not.
 
+[[sep-crypto-alert-and-fault-routing-table]]
 [cols="14%,18%,22%,16%,30%",options="header"]
+.SEP crypto alert and fault routing
 |===
 |Block |OT alert channels |Alert PIC |Native error IRQ |Bridge `err_o`
 |HMAC |`[0]` fatal |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
@@ -198,6 +207,7 @@ Cryptographic subsystem reference pages:
 
 ++++
 <span id="adams-bridge-abr"></span>
+<span id="abr-aperture-decode"></span>
 <span id="och-modifications-5"></span>
 ++++
 

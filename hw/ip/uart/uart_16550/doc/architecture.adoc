@@ -115,7 +115,10 @@ system software.
 
 === Serial Communication Errors
 
-.Serial Communication Errors
+<<uart-serial-communication-errors-table>> lists the serial errors detected by the UART.
+
+[[uart-serial-communication-errors-table]]
+.UART Serial Communication Errors
 [cols=",",options="header",]
 |=======================================================================
 |Error Type |Description
