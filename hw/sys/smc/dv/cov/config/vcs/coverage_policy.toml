@@ -13,8 +13,10 @@ scope_epoch = "smc-vcs-cov-v1"
 # Register block structural facts: A1 NO-STALL and A2 NO-ERROR across the
 # PeakRDL blocks, plus A3 NO-READ-CHANNEL, A4 READ-NEVER-ERRORS and A5
 # INPUT-UNCONNECTED, which belong to one block each, and A6 SINGLEPULSE-RETAIN,
-# the retain row of a field the RDL declares singlepulse. The file header and
-# the generator's docstring state them.
+# the retain row of a field the RDL declares singlepulse. B1 PARTIAL-LANE-WRITE
+# joins them and is the bench's own: the AXI agent writes whole registers, so
+# the retain row of a field that keeps its value has no access behind it here.
+# The file header and the generator's docstring state them.
 [[native_files]]
 tool = "vcs"
 role = "exclude"
