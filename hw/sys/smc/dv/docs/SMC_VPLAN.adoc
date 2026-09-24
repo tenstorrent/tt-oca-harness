@@ -264,6 +264,9 @@ feature rows.
 |`smc_dma_decouple_rw_test` |DMA transfers with CONFIG.DECOUPLE_RW set -- a scatter and a gather -- and two descriptors queued back to back.
 |`smc_gpio_data_ctrl_field_test` |Each software-writable DATA_CTRL field of one idle GPIO instance driven on its own, with the pad left in its reset drive state throughout.
 |`smc_alias_remap_region_attrs_test` |One alias-remap region marked cacheable and valid over an empty window, with both bits held across a write of the other half of the register.
+|`smc_cpuif_handshake_test` |Every register block's AXI-Lite front end driven with outstanding, W-first and backpressured traffic on a side-effect-free probe register.
+|`smc_cpuif_external_stall_test` |Requests presented to each register block while one of its external registers is still pending.
+|`smc_cpuif_wrong_direction_test` |Writes at read-only registers, reads of write-only ones and reads of the unread, held to the generated block's contract.
 |`smc_filter_field_sweep_test` |Per-filter 3-field sweep x 4 entries x 2 dirs.
 |`smc_filter_multi_entry_test` |Filter 16 inbound + 16 outbound CONFIG sweep.
 |`smc_input_fabric_axi_wr_rd_test` |Run the input/output fabric CSR precheck over SEP_IN AXI.
@@ -10058,6 +10061,108 @@ Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 2. The 
 
 '''''
 
+[[sec-246-smc_cpuif_handshake_test]]
+===== 246 `smc_cpuif_handshake_test`
+
+*Source Module*: `smc_cpuif_handshake_test`
+
+*BFM / Model*: ocah_axi_vip (AXI), `SmcSysAxiGroupItem` outstanding groups and `AxiTimingProfile` channel timing
+
+*Objective*: Drive every PeakRDL register block's AXI-Lite front end with pipelined, skewed and backpressured traffic.
+
+*Test Coverage*:
+
+* Each SMC register block sits behind the same generated AXI-Lite interface: it keeps up to two transactions in flight, alternates reads and writes, captures AW and W in separate registers, and holds a response until BREADY or RREADY. `smc_sep_in_axi_flow_control_test` drives that interface with outstanding and backpressured traffic, but only on the scratch registers, so on every other block the parts below had never run.
+* **An accept in the same cycle a response is acknowledged.** The in-flight counter increments on an accept and decrements on an acknowledge; the cycle that does both needs a request already waiting as the previous response goes out, which serial traffic never has. Each block takes an outstanding group of interleaved reads and writes, deep enough that both the read-side and the write-side accept meet an acknowledge.
+* **Write data ahead of its address.** An `AxiTimingProfile` with `aw_delay` set presents W before AW on every block; `cpu_ctrl` and `zeroer_ctrl`, the two blocks that had not seen AW ahead of W either, also take a write with `w_delay` set.
+* **A response held against a low ready.** `b_ready_delay` and `r_ready_delay` hold BREADY and RREADY low on SEP_IN, but the interconnect in front of each block buffers responses and keeps the block's own ready high until that buffer is full. Each block therefore takes sixteen writes and then sixteen reads outstanding against a 32-cycle hold, which backs the responses up far enough to drop the block's ready. Behind `smc_misc_wrap` (chip_config, ndm_reset, scratch) and behind the straps window the path buffers more than that and the block's ready is never seen to drop; those blocks still take the traffic and are held to the same checks, but that row is not claimed for them.
+* **Every access targets one probe register per block, and every write carries back the value it just read.** A probe is a plain read-write register, where a write of the value already held changes nothing, or a read-only one, which a write does not reach. The sequence checks each probe against the generated contract before issuing anything -- no field may carry a read action, a modified-write action or write-only access -- so a regenerated map cannot turn a probe into a trigger unnoticed. The check caught `FILTER_CONFIG`, whose write-once `locked` field is a modified write, and the filter block uses `START_ADDR` instead.
+* The claim for each block is what a pipelined, skewed, backpressured manager is owed: every read in every group returns the value the block held, every write is answered, and the register still holds that value at the end. A front end that dropped, reordered or mis-paired an outstanding access, or mishandled W arriving alone, returns the wrong word or loses the write.
+* Three blocks need their own handling. `straps` is outside the SMC register map; `memmap.adoc` places `STRAPS_LO` at the adopter external window plus `0x5800` and `straps.rdl` makes it `sw = r`, so it is a read-only probe reached by address. `uart_16550_dl` is decoded only while `LCR.DLAB` is set, so its leg sets DLAB, probes `DLL` and restores `LCR`. `uart_16550_main_wo` has no read side -- `uart_16550.sv` routes no read to it -- so it takes writes only, of `FCR = 0`, which at reset changes nothing, and `IIR.FIFOS_ENABLED` is read afterwards to show the FIFOs never turned on.
+
+*Test Procedure*:
+
+Drive `smc_cpuif_handshake_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPUIF-PIPELINED` |Every register block took an outstanding group of interleaved reads and writes on its probe deep enough that an accept met an acknowledge on both sides, and every read in every group returned the value the block held
+|`CHK-CPUIF-WRITE-SKEW` |Every block took a write with W presented ahead of AW, and cpu_ctrl and zeroer_ctrl also one with AW ahead of W; each carried back the held value and was answered, and the probe held it afterwards
+|`CHK-CPUIF-READY-BACKPRESSURE` |Every block answered sixteen outstanding writes with BREADY held low and, where it has a read side, sixteen outstanding reads with RREADY held low; every read returned the held value and the probe read the same value before and after all three shapes
+|===
+
+*Pass Criteria*: `CHK-CPUIF-PIPELINED`, `CHK-CPUIF-READY-BACKPRESSURE`, `CHK-CPUIF-WRITE-SKEW` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-247-smc_cpuif_external_stall_test]]
+===== 247 `smc_cpuif_external_stall_test`
+
+*Source Module*: `smc_cpuif_external_stall_test`
+
+*BFM / Model*: ocah_axi_vip (AXI), `SmcSysAxiGroupItem` outstanding groups
+
+*Objective*: Present requests to each register block while one of its external registers is still pending.
+
+*Test Coverage*:
+
+* Six SMC register blocks carry an external register: an access to it is handed to logic outside the generated block, and until that logic acknowledges, the block holds `external_pending` and stalls every further request. Serial traffic never presents a second request in that window, so the stall had never held anything back on any of them.
+* Each block takes one outstanding group that opens with an access to its external register and follows it at once with a read and a write of the block's probe -- the same side-effect-free register `smc_cpuif_handshake_test` uses -- so both arrive while the external access is pending and both the read-side and the write-side stall hold a request back. A second external access closes the group. The claim is what a stalled manager is owed: every held-back request is answered once the stall lifts, the probe read returns the value the block held, each external read returns what its contract gives it, and the probe keeps its value.
+* The external access is chosen so that it changes nothing. `AVS_CMD` and `FDATA` are write-only, so a read returns zero and pushes no command or format byte. `RESET_CTRL` holds the core resets and is only read. `CREDIT_EXPIRED` clears on a write, so it is only read. `RBR` pops the receiver on a read, but the receiver is empty at idle, so the read returns zero and `LSR.DR` is read afterwards and must still be clear. `SS_CONFIG` is plain read-write and is its own probe.
+* That the stall really happens was confirmed on the blocks inside the local coverage scope: the branch that raises `external_pending` was taken twice in `cpu_ctrl` -- once for each `RESET_CTRL` read -- and seven times in `reset_unit`, once for every access to `SS_CONFIG`. The external acknowledge is therefore not same-cycle, and the probe requests queued behind it are presented while the block is pending.
+* `uart_16550_main_wo` is left out: its only external register is `THR`, which transmits whatever is written to it, so no access to it leaves the block as it was.
+
+*Test Procedure*:
+
+Drive `smc_cpuif_external_stall_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPUIF-EXTERNAL-STALL` |On six register blocks an access to the external register was followed at once by a read and a write of the block's probe presented while the external access was pending; every held-back request was answered, the probe read returned the held value, each external read returned what its contract gives it, and the probe kept its value
+|===
+
+*Pass Criteria*: `CHK-CPUIF-EXTERNAL-STALL` holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-248-smc_cpuif_wrong_direction_test]]
+===== 248 `smc_cpuif_wrong_direction_test`
+
+*Source Module*: `smc_cpuif_wrong_direction_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: Access register blocks in the direction their contract does not define, and read the registers nobody reads.
+
+*Test Coverage*:
+
+* Each SMC register block decodes an address together with a direction: a read-only register's decode term is the address and a read, a write-only one's is the address and a write. The half of each term that pairs the address with the other direction -- a write at a read-only register, a read at a write-only one -- had never been driven, and neither had a read of the few registers no leaf reads at all.
+* The expected answer comes from the generated block the RDL compiles to: a write to a read-only register is answered OKAY and takes no effect, and a read of a write-only register is answered OKAY and returns zero because the register has no readable field. Every write must be answered, and where the register holds still at idle and reading it has no side effect it must read the same value before and after; every write-only read must return zero; and around each block's accesses the block's probe register must read the same value, so no wrong-direction write aliased onto something writable.
+* Registers that need care: `RDATA`, `ACQDATA` and `AVS_READBACK` pop a FIFO when read, so they are written but not read back and their block's FIFO level register is read either side instead. `TIMER_COUNT_LO` and `TIMER_COUNT_HI` run freely, so they rely on the probe guard. `LSR` and `MSR` clear their error bits and deltas on any read, so each is read once to settle those before the baseline. `TARGET_NACK_COUNT` clears when read but holds zero at idle, so the read clears nothing and must return zero. `TARGET_ACK_CTRL` takes a write of zero at idle, where hardware holds its `NBYTES` write enable off and a zero on the write-only `NACK` is no NACK.
+* Three UART rows are not driven because the UART's own demux never presents those accesses to the block they belong to: `uart_16550.sv` routes every write at the `THR` and `FCR` addresses to the write-only block, so the main block never sees a write at `RBR` or `IIR`, and it routes no read to the write-only block, so that block never sees a read at `FCR`.
+
+*Test Procedure*:
+
+Drive `smc_cpuif_wrong_direction_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPUIF-WRITE-READ-ONLY` |Every write at a read-only register was answered and took no effect -- each register that holds still at idle read the same before and after, each FIFO whose data register pops on read kept its level -- and no block's probe register moved
+|`CHK-CPUIF-READ-WRITE-ONLY` |Every read of a write-only register was answered and returned zero, and every register no leaf had read returned its RDL reset at idle
+|===
+
+*Pass Criteria*: `CHK-CPUIF-READ-WRITE-ONLY`, `CHK-CPUIF-WRITE-READ-ONLY` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
 
 [[smc-formal-plan]]
 === Formal Verification Plan
