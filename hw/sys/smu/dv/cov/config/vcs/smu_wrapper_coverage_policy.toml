@@ -48,6 +48,19 @@ path = "smu_wrapper_toggle_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 
+# Nets of smu, smu_wrapper, smu_axi_xbar and axi_window_remap that carry bits
+# no SMU logic reads or writes (memory-macro data, AXI payload and sideband,
+# and the wrapper file's facts where they recur inside smu), each class with
+# its fact in the file's ANNOTATION lines. Regenerated from urg's exclusion
+# template and the raw report by gen_smu_cov_toggle_exclusions.py; README.md
+# lists the classes.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smu_toggle_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
 # Covergroups declared inside the RTL the wrapper instantiates. `-cm_hier` does
 # not reach covergroups, so the vendored I3C controllers' groups would otherwise
 # sit in urg's GROUP score beside the wrapper's own cov/sv covergroups.

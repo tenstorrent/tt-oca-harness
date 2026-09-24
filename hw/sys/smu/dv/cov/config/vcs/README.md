@@ -96,6 +96,40 @@ whether the committed file is stale.
 Everything else on the port list is graded per field, both directions, and a
 field that stays uncovered is a stimulus gap for a leaf on this bench.
 
+## Block toggle exclusions
+
+`smu_toggle_exclusions.el` (`-elfile`, named by the policy's `[[native_files]]`)
+leaves out nets of `smu`, `smu_wrapper`, `smu_axi_xbar` and `axi_window_remap`
+that carry bits no SMU logic reads or writes. `gen_smu_cov_toggle_exclusions.py`
+writes it from urg's `-dump full_exclusions tgl` template of the merged
+database and the run's raw report, so every checksum and signature comes from
+urg, and `--check` tells whether the committed file is stale:
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
+    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
+        fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt
+
+An entry names only what the raw report marks uncovered: a field wholly
+uncovered is excluded whole, otherwise each uncovered range in the direction
+the report marks missing; a partly uncovered multi-dimensional range stays
+graded. Fields `smu_wrapper_toggle_exclusions.el` already names are skipped.
+
+| Class | Fact | Retired by |
+|---|---|---|
+| `MEM-MACRO` | data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces; `smu.sv` connects each such `u_smc`/`u_sep` port straight to its own port and `smu_wrapper.sv` connects that to `hw/top/smc_ip_integration.sv` or `hw/top/sep_ip_integration.sv`, where the macros are; no SMU logic reads or writes the words | an SMU process on these words, or the macros moving under `u_smu` |
+| `AXI-USER` | the user sideband, which the pulp crossbar, the ID converters and `axi_window_remap` copy beside the channel | an SMU decode or remap that reads it |
+| `AXI-DATA` | write data, write strobe and read data of every AXI and AXI-Lite channel; the SMU decodes addresses and converts ids and passes data through | an SMU unit that inspects or rewrites data or strobe |
+| `RTL-CONSTANT` | `lcc_demote_state_*_o` tied low and `lsio_interface_select_o` following the SPI enable `smu.sv` assigns 1 with SEP present | either becoming programmable |
+| `UNION-ALIAS` | the `locks` and `fields` views of the packed-union eFuse shadow map; `values` stays graded | `efuse_map_t` ceasing to be a union |
+| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, the lockstep pair, `sep_ext_interrupts_i` and `entropy_rosc_sample_clk_i`, which `smu.sv` only routes and the SEP bench grades | SMU logic consuming one of them |
+
+No class takes an address, id, length, size, burst, cache, protection, QoS,
+region, lock or atomic field, nor a valid, ready or enable: those are decode
+and handshake, and a hole in one is a stimulus gap. The SEP aperture base and
+size feed the crossbar address map and the lifecycle integrity error is an OR
+in `smu.sv`, so both stay graded inside `smu` although the wrapper file names
+them at its ports.
+
 ## Covergroups from vendored RTL
 
 `-cm_hier` scopes line, condition, FSM, toggle and branch, and `-cm_common_hier`
