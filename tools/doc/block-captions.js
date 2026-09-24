@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Asciidoctor extension for Antora TRM pages that numbers and captions figures
+// and tables within each page, including generated register HTML tables. Adds
+// section-local references and records metadata for the lists of figures and
+// tables built by block-indexes.js.
+
 'use strict'
 
 function tableTitle (section, headings) {

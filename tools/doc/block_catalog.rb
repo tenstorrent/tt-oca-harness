@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+# Asciidoctor extension for the TRM PDF, enabled by the block-catalog attribute.
+# Numbers and captions figures and tables, fills the linked lists of figures and
+# tables, and adds references to each section's figures and tables.
+
 require 'asciidoctor/extensions'
 
 module OCAH

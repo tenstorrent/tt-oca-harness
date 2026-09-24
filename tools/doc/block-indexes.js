@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Antora extension that populates the TRM's lists of figures and tables after
+// page conversion. Uses metadata from block-captions.js to group links to each
+// figure and table by source page.
+
 'use strict'
 
 const path = require('node:path').posix
