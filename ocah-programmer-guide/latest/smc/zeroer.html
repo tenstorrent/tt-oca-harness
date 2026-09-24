@@ -623,7 +623,7 @@ outstanding writes</p></td>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#DEST_ADDR">DEST_ADDR</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#SIZE">SIZE</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Writing this register will trigger start of zeroer</td></tr>
+<tr><td>0x10</td><td><a href="#CTRL_STATUS">CTRL_STATUS</a></td><td>RW</td><td>Writing this register will trigger start of zeroer. The write is ignored while SIZE is 0.</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="DEST_ADDR">DEST_ADDR</h3>
