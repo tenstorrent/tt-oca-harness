@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I2C0 target gives up on a stretch it is not released from.
+"""Each I2C target gives up on a stretch it is not released from.
 
 `TARGET_TIMEOUT_CTRL` is the cumulative limit on how long this target may
 stretch within one transaction. `i2c.rdl` states the consequence: past that
@@ -18,6 +18,10 @@ short enough that nothing has to wait for it:
 * **Outgoing.** A read from an empty transmit FIFO leaves the target with
   nothing to send, so it holds the clock; the limit expires and it releases
   SDA, which the bench reads as all ones.
+
+Every instance is driven. `+smc_i2c_shared_bus` puts all three on one
+open-drain bus, so the bench controller on I2C0's pads reaches each of them by
+address, and only the instance under test is enabled while a leg runs.
 
 `TARGET_NACK_COUNT` is the register witness for both. `i2c_core.sv` increments
 it on the edge where the target decides to NACK the transaction, and the field
@@ -58,8 +62,12 @@ from .smc_i2c_target_smbus_test_seq import (
     _pack_timing4,
 )
 
-I2C0 = 0
-TARGET_ADDR = 0x25
+#: Every instance is driven. `+smc_i2c_shared_bus` puts all three on one
+#: open-drain bus, so the bench controller on I2C0's pads reaches each of them
+#: by address, and only the instance under test is enabled as a target.
+INSTANCES = (0, 1, 2)
+#: One address per instance, so a leg cannot be answered by the wrong one.
+TARGET_ADDR = {0: 0x25, 1: 0x26, 2: 0x27}
 VIP_SPEED = 2_000_000
 
 #: Cumulative stretch allowance, in the target's own clock periods. Short
@@ -70,27 +78,29 @@ READ_BYTES = 2
 NACK_COUNT_BM = 0xFF
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", I2C0)
-I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", I2C0)
-I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", I2C0)
-I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", I2C0)
-I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", I2C0)
-I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", I2C0)
-I2C0_TARGET_TIMEOUT_CTRL = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_TIMEOUT_CTRL_BASE_ADDR", I2C0
-)
-I2C0_TARGET_NACK_COUNT = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR", I2C0
-)
-I2C0_TARGET_FIFO_STATUS = smc_indexed_addr(
-    "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR", I2C0
-)
-I2C0_ACQDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR", I2C0)
-I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", I2C0)
-I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", I2C0)
-I2C0_TIMING2 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR", I2C0)
-I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", I2C0)
-I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", I2C0)
+
+_REGS = {
+    "wrap": "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR",
+    "ovrd": "SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR",
+    "ctrl": "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR",
+    "status": "SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR",
+    "fifo_ctrl": "SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR",
+    "target_id": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR",
+    "timeout": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_TIMEOUT_CTRL_BASE_ADDR",
+    "nack_count": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_NACK_COUNT_BASE_ADDR",
+    "fifo_status": "SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR",
+    "acqdata": "SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR",
+    "timing0": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR",
+    "timing1": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR",
+    "timing2": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR",
+    "timing3": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR",
+    "timing4": "SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR",
+}
+
+
+def _regs(idx: int) -> dict[str, int]:
+    return {key: smc_indexed_addr(sym, idx) for key, sym in _REGS.items()}
+
 
 _ABYTE_BM = 0xFF
 POLL_CYCLES = 100
@@ -107,59 +117,61 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_i2c_target_nack_timeout_test_seq") -> None:
         super().__init__(name)
-        self.write_entries: list[tuple[int, int]] = []
-        self.read_entries: list[tuple[int, int]] = []
-        self.write_acks: list[int] = []
-        self.read_data = b""
+        self.results: dict[tuple[int, str], tuple[list[int], list[tuple[int, int]], int]] = {}
 
-    async def _pop_all(self, into: list[tuple[int, int]]) -> None:
+    async def _pop_all(self, r: dict[str, int], into: list[tuple[int, int]]) -> None:
         await Timer(STOP_DETECT_DWELL_NS, unit="ns")
-        fifo = await self.csr_read("I2C0_TARGET_FIFO_STATUS", I2C0_TARGET_FIFO_STATUS)
+        fifo = await self.csr_read("I2C_TARGET_FIFO_STATUS", r["fifo_status"])
         level = (fifo & I2C_TARGET_FIFO_STATUS_ACQLVL_BM) >> I2C_TARGET_FIFO_STATUS_ACQLVL_BP
         for _ in range(level):
-            word = await self.csr_read("I2C0_ACQDATA", I2C0_ACQDATA)
+            word = await self.csr_read("I2C_ACQDATA", r["acqdata"])
             into.append(((word & I2C_ACQDATA_SIGNAL) >> I2C_ACQDATA_SIGNAL_BP, word & _ABYTE_BM))
 
-    async def _bring_up(self, label: str, ack_ctrl: bool) -> None:
+    async def _disable_others(self, idx: int) -> None:
+        """Only the instance under test answers, so a leg cannot be mis-attributed."""
+        for other in INSTANCES:
+            if other != idx:
+                await self.csr_write(f"I2C{other}_OFF", _regs(other)["ctrl"], 0)
+
+    async def _bring_up(self, idx: int, label: str, ack_ctrl: bool) -> dict[str, int]:
+        r = _regs(idx)
         ctrl = I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN
         if ack_ctrl:
             ctrl |= I2C_CTRL_ACK_CTRL_EN
-        await self.csr_write(f"I2C0_DISABLE_{label}", I2C0_CTRL, 0)
-        await self.csr_write("I2C0_WRAP_TARGET", I2C0_WRAP_CTRL, I2C_WRAP_CTRL_TARGET)
-        await self.wait_i2c0_lsio_ready(f"I2C0_NACK_TIMEOUT_{label}")
-        await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, 0)
-        await self.csr_write("I2C0_TIMING0", I2C0_TIMING0, _pack_timing0(0x1A, 0x32))
-        await self.csr_write("I2C0_TIMING1", I2C0_TIMING1, _pack_timing1(2, 2))
-        await self.csr_write("I2C0_TIMING2", I2C0_TIMING2, _pack_timing2(5, 4))
-        await self.csr_write("I2C0_TIMING3", I2C0_TIMING3, _pack_timing3(2, 5))
-        await self.csr_write("I2C0_TIMING4", I2C0_TIMING4, _pack_timing4(4, 5))
+        await self.csr_write(f"I2C{idx}_DISABLE_{label}", r["ctrl"], 0)
+        await self.csr_write(f"I2C{idx}_WRAP_TARGET", r["wrap"], I2C_WRAP_CTRL_TARGET)
+        await self.arm_i2c_gpio_lsio(idx, f"I2C{idx}_NACK_TIMEOUT_{label}")
+        await self.csr_write(f"I2C{idx}_OVRD_OFF", r["ovrd"], 0)
+        await self.csr_write(f"I2C{idx}_TIMING0", r["timing0"], _pack_timing0(0x1A, 0x32))
+        await self.csr_write(f"I2C{idx}_TIMING1", r["timing1"], _pack_timing1(2, 2))
+        await self.csr_write(f"I2C{idx}_TIMING2", r["timing2"], _pack_timing2(5, 4))
+        await self.csr_write(f"I2C{idx}_TIMING3", r["timing3"], _pack_timing3(2, 5))
+        await self.csr_write(f"I2C{idx}_TIMING4", r["timing4"], _pack_timing4(4, 5))
         await self.csr_write(
-            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST | I2C_FIFO_CTRL_TXRST
+            f"I2C{idx}_FIFO_RST",
+            r["fifo_ctrl"],
+            I2C_FIFO_CTRL_RXRST_FMTRST | I2C_FIFO_CTRL_TXRST,
         )
         await self.csr_write(
-            "I2C0_TARGET_ID", I2C0_TARGET_ID, _pack_target_id(TARGET_ADDR, 0x7F, 0, 0)
+            f"I2C{idx}_TARGET_ID", r["target_id"], _pack_target_id(TARGET_ADDR[idx], 0x7F, 0, 0)
         )
         timeout = I2C_TARGET_TIMEOUT_CTRL_EN | NACK_TIMEOUT_CYCLES
-        await self.csr_write(f"I2C0_TARGET_TIMEOUT_{label}", I2C0_TARGET_TIMEOUT_CTRL, timeout)
-        await self.csr_read(
-            f"I2C0_TARGET_TIMEOUT_{label}_RB", I2C0_TARGET_TIMEOUT_CTRL, expected=timeout
-        )
-        await self.csr_write(f"I2C0_CTRL_{label}", I2C0_CTRL, ctrl)
+        await self.csr_write(f"I2C{idx}_TARGET_TIMEOUT_{label}", r["timeout"], timeout)
+        await self.csr_read(f"I2C{idx}_TARGET_TIMEOUT_{label}_RB", r["timeout"], expected=timeout)
+        await self.csr_write(f"I2C{idx}_CTRL_{label}", r["ctrl"], ctrl)
         await ClockCycles(cocotb.top.clk_smc_i, 20)
-        status = await self.csr_read(f"I2C0_STATUS_{label}_ENTRY", I2C0_STATUS)
+        status = await self.csr_read(f"I2C{idx}_STATUS_{label}_ENTRY", r["status"])
         assert status & I2C_STATUS_ACQEMPTY, (
-            f"{label}: the acquisition FIFO is not empty before the leg starts "
+            f"I2C{idx} {label}: the acquisition FIFO is not empty before the leg starts "
             f"(STATUS=0x{status:08x})"
         )
-        # Read-to-clear, so this both reports and resets the counter the leg
-        # measures.
-        count = await self.csr_read(f"I2C0_NACK_COUNT_{label}_CLEAR", I2C0_TARGET_NACK_COUNT)
-        again = await self.csr_read(f"I2C0_NACK_COUNT_{label}_ENTRY", I2C0_TARGET_NACK_COUNT)
+        count = await self.csr_read(f"I2C{idx}_NACK_COUNT_{label}_CLEAR", r["nack_count"])
+        again = await self.csr_read(f"I2C{idx}_NACK_COUNT_{label}_ENTRY", r["nack_count"])
         assert again & NACK_COUNT_BM == 0, (
-            f"{label}: TARGET_NACK_COUNT reads {again & NACK_COUNT_BM} straight after a read "
-            f"cleared it from {count & NACK_COUNT_BM}; the leg cannot then attribute a count "
-            f"to its own transaction"
+            f"I2C{idx} {label}: TARGET_NACK_COUNT reads {again & NACK_COUNT_BM} straight after "
+            f"a read cleared it from {count & NACK_COUNT_BM}"
         )
+        return r
 
     async def _await_task(self, label: str, task) -> None:
         for _ in range(FINISH_POLLS):
@@ -171,88 +183,97 @@ class smc_i2c_target_nack_timeout_test_seq(SmcCsrSeq):
             f"{label}: the transfer never finished, so the target never gave up on its stretch"
         )
 
-    async def _incoming_leg(self) -> None:
-        await self._bring_up("INCOMING", ack_ctrl=True)
-        master = SmcI2cMasterVip(speed=VIP_SPEED, name="smc_i2c0_nack_timeout_write")
+    async def _incoming_leg(self, idx: int) -> None:
+        label = f"I2C{idx}_INCOMING"
+        r = await self._bring_up(idx, "INCOMING", ack_ctrl=True)
+        master = SmcI2cMasterVip(speed=VIP_SPEED, name=f"smc_i2c{idx}_nack_timeout_write")
+        acks: list[int] = []
 
         async def run() -> None:
             await master.send_start()
-            self.write_acks.append(await master.send_byte((TARGET_ADDR & 0x7F) << 1))
+            acks.append(await master.send_byte((TARGET_ADDR[idx] & 0x7F) << 1))
             for value in WRITE_PAYLOAD:
-                self.write_acks.append(await master.send_byte(value))
+                acks.append(await master.send_byte(value))
             await master.send_stop()
 
         task = cocotb.start_soon(run())
-        await self._await_task("INCOMING", task)
-        await self._pop_all(self.write_entries)
-        count = (
-            await self.csr_read("I2C0_NACK_COUNT_INCOMING", I2C0_TARGET_NACK_COUNT)
-        ) & NACK_COUNT_BM
+        await self._await_task(label, task)
+        entries: list[tuple[int, int]] = []
+        await self._pop_all(r, entries)
+        count = (await self.csr_read(f"{label}_COUNT", r["nack_count"])) & NACK_COUNT_BM
 
-        assert self.write_acks[0] == 0, (
-            f"INCOMING: the target NACKed its own address (ACK bits {self.write_acks})"
-        )
-        assert any(a == 1 for a in self.write_acks[1:]), (
-            f"INCOMING: every data byte was acknowledged although the target was left holding "
-            f"the bus past its {NACK_TIMEOUT_CYCLES}-cycle allowance (ACK bits "
-            f"{self.write_acks})"
+        assert acks[0] == 0, f"{label}: the target NACKed its own address (ACK bits {acks})"
+        assert any(a == 1 for a in acks[1:]), (
+            f"{label}: every data byte was acknowledged although the target was left holding "
+            f"the bus past its {NACK_TIMEOUT_CYCLES}-cycle allowance (ACK bits {acks})"
         )
         assert count == 1, (
-            f"INCOMING: TARGET_NACK_COUNT reads {count} after one transaction the target gave "
+            f"{label}: TARGET_NACK_COUNT reads {count} after one transaction the target gave "
             f"up on; the counter takes the edge on which the target decides to NACK"
         )
-        assert self.write_entries and self.write_entries[-1][0] == I2C_ACQ_SIGNAL_ERROR, (
-            f"INCOMING: the acquisition FIFO does not end with the NACK-stop entry that tells "
-            f"software the transaction ended badly (acquired {self.write_entries})"
+        assert entries and entries[-1][0] == I2C_ACQ_SIGNAL_ERROR, (
+            f"{label}: the acquisition FIFO does not end with the NACK-stop entry that tells "
+            f"software the transaction ended badly (acquired {entries})"
         )
-        cocotb.log.info(
-            "CHK-I2C-TGT-NACK-TIMEOUT-RX: held at a data byte with nothing to release it, the "
-            "target ran out its %d-cycle allowance and NACKed the incoming byte (ACK bits %s), "
-            "counted the transaction once in TARGET_NACK_COUNT and closed the acquisition "
-            "stream with a NACK-stop entry (%s)",
-            NACK_TIMEOUT_CYCLES,
-            self.write_acks,
-            self.write_entries,
-        )
+        self.results[(idx, "rx")] = (acks, entries, count)
 
-    async def _outgoing_leg(self) -> None:
-        await self._bring_up("OUTGOING", ack_ctrl=False)
-        master = SmcI2cMasterVip(speed=VIP_SPEED, name="smc_i2c0_nack_timeout_read")
+    async def _outgoing_leg(self, idx: int) -> None:
+        label = f"I2C{idx}_OUTGOING"
+        r = await self._bring_up(idx, "OUTGOING", ack_ctrl=False)
+        master = SmcI2cMasterVip(speed=VIP_SPEED, name=f"smc_i2c{idx}_nack_timeout_read")
+        data = bytearray()
 
         async def run() -> None:
-            self.read_data = await master.read(TARGET_ADDR, READ_BYTES)
+            data.extend(await master.read(TARGET_ADDR[idx], READ_BYTES))
 
         task = cocotb.start_soon(run())
-        await self._await_task("OUTGOING", task)
-        await self._pop_all(self.read_entries)
-        count = (
-            await self.csr_read("I2C0_NACK_COUNT_OUTGOING", I2C0_TARGET_NACK_COUNT)
-        ) & NACK_COUNT_BM
+        await self._await_task(label, task)
+        entries: list[tuple[int, int]] = []
+        await self._pop_all(r, entries)
+        count = (await self.csr_read(f"{label}_COUNT", r["nack_count"])) & NACK_COUNT_BM
 
-        assert self.read_data == bytes([0xFF] * READ_BYTES), (
-            f"OUTGOING: the bench read {self.read_data!r} from a target whose transmit FIFO "
+        assert bytes(data) == bytes([0xFF] * READ_BYTES), (
+            f"{label}: the bench read {bytes(data).hex()} from a target whose transmit FIFO "
             f"was empty for longer than its allowance; a released SDA line reads as all ones"
         )
         assert count == 1, (
-            f"OUTGOING: TARGET_NACK_COUNT reads {count} after one read the target gave up on"
+            f"{label}: TARGET_NACK_COUNT reads {count} after one read the target gave up on"
         )
-        assert self.read_entries and self.read_entries[-1][0] == I2C_ACQ_SIGNAL_ERROR, (
-            f"OUTGOING: the acquisition FIFO does not end with the NACK-stop entry "
-            f"(acquired {self.read_entries})"
+        assert entries and entries[-1][0] == I2C_ACQ_SIGNAL_ERROR, (
+            f"{label}: the acquisition FIFO does not end with the NACK-stop entry "
+            f"(acquired {entries})"
         )
-        cocotb.log.info(
-            "CHK-I2C-TGT-NACK-TIMEOUT-TX: asked to transmit with an empty transmit FIFO, the "
-            "target held the clock, ran out its %d-cycle allowance and released SDA, so the "
-            "bench read %s; the transaction was counted once in TARGET_NACK_COUNT and the "
-            "acquisition stream ends with a NACK-stop entry (%s)",
-            NACK_TIMEOUT_CYCLES,
-            self.read_data.hex(),
-            self.read_entries,
-        )
+        self.results[(idx, "tx")] = ([], entries, count)
 
     async def body(self) -> None:
+        assert "smc_i2c_shared_bus" in cocotb.plusargs, (
+            "smc_i2c_target_nack_timeout_test needs +smc_i2c_shared_bus; without it only "
+            "I2C0's pads are on the bench bus and the other two instances cannot be reached"
+        )
         await self.prove_dut_i2c0_pins()
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
-        await self._incoming_leg()
-        await self._outgoing_leg()
+        for idx in INSTANCES:
+            await self._disable_others(idx)
+            await self._incoming_leg(idx)
+            await self._outgoing_leg(idx)
+
+        rx = [i for (i, kind) in self.results if kind == "rx"]
+        tx = [i for (i, kind) in self.results if kind == "tx"]
+        cocotb.log.info(
+            "CHK-I2C-TGT-NACK-TIMEOUT-RX: held at a data byte with nothing to release it, each "
+            "of I2C%s ran out its %d-cycle allowance and NACKed the incoming byte, counted the "
+            "transaction once in TARGET_NACK_COUNT and closed the acquisition stream with a "
+            "NACK-stop entry: %s",
+            ", I2C".join(str(i) for i in sorted(rx)),
+            NACK_TIMEOUT_CYCLES,
+            {f"I2C{i}": self.results[(i, "rx")][0] for i in sorted(rx)},
+        )
+        cocotb.log.info(
+            "CHK-I2C-TGT-NACK-TIMEOUT-TX: asked to transmit with an empty transmit FIFO, each "
+            "of I2C%s held the clock, ran out its allowance and released SDA so the bench read "
+            "all ones, counted the transaction once and closed the stream with a NACK-stop "
+            "entry: %s",
+            ", I2C".join(str(i) for i in sorted(tx)),
+            {f"I2C{i}": self.results[(i, "tx")][1][-1] for i in sorted(tx)},
+        )

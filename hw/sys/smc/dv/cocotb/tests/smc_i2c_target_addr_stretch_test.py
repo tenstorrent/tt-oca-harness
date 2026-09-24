@@ -22,8 +22,9 @@ class smc_i2c_target_addr_stretch_test(smc_base_test):
     required_evidence = (
         "CHK-I2C-TGT-ADDR-STRETCH",
         "CHK-I2C-TGT-ADDR-STRETCH-NACK-MODE",
+        "CHK-I2C-TGT-ADDR-STRETCH-READ",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     auto_protocol_vip = False
 

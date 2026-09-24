@@ -9530,14 +9530,16 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 *Source Module*: `smc_i2c_target_addr_stretch_test`
 
-*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads; observation on the resolved SCL net and on `ACQDATA`
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, which `+smc_i2c_shared_bus` puts in front of all three instances; observation on the resolved SCL net and on `ACQDATA`
 
-*Objective*: A repeated START issued while the target's acquisition FIFO is full must hold the bus through the address phase until software drains it.
+*Objective*: A repeated START issued while the target's acquisition FIFO is full must hold the bus through the address phase until software drains it, on every instance.
 
 *Test Coverage*:
 
 * The address phase, which `smc_i2c_target_acq_stretch_test` does not reach: that leaf fills the FIFO part-way through a transfer, so the target stretches at a data byte. Holding the address phase needs the FIFO to still be out of room when a new address arrives, which only a repeated START can arrange -- a STOP would end the transfer and let software drain at leisure.
 * Both settings of `CTRL.NACK_ADDR_AFTER_TIMEOUT`, which `i2c.rdl` gives as ACK the address byte even if a stretch timeout occurs (`0`, for SMBus) or NACK it (`1`). The two settings take the target down different paths to the same hold, and in both the transfer has to complete once the FIFO is drained.
+* A third leg where the repeated START asks the target to *transmit*. The target leaves the address-phase stretch into the transmit stretch rather than into byte acquisition, and stays there until software supplies a byte: the drain alone does not release it, and the leg requires that.
+* All three instances. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 * No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
 * `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
 
@@ -9549,7 +9551,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 . Issue a repeated START and the address again in the background, and measure the hold: only samples where the bus is low while the bench has released its own pull are counted.
 . Require the bench's transfer to still be in flight, then drain `ACQDATA` until it completes.
 . Compare the whole acquired stream against the bench's traffic and require every ACK bit to be low.
-. Repeat with `CTRL.NACK_ADDR_AFTER_TIMEOUT` set.
+. Repeat with `CTRL.NACK_ADDR_AFTER_TIMEOUT` set, and again with the repeated START asking for a read, where the release needs a byte in `TXDATA` as well as the drain.
+. Repeat the whole sequence on each instance in turn, with the other two disabled.
 
 *Checkers*:
 
@@ -9558,9 +9561,10 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |Checker |Description
 |`CHK-I2C-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
 |`CHK-I2C-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set, which takes the target's other address-phase path to the same result
+|`CHK-I2C-TGT-ADDR-STRETCH-READ` |When the held address phase belonged to a read, the target went on holding for a byte to send and was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all three checkers hold after their compares, on every instance, and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
@@ -9649,7 +9653,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 *BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads; observation on `TARGET_NACK_COUNT`, `ACQDATA` and the bus
 
-*Objective*: A stretch nobody releases must end in the target's own NACK, in both directions.
+*Objective*: A stretch nobody releases must end in the target's own NACK, in both directions, on every instance.
 
 *Test Coverage*:
 
@@ -9659,6 +9663,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * An empty transmit FIFO is the way into the outgoing hold, and a released SDA line reads as all ones at the bench.
 * `TARGET_NACK_COUNT` is the register witness. `i2c_core.sv` increments it on the edge where the target decides to NACK the transaction, and the field is read-to-clear, so each leg reads it clear beforehand and requires exactly one afterwards -- not merely non-zero.
 * The acquisition stream must end with the NACK-stop entry, so software can see the transaction ended badly rather than inferring it from the missing data.
+* All three instances, reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 
 *Test Procedure*:
 
@@ -9678,7 +9683,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |`CHK-I2C-TGT-NACK-TIMEOUT-TX` |The allowance ran out with nothing to transmit: SDA was released so the bench read all ones, the transaction counted once, and the stream closed with a NACK-stop entry
 |===
 
-*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: both checkers hold after their compares on every instance, and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 
@@ -9689,7 +9694,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 *BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, with its bit rate changed part-way through a transfer; observation on the ACK bits, `TARGET_NACK_COUNT` and `ACQDATA`
 
-*Objective*: A controller that releases SCL before the target's data hold time has elapsed must have its transaction abandoned.
+*Objective*: A controller that releases SCL before the target's data hold time has elapsed must have its transaction abandoned, on every instance.
 
 *Test Coverage*:
 
@@ -9698,6 +9703,7 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 * The rate changes after the START in both fast legs, not before. The same hold governs both acknowledges, so at a single rate the address is always the first to go; and the bus monitor takes the same `THD_DAT` as its threshold for detecting a START (`i2c_bus_monitor.sv`), so a START clocked fast enough to violate the hold is not seen as a START at all. The measured consequence of getting that wrong was a transaction the target never joined: no acknowledge, no count, nothing acquired.
 * The hold is also kept below half the slow rate's low period, so the target always finishes driving an acknowledge before the clock rises again and the control transfers are clean.
 * A transfer entirely at the slow rate runs before and after the two fast legs, so the abandons are the difference the rate makes rather than a target that never works.
+* All three instances, reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
 * `TARGET_NACK_COUNT` is the register witness. It takes the edge on which the target decides to NACK the transaction and is read-to-clear, so each leg clears it and requires exactly its own -- one for each abandon, none for either control.
 * What reaches the acquisition FIFO separates the two abandons: the address leg records nothing for the address and closes with the NACK-stop entry, the data leg keeps its start entry but records no data.
 
@@ -9835,6 +9841,81 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 |===
 
 *Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+
+'''''
+
+[[sec-240-smc_i2c_controller_exits_test]]
+===== 240 `smc_i2c_controller_exits_test`
+
+*Source Module*: `smc_i2c_controller_exits_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads for the first leg; an address no device answers for the second
+
+*Objective*: Two endings of a controller transaction no leaf had produced, and `CONTROLLER_EVENTS` as a register rather than a flag.
+
+*Test Coverage*:
+
+* A read whose last byte carries no stop. The controller returns to the format FIFO for the entries queued behind it instead of stopping, which is the only way it leaves the read acknowledge into `PopFmtFifo`. The target has to see a single stop for the whole sequence, not one per entry.
+* A NACK left unhandled. `i2c.rdl` describes `HOST_NACK_HANDLER_TIMEOUT` as the limit on how long software may leave the controller halted on an unexpected NACK; past it `CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT` is raised beside the NACK. Every other leaf clears a NACK as soon as it sees one.
+* `CONTROLLER_EVENTS` clears on a written one, so two writes that must *not* clear it are made first: a word of zeros over a set bit, and a byte-sized write to the far end of the register, which leaves the lane carrying the bit disabled. The bit is read back set after each, and only a written one clears it. Both set fields are checked this way.
+
+*Known limitation*: the controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST` is cleared with a transaction still open, is not driven. `i2c_controller_fsm.sv:291` clears `trans_started` in the same cycle the enable drops, so the `trans_started && !host_enable_i` arms in `Idle` and in `PopFmtFifo` are each one cycle wide. With the controller parked mid-transaction -- every entry consumed, no stop given, `STATUS.HOSTIDLE` clear -- clearing the enable returned it to idle without the bench target seeing a stop.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads.
+. Queue a write of an offset, a repeated start and a one-byte read *without* a stop, then a further write with a stop. Require the byte read back, the later write at the target, and one stop.
+. Arm `HOST_NACK_HANDLER_TIMEOUT`, queue a write to an address no device answers, and wait for `CONTROLLER_EVENTS.NACK` and then `UNHANDLED_NACK_TIMEOUT`.
+. For each set field: write zeros, read it back set; write a byte to the far end of the register, read it back set; write a one, read it back clear.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-READ-CONTINUES` |A read whose last byte carried no stop returned to the format FIFO, the entry behind it reached the target, and the target saw a single stop
+|`CHK-I2C-CTRL-NACK-TIMEOUT` |A NACK left unhandled past the programmed limit raised `UNHANDLED_NACK_TIMEOUT` beside it
+|`CHK-I2C-CTRL-EVENTS-RETAIN` |Both set fields survived a word of zeros and a byte write that left their lane disabled, and cleared only on a written one
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-241-smc_avsbus_frame_sequencing_test]]
+===== 241 `smc_avsbus_frame_sequencing_test`
+
+*Source Module*: `smc_avsbus_frame_sequencing_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); the AVSBus sdata pad driven at its idle or responding level by the bench
+
+*Objective*: How one AVSBus frame follows another, which the command mix decides.
+
+*Test Coverage*:
+
+* A command queued on its own. `architecture.adoc` describes a frame as a first subframe, as many middle subframes as there are further commands ready, and a last one, so with nothing behind it the first subframe is followed straight by the last. Every other leaf queues its commands in one burst, so that path had never been taken.
+* A command queued while the bus is already running, spaced so that one of them arrives during a last subframe and starts a new frame from the end of it instead of letting the bus go idle.
+* A reply the master had to buffer. A frame retried while a later frame is already on the wire leaves that later reply pending; when the master returns to it, it either retries that one too or, if it is good, resynchronises the slave. The bench decides which by driving the pad: the retries are provoked at the idle level and the pad is then released to its responding level, so the buffered reply is a good one.
+
+*Test Procedure*:
+
+[arabic]
+. With the pad at its responding level and the readback FIFO drained, queue one command and require a response and the last-subframe shift state on the debug bus.
+. Queue several commands one at a time with a short gap, and require a response for each.
+. With a retry budget programmed and the pad at its idle level, queue two commands and wait for `TOTAL_RETRIES` to move; release the pad to its responding level and require the slave-resynchronisation state on the debug bus.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AVS-SINGLE-COMMAND` |A command with nothing behind it produced its response and took the machine through the last-subframe shift rather than a middle one
+|`CHK-AVS-LATE-COMMAND` |Commands written one at a time while the bus ran all produced responses
+|`CHK-AVS-BUFFERED-REPLY` |After a retry with a second frame on the wire, a buffered reply that turned out good took the master to the slave resynchronisation rather than another retry
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 
