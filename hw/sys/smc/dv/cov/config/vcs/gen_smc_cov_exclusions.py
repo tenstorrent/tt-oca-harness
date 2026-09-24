@@ -162,12 +162,13 @@ state variable as a transition:
   occupies that one state. Reset behaviour is graded by the reset tests, not
   by landing a reset in each protocol state.
 
-Five more tie-offs and parameters decide branch decisions rather than condition
+Six more tie-offs and parameters decide branch decisions rather than condition
 rows. The DFD's gated functional clamps are each a constant OR of two tied
 inputs (P13 CLAMP-TIED); its JTAG MMR requester's valid is tied to zero (P14
 JTAG-MMR-TIED); the eFuse's secure test mode input is tied to zero (P15
 SECURE-TM-TIED); `mmrs` derives its NTR and DST sink enables from parameters
-(P16 SINK-ENABLE-CONST); and the trace sink has one core (P17 ONE-TRACE-CORE).
+(P16 SINK-ENABLE-CONST); and the trace sink has one core (P17 ONE-TRACE-CORE), and the AVS controller ties its own TDR post-divider
+override to zero (P18 TDR-OVERRIDE-TIED).
 P1, P4, P6, F3 and A1 read branch paths as well as rows, by the same signals.
 
 Two regblock facts are PeakRDL's own. A field the RDL declares singlepulse sets
@@ -476,11 +477,12 @@ FSM_FACTS: "dict[tuple[str, str], list[tuple[str, tuple[str, object] | None]]]" 
 
 A3 = (
     "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the "
-    "write channel only -- its read-channel select has no branch for that map -- so this "
-    "block's arvalid is never asserted and a row or branch path that needs it high cannot "
-    "occur. A row over "
-    "ar_accept alone stays graded: the block ORs it with aw_accept, which the write channel "
-    "does assert."
+    "write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite "
+    "demux raises a port's AR valid only when that port is selected, so this block's arvalid is "
+    "never asserted. Its arvalid register and ar_accept therefore stay low, every request it "
+    "sees is a write, and its read acks never rise; a row or branch path that needs any of them "
+    "high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write "
+    "channel produces it."
 )
 A4 = (
     "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually "
@@ -672,6 +674,11 @@ P17 = (
     "SMC-P17-ONE-TRACE-CORE: the DFD top passes the trace wrapper NUM_CORES as the larger of "
     "NUM_DST_INST(1) and NUM_NTRACE_INST(0), and the wrapper passes it on to the trace sink, so "
     "NUM_CORES > 1 is false and its then arm never executes."
+)
+P18 = (
+    "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override "
+    "i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects "
+    "takes the register value and the TDR arm never executes."
 )
 A7 = (
     "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL "
@@ -1056,6 +1063,7 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
         (P16, re.compile(r"^NTR_SINK_EN$"), 0),
         (P16, re.compile(r"^DST_SINK_EN$"), 1),
     ],
+    "avsbus_controller": [(P18, re.compile(r"^i_tdr_peripherals_apb2avsbus_postdiv_override$"), 0)],
     "cla_wrapper": [(P13, re.compile(r"^cla_gated_func_clamp\b"), 0)],
     "dst_wrapper": [(P13, re.compile(r"^dst_gated_func_clamp\b"), 0)],
     "tnif_wrapper": [(P13, re.compile(r"^(?:dst|tnif)_gated_func_clamp\b"), 0)],
@@ -1123,15 +1131,30 @@ I2C_SINGLEPULSE = (
 )
 
 
+# Per-block signals a fact holds at one value, as (class, signals, value). A row
+# or a branch path is written when it is out of reach with the signals held and
+# within reach with them free. The UART demux never selects the write-only map
+# on the read channel, so that block's AR valid stays low, nothing sets its
+# arvalid register or ar_accept, every request it sees is a write, and its read
+# acks (readback_done and the external read ack, which it generates as zero)
+# never rise.
+REGBLOCK_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
+    "uart_16550_main_wo_reg": [
+        (
+            A3,
+            re.compile(
+                r"^(?:(?:s_)?axil_arvalid|axil_ar_accept|cpuif_rd_ack|readback_done"
+                r"|(?:readback_)?external_rd_ack)$"
+            ),
+            0,
+        )
+    ],
+}
+
 # module -> [(class, expression pattern, term-vector pattern or None)]. These
 # are facts about one block, checked against its own source, not about a
 # family. The vector pattern pins which row of a multi-term expression the
 # fact covers, so a sibling row that an access can reach stays graded.
-# The same per-block facts over the decisions of a branch path.
-REGBLOCK_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
-    "uart_16550_main_wo_reg": [(A3, re.compile(r"^(?:s_)?axil_arvalid$"), 0)],
-}
-
 EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
     "uart_16550_main_wo_reg": [
         (A3, re.compile(r"^\(\(\(!\w*arvalid\)\)"), re.compile(r"^0")),
@@ -1930,7 +1953,27 @@ def select_extra(
 
 
 REGBLOCK_CLASSES = (A1, A2, A3, A4, A5, A6, A7, B1, C1)
-FEATURE_CLASSES = (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16, P17, F3)
+FEATURE_CLASSES = (
+    P1,
+    P2,
+    P3,
+    P4,
+    P5,
+    P6,
+    P7,
+    P8,
+    P9,
+    P10,
+    P11,
+    P12,
+    P13,
+    P14,
+    P15,
+    P16,
+    P17,
+    P18,
+    F3,
+)
 
 
 def metric_blocks(
@@ -2022,6 +2065,15 @@ def render_regblock(
                 if needs_forced_away(rp.terms, vector, STALL_OPERAND, 0):
                     block.append((A1, entry))
                     taken.add(entry)
+        for tp, rp in aligned:
+            for vector, entry in tp.rows:
+                if entry in taken or vector not in rp.uncovered:
+                    continue
+                for reason, forced, value in REGBLOCK_PATH_FACTS.get(module, []):
+                    if needs_forced_away(rp.terms, vector, forced, value):
+                        block.append((reason, entry))
+                        taken.add(entry)
+                        break
         for tp, rp in aligned:
             if not is_regblock_source(tp.source) or "decoded_wr_biten" not in tp.text:
                 continue

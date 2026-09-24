@@ -16,6 +16,14 @@ ANNOTATION: "SMC-P10-PACKET-SHORTER-THAN-BANK: a bank spans BANK_DATA_WIDTH_IN_B
 MODULE: accumulator_bank
 Condition 1 "2655277331" "(target_write_byte_boundary_equals_range_end || target_write_byte_boundary_crosses_bank_range || target_write_byte_wraparound) 1 -1" (3 "010")
 
+CHECKSUM: "3564686069 976103321"
+ANNOTATION: "SMC-P18-TDR-OVERRIDE-TIED: avsbus_controller.sv assigns its TDR post-divider override i_tdr_peripherals_apb2avsbus_postdiv_override a constant zero, so each ternary it selects takes the register value and the TDR arm never executes."
+MODULE: avsbus_controller
+Branch 0 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
+Branch 1 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
+Branch 2 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
+Branch 3 "1350802132" "i_tdr_peripherals_apb2avsbus_postdiv_override" (0) "i_tdr_peripherals_apb2avsbus_postdiv_override 1"
+
 CHECKSUM: "4170061027 684303742"
 ANNOTATION: "SMC-P2-SKIP-TIED-OFF: smc_input_fabric and smc_output_fabric both instantiate the AXI filter with filter_skip_i tied to zero, so the skip arm of the filter decision never runs and no access can produce a condition over it."
 MODULE: axi_filter_wrap

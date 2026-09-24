@@ -899,7 +899,7 @@ Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "2964910200 3918030293"
-ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- so this block's arvalid is never asserted and a row or branch path that needs it high cannot occur. A row over ar_accept alone stays graded: the block ORs it with aw_accept, which the write channel does assert."
+ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite demux raises a port's AR valid only when that port is selected, so this block's arvalid is never asserted. Its arvalid register and ar_accept therefore stay low, every request it sees is a write, and its read acks never rise; a row or branch path that needs any of them high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write channel produces it."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_16550_main_wo_reg
@@ -911,6 +911,12 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (2 "10")
 Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
+Condition 5 "1728812250" "(axil_ar_accept || axil_aw_accept) 1 -1" (3 "10")
+Condition 8 "983935818" "(axil_ar_accept || axil_aw_accept) 1 -1" (3 "10")
+Condition 14 "1950024504" "(cpuif_rd_ack || cpuif_wr_ack) 1 -1" (3 "10")
+Condition 22 "2030511965" "(decoded_req_is_external & ((~external_wr_ack)) & ((~external_rd_ack))) 1 -1" (3 "110")
+Condition 23 "4034658667" "(external_wr_ack | external_rd_ack) 1 -1" (2 "01")
+Condition 51 "761411967" "(readback_done | readback_external_rd_ack) 1 -1" (2 "01")
 Condition 25 "663184004" "((field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 26 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
 Condition 26 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
@@ -930,16 +936,18 @@ Condition 39 "2323973005" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "
 
 CHECKSUM: "2964910200 2953287278"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- so this block's arvalid is never asserted and a row or branch path that needs it high cannot occur. A row over ar_accept alone stays graded: the block ORs it with aw_accept, which the write channel does assert."
+ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- and the AXI-Lite demux raises a port's AR valid only when that port is selected, so this block's arvalid is never asserted. Its arvalid register and ar_accept therefore stay low, every request it sees is a write, and its read acks never rise; a row or branch path that needs any of them high cannot occur. A row with ar_accept low and aw_accept high stays graded, as the write channel produces it."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_16550_main_wo_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Branch 2 "4213977320" "(~arst_n)" (1) "(~arst_n) 0,1,-,-,-,-,-,-"
 Branch 2 "4213977320" "(~arst_n)" (3) "(~arst_n) 0,-,1,-,-,-,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (0) "(axil_n_in_flight < 2'd2) 1,1,1,-,-,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (1) "(axil_n_in_flight < 2'd2) 1,1,0,-,-,-,-"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (4) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,1"
 Branch 3 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2) 1,0,-,0,-,1,0"
+Branch 4 "3078954377" "(~arst_n)" (1) "(~arst_n) 0,1,1,-,-"
 Branch 4 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 Branch 11 "1764768895" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 13 "2429376722" "(~arst_n)" (2) "(~arst_n) 0,0"
