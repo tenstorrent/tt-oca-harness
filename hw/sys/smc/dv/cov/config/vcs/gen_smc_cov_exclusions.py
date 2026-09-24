@@ -9,9 +9,9 @@ access from this bench can reach, and SEP records the same facts in
 
 * A1 NO-STALL: a PeakRDL register block whose cpuif has no external
   registers hardwires `cpuif_req_stall_rd` and `cpuif_req_stall_wr` to zero,
-  so the AXI-Lite handshake can never see valid without ready, the stall
-  branches of the request path never execute, and no row of a stall
-  sub-expression that needs a stall input at one occurs.
+  so the stall branches of the request path never execute and no row of a
+  stall sub-expression that needs a stall input at one occurs. The handshake
+  still sees valid without ready once two requests are in flight.
 * A2 NO-ERROR: a PeakRDL register block generated without an address or
   access check ("No valid address check" in the generated source) never sets
   `decoded_err`, `cpuif_wr_err` or `cpuif_rd_err`, so its error branches and
@@ -244,9 +244,6 @@ MODULE_RE = re.compile(r"^// MODULE: (\S+)")
 FILE_RE = re.compile(r'^// ANNOTATION: "FileName: (\S+), LineNumber: (\d+)"')
 ENTRY_RE = re.compile(r"^// ((?:Condition|Block|Branch|Line|Fsm|State|Transition) .*)$")
 FSM_ENTRY_RE = re.compile(r'^(State|Transition) (\S+?)(?:->(\S+))? "[^"]*"$')
-HANDSHAKE_RE = re.compile(
-    r"\((s_axil_\w*valid)\s*&&\s*(s_axil_\w*ready)\)\s+1\s+-1\"\s+\(\d+ \"10\"\)"
-)
 STALL_RE = re.compile(r"cpuif_req_stall")
 STALL_OPERAND = re.compile(r"^cpuif_req_stall_(?:rd|wr)\b")
 ERROR_RE = re.compile(r"decoded_err|cpuif_wr_err|cpuif_rd_err|readback_err|axil_resp_buffer_err")
@@ -256,11 +253,11 @@ BRANCH_ROW_RE = re.compile(r'^(Branch \d+ "\d+" "(.*)") \((\d+)\) "(.*) (1|0)"$'
 
 A1 = (
     "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires "
-    "cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is "
-    "accepted the cycle it is valid and the stall branches of the request path never "
-    "execute; the valid-without-ready row of each handshake condition, and each row "
-    "of a stall sub-expression that needs a stall input at one, has no access that "
-    "can produce it."
+    "cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the "
+    "request path never execute and no row of a stall sub-expression that needs a stall "
+    "input at one has an access that can produce it. The handshake's valid-without-ready "
+    "rows stay graded: with two requests in flight the cpuif holds the next one, and its "
+    "ready drops."
 )
 A2 = (
     "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access "
@@ -2040,7 +2037,7 @@ def select_regblock(
         expr, vec = m.group(2), m.group(4)
         if vec not in uncovered:
             return None
-        if stall0 and (HANDSHAKE_RE.search(entry) or STALL_RE.search(expr)):
+        if stall0 and STALL_RE.search(expr):
             return A1
         if noerr and ERROR_RE.search(expr):
             return A2

@@ -13,11 +13,8 @@
 //==================================================
 
 CHECKSUM: "3869168330 760173647"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: alias_remap_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 37 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 37 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 38 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -28,7 +25,7 @@ Condition 41 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 41 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "3869168330 1297930971"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: alias_remap_reg
@@ -113,11 +110,8 @@ Branch 40 "1780655356" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 50 "2605094396" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "3619095557 1034725017"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: chip_config_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 29 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 29 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 30 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -128,7 +122,7 @@ Condition 33 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 33 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "3619095557 3575510968"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: chip_config_reg
@@ -162,11 +156,8 @@ Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "4047357563 3105227975"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: dfx_ctrl_status_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 60 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 60 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 61 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -177,7 +168,7 @@ Condition 64 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 64 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "4047357563 1591044204"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-B7-DFX-INPUTS-TIED: a property of this bench, not of the design. The SMC passes mem_repair_done, mem_repair_success, mbist_done and mbist_pass straight to the DFX status register's sticky fields, whose load_next is that input, and the testbench ties all four high because the boot sequencer waits on them; a row or path that needs one of them, or its load, low has no stimulus here. Bench ports that drive those inputs retire the class."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
@@ -197,7 +188,7 @@ Branch 13 "953917360" "hwif_in.STATUS_SMU.mbist_pass.next" (1) "hwif_in.STATUS_S
 Branch 14 "3173993039" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "2345381840 1625737755"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
@@ -242,11 +233,8 @@ Condition 58 "3489169323" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2
 Condition 63 "2602468110" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: filter_ctrl_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 54 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -257,7 +245,7 @@ Condition 57 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 57 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "1147255362 363877172"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: filter_ctrl_reg
@@ -268,12 +256,9 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "936371605 2913940277"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: gpio_intf_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 70 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 70 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 71 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -309,7 +294,7 @@ Condition 59 "1914640929" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "
 Condition 63 "301462280" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
 
 CHECKSUM: "936371605 373616375"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: gpio_intf_reg
@@ -320,12 +305,9 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "1461514841 2927016927"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: i2c_ctrl_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 54 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -372,7 +354,7 @@ Condition 51 "1014715315" "(field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decode
 Condition 52 "1656240774" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
 
 CHECKSUM: "1461514841 3636893582"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: i2c_ctrl_reg
@@ -594,13 +576,10 @@ Condition 184 "458639587" "(addr_hit[47] & reg_re & ((!reg_error))) 1 -1" (3 "11
 Condition 185 "1262529806" "(addr_hit[48] & reg_re & ((!reg_error))) 1 -1" (3 "110")
 
 CHECKSUM: "2067798497 84113796"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: log_engine_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 88 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 88 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
@@ -624,7 +603,7 @@ Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~dec
 Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
 CHECKSUM: "2067798497 2965795156"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
@@ -638,11 +617,8 @@ Branch 24 "2508892412" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 26 "134826827" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "677483531 442683581"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: ndm_reset_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 27 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 27 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 28 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -653,7 +629,7 @@ Condition 31 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 31 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "677483531 1109502550"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: ndm_reset_reg
@@ -664,11 +640,8 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "4060298550 1539976365"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: output_remap_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 21 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 21 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 22 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -679,7 +652,7 @@ Condition 25 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 25 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "4060298550 675217217"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: output_remap_reg
@@ -702,11 +675,8 @@ Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "2083532214 1989962094"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: scratch_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 26 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -717,7 +687,7 @@ Condition 29 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 29 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "2083532214 3516621464"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: scratch_reg
@@ -728,11 +698,8 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "155370989 631920874"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: smc_base_config_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 145 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 145 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 146 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -743,7 +710,7 @@ Condition 149 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01"
 Condition 149 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "155370989 504970378"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: smc_base_config_reg
@@ -754,11 +721,8 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "1845094762 2497126651"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: straps_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 23 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 23 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 24 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -769,7 +733,7 @@ Condition 27 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 27 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "1845094762 1901872711"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: straps_reg
@@ -798,13 +762,10 @@ Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 Branch 3 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "656852128 1067758899"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: telemetry_receiver_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 71 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 71 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 31 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
@@ -833,7 +794,7 @@ Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "
 Condition 62 "4097857498" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
 CHECKSUM: "656852128 3186388910"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-A7-SINGLEPULSE-LOADS: the RDL declares these fields singlepulse, and PeakRDL sets the field's load_next on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load never runs."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
@@ -848,11 +809,8 @@ Branch 8 "3053296054" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 20 "2793890863" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "427703398 1889139731"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: uart_16550_dl_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 25 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 26 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -863,7 +821,7 @@ Condition 29 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 29 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "427703398 3111610693"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_16550_dl_reg
@@ -962,12 +920,9 @@ Branch 11 "1764768895" "(~arst_n)" (2) "(~arst_n) 0,0"
 Branch 13 "2429376722" "(~arst_n)" (2) "(~arst_n) 0,0"
 
 CHECKSUM: "225643378 1423410759"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_log_engine_ctrl_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 24 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 24 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 25 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -982,7 +937,7 @@ Condition 20 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_bit
 Condition 21 "760254986" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
 CHECKSUM: "225643378 510029441"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: uart_log_engine_ctrl_reg
@@ -993,11 +948,8 @@ Branch 1 "1722014690" "(axil_n_in_flight < 2'd2)" (5) "(axil_n_in_flight < 2'd2)
 Branch 2 "3078954377" "(~arst_n)" (3) "(~arst_n) 0,1,0,0,-"
 
 CHECKSUM: "1361930843 1317082537"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 MODULE: zeroer_ctrl_reg
-Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
-Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
-Condition 3 "2335059135" "(s_axil_wvalid && s_axil_wready) 1 -1" (2 "10")
 Condition 32 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 32 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 33 "2444199068" "( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) 1 -1" (2 "1")
@@ -1008,7 +960,7 @@ Condition 36 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (1 "01")
 Condition 36 "3073733329" "(cpuif_req_is_wr & cpuif_req_stall_wr) 1 -1" (3 "11")
 
 CHECKSUM: "1361930843 2910525901"
-ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition, and each row of a stall sub-expression that needs a stall input at one, has no access that can produce it."
+ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so the stall branches of the request path never execute and no row of a stall sub-expression that needs a stall input at one has an access that can produce it. The handshake's valid-without-ready rows stay graded: with two requests in flight the cpuif holds the next one, and its ready drops."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-C1-CONTRADICTORY-PATH: urg lists every combination of an if and else-if chain's decisions as a path, including combinations whose decisions contradict one another. PeakRDL's response logic enters `if (cpuif_rd_ack || cpuif_wr_ack)` and then tests each ack alone, so the path through the outer branch with both inner tests false needs the disjunction true and both of its terms false. A path is written only when its own decisions, read over the same signals, have no common solution."
 MODULE: zeroer_ctrl_reg
