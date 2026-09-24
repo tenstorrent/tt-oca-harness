@@ -46,15 +46,18 @@ against a capture edge. Its correctness still depends on delay, though: every CD
 element assumes the data reaches the receiver within a bounded time.
 
 OCAH therefore keeps the crossings visible to the tool and gives each one an
-explicit upper bound, sized from the clock that captures it. This asserts no phase
-relationship -- it states only how much delay the crossing tolerates while its CDC
-element's guarantee still holds.
+explicit upper bound, sized from the clock that captures it. This doesn't assert
+any phase relationship. It only states how much delay the crossing tolerates
+while its CDC element's guarantee still holds.
 
 == What is constrained
 
-Each enumerated CDC element in each block is given its own `set_max_delay`,
-sized from the clock that actually captures it as read from the netlist. Muxed
-domains resolve to several clocks; the tightest period wins.
+Any CDC element has at least one capture clock. For every CDC element whose type
+is listed below, the generated constraints give the element its own
+`set_max_delay`. This is sized from the capture clock, as read from the netlist.
+When the capture clock is muxed from several sources, the bound must hold for
+whichever source the mux selects at runtime; as such, the shortest period among
+the mux inputs is used.
 
 The elements covered are `prim_sync2/3/4` and their reset and set variants, the
 pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
