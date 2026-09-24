@@ -25,7 +25,8 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "3896755233 3909592511"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: avsbus_controller_reg
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
 Condition 140 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
@@ -39,6 +40,48 @@ Condition 95 "795222567" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVE
 Condition 99 "1413304740" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
 Condition 103 "2792596154" "((field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
 Condition 114 "4205383914" "((field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
+Condition 37 "4138482005" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 41 "3264178128" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 45 "1652416381" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 49 "3042495299" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 53 "4002694911" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 57 "1615102505" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 61 "1726991987" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 65 "801489908" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 69 "425979425" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 72 "461176737" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 72 "461176737" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_AVS_SLAVE_ISSUED_INTERRUPT.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 73 "552197764" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 76 "1973840873" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
+Condition 76 "1973840873" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_FULL_INT.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 77 "1400406907" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 80 "3347314445" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) 1 -1" (1 "01")
+Condition 80 "3347314445" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_FIFO_FULL_INT.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
+Condition 81 "1708809743" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 84 "3293356170" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) 1 -1" (1 "01")
+Condition 84 "3293356170" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_HAS_DATA_INT.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
+Condition 85 "3251533345" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 88 "81179069" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
+Condition 88 "81179069" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_SLAVE_UNRESPONSIVE_INT.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 89 "3912484749" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 92 "3107786433" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) 1 -1" (1 "01")
+Condition 92 "3107786433" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_MAX_RETRIES_ATTEMPTED_INT.value & ((~decoded_wr_biten[5]))) 1 -1" (3 "11")
+Condition 93 "2589667571" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 96 "2295563769" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) 1 -1" (1 "01")
+Condition 96 "2295563769" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_CMD_FIFO_OVERFLOW_INT.value & ((~decoded_wr_biten[6]))) 1 -1" (3 "11")
+Condition 97 "309949201" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 100 "544719138" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) 1 -1" (1 "01")
+Condition 100 "544719138" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_UNDERFLOW_INT.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
+Condition 101 "677528198" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 104 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 104 "3810750151" "(field_storage.AVS_INTERRUPT_CLEAR.CLEAR_READBACK_OVERFLOW_INT.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 105 "1844794179" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 112 "569785034" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 115 "2518759583" "(field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) 1 -1" (2 "10")
+Condition 115 "2518759583" "(field_storage.AVS_CFG_1.FORCE_SLAVE_RESYNC_OPERATION.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
+Condition 116 "1090530673" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 120 "3777697814" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
+Condition 126 "286644234" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
 CHECKSUM: "3619095557 1034725017"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -53,13 +96,21 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "4071069113 1776738744"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
 MODULE: cpu_ctrl_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 54 "2648555519" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 58 "938649821" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 62 "2710835096" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
 Condition 66 "196810938" "((field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 55 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 55 "3750092312" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_0.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 59 "3378087292" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 59 "3378087292" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_1.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 63 "1096231514" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 63 "1096231514" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_2.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
+Condition 67 "1468756286" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
+Condition 67 "1468756286" "(field_storage.WDT_TIMEOUT_RESET.reset_cycle_count_3.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
 
 CHECKSUM: "4047357563 3105227975"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -75,18 +126,41 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 CHECKSUM: "2345381840 1625737755"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues covers the whole register and none leaves a lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: efuse_interface_ctrl_reg
 Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (2 "01")
 Condition 73 "2060249598" "(cpuif_rd_err | cpuif_wr_err) 1 -1" (3 "10")
 Condition 74 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (2 "101")
 Condition 74 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Condition 17 "4208065857" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 21 "2625133550" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) | (decoded_wr_data[9] & decoded_wr_biten[9])) 1 -1" (3 "10")
+Condition 25 "976473490" "((field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) | (decoded_wr_data[10] & decoded_wr_biten[10])) 1 -1" (3 "10")
 Condition 34 "3341492462" "((field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
 Condition 47 "1725121280" "((field_storage.EFUSE_READ_CTRL.efuse_read_go.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
+Condition 18 "3682985624" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 18 "3682985624" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_req_error_clear.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 19 "1417432267" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 22 "3156793088" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) 1 -1" (1 "01")
+Condition 22 "3156793088" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_program_addr_error_clear.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
+Condition 23 "2530975663" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 26 "1339574214" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) 1 -1" (1 "01")
+Condition 26 "1339574214" "(field_storage.EFUSE_INTERFACE_CTRL_STATUS.efuse_read_addr_error_clear.value & ((~decoded_wr_biten[10]))) 1 -1" (3 "11")
+Condition 27 "2137523323" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
 Condition 30 "1412610213" "((field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
+Condition 31 "3085125358" "(field_storage.EFUSE_PROGRAM_CTRL.efuse_data.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
+Condition 32 "2308010589" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 35 "900473020" "(field_storage.EFUSE_PROGRAM_CTRL.efuse_program_go.value & ((~decoded_wr_biten[17]))) 1 -1" (3 "11")
+Condition 36 "1922250827" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 40 "1529188800" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
 Condition 42 "3783167787" "((field_storage.EFUSE_PROGRAM_CTRL.program_enable.value & ((~decoded_wr_biten[27]))) | (decoded_wr_data[27] & decoded_wr_biten[27])) 1 -1" (3 "10")
+Condition 43 "639315718" "(field_storage.EFUSE_PROGRAM_CTRL.program_enable.value & ((~decoded_wr_biten[27]))) 1 -1" (3 "11")
+Condition 44 "3014319953" "(decoded_wr_data[27] & decoded_wr_biten[27]) 1 -1" (2 "10")
+Condition 48 "1789705183" "(field_storage.EFUSE_READ_CTRL.efuse_read_go.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
+Condition 49 "1706514420" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 53 "4216422870" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
+Condition 58 "3489169323" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
+Condition 63 "2602468110" "(decoded_wr_data[28] & decoded_wr_biten[28]) 1 -1" (2 "10")
 
 CHECKSUM: "1147255362 2271730998"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -102,7 +176,7 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 CHECKSUM: "936371605 2913940277"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues covers the whole register and none leaves a lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: gpio_intf_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -111,15 +185,35 @@ Condition 70 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 70 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 23 "2796091986" "((field_storage.DATA_CTRL.core2pad.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 24 "454294834" "(field_storage.DATA_CTRL.core2pad.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 24 "454294834" "(field_storage.DATA_CTRL.core2pad.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 25 "1498737447" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 28 "3922588506" "((field_storage.DATA_CTRL.interface_enable.value & ((~decoded_wr_biten[16]))) | (decoded_wr_data[16] & decoded_wr_biten[16])) 1 -1" (3 "10")
+Condition 29 "3171895446" "(field_storage.DATA_CTRL.interface_enable.value & ((~decoded_wr_biten[16]))) 1 -1" (1 "01")
+Condition 29 "3171895446" "(field_storage.DATA_CTRL.interface_enable.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
+Condition 30 "3569763246" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
 Condition 32 "3617067133" "((field_storage.DATA_CTRL.lsio_select.value & ((~decoded_wr_biten[17]))) | (decoded_wr_data[17] & decoded_wr_biten[17])) 1 -1" (3 "10")
+Condition 33 "267370412" "(field_storage.DATA_CTRL.lsio_select.value & ((~decoded_wr_biten[17]))) 1 -1" (1 "01")
+Condition 33 "267370412" "(field_storage.DATA_CTRL.lsio_select.value & ((~decoded_wr_biten[17]))) 1 -1" (3 "11")
+Condition 34 "1435192067" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
 Condition 36 "2630742341" "((field_storage.DATA_CTRL.interrupt_enable.value & ((~decoded_wr_biten[18]))) | (decoded_wr_data[18] & decoded_wr_biten[18])) 1 -1" (3 "10")
+Condition 37 "217739769" "(field_storage.DATA_CTRL.interrupt_enable.value & ((~decoded_wr_biten[18]))) 1 -1" (1 "01")
+Condition 37 "217739769" "(field_storage.DATA_CTRL.interrupt_enable.value & ((~decoded_wr_biten[18]))) 1 -1" (3 "11")
+Condition 38 "124944398" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
 Condition 40 "2236040217" "((field_storage.DATA_CTRL.lsio_disable.value & ((~decoded_wr_biten[19]))) | (decoded_wr_data[19] & decoded_wr_biten[19])) 1 -1" (3 "10")
+Condition 41 "3172042884" "(field_storage.DATA_CTRL.lsio_disable.value & ((~decoded_wr_biten[19]))) 1 -1" (1 "01")
+Condition 41 "3172042884" "(field_storage.DATA_CTRL.lsio_disable.value & ((~decoded_wr_biten[19]))) 1 -1" (3 "11")
+Condition 42 "2203264987" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
+Condition 47 "2819404851" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 51 "2007982752" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 55 "2905345542" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 59 "1914640929" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 63 "301462280" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
 
 CHECKSUM: "1461514841 2927016927"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues covers the whole register and none leaves a lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: i2c_ctrl_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -128,19 +222,46 @@ Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 53 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 18 "2343056619" "((field_storage.I2C_CTRL[0].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 19 "2241324890" "(field_storage.I2C_CTRL[0].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 19 "2241324890" "(field_storage.I2C_CTRL[0].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 20 "3647788607" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 22 "3030868653" "((field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 23 "3333435659" "(field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
+Condition 23 "3333435659" "(field_storage.I2C_CTRL[0].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 24 "4098809404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 26 "3776384389" "((field_storage.I2C_CTRL[0].SMBUS_EN.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 27 "1824308135" "(field_storage.I2C_CTRL[0].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 27 "1824308135" "(field_storage.I2C_CTRL[0].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 28 "434978298" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
 Condition 30 "2133510649" "((field_storage.I2C_CTRL[1].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 31 "3006557120" "(field_storage.I2C_CTRL[1].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 31 "3006557120" "(field_storage.I2C_CTRL[1].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 32 "2343050358" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 34 "2494526992" "((field_storage.I2C_CTRL[1].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 35 "2711602547" "(field_storage.I2C_CTRL[1].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
+Condition 35 "2711602547" "(field_storage.I2C_CTRL[1].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 36 "3387182562" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 38 "2509386585" "((field_storage.I2C_CTRL[1].SMBUS_EN.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 39 "3947382242" "(field_storage.I2C_CTRL[1].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 39 "3947382242" "(field_storage.I2C_CTRL[1].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 40 "954291887" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
 Condition 42 "3422574206" "((field_storage.I2C_CTRL[2].I2C_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 43 "3357802485" "(field_storage.I2C_CTRL[2].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 43 "3357802485" "(field_storage.I2C_CTRL[2].I2C_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 44 "1052023753" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 46 "2417295500" "((field_storage.I2C_CTRL[2].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 47 "1532807786" "(field_storage.I2C_CTRL[2].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
+Condition 47 "1532807786" "(field_storage.I2C_CTRL[2].I2C_CONTROLLER_MODE_EN.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 48 "4141873636" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 50 "1657495565" "((field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 51 "1014715315" "(field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 51 "1014715315" "(field_storage.I2C_CTRL[2].SMBUS_EN.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 52 "1656240774" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
 
 CHECKSUM: "1943968615 3380696541"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues covers the whole register and none leaves a lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: i2c_reg
 Branch 9 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 237 "4237267917" "((field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
@@ -161,9 +282,115 @@ Condition 349 "2590629755" "((field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_
 Condition 353 "2238378298" "((field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) | (decoded_wr_data[7] & decoded_wr_biten[7])) 1 -1" (3 "10")
 Condition 357 "1195032021" "((field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
 Condition 409 "791920299" "((field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) | (decoded_wr_data[31] & decoded_wr_biten[31])) 1 -1" (3 "10")
+Condition 147 "3785315650" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 151 "2696797505" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 155 "2625372358" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 159 "2776227815" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 163 "3603603160" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 167 "1285879610" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 171 "2813437962" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 175 "2162211868" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 179 "3091713143" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 183 "2075626599" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 187 "428222355" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
+Condition 191 "2559467098" "(decoded_wr_data[11] & decoded_wr_biten[11]) 1 -1" (2 "10")
+Condition 195 "1381442540" "(decoded_wr_data[12] & decoded_wr_biten[12]) 1 -1" (2 "10")
+Condition 199 "1006278509" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
+Condition 203 "3999374291" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
+Condition 207 "1934531465" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
+Condition 211 "1190393741" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 215 "1863410171" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 219 "4192922168" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
+Condition 223 "3490217038" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
+Condition 227 "3910184825" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 231 "703224832" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 235 "2499017469" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 238 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (2 "10")
+Condition 238 "2461408530" "(field_storage.INTR_TEST.RX_OVERFLOW.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
+Condition 239 "4245925020" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 243 "3223606136" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 246 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (2 "10")
+Condition 246 "1874328777" "(field_storage.INTR_TEST.SCL_INTERFERENCE.value & ((~decoded_wr_biten[5]))) 1 -1" (3 "11")
+Condition 247 "2622543276" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 250 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (2 "10")
+Condition 250 "1261080173" "(field_storage.INTR_TEST.SDA_INTERFERENCE.value & ((~decoded_wr_biten[6]))) 1 -1" (3 "11")
+Condition 251 "2001046172" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 254 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
+Condition 254 "3855172079" "(field_storage.INTR_TEST.STRETCH_TIMEOUT.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
+Condition 255 "2517529020" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 258 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 258 "1318428521" "(field_storage.INTR_TEST.SDA_UNSTABLE.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 259 "823151926" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 262 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (2 "10")
+Condition 262 "1613741313" "(field_storage.INTR_TEST.CMD_COMPLETE.value & ((~decoded_wr_biten[9]))) 1 -1" (3 "11")
+Condition 263 "4074769702" "(decoded_wr_data[9] & decoded_wr_biten[9]) 1 -1" (2 "10")
+Condition 267 "285859240" "(decoded_wr_data[10] & decoded_wr_biten[10]) 1 -1" (2 "10")
+Condition 271 "2388694010" "(decoded_wr_data[11] & decoded_wr_biten[11]) 1 -1" (2 "10")
+Condition 275 "1626341249" "(decoded_wr_data[12] & decoded_wr_biten[12]) 1 -1" (2 "10")
+Condition 278 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (2 "10")
+Condition 278 "1710701336" "(field_storage.INTR_TEST.UNEXP_STOP.value & ((~decoded_wr_biten[13]))) 1 -1" (3 "11")
+Condition 279 "863333718" "(decoded_wr_data[13] & decoded_wr_biten[13]) 1 -1" (2 "10")
+Condition 282 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (2 "10")
+Condition 282 "3616098267" "(field_storage.INTR_TEST.HOST_TIMEOUT.value & ((~decoded_wr_biten[14]))) 1 -1" (3 "11")
+Condition 283 "4170143347" "(decoded_wr_data[14] & decoded_wr_biten[14]) 1 -1" (2 "10")
+Condition 286 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (2 "10")
+Condition 286 "1234749581" "(field_storage.INTR_TEST.SMBALERT.value & ((~decoded_wr_biten[15]))) 1 -1" (3 "11")
+Condition 287 "723839218" "(decoded_wr_data[15] & decoded_wr_biten[15]) 1 -1" (2 "10")
+Condition 290 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (2 "10")
+Condition 290 "3019646254" "(field_storage.INTR_TEST.CONTROLLER_TX_FIFO_ERROR.value & ((~decoded_wr_biten[16]))) 1 -1" (3 "11")
+Condition 291 "3153801006" "(decoded_wr_data[16] & decoded_wr_biten[16]) 1 -1" (2 "10")
+Condition 294 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (2 "10")
+Condition 294 "3441003148" "(field_storage.INTR_TEST.CONTROLLER_RX_FIFO_ERROR.value & ((~decoded_wr_biten[17]))) 1 -1" (3 "11")
+Condition 295 "2451159384" "(decoded_wr_data[17] & decoded_wr_biten[17]) 1 -1" (2 "10")
+Condition 298 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (2 "10")
+Condition 298 "3916791770" "(field_storage.INTR_TEST.TARGET_TX_FIFO_ERROR.value & ((~decoded_wr_biten[18]))) 1 -1" (3 "11")
+Condition 299 "1429196890" "(decoded_wr_data[18] & decoded_wr_biten[18]) 1 -1" (2 "10")
+Condition 302 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (2 "10")
+Condition 302 "2542850168" "(field_storage.INTR_TEST.TARGET_RX_FIFO_ERROR.value & ((~decoded_wr_biten[19]))) 1 -1" (3 "11")
+Condition 303 "2093827628" "(decoded_wr_data[19] & decoded_wr_biten[19]) 1 -1" (2 "10")
+Condition 307 "1960375513" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 309 "949681941" "((field_storage.SMBUS_CTRL.SMBALERT.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 310 "2659902298" "(field_storage.SMBUS_CTRL.SMBALERT.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 311 "3989411191" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 313 "3567974476" "((field_storage.CTRL.ENABLEHOST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 314 "2951450582" "(field_storage.CTRL.ENABLEHOST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 315 "4202464386" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 317 "2117524327" "((field_storage.CTRL.ENABLETARGET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
+Condition 318 "3981205142" "(field_storage.CTRL.ENABLETARGET.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 319 "2242758261" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 323 "2075687442" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 327 "3236358491" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 331 "2596563908" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 335 "3964350561" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 339 "3289087459" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 343 "3622976797" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 346 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 346 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 346 "2554420891" "(field_storage.FIFO_CTRL.RXRST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 347 "3389759845" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 350 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
+Condition 350 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 350 "1126414675" "(field_storage.FIFO_CTRL.FMTRST.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 351 "940755561" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 354 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (1 "01")
+Condition 354 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (2 "10")
+Condition 354 "264206727" "(field_storage.FIFO_CTRL.ACQRST.value & ((~decoded_wr_biten[7]))) 1 -1" (3 "11")
+Condition 355 "2717418453" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 358 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (1 "01")
+Condition 358 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (2 "10")
+Condition 358 "2335894321" "(field_storage.FIFO_CTRL.TXRST.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 359 "1821251107" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 367 "2647200411" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 371 "925047565" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 375 "2605843858" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 390 "3857346399" "(decoded_wr_data[30] & decoded_wr_biten[30]) 1 -1" (2 "10")
+Condition 394 "2002872070" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 404 "1095760109" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (1 "01")
+Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (2 "10")
+Condition 410 "4146284438" "(field_storage.TARGET_ACK_CTRL.NACK.value & ((~decoded_wr_biten[31]))) 1 -1" (3 "11")
+Condition 411 "1588250491" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
+Condition 416 "756734046" "(decoded_wr_data[31] & decoded_wr_biten[31]) 1 -1" (2 "10")
 
 CHECKSUM: "3355438513 3938785771"
 ANNOTATION: "SMC-REGBLOCK-A4-READNEVERERRORS: in this block reg_re and reg_we are mutually exclusive, wr_err is gated on reg_we and addrmiss requires that no address hit, so a read that hits an address always sees reg_error low and the crossed term cannot occur."
@@ -221,7 +448,8 @@ Condition 185 "1262529806" "(addr_hit[48] & reg_re & ((!reg_error))) 1 -1" (3 "1
 CHECKSUM: "2067798497 84113796"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: log_engine_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -231,6 +459,17 @@ Condition 88 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 57 "3436629596" "((field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 61 "3315472069" "((field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
+Condition 35 "1986721459" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 51 "1009495431" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 55 "2080185959" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 58 "1029291229" "(field_storage.INTR_TEST.LOG_FETCH_ERR.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 59 "883185596" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (1 "01")
+Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 62 "3177167649" "(field_storage.INTR_TEST.LOG_WRITE_ERR.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 63 "1936909404" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
 CHECKSUM: "677483531 442683581"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -256,8 +495,10 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "3271107167 1345162332"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: reset_unit_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Condition 83 "3228717886" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
 CHECKSUM: "2083532214 1989962094"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -294,16 +535,22 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "1018686372 837048839"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: system_timer_octs_reg
 Branch 5 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 39 "3493643897" "((field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 40 "1402790933" "(field_storage.TIMER_START.START.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 41 "4011720543" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 50 "1941977297" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
 CHECKSUM: "656852128 1067758899"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues covers the whole register and none leaves a lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: telemetry_receiver_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -314,7 +561,21 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 Condition 31 "1684124263" "((field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
 Condition 35 "2589437783" "((field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) | (decoded_wr_data[4] & decoded_wr_biten[4])) 1 -1" (3 "10")
 Condition 56 "2320845135" "((field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 32 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 32 "2788960086" "(field_storage.CTRL.BUFFER_POP.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 33 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
+Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
+Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 Condition 39 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
+Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
+Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
+Condition 50 "3055669046" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 54 "615806284" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (2 "10")
+Condition 57 "1174863421" "(field_storage.INTR_TEST.MISSING_LAST.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 58 "1064717943" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 62 "4097857498" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
 
 CHECKSUM: "427703398 1889139731"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
@@ -329,14 +590,38 @@ Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_b
 
 CHECKSUM: "3055559241 4290674178"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_16550_main_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
+Condition 43 "1040506279" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 47 "3171620908" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 51 "424183414" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 55 "3912532914" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 59 "3730224115" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 64 "1197122749" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 68 "97625224" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 72 "3738569812" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 76 "2142556074" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 80 "3502364280" "(decoded_wr_data[6] & decoded_wr_biten[6]) 1 -1" (2 "10")
+Condition 84 "910478666" "(decoded_wr_data[7] & decoded_wr_biten[7]) 1 -1" (2 "10")
+Condition 88 "54033303" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 92 "497594566" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 96 "3269226326" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 100 "809116667" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 104 "2800192357" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 108 "1535505912" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
+Condition 122 "4259732805" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 126 "2129238222" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 130 "895760360" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
+Condition 134 "718668624" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
+Condition 138 "4068082285" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
+Condition 142 "3234267788" "(decoded_wr_data[5] & decoded_wr_biten[5]) 1 -1" (2 "10")
 
 CHECKSUM: "2964910200 3918030293"
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
 ANNOTATION: "SMC-REGBLOCK-A3-NOREADCHANNEL: uart_16550.sv selects the write-only register map on the write channel only -- its read-channel select has no branch for that map -- so this block's arvalid is never asserted and a row that needs it high cannot occur. A row over ar_accept alone stays graded: the block ORs it with aw_accept, which the write channel does assert."
-ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle; the retain row of the write-data ternary needs the storage at one while a write arrives with that lane disabled and no access produces it. Fields of the same block that keep their value between writes stay graded."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues covers the whole register and none leaves a lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the storage holds a written one for a single cycle and the cpuif accepts no second write in that cycle, which leaves the storage at zero at every write the block accepts. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, needs the storage at one during a write, and no access produces it. Fields of the same block that keep their value between writes stay graded."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_16550_main_wo_reg
 Branch 6 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
@@ -348,12 +633,26 @@ Condition 12 "222455864" "(axil_arvalid && ((!axil_prev_was_rd))) 1 -1" (3 "11")
 Condition 29 "2027584125" "((field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) | (decoded_wr_data[1] & decoded_wr_biten[1])) 1 -1" (3 "10")
 Condition 33 "1921209416" "((field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) | (decoded_wr_data[2] & decoded_wr_biten[2])) 1 -1" (3 "10")
 Condition 25 "663184004" "((field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 26 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 26 "2120759678" "(field_storage.FCR.FIFO_ENABLE.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 27 "9238850" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
+Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (1 "01")
+Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (2 "10")
+Condition 30 "3837417488" "(field_storage.FCR.RCVR_FIFO_RESET.value & ((~decoded_wr_biten[1]))) 1 -1" (3 "11")
+Condition 31 "4263552233" "(decoded_wr_data[1] & decoded_wr_biten[1]) 1 -1" (2 "10")
+Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (1 "01")
+Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (2 "10")
+Condition 34 "3378929538" "(field_storage.FCR.XMIT_FIFO_RESET.value & ((~decoded_wr_biten[2]))) 1 -1" (3 "11")
+Condition 35 "2397977136" "(decoded_wr_data[2] & decoded_wr_biten[2]) 1 -1" (2 "10")
 Condition 37 "3236079998" "((field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) | (decoded_wr_data[3] & decoded_wr_biten[3])) 1 -1" (3 "10")
+Condition 38 "3025825830" "(field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) 1 -1" (1 "01")
+Condition 38 "3025825830" "(field_storage.FCR.DMA_MODE_SELECT.value & ((~decoded_wr_biten[3]))) 1 -1" (3 "11")
+Condition 39 "2323973005" "(decoded_wr_data[3] & decoded_wr_biten[3]) 1 -1" (2 "10")
 
 CHECKSUM: "225643378 1423410759"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."
 ANNOTATION: "SMC-REGBLOCK-A2-NOERROR: the block is generated without an address or access check, so decoded_err, cpuif_wr_err and cpuif_rd_err hold zero and bresp/rresp never leave OKAY; the error branches have no access that can enter them. The fabric's own SLVERR and DECERR paths are graded on their modules, not here."
-ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues covers the whole register and none leaves a lane disabled while the field holds a one, which is what the retain row of the write-data ternary needs. The field keeps its value and the design takes that row under a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a W1C field is a different expression and a leaf covers it."
+ANNOTATION: "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more than that, every write it issues has every lane on. A row of a field's software-write branch that needs some lane off, the retain row, a row of the retain operand or of the write-data operand, is reachable in the design and uncovered for want of a partial write; an agent that issues one covers it. A block whose cpuif is wider takes a half-word write from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it."
 MODULE: uart_log_engine_ctrl_reg
 Condition 1 "719113132" "(s_axil_arvalid && s_axil_arready) 1 -1" (2 "10")
 Condition 2 "1034964844" "(s_axil_awvalid && s_axil_awready) 1 -1" (2 "10")
@@ -362,6 +661,9 @@ Condition 24 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_st
 Condition 24 "1986659825" "(cpuif_req & ( ! (((!cpuif_req_is_wr)) & cpuif_req_stall_rd) ) & ( ! (cpuif_req_is_wr & cpuif_req_stall_wr) )) 1 -1" (3 "110")
 Branch 4 "2022485169" "axil_resp_buffer_err[axil_resp_rptr[0]]" (0) "axil_resp_buffer_err[axil_resp_rptr[0]] 1"
 Condition 19 "3596939294" "((field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) | (decoded_wr_data[0] & decoded_wr_biten[0])) 1 -1" (3 "10")
+Condition 20 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (1 "01")
+Condition 20 "1222642158" "(field_storage.CTRL.UART_EN.value & ((~decoded_wr_biten[0]))) 1 -1" (3 "11")
+Condition 21 "760254986" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 
 CHECKSUM: "1361930843 1317082537"
 ANNOTATION: "SMC-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif of this block hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so an AXI-Lite request is accepted the cycle it is valid and the stall branches of the request path never execute; the valid-without-ready row of each handshake condition has no access that can produce it."

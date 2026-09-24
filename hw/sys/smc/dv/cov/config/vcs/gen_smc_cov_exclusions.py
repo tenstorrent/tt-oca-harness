@@ -34,8 +34,9 @@ A sixth belongs to the register specification rather than to the generated code:
 * A6 SINGLEPULSE-RETAIN: a field the RDL declares `singlepulse` holds a written
   one for a single cycle, and the cpuif accepts no second write in that cycle,
   so the storage reads zero at every write the field sees. The retain row of the
-  write-data ternary needs the storage at one while a write arrives with that
-  lane disabled, and no access produces it.
+  write-data ternary, and each row of its retain operand that asks for the
+  storage at one, needs the storage at one during a write, and no access
+  produces it.
 
 One class is the bench's own, and is marked as such rather than dressed as a
 property of the design:
@@ -43,12 +44,12 @@ property of the design:
 * B1 PARTIAL-LANE-WRITE: a field that keeps its value between writes does take
   that same retain row when a write leaves one lane disabled while it holds a
   one. The SMC AXI agent writes whole 32-bit words, so on a block whose cpuif
-  is no wider than that every write covers the whole register and the row is
-  uncovered for want of an agent rather than for want of a path. On a block
-  with a wider cpuif the same agent issues a half-word write, which does leave
-  lanes disabled, so those rows are reachable and stay graded. It is taken for
-  every field of a narrow-enough register block that a class above has not
-  already named. The
+  is no wider than that every write has every lane on, and every row of a
+  field's software-write branch that needs a lane off, whether the retain row
+  or a row of the retain or write-data operand, is uncovered for want of an
+  agent rather than for want of a path. On a block with a wider cpuif the same
+  agent issues a half-word write, which does leave lanes disabled, so those rows
+  stay graded. The
   clear-on-write row of a W1C field is a different expression and a leaf covers
   it.
 
@@ -169,7 +170,10 @@ Every checksum and entry text below comes from those templates.
 
 Only points the merged report marks uncovered are written, rows, branch arms
 and FSM states and transitions alike, so a reachable point is never hidden by a
-pattern. A condition vector is read from the report's EXPRESSION table alone
+pattern. The report scores each operand of a condition again beneath it, and
+the classes that take operand rows pair each template point with its report
+table within its own source line, since the operand of a write has the same
+text in every bit-0 field of a block. A condition vector is read from the report's EXPRESSION table alone
 and a branch arm from the table of the construct at that source line, and an
 arm the report scores as a path through several decisions rather than as one
 direction is left graded. The rule is a backstop, not the argument: a class
@@ -187,9 +191,11 @@ the regenerated file.
 from __future__ import annotations
 
 import argparse
+import itertools
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[6]
@@ -466,20 +472,21 @@ A5 = (
 A6 = (
     "SMC-REGBLOCK-A6-SINGLEPULSE-RETAIN: the RDL declares these fields singlepulse, so the "
     "storage holds a written one for a single cycle and the cpuif accepts no second write in "
-    "that cycle; the retain row of the write-data ternary needs the storage at one while a "
-    "write arrives with that lane disabled and no access produces it. Fields of the same block "
-    "that keep their value between writes stay graded."
+    "that cycle, which leaves the storage at zero at every write the block accepts. The retain "
+    "row of the write-data ternary, and each row of its retain operand that asks for the "
+    "storage at one, needs the storage at one during a write, and no access produces it. "
+    "Fields of the same block that keep their value between writes stay graded."
 )
 
 B1 = (
     "SMC-REGBLOCK-B1-PARTIAL-LANE-WRITE: a property of this bench, not of the design. The SMC "
     "AXI agent writes whole 32-bit words, so on a register block whose cpuif carries no more "
-    "than that, every write it issues covers the whole register and none leaves a lane disabled "
-    "while the field holds a one, which is what the retain row of the write-data ternary needs. "
-    "The field keeps its value and the design takes that row under a partial write; an agent "
-    "that issues one covers it. A block whose cpuif is wider takes a half-word write from this "
-    "same agent, so its retain rows are reachable and stay graded. The clear-on-write row of a "
-    "W1C field is a different expression and a leaf covers it."
+    "than that, every write it issues has every lane on. A row of a field's software-write "
+    "branch that needs some lane off, the retain row, a row of the retain operand or of the "
+    "write-data operand, is reachable in the design and uncovered for want of a partial write; "
+    "an agent that issues one covers it. A block whose cpuif is wider takes a half-word write "
+    "from this same agent, so its rows stay graded. The clear-on-write form of a W1C field is "
+    "left out, and a leaf covers it."
 )
 # The width of the write the bench's AXI agent issues. A register block whose
 # cpuif is no wider than this cannot be written a part at a time, and PeakRDL
@@ -496,15 +503,6 @@ def cpuif_data_width(source: str) -> "int | None":
         return None
     m = CPUIF_WIDTH.search(path.read_text(errors="replace"))
     return int(m.group(1)) + 1 if m else None
-
-
-# The retain-or-write ternary PeakRDL builds for a software-writable field. The
-# clear-on-write form a W1C field gets, `value & ( ~ (wr_data & biten) )`, has no
-# such tail and is not matched.
-B1_RETAIN = re.compile(
-    r"^\(\(field_storage\.\S+\.value & \(\(~decoded_wr_biten\[(\d+)\]\)\)\)"
-    r" \| \(decoded_wr_data\[\1\] & decoded_wr_biten\[\1\]\)\)$"
-)
 
 
 def is_regblock_source(src: str) -> bool:
@@ -529,10 +527,12 @@ P3 = (
 P4 = (
     "SMC-P4-SINGLE-SOURCE: with NUM_NTRACE_INST(0) the trace sink has one source, so the "
     "two-source term of TrRamPendPkt*WrEn is always false and the per-way pending count, which "
-    "only increments from those enables, stays at zero for the life of the design; a row that "
-    "needs a TrRamPend* signal or a south-port valid asserted follows. A row that holds those "
-    "signals at their constant value and turns on another term stays graded, because ordinary "
-    "trace traffic reaches it."
+    "only increments from those enables, stays at zero for the life of the design; every "
+    "pending valid, write and read enable, and every south-port valid, reads zero. A row is "
+    "taken only where the report's own term list shows it out of reach with those held at zero "
+    "and within reach with them free. The pending RAM's source field is RAM content and is "
+    "left free, so a row that holds the dead signals at zero and turns on another term stays "
+    "graded, as ordinary trace traffic reaches it."
 )
 P5 = (
     "SMC-P5-INSTR-TYPE-CONST: reg_wr_instr_type has no driver outside the MMR files, so the APB "
@@ -767,37 +767,123 @@ def ntrace_tied_off(terms: "list[str]", vector: str) -> bool:
 
 
 def expression_terms(modinfo: Path) -> "dict[tuple[str, str], list[str]]":
-    """(module, expression) -> the term texts the report underlines beneath it."""
-    out: dict[tuple[str, str], list[str]] = {}
-    module = ""
-    in_cond = False
-    pending: "tuple[int, str] | None" = None
-    for line in modinfo.read_text(errors="replace").splitlines():
-        m = re.match(r"^(\w+) Coverage for Module : (\S+)", line)
-        if m:
-            in_cond = m.group(1) == "Cond"
-            module = m.group(2).split("(")[0]
-            pending = None
-            continue
-        if not in_cond:
-            continue
-        m = re.match(r"^\s*EXPRESSION (.*)$", line)
-        if m:
-            pending = (line.index(m.group(1)), m.group(1))
-            continue
-        if pending is None:
-            continue
-        col, expr = pending
-        pending = None
-        spans = [(s.start(), s.end(), s.group(0)) for s in re.finditer(r"-+\d+-+", line)]
-        if not spans:
-            continue
-        numbered = sorted(
-            (int(re.sub(r"\D", "", tok)), expr[max(0, s - col) : e - col].strip())
-            for s, e, tok in spans
-        )
-        out[(module, expr.strip())] = [term for _, term in numbered]
-    return out
+    """(module, expression) -> the term texts the report lists for a top-level expression."""
+    return {
+        (module, point.text): list(point.terms)
+        for module, points in report_points(modinfo).items()
+        for point in points
+        if not point.sub and point.terms
+    }
+
+
+LANE_IDENTIFIER = re.compile(r"[A-Za-z_][\w$]*(?:\[[^\]]*\])*(?:\.[A-Za-z_][\w$]*(?:\[[^\]]*\])*)*")
+
+
+SIZED_LITERAL = re.compile(r"\d*'[sS]?([bhdoBHDO])([0-9a-fA-F_xXzZ]+)")
+
+
+def _python_condition(term: str, names: list[str]) -> "str | None":
+    """A term as a Python expression over v[i], one boolean per signal name, or None.
+
+    Every signal is abstracted to one bit, which is exact for the one-bit enables,
+    valids and lanes the classes below ask about; a reduction of a vector becomes
+    the signal itself, and a comparison between signals stays a comparison. A
+    ternary or anything else this does not read gives None, so the row is left out.
+    """
+    if "?" in term:
+        return None
+
+    def literal(m: re.Match) -> str:
+        return "0" if re.fullmatch(r"0+", m.group(2).replace("_", "")) else "1"
+
+    body = SIZED_LITERAL.sub(literal, term)
+    body = re.sub(r"\b(\d+)\[[^\]]*\]", r"\1", body)
+
+    def slot(m: re.Match) -> str:
+        if m.group(0) not in names:
+            names.append(m.group(0))
+        return f" v[{names.index(m.group(0))}] "
+
+    body = LANE_IDENTIFIER.sub(slot, body)
+    body = re.sub(r"~\s*[|&^]", " not ", body)
+    body = re.sub(r"(^|\()\s*[|&^](?=\s*(?:v\[|\())", r"\1", body)
+    for a, b in (("&&", " and "), ("||", " or "), ("!=", " != "), ("==", " == ")):
+        body = body.replace(a, b)
+    body = re.sub(r"!(?!=)", " not ", body)
+    body = body.replace("~", " not ").replace("&", " and ").replace("|", " or ")
+    return body.replace("^", " != ").strip()
+
+
+def _row_satisfiable(
+    terms: tuple[str, ...], vector: str, forced: "re.Pattern[str] | None", value: int
+) -> "bool | None":
+    """Whether some value of the terms' signals gives the row, with the forced ones held."""
+    compiled = []
+    names: list[str] = []
+    for term in terms:
+        local: list[str] = []
+        body = _python_condition(term, local)
+        if body is None:
+            return None
+        try:
+            compiled.append((local, compile(body, "<term>", "eval")))
+        except SyntaxError:
+            return None
+        names += [n for n in local if n not in names]
+    free = [n for n in names if forced is None or not forced.search(n)]
+    if len(free) > 12:
+        return None
+    for bits in itertools.product((0, 1), repeat=len(free)):
+        env = dict(zip(free, bits))
+        env.update({n: value for n in names if n not in env})
+        try:
+            got = "".join(
+                str(int(bool(eval(code, {}, {"v": [env[n] for n in local]}))))
+                for local, code in compiled
+            )
+        except Exception:
+            return None
+        if got == vector:
+            return True
+    return False
+
+
+def needs_forced_away(
+    terms: "tuple[str, ...] | list[str] | None",
+    vector: str,
+    forced: "re.Pattern[str]",
+    value: int,
+) -> bool:
+    """Whether a row is out of reach with the forced signals held but within reach with them free."""
+    if not terms or len(terms) != len(vector):
+        return False
+    terms = tuple(terms)
+    return _row_satisfiable(terms, vector, forced, value) is False and bool(
+        _row_satisfiable(terms, vector, None, value)
+    )
+
+
+WRITE_LANE = re.compile(r"^decoded_wr_biten\b")
+
+
+def needs_lane_off(terms: "tuple[str, ...] | None", vector: str) -> bool:
+    """Whether a row needs some write lane off: out of reach with every lane on."""
+    return needs_forced_away(terms, vector, WRITE_LANE, 1)
+
+
+# P4's dead signals: with one trace source the pending count stays at zero, so
+# every pending valid and write or read enable reads zero, and the south port
+# has no source. The pending RAM's source field is RAM content rather than a
+# tied signal, so it is left free, as is every north-side signal.
+SINGLE_SOURCE_DEAD = re.compile(
+    r"TrRamPend(?:Pkt)?(?:Vld|WrEn|RdEn|NorthWrEn|SouthWrEn)|TrRamPend\w*PktVld|"
+    r"South\w*Vld|TrRamSouth\w*|TR_TS_South\w*"
+)
+
+
+def single_source_row(terms: "list[str]", vector: str) -> bool:
+    """Whether a row needs a signal P4 holds at zero to be one."""
+    return needs_forced_away(terms, vector, SINGLE_SOURCE_DEAD, 0)
 
 
 # module -> [(class, expression pattern, term-vector test or None, source
@@ -811,13 +897,7 @@ def expression_terms(modinfo: Path) -> "dict[tuple[str, str], list[str]]":
 FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     "trace_sink": [
         (P1, re.compile(r"\btrntr|ntrace|insntrace", re.I), ntrace_tied_off, None),
-        # The pending valid is the leading term: the row that turns it on is the
-        # fact's, the row that leaves it off belongs to ordinary trace traffic.
-        (P4, re.compile(r"^\(TrRamPendPktVld_ANY\[\d\] &"), re.compile(r"^1"), None),
-        (P4, re.compile(r"^\(\(\(~\|TrRamPend\w*PktVld_ANY\)\) &"), re.compile(r"^0"), None),
-        (P4, re.compile(r"^\(TrRamPend(Wr|Rd)En_ANY\[\d\] \|"), None, None),
-        (P4, re.compile(r"TrRamPendPkt(North|South)WrEn_TS0"), None, None),
-        (P4, re.compile(r"TrRamSouth|TR_TS_South|South_Vld"), None, None),
+        (P4, re.compile(r"TrRamPend|TrRamSouth|TR_TS_South|South_Vld"), single_source_row, None),
     ],
     "axi_filter_wrap": [(P2, re.compile(r"^\(filter_skip_i \?"), re.compile(r"^1$"), None)],
     "cla_mmr": [
@@ -953,57 +1033,253 @@ EXTRA_FACTS: "dict[str, list[tuple[str, object, object]]]" = {
 }
 
 
-def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
-    """(module, expression) -> set of term vectors the report marks Not Covered.
+class Point(NamedTuple):
+    """One condition point of the report: an EXPRESSION or a SUB-EXPRESSION table."""
 
-    Below each EXPRESSION the report scores its operands again under their own
-    SUB-EXPRESSION headings. Those rows are the operand's, not the expression's,
-    and a vector uncovered for an operand is often covered for the expression
-    that contains it, so `expr` is None across a SUB-EXPRESSION table and its
-    rows are dropped. An empty `expr` is a different state: it is the long XOR
-    network urg prints as a numbered term list instead of an expression.
+    text: str
+    line: int
+    sub: bool
+    uncovered: frozenset[str]
+    terms: "tuple[str, ...] | None"
+
+
+NUMBERED_TERM = re.compile(r"^\s*\d+\s+(\S.*?)\s*$")
+TERM_OPERATOR = re.compile(r"\s(\|\||&&|\||&|\^|\+)$")
+
+
+def report_points(modinfo: Path) -> dict[str, list[Point]]:
+    """module -> every condition point of the report, top-level and sub-expression, in order.
+
+    urg prints most expressions on one line with their terms underlined beneath.
+    One too long for that is printed as a numbered list, one term per row, each
+    row but the last ending in the operator that joins it to the next and the
+    last carrying the expression's closing parenthesis; a long XOR network and a
+    one-term ternary are the same list with single-token or single terms.
     """
-    rows: dict[tuple[str, str], set[str]] = {}
+    out: dict[str, list[Point]] = {}
     module = ""
-    expr: str | None = ""
-    terms: list[str] = []
     in_cond = False
+    lineno = 0
+    cur: dict | None = None
+    mode = ""
+
+    def close() -> None:
+        if cur is not None and cur["text"]:
+            out.setdefault(module, []).append(
+                Point(
+                    cur["text"],
+                    cur["line"],
+                    cur["sub"],
+                    frozenset(cur["unc"]),
+                    tuple(cur["terms"]) if cur["terms"] else None,
+                )
+            )
+
     for line in modinfo.read_text(errors="replace").splitlines():
         m = re.match(r"^(\w+) Coverage for Module : (\S+)", line)
         if m:
+            close()
+            cur = None
             in_cond = m.group(1) == "Cond"
             module = m.group(2).split("(")[0]
-            expr = ""
-            terms = []
             continue
         if not in_cond:
             continue
-        if re.match(r"^\s*SUB-EXPRESSION", line):
-            expr = None
-            terms = []
-            continue
-        m = re.match(r"^\s*EXPRESSION\s*(.*)$", line)
+        m = re.match(r"^\s*LINE\s+(\d+)\s*$", line)
         if m:
-            expr = m.group(1).strip()
-            terms = []
+            lineno = int(m.group(1))
             continue
-        # A long XOR network is listed one term per row under "Number  Term".
-        m = re.match(r"^\s*\d+\s+(\S+)\s*(\^?)\s*$", line)
-        if m and expr == "":
-            terms.append(m.group(1).rstrip(")"))
-            if not m.group(2):
-                expr = "(" + " ^ ".join(terms) + ")"
+        m = re.match(r"^\s*(SUB-EXPRESSION|EXPRESSION)(?: (.*))?$", line)
+        if m:
+            close()
+            text = (m.group(2) or "").strip()
+            cur = {
+                "text": text,
+                "line": lineno,
+                "sub": m.group(1) == "SUB-EXPRESSION",
+                "unc": set(),
+                "terms": None,
+                "parts": [],
+            }
+            mode = "underline" if text else "numbered"
+            col = line.index(m.group(2)) if m.group(2) else 0
             continue
-        # A ternary is listed the same way, as the one term it has. Its text
-        # carries the closing parenthesis, and a status row does not, which is
-        # what tells the two apart.
-        m = re.match(r"^\s*1\s+(\S.*\))\s*$", line)
-        if m and expr == "" and not terms:
-            expr = "(" + m.group(1)
+        if cur is None:
+            continue
+        if mode == "underline":
+            spans = [(s.start(), s.end(), s.group(0)) for s in re.finditer(r"-+\d+-+", line)]
+            if spans:
+                cur["terms"] = [
+                    term
+                    for _, term in sorted(
+                        (
+                            int(re.sub(r"\D", "", tok)),
+                            cur["text"][max(0, s - col) : e - col].strip(),
+                        )
+                        for s, e, tok in spans
+                    )
+                ]
+            mode = "rows"
+            continue
+        if mode == "numbered":
+            m = NUMBERED_TERM.match(line)
+            if m and m.group(1) != "Term":
+                body = m.group(1)
+                op = TERM_OPERATOR.search(body)
+                if op:
+                    cur["parts"].append((body[: op.start()].strip(), op.group(1)))
+                    continue
+                parts = cur["parts"] + [(body[:-1] if body.endswith(")") else body, "")]
+                cur["text"] = "(" + " ".join(t + (f" {o}" if o else "") for t, o in parts) + ")"
+                cur["terms"] = [t for t, _ in parts]
+                mode = "rows"
             continue
         m = re.match(r"^\s*((?:[01]\s+)+)Not Covered", line)
-        if m and expr:
-            rows.setdefault((module, expr), set()).add(m.group(1).replace(" ", ""))
+        if m:
+            cur["unc"].add(m.group(1).replace(" ", ""))
+    close()
+    return out
+
+
+class TemplatePoint(NamedTuple):
+    """One condition point of urg's exclusion template, with its rows."""
+
+    text: str
+    line: int
+    source: str
+    rows: tuple[tuple[str, str], ...]
+
+
+TEMPLATE_SOURCE = re.compile(
+    r'^// ANNOTATION: "(?:vcs_gen_start:\S*?:vcs_gen_end:)?FileName: (\S+), LineNumber: (\d+)"'
+)
+TEMPLATE_CONDITION = re.compile(r'^// (Condition (\d+) "\d+" "(.*) 1 -1"(?: \(\d+ "([01]+)"\))?)$')
+
+
+def template_points(template: Path) -> dict[str, list[TemplatePoint]]:
+    """module -> the condition points of urg's condition template, in template order."""
+    raw: dict[str, list[list]] = {}
+    module = source = ""
+    for line in template.read_text(errors="replace").splitlines():
+        m = MODULE_RE.match(line)
+        if m:
+            module = m.group(1)
+            continue
+        m = TEMPLATE_SOURCE.match(line)
+        if m:
+            source = f"{m.group(1)}:{m.group(2)}"
+            continue
+        m = TEMPLATE_CONDITION.match(line)
+        if m is None or not module:
+            continue
+        points = raw.setdefault(module, [])
+        if not points or points[-1][0] != m.group(2):
+            points.append([m.group(2), m.group(3), source, []])
+        if m.group(4) is not None:
+            points[-1][3].append((m.group(4), m.group(1)))
+    return {
+        mod: [
+            TemplatePoint(text, int(src.rpartition(":")[2] or 0), src, tuple(rows))
+            for _, text, src, rows in pts
+        ]
+        for mod, pts in raw.items()
+    }
+
+
+NEGATED = re.compile(r"^\( ~ (.*) \)$")
+
+
+def _same_point(a: str, b: str) -> bool:
+    """The template writes a negated operand as `( ~ X )` where the report tables `X`."""
+    na, nb = NEGATED.match(a), NEGATED.match(b)
+    return (na.group(1) if na else a) == (nb.group(1) if nb else b)
+
+
+def align_points(
+    report: list[Point], template: list[TemplatePoint]
+) -> list[tuple[TemplatePoint, Point]]:
+    """Pair each template point with its report point, within one source line at a time.
+
+    The operand of a write, `(decoded_wr_data[0] & decoded_wr_biten[0])`, has the
+    same text in every bit-0 field of a block, and a generate loop puts every
+    iteration on one line, so neither text nor line alone names a point. Within
+    one line both files list the points in the same order. A template point with
+    no match is left out, so a layout this does not read fails closed.
+    """
+    by_line: dict[int, list[Point]] = {}
+    for point in report:
+        by_line.setdefault(point.line, []).append(point)
+    pairs = []
+    cursor: dict[int, int] = {}
+    for tp in template:
+        candidates = by_line.get(tp.line, [])
+        k = cursor.get(tp.line, 0)
+        while k < len(candidates) and not _same_point(candidates[k].text, tp.text):
+            k += 1
+        if k < len(candidates):
+            pairs.append((tp, candidates[k]))
+            cursor[tp.line] = k + 1
+    return pairs
+
+
+_SOURCE_LINES: dict[str, list[str]] = {}
+
+
+def in_write_branch(source: str) -> bool:
+    """Whether a regblock source line is a field's next value inside its software-write branch.
+
+    PeakRDL writes `next_c = ...` under `if(decoded_reg_strb.X && decoded_req_is_wr)
+    begin // SW write`, so a condition there is scored only while a write to the
+    register is being accepted. The clear-on-write form of a W1C field is left out.
+    """
+    path, _, line = source.rpartition(":")
+    if not line.isdigit():
+        return False
+    lines = _SOURCE_LINES.setdefault(path, Path(path).read_text(errors="replace").splitlines())
+    n = int(line) - 1
+    if not 0 <= n < len(lines):
+        return False
+    stmt = lines[n].strip()
+    if not stmt.startswith("next_c") or "~(decoded_wr_data" in stmt.replace(" ", ""):
+        return False
+    previous = next((lines[k] for k in range(n - 1, max(n - 6, -1), -1) if lines[k].strip()), "")
+    return "// SW write" in previous
+
+
+RETAIN_OPERAND = re.compile(
+    r"^\(field_storage\.(\S+)\.value & \(\(~decoded_wr_biten\[([^\]]+)\]\)\)\)$"
+)
+
+
+def singlepulse_value_row(module: str, text: str, vector: str) -> bool:
+    """Whether a row asks a singlepulse field's retain operand for the storage at one.
+
+    A6 names a field by the retain-or-write ternary it heads; this rebuilds that
+    ternary from the operand to ask the same question of it.
+    """
+    m = RETAIN_OPERAND.match(text)
+    if m is None or not vector.startswith("1"):
+        return False
+    whole = (
+        f"((field_storage.{m.group(1)}.value & ((~decoded_wr_biten[{m.group(2)}]))) | "
+        f"(decoded_wr_data[{m.group(2)}] & decoded_wr_biten[{m.group(2)}]))"
+    )
+    return any(r is A6 and p.search(whole) for r, p, _ in EXTRA_FACTS.get(module, []))
+
+
+def uncovered_rows(modinfo: Path) -> dict[tuple[str, str], set[str]]:
+    """(module, expression) -> set of term vectors the report marks Not Covered.
+
+    Top-level expressions only. A SUB-EXPRESSION table scores an operand of the
+    expression above it, and a vector uncovered for an operand is often covered
+    for the expression that contains it, so its rows are never merged into the
+    parent's; the classes that take operand rows read report_points instead.
+    """
+    rows: dict[tuple[str, str], set[str]] = {}
+    for module, points in report_points(modinfo).items():
+        for point in points:
+            if not point.sub and point.uncovered:
+                rows.setdefault((module, point.text), set()).update(point.uncovered)
     return rows
 
 
@@ -1192,6 +1468,8 @@ def render_regblock(
     templates: dict[str, dict[str, Section]],
     uncovered: dict[tuple[str, str], set[str]],
     branches: dict[tuple[str, int, str], str],
+    report_points_by_module: dict[str, list[Point]],
+    template_points_by_module: dict[str, list[TemplatePoint]],
 ) -> tuple[str, int]:
     out = [
         "// SPDX-License-Identifier: Apache-2.0",
@@ -1234,22 +1512,33 @@ def render_regblock(
             reason = select_extra(module, entry, uncovered, src, branches)
             if reason:
                 block.append((reason, entry))
-        # B1 last: the retain row of every field of this block a class above has
-        # not already named, which is every field that keeps its value.
+        # Last, the write-branch rows that need a write lane off: A6's where a
+        # singlepulse field's retain operand is asked for the storage at one,
+        # which the design forbids at any cpuif width, and B1's for the rest,
+        # which only a block no wider than the agent's write leaves unreachable.
         taken = {e for _, e in block}
-        section = templates["cond"].get(module)
-        for src, entry in section.entries if section else []:
-            if entry in taken or not is_regblock_source(src):
+        tpoints = template_points_by_module.get(module, [])
+        width = cpuif_data_width(tpoints[0].source) if tpoints else None
+        for tp, rp in align_points(report_points_by_module.get(module, []), tpoints):
+            if not is_regblock_source(tp.source) or "decoded_wr_biten" not in tp.text:
                 continue
-            width = cpuif_data_width(src)
-            if width is None or width > AGENT_WRITE_BITS:
+            if not in_write_branch(tp.source):
                 continue
-            m = COND_ROW_RE.match(entry)
-            if m is None or not B1_RETAIN.match(m.group(2)):
-                continue
-            if m.group(4) != "10" or m.group(4) not in uncovered.get((module, m.group(2)), set()):
-                continue
-            block.append((B1, entry))
+            for vector, entry in tp.rows:
+                if entry in taken or vector not in rp.uncovered:
+                    continue
+                if singlepulse_value_row(module, tp.text, vector):
+                    reason = A6
+                elif (
+                    width is not None
+                    and width <= AGENT_WRITE_BITS
+                    and needs_lane_off(rp.terms, vector)
+                ):
+                    reason = B1
+                else:
+                    continue
+                block.append((reason, entry))
+                taken.add(entry)
         if not block:
             continue
         out += ["", f"CHECKSUM: {checksum}"]
@@ -1484,7 +1773,13 @@ def main() -> int:
     }
     uncovered = uncovered_rows(args.modinfo)
     branches = branch_status(args.modinfo)
-    reg_text, reg_n = render_regblock(templates, uncovered, branches)
+    reg_text, reg_n = render_regblock(
+        templates,
+        uncovered,
+        branches,
+        report_points(args.modinfo),
+        template_points(args.template_dir / "fullexclude_module.cond"),
+    )
     xor_text, xor_n = render_xor(templates, uncovered)
     fsm_text, fsm_n = render_fsm(templates, uncovered_fsm(args.modinfo))
     feat_text, feat_n = render_feature(

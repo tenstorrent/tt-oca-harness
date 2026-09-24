@@ -15,9 +15,9 @@ scope_epoch = "smc-vcs-cov-v1"
 # INPUT-UNCONNECTED, which belong to one block each, and A6 SINGLEPULSE-RETAIN,
 # the retain row of a field the RDL declares singlepulse. B1 PARTIAL-LANE-WRITE
 # joins them and is the bench's own: the AXI agent writes whole 32-bit words, so
-# on a block whose cpuif is no wider the retain row of a field that keeps its
-# value has no access behind it here. A block with a wider cpuif takes a
-# half-word write from the same agent and keeps those rows graded.
+# on a block whose cpuif is no wider no write-branch row that needs a lane off
+# has an access behind it here. A block with a wider cpuif takes a half-word
+# write from the same agent and keeps those rows graded.
 # The file header and the generator's docstring state them.
 [[native_files]]
 tool = "vcs"
