@@ -9756,7 +9756,8 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 *Test Coverage*:
 
 * The controller's wait for SCL to rise, which no leaf had taken: every controller leaf in the package talks to a device that never holds the clock.
-* Six hold points across one transfer, so the wait is taken from the address byte, its acknowledge and the payload bytes rather than from one place in the bit loop.
+* Six hold points across one transfer, so the wait is taken from the address byte, its acknowledge and the payload bytes rather than from one place in the bit loop. Each point is counted in SCL falling edges seen on the pads, not in nanoseconds from the queue: the write that queues the transfer does not complete at a fixed time, so delays measured from it put the hold in a different part of the bit loop from run to run.
+* The hold starts after SCL has fallen, so the line is already low when it begins and the controller meets it when it tries to release -- a stretch, not a clock pulse cut short.
 * The hold is a second driver on the open-drain bus, so the controller's own release cannot lift the line -- the same thing a stretching target does.
 * No timeout is enabled. A controller that gave up instead of waiting would show as a byte the target never received, not as a timeout the leaf could read as success, and `CONTROLLER_EVENTS` is required to stay clear on every leg.
 
