@@ -254,10 +254,19 @@ Branch 23 "2747705060" "(instr_type == 2'b1)" (1) "(instr_type == 2'b1) 0,1"
 CHECKSUM: "1453354636 2637439043"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."
 ANNOTATION: "SMC-P13-CLAMP-TIED: generic_ipx_clk_rst_ctrl forms o_gated_func_clamp as i_func_clamp | i_fuse_dis; smc_dfd_wrap ties both inputs to zero for the CLA, the DST source, the DST sink and the funnel, and the DFD top ties both to one for the NTR sink. The trace network interface takes the AND of the DST inputs and the absent N-trace side's, and the MMR interface takes the AND over every block, the CLA's included, so both are zero as well. Each gated clamp holds one value for the life of the design and the ternary arm the other value selects never executes."
+ANNOTATION: "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a zero default and sets only the empty and enable write enables, assigns the RAM read-pointer high write structure a constant zero, and the funnel ties the RAM start and limit write structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and read-pointer-high enables the DST sink MMR ORs with a software write hold zero, and the hardware-write row of each cannot occur."
 MODULE: dst_sink_mmr
 Condition 1 "1771738701" "(instr_type == 2'b1) 1 -1" (2 "1")
 Condition 2 "3135139960" "(instr_type == 2'b10) 1 -1" (2 "1")
+Condition 12 "2884869490" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMCONTROL)) | DstSinkMmrTrdstramcontrolWr.TrdstramstoponwrapWrEn) 1 -1" (2 "01")
+Condition 19 "455517637" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMCONTROL)) | DstSinkMmrTrdstramcontrolWr.TrdstrammodeWrEn) 1 -1" (2 "01")
 Condition 23 "2218510629" "(MMR_Trdstramcontrol_F_Trdstramempty_WrEn ? MMR_Trdstramcontrol_F_Trdstramempty_Data : MMR_Trdstramcontrol_F_Trdstramempty_Data_prev) 1 -1" (1 "0")
+Condition 34 "2727795479" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMCONTROL)) | DstSinkMmrTrdstramcontrolWr.TrdstramactiveWrEn) 1 -1" (2 "01")
+Condition 44 "577180046" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMSTARTLOW)) | DstSinkMmrTrdstramstartlowWr.TrdstramstartlowWrEn) 1 -1" (2 "01")
+Condition 51 "2031349919" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMSTARTHIGH)) | DstSinkMmrTrdstramstarthighWr.TrdstramstarthighWrEn) 1 -1" (2 "01")
+Condition 58 "3578118930" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMLIMITLOW)) | DstSinkMmrTrdstramlimitlowWr.TrdstramlimitlowWrEn) 1 -1" (2 "01")
+Condition 65 "1065959026" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMLIMITHIGH)) | DstSinkMmrTrdstramlimithighWr.TrdstramlimithighWrEn) 1 -1" (2 "01")
+Condition 94 "465082857" "((reg_write & reg_wr_strb[0] & (reg_addr == ADDR_MMR_TRDSTRAMRPHIGH)) | DstSinkMmrTrdstramrphighWr.TrdstramrphighWrEn) 1 -1" (2 "01")
 
 CHECKSUM: "1453354636 620480316"
 ANNOTATION: "SMC-P5-INSTR-TYPE-CONST: mmrs assigns MmrWrInstrType a constant zero, and every DFD MMR block latches its reg_wr_instr_type from that net alone, so the set and clear encodings update_value tests are never presented and their true rows cannot occur in any of the blocks."

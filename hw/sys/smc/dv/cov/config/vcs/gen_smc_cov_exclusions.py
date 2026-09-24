@@ -791,6 +791,14 @@ P20 = (
     "and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on "
     "purpose, so that item stays graded there."
 )
+P25 = (
+    "SMC-P25-SINK-WRITEBACK-TIED: the trace sink gives its DST RAM-control write structure a "
+    "zero default and sets only the empty and enable write enables, assigns the RAM read-pointer "
+    "high write structure a constant zero, and the funnel ties the RAM start and limit write "
+    "structures to zero, so the stop-on-wrap, mode and active enables and the start, limit and "
+    "read-pointer-high enables the DST sink MMR ORs with a software write hold zero, and the "
+    "hardware-write row of each cannot occur."
+)
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
     "efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and "
@@ -1320,7 +1328,17 @@ BRANCH_PATH_FACTS: "dict[str, list[tuple[str, re.Pattern[str], int]]]" = {
         (P1, re.compile(r"^ntr(?:_sink)?_gated_reset_n\b"), 0),
     ],
     "dst_mmr": [(P13, re.compile(r"^MMR_Trdstcontrol_F_Trdstempty_WrEn$"), 1)],
-    "dst_sink_mmr": [(P13, re.compile(r"^MMR_Trdstramcontrol_F_Trdstramempty_WrEn$"), 1)],
+    "dst_sink_mmr": [
+        (P13, re.compile(r"^MMR_Trdstramcontrol_F_Trdstramempty_WrEn$"), 1),
+        (
+            P25,
+            re.compile(
+                r"^DstSinkMmr(?:Trdstramcontrol\w*\.Trdstram(?:stoponwrap|mode|active)WrEn"
+                r"|Trdstram(?:startlow|starthigh|limitlow|limithigh|rphigh)Wr\.\w*WrEn)$"
+            ),
+            0,
+        ),
+    ],
     "trace_wrapper": [
         (P13, re.compile(r"^(?:dst_sink|funnel|dst)_gated_func_clamp\b"), 0),
         (P13, re.compile(r"^(?:ntr_sink|ntr)_gated_func_clamp\b"), 1),
@@ -2490,6 +2508,7 @@ FEATURE_CLASSES = (
     P20,
     P22,
     P24,
+    P25,
     C5,
     F3,
     B6,
