@@ -50,6 +50,12 @@ from .smc_dfd_trace_accumulator_fill_test_seq import (
 # dfd_dst.rdl Trdstformat, the uncompressed value its description names, so
 # every debug-bus sample becomes a packet and the sink stays busy.
 _DST_FORMAT_NONE = 0
+# The compressing value its description names. An uncompressed packet is a
+# fixed size, so the accumulator's write boundary advances by the same step
+# every time and only ever lands on even offsets; a compressed packet carries
+# only the bytes that changed, so its length varies and the boundary can land
+# on an odd offset.
+_DST_FORMAT_XOR_VLT = 3
 
 # A small window, so the write pointer comes round inside one action sweep and
 # the read pointer chasing it is never far behind.
@@ -74,6 +80,7 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         self.nonzero_words = 0
         self.positions_driven = 0
         self.modes_live: list[int] = []
+        self.frame_shapes: set[tuple[int, int]] = set()
         self.value_checks = 0
 
     # -- register helpers -------------------------------------------------
@@ -171,6 +178,68 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
         )
 
     # -- the concurrent phase ---------------------------------------------
+
+    async def _walk_frame_shape(self, logical_op: int) -> None:
+        """Walk the frame controls under a compressed stream.
+
+        The accumulator's write boundary is where a packet lands in the bank,
+        and no register addresses it. What the register contract does offer is
+        the frame shape: the frame length sets where a frame closes, and the
+        closure mode decides whether a packet crossing that boundary is pushed
+        back or the frame is closed early. Both move the offsets packets land
+        on, so walking them is the widest aim at the boundary available from
+        software.
+        """
+        impl = dst_register("Trdstimpl")
+        length = reg_field(impl, "Trdstvendorframelength")
+        stream = reg_field(impl, "Trdstvendorstreamlength")
+        cfg = dst_register("CDbgDebugTraceCfg")
+        closure = reg_field(cfg, "FrameClosureMode")
+        held_stream = (impl.reset_word & stream.mask) >> stream.offset
+        for mode in range(1 << closure.width):
+            await self._write_check(
+                cfg,
+                {
+                    "FrameClosureMode": mode,
+                    "FrameModeEnable": 1,
+                    "TraceSourceId": 0,
+                    "TraceFrameFillByte": 0,
+                    "FrameLenghtInBytes": 0,
+                },
+                f"closure{mode}",
+            )
+            for value in range(1 << length.width):
+                await self._write_check(
+                    impl,
+                    {
+                        "Trdstvendorframelength": value,
+                        "Trdstvendorstreamlength": held_stream,
+                        "Trdsttimestampconfig": 0,
+                    },
+                    f"framelen{mode}_{value}",
+                )
+                self.frame_shapes.add((mode, value))
+                await self._drive_actions(logical_op, 4, f"shape{mode}_{value}")
+
+    async def _drive_actions(self, logical_op: int, count: int, label: str) -> None:
+        """A short burst of action values, to keep the stream producing."""
+        eap = cla_register("CDbgNode0Eap0")
+        action = cla_field(eap, "Action0")
+        span = 1 << action.width
+        for step in range(count):
+            await self._write(
+                eap,
+                pack_fields(
+                    eap,
+                    {
+                        "LogicalOp": logical_op,
+                        "DestNode": 0,
+                        "Action0": (step * span // count) % span,
+                    },
+                ),
+                f"{label}_a{step}",
+            )
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
 
     async def _stream_and_drain(self, logical_op: int) -> None:
         """Drive the action field, the read pointer and the data port together."""
@@ -280,8 +349,37 @@ class smc_dfd_trace_sink_concurrent_test_seq(SmcCsrSeq):
             mode.width,
         )
 
+        # A compressed stream, with the frame shape walked underneath it.
+        await self._open_sink(0, "shaped")
+        await self._write_check(
+            dst_register("Trdstcontrol"),
+            {"Trdstactive": 1, "Trdstenable": 1, "Trdstformat": _DST_FORMAT_XOR_VLT},
+            "compressed",
+        )
+        await self._walk_frame_shape(logical_op)
+        cfg = dst_register("CDbgDebugTraceCfg")
+        closure = reg_field(cfg, "FrameClosureMode")
+        length = reg_field(dst_register("Trdstimpl"), "Trdstvendorframelength")
+        expected = {(m, v) for m in range(1 << closure.width) for v in range(1 << length.width)}
+        assert self.frame_shapes == expected, (
+            f"the frame-shape walk covered {len(self.frame_shapes)} of the {len(expected)} "
+            f"combinations of the {closure.width}-bit closure mode and the {length.width}-bit "
+            f"frame length"
+        )
+        self.value_checks += 1
+        cocotb.log.info(
+            "CHK-DST-CONCURRENT-FRAMEWALK: under a compressed stream the frame shape was "
+            "walked through all %d combinations of the closure mode and the frame length, "
+            "each written and read back exactly, so the offsets packets land on inside the "
+            "accumulator were moved across every frame geometry the register contract "
+            "offers; no register addresses that offset directly",
+            len(expected),
+        )
+
         for reg in (
             dst_register("Trdstcontrol"),
+            dst_register("Trdstimpl"),
+            dst_register("CDbgDebugTraceCfg"),
             cla_register("CDbgNode0Eap0"),
             cla_register("CDbgClaCtrlStatus"),
             funnel_register("Trfunnelcontrol"),
