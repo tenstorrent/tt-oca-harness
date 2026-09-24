@@ -9721,6 +9721,119 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-237-smc_i2c_controller_stretch_test]]
+===== 237 `smc_i2c_controller_stretch_test`
+
+*Source Module*: `smc_i2c_controller_stretch_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that holds the clock; observation on the transfer's own length and on what the target received
+
+*Objective*: The DUT's I2C controller must wait out a held clock and still deliver the transfer.
+
+*Test Coverage*:
+
+* The controller's wait for SCL to rise, which no leaf had taken: every controller leaf in the package talks to a device that never holds the clock.
+* Six hold points across one transfer, so the wait is taken from the address byte, its acknowledge and the payload bytes rather than from one place in the bit loop.
+* The hold is a second driver on the open-drain bus, so the controller's own release cannot lift the line -- the same thing a stretching target does.
+* No timeout is enabled. A controller that gave up instead of waiting would show as a byte the target never received, not as a timeout the leaf could read as success, and `CONTROLLER_EVENTS` is required to stay clear on every leg.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads.
+. Queue a three-entry write and time it with nothing holding the line.
+. For each hold point: queue the same write to a fresh offset, hold SCL low for a fixed span starting that far into the transfer, then release.
+. Require each held transfer to run at least three quarters of the hold longer than the clean one, to deliver the queued bytes, and to leave `CONTROLLER_EVENTS` clear.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-STRETCH-CLEAN` |The unheld transfer's length, which the held ones are measured against
+|`CHK-I2C-CTRL-STRETCH-HELD` |At every hold point the transfer ran longer by about the hold and still delivered every byte
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-238-smc_i2c_controller_control_symbol_test]]
+===== 238 `smc_i2c_controller_control_symbol_test`
+
+*Source Module*: `smc_i2c_controller_control_symbol_test`
+
+*BFM / Model*: `SmcI2cEepromSlave` on the `tb_i2c0_*` pads as the target, a second bench pad driver as the device that makes the edge; observation on `INTR_STATE.SDA_UNSTABLE` and `STATUS.HOSTIDLE`
+
+*Objective*: An SDA edge inside an SCL high window is a START or a STOP, and the controller must report it and drop the transfer.
+
+*Test Coverage*:
+
+* The control-symbol check the controller makes in every state where it holds SCL released. `smc_i2c_controller_sda_interference_test` pulls SDA low at time offsets measured in bit periods, which lands the edge wherever it falls -- with this controller's timing usually while SCL is low, where it is a different event. This leaf counts SCL rising edges from the START on the bus and pulls inside the high window of a chosen one, so the edge is a control symbol by construction and lands in a chosen slot.
+* The two slots where the line is high because it is released: the acknowledge of an address nobody answers, and a one bit of a byte the target is returning.
+* The pull is released inside the same high window, because one that outlasts the slot reaches a state where the controller drives the line and is interference there instead.
+* The slot numbering is anchored on the START seen on the pads, not on a status read: a poll returns some cycles after the controller leaves idle, by which time bits have already been clocked, which a first version of this leaf measured as a slot two positions out.
+
+*Known limitation*: the other two slots where the controller holds SCL released -- a bit it is transmitting, and the not-acknowledge it drives after a read -- are high only because the controller is driving them. An external pull there is interference, which the design detects from the level alone and acts on a cycle before the control-symbol check, which needs two consecutive samples. Both are left uncovered rather than claimed.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a host with the bench EEPROM target on the pads, and run one uninterrupted write.
+. For each slot: re-enable the controller from scratch, arm the injector, queue the transfer, wait for the START on the bus, count SCL rises and pull SDA low inside the chosen one.
+. Require `INTR_STATE.SDA_UNSTABLE` and a return to idle.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-CTRL-SYMBOL-CLEAN` |An uninterrupted write reached the target and left `SDA_UNSTABLE` clear
+|`CHK-I2C-CTRL-SYMBOL-UNSTABLE` |An edge made inside a chosen SCL high window raised `SDA_UNSTABLE` and returned the controller to idle, at both slots
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Nothing is asserted about the transfer after an injection: on this DUT the next transaction from the same controller is NACKed even once the events are cleared, so each leg re-enables the controller from scratch. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-239-smc_uart_rbr_error_path_test]]
+===== 239 `smc_uart_rbr_error_path_test`
+
+*Source Module*: `smc_uart_rbr_error_path_test`
+
+*BFM / Model*: UART3's transmit pin crossed to UART0's receive pin (`+smc_uart_cross_3to0`); observation on `LSR` and `IIR`
+
+*Objective*: A character that arrives broken while the receive FIFO is off must carry its flags through the receiver buffer register.
+
+*Test Coverage*:
+
+* The second of the two receive paths `uart_core.sv` selects with `FCR.FIFO_ENABLE`. Each path carries its own copy of the error flags. `smc_uart_error_conditions_test` breaks characters on the FIFO path and `smc_uart_core_mode_select_test` sends clean ones through the register path, so a broken character had never taken it.
+* The two kinds two UARTs can disagree into existence: a parity disagreement, and a word length disagreement that makes the receiver sample its stop bit where a data bit still is.
+* The framing character carries a one, so the frame is not the all-zero one a break is, and the leg requires `LSR.BI` to stay clear. A break sets the framing flag as well, so a break alone cannot separate the two.
+* The receive trigger level, which `uart_core.sv` builds from `ECR.RCVR_TRIGGER_MS2B` and `FCR.RCVR_TRIGGER` together and compares against the depth the FIFO was built with. Every other leaf programs a level the design supports; this one programs a level above the depth, where the watermark can never be reached.
+
+*Test Procedure*:
+
+[arabic]
+. With both UARTs' FIFOs disabled and the two ends agreeing, send one character and require no error flag.
+. Set the transmitter to odd parity and the receiver to even, send one character and require `LSR.PE`.
+. Set the transmitter to eight bits and the receiver to five, send a character with a zero at the receiver's stop position and a one before it, and require `LSR.FE` without `LSR.BI`.
+. Program the trigger level above the FIFO depth with the FIFOs on, send one character, and require `LSR.DR` with no received-data-ready interrupt.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-RBR-CLEAN` |A character both ends agreed on reached the receiver buffer register with no error flag
+|`CHK-UART-RBR-ERRORS` |A parity disagreement and a word length disagreement each reached the receiver buffer register with their own flag and no other
+|`CHK-UART-RXILVL-UNSUPPORTED` |With the trigger level above the FIFO depth a character still arrived and the received-data-ready interrupt stayed away
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+
+'''''
+
 
 [[smc-formal-plan]]
 === Formal Verification Plan

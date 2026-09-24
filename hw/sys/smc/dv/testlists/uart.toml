@@ -4,6 +4,15 @@ schema_version = 1
 
 # BFM rebuilds of the commercial UART depth tests.
 [[tests]]
+name = "smc_uart_rbr_error_path_test"
+module = "smc_uart_rbr_error_path_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+args = ["+smc_uart_cross_3to0"]
+
+[[tests]]
 name = "smc_uart_fifo_basic_trigger_reset_test"
 module = "smc_uart_fifo_basic_trigger_reset_test"
 seed = 1
