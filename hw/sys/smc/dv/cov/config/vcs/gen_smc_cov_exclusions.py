@@ -172,6 +172,9 @@ override to zero (P18 TDR-OVERRIDE-TIED). The DFD top ties the trace sink's
 N-trace RAM read enable to zero (P19 NTR-RAM-READ-TIED), and a P1 decision over
 N-trace signals alone, a comparison included, holds the value the tie-off
 gives it.
+The I2C FSMs reload their counter by an enumerated select assigned only its
+named values, and the target pairs its no-delay select only with no reload, so
+those case items never execute (P20 TCOUNT-SELECT-PAIRED).
 
 One more belongs to the bench and its policy: the eFuse's simulation-only
 `+skip_fuse_sense` bypass replaces the sensed fuse image, the DV policy forbids
@@ -689,6 +692,14 @@ P19 = (
     "constant zero, so the trace sink's trRamDataRdEn_ANY is zero for the life of the design and "
     "the N-trace RAM data read never occurs; a row or arm that needs it high cannot."
 )
+P20 = (
+    "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only "
+    "under load_tcount, assign tcount_sel nothing but its named values, and the target assigns "
+    "tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and "
+    "in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, "
+    "and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on "
+    "purpose, so that item stays graded there."
+)
 B6 = (
     "SMC-B6-SIM-ONLY-FUSE-BYPASS: a property of this bench and its policy, not of the design. "
     "efuse_shadow_regs reads the +skip_fuse_sense plusarg in simulation-only initial blocks and "
@@ -1130,6 +1141,12 @@ BRANCH_CONSTANT_DECISIONS: "dict[str, list[tuple[str, str, int]]]" = {
     "trace_sink": [(P17, "NUM_CORES>1", 0)],
 }
 
+# Case items no path reaches, per case condition: (class, condition, items).
+BRANCH_DEAD_CASE_ITEMS: "dict[str, list[tuple[str, str, frozenset[str]]]]" = {
+    "i2c_target_fsm": [(P20, "tcount_sel", frozenset({"tNoDelay", "default"}))],
+    "i2c_controller_fsm": [(P20, "tcount_sel", frozenset({"default"}))],
+}
+
 # Case items of a state F3 leaves unreachable.
 BRANCH_DEAD_ITEMS: "dict[str, tuple[str, frozenset[str]]]" = {
     "trace_axi_master": (F3, frozenset({"AW_HANDSHAKE", "W_HANDSHAKE", "RESP_HANDSHAKE"})),
@@ -1143,6 +1160,10 @@ def feature_path_class(
     dead = BRANCH_DEAD_ITEMS.get(module)
     if dead and construct.decisions[0][0] == "case" and values[0] in dead[1]:
         return dead[0]
+    for reason, condition, items in BRANCH_DEAD_CASE_ITEMS.get(module, []):
+        for (kind, text), taken in zip(construct.decisions, values):
+            if kind == "case" and _bare(text) == condition and taken in items:
+                return reason
     for reason, condition, value in BRANCH_CONSTANT_DECISIONS.get(module, []):
         for (_, text), taken in zip(construct.decisions, values):
             if _bare(text) == condition and taken in ("0", "1") and int(taken) != value:
@@ -2059,6 +2080,7 @@ FEATURE_CLASSES = (
     P17,
     P18,
     P19,
+    P20,
     F3,
     B6,
 )
@@ -2381,6 +2403,7 @@ def render_feature(
         | set(BRANCH_PATH_FACTS)
         | set(BRANCH_CONSTANT_DECISIONS)
         | set(BRANCH_DEAD_ITEMS)
+        | set(BRANCH_DEAD_CASE_ITEMS)
     )
     for module in modules:
         block: list[tuple[str, str]] = []

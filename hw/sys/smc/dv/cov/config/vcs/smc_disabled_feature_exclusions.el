@@ -325,6 +325,17 @@ Branch 8 "1283278657" "(!rst_ni)" (23) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,
 Branch 8 "1283278657" "(!rst_ni)" (24) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,1,0,0"
 Branch 8 "1283278657" "(!rst_ni)" (25) "(!rst_ni) 0,0,-,0,-,-,-,-,-,0,-,-,-,-,-,-,-,-,-,-,1,0,-,-"
 
+CHECKSUM: "287342404 4182007552"
+ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
+MODULE: i2c_controller_fsm
+Branch 0 "3901164169" "load_tcount" (10) "load_tcount 1,default,-"
+
+CHECKSUM: "66702530 4067735016"
+ANNOTATION: "SMC-P20-TCOUNT-SELECT-PAIRED: the I2C FSMs pick a counter reload with tcount_sel only under load_tcount, assign tcount_sel nothing but its named values, and the target assigns tNoDelay only beside load_tcount = 0 (its defaults at the top of the next-state block and in its default arm), every reload pairing tSetupData or tHoldData. The case's default item, and the target's tNoDelay item, never execute. The controller reloads with tNoDelay on purpose, so that item stays graded there."
+MODULE: i2c_target_fsm
+Branch 0 "2471614216" "load_tcount" (2) "load_tcount 1,tNoDelay ,-"
+Branch 0 "2471614216" "load_tcount" (3) "load_tcount 1,default,-"
+
 CHECKSUM: "768735472 3557211807"
 ANNOTATION: "SMC-P7-NO-ERROR-CAP: idma_backend_wrapper elaborates the backend with ErrorCap = NO_ERROR_HANDLING, whose bypass assigns the legalizer's flush and kill inputs a constant zero, so a term that needs either of them asserted is false for the life of the design. The read and write backpressure rows of the same expressions stay graded."
 MODULE: idma_legalizer_rw_axi
