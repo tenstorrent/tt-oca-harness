@@ -9926,6 +9926,40 @@ Drive `smc_avsbus_interrupt_sources_test_seq`. Each checker below is a named com
 
 '''''
 
+[[sec-242-smc_jtag_axi_shape_test]]
+===== 242 `smc_jtag_axi_shape_test`
+
+*Source Module*: `smc_jtag_axi_shape_test`
+
+*BFM / Model*: JTAG AXI driver (`ocah_axi_vip` AXI4 master on the JTAG2AXI input port), SEP_IN AXI driver for the filter arm
+
+*Objective*: The third inbound manager of the input fabric carries the same burst and error-response shapes the SEP_IN and SYS_IN shape leaves establish.
+
+*Test Coverage*:
+
+* INCR bursts of 2, 8 and 32 full-width beats into the SPM, each read back as one burst of the same length, so a splitter that drops, repeats or reorders beats on the JTAG port is caught on the data.
+* A read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR.
+* GPIO0 ACCESS_FILTER is armed over SEP_IN with a privileged write; an unprivileged JTAG read of the register is refused with DECERR and the error-slave signature 0xBADCAB1E, as `hw/ip/gpio/doc/programming.adoc` ("Filter Configuration") specifies, and an unprivileged JTAG write of the disarm value is refused with an error response whose code is reported, not asserted, since no document fixes how the fabric forwards a write-channel refusal; a privileged readback shows the refused write took no effect.
+* The filter is restored to its generated reset and the access counts are measured: the sequence requires its own SEP_IN count and the scoreboard's JTAG AXI count to equal the expected numbers.
+
+*Test Procedure*:
+
+Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs go out through the JTAG AXI agent's sequencer as one-shot items. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-JTAG-AXI-BURSTS` |Each burst readback is an exact scoreboard compare of every beat against the payload written; a dropped, repeated or misplaced beat fails
+|`CHK-JTAG-AXI-ERRORS` |The unimplemented-region read and the refused filter read are compared against DECERR and the refused read against the error-slave signature by the sequence; the refused write must answer an error response and the privileged readback must still show the armed filter
+|`CHK-JTAG-AXI-PORT` |Ledger line in the leaf: the completed JTAG AXI and SEP_IN access counts and the two reported response codes, logged after the sequence has recorded both error legs
+|===
+
+
+*Pass Criteria*: `CHK-JTAG-AXI-BURSTS`, `CHK-JTAG-AXI-ERRORS` and `CHK-JTAG-AXI-PORT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
 
 [[smc-formal-plan]]
 === Formal Verification Plan
