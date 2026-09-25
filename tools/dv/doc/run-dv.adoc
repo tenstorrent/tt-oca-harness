@@ -2451,7 +2451,8 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 default tool; tools that need a license, and frameworks that no open-source
 tool serves, are marked `(licensed)`. A DUT with a formal config adds a `fv`
 row with the formal tool set; a site-named formal config that is absent
-shows as `unavailable`. The per-DUT detail view adds the `license` and
+shows as `unavailable`. An `alias_of` name from `duts.toml` gets one
+`alias of <dut>` row. The per-DUT detail view adds the `license` and
 `runnability` fields from the merged config; `--mode formal` selects the
 formal view.
 
@@ -3220,7 +3221,9 @@ joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
 — no CI edit. Every entry carries `mode` (`sim` or `formal`) and
 `available`; a formal view whose site-named config is absent is listed with
 `available: false`, its `path`, and a `reason`, so a formal job selects
-`.duts[] | select(.mode == "formal" and .available)`. `--list --dut <dut>
+`.duts[] | select(.mode == "formal" and .available)`. An `alias_of` name
+adds no entry, so a matrix never selects one DUT twice; each entry lists
+the names that select its DUT under `aliases`. `--list --dut <dut>
 --json` additionally carries the per-scenario binding matrix
 (`tests.<name>.bindings`) and per-framework implemented counts for
 dashboards. `--validate-configs` validates every framework view a DUT

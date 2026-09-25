@@ -23,10 +23,11 @@ from smc_base_test import smc_base_test
 #
 #   8 region attribute reads                                                  8
 #   the window start and end reads                                            2
+#   the two four-byte writes with both bits at reset, each with its read      4
 #   the attribute write and its guard read                                    2
 #   the low-half write and the read that shows both bits held                 2
 #   the restore write and its read back                                       2
-ALIAS_REMAP_REGION_ATTRS_MIN_CSR_ACCESSES = 16
+ALIAS_REMAP_REGION_ATTRS_MIN_CSR_ACCESSES = 20
 
 
 @pyuvm.test()

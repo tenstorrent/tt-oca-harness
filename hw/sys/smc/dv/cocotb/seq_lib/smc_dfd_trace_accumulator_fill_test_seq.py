@@ -37,6 +37,16 @@ read at their RDL reset first so what changes is attributable to the sweep:
 * ``DST_SINK.Trdstramwplow`` (reset 0, carrying the write pointer and the
   hardware-set wrap flag) leaves its reset once the sink has taken a filled
   bank, which is the accumulator bank handing data on and going empty again.
+  The write pointer field itself has to move and stay inside the window; the
+  wrap flag alone does not say where the sink wrote.
+
+The sink's limit field sits above two reserved bits and hardware writes it
+too, so the register's plain read-write mask leaves it out; the window is
+written through the field's own bit positions.
+
+After the hand-off the sink enable is cleared with the sink kept active and
+stop-on-wrap clear, and the action field is driven over its range again; the
+window has never wrapped, and the write pointer is recorded without a claim.
 """
 
 from __future__ import annotations
@@ -95,6 +105,109 @@ def pack_fields(reg: RdlReg, values: dict[str, int]) -> int:
     return word
 
 
+def field_word(reg: RdlReg, name: str, value: int) -> int:
+    """Register word carrying ``value`` in the bit positions of one field.
+
+    For the sink pointer and limit registers, whose field starts above two
+    reserved bits and holds a byte address, ``value`` is that byte address.
+    Those fields are written by hardware as well, so they are not in the
+    register's plain read-write mask and masking with it would send zero.
+    """
+    field = reg_field(reg, name)
+    assert value & ~field.mask == 0, (
+        f"0x{value:x} does not fit {reg.path}.{name}, bits {field.offset} to "
+        f"{field.offset + field.width - 1}"
+    )
+    return value
+
+
+def checked_mask(reg: RdlReg, values: dict[str, int]) -> int:
+    """Bits a write/readback must return: the plain read-write fields plus the named ones.
+
+    A named field that hardware also writes is still compared, because the
+    readback directly follows the write.
+    """
+    mask = reg.rw_mask
+    for name in values:
+        field = reg_field(reg, name)
+        if field.access == "read-write":
+            mask |= field.mask
+    return mask
+
+
+# dfx_ctrl_status.rdl and dfd_cla.rdl Dbmmode: the values the description names
+# as normal debug mode and the mux identifier output mode.
+DBM_MODE_NORMAL = 1
+DBM_MODE_IDENTIFIER = 2
+
+
+def _reg_label(reg: RdlReg, label: str) -> str:
+    return f"{reg.path.rsplit('/', 1)[1]}:{label}"
+
+
+async def cla_mux_normal(seq: SmcCsrSeq, label: str) -> None:
+    """Put the CLA's own debug-bus mux in normal debug mode.
+
+    It is the last mux stage in front of the CLA and the trace, and resets to
+    its off mode. It takes a mode only while the programmed identifier is its
+    own, so the mode is written once per identifier value.
+    """
+    reg = cla_register("CDbgMuxSelLo")
+    dbmid = cla_field(reg, "Dbmid")
+    for identity in range(1 << dbmid.width):
+        word = pack_fields(reg, {"Dbmmode": DBM_MODE_NORMAL, "Dbmid": identity})
+        await seq.csr_write(
+            _reg_label(reg, f"{label}{identity}"), reg.addr, word, length=reg.width_bytes
+        )
+
+
+async def traced_bus(seq: SmcCsrSeq, label: str) -> int:
+    """The debug-signal snapshot node 0 pair 0 last captured, as one 64-bit value."""
+    value = 0
+    for shift, half in ((0, "Lo"), (32, "Hi")):
+        reg = cla_register(f"CDbgSignalSnapshotNode0Eap0{half}")
+        word = await seq.csr_read(_reg_label(reg, label), reg.addr, length=reg.width_bytes)
+        value |= word << shift
+    return value
+
+
+async def set_dbm(seq: SmcCsrSeq, values: dict[str, int], label: str) -> None:
+    reg = dfd_register("dfx_ctrl/DEBUG_BUS_MUX")
+    await seq.csr_write(
+        _reg_label(reg, label), reg.addr, pack_fields(reg, values), length=reg.width_bytes
+    )
+
+
+async def find_sampled_mux(seq: SmcCsrSeq, settle: int, label: str) -> tuple[int, int, int]:
+    """Find, by measurement, a DEBUG_BUS_MUX identifier that feeds the traced bus.
+
+    Needs the CLA mux in normal mode and node 0 pair 0 activating, so its
+    snapshot follows the bus. Every identifier is put in the identifier output
+    mode, then each in turn back in normal mode until the snapshot changes.
+    Returns that identifier and the bus with it in each of the two modes.
+    """
+    dbmid = reg_field(dfd_register("dfx_ctrl/DEBUG_BUS_MUX"), "Dbmid")
+    for identity in range(1 << dbmid.width):
+        await set_dbm(
+            seq, {"Dbmmode": DBM_MODE_IDENTIFIER, "Dbmid": identity}, f"{label}_id{identity}"
+        )
+    await ClockCycles(cocotb.top.clk_smc_i, settle)
+    identifier_state = await traced_bus(seq, f"{label}_ident")
+    for identity in range(1 << dbmid.width):
+        await set_dbm(
+            seq, {"Dbmmode": DBM_MODE_NORMAL, "Dbmid": identity}, f"{label}_probe{identity}"
+        )
+        await ClockCycles(cocotb.top.clk_smc_i, settle)
+        normal_state = await traced_bus(seq, f"{label}_probe{identity}")
+        if normal_state != identifier_state:
+            return identity, identifier_state, normal_state
+    raise AssertionError(
+        f"the node 0 pair 0 debug-signal snapshot stayed 0x{identifier_state:016x} as each of "
+        f"the {1 << dbmid.width} DEBUG_BUS_MUX identifiers was returned to normal mode, so no "
+        f"mux mode change reaches the bus the CLA and the trace sample"
+    )
+
+
 @lru_cache(maxsize=None)
 def block_register(block: str, name: str) -> RdlReg:
     """One register of a sub-block of the SMC_CLA aperture, by its RDL name.
@@ -142,6 +255,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         self.dbmids_programmed = 0
         self.value_checks = 0
         self.sink_pointer = 0
+        self.disabled_pointer = 0
 
     # -- register helpers -------------------------------------------------
 
@@ -157,9 +271,10 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self.csr_write(f"{self._short(reg)}:{label}", reg.addr, word, length=reg.width_bytes)
         readback = await self._read(reg, f"{label}_rb")
-        assert readback & reg.rw_mask == word & reg.rw_mask, (
-            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & reg.rw_mask:x} into "
-            f"its software-writable bits, reads 0x{readback & reg.rw_mask:x}"
+        mask = checked_mask(reg, values)
+        assert readback & mask == word & mask, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into "
+            f"its software-writable bits, reads 0x{readback & mask:x}"
         )
         self.value_checks += 1
 
@@ -224,7 +339,7 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         ):
             reg = sink_register(name)
             await self.csr_write(
-                f"{name}:window", reg.addr, value & reg.rw_mask, length=reg.width_bytes
+                f"{name}:window", reg.addr, field_word(reg, name, value), length=reg.width_bytes
             )
         await self._write_check(
             sink_register("Trdstramcontrol"),
@@ -349,6 +464,11 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
             f"0x{wp.reset_word:08x} after the action sweep, so the trace RAM sink never "
             f"took a bank and the packetizer accumulator never handed one on"
         )
+        assert 0 < word & pointer.mask <= _SINK_WINDOW_BYTES, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads 0x{word:08x}: the write pointer "
+            f"field is 0x{word & pointer.mask:x}, not inside the 0x{_SINK_WINDOW_BYTES:x}-byte "
+            f"window; a wrap flag alone does not show where the sink wrote"
+        )
         self.sink_pointer = word
         self.value_checks += 1
         cocotb.log.info(
@@ -360,6 +480,40 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
             (word & pointer.mask) >> pointer.offset,
             (word & wrap.mask) >> wrap.offset,
             _SINK_WINDOW_BYTES,
+        )
+
+    async def _disabled_sink(self, logical_op: int) -> None:
+        """Clear the sink enable, keeping it active, with the trace still driven.
+
+        The window is far from full and has never wrapped, and stop-on-wrap is
+        clear, so the sink's wrap-flag update sees a sink that is neither enabled
+        nor set to stop on wrap. What the sink does with trace that still arrives
+        is not in the register contract, so the write pointer is only recorded.
+        """
+        await self._write_check(
+            sink_register("Trdstramcontrol"),
+            {"Trdstramactive": 1, "Trdstramenable": 0},
+            "disable",
+        )
+        eap = cla_register("CDbgNode0Eap0")
+        action = cla_field(eap, "Action0")
+        for value in range(1 << action.width):
+            await self.csr_write(
+                f"CDbgNode0Eap0:disabled{value}",
+                eap.addr,
+                pack_fields(eap, {"LogicalOp": logical_op, "DestNode": 0, "Action0": value}),
+                length=eap.width_bytes,
+            )
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        wp = sink_register("Trdstramwplow")
+        self.disabled_pointer = await self._read(wp, "disabled")
+        cocotb.log.info(
+            "CHK-DST-TRACE-SINK-DISABLED: with the sink enable cleared, the sink kept active and "
+            "stop-on-wrap clear, the control readback held and the action field was driven over "
+            "its whole range again; the write-pointer register read 0x%08x afterwards, against "
+            "0x%08x at the hand-off",
+            self.disabled_pointer,
+            self.sink_pointer,
         )
 
     async def _restore(self) -> None:
@@ -390,6 +544,8 @@ class smc_dfd_trace_accumulator_fill_test_seq(SmcCsrSeq):
         await self._open_sink()
         await self._open_funnel()
         await self._enable_dst()
-        await self._sweep_actions(await self._arm_cla())
+        logical_op = await self._arm_cla()
+        await self._sweep_actions(logical_op)
         await self._bank_handoff()
+        await self._disabled_sink(logical_op)
         await self._restore()

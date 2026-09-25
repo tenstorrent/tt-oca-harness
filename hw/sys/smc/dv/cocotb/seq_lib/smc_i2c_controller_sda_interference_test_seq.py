@@ -65,7 +65,7 @@ from .smc_i2c_field_masks import (
     acq_signal,
 )
 from .smc_i2c_protocol_vip import SmcI2cMasterVip
-from .smc_i2c_slot_utils import pull_sda_low, release_bus
+from .smc_i2c_slot_utils import release_bus
 from .smc_i2c_target_smbus_test_seq import (
     _pack_target_id,
     _pack_timing0,
@@ -85,37 +85,37 @@ CLEAN_BYTE = 0x73
 # All ones, so the controller drives a logic high in every payload slot.
 CONFLICT_PAYLOAD = (0xFF, 0xFF, 0xFF, 0xFF)
 
-# SCL high and low counts this leaf programs into TIMING0, and the bit period
-# they add up to. The sweep is expressed in that period, so it follows the
-# timing this leaf set rather than any design value.
+# SCL high and low counts this leaf programs into TIMING0. The pull-down below
+# is expressed in the high count, so it follows the timing this leaf set
+# rather than any design value.
 T_HIGH = 0x1A
 T_LOW = 0x32
 CORE_CLK_NS = 10
-BIT_NS = (T_HIGH + T_LOW) * CORE_CLK_NS
 
-# One delay from the controller leaving idle, in bit periods, per instance.
+# Which SCL rising edge of the transfer the pull-down is made on, counted from
+# the START seen on the pads. Eight rises clock the address byte and the ninth
+# its acknowledge, so this one falls on a payload bit -- a one, since the
+# payload is all ones, and therefore a high the controller is driving, which
+# is what makes the pull-down interference rather than anything else.
 #
-# A sweep over several points was tried and does not hold up. Where the
-# pull-down lands decides which of two things the controller reports: at this
-# point it reports the interference under test, while at a half-bit offset and
-# at other whole-bit offsets the byte is corrupted early enough that the
-# target NACKs first and the controller halts on the NACK instead. Lengthening
-# the pull-down to two and a half bit periods did not change that. The delay
-# is also only accurate to the poll that observes the controller leaving idle,
-# so a finer sweep would not be placing the conflict where it claims to.
-#
-# One point that reliably produces the event on all three instances is
-# therefore what this leaf drives, rather than a sweep whose extra points
-# exercise a different mechanism than the one the checker names.
-CONFLICT_DELAY_BITS = (12.0,)
-# The pull-down spans more than two bit periods, so it covers a driven high
-# whatever the controller is doing when it starts.
-CONFLICT_HOLD_NS = BIT_NS * 5 // 2
+# The anchor has to be a bus edge, not a poll of STATUS: a poll returns some
+# cycles after the controller leaves idle, and how many depends on the run's
+# bus traffic, so a point measured from it lands in a different part of the
+# bit loop from run to run. At some offsets the byte is corrupted early enough
+# that the target NACKs first and the controller halts on the NACK instead of
+# reporting the interference.
+CONFLICT_RISES = (12,)
+# The pull-down is released inside the same SCL high window: one that outlasts
+# it reaches the next bit, where the controller may be driving a low and the
+# pull is not a conflict.
+CONFLICT_HOLD_NS = T_HIGH * CORE_CLK_NS * 3 // 4
 
 POLL_CYCLES = 100
 POLL_LIMIT = 300
 DRAIN_LIMIT = 400
 SETTLE_CYCLES = 20
+#: Bound on the wait for a pad edge, in clk_smc_i cycles.
+EDGE_WAIT_CYCLES = 200_000
 
 
 class smc_i2c_controller_sda_interference_test_seq(SmcCsrSeq):
@@ -247,12 +247,59 @@ class smc_i2c_controller_sda_interference_test_seq(SmcCsrSeq):
             f"write of 0x{CLEAN_BYTE:02x} from controller I2C{host}"
         )
 
-    async def _inject_at(self, host: int, tgt: int, addr7: int, delay_bits: float) -> None:
-        label = f"I2C{host}_SDAI_{delay_bits}"
+    @staticmethod
+    def _scl() -> int:
+        raw = cocotb.top.tb_i2c0_scl.value
+        assert raw.is_resolvable, f"tb_i2c0_scl is not resolvable: {raw}"
+        return int(raw)
+
+    async def _wait_start_on_pads(self, label: str) -> None:
+        """Wait for SDA to fall while SCL is high: the START of the transfer."""
+        sda = cocotb.top.tb_i2c0_sda
+        prev = int(sda.value)
+        for _ in range(EDGE_WAIT_CYCLES):
+            await ClockCycles(cocotb.top.clk_smc_i, 1)
+            now = int(sda.value)
+            if self._scl() and prev and not now:
+                return
+            prev = now
+        raise AssertionError(f"{label}: no START appeared on the bus after the queue")
+
+    async def _pull_on_rise(self, label: str, nth: int) -> int:
+        """Pull SDA low inside the high window of the nth SCL rise of the transfer.
+
+        Returns the SDA level read just before the pull, which is the
+        controller's own driven value: only a high there is a conflict.
+        """
+        await self._wait_start_on_pads(label)
+        seen = 0
+        prev = self._scl()
+        for _ in range(EDGE_WAIT_CYCLES):
+            await ClockCycles(cocotb.top.clk_smc_i, 1)
+            now = self._scl()
+            if now and not prev:
+                seen += 1
+                if seen == nth:
+                    before = int(cocotb.top.tb_i2c0_sda.value)
+                    self._vip._pull_sda(True)
+                    await Timer(CONFLICT_HOLD_NS, unit="ns")
+                    self._vip._pull_sda(False)
+                    return before
+            prev = now
+        raise AssertionError(
+            f"{label}: only {seen} of {nth} SCL rising edges appeared; the controller stopped "
+            f"clocking before the injection point"
+        )
+
+    async def _inject_at(self, host: int, tgt: int, addr7: int, nth_rise: int) -> None:
+        label = f"I2C{host}_SDAI_{nth_rise}"
+        injector = cocotb.start_soon(self._pull_on_rise(label, nth_rise))
         await self._queue_write(host, addr7, CONFLICT_PAYLOAD)
-        await self._wait_host_busy(host, label)
-        await Timer(int(delay_bits * BIT_NS), unit="ns")
-        await pull_sda_low(self._vip, CONFLICT_HOLD_NS)
+        driven = await injector
+        assert driven == 1, (
+            f"{label}: SDA read {driven} on SCL rise {nth_rise}, so the controller was not "
+            f"driving a high there and the pull-down is not a conflict"
+        )
         await release_bus(self._vip)
 
         intr = 0
@@ -264,8 +311,8 @@ class smc_i2c_controller_sda_interference_test_seq(SmcCsrSeq):
         else:
             raise AssertionError(
                 f"controller I2C{host} reported no SDA_INTERFERENCE after SDA was pulled low "
-                f"under it {delay_bits} bit periods after it left idle, while it was writing "
-                f"all ones (INTR_STATE=0x{intr:08x})"
+                f"under it inside the high window of SCL rise {nth_rise}, while it was "
+                f"writing all ones (INTR_STATE=0x{intr:08x})"
             )
         await self._wait_hostidle(host, label)
 
@@ -276,14 +323,14 @@ class smc_i2c_controller_sda_interference_test_seq(SmcCsrSeq):
         await self._clean_transaction(host, tgt, addr7, f"I2C{host}_SDAI_CONTROL")
 
         injected = 0
-        for delay_bits in CONFLICT_DELAY_BITS:
+        for nth_rise in CONFLICT_RISES:
             await self._hard_reset_pair(host, tgt, addr7)
-            await self._inject_at(host, tgt, addr7, delay_bits)
+            await self._inject_at(host, tgt, addr7, nth_rise)
             injected += 1
         self.injections[host] = injected
         cocotb.log.info(
-            "CHK-I2C%d-CTRL-SDA-INTERFERENCE: SDA pulled low under controller I2C%d at %d point "
-            "of a write of all ones, which raised "
+            "CHK-I2C%d-CTRL-SDA-INTERFERENCE: SDA pulled low under controller I2C%d inside the "
+            "high window of %d chosen SCL pulse of a write of all ones, which raised "
             "INTR_STATE.SDA_INTERFERENCE and returned the controller to idle, with a clean "
             "write to target I2C%d beforehand as the control. The transaction after an event "
             "is not asserted: on this DUT it is NACKed even after both instances are cleared, "

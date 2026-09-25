@@ -3,12 +3,16 @@
 
 _Legend: Where no Default entry is shown in Description / Default, the original port reference specifies N/A — those ports have no integrator-supplied default; connect as directed by Description._
 
+<<dtp-port-declaration-table>> lists the DTP boundary ports, their dimensions, and their
+connections.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="DTP port reference" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[dtp-port-declaration-table]]
 [.port-reference.small,stretch]
 .DTP Port Declaration
 [cols="<20%,<16%,<8%,<11%,<25%,<20%",options="header",frame=all,grid=all]

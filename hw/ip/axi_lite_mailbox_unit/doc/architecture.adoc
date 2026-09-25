@@ -11,7 +11,12 @@ the two FIFOs that carry data between its two apertures.
 
 === Configuration Parameters
 
+<<mailbox-configuration-parameters-table>> lists the mailbox-count, aperture, and
+data-width parameters.
+
+[[mailbox-configuration-parameters-table]]
 [width="100%",cols="25%,15%,60%",options="header",]
+.Mailbox configuration parameters
 |=======================================================================
 |Parameter |Default |Description
 |`NUM_MAILBOXES` |2 (max: 32) |Scales from point-to-point to
@@ -84,9 +89,11 @@ and interrupt output.
 
 === Clock and Reset
 
-The mailbox uses a single clock domain for integration reliability:
+The mailbox uses a single clock domain for integration reliability (<<mailbox-clock-and-reset-table>>).
 
+[[mailbox-clock-and-reset-table]]
 [width="100%",cols="20%,30%,50%",options="header",]
+.Mailbox clock and reset
 |=======================================================================
 |Signal |Type |Description
 |`clk_i` |Single clock |Unifies functional logic and AXI4-Lite interface
@@ -114,9 +121,11 @@ requirements. Inbound interrupts indicate incoming commands requiring
 immediate processing; outbound interrupts indicate successful
 transmission or buffer availability.
 
-The following table reports the interrupt sources.
+<<mailbox-interrupt-sources-table>> reports the interrupt sources.
 
+[[mailbox-interrupt-sources-table]]
 [width="100%",cols="30%,70%",options="header",]
+.Mailbox interrupt sources
 |=======================================================================
 |Source |Description
 |Write Threshold |FIFO fill level exceeds configured threshold

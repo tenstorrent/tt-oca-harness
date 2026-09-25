@@ -36,6 +36,7 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
   virtual task dispatch_scenario();
     case (scenario)
       "wire_or":        run_wire_or();
+      "wire_or_bus":    run_wire_or_bus();
       "p2p":            run_p2p();
       "reset":          run_reset();
       "random":         run_random();
@@ -67,13 +68,99 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
       program_route(int_port, 32'd1 << ctp_port, $sformatf("wire_or.stretch%0d", stretch));
       run_wire_or_pulse(ctp_idx, int_idx, stretch);
     end
-    `uvm_info(get_type_name(), "Drive external CT_Req_out input and expect internal CT delivery",
-              UVM_LOW)
+    for (int unsigned invert = 0; invert < 2; invert++) begin
+      `uvm_info(
+          get_type_name(), $sformatf(
+          "A chiplet pulls the CTP's shared wire (INVERT=%0d) and the internal CT delivers", invert
+          ), UVM_LOW)
+      program_ctp(ctp_idx, CtpModeWireOr, bit'(invert), 1'b0, 16'd0);
+      program_route(ctp_port, 32'd1 << int_port, $sformatf(
+                    "wire_or.external_to_internal.inv%0d", invert));
+      run_route_window(32'd1 << ctp_port, 32'd1 << int_port, CtpModeWireOr, $sformatf(
+                       "wire_or.external_sync.inv%0d", invert));
+    end
     program_ctp(ctp_idx, CtpModeWireOr, 1'b0, 1'b0, 16'd0);
-    program_route(ctp_port, 32'd1 << int_port, "wire_or.external_to_internal");
-    drive_input_port(ctp_port, CtpModeWireOr);
-    wait_signal_mask("xtrig_ctm_src_req", 32'd1 << int_idx, 32'd1 << int_idx, 60,
-                     "wire_or.external_sync");
+  endtask
+
+  // Several CTPs on one shared wire-OR wire: the transmitter's own pull, a
+  // chiplet's pull, and the two merged reach every member once.
+  protected task run_wire_or_bus();
+    int unsigned members[$];
+    int unsigned ints[$];
+    int unsigned int_outs[$];
+    int unsigned int_src, tx, puller;
+    bit invert;
+    bit [15:0] stretch;
+    bit [31:0] member_ports = '0;
+    bit [31:0] listener_outputs = '0;
+    bit [31:0] transmit_predicted, transmit_intent;
+    `uvm_info(get_type_name(), "XTRIG CTPs on one shared wire-OR wire", UVM_LOW)
+    // Seeded per pass: the members of the wire, their common sense and
+    // stretch, the transmitter, the internal source that triggers it, and
+    // one internal output per member.
+    pick_distinct(XtrigNumCtp, $urandom_range(4, 2), members);
+    invert = bit'($urandom_range(1));
+    stretch = 16'($urandom_range(7));
+    pick_distinct(XtrigNumIntCt, members.size() + 1, ints);
+    int_src = ints.pop_front();
+    int_outs = ints;
+    tx = members[0];
+    puller = members[$];
+    foreach (members[i]) member_ports |= 32'd1 << external_ctp_port(members[i]);
+    foreach (int_outs[i]) listener_outputs |= 32'd1 << internal_ct_port(int_outs[i]);
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "shared wire: CTPs %p (INVERT=%0d, STRETCH_MULT=%0d), transmitter CTP[%0d] from internal CT[%0d], listeners to internal CTs %p",
+            members, invert, stretch, tx, int_src, int_outs), UVM_LOW)
+    foreach (members[i]) program_ctp(members[i], CtpModeWireOr, invert, 1'b0, stretch);
+    share_wire(member_ports, invert);
+    clear_ctm_routes();
+    program_ctm_src(external_ctp_port(tx), 32'd1 << internal_ct_port(int_src));
+    foreach (members[i])
+      program_ctm_src(internal_ct_port(int_outs[i]), 32'd1 << external_ctp_port(members[i]));
+    transmit_predicted = ctm_model.route(32'd1 << internal_ct_port(int_src))
+        | ctm_model.route(member_ports);
+    transmit_intent = (32'd1 << external_ctp_port(tx)) | listener_outputs;
+
+    `uvm_info(
+        get_type_name(),
+        "Step 1: the transmitter pulls the wire: every member, itself included, receives once",
+        UVM_LOW)
+    open_route_window();
+    pulse_ctm_dst_req(32'd1 << int_src, 1);
+    check_output_mask(transmit_intent, CtpModeWireOr, transmit_predicted, "wire_or_bus.transmit",
+                      IsolationTailCycles + stretch, 32'd1 << internal_ct_port(int_src));
+    check_shared_wire_receive(members, "xtrig_ctp_req_out_dout_en", tx, "wire_or_bus.transmit");
+
+    `uvm_info(get_type_name(), "Step 2: a chiplet pulls the wire: every member receives once",
+              UVM_LOW)
+    open_route_window();
+    pull_ctp_wire(puller, $urandom_range(5, 1));
+    check_output_mask(listener_outputs, CtpModeWireOr, ctm_model.route(member_ports),
+                      "wire_or_bus.chiplet");
+    check_shared_wire_receive(members, "xtrig_ctp_wire_ext_assert", puller, "wire_or_bus.chiplet");
+
+    `uvm_info(get_type_name(),
+              "Step 3: the transmitter pulls while a chiplet holds the wire: one merged assertion",
+              UVM_LOW)
+    open_route_window();
+    xtrig_vif.xtrig_ctp_wire_ext_assert <= XtrigNumCtp'(32'd1 << puller);
+    wait_sys_cycles($urandom_range(3, 1));
+    pulse_ctm_dst_req(32'd1 << int_src, 1);
+    // The chiplet keeps the wire asserted until the transmitter has released it.
+    wait_signal_mask("xtrig_ctp_req_out_dout_en", 32'd1 << tx, 32'd1 << tx, 60,
+                     "wire_or_bus.merged.tx_pulls");
+    wait_signal_mask("xtrig_ctp_req_out_dout_en", 32'd1 << tx, '0, 60,
+                     "wire_or_bus.merged.tx_releases");
+    wait_sys_cycles(2);
+    xtrig_vif.xtrig_ctp_wire_ext_assert <= '0;
+    check_output_mask(transmit_intent, CtpModeWireOr, transmit_predicted, "wire_or_bus.merged",
+                      IsolationTailCycles + stretch, '0, 1'b0);
+    check_shared_wire_receive(members, "xtrig_ctp_wire_ext_assert", puller, "wire_or_bus.merged");
+
+    share_wire('0, 1'b0);
+    clear_ctm_routes();
   endtask
 
   // One stretched pulse: enable and busy widths, aligned rise, BUSY over the
@@ -215,10 +302,10 @@ class dtp_xtrig_route_test_seq extends dtp_xtrig_base_test_seq;
                 ), UVM_LOW)
       if (mode == CtpModeWireOr) begin
         verify_wire_or_pulse(ctp_idx, int_idx, stretch, invert, label);
-        // The pad data of a wire-OR port is the static level INVERT
-        // selects while its enable pulses.
+        // The pad data of a wire-OR port rests at the level the port pulls
+        // the wire to.
         wait_signal_mask("xtrig_ctp_req_out_dout", 32'd1 << ctp_idx,
-                         invert ? (32'd1 << ctp_idx) : '0, 60, {label, ".wire_polarity"});
+                         32'(DtpWireOrAssert[invert]) << ctp_idx, 60, {label, ".wire_polarity"});
         continue;
       end
       csr_write(ctp_config_addr(ctp_idx), pack_ctp_config(mode, invert, 1'b1), 4'hF, $sformatf(

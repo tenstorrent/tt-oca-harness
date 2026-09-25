@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # IHP SG13G2 (open 130nm PDK) technology data for the yosys synth flow.
-# hpretl/iic-osic-tools bakes the liberty files in at $PDK_ROOT/$PDK/libs.ref/;
-# paths/cell names match that layout. Adding a new PDK means adding a sibling
-# tech/<pdk>/ directory - this file never changes for it (see
-# flows/synth/yosys/scripts/init_tech.tcl and README.md).
+# Ciel exposes the enabled PDK at $PDK_ROOT/$PDK/libs.ref/; these paths and
+# cell names match that layout.
 set pdk_root [ocah_env PDK_ROOT "/foss/pdks"]
 set pdk_dir "$pdk_root/$tech"
 
