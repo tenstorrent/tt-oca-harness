@@ -17,8 +17,9 @@ class smc_efuse_guard_target_test(smc_base_test):
         "CHK-EFUSE-GUARD-PROGRAM-TARGET",
         "CHK-EFUSE-GUARD-READ-TARGET",
         "CHK-EFUSE-PROGRAM-NO-READBACK",
+        "CHK-EFUSE-QUIET-TIMEOUTS",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

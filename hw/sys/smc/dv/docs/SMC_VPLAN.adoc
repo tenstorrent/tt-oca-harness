@@ -10986,6 +10986,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 ** A read of the word through the read interface must show the bit burnt.
 ** A read-back program of the same bit must find it set.
 * The two locks hold until reset and are left set.
+* With `EFUSE_REQ_ERROR` still set, which "must be cleared by writing 1" (`efuse_interface_ctrl.rdl`), a read and a program of SPARE[9] must both be refused, and the program must not burn.
+* Timeouts configured but not reached. A read-back program with the program timeout enabled at its reset length, and another with the timeout disabled and its length 0, must both complete. A program with no data bit must fail. A read with the read timeout disabled at length 0 must return exactly the two bits programmed.
 
 *Test Procedure*:
 
@@ -10994,6 +10996,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 . Program one bit of SPARE[6] with read-back, read the word, set its read lock, and read it again.
 . Set SPARE[7]'s write lock, program one of its bits with read-back, and read the word.
 . Program one SPARE[8] bit without read-back, read the word, and program the same bit with read-back.
+. Before clearing the locked read's `EFUSE_REQ_ERROR`, read and program SPARE[9].
+. Program two SPARE[9] bits under the two timeout settings, program one with no data bit, and read the word with the read timeout disabled at length 0.
 
 *Checkers*:
 
@@ -11003,9 +11007,10 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 |Checker |Description
 |`CHK-EFUSE-GUARD-READ-TARGET` |An unlocked read of a SPARE word returned the value just programmed; with its read lock set the read failed with `EFUSE_REQ_ERROR` and did not return it
 |`CHK-EFUSE-GUARD-PROGRAM-TARGET` |A program of a write-locked SPARE field failed with `EFUSE_REQ_ERROR`, and the word still read its asset value
+|`CHK-EFUSE-QUIET-TIMEOUTS` |Requests under `EFUSE_REQ_ERROR` were refused, programs completed under an enabled and a disabled timeout, a no-data program failed, and the word held exactly the two programmed bits
 |===
 
-*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all four checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

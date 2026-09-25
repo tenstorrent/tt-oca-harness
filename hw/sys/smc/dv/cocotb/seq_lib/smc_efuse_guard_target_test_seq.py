@@ -32,6 +32,15 @@ write-1-to-set:
   the word through the read interface must show the bit burnt, and a read-back
   program of the same bit must find it set.
 
+* **Requests while `EFUSE_REQ_ERROR` is set.** The error "must be cleared by
+  writing 1" (`efuse_interface_ctrl.rdl`); before it is, a read and a
+  program of SPARE[9] must both be refused, and the program must not burn.
+* **Timeouts configured but not reached.** A read-back program with the
+  program timeout enabled at its reset length, and another with the timeout
+  disabled and its length 0, must both complete; a program with no data bit
+  must fail; and a read with the read timeout disabled at length 0 must return
+  exactly the two bits programmed.
+
 Locks set through `LOCKS` hold until reset, so SPARE[6] and SPARE[7] are left
 locked; no other leaf in the run uses them.
 """
@@ -51,6 +60,7 @@ from .smc_efuse_read_program_timeout_test_seq import (
     PROG_ERR,
     PROG_GO,
     PROG_RB,
+    PROG_TMO,
     PROGRAM_CTRL,
     READ_CTRL,
     READ_DATA,
@@ -58,9 +68,13 @@ from .smc_efuse_read_program_timeout_test_seq import (
     READ_EN,
     READ_ERR,
     READ_GO,
+    READ_TMO,
     REQ_ERR,
     REQ_ERR_CLR,
     STATUS,
+    TMO_CYC_RST_P,
+    TMO_CYC_RST_R,
+    TMO_EN_P,
 )
 from .smc_efuse_vip_utils import EFUSE_MAP_BASE, efuse_preload_word_at
 
@@ -69,6 +83,8 @@ READ_FIELD = 6
 PROGRAM_FIELD = 7
 READ_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", READ_FIELD)
 PLAIN_FIELD = 8
+QUIET_FIELD = 9
+QUIET_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", QUIET_FIELD)
 PLAIN_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", PLAIN_FIELD)
 PROGRAM_WORD_ADDR = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", PROGRAM_FIELD)
 READ_LOCK = smc_efuse_map_u32(f"SMC_EFUSE_MAP__LOCKS__SPARE{READ_FIELD}_READ_LOCK_bm")
@@ -120,6 +136,77 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         got = await self.csr_read(f"{label}_RB", LOCKS)
         assert got & bit, f"{label}: LOCKS reads 0x{got:08x} without bit 0x{bit:x}"
 
+    async def _program(self, label: str, bit_addr: int, data: int, read_back: bool) -> int:
+        cmd = (
+            bit_addr
+            | PROG_GO
+            | PROG_EN
+            | (PROG_DATA if data else 0)
+            | (PROG_RB if read_back else 0)
+        )
+        await self.csr_write(f"{label}_GO", PROGRAM_CTRL, cmd)
+        ctrl = await self._wait(PROGRAM_CTRL, PROG_DONE, f"{label}_DONE")
+        await self.csr_write(f"{label}_IDLE", PROGRAM_CTRL, 0)
+        return ctrl
+
+    async def _blocked_while_error(self) -> None:
+        """With EFUSE_REQ_ERROR still set, a read and a program must both be refused."""
+        word = efuse_preload_word_at(QUIET_WORD_ADDR)
+        free = [b for b in range(32) if not (word >> b) & 1]
+        ctrl, _ = await self._read("ERR_HELD_READ", _bit_addr(QUIET_WORD_ADDR))
+        assert ctrl & READ_ERR, (
+            f"with EFUSE_REQ_ERROR set, a read with READ_ENABLE completed without READ_STATUS "
+            f"(READ_CTRL=0x{ctrl:08x}); the error masks the enable until it is cleared"
+        )
+        ctrl = await self._program(
+            "ERR_HELD_PROGRAM", _bit_addr(QUIET_WORD_ADDR, free[-1]), 1, read_back=True
+        )
+        assert ctrl & PROG_ERR, (
+            f"with EFUSE_REQ_ERROR set, a program with PROGRAM_ENABLE completed without "
+            f"PROGRAM_STATUS (PROGRAM_CTRL=0x{ctrl:08x})"
+        )
+
+    async def _quiet_timeouts_and_empty_data(self) -> None:
+        """Timeouts configured but not reached, and a program carrying no data."""
+        word = efuse_preload_word_at(QUIET_WORD_ADDR)
+        free = [b for b in range(32) if not (word >> b) & 1]
+        assert len(free) >= 3, f"SPARE[{QUIET_FIELD}] word 0 has fewer than three clear bits"
+        await self.csr_write("TMO_P_ON", PROG_TMO, TMO_EN_P | TMO_CYC_RST_P)
+        ctrl = await self._program("TMO_ON", _bit_addr(QUIET_WORD_ADDR, free[0]), 1, True)
+        assert not ctrl & PROG_ERR, (
+            f"a read-back program with the program timeout enabled at its reset length failed "
+            f"(PROGRAM_CTRL=0x{ctrl:08x}); the bank answers long before it"
+        )
+        await self.csr_write("TMO_P_OFF_ZERO", PROG_TMO, 0)
+        await self.csr_write("TMO_R_OFF_ZERO", READ_TMO, 0)
+        ctrl = await self._program("TMO_OFF", _bit_addr(QUIET_WORD_ADDR, free[1]), 1, True)
+        assert not ctrl & PROG_ERR, (
+            f"a read-back program with the program timeout disabled and its length 0 failed "
+            f"(PROGRAM_CTRL=0x{ctrl:08x}); a disabled timeout never fires"
+        )
+        ctrl = await self._program("NO_DATA", _bit_addr(QUIET_WORD_ADDR, free[2]), 0, True)
+        assert ctrl & PROG_ERR, (
+            f"a program carrying no data bit completed without PROGRAM_STATUS "
+            f"(PROGRAM_CTRL=0x{ctrl:08x})"
+        )
+        ctrl, data = await self._read("TMO_READ", _bit_addr(QUIET_WORD_ADDR))
+        want = word | (1 << free[0]) | (1 << free[1])
+        await self.csr_write("TMO_P_RESTORE", PROG_TMO, TMO_CYC_RST_P)
+        await self.csr_write("TMO_R_RESTORE", READ_TMO, TMO_CYC_RST_R)
+        assert not ctrl & READ_ERR and data == want, (
+            f"SPARE[{QUIET_FIELD}] reads 0x{data:08x} (READ_CTRL=0x{ctrl:08x}) with the read "
+            f"timeout disabled at length 0; the two programmed bits make it 0x{want:08x}, and "
+            f"neither the no-data program nor the one refused under EFUSE_REQ_ERROR may add a bit"
+        )
+        cocotb.log.info(
+            "CHK-EFUSE-QUIET-TIMEOUTS: with EFUSE_REQ_ERROR set a read and a program were both "
+            "refused; a read-back program completed with the program timeout enabled at its "
+            "reset length and another with it disabled at length 0; a program with no data bit "
+            "failed; and a read with the read timeout disabled at length 0 returned 0x%08x, "
+            "exactly the two programmed bits",
+            want,
+        )
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
         locks = await self.csr_read("LOCKS_ENTRY", LOCKS)
@@ -162,6 +249,7 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
         assert data != read_word, (
             f"read-locked read of SPARE[{READ_FIELD}] returned the word 0x{data:08x}"
         )
+        await self._blocked_while_error()
         await self._clear_req_err("LOCKED")
         cocotb.log.info(
             "CHK-EFUSE-GUARD-READ-TARGET: after an unlocked read-back program of one bit, a "
@@ -237,3 +325,4 @@ class smc_efuse_guard_target_test_seq(SmcCsrSeq):
             plain_free[0],
             want,
         )
+        await self._quiet_timeouts_and_empty_data()
