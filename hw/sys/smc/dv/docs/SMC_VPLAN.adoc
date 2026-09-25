@@ -11474,6 +11474,40 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-292-smc_i3c_private_write_test]]
+===== 292 `smc_i3c_private_write_test`
+
+*Source Module*: `smc_i3c_private_write_test`
+
+*BFM / Model*: none on the bus; the I3C0 pad model's DUT-drive observation (`tb_i3c0_sda_dut_low`); observation on the PIO response queue
+
+*Objective*: Queue an I3C transfer on I3C0 and I3C1. The other single-build I3C leaves read the CSR window and set `HC_CONTROL.BUS_ENABLE`, but none queues a command, so those controllers never drive their buses.
+
+*Test Coverage*:
+
+* Each instance is brought up as the active controller the way the OCCP controller firmware does it: bus enabled in PIO mode, `STBY_CR_CONTROL.STBY_CR_ENABLE_INIT` at the active-controller value, open-drain bus timing, queue thresholds, the PIO status enables and the PIO queues running. `T_IDLE` is shortened so the bus is available within the leg.
+* One Immediate Data Transfer (direct addressing) writes one byte to static address 0x50, which nothing on the single build answers. The TCRI response descriptor (6.4.1 Table 1) reports an address NACK as error status 0x5, and the response must carry that status and the command's transaction ID.
+* On I3C0 the controller has to drive SDA low at least once during the transfer.
+
+*Test Procedure*:
+
+[arabic]
+. For I3C0, then I3C1: check `HC_CONTROL` at reset, bring the instance up as the active controller, and write the two command words.
+. Poll `PIO_INTR_STATUS.RESP_READY`, read `RESPONSE_PORT` and compare its error status and TID.
+. Restore `PIO_CONTROL`, `HC_CONTROL` and `STBY_CR_CONTROL`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I3C-PRIVATE-WRITE` |A private write to an unanswered address, queued on I3C0 and I3C1, returned NACK with its own TID on both, and the I3C0 controller drove SDA low during it
+|===
+
+*Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 

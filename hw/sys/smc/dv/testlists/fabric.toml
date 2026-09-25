@@ -4,6 +4,14 @@
 schema_version = 1
 
 [[tests]]
+name = "smc_i3c_private_write_test"
+module = "smc_i3c_private_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "i3c"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_i3c_to_fabric_test"
 module = "smc_i3c_to_fabric_test"
 seed = 1
