@@ -504,9 +504,6 @@ module smu #(
   sep_pkg::sep_system_peripherals_internal_axi_req_t   sep_ext_to_smc_axi_req;
   sep_pkg::sep_system_peripherals_internal_axi_resp_t  sep_ext_to_smc_axi_resp;
 
-  sep_pkg::sep_system_peripherals_internal_axi_req_t   sep_ext_to_smc_axi_req_local;
-  sep_pkg::sep_system_peripherals_internal_axi_resp_t  sep_ext_to_smc_axi_resp_local;
-
   // SMC sep_axi_in port (after cross-package assignment)
   smc_pkg::smc_sep_in_56_64_6_12_axi_req_t   smc_sep_axi_in_req;
   smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t  smc_sep_axi_in_resp;
@@ -980,20 +977,6 @@ module smu #(
       .ext_debug_bus_o               (sep_ext_debug_bus)
     );
 
-    axi_window_remap #(
-      .axi_req_t          (sep_pkg::sep_56_64_6_12_axi_req_t),
-      .axi_resp_t         (sep_pkg::sep_56_64_6_12_axi_resp_t),
-      .AXI_ADDR_WIDTH     (smu_pkg::AXI_ADDR_WIDTH)
-    ) u_sep_ext_to_smc_axi_local_alias_remap (
-      .slv_req_i          (sep_ext_to_smc_axi_req),
-      .slv_resp_o         (sep_ext_to_smc_axi_resp),
-      .mst_req_o          (sep_ext_to_smc_axi_req_local),
-      .mst_resp_i         (sep_ext_to_smc_axi_resp_local),
-      .local_alias_base_i (smu_pkg::SEP_SMC_REGION_BASE),
-      .region_size_i      (smu_pkg::SEP_SMC_REGION_SIZE),
-      .target_base_i      (smu_pkg::SEP_SMC_REGION_ALIAS_BASE)
-    );
-
     // ==================================================================
     // SMU AXI Crossbar
     // ==================================================================
@@ -1088,8 +1071,8 @@ module smu #(
     // ==================================================================
     // SEP-to-SMC Dedicated Port (cross-package AXI assignment)
     // ==================================================================
-    `AXI_ASSIGN_REQ_STRUCT(smc_sep_axi_in_req, sep_ext_to_smc_axi_req_local)
-    `AXI_ASSIGN_RESP_STRUCT(sep_ext_to_smc_axi_resp_local, smc_sep_axi_in_resp)
+    `AXI_ASSIGN_REQ_STRUCT(smc_sep_axi_in_req, sep_ext_to_smc_axi_req)
+    `AXI_ASSIGN_RESP_STRUCT(sep_ext_to_smc_axi_resp, smc_sep_axi_in_resp)
 
     // ==================================================================
     // Lifecycle & mailbox driven by SEP
