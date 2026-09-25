@@ -2256,8 +2256,8 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 *Test Coverage*:
 
 * DV-CARD: SMCCGP0_003 ANCHOR: smc_cg_dft_reset_bringup_test
-* `test_en_i` bypass A-B-A on the DMA and Zeroer gaters: gated off while idle, every cycle with `test_en_i` = 1, gated off again with `test_en_i` = 0 and gating re-programmed.
-* Zeroer clocks under reset: while `rst_primary_smc_clk_n` is asserted both Zeroer gated clocks run every cycle of the window. The cold reset returns `CLOCK_GATE_CONTROL` to its generated reset, so `tb_zeroer_cg_en` reads 0 across that window and is recorded in the token; an enabled gate held in reset cannot be produced from the frontdoor on this bench and is not claimed. What is claimed is the clock behaviour under reset with the enable at its reset value.
+* `test_en_i` bypass A-B-A on the DMA and Zeroer gaters. `test_en_i` is static in the functional mission and changes only while the reset is asserted, so each change is made with `rst_cold_ni` held low: gated off while idle with `test_en_i` = 0; `test_en_i` set to 1 under a cold reset, gating programmed on after release, and every cycle enabled across a window at least as long as the gaters took to gate off; `test_en_i` cleared under a second cold reset, gating programmed on after release, and gated off again. With `test_en_i` = 1 the reset synchronisers take `scan_rst_ni`, which the bench ties high, so the second cold reset reaches `rst_primary_smc_clk_n` only once `test_en_i` is cleared.
+* Zeroer clocks under reset: while `rst_primary_smc_clk_n` is asserted in the second cold reset, with `test_en_i` = 0, both Zeroer gated clocks run every cycle of the window. The cold reset returns `CLOCK_GATE_CONTROL` to its generated reset, so `tb_zeroer_cg_en` reads 0 across that window and is recorded in the token; an enabled gate held in reset cannot be produced from the frontdoor on this bench and is not claimed. What is claimed is the clock behaviour under reset with the enable at its reset value.
 
 *Test Procedure*:
 
@@ -2269,7 +2269,7 @@ Drive `smc_cg_dft_reset_bringup_test_seq`. Each checker below is a named compare
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DFT-BYPASS-FREE-RUN` |Named compare in `smc_cg_dft_reset_bringup_test_seq.py`; the run fails if it mismatches
+|`CHK-DFT-BYPASS-FREE-RUN` |With `test_en_i` = 1 set under a cold reset and gating programmed on after release, the DMA and both Zeroer gated clocks show an enabled edge on every cycle of a window at least as long as the gate-off latency measured with `test_en_i` = 0
 |`CHK-NONVAC` |Non-vacuity count in `smc_cg_dft_reset_bringup_test_seq.py`
 |`CHK-RESET-OVERRIDE-FREE-RUN` |With `rst_primary_smc_clk_n` = 0 both Zeroer gated clocks show an enabled edge on every cycle of the window, and `tb_zeroer_cg_en` reads 0 before and after it (`CLOCK_GATE_CONTROL` at its reset), carried in the token; a gated-off edge or an enable that did not reset fails the run (`smc_cg_dft_reset_bringup_test_seq.py`)
 |===
