@@ -25,22 +25,23 @@ enable concurrent access and modular functionality.
 
 === Reset Behavior
 
-When the system reset (rst_ni) is asserted, the GPIO peripheral
-initializes each register bank to well-defined, safe starting values. In
-the Interface Register Bank, the ACCESS_FILTER register is set to
-0x00010100, enforcing default security protection levels, while the
-DATA_CTRL register clears all control bits to 0x00000000, ensuring no
-data path is active by default. Simultaneously, the Control Register
-Bank's CONTROL register is initialized to 0x00100002, establishing a 6mA
-drive strength and enabling strap validity as the hardware default for the physical I/O.
+`ACCESS_FILTER` resets to `0x00010100`. Both filter-enable bits are zero,
+so reads and writes are initially allowed regardless of AXI `PROT`. The stored
+read and write requirements are each `3'b001`; they apply only after software
+enables the corresponding filter. The filter compares transaction protection
+attributes, not initiator identity, and cannot by itself guarantee SEP-only access.
 
-During reset deassertion, the peripheral captures the pad state for
-configuration strap functionality, updating both the strap_valid and
-strap_value fields based on the observed pad logic level. At this stage,
-all GPIO operation modes remain inactive, and explicit software
-configuration is required to enable any functional path. Throughout
-reset, the hardware maintains a safe low-current output condition on the
-pads, minimizing the risk of unintended external drive or contention.
+`DATA_CTRL` resets its software controls to zero, leaving register overrides
+disabled. This does not disable every pad path: with the default
+`INPUT_BY_DEFAULT = 1`, receive is enabled and transmit disabled while cold reset
+is asserted and when no interface owns the pad. After cold reset, a hardware
+LSIO request can select the pad without software enabling the register interface.
+Its direction signals then control transmit and receive.
+
+The control bank's `strap_valid` reflects `INPUT_BY_DEFAULT`, not the sampled
+pad level. `strap_value` reports the captured strap level. The visible `CONTROL`
+value therefore depends on the parameter and captured input as well as the
+reset values of its software-controlled pad settings.
 
 === Detailed Register Map
 

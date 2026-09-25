@@ -245,7 +245,13 @@ module smc_reset_unit (
   // JTAG Reset Control //
   ////////////////////////
 
-  // jtag_reset_ctrl_i contains both an override bit and a reset value, both are on TCKCLK
+  // jtag_reset_ctrl_i is in the TCK domain and stays combinational into these
+  // muxes. The overrides must assert while a debug clock stop has gated the
+  // PLL clocks; clk_ref keeps running. Fuse, cold, cool, and warm then enter
+  // smc_reset_ctrl / smc_reset_sync, whose prim_sync_reset stages retime the
+  // deassert edge into each destination domain. The per-subsystem cold and
+  // warm overrides leave on ss_reset_ctrl_o unsynchronized; the receiving
+  // subsystem synchronizes them at its edge.
 
   prim_rst_mux2_hf_n u_fuse_reset_ovrd_mux (
     .rst0_ni (fuse_reset_ni),

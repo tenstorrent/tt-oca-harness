@@ -33,7 +33,10 @@ from smc_base_test import smc_base_test
 #   funnel for the allow leg: control write + readback, disinput write
 #     + readback                                                              4
 #   allow leg: 64 action writes, then the pointer read                       65
-#   second window: 8 to re-arm the sink, 64 action writes, the pointer read  73
+#   large-window run-on: no further sweep if the allow leg has already
+#     passed the small window's size                                          0
+#   second window: 8 to re-arm the sink, 64 action writes, the pointer read,
+#     one sweep at least                                                     73
 #   restore: DST, EAP, CLA control, disinput, funnel control, sink control,
 #     DEBUG_BUS_MUX, DEBUG_CTRL                                               8
 #                                                                         ------

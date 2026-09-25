@@ -35,22 +35,4 @@ exclude:
 # offset with these field bounds.
 extra_regs: {}
 
-# Fields the block rewrites after every software write: live counters, write and
-# read pointers, the timestamp. Their RTL is shaped like ordinary rw config, so
-# the yaml reports them writable and a generated map would too -- smc_register_test
-# flags each one on write-read-back. Pinned read-only by hand.
-#
-# The yaml's own HW_WRITE cannot stand in for this list: 35 other fields carry
-# HW_WRITE and are legitimately rw.
-#
-# Asserted: register and field still exist, and the yaml still reports the field
-# sw-writable (an upstream change to read-only makes the pin redundant).
-hw_owned:
-  dst_sink:
-    trDstRamWPHigh: [trDstRamWPHigh]
-  cla:
-    c_dbg_cla_counter0_cfg: [counter, upper_counter, rsvd]
-    c_dbg_cla_counter1_cfg: [counter, upper_counter, rsvd]
-    c_dbg_cla_counter2_cfg: [counter, upper_counter, rsvd]
-    c_dbg_cla_counter3_cfg: [counter, upper_counter, rsvd]
-    c_dbg_cla_timestamp: [timestamp_upper, timestamp_lower]
+hw_owned: {}

@@ -429,7 +429,7 @@ def self_test() -> None:
     assert is_docs_path("README.md")
     assert is_docs_path("hw/sys/dtp/doc/jtag.adoc")
     assert is_docs_path("doc/trm/src/index.adoc")
-    assert is_docs_path("doc/trm/dist/ocah-trm.pdf")
+    assert is_docs_path("doc/trm/_build/latex/ocah-trm.pdf")
     assert is_docs_path("antora-playbook.yml")
     assert is_docs_path("antora-combined-playbook.yml")
     assert is_docs_path("hw/ip/uart/doc/diagram.svg")
