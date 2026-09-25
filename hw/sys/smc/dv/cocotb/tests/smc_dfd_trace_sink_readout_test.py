@@ -25,18 +25,21 @@ from smc_base_test import smc_base_test
 #   sink armed for the baseline: off write, 6 window writes, enable
 #     write + readback                                                        9
 #   baseline: the seek write, its readback, the data read                     3
+#   empty buffer: 7 x (write-pointer write, read-pointer write, data read),
+#     then the two pointer restores                                          23
 #   DST enable write + readback                                               2
 #   CLA arm: EAP reset write, control write, 2 for the LogicalOp discovery    4
-#   fill: 64 action writes                                                   64
+#   fill: 64 action writes and the wrap-flag read, one sweep at least        65
 #   read-out: 16 positions x (seek write, seek readback, data read), plus
-#     the same three on the window's last word                               51
+#     the same three on the window's last word and on 7 words inside the
+#     first set                                                              72
 #   2 sink modes x (9 to re-arm the sink, 64 action writes)                 146
 #   deactivation: the active read, the write and its readback                 3
 #   restore: DST, EAP, CLA control, funnel, sink control, DEBUG_BUS_MUX,
 #     DEBUG_CTRL                                                              7
 #                                                                         ------
-#                                                                            357
-TRACE_SINK_READOUT_MIN_CSR_ACCESSES = 357
+#                                                                            402
+TRACE_SINK_READOUT_MIN_CSR_ACCESSES = 402
 
 
 @pyuvm.test()

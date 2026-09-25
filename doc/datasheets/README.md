@@ -49,5 +49,5 @@ make ocah-doc-datasheets-pdf
 ./scripts/docker-run.sh doc-pdf datasheets
 ```
 
-The PDFs are written to `doc/datasheets/dist/` and staged into the website's
+The PDFs are written to `doc/datasheets/_build/` and staged into the website's
 `downloads/` directory by the normal GitHub Pages staging targets.

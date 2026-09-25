@@ -24,6 +24,7 @@ import cross_trigger_network_reg as _ctn_reg
 __all__ = [
     "DTP_BSR_ENABLE",
     "DTP_CLAMP_ENABLE",
+    "DTP_CT_DST_LATENCY",
     "DTP_DEFAULT_IDCODE",
     "DTP_EXTEST_PULSE_ENABLE",
     "DTP_EXTEST_TRAIN_ENABLE",
@@ -48,6 +49,8 @@ __all__ = [
     "DTP_SMC_DBG_ENABLE",
     "DTP_STAP_IO_ENABLE",
     "DTP_TMP_ENABLE",
+    "DTP_WIRE_OR_ASSERT",
+    "DTP_WIRE_OR_PULL",
     "DV_CFG_PARITY",
 ]
 
@@ -70,6 +73,17 @@ DTP_NUM_XTRIG_INT_CT = DTP_NUM_CTM_PORTS - DTP_NUM_XTRIG_CTP
 DTP_NUM_CLK_STOP_REQ = 9
 # Bit per internal port: 0 = pulse mode, where the acknowledge is unused.
 DTP_INT_CT_MODE = 0
+
+# Wire-OR shared-wire polarity per CONFIG.INVERT (cross_trigger_port.rdl):
+# INVERT=0 is an active-low wire with a pull-up, INVERT=1 an active-high wire
+# with a pull-down. A port receives a trigger when its synchronized wire moves
+# from the pull level to the asserted level.
+DTP_WIRE_OR_PULL = {0: 1, 1: 0}
+DTP_WIRE_OR_ASSERT = {0: 0, 1: 1}
+# Clock edges from the edge at which a wire-OR receive input moves to the edge
+# at which the port's ct_dst is high: the two synchronizer stages and the
+# registered ct_dst output.
+DTP_CT_DST_LATENCY = 3
 
 # JTAG interface unit and PTAP configuration.
 DTP_NUM_EXTRA_STAPS = 1
@@ -115,4 +129,7 @@ DV_CFG_PARITY: dict[str, int] = {
     "cfg_num_ext_ic_reset": DTP_NUM_EXT_IC_RESET,
     "cfg_och_ver": DTP_OCH_VER,
     "cfg_idcode": DTP_DEFAULT_IDCODE,
+    "cfg_wire_or_pull": (DTP_WIRE_OR_PULL[1] << 1) | DTP_WIRE_OR_PULL[0],
+    "cfg_wire_or_assert": (DTP_WIRE_OR_ASSERT[1] << 1) | DTP_WIRE_OR_ASSERT[0],
+    "cfg_ct_dst_latency": DTP_CT_DST_LATENCY,
 }

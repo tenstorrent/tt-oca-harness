@@ -25,7 +25,12 @@ observation with a bound:
 * ``rst_warm`` then asserts and releases, after which both live pins read 0
   while both sticky latches still read 1.
 
-Each holds before its ``CHK-WDT-TIMEOUT-{FIRST,SECOND,RESET}`` line is logged;
+``smc_cpu_ctrl_wrap.sv`` keeps a stage-2 count per core, so after core 0's
+pass the same sequence runs on cores 1, 2 and 3 in turn, each after the
+previous warm reset has released. The sticky latches are already set by then,
+so those passes read the live pins, which the warm reset clears again.
+
+Each holds before its ``CHK-WDT-TIMEOUT-{FIRST,SECOND,RESET,CORES}`` line is logged;
 the SMC_VPLAN card of the same name declares the three.
 
 ``+smc_wdt_timeout_negative`` is the same run with one expectation inverted:
@@ -59,6 +64,8 @@ WDT_CMP_FIRST = 0x0100
 WDT_TIMEOUT_RESET = 0x4000
 
 WDT_CORE = 0
+# smc_cpu_ctrl_wrap.sv keeps a stage-2 count per core; the rest of the cluster.
+OTHER_CORES = (1, 2, 3)
 
 # Polling bounds, in clk_smc_i cycles. The first timeout needs CMP scaled
 # cycles plus the arming write's completion. The second is WDT_TIMEOUT
@@ -71,9 +78,9 @@ SECOND_TIMEOUT_SLACK_CYCLES = 8
 WARM_RESET_BOUND_CYCLES = 256
 WARM_RELEASE_BOUND_CYCLES = 200_000
 
-# Accesses issued by body(): one CPU_CTRL read plus the arming writes and
-# readbacks on the core-0 WDT block.
-WDT_TIMEOUT_PIN_ACCESSES = 9
+# Accesses issued by body(): per core, one CPU_CTRL read plus the arming writes
+# and readbacks on that core's WDT block.
+WDT_TIMEOUT_PIN_ACCESSES = 9 * (1 + len(OTHER_CORES))
 
 NEGATIVE_PLUSARG = "smc_wdt_timeout_negative"
 
@@ -93,9 +100,75 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
         self.warm_reset_cycles: int | None = None
         #: live pins after the warm reset released (first, second)
         self.live_after_reset: tuple[int, int] | None = None
+        #: per other core: (first-timeout, second-gap, warm-reset) cycles
+        self.other_cores: dict[int, tuple[int, int, int]] = {}
 
-    def _reg(self, reg: str) -> int:
-        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{WDT_CORE}_WDT_{reg}_BASE_ADDR")
+    def _reg(self, reg: str, core: int = WDT_CORE) -> int:
+        return smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_{reg}_BASE_ADDR")
+
+    async def _arm(self, core: int) -> None:
+        """Arm one core's WDT with the keyed CMP, COUNT and CTRL writes."""
+        key = self._reg("KEY", core)
+        # Each write needs its own unlock (wdt.rdl KEY): the block re-locks
+        # after one write.
+        await self.csr_write(f"WDT{core}_KEY_CMP", key, WDT_MAGIC_KEY)
+        await self.csr_write(f"WDT{core}_CMP", self._reg("CMP", core), WDT_CMP_FIRST)
+        await self.csr_read(f"WDT{core}_CMP_RB", self._reg("CMP", core), expected=WDT_CMP_FIRST)
+        await self.csr_write(f"WDT{core}_KEY_COUNT", key, WDT_MAGIC_KEY)
+        await self.csr_write(f"WDT{core}_COUNT", self._reg("COUNT", core), 0)
+        await self.csr_write(f"WDT{core}_KEY_CTRL", key, WDT_MAGIC_KEY)
+        await self.csr_write(f"WDT{core}_CTRL", self._reg("CTRL", core), WDT_CTRL_ARM)
+        ctrl_rb = await self.csr_read(f"WDT{core}_CTRL_RB", self._reg("CTRL", core))
+        assert (ctrl_rb & ~WDT_CTRL_IP0) == WDT_CTRL_ARM, (
+            f"WDT{core} CTRL reads 0x{ctrl_rb:08x} after the keyed arming write, "
+            f"expected 0x{WDT_CTRL_ARM:08x} (plus wdogip0)"
+        )
+
+    async def _other_core(self, core: int) -> tuple[int, int, int]:
+        """Both stages and the warm reset for one of cores 1..3, on the live pins.
+
+        The sticky latches are already set by core 0's pass, so this reads the
+        live pins, which the warm reset clears.
+        """
+        dut = cocotb.top
+        await self.wait_fuse_sense_done()
+        live = (int(dut.tb_wdt_first_timeout.value), int(dut.tb_wdt_second_timeout.value))
+        assert live == (0, 0), f"live timeout pins {live} before core {core}'s WDT was armed"
+        stage2 = await self.csr_read(
+            f"CPU_CTRL_WDT_TIMEOUT_CORE{core}",
+            smc_addr("SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_BASE_ADDR"),
+            expected=WDT_TIMEOUT_RESET,
+        )
+        await self._arm(core)
+        first = await self._wait_level(
+            dut.tb_wdt_first_timeout, 1, FIRST_TIMEOUT_BOUND_CYCLES, f"core {core} first timeout"
+        )
+        assert int(dut.tb_wdt_second_timeout.value) == 0, (
+            f"core {core}: second timeout high on the cycle the first rose, before its "
+            f"stage-2 count of 0x{stage2:x} cycles could have run"
+        )
+        gap = await self._wait_level(
+            dut.tb_wdt_second_timeout,
+            1,
+            stage2 + SECOND_TIMEOUT_SLACK_CYCLES,
+            f"core {core} second timeout",
+        )
+        assert stage2 <= gap <= stage2 + SECOND_TIMEOUT_SLACK_CYCLES, (
+            f"core {core}: second timeout {gap} cycles after the first; expected the "
+            f"WDT_TIMEOUT stage-2 count 0x{stage2:x} (+{SECOND_TIMEOUT_SLACK_CYCLES})"
+        )
+        warm = await self._wait_level(
+            dut.tb_rst_warm_smc_clk_n, 0, WARM_RESET_BOUND_CYCLES, f"core {core} rst_warm assert"
+        )
+        await self._wait_level(
+            dut.tb_rst_warm_smc_clk_n, 1, WARM_RELEASE_BOUND_CYCLES, f"core {core} rst_warm release"
+        )
+        await ClockCycles(dut.clk_smc_i, 8)
+        live = (int(dut.tb_wdt_first_timeout.value), int(dut.tb_wdt_second_timeout.value))
+        assert live == (0, 0), (
+            f"core {core}: live timeout pins {live} after the warm reset released"
+        )
+        return first, gap, warm
 
     @staticmethod
     async def _wait_level(sig, want: int, bound: int, label: str) -> int:
@@ -132,21 +205,7 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
         )
         self.stage2_cycles = stage2
 
-        key = self._reg("KEY")
-        # Each write needs its own unlock (wdt.rdl KEY): the block re-locks
-        # after one write.
-        await self.csr_write("WDT0_KEY_CMP", key, WDT_MAGIC_KEY)
-        await self.csr_write("WDT0_CMP", self._reg("CMP"), WDT_CMP_FIRST)
-        await self.csr_read("WDT0_CMP_RB", self._reg("CMP"), expected=WDT_CMP_FIRST)
-        await self.csr_write("WDT0_KEY_COUNT", key, WDT_MAGIC_KEY)
-        await self.csr_write("WDT0_COUNT", self._reg("COUNT"), 0)
-        await self.csr_write("WDT0_KEY_CTRL", key, WDT_MAGIC_KEY)
-        await self.csr_write("WDT0_CTRL", self._reg("CTRL"), WDT_CTRL_ARM)
-        ctrl_rb = await self.csr_read("WDT0_CTRL_RB", self._reg("CTRL"))
-        assert (ctrl_rb & ~WDT_CTRL_IP0) == WDT_CTRL_ARM, (
-            f"WDT0 CTRL reads 0x{ctrl_rb:08x} after the keyed arming write, "
-            f"expected 0x{WDT_CTRL_ARM:08x} (plus wdogip0)"
-        )
+        await self._arm(WDT_CORE)
 
         first_cycles = await self._wait_level(
             dut.tb_wdt_first_timeout_seen, 1, FIRST_TIMEOUT_BOUND_CYCLES, "first timeout"
@@ -223,6 +282,16 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
             "pins back to %s, sticky latches still set",
             warm,
             live,
+        )
+
+        for core in OTHER_CORES:
+            self.other_cores[core] = await self._other_core(core)
+        cocotb.log.info(
+            "CHK-WDT-TIMEOUT-CORES: cores %s each raised the first timeout, then the second "
+            "after their stage-2 count, then the warm reset, on the live pins "
+            "(first/second-gap/warm cycles: %s)",
+            ", ".join(str(c) for c in OTHER_CORES),
+            "; ".join(f"core {c}={f}/{g}/{w}" for c, (f, g, w) in self.other_cores.items()),
         )
 
         self.assert_all_reachable(WDT_TIMEOUT_PIN_ACCESSES, "WDT_TIMEOUT_PIN")

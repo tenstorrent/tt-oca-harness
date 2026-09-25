@@ -21,12 +21,13 @@ from smc_base_test import smc_base_test
 #
 #   DEBUG_CTRL force_clk_en write                                             1
 #   4 modes x 64 identifiers, plus one readback per mode                    260
+#   out of the toggle mode: 64 identifier-mode writes and the readback       65
 #   restore: DEBUG_BUS_MUX, DEBUG_CTRL                                        2
 #   the lock: read before, the set write, the readback, the clear-attempt
 #     write, the readback after it                                            5
 #                                                                         ------
-#                                                                            268
-DBM_MODE_LOCK_MIN_CSR_ACCESSES = 268
+#                                                                            333
+DBM_MODE_LOCK_MIN_CSR_ACCESSES = 333
 
 
 @pyuvm.test()

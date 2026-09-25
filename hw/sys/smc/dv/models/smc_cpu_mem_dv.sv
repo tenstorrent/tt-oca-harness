@@ -216,6 +216,15 @@ module smc_cpu_mem_dv
       logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] scan_word;
       logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] linear_mem [0:MAX_LINEAR_WORDS-1];
 
+      // A four-state simulator leaves every entry X until something writes
+      // it, and a sub-word store merges that X into the codeword, so a reader
+      // of the entry sees X where Verilator's randomised array gives it a
+      // value. The all-zero word is a valid codeword; every entry starts as
+      // one, including the three quarters above the image staging cap.
+      for (int unsigned e = 0; e < SCRATCH_WORDS; e++) begin
+        u_mems.gen_scratch_rams[bank].u_mem.u_mem.mem[e] = '0;
+      end
+
       #0.2;
       if ($value$plusargs("smc_scratch_ram_hex=%s", scratch_path)) begin
         scratch_fd = $fopen(scratch_path, "r");

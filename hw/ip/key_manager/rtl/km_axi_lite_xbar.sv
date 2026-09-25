@@ -1,30 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-// Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file km_axi_lite_xbar.sv
- * @brief AXI4-Lite crossbar for the Key Manager subsystem.
- *
- * @details Routes transactions from a single KM CPU master port to ten
- *          slave ports:
- *          - Internal: KPV, KMCSR, DRBG Sampler, Mailbox
- *          - External crypto engines: OTBN, AES, KMAC, HMAC, Adams Bridge
- *          - OTP/eFuse (index 8): KM-local window OTP_BASE_ADDR-OTP_END_ADDR,
- *            forwarded to otp_req_o; key_manager.sv remaps addr[31:12] to
- *            OTP_EFUSE_REMAP_BASE[31:12] before driving efuse_req_o.
- *
- *          Uses the PULP axi_lite_xbar IP with address-based routing.
- *          Zero-latency mode is configured (no pipeline stages).
- *
- * @param axil_req_t       AXI-Lite request struct type.
- * @param axil_resp_t      AXI-Lite response struct type.
- * @param axil_aw_chan_t   Write address channel type.
- * @param axil_w_chan_t    Write data channel type.
- * @param axil_b_chan_t    Write response channel type.
- * @param axil_ar_chan_t   Read address channel type.
- * @param axil_r_chan_t    Read data channel type.
- */
+// Key Manager AXI-Lite crossbar.
+// Address rules use the Key Manager interface constants defined in km_intf_pkg.
 
 module km_axi_lite_xbar
   import km_intf_pkg::*;

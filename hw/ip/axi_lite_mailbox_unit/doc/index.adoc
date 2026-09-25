@@ -29,6 +29,13 @@ FIFO flushing. Channel depth is adjustable per instance to suit system
 needs, while hardware minimizes software overhead for efficient,
 low-latency data exchange.
 
+[[mailbox-wrapper-diagram]]
+.SMC mailbox wrapper and interrupt routing
+image::SMC_AXILMailbox_FIG027.png[alt="SMC mailbox wrapper and interrupt routing",width=100%,pdfwidth=100%]
+
+<<mailbox-wrapper-diagram>> shows the SMC wrapper around the mailbox and its
+interrupt connections.
+
 ifdef::backend-html5[]
 include::partial$axi_lite_mailbox_unit/doc/architecture.adoc[]
 endif::backend-html5[]

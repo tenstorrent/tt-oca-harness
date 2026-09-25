@@ -143,6 +143,14 @@ args = [
 ]
 
 [[tests]]
+name = "smc_efuse_guard_target_test"
+module = "smc_efuse_guard_target_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "efuse"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_efuse_lock_guard_test"
 module = "smc_efuse_lock_guard_test"
 seed = 1
