@@ -342,7 +342,7 @@ feature rows.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_cluster_beu_test` |Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold.
+|`smc_cluster_beu_test` |SEP_IN reads and writes at the documented BEU addresses answer DECERR at the reset aperture and change no register below.
 |`smc_cpu_ctrl_map_depth_test` |Run CPU-control address-map CSR depth checks.
 |`smc_cpu_ctrl_read_only_write_test` |Writes at every CPU_CTRL address the RDL makes read-only, and a write of 0 into the singlepulse reset fields.
 |`smc_regblock_partial_write_test` |Byte writes that must hold a set field on another lane, W1C events that must survive a write of zero, and writes of zero into a trigger and two status registers.
@@ -2038,11 +2038,11 @@ Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REG
 
 *BFM / Model*: SEP_IN AXI driver (no external VIP)
 
-*Objective*: With `REGION_SIZE` programmed to 256 MiB the PLIC, the CLINT and the four bus error units decode at the addresses the chapters give them; at the 16 MiB reset those addresses lie above the local aperture, where the specification does not define the response, so what they answer there is reported and not claimed.
+*Objective*: With `REGION_SIZE` programmed to 256 MiB the PLIC, the CLINT and the four bus error units decode at the addresses the chapters give them; at the 16 MiB reset those addresses lie outside the local and global apertures, and an inbound access there answers DECERR.
 
 *Test Coverage*:
 
-* `REGION_SIZE` reads its generated reset and `WDT0.CMP` inside the reset aperture reads its generated reset. The PLIC priority word at the same window offset is read above the reset aperture with the response tolerated: `fabric.adoc` and `memmap.adoc` size the aperture but do not say what an inbound access above it returns, so the answer is recorded in the cell ledger and not compared. The proof that the aperture widened is the PLIC, CLINT and BEU legs themselves: co-resident patterns and generated resets at addresses that are outside the aperture at reset.
+* `REGION_SIZE` reads its generated reset and `WDT0.CMP` inside the reset aperture reads its generated reset. The PLIC priority word at the same window offset is read above the reset aperture and must answer DECERR; the address is declared an expected DECERR to the SEP_IN monitor. The proof that the aperture widened is the PLIC, CLINT and BEU legs themselves: co-resident patterns and generated resets at addresses that are outside the aperture at reset.
 * 256 MiB is the smallest legal power of two whose aperture contains the whole documented map up to BASE + 0x801_3FFF; the sequence asserts that relation against the generated reset size rather than hard-coding a verdict.
 * PLIC: the priority and per-core enable words hold distinct co-resident patterns, are then written to the priority-0 / disabled state `interrupts.adoc` requires of firmware and read back exactly; the top word of the 4 MiB window and the first word above it must answer without returning either pattern.
 * CLINT: `MSIP_0` and `MTIMECMP_0` hold distinct co-resident patterns, and the top word of the 64 KiB window must not return them.
@@ -2059,7 +2059,7 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 |===
 |Checker |Description
 |`CHK-REGION-SIZE-PLIC-CLINT-BEU` |The cell ledger: one line per cell closed with the measured evidence -- the reset-aperture reads with the recorded above-aperture answer, the PLIC base, edge and firmware-init cells, the CLINT base and top, and the four BEU instances. A cell is entered only after its compare passed
-|`CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE` |Summary line: the response and word the PLIC address gave above the reset aperture (reported), the word it gave at 256 MiB, cells closed, accesses issued and the scoreboard exact-value compare count against its floor. Logged after those compares and the floor have held
+|`CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE` |Summary line: the DECERR and word the PLIC address gave above the reset aperture, the word it gave at 256 MiB, cells closed, accesses issued and the scoreboard exact-value compare count against its floor. Logged after those compares and the floor have held
 |`CHK-REGION-SIZE-PLIC-CLINT-BEU-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
@@ -3572,28 +3572,27 @@ Drive `smc_clock_domain_connectivity_test_seq` on the SEP_IN AXI sequencer: unga
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold.
+*Objective*: SEP_IN reads and writes at the documented BEU addresses answer DECERR at the reset aperture and change no register below.
 
 *Test Coverage*:
 
-* **Read aliasing.** Each documented BEU address and the `0xC001_xxxx` address `local_fabric_masked_addr` maps it to are read in the same run and must return the SAME word. Only the mapped read carries an `expected=`, and only where the register behind it has a generated RDL reset; the BEU-address read is pinned by nothing except the pair compare, so that compare is the sole check on it and fails if the fold is repaired.
-* **Write co-residency.** A distinguishing hysteresis value is written to `0xC801_0018` and read back at `0xC001_0018`. One register cannot be two registers, so this is positive evidence of a single physical location behind both addresses -- a property no read-side `expected=` restates, and one that temporal isolation cannot manufacture, because the write and the readback address different words of the address space.
+* The address map places one Bus Error Unit per core at `0xC801_0000 + core * 0x1000`. At the generated resets (`LOCAL_BASE` `0xC000_0000`, `GLOBAL_BASE` `0x4000_0000`, `REGION_SIZE` 16 MiB) those addresses lie outside both the local and the global aperture (`fabric.adoc`, Local and Remote Resource Access). The input fabric answers an inbound access there with DECERR. No access reaches a BEU, so no BEU property is claimed; the BEU registers themselves are `smc_region_size_plic_clint_beu_decode_test`'s subject.
+* Each core's BEU base and core 0's `PLIC_ENABLE` word (`0xC801_0018`) take a read and a write, and every access must answer DECERR. Each address is declared an expected DECERR to the SEP_IN monitor. The written word is `CLOCK_GATE_CONTROL`'s reset with the hysteresis field changed, which differs from every reset checked below.
+* Afterwards, the `0xC001_xxxx` registers that share those addresses' low bits must read their generated resets: `SMC_BASE_CONFIG` `GLOBAL_BASE`, `REGION_SIZE` and `CLOCK_GATE_CONTROL`, alias-remap region 0 `region_start` and `region_attrs`, and M-mode remap entry 0 `region_attrs`.
 
 *Test Procedure*:
 
 Drive `smc_cluster_beu_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-BEU-WINDOW-ALIASED` |Named compare in `smc_cluster_beu_test_seq.py`; the run fails if it mismatches
+|`CHK-BEU-WINDOW-DECERR` |The five BEU addresses each answered DECERR on a read and on a write, and the six registers sharing their low address bits read their generated resets afterwards
 |===
 
-
-*Pass Criteria*: `CHK-BEU-WINDOW-ALIASED` hold after their compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-BEU-WINDOW-DECERR` holds after its compares. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-070-smc_cpu_ctrl_map_depth_test]]
@@ -11542,7 +11541,7 @@ in <<smc-deferred-disposition>>.
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|The SEP_IN local fabric folds every request into the `LOCAL_BASE`-aligned, `REGION_SIZE`-byte alias aperture (`SMC_BASE_CONFIG.REGION_SIZE`, reset `0x0100_0000`, so `addr[23:0]` survive and `LOCAL_BASE` is prefixed above them), so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
+|At the `REGION_SIZE` reset (`0x0100_0000`) the cluster-local window `0xC800_xxxx` lies outside the local and global apertures, and an inbound SEP_IN access there answers DECERR |No access from this testbench at the reset aperture reaches a Bus Error Unit; `smc_cluster_beu_test` checks the DECERR, and `smc_region_size_plic_clint_beu_decode_test` reaches the BEUs after widening `REGION_SIZE` |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
 |Verilator is a 2-state simulator |Resolvability predicates (`is_resolvable`) cannot fail on a Verilator run, so X-propagation claims are not closed there |Retain a VCS or Xcelium run for the scenarios whose evidence depends on 4-state behaviour
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Needs the adopter's PLL/PVT blocks integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
