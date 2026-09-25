@@ -957,7 +957,9 @@ C12 = (
 C13 = (
     "SMC-C13-COUNTER-VALID-PAIRED: the iDMA write unit resets its beat counter and its valid flag "
     "together, loads them together, and clears the flag in the cycle the counter steps from one "
-    "to zero, so with the flag low the counter is zero."
+    "to zero, so with the flag low the counter is zero. The system timer holds its count at zero "
+    "until a start or sync load, and either one sets its sticky enable on the same edge, so with "
+    "the enable low the count is zero too."
 )
 C14 = (
     "SMC-C14-STROBE-MASK-NONZERO: the iDMA write unit's first-beat mask is all ones shifted by an "
@@ -972,10 +974,14 @@ C15 = (
 )
 P31 = (
     "SMC-P31-OCTS-CREDIT-SPEC: the system timer's register specification requires CREDIT_VAL to "
-    "exceed PULSE_WIDTH, and a PULSE_WIDTH of zero counts as one, so CREDIT_VAL is at least two. "
-    "The timer's enable only ever sets, and until it does the credit counter is held at zero, "
-    "so the counter never meets CREDIT_VAL minus one with the enable low. A specification that "
-    "admits a CREDIT_VAL of one retires the class."
+    "exceed PULSE_WIDTH, a PULSE_WIDTH of zero counts as one, and the RTL asserts the same bound "
+    "on that effective width, so CREDIT_VAL is at least two and above the pulse width. The "
+    "timer's enable only ever sets, and until it does the credit counter is held at zero, so the "
+    "counter never meets CREDIT_VAL minus one with the enable low. A pulse lasts its width, a "
+    "credit follows the last credit or counter reset by CREDIT_VAL cycles, a start resets the "
+    "counter, and both values change in one register write, so no credit arrives while a pulse "
+    "is active. A specification that admits a CREDIT_VAL at or below the pulse width retires "
+    "the class."
 )
 P30 = (
     "SMC-P30-CCG-HYST-OFF: both generic_ccg instances, the DFD clock gate and the debug-bus mux "
@@ -1594,6 +1600,14 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     ],
     "efuse_shadow_reg_access_control": [
         (P6, re.compile(r"."), None, ("efuse_shadow_reg_access_control.sv", 115, 117)),
+        # The first copy of this operand sits in the secure_tm_i arm; the else-arm copy
+        # reads zero on every access and is always covered.
+        (
+            P15,
+            re.compile(r"^\(sw_lock_bits\[2:1\] == 2'b11\)$"),
+            re.compile(r"^0$"),
+            ("efuse_shadow_reg_access_control.sv", 129, 129),
+        ),
     ],
     "mmr_req_ctrl": [(P16, re.compile(r"."), None, ("mmr_req_ctrl.sv", 167, 167))],
     # An accept in the cycle a response is acked, on the write-only UART map.
@@ -1962,10 +1976,21 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
         (
             P31,
             lambda terms, vector: (
-                terms == ("is_primary_i", "enable", "(credit_counter_q == (reg_credit_val_i - 1))")
-                and vector == "101"
+                (
+                    terms
+                    == ("is_primary_i", "enable", "(credit_counter_q == (reg_credit_val_i - 1))")
+                    and vector == "101"
+                )
+                or (
+                    terms == ("enable", "credit_gen_pulse", "(pulse_active == PULSE_IDLE)")
+                    and vector == "110"
+                )
             ),
-        )
+        ),
+        (
+            C13,
+            lambda terms, vector: terms == ("enable", "(timer_count_q > 64'b0)") and vector == "01",
+        ),
     ],
     "zeroer_ctrl_reg": [
         (D1, lambda terms, vector: terms == ("s_axil_awvalid", "s_axil_awready") and vector == "10")
