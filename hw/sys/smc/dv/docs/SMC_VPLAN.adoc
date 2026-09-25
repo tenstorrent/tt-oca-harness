@@ -831,7 +831,7 @@ Drive `smc_ext_interrupts_pin_test_seq`. Each checker below is a named compare t
 
 *Source Module*: `smc_fw_plic_claim_test`
 
-*BFM / Model*: the SMC C image `fw/tests/plic_sanity`, executed by the CPU cluster; stimulus on `tb_ext_interrupt_0_i`, verdict read over SEP_IN AXI
+*BFM / Model*: the SMC C image `fw/tests/plic_sanity`, executed by the CPU cluster; stimulus on `tb_ext_interrupt_0_i`, `tb_temp_interrupt_i` and `tb_ext_interrupts_hi_i` (`ext_interrupts_i[16:0]`), verdict read over SEP_IN AXI
 
 *Objective*: Firmware programs the cluster PLIC and claims a real external interrupt through it.
 
@@ -841,6 +841,7 @@ Drive `smc_ext_interrupts_pin_test_seq`. Each checker below is a named compare t
 * The loop `smc_ext_interrupts_pin_test` states in its own docstring that it leaves open: that testcase follows `ext_interrupts_i[0]` through `prim_sync3` and "does not claim PLIC". `smc_hang_detector_plic_route_test` checks a route with testbench probes and reads no PLIC register either. This closes it end to end: pin -> synchroniser -> gateway -> enable and priority against threshold -> MEIP -> trap -> claim -> the ID the CPU reads back -> complete.
 * PLIC source 1, which is `cpu_interrupts[0]` and therefore `ext_interrupts_i[0]`: the SMC interrupt-vector map (`doc/interrupts.adoc`, "SMC CPU Interrupt Vector Map") places the external interrupts at the bottom of the vector and defines the PLIC source ID as the bit index plus one because ID 0 is reserved; `tt_smc_interrupts.h` transcribes that chapter. It is source 1 and not another because `tb_top.sv:1199-1200` drives only `ext_interrupts_i[1:0]` -- bit 0 from `tb_ext_interrupt_0_i`, bit 1 from `tb_temp_interrupt_i` -- and ties `[255:2]` to zero, and this testcase raises bit 0 alone: any other external source is a line nothing raises here, so the handler would never run and the testcase would time out instead of measuring anything.
 * No forced internal state: the stimulus is a DUT input pin and everything between it and the verdict is the DUT ([NO-FORCED-INTERNAL-STATE]).
+* Sources 2-17 (`ext_interrupts_i[16:1]`) and the I2C controller 0 source (280, raised by the firmware through `INTR_TEST`) are each registered, enabled at distinct priorities and required to arrive exactly once under their own ID; then each threshold 1-6 is set with each source alone above it and that source alone must be claimed, and an idle claim read at every threshold 0-7 must return source 0. A claim of an unregistered or unexpected ID fails the image.
 
 *Test Procedure*:
 
@@ -849,7 +850,7 @@ Drive `smc_ext_interrupts_pin_test_seq`. Each checker below is a named compare t
 . Program the reset vector and release. The image clears every context's enable words, gives the eight contexts distinct thresholds, registers a handler for source 1, enables it, publishes the arm word 0xAAAA_AAAA and parks in `wfi`. The handler masks the source through the context threshold (not the enable bit, which the PLIC requires set for a completion to count) and returns, so the driver's claim-complete write executes; main then lowers the threshold with the pin still high and requires a second delivery before it posts the verdict, because the gateway forwards a source again only after its previous claim was completed.
 . Require the arm word before any verdict. A PASS not preceded by it is failed: the image would have reached its verdict without passing through the state the stimulus acts on.
 . Hold the pin low for 2000 further `clk_smc_i` cycles and require SCRATCH_0 to still read the arm word.
-. Drive `ext_interrupts_i[0]` high and poll for the verdict.
+. Drive `ext_interrupts_i[16:0]` high and poll for the verdict: the image claims and re-delivers source 1, then sources 2-17 and 280 once each, then each source alone at thresholds 1-6 plus an idle claim at every threshold, and posts PASS only after all of them.
 
 *Checkers*:
 
@@ -857,7 +858,7 @@ Drive `smc_ext_interrupts_pin_test_seq`. Each checker below is a named compare t
 |===
 |Checker |Description
 |`CHK-FW-PLIC-QUIET` |With the PLIC armed and the pin still low, SCRATCH_0 does not move. Without this the PASS could have come from any interrupt already pending, and the testcase would be satisfied by a DUT that traps on something else
-|`CHK-FW-PLIC-STIMULUS` |The pin rises only after the quiet window, so the verdict below is ordered after the stimulus rather than merely coincident with it
+|`CHK-FW-PLIC-STIMULUS` |The pins rise only after the quiet window, so the verdict below is ordered after the stimulus rather than merely coincident with it
 |`CHK-FW-PLIC-CLAIM` |The firmware's own PASS word reaches CPU_CTRL SCRATCH_0, and only two completed claims of the registered source can put it there: the verdict is posted after the source, unmasked with the pin still high, is delivered a second time, which the PLIC gateway does only once the first claim has been completed. `riscv_plic0.c:106-107` dispatches `metal_exint_table[idx]` on the index the claim register returned, and the image registers a handler at one index only -- every other source reaches `__metal_plic0_default_handler`, which posts no verdict. The handler's own ID compare is unreachable for that reason and is not credited here
 |===
 
