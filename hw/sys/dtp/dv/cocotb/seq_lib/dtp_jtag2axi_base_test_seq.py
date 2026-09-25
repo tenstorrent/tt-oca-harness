@@ -144,18 +144,32 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             value = await self.read_tdr(cfg.caps_reg)
             observed = unpack_jtag2axi_caps(value)
             self.log.info(
-                "GEOMETRY %s raw=0x%04x bus_type=%d addr_size=%d data_size=%d",
+                "GEOMETRY %s raw=0x%04x bus_type=%d addr_size=%d data_size=%d wr_pl=%d rd_pl=%d",
                 cfg.caps_reg,
                 value,
                 observed["bus_type"],
                 observed["addr_size"],
                 observed["data_size"],
+                observed["wr_pl_depth"],
+                observed["rd_pl_depth"],
             )
             checker.expect_equal(
                 GEOMETRY_CHECK_ID,
-                (observed["bus_type"], observed["addr_size"], observed["data_size"]),
-                (cfg.bus_type, cfg.addr_width ^ int(negative), cfg.data_size),
-                context=f"{cfg.caps_reg} (bus_type, addr_size, data_size)",
+                (
+                    observed["bus_type"],
+                    observed["addr_size"],
+                    observed["data_size"],
+                    observed["wr_pl_depth"],
+                    observed["rd_pl_depth"],
+                ),
+                (
+                    cfg.bus_type,
+                    cfg.addr_width ^ int(negative),
+                    cfg.data_size,
+                    cfg.wr_pl_depth,
+                    cfg.rd_pl_depth,
+                ),
+                context=f"{cfg.caps_reg} (bus_type, addr_size, data_size, wr_pl_depth, rd_pl_depth)",
             )
         checker.finalize()
 

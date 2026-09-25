@@ -128,8 +128,8 @@ class dtp_env extends ocah_env;
             vif_key: "smc_otp_axil_vif",
             name_tag: "dtp_smc_otp_axil",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         },
         cfg.axi_policy_for(
@@ -142,8 +142,8 @@ class dtp_env extends ocah_env;
             vif_key: "sep_otp_axil_vif",
             name_tag: "dtp_sep_otp_axil",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         },
         cfg.axi_policy_for(
@@ -156,9 +156,9 @@ class dtp_env extends ocah_env;
             vif_key: "m_axi_vif",
             name_tag: "dtp_smc_axi",
             protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: 56,
-            data_width: 64,
-            id_width: 2
+            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
+            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
+            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
         },
         cfg.axi_policy_for(
             "smc_axi")
@@ -193,8 +193,8 @@ class dtp_env extends ocah_env;
             vif_key: "smc_otp_slave_vif",
             name_tag: "dtp_smc_otp_slave",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         }
     );
@@ -205,8 +205,8 @@ class dtp_env extends ocah_env;
             vif_key: "sep_otp_slave_vif",
             name_tag: "dtp_sep_otp_slave",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         }
     );
@@ -217,9 +217,9 @@ class dtp_env extends ocah_env;
             vif_key: "smc_axi_slave_vif",
             name_tag: "dtp_smc_axi_slave",
             protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: 56,
-            data_width: 64,
-            id_width: 2
+            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
+            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
+            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
         }
     );
     m_smc_axi_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);

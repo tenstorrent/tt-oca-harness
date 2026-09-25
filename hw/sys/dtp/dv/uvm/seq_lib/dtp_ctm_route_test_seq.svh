@@ -33,6 +33,9 @@
 class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
   `uvm_object_utils(dtp_ctm_route_test_seq)
 
+  localparam int unsigned RandPulseMaxCycles = 8;
+  localparam int unsigned RandLeadMaxCycles = 3;
+
   function new(string name = "dtp_ctm_route_test_seq");
     super.new(name);
   endfunction
@@ -321,7 +324,10 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
 
   // ------------------------------------------------------------------
   // Seeded random route mixes: a wire-OR iteration selects one or two
-  // sources on every output; a P2P iteration adds a coexisting route.
+  // sources on every output; a P2P iteration adds a coexisting route. Each
+  // iteration draws its trigger timing: the pulse width and the idle lead
+  // before it. The floor of two cycles keeps a P2P request held into its
+  // handshake.
   // ------------------------------------------------------------------
   protected task run_ctm_random(string name, string source_class, string dest_class, bit multicast,
                                 bit allow_p2p);
@@ -336,6 +342,8 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
       int unsigned n_inputs = (mode == CtpModeWireOr && $urandom_range(1)) ? 2 : 1;
       int unsigned inputs[$], choices[$], selected[$], input_picks[$];
       bit [31:0] input_mask, output_mask;
+      int unsigned pulse_cycles = $urandom_range(RandPulseMaxCycles, 2);
+      int unsigned lead_cycles = $urandom_range(RandLeadMaxCycles, 0);
       pick_distinct(source_pool.size(),
                     (n_inputs < source_pool.size()) ? n_inputs : source_pool.size(), input_picks);
       foreach (input_picks[i]) inputs.push_back(source_pool[input_picks[i]]);
@@ -353,19 +361,24 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
           choices[i] = choices[j];
           choices[j] = tmp;
         end
+        // Two to four wire-OR outputs, as many as the pool allows.
         k = (choices.size() > 4) ? 4 : choices.size();
+        k = $urandom_range(k, (k < 2) ? k : 2);
         for (int unsigned i = 0; i < k; i++) selected.push_back(choices[i]);
       end
       output_mask = ports_mask(selected);
       `uvm_info(get_type_name(), $sformatf(
-                "Iteration %0d/%0d: inputs=0x%0h mode=%0d outputs=0x%0h",
+                "Iteration %0d/%0d: inputs=0x%0h mode=%0d outputs=0x%0h pulse=%0d lead=%0d",
                 idx + 1,
                 random_count,
                 input_mask,
                 mode,
-                output_mask
+                output_mask,
+                pulse_cycles,
+                lead_cycles
                 ), UVM_LOW)
-      verify_route_mask(input_mask, output_mask, mode, $sformatf("rand.%s.%0d", name, idx));
+      verify_route_mask(input_mask, output_mask, mode, $sformatf("rand.%s.%0d", name, idx),
+                        pulse_cycles, lead_cycles);
       if (mode == CtpModeP2p)
         run_p2p_pair_isolation(input_mask, output_mask, source_pool, dest_pool, $sformatf(
                                "rand.%s.%0d", name, idx));
