@@ -18,11 +18,17 @@ class smc_avsbus_frame_sequencing_test(smc_base_test):
     """A lone command, a late command, and a buffered reply that turns out good."""
 
     required_evidence = (
+        "CHK-AVS-BACK-TO-BACK",
         "CHK-AVS-BUFFERED-REPLY",
         "CHK-AVS-LATE-COMMAND",
+        "CHK-AVS-LAUNCH-GATE",
+        "CHK-AVS-LONE-RETRY",
+        "CHK-AVS-READBACK-OVERFLOW",
         "CHK-AVS-SINGLE-COMMAND",
+        "CHK-AVS-SLAVE-INT-CLEAR",
+        "CHK-AVS-SUPPRESSED-MID",
     )
-    min_evidence = 3
+    min_evidence = 9
 
     auto_protocol_vip = False
 

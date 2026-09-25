@@ -52,3 +52,13 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "register"]
 run_modes = ["smoke"]
+
+[[tests]]
+# Byte writes that hold set fields, W1C fields held across a zero, and zero writes
+# into triggers and status registers.
+name = "smc_regblock_partial_write_test"
+module = "smc_regblock_partial_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "register"]
+run_modes = ["smoke"]

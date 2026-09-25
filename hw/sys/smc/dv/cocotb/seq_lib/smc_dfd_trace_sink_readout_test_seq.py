@@ -19,10 +19,16 @@ contract, all of it ``sw = rw`` in ``dfd_dst_sink.rdl``:
   non-zero words afterwards are the captured trace rather than whatever the
   port returns when nothing is there.
 * ``Trdstramrplow`` is then placed on the last word of the window, which is
-  the position the sink folds back to the window start from. The field is
-  ``hw = rw`` as well, and the sink keeps most of it: of the positions this
-  sequence writes only a couple read back, so the walk is held to the words
-  the data port returns rather than to the pointer landing everywhere.
+  the position the sink folds back to the window start from. Every position
+  written has to read back exactly. The field is ``hw = rw`` and sits above two
+  reserved bits, so the register's plain read-write mask leaves it out; the
+  window and pointer registers are written through each field's own bit
+  positions instead.
+* The read pointer is also placed on every 8-byte word inside the window's
+  first 64-byte set, not only on set boundaries.
+* Before the sink is deactivated the trace runs until the sink's wrap flag
+  reports one full pass of the window, so every position read out holds a
+  word the trace wrote.
 * ``Trdstrammode`` is programmed to both values of its one-bit field with the
   sink active, since the sink picks its destination from it.
 * ``Trdstramactive`` is taken from 1 to 0 with the sink enabled, which is the
@@ -37,8 +43,10 @@ from cocotb.triggers import ClockCycles
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import (
+    checked_mask,
     dfd_register,
     dst_register,
+    field_word,
     funnel_register,
     pack_fields,
     reg_field,
@@ -51,8 +59,13 @@ _DST_FORMAT_NONE = 0
 _SINK_WINDOW_BYTES = 0x400
 # Read-pointer positions walked across the window, as byte offsets.
 _READ_POSITIONS = tuple(range(0, _SINK_WINDOW_BYTES, _SINK_WINDOW_BYTES // 16))
+# Eight-byte steps inside the window's first 64-byte set. The positions above
+# all start a set; these put the read pointer at every other 8-byte word of one.
+_SET_OFFSETS = tuple(range(8, 64, 8))
 
 _SETTLE_CYCLES = 32
+# Action sweeps the fill may take to come round the window once.
+_FILL_SWEEPS = 8
 
 
 class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
@@ -66,6 +79,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         self.modes_programmed: list[int] = []
         self.positions_landed = 0
         self.deactivated = False
+        self.fill_sweeps = 0
         self.value_checks = 0
 
     # -- register helpers -------------------------------------------------
@@ -84,25 +98,28 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self._write(reg, word, label)
         readback = await self._read(reg, f"{label}_rb")
-        assert readback & reg.rw_mask == word & reg.rw_mask, (
-            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & reg.rw_mask:x} into its "
-            f"software-writable bits, reads 0x{readback & reg.rw_mask:x}"
+        mask = checked_mask(reg, values)
+        assert readback & mask == word & mask, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into its "
+            f"software-writable bits, reads 0x{readback & mask:x}"
         )
         self.value_checks += 1
 
-    async def _seek(self, offset: int) -> bool:
-        """Place the sink read pointer on one byte offset; report whether it landed."""
+    async def _seek(self, offset: int) -> None:
+        """Place the sink read pointer on one byte offset and require it to read back."""
         rp = sink_register("Trdstramrplow")
         field = reg_field(rp, "Trdstramrplow")
-        await self._write(rp, offset & rp.rw_mask, f"seek{offset:x}")
+        await self._write(rp, field_word(rp, "Trdstramrplow", offset), f"seek{offset:x}")
         readback = await self._read(rp, f"seek{offset:x}_rb")
         want = (offset & field.mask) >> field.offset
         got = (readback & field.mask) >> field.offset
-        if got == want:
-            self.positions_landed += 1
-            self.value_checks += 1
-            return True
-        return False
+        assert got == want, (
+            f"DST_SINK Trdstramrplow @ 0x{rp.addr:08x} reads 0x{readback:08x} after the read "
+            f"pointer was written to byte offset 0x{offset:x}; the field holds 0x{got:x}, not "
+            f"0x{want:x}"
+        )
+        self.positions_landed += 1
+        self.value_checks += 1
 
     # -- phases -----------------------------------------------------------
 
@@ -133,7 +150,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             ("Trdstramrplow", 0),
         ):
             reg = sink_register(name)
-            await self._write(reg, value & reg.rw_mask, label)
+            await self._write(reg, field_word(reg, name, value), label)
         await self._write_check(
             sink_register("Trdstramcontrol"),
             {"Trdstramactive": 1, "Trdstramenable": 1, "Trdstrammode": mode},
@@ -187,6 +204,22 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             )
             await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
 
+    async def _fill_window(self, logical_op: int) -> None:
+        """Keep the trace running until the sink reports one full pass of its window."""
+        wp = sink_register("Trdstramwplow")
+        wrap = reg_field(wp, "Trdstramwrap")
+        for sweep in range(_FILL_SWEEPS):
+            await self._run_actions(logical_op, f"fill{sweep}_")
+            if await self._read(wp, f"fill{sweep}") & wrap.mask:
+                self.fill_sweeps = sweep + 1
+                self.value_checks += 1
+                return
+        raise AssertionError(
+            f"the sink wrap flag stayed 0 through {_FILL_SWEEPS} sweeps of the action field, "
+            f"so the trace never came round the 0x{_SINK_WINDOW_BYTES:x}-byte window and the "
+            f"read-out positions would include words it never wrote"
+        )
+
     async def _deactivate(self) -> None:
         """Take the sink from active to inactive with its enable still set."""
         control = sink_register("Trdstramcontrol")
@@ -207,7 +240,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
 
     async def _read_out(self) -> None:
         data = sink_register("Trdstramdata")
-        for offset in list(_READ_POSITIONS) + [_SINK_WINDOW_BYTES - 4]:
+        for offset in list(_READ_POSITIONS) + [_SINK_WINDOW_BYTES - 4] + list(_SET_OFFSETS):
             await self._seek(offset)
             word = await self._read(data, f"data{offset:x}")
             self.words_read += 1
@@ -230,9 +263,25 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             f"non-zero word afterwards would not be evidence of captured trace"
         )
         self.value_checks += 1
+        # The same empty buffer with the write and read pointers placed together on
+        # each 8-byte word inside the first set: still nothing to read.
+        wp = sink_register("Trdstramwplow")
+        rp = sink_register("Trdstramrplow")
+        for offset in _SET_OFFSETS:
+            await self._write(wp, field_word(wp, "Trdstramwplow", offset), f"empty_wp{offset:x}")
+            await self._write(rp, field_word(rp, "Trdstramrplow", offset), f"empty_rp{offset:x}")
+            word = await self._read(data, f"empty{offset:x}")
+            assert word == 0, (
+                f"DST_SINK Trdstramdata reads 0x{word:08x} with the write and read pointers both "
+                f"at byte offset 0x{offset:x} and no trace captured; an empty sink RAM reads 0"
+            )
+            self.value_checks += 1
+        await self._write(wp, 0, "empty_wp_restore")
+        await self._write(rp, 0, "empty_rp_restore")
         cocotb.log.info(
-            "CHK-DST-SINK-BASELINE: the sink RAM data port reads 0x%08x at read pointer 0 "
-            "with the sink armed and no trace yet captured, so the words the read-out below "
+            "CHK-DST-SINK-BASELINE: the sink RAM data port reads 0x%08x at read pointer 0, "
+            "and 0 with the write and read pointers together on each 8-byte word of the first "
+            "set, with the sink armed and no trace yet captured, so the words the read-out below "
             "returns are the trace this run captured",
             self.baseline,
         )
@@ -243,7 +292,7 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
             "dst",
         )
         logical_op = await self._arm_cla()
-        await self._run_actions(logical_op, "fill")
+        await self._fill_window(logical_op)
         await self._deactivate()
         await self._read_out()
 
@@ -255,12 +304,15 @@ class smc_dfd_trace_sink_readout_test_seq(SmcCsrSeq):
         )
         self.value_checks += 1
         cocotb.log.info(
-            "CHK-DST-SINK-READOUT: the read pointer was driven to %d positions across the "
-            "0x%x-byte window including its last word, %d of which the DUT accepted into "
-            "Trdstramrplow, and %d of the %d words the RAM data port returned were non-zero "
-            "against a baseline of 0x%08x read before the trace ran",
-            self.words_read,
+            "CHK-DST-SINK-READOUT: after %d action sweep(s) brought the sink round its "
+            "0x%x-byte window, the read pointer was driven to %d positions across it including "
+            "its last word and every 8-byte word of its first set, each read back exactly (%d "
+            "seeks in all with the baseline), and %d "
+            "of the %d words the RAM data port returned were non-zero against a baseline of "
+            "0x%08x read before the trace ran",
+            self.fill_sweeps,
             _SINK_WINDOW_BYTES,
+            self.words_read,
             self.positions_landed,
             self.nonzero_words,
             self.words_read,

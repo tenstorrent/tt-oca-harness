@@ -93,6 +93,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
 
     def __init__(self, name: str = "smc_zeroer_multi_burst_test_seq") -> None:
         super().__init__(name)
+        self.int_en_held = 0
         self.checked_bytes = 0
         self.bursts_observed = 0
         #: CTRL_STATUS.STATUS level read with the zeroer idle. No meaning is
@@ -240,6 +241,29 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             f"0x{witness:016x}; it sits immediately past the end of the job, so the zeroing "
             f"ran past the size it was given"
         )
+        # `ZEROER_CTRL_STATUS_START` is packed with `int_en=1`, so the start
+        # write above left `CTRL_STATUS.INT_EN` holding a one. The field is bit
+        # 0 of a 64-bit register, so a four-byte write at the upper half leaves
+        # its byte lane deasserted and a field that retains has to keep it.
+        # Any write of this register is also the zeroer's trigger, so the leg
+        # waits the operation out before reading.
+        await self.csr_write("ZEROER_CTRL_STATUS_UPPER_HALF", ZEROER_CTRL_STATUS + 4, 0, length=4)
+        await self._await_status(
+            self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
+        )
+        word = await self.csr_read("ZEROER_CTRL_STATUS_INT_EN", ZEROER_CTRL_STATUS, length=8)
+        assert word & ZEROER_CTRL_STATUS_START, (
+            f"CTRL_STATUS reads 0x{word:x} after a four-byte write at its upper half; that "
+            f"write did not select the lane INT_EN sits in, so the bit the start write set "
+            f"has to still be there"
+        )
+        assert word & ~STATUS_BM & 0xFFFF_FFFF_FFFF_FFFF == ZEROER_CTRL_STATUS_ARMED, (
+            f"CTRL_STATUS reads 0x{word:x} outside the STATUS bit after the half write; "
+            f"the armed word this leaf left is 0x{ZEROER_CTRL_STATUS_ARMED:x}, so the "
+            f"write moved something it did not select"
+        )
+        self.int_en_held = 1
+
         cocotb.log.info(
             "CHK-ZEROER-MULTI-BURST-ZEROED: all %d probe words of the 0x%x-byte job read 0 "
             "(%d bytes compared), including the first and last word of each half, and the "
@@ -255,8 +279,37 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             f"CTRL_STATUS reads 0x{armed & ~STATUS_BM:x} outside the STATUS bit, the RDL "
             f"contract for the armed register is 0x{ZEROER_CTRL_STATUS_ARMED:x}"
         )
+        # The same two halves with INT_EN clear. A four-byte write at the low
+        # half selects INT_EN's lane and clears it; one at the upper half then
+        # leaves the cleared bit's lane deasserted, and it has to stay clear.
+        # Both writes are triggers too, and DEST_ADDR and SIZE still describe
+        # this leaf's own job, so each re-runs the job over the region it has
+        # already zeroed and is waited out. INT_EN ends at its RDL reset of 0.
+        for tag, addr in (
+            ("LOW_HALF_CLEAR", ZEROER_CTRL_STATUS),
+            ("UPPER_HALF_CLEAR", ZEROER_CTRL_STATUS + 4),
+        ):
+            await self.csr_write(f"ZEROER_CTRL_STATUS_{tag}", addr, 0, length=4)
+            await self._await_status(
+                self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
+            )
+            word = await self.csr_read(f"ZEROER_CTRL_STATUS_{tag}_RB", ZEROER_CTRL_STATUS, length=8)
+            assert word & ZEROER_CTRL_STATUS_START == 0, (
+                f"CTRL_STATUS reads 0x{word:x} after a four-byte write of 0 at "
+                f"{'its low half, which selects INT_EN' if addr == ZEROER_CTRL_STATUS else 'its upper half, with INT_EN already clear'}; "
+                f"INT_EN has to read clear"
+            )
+        self.int_en_held = 2
+        cocotb.log.info(
+            "CHK-ZEROER-INT-EN-HALF-WRITE: CTRL_STATUS.INT_EN held a one across a "
+            "four-byte write at the half of the 64-bit register it does not occupy, was "
+            "cleared by a four-byte write at the half it does, and stayed clear across a "
+            "second write at the other half; every write re-ran this leaf's own job and was "
+            "waited out, and INT_EN ended at its RDL reset",
+        )
         # SIZE and DEST_ADDR carry no write side effect, so clearing them cannot
-        # start a job; CTRL_STATUS is left alone because writing it would.
+        # start a job. CTRL_STATUS is written above, while they still describe
+        # this leaf's own job, and not after.
         await self.csr_write("ZEROER_SIZE_CLEAR", ZEROER_SIZE, 0, length=8)
         await self.csr_write("ZEROER_DEST_ADDR_CLEAR", ZEROER_DEST_ADDR, 0, length=8)
         await self.csr_read("ZEROER_SIZE_CLEAR_RB", ZEROER_SIZE, expected=0, length=8)

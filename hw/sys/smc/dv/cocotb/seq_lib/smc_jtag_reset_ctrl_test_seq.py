@@ -23,8 +23,14 @@ _PIN_BOUND = 64
 _RECOVERY = 50_000
 
 
-def _pack(*, cool_ovrd=0, cool_val=0, ss0_warm_ovrd=0, ss0_warm_val=0) -> int:
+def _pack(
+    *, cool_ovrd=0, cool_val=0, ss0_warm_ovrd=0, ss0_warm_val=0, warm_ovrd=0, warm_val=0
+) -> int:
     v = 0
+    if warm_ovrd:
+        v |= 1 << jtag_smc_reset_ctrl_bit("warm_reset_n_ovrd")
+    if warm_val:
+        v |= 1 << jtag_smc_reset_ctrl_bit("warm_reset_n_val")
     if cool_ovrd:
         v |= 1 << jtag_smc_reset_ctrl_bit("cool_reset_n_ovrd")
     if cool_val:
@@ -43,6 +49,7 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.cool_ok = False
         self.ss0_ok = False
+        self.warm_held = False
 
     def _bit(self, sig, name: str) -> int:
         if not sig.value.is_resolvable:
@@ -152,6 +159,45 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
             warm_csr,
             warm_hold,
         )
+        # The warm override holds the warm reset released while the cool
+        # override asserts the primary reset, so the SMC-clock warm reset has
+        # to stay high for as long as the primary one is low.
+        dut.tb_jtag_reset_ctrl.value = _pack(cool_ovrd=1, cool_val=0, warm_ovrd=1, warm_val=1)
+        await self._await_bit(
+            dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no", 0, _PIN_BOUND, "WARM_HELD_PRI"
+        )
+        for cycle in range(_PIN_BOUND):
+            await RisingEdge(dut.clk_smc_i)
+            assert self._bit(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no") == 0, (
+                f"WARM_HELD: the primary reset released at cycle {cycle} with the cool "
+                f"override still asserting it"
+            )
+            assert self._bit(dut.tb_rst_warm_smc_clk_n, "tb_rst_warm_smc_clk_n") == 1, (
+                f"WARM_HELD: the SMC-clock warm reset asserted at cycle {cycle} with the "
+                f"JTAG warm override holding it released"
+            )
+        dut.tb_jtag_reset_ctrl.value = _pack(cool_ovrd=1, cool_val=1, warm_ovrd=1, warm_val=1)
+        await self._await_bit(
+            dut.tb_rst_cool_from_flr, "tb_rst_cool_from_flr", 1, _PIN_BOUND, "WARM_HELD_COOL1"
+        )
+        dut.tb_jtag_reset_ctrl.value = 0
+        last_pri = -1
+        for _ in range(_RECOVERY):
+            await RisingEdge(dut.clk_smc_i)
+            last_pri = self._bit(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
+            if last_pri == 1 and self._bit(dut.tb_rst_warm_smc_clk_n, "tb_rst_warm_smc_clk_n"):
+                break
+        else:
+            raise AssertionError(f"WARM_HELD: primary reset still {last_pri} after release")
+        await self.wait_fuse_sense_done()
+        self.warm_held = True
+        cocotb.log.info(
+            "CHK-JTAG-RST-WARM-HELD: with the cool override asserting the primary reset and "
+            "the warm override holding the warm reset released, rst_primary_smc_clk_no read "
+            "0 and tb_rst_warm_smc_clk_n read 1 on each of %d SMC clocks; both released after",
+            _PIN_BOUND,
+        )
+
         # Positive control for the two driven leaves of the DV-owned bit layout:
         # each moved its own reset pin (and the SS0 leaf left rst_cool_no
         # released), which a wrong position or a swapped ovrd/val half cannot do.
