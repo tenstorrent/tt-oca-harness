@@ -256,6 +256,13 @@ Claims examined and not held, so their points stay graded:
   against its busy, and uart_core's baud tick over tx_enable and rx_enable.
   Each derived side follows its source a zero-time delta later, which r17
   showed VCS scores.
+* The I3C SDA pad row with output enable high and push-pull high: i3c_wrapper
+  forms sda_oe as sel_od_pp_o | ~sda_o, so push-pull forces the enable, but the
+  two are separate continuous assignments scored combinationally at the
+  padring, and VCS can score the delta between them.
+* The trace sink's DST read-ready low with a DST read enable high: with the
+  N-trace read enable at zero the ready is the OR of the enables, but it is a
+  continuous assignment of those flops, and r18 scores the delta between.
 * An AVSBus slave acknowledge of ResourceUnavailable or BadCRC: a responder in
   the sequence library answers each subframe bit by bit with every acknowledge
   code, frame-not-valid and every CRC code.
@@ -696,9 +703,8 @@ P1 = (
     "leaves at one: the flush-timeout done flag, which resets to one and is cleared only by the "
     "N-trace RAM enable start, the two backpressure flags, which compare an N-trace space "
     "of zero against an N-trace threshold of zero with <=, and the frame-fill-complete flag and "
-    "its delayed copy, which a write count held at zero keeps at one. With the N-trace read "
-    "enable at zero the DST read-ready is the OR of the DST read enables, and the read and "
-    "write interleave flops, enabled only on an N-trace term, hold their reset value of zero. "
+    "its delayed copy, which a write count held at zero keeps at one. The read and write "
+    "interleave flops, enabled only on an N-trace term, hold their reset value of zero. "
     "The NTR sink register block is "
     "absent, so every register-derived N-trace term follows, mmrs's Trntrissrammode, the "
     "negation of that block's zero RAM mode, reads one, the north source flag never "
@@ -896,6 +902,15 @@ B13 = (
     "arrives. A master that drives data on an unstrobed lane inside its transfer size retires "
     "the class."
 )
+B14 = (
+    "SMC-B14-STROBE-FOLLOWS-ADDRESS: a property of this bench, not of the design alone. The "
+    "UART's write-only map is selected only on an exact match of the write address with THR, "
+    "so a THR write starts at the register's own address, and every master of this bench "
+    "strobes the lane at its start address: the cocotb AXI masters write contiguous bytes from "
+    "it, a CPU store is sized and aligned, and the iDMA and the zeroer build their first strobe "
+    "from the address offset. A THR write with its data lane unstrobed never arrives. A master "
+    "that issues sparse strobes retires the class."
+)
 B8 = (
     "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The "
     "testbench ties the SMC's xtrigger_ss_i and tdr_dbg_ctrl_clock_stop_en_i to zero in both "
@@ -1019,15 +1034,25 @@ D1 = (
     "until that AW's W is taken while its B FIFO holds each W back until the previous B, so "
     "when the next AW can first arrive the block holds the previous AW and W with no response "
     "in flight and accepts them that cycle, and an accept never meets a response ack. The "
-    "zeroer's axi_to_axi_lite gates AW on a depth-one ID FIFO, pushed at the AW handshake and "
-    "popped at B, so its second AW arrives only after the block answered the first."
+    "zeroer's axi_to_axi_lite gates AW and AR on depth-one ID FIFOs, pushed at the handshake "
+    "and popped at B or R, so its second AW or AR arrives only after the block answered the "
+    "first. "
+    "Behind two or more MaxTrans-1 stages in series, the filter, log-engine and UART blocks "
+    "see the next AW only two cycles after W is taken, while a held read defers the write "
+    "accept by one cycle at most. In front of cpu_ctrl and the zeroer, axi_to_axi_lite's burst "
+    "splitter demux sizes its per-ID counters as idx_width(MaxTrans), one bit for a MaxTrans of "
+    "two or less, so it admits one transaction at a time and passes the next AW, AR or W only "
+    "after the previous response, when the block's holding registers are empty."
 )
 D2 = (
     "SMC-D2-W-FOLLOWS-AW: each of these register blocks is driven directly by an axi_lite_demux "
     "master port, which raises W valid only once the select its AW pushed is in the W FIFO and "
     "holds that AW valid until its handshake. The block keeps awready and wready equal except "
     "while it holds an AW without its W, so a W is never taken before its AW and the W holding "
-    "register is never full with the AW register empty."
+    "register is never full with the AW register empty. "
+    "cpu_ctrl and the zeroer take W only with its AW: the splitter demux routes W when that "
+    "AW is handled, the ID FIFO in front of the block clears on the same B, and the block, "
+    "empty by then, takes the AW in that cycle."
 )
 C16 = (
     "SMC-C16-DST-READ-WRAP-BOUND: three facts hold together. The trace write master waits for "
@@ -1676,6 +1701,14 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
             re.compile(r"^01$"),
             ("uart_16550_main_wo_reg.sv", 109, 109),
         ),
+        # urg scores this negation operand by its inner value: row 0, no accept, is the
+        # common case and is covered.
+        (
+            D1,
+            re.compile(r"^\( ! \(axil_ar_accept \|\| axil_aw_accept\) \)$"),
+            re.compile(r"^1$"),
+            ("uart_16550_main_wo_reg.sv", 109, 109),
+        ),
     ],
     # Both points sit behind a test that takes FUSE_COMMAND_READ first.
     "efuse_interface_shim": [
@@ -1923,8 +1956,36 @@ DEMUX_FRONTED_BLOCKS = frozenset(
 )
 
 
+# Demux-fronted blocks behind at least two MaxTrans-1 stages in series, each gating the
+# next AW on the previous W and the inner one adding an AW spill cycle.
+SERIAL_CHAIN_BLOCKS = frozenset(
+    {
+        "filter_ctrl_reg",
+        "log_engine_reg",
+        "uart_log_engine_ctrl_reg",
+        "uart_16550_main_reg",
+        "uart_16550_dl_reg",
+    }
+)
+# Blocks behind axi_to_axi_lite whose burst splitter admits one transaction at a time.
+SPLITTER_FRONTED_BLOCKS = frozenset({"cpu_ctrl_reg", "zeroer_ctrl_reg"})
+
+
 def demux_fronted_row_class(module: str, terms: "tuple[str, ...]", vector: str) -> "str | None":
-    """D1 or D2 for a handshake row of a demux-fronted register block, or None."""
+    """D1 or D2 for a handshake row of a demux- or splitter-fronted register block, or None."""
+    handshake = (
+        ("s_axil_arvalid", "s_axil_arready"),
+        ("s_axil_awvalid", "s_axil_awready"),
+        ("s_axil_wvalid", "s_axil_wready"),
+    )
+    if module in SPLITTER_FRONTED_BLOCKS:
+        if terms in handshake:
+            return D1 if vector == "10" else None
+        if terms == ("axil_awvalid", "axil_wvalid"):
+            return D2 if vector == "01" else None
+        return None
+    if module in SERIAL_CHAIN_BLOCKS and terms == ("s_axil_awvalid", "s_axil_awready"):
+        return D1 if vector == "10" else None
     if module not in DEMUX_FRONTED_BLOCKS:
         return None
     if terms == ("s_axil_arvalid", "s_axil_arready") and module == "uart_16550_main_wo_reg":
@@ -2038,13 +2099,34 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             lambda terms, vector: terms == ("enable", "(timer_count_q > 64'b0)") and vector == "01",
         ),
     ],
-    "zeroer_ctrl_reg": [
-        (D1, lambda terms, vector: terms == ("s_axil_awvalid", "s_axil_awready") and vector == "10")
-    ],
     "uart_16550_main_wo_reg": [
-        (D1, lambda terms, vector: terms == ("s_axil_awvalid", "s_axil_awready") and vector == "10")
+        (
+            D1,
+            lambda terms, vector: terms == ("s_axil_awvalid", "s_axil_awready") and vector == "10",
+        ),
+        (
+            A3,
+            lambda terms, vector: (
+                terms == ("cpuif_req_masked", "(cpuif_addr == 4'h8)", "cpuif_req_is_wr")
+                and vector == "110"
+            ),
+        ),
     ],
     "i2c_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
+    "uart_core": [
+        (
+            B14,
+            lambda terms, vector: (
+                terms
+                == (
+                    "reg_out_i.main_wo.THR.req",
+                    "reg_out_i.main_wo.THR.req_is_wr",
+                    "((|reg_out_i.main_wo.THR.wr_biten[7:0]))",
+                )
+                and vector == "110"
+            ),
+        )
+    ],
     "i2c_core": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
     "log_engine_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
     "telemetry_receiver_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
@@ -2211,6 +2293,13 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
     ],
     "uart_16550_main_reg": [
         (
+            C4,
+            lambda terms, vector: (
+                terms == ("decoded_req", "decoded_req_is_wr", "((~decoded_req_is_external))")
+                and vector == "110"
+            ),
+        ),
+        (
             P12,
             lambda terms, vector: (
                 any(
@@ -2222,7 +2311,7 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                     for t, b in zip(terms, vector)
                 )
             ),
-        )
+        ),
     ],
     # The north write way is the staged OR of each valid core's pointer, staged on
     # the same clock as the valid, so a non-zero way comes with a staged valid, and
@@ -2234,26 +2323,18 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                 t == "TrdstMemRamRdAddrWrap_ANY" and b == "1" for t, b in zip(terms, vector)
             ),
         ),
-        # With the N-trace read enable at zero the DST read-ready is the OR of the DST
-        # read enables, and the interleave flops enable only on an N-trace term.
+        # The interleave flops enable only on an N-trace term.
         (
             P1,
-            lambda terms, vector: (
-                (
-                    terms[0] == "TrdstMemRamRdRdy_TS1"
-                    and bool(re.fullmatch(r"TrdstMemRamRdEn_TS1\[\d\]", terms[-1]))
-                    and vector == "01"
+            lambda terms, vector: any(
+                (t, b)
+                in (
+                    ("(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1)", "1"),
+                    ("(TrMemRamRd_NtraceOrDst_ANY == 1'b1)", "1"),
+                    ("(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0)", "0"),
+                    ("(TrMemRamRd_NtraceOrDst_ANY == 1'b0)", "0"),
                 )
-                or any(
-                    (t, b)
-                    in (
-                        ("(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b1)", "1"),
-                        ("(TrMemRamRd_NtraceOrDst_ANY == 1'b1)", "1"),
-                        ("(TrMemAxiWrVld_NtraceOrDst_ANY == 1'b0)", "0"),
-                        ("(TrMemRamRd_NtraceOrDst_ANY == 1'b0)", "0"),
-                    )
-                    for t, b in zip(terms, vector)
-                )
+                for t, b in zip(terms, vector)
             ),
         ),
         # The first term's conjuncts include the south valid, tied to zero with one core.
@@ -3671,6 +3752,7 @@ FEATURE_CLASSES = (
     P30,
     P31,
     A2,
+    A3,
     A11,
     C4,
     C5,
@@ -3693,6 +3775,7 @@ FEATURE_CLASSES = (
     B9,
     B12,
     B13,
+    B14,
 )
 
 
@@ -4050,6 +4133,7 @@ def render_feature(
         | set(ROW_PREDICATES)
         | {name for name, _, _ in EARLIER_ARM_ROWS}
         | DEMUX_FRONTED_BLOCKS
+        | SPLITTER_FRONTED_BLOCKS
         | {k for t in templates.values() for k in t if path_facts(k) or region_facts(k)}
     )
     for module in modules:
@@ -4197,6 +4281,7 @@ def main() -> int:
             or m in ROW_PREDICATES
             or any(name == m for name, _, _ in EARLIER_ARM_ROWS)
             or m in DEMUX_FRONTED_BLOCKS
+            or m in SPLITTER_FRONTED_BLOCKS
             or any(f[3] is not None for f in FEATURE_FACTS.get(m, []))
         },
         written_entries(reg_text),

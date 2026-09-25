@@ -80,7 +80,8 @@ args = ["-elfile", "{path}"]
 # CLA crosstrigger and TDR clock-stop inputs, as B9 SECURITY-DISABLE-TIED
 # is for the eFuse security-disable input, and B12 BANK-MODEL-NO-SLVERR for
 # the eFuse bank model that never returns SLVERR, and B13 LANE-ZERO-FILL for
-# the masters that never leave data on an unstrobed lane): the
+# the masters that never leave data on an unstrobed lane, and B14
+# STROBE-FOLLOWS-ADDRESS for masters that always strobe their start lane): the
 # DFD clamps, JTAG MMR requester, eFuse secure test mode and AVS TDR override
 # are tied off, the sink enables and trace
 # core count are fixed by parameters, and the
