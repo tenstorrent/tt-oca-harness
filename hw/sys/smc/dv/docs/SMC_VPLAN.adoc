@@ -10187,8 +10187,8 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 
 '''''
 
-[[sec-242-smc_i2c1_target_addr_stretch_test]]
-===== 242 `smc_i2c1_target_addr_stretch_test`
+[[sec-264-smc_i2c1_target_addr_stretch_test]]
+===== 264 `smc_i2c1_target_addr_stretch_test`
 
 *Source Module*: `smc_i2c1_target_addr_stretch_test`
 
