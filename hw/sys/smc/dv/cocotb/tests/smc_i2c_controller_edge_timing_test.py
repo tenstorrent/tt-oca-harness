@@ -19,10 +19,11 @@ class smc_i2c_controller_edge_timing_test(smc_base_test):
         "CHK-I2C-CTRL-EDGE-FALL-CHANGE",
         "CHK-I2C-CTRL-EDGE-FIRST-START",
         "CHK-I2C-CTRL-EDGE-RISE-CHANGE",
+        "CHK-I2C-CTRL-EDGE-SHORT-SETUP",
         "CHK-I2C-CTRL-EDGE-STOP-HOLD",
         "CHK-I2C-CTRL-EDGE-STRETCH-FALL",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 

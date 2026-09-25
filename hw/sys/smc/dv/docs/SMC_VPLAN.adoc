@@ -10645,12 +10645,14 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 ** SCL pulled low there means another device took the bus first. The transfer must still complete intact.
 ** SDA pulled low there must raise `INTR_STATE.SDA_INTERFERENCE`.
 * Every point in a transfer is placed by counting edges on the pads from the START, as in `smc_i2c_controller_scl_events_test`. Each leg disables the controller, clears its events and returns the bus to idle afterwards.
+* A repeated START set up too briefly. With `TIMING1.T_R` 0 and `TIMING2.TSU_STA` 1, the setup ends before the SCL the controller has just released is seen high, so the hold that follows starts with SCL still low. The controller must return to idle with no event; how many STARTs the bench target counts is recorded.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up I2C0 as a host with the bench EEPROM target and the second pad driver on the pads.
 . For each point: re-enable the controller, arm the edge, queue the transfer, and require the outcome above; then disable, clear and recover the bus.
+. With `T_R` 0 and `TSU_STA` 1, queue a write, repeated START and read, and wait for idle.
 
 *Checkers*:
 
@@ -10662,9 +10664,10 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 |`CHK-I2C-CTRL-EDGE-STRETCH-FALL` |An SCL fall after a stretch raised `SCL_INTERFERENCE` in each pulse and `ARBITRATION_LOST` in each setup, and `ARBITRATION_LOST` survived a word of zeros
 |`CHK-I2C-CTRL-EDGE-STOP-HOLD` |SDA released as SCL fell in the STOP hold let the STOP finish with `CMD_COMPLETE` and no event
 |`CHK-I2C-CTRL-EDGE-FIRST-START` |SCL pulled in a first START's setup left the transfer to complete; SDA pulled there raised `SDA_INTERFERENCE`
+|`CHK-I2C-CTRL-EDGE-SHORT-SETUP` |A repeated START set up too briefly for SCL to be seen high left the controller idle with no event
 |===
 
-*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
 
 '''''
 

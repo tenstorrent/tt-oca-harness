@@ -35,6 +35,11 @@ sibling leaf does, with a second bench pad driver as the other device:
   controller goes back to wait for it and the transfer still completes. SDA
   pulled low there is interference with the controller's released line,
   reported as `INTR_STATE.SDA_INTERFERENCE`.
+* **A repeated START set up too briefly.** With `TIMING1.T_R` 0 and
+  `TIMING2.TSU_STA` 1 the setup of a repeated START ends before the SCL the
+  controller has just released is seen high, so the hold that follows starts
+  with SCL still low. The controller has to return to idle with no event;
+  how many STARTs the bench target counts is recorded.
 """
 
 from __future__ import annotations
@@ -62,12 +67,14 @@ from .smc_i2c_master_target_test_seq import (
     I2C0_CONTROLLER_EVENTS,
     I2C0_CTRL,
     I2C0_FDATA,
+    I2C0_TIMING1,
     I2C0_TIMING2,
     I2C0_TIMING4,
     I2C_FDATA_START,
     I2C_FDATA_STOP,
     _fdata,
     _i2c_u32,
+    _pack_timing1,
     _pack_timing2,
     _pack_timing4,
 )
@@ -89,6 +96,7 @@ SETUP_PULL_NS = 400
 #: `TSU_STA` or `TSU_STO` for the legs that pull SCL inside a setup after a
 #: stretch: long enough that the setup outlasts the pull's delay.
 LONG_SETUP = 60
+SHORT_TSU_STA = 1
 
 # Rises are counted from the START as in the sibling leaf. "W" is a write of
 # an offset and a byte, "A" the same write to an address nobody answers, and
@@ -268,6 +276,38 @@ class smc_i2c_controller_edge_timing_test_seq(smc_i2c_controller_scl_events_test
         await self._recover_bus(name)
         self.edge_outcomes[name] = outcome
 
+    async def _short_restart_leg(self) -> None:
+        """A repeated START whose setup ends before SCL is seen high again."""
+        assert self.slave is not None
+        name = "SHORT_RESTART_SETUP"
+        await self._enable_host(name)
+        await self.csr_write(f"{name}_INTR_CLR_ALL", I2C0_INTR_STATE, 0xFFFF_FFFF)
+        timing1 = _pack_timing1(0, 2)
+        timing2 = _pack_timing2(SHORT_TSU_STA, 4)
+        await self.csr_write(f"{name}_TIMING1", I2C0_TIMING1, timing1)
+        await self.csr_write(f"{name}_TIMING2", I2C0_TIMING2, timing2)
+        await self.csr_read(f"{name}_TIMING2_RB", I2C0_TIMING2, expected=timing2)
+        self.slave.write_mem(0x70, bytes((0x61, 0x62)))
+        starts = self.slave.starts
+        await self._queue(name, "WRR")
+        await self._wait_hostidle(name)
+        events = await self.csr_read(f"{name}_EVENTS", I2C0_CONTROLLER_EVENTS)
+        seen = self.slave.starts - starts
+        assert events == 0, (
+            f"{name}: CONTROLLER_EVENTS=0x{events:08x} after a repeated START set up with "
+            f"T_R 0 and TSU_STA {SHORT_TSU_STA}; nothing on the bus contended with it"
+        )
+        await self.csr_write(f"{name}_HOST_OFF", I2C0_CTRL, 0)
+        await self._recover_bus(name)
+        cocotb.log.info(
+            "CHK-I2C-CTRL-EDGE-SHORT-SETUP: a write, repeated START and read with TIMING1.T_R "
+            "0 and TIMING2.TSU_STA %d, too short for SCL to be seen high again before the "
+            "hold, returned the controller to idle with no event; the bench target counted "
+            "%d START(s) for it",
+            SHORT_TSU_STA,
+            seen,
+        )
+
     async def body(self) -> None:
         await self.prove_dut_i2c0_pins()
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
@@ -317,3 +357,4 @@ class smc_i2c_controller_edge_timing_test_seq(smc_i2c_controller_scl_events_test
             named("scl"),
             named("sda"),
         )
+        await self._short_restart_leg()
