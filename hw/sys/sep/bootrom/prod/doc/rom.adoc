@@ -2824,7 +2824,12 @@ single-sourced from `hw/sys/sep/bootrom/prod/include/status_values.h` (values `0
 are generated from it; the table below is likewise generated — do not hand-edit code values
 anywhere, including here.
 
+ifdef::backend-pdf[]
 include::../../../doc/gen/status_values.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::sep:gen/status_values.adoc[]
+endif::backend-html5[]
 
 ===== Fatal ROM Error Codes
 

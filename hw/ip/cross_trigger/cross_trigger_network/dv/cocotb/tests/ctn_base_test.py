@@ -8,7 +8,13 @@ The bench drives four surfaces of ``cross_trigger_network_tb_top``:
   (``OcahAxiLiteMasterAgent`` on the flattened ``axil_*`` pins, consumed
   through ``agent.sequence`` only) — CTM registers at 0x000, per-CTP
   registers at 0x200 + i*0x10 (cross_trigger_network_pkg address map);
-* the external CTP GPIO pad pins (packed ``ctp_*`` vectors, one bit per CTP);
+* the external CTP GPIO pad pins (packed ``ctp_*`` vectors, one bit per CTP).
+  Each CT_Req_out pad sits on an open-drain shared wire of ``tb_top``:
+  ``ctp_wire_pull`` is the level each private wire rests at,
+  ``ctp_wire_ext_assert`` the bench-side chiplet pulling a wire,
+  ``ctp_wire_group`` the pads that share one wire (resting at
+  ``ctp_wire_group_pull``), and ``ctp_req_out_din`` the resolved wires the
+  pads present to the ports;
 * the internal CT port pins (``ctm_dst_req``/``ctm_src_ack`` inputs,
   ``ctm_src_req``/``ctm_dst_ack`` outputs);
 * the clock-stop pins (``clk_stop_req``/``jtag_clock_stop`` inputs,
@@ -22,18 +28,26 @@ hand-maintained (no generated collateral exists for the network level).
 Packed input vectors are driven through shadow values (`set_input_bit`) so
 individual bits can be flipped without read-modify-write races on the
 simulator handle.
+
+Wire-OR polarity follows CONFIG.INVERT (``WIRE_OR_POLARITY``): INVERT=0 is an
+active-low wire with a pull-up, INVERT=1 an active-high wire with a
+pull-down. A port receives a trigger when its synchronized wire moves from
+rest to asserted, ``CT_DST_LATENCY`` clocks after the edge; the CLA request of
+an internal wire-OR port is active-high and delivers on its rising edge.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 
 import cocotb
 import cross_trigger_matrix_reg as _ctm_reg
 import cross_trigger_port_reg as _ctp_reg
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, FallingEdge, RisingEdge
+from cocotb.utils import get_sim_time
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 CLK_PERIOD_NS = 10
@@ -72,9 +86,37 @@ E2E_LATENCY = 12
 EXT_WIRE_OR_STRETCH = 4
 INT_WIRE_OR_STRETCH = 1
 
-# Packed DUT input vectors the bench may drive, all idle-low at INVERT=0.
+# Clock edges from the edge at which a wire-OR receive input moves to the
+# edge at which that port's ct_dst is high: the two synchronizer stages and
+# the registered ct_dst output.
+CT_DST_LATENCY = 3
+
+# Cycles a source holds its wire or its CLA request. At least the end-to-end
+# bound, so a receiver that fires on the release edge misses every delivery
+# window judged against E2E_LATENCY.
+SOURCE_HOLD_CYCLES = E2E_LATENCY
+
+
+@dataclass(frozen=True)
+class WirePolarity:
+    """Rest and asserted levels of a shared wire for one INVERT sense."""
+
+    pull: int
+    assert_level: int
+
+
+# CONFIG.INVERT -> shared-wire polarity in wire-OR mode (cross_trigger_port.rdl):
+# INVERT=0 is active-low with a pull-up, INVERT=1 active-high with a pull-down.
+WIRE_OR_POLARITY = {
+    0: WirePolarity(pull=1, assert_level=0),
+    1: WirePolarity(pull=0, assert_level=1),
+}
+
+# Packed DUT input vectors the bench drives as stimulus, all quiescent at 0:
+# no chiplet pulling, no shared group, request and acknowledge pads low.
 DRIVEN_INPUTS = (
-    "ctp_req_out_din",
+    "ctp_wire_ext_assert",
+    "ctp_wire_group",
     "ctp_req_in_din",
     "ctp_ack_in_din",
     "ctp_ack_out_din",
@@ -82,6 +124,10 @@ DRIVEN_INPUTS = (
     "ctm_src_ack",
     "clk_stop_req",
 )
+
+# Packed DUT input vectors that describe the board: the pull of every private
+# wire, all pull-ups for the reset-default INVERT=0.
+BOARD_INPUTS = ("ctp_wire_pull",)
 
 
 def random_seed() -> int:
@@ -108,6 +154,15 @@ def is_int_ct_wire_or(int_ct_index: int) -> bool:
     return int_ct_index < NUM_INT_CT_WIRE_OR
 
 
+def current_cycle() -> int:
+    """Index of the current clock cycle, counted from the first rising edge.
+
+    Derived from simulation time so every coroutine, whichever edge it woke
+    on, agrees on the index of the cycle it is in.
+    """
+    return int(get_sim_time("ns") // CLK_PERIOD_NS)
+
+
 class CtnTb:
     """Clock/reset bring-up, CSR access, and pin-level helpers."""
 
@@ -116,13 +171,19 @@ class CtnTb:
         self.log = logging.getLogger(f"cocotb.tb.{name}")
         self.agent = None
         self.seq = None
-        self._shadow = dict.fromkeys(DRIVEN_INPUTS, 0)
+        self._shadow = dict.fromkeys(DRIVEN_INPUTS + BOARD_INPUTS, 0)
 
     async def start(self) -> None:
-        """Init inputs, start the clock, run reset, and bring up the VIP."""
+        """Init inputs, start the clock, run reset, and bring up the VIP.
+
+        Every private wire rests at the pull-up of the reset-default sense
+        (INVERT=0), and so does the group wire.
+        """
         dut = self.dut
         for name in DRIVEN_INPUTS:
-            getattr(dut, name).value = 0
+            self.set_input(name, 0)
+        self.set_input("ctp_wire_pull", (1 << NUM_CTP) - 1)
+        dut.ctp_wire_group_pull.value = WIRE_OR_POLARITY[0].pull
         dut.jtag_clock_stop.value = 0
         dut.rst_n.value = 0
 
@@ -172,6 +233,8 @@ class CtnTb:
         (re)configuration so each scenario starts from an idle FSM.
         """
         value = (mode & 1) | ((invert & 1) << 1)
+        if mode == 0:
+            self.set_wire_pull(index, invert)
         await self.seq.write(ctp_addr(index, CTP_CONFIG_OFFSET), value | (1 << 2))
         await self.seq.write(ctp_addr(index, CTP_CONFIG_OFFSET), value)
         if stretch is not None:
@@ -200,16 +263,37 @@ class CtnTb:
         value = (value | (1 << bit)) if level else (value & ~(1 << bit))
         self.set_input(name, value)
 
-    async def pulse_input_bit(self, name: str, bit: int, cycles: int) -> None:
+    async def pulse_input_bit(self, name: str, bit: int, cycles: int) -> int:
         """Assert one packed-input bit for ``cycles`` clocks, then clear it.
 
-        External and internal CTP inputs pass 2-FF synchronizers, so hold
-        pulses for at least 3 cycles to guarantee capture.
+        Returns the cycle in which the bit rose. External and internal CTP
+        inputs pass 2-FF synchronizers, so hold pulses for at least 3 cycles
+        to guarantee capture.
         """
         await RisingEdge(self.dut.clk)
         self.set_input_bit(name, bit, 1)
+        start = current_cycle()
         await ClockCycles(self.dut.clk, cycles)
         self.set_input_bit(name, bit, 0)
+        return start
+
+    # ------------------------------------------------------------------
+    # Shared-wire board and chiplets
+    # ------------------------------------------------------------------
+
+    def set_wire_pull(self, index: int, invert: int) -> None:
+        """Rest CTP ``index``'s private wire at the pull of the board built for ``invert``."""
+        self.set_input_bit("ctp_wire_pull", index, WIRE_OR_POLARITY[invert].pull)
+
+    def share_wire(self, mask: int, invert: int = 0) -> None:
+        """Put the CTPs in ``mask`` on one shared wire resting at the pull for ``invert``."""
+        self.dut.ctp_wire_group_pull.value = WIRE_OR_POLARITY[invert].pull
+        self.set_input("ctp_wire_group", mask)
+        self.log.info("shared wire: CTP mask 0x%04x, pull %d", mask, WIRE_OR_POLARITY[invert].pull)
+
+    async def assert_wire(self, index: int, cycles: int = SOURCE_HOLD_CYCLES) -> int:
+        """The chiplet on CTP ``index``'s wire pulls it for ``cycles`` clocks; return the start cycle."""
+        return await self.pulse_input_bit("ctp_wire_ext_assert", index, cycles)
 
     async def wait_bit(self, signal, bit: int, level: int, timeout_cycles: int, what: str) -> int:
         """Wait (falling-edge sampling) for one bit of a packed output."""
@@ -262,12 +346,14 @@ class BitWatcher:
         self.name = name
         self.pulses = 0
         self.high_samples = 0
+        self.rise_cycles: list[int] = []
         self._stop = False
         self._task = None
 
     def start(self) -> "BitWatcher":
         self.pulses = 0
         self.high_samples = 0
+        self.rise_cycles = []
         self._stop = False
         self._task = cocotb.start_soon(self._run())
         return self
@@ -281,6 +367,7 @@ class BitWatcher:
                 self.high_samples += 1
                 if not previous:
                     self.pulses += 1
+                    self.rise_cycles.append(current_cycle())
             previous = level
 
     async def stop(self) -> "BitWatcher":
@@ -290,7 +377,9 @@ class BitWatcher:
 
 
 __all__ = [
+    "BOARD_INPUTS",
     "CLK_PERIOD_NS",
+    "CT_DST_LATENCY",
     "CTM_BASE_ADDR",
     "CTM_SELECT_MASK",
     "CTP_BASE_ADDR",
@@ -308,11 +397,15 @@ __all__ = [
     "NUM_CTP",
     "NUM_INT_CT",
     "NUM_INT_CT_WIRE_OR",
+    "SOURCE_HOLD_CYCLES",
     "UNMAPPED_ADDR",
+    "WIRE_OR_POLARITY",
     "BitWatcher",
     "CtnTb",
+    "WirePolarity",
     "ctm_src_cfg_addr",
     "ctp_addr",
+    "current_cycle",
     "int_ct_matrix_port",
     "is_int_ct_wire_or",
     "random_seed",

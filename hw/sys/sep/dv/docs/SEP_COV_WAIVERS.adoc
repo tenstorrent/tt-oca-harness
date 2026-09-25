@@ -1,0 +1,1907 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-coverage-waiver-evidence]]
+== SEP coverage waiver evidence
+
+The RTL evidence behind every entry in `cov/config/vcs/sep_cov_scope.hier`,
+`sep_unreachable_exclusions.el` and `sep_otbn_isa_scope_exclusions.el`.
+
+The bar: a waiver needs the RTL to DECLARE the arm unreachable -- a tie, a
+parameter, a constant, an unconnected port, or a generate arm that does not
+elaborate. A testbench-side tie is not a waiver. An assertion guarding the arm
+is the strongest evidence there is.
+
+Each section below also carries a REJECTED list. Those are holes that looked
+waivable and are not: they stay in the denominator, and closing them is
+stimulus work. The rejected lists matter as much as the waivers -- they are
+what stops the next pass from re-litigating the same candidates.
+
+
+// ---- from fabric_ttip ----
+= Coverage waivers: AXI fabric and TT IP
+:toc:
+
+Source: `hw/sys/sep/dv/build/runs/20260919_225443__vcs__all/cov/report/modinfo.txt`.
+
+Scope: `vendor/pulp-platform/axi`, `hw/ip`, `hw/sys`, `hw/common`.
+
+Units. "Lines" is the VCS uncovered-line count for the module coverage object,
+summed over its parameterisations, exactly as `modinfo.txt` reports it. "Toggle
+bits" is uncovered `Total Bits` (0->1 plus 1->0), attributed only to the signals
+the cited tie makes constant.
+
+A row is here only when a tie, parameter, constant or unconnected port *in RTL*
+forces the arm. Stimulus gaps are listed separately at the end.
+
+== Waivers
+
+[cols="3,5,>1,>1",options="header"]
+|===
+| Module / arm | Evidence (file:line) | Lines saved | Toggle bits saved
+
+| `axi_dw_upsizer` -- all upsizing arms, the `R_INJECT_AW` state, and both
+  `BURST_INCR` / `BURST_WRAP` decodes (read and write)
+| Single instance, DMA master port, `hw/sys/sep/rtl/sep_dma_wrap.sv:289`.
+  Its slave port is driven by `u_axi_lite_to_axi_dma`
+  (`hw/sys/sep/rtl/sep_dma_wrap.sv:263`), which emits a constant AXI header:
+  `burst = BURST_FIXED` (`vendor/pulp-platform/axi/upstream/src/axi_lite_to_axi.sv:44`
+  and `:61`), `size = AxiSize` (`:43`, `:60`), and `len`/`lock`/`qos`/`region`/
+  `user`/`id`/`atop` forced to zero by `default: '0`
+  (`:46`, `:63`, `:67`). `cache` is tied `4'b0000` at
+  `hw/sys/sep/rtl/sep_dma_wrap.sv:266` and `:267`, so
+  `axi_pkg::modifiable()` (`vendor/pulp-platform/axi/upstream/src/axi_pkg.sv:226`)
+  is constant 0. Dead arms: read `388-400`, `412-420`, `515`, `520`, `528-531`;
+  write `640`, `645`, `655-657`, `702-715`, `726-734`; ATOP inject `374`,
+  `429-482`, `681-682`.
+| 395 | 2192
+
+| `axi_atop_filter` -- whole absorb/inject path (lines 139-326)
+| Every fabric instantiation passes `ATOPs = 1'b0`:
+  `hw/sys/sep/rtl/sep_local_axi_xbar.sv:266`,
+  `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:275`,
+  `hw/sys/sep/rtl/sep_crypto.sv:560`, `hw/sys/sep/rtl/sep_cpu.sv:596`.
+  The design states the same: `assume property` on `aw.atop == '0` at
+  `vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:253` and
+  `vendor/pulp-platform/axi/upstream/src/axi_demux_simple.sv:536-540`.
+| 57 | 1070
+
+| `axi_burst_splitter_gran` -- granular W length machine (204-221) and the
+  non-last downstream R beat arm (360-369)
+| `len_limit_i` is the literal `8'h00` at
+  `vendor/pulp-platform/axi/upstream/src/axi_burst_splitter.sv:92`, and every
+  SEP instance of `axi_burst_splitter_gran` is the one inside
+  `axi_burst_splitter` (`:89`). Line 202 guards the W machine on
+  `len_limit_i != 8'h00`; with the limit at zero every downstream burst is one
+  beat, so `mst_resp_i.r.last` is always 1 and the `else` at 359-369 cannot run.
+| 17 | 0
+
+| `axi_isolate_inner` -- ATOP read-response counter injection (306-307)
+| Guarded by `slv_req_i.aw.atop[ATOP_R_RESP]`; same `ATOPs = 1'b0` fabric ties
+  as the `axi_atop_filter` row.
+| 2 | 0
+
+| `traffic_filter.pass_group_id`
+| `EnGroupIdFilter (1'b0)` at
+  `hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv:351`
+  and `:399`.
+| 0 | 2
+
+| `memory_interface` CSR AXI-Lite ports
+| Tied `'0` at `hw/sys/sep/rtl/sep.sv:705`, `:708`, `:776`, `:779`.
+  Untoggled: `csr_in_axil_req_i.w.data`, `csr_in_axil_resp_o.r.data`,
+  `csr_out_axil_req_o.w.data`, `csr_out_axil_resp_i.r.data` (128 each) and the
+  four `ar.addr`/`aw.addr` (64 each).
+| 0 | 768
+
+| `prim_carry_select_adder.c_o`
+| Output left unconnected at `hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv:93`
+  and `:103`.
+| 0 | 2
+
+| `axi_window_remap.target_base_i` (and `region_size_i`)
+| Constant at every call site, e.g.
+  `hw/sys/sep/rtl/sep_dma_wrap.sv:316-317`
+  (`SEP_LOCAL_ALIAS_REGION_SIZE`, `SEP_LOCAL_ALIAS_REGION_BASE`).
+| 0 | 128
+
+| `tlul_err` -- 1-byte, 2-byte and `default` size arms
+| `axi_lite_to_tlul` hardcodes `tl_o.a_size = 2` at
+  `hw/common/axi/axi_lite_to_tlul.sv:133`, so only the 4-byte arm is live.
+| 9 | 102
+
+| `tlul_err_resp` -- d-channel source capture
+| Every SEP `tlul_socket_1n` is `N = 2` with a 1-bit steer, so the captured
+  `err_source` and the mirrored `d_source` never take their upper codes.
+| 6 | 48
+
+| `entropy_generator_complex.get_total_length` / `get_tapped_length`
+| Elaboration-time constant functions only; no simulation-time caller.
+| 28 | 0
+
+| *Total* | | *514* | *4312*
+|===
+
+== Rejected -- stimulus gaps, not waivers
+
+`axi_isolate_inner` / `axi_lite_isolate` Drain, Hold and Isolate states (30 and
+10 lines, ~660 toggle bits)::
+`isolate_i` is a live signal from the reset controller, not a tie --
+`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:376`, `:447`, `:518`, `:589`,
+`:615-715`, `:858-948`, `:1034`. Nothing drove isolation in this run.
+
+`axi_dw_upsizer` generate copies `t = 1..7` (203 of the 598 uncovered lines)::
+`AxiMaxReads = 8` at `hw/sys/sep/rtl/sep_dma_wrap.sv:273`. Slots 1-7 are
+reachable; the run simply never had more than one read outstanding. Depth, not
+structure.
+
+`axi_id_remap` `HoldAx` / `HoldAW` / `HoldAR` states (39 lines)::
+Both instances (`u_efuse_shim_id_conv`, `u_inbound_to_sep_id_remap`) have live
+AW and AR. The states need a simultaneous AW+AR with a stalling downstream.
+
+`axi_burst_splitter_gran` `BWait` (274-281) and `RWait` (375-379)::
+Upstream back-pressure states. Reachable; no tie.
+
+`axi_to_detailed_mem` QoS arbitration and `sel_lock` (7 lines)::
+`qos` is zero from the masters in this run, but nothing in RTL ties it at
+`u_boot_rom_memory_interface` or `u_sram_memory_interface`.
+
+`axi_lite_mux` AW lock path (228-244)::
+Ordinary stall handling.
+
+`sep_system_csr` filter rule-slot registers (23036 + 10732 toggle bits)::
+`gen_outbound_filter_reg` / `gen_inbound_filter_reg` slots that no test
+programmed. The slot count is a parameter, but it is not reduced -- the slots
+exist and are writable.
+
+`efuse_shadow_regs` preload (178-187)::
+`$readmemh` behind `$value$plusargs`. A plusarg is testbench-side, not an RTL
+tie.
+
+`sep_cpu_ctrl_reg` `TIMEOUT_COUNT_*.reserved` write paths and the SLVERR decode
+(25 lines)::
+Software-writable fields nothing wrote, and a decode error nothing provoked.
+
+`efuse_interface_controller` address decode arms (234-255, 369-374)::
+Real address ranges; the run never issued a request in the non-selected range.
+
+`km_drbg_sampler` `StStreamErr` / `StTimeout` / SLVERR arms (16 lines)::
+Error responses nothing injected.
+
+`drbg_axil64_lane_adapter` unsupported-access arms (8 lines)::
+Same -- an unsupported access is stimulus.
+
+`prim_refclk_count_w_cdc` counter-update load (144-181)::
+`cnt_update_value_sync` is a live CDC input; the update was never requested.
+
+`axi_xbar` / `axi_xbar_unmuxed` / `sep_local_axi_xbar` wide-bus toggle
+(57144 + 33395 + 11584 bits)::
+Address, data and ID bits no traffic exercised. Large, but a stimulus result.
+
+// ---- from opentitan ----
+= Coverage waivers: OpenTitan IP (`vendor/lowRISC/opentitan/upstream/hw/ip/`)
+:toc:
+
+Coverage run: `hw/sys/sep/dv/build/runs/20260919_225443__vcs__all/cov/report/modinfo.txt`.
+
+Scope of the numbers below: 144 modules in the report resolve to a source file under
+`vendor/lowRISC/opentitan/upstream/hw/ip/`. They hold 1568 uncovered lines and 78539
+uncovered toggle transitions (a transition is one direction of one bit; a bit that
+toggled in neither direction counts 2).
+
+A row is listed only when the SEP integration makes the logic structurally
+unreachable: a tie, a parameter, or an unconnected port *in RTL*. Everything else is
+in <<rejected>>.
+
+All paths are repo-relative to `/proj_soc/user_dev/yenhenglai/tt-oca-harness`.
+
+== Waivers
+
+[cols="2,5,1,1",options="header"]
+|===
+| Module / arm | Evidence (file:line, the tie/parameter) | Lines saved | Toggle bits saved
+
+| `kmac_app` — application-interface FSM arms
+(`StAppCfg`..`StAppFinish`, the `SelApp`/`SelOutLen` message mux,
+the app digest assembly, and the `StApp*` arms of the key and prefix muxes)
+| `hw/sys/sep/rtl/kmac_wrapper.sv:186` — `.app_i('0)` on the `kmac` instance.
+The KeyMgr / LC_CTRL / ROM_CTRL hardware application ports are tied to zero in RTL,
+so `app_req.req_valid` is constant 0 and the FSM can never leave `StIdle` toward
+`StAppCfg`. `hw/sys/sep/rtl/kmac_wrapper.sv:187` leaves `app_o` unconnected.
+| 83
+| 7288
+
+| `kmac` (top) — `app_i[3:0]` / `app_o[3:0]` port bits
+| Same tie: `hw/sys/sep/rtl/kmac_wrapper.sv:186`.
+The four `app_o[*].digest_s0/s1` (384 bits each) and `app_i[*].data_s0/s1`,
+`.strb`, `.req_valid`, `.req_last`, `.rsp_ready` bits cannot toggle.
+| 0
+| 7288
+
+| `entropy_src_main_sm` — `StartupHTStart`, `StartupPhase1`, `StartupPass1`,
+`StartupFail1`, `ContHTStart`, `ContHTRunning`, `FWInsertStart`, `FWInsertMsg`,
+`Sha3Process`, `Sha3Valid`, `Sha3Done`, `Sha3MsgDone`, and the firmware-override
+arm of `Idle` (lines 65-71, 76-79)
+| `hw/ip/entropy_source/rtl/entropy_source.sv:1026` — `.fw_ov_ent_insert_i(1'b0)`;
+`:1027` — `.fw_ov_sha3_start_i(1'b0)`; `:1032` — `.bypass_mode_i(1'b1)`.
+With `bypass_mode_i` constant 1 and `fw_ov_ent_insert_i` constant 0, the `Idle` arm
+at line 73 is the only one that can be taken, so the SM can only reach
+`BootHTRunning` -> `BootPostHTChk` -> `BootPhaseDone` (plus `AlertState`/`AlertHang`).
+Every SHA-3 conditioner state and every firmware-override state is cut off from the
+reachable set. `:1029` (`pd_cntr_zero_i(1'b1)`) and `:1035` (`sha3_state_vld_i(1'b1)`)
+are the companion ties, and the source comments at those lines state the same
+contract. `:1039` records that `sha3_start_o` is unused because SEP uses a SHA-256
+whitener instead of the OpenTitan SHA-3 conditioner.
+| 66
+| 24
+
+| RACL address-permission checking in `secure_dma`, `secure_dma_reg_top`,
+`spi_host`, `spi_host_reg_top`, `spi_host_window`, `aon_timer`, `aon_timer_reg_top`
+— `racl_policies_i[15:0]` and `racl_error_o`
+| `EnableRacl` is 0 at all three SEP instantiation sites:
+`hw/sys/sep/rtl/sep.sv:1098` (DMA), `hw/sys/sep/rtl/sep_ot_spi_wrap.sv:150` (SPI host),
+`hw/sys/sep/rtl/sep_wdt_wrap.sv:138` (AON timer / WDT).
+The parameter guards generate arms that then do not elaborate —
+`vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host_reg_top.sv:1735`
+(`if (EnableRacl) begin : gen_racl_role_logic`), `:1767` (`gen_racl_hit`),
+`:1790` (`gen_racl_log`) — and
+`vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/rtl/spi_host_window.sv:43` sinks the
+parameters into an `unused_racl` term. The policy vectors are additionally tied to
+zero in RTL at `hw/sys/sep/rtl/sep_dma_wrap.sv:130`,
+`hw/sys/sep/rtl/sep_ot_spi_wrap.sv:164` and `hw/sys/sep/rtl/sep_wdt_wrap.sv:151`.
+| 0
+| 2004
+
+| `csrng_cmd_stage` instance `gen_cmd_stage[1]` — the second CSRNG hardware
+application port (instance-scoped, see note)
+| `hw/ip/drbg/rtl/drbg.sv:276-278` — `for (genvar i = 1; i < CSRNG_NUM_HW_APPS; i++)
+assign csrng_hw_req[i] = csrng_pkg::CSRNG_REQ_DEFAULT;`. Only HW app 0 is wired
+(`:274-275`, to EDN). `csrng_core.sv:509` maps `gen_cmd_stage[ai]` for
+`ai < NumApps-1` to the HW ports and `ai == NumApps-1` to the software port
+(`csrng_core.sv:554-556`), so `gen_cmd_stage[1]` has a constant-idle command input.
+| 0 (merged)
+| 0 (merged)
+
+| *Total*
+|
+| *149*
+| *16604*
+|===
+
+=== Note on `csrng_cmd_stage`
+
+`modinfo.txt` reports line and toggle coverage merged across a module's instances.
+`csrng_cmd_stage` has three instances; `gen_cmd_stage[1]` is structurally dead, but
+`gen_cmd_stage[2]` (the software command port) is live and leaves the same lines
+uncovered. Waiving the dead instance therefore raises the per-instance score
+(32.58 % -> waived) without removing any merged module line. It is listed because it
+is a genuine structural tie that a hierarchical waiver file should carry; it is
+scored at zero so the totals stay honest.
+
+[[rejected]]
+== Rejected — stimulus gaps, not waivers
+
+`otbn_decoder` (254 lines), `otbn_predecode` (167), `otbn_alu_bignum` (97),
+`otbn_controller` (47)::
+The uncovered lines are instruction-decode and ALU arms — `slli`/`srai` shift
+decode, branch and jump forms, the BN vector element-length cases, the load/store
+post-increment forms, the CSR/WSR address decode. The test firmware never executes
+those instructions. No parameter or tie removes them: `otbn` is instantiated with
+`Stub(1'b0)` and `RegFile(RegFileFF)` at
+`hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:161-165`, which elaborates the full core.
+`FeatStubMai(1'b1)` (`:163`) does remove the `otbn_mai` block
+(`vendor/lowRISC/opentitan/upstream/hw/ip/otbn/rtl/otbn_core.sv:1039`,
+`if (FeatStubMai) begin : gen_no_mai`), but that block simply does not elaborate, so
+it contributes no uncovered lines. The MAI ISPR/WSR decode in `otbn_decoder` and
+`otbn_controller` (`:1317-1318`, `:1472`) is still reachable — the stub returns a
+software error rather than blocking the decode. This is a stimulus gap.
+
+`aes_ghash` (114 lines), `aes_control_fsm` (47), `aes_cipher_control_fsm` (47),
+`aes_key_expand` (58)::
+The uncovered lines are the GCM phases (`GCM_INIT`, `GCM_RESTORE`, `GCM_AAD`,
+`GCM_SAVE`, `GCM_TAG`), the PRNG-reseed and key/data clear states, and the AES-192
+key schedule. `aes` is instantiated with no parameter overrides at
+`hw/sys/sep/rtl/aes_wrapper.sv:134`, so `AESGCMEnable`, `AES192Enable` and
+`SecMasking` all keep their default value of 1
+(`vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes.sv:13-15`). SEP could legally
+configure every one of these through the AES CSRs. Stimulus gap.
+
+`otbn_scramble_ctrl` (27 lines)::
+The `ScrambleCtrlDmemReq` / `ScrambleCtrlImemReq` states and the OTP key capture are
+uncovered. `hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:141-144` supplies a working
+constant OTP key responder (`ack` after one cycle, `seed_valid = 1'b1`), so the
+request path is reachable — it just needs a memory-scramble request from software.
+The constant `seed_valid = 1'b1` does make the `seed_valid == 0` branch unreachable,
+but that branch is a single assignment already covered by the `1` case. Stimulus gap.
+
+`entropy_src_main_sm` lines 107, 120, 127 (and the `Error` state body, line 275)::
+These are the `!enable_i` exits from `BootPostHTChk` and `BootPhaseDone` and the
+alert-threshold exit from `BootPhaseDone`. All three are inside states the SM does
+reach, and `enable_i` is the software `CTRL.MODULE_ENABLE` bit
+(`hw/ip/entropy_source/rtl/entropy_source.sv:1025`). A disable-while-running test
+would cover them. Stimulus gap, and a real hole worth filling.
+
+`prim_secded_inv_64_57_enc` / `_dec` / `prim_secded_inv_39_32_enc` / `_dec`
+(10 611 toggle bits, 0 lines)::
+Uncovered toggle on the integrity encoder/decoder data buses. Nothing ties these —
+they sit on live memory and bus paths and the missing bits are simply data patterns
+the stimulus never produced. `EnableDataIntgGen`/`EnableRspDataIntgCheck` are both
+`1'b1` at `hw/sys/sep/rtl/sep.sv:1093-1094`. Stimulus gap.
+
+`hmac_reg_top`, `kmac_reg_top`, `csrng_reg_top`, `edn_reg_top`, `otbn_reg_top`,
+`aes_reg_top`, `spi_host_reg_top`, `aon_timer_reg_top`, `secure_dma_reg_top`
+(non-RACL toggle)::
+Uncovered toggle on register data and address bits. These are software-writable
+fields; the integration does not constrain them. Stimulus gap.
+
+`secure_dma` — `sys_i` / `sys_o` (SoC SYS address space) and the CTN address space::
+`hw/sys/sep/rtl/sep_dma_wrap.sv:146-147` ties `sys_i` to `'0` and leaves `sys_o`
+unconnected, and `:324-330` drives `ctn_tl_d2h` with `d_valid = 1'b0` /
+`a_ready = 1'b1`. This is a real RTL tie, but it is *not* a clean waiver: the DMA
+address-space-ID field is software-selectable, so software can still steer a
+transfer into the SYS or CTN state and the request-side lines stay reachable — only
+the completion handshake is blocked, which is a hang, not unreachable logic. Not
+waived; the honest fix is a test that proves the DMA rejects or stalls on those
+address spaces.
+
+`secure_dma` — `DmaClearIntrSrc` / `DmaWaitIntrSrcResponse` (lines 686-745)::
+The interrupt-clear sequence is driven by `reg2hw.clear_intr_src`, a software
+register. No tie. Stimulus gap.
+
+`kmac_app` lines 702-832 (`StError*` and `StTerminalError`)::
+Tempting to fold into the `app_i('0)` waiver, but `StErrorKeyNotValid` is entered
+from `StSw` as well (`kmac_app.sv:847-849`, `err_during_sw_set = st == StSw`), so
+the error states are reachable on the software path. The individual statements
+inside them that dereference `app_req`/`app_rsp` are unreachable, but scoring them
+would need a statement-level waiver that the merged report cannot express. Left
+uncovered on purpose.
+
+`kmac_app` lines 1113-1118, 1150-1163 (`L128`/`L224`/`L384`/`L512` state masking and
+digest sizing)::
+Reachable from the software path by programming `CFG_SHADOWED.kstrength`. Stimulus
+gap.
+
+`kmac`, `aes`, `otbn` escalation paths (`lc_escalate_en_i`)::
+`hw/sys/sep/rtl/kmac_wrapper.sv:176`, `hw/sys/sep/rtl/aes_wrapper.sv:145` and
+`hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:178` all tie `lc_escalate_en_i` to
+`lc_ctrl_pkg::Off`, and `:179` ties OTBN's `lc_rma_req_i` to `Off`. These are RTL
+ties and would qualify, but the affected modules report no uncovered lines that
+resolve to the escalation arms — the escalation logic is mostly in `prim_lc_sync`
+and in modules the report does not carry. Nothing to score, so nothing is claimed.
+Re-check this one if a future run adds those modules to the report.
+
+// ---- from pass2 ----
+= Coverage waivers, pass 2: Adams Bridge, eFuse, Key Manager, Caliptra KV
+:toc:
+
+Source: `hw/sys/sep/dv/build/runs/20260919_225443__vcs__all/cov/report/modinfo.txt`.
+
+Scope: the mass that `fabric_ttip.adoc` and `opentitan.adoc` did not explain --
+`vendor/chipsalliance/adams-bridge`, `hw/ip/efuse`, `hw/ip/key_manager`,
+`vendor/chipsalliance/caliptra-rtl`, `hw/common/tlul`, `hw/common/och_prim`,
+`hw/ip/axi_lite_mailbox_unit`, `hw/ip/memory_interface`, `hw/ip/axi_window_remap`.
+Nothing claimed here is claimed in either earlier file.
+
+Units. "Lines" is the VCS uncovered-line count for the module coverage object.
+"Toggle bits" is uncovered transitions (0->1 plus 1->0), i.e. the report's
+`Total Bits` uncovered column, attributed only to the signals the cited tie or
+constant makes constant. Where the sum of the named constant signals exceeds the
+module's reported uncovered total, the claim is **capped at the module total** so
+the numbers stay honest; the cap is noted in the row.
+
+A row is here only when a tie, parameter, constant, non-elaborating generate arm
+or an assertion *in RTL* forces the arm. Everything else is under
+<<rejected,Rejected>>.
+
+All paths are repo-relative to `/proj_soc/user_dev/yenhenglai/tt-oca-harness`.
+
+== Waivers
+
+[cols="3,6,>1,>1",options="header"]
+|===
+| Module / arm | Evidence (file:line) | Lines saved | Toggle bits saved
+
+| `ntt_twiddle_lookup` -- the whole twiddle ROM: `zeta`, `zetainv`,
+  `kyber_zeta`, `kyber_zetainv`
+| All four are 256-entry arrays driven only by literal continuous assigns:
+  `vendor/chipsalliance/adams-bridge/upstream/src/ntt_top/rtl/ntt_twiddle_lookup.sv:51-54`
+  (declarations) and `:56` onward (`assign zeta[0] = 23'h000001;` ...). They are
+  compile-time constants with no other driver, so no stimulus can ever toggle
+  them. The report agrees: `Signal Bits 35840 / 0 / 0.00 %` against
+  `Port Bits 160 / 160 / 100 %` -- every port toggled, every ROM bit is dead by
+  construction. Two instances (`ntt_gen[0]`, `ntt_gen[1]`), merged.
+| 0 | 35840
+
+| `efuse_field_map_i` in `efuse_interface_controller`, `efuse_shadow_regs`,
+  `efuse_guard`, `efuse_shadow_reg_access_control` -- `start_addr`, `end_addr`,
+  `idx`, `lock` of all 41 rules
+| The port is fed from a `localparam`:
+  `hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:519`
+  (`localparam efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] EfuseFieldMap = '{...}`),
+  connected at `hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:379`
+  (`.efuse_field_map_i(sep_efuse_pkg::EfuseFieldMap)`). It is declared as an
+  input on `hw/ip/efuse/rtl/efuse_interface_controller.sv:98` and forwarded
+  unmodified to `efuse_shadow_regs` (`:712`) and, via
+  `hw/ip/efuse/rtl/efuse_shadow_regs.sv:251`, to
+  `efuse_shadow_reg_access_control` (`hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:32`)
+  and `efuse_guard` (`hw/ip/efuse/rtl/efuse_guard.sv:32`). 6216 transitions per
+  module x 4 modules.
+| 0 | 24864
+
+| `abr_keccak_round` -- the masked Keccak path: `StPhase1`, `StPhase2Cycle1..3`
+  and the `EnMasking && run_i` entry arm, plus the `rand_data_i` /
+  `keccak_rand_data` / `phase_sel` / `cycle` / `rand_aux_i` /
+  `rand_valid_i` / `rand_early_i` buses
+| Two independent RTL facts.
+  (a) `parameter Sha3EnMasking = 0` at
+  `vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl/abr_sampler_pkg.sv:35`,
+  passed at `.../abr_sampler_top/rtl/abr_sampler_top.sv:393` -> `abr_sha3` (`:414`)
+  -> `abr_keccak_round` (`.../abr_sha3/rtl/abr_sha3.sv:414`). The entry arm is
+  `else if (EnMasking && run_i)` at
+  `.../abr_sha3/rtl/abr_keccak_round.sv:221`, constant false.
+  (b) **The design asserts it.** With `EnMasking == 0` the `else` arm at
+  `.../abr_sha3/rtl/abr_keccak_round.sv:495` elaborates
+  `ABR_ASSERT(UnmaskValidStates_A, !(keccak_st inside {StPhase1, StPhase2Cycle1,
+  StPhase2Cycle2, StPhase2Cycle3}))` (`:496-498`) -- the RTL declares those four
+  states unreachable.
+  The randomness ports are additionally tied at the only `abr_sha3`
+  instantiation: `.rand_valid_i(1'b0)`, `.rand_early_i(1'b0)`,
+  `.rand_data_i('0)`, `.rand_aux_i('0)` --
+  `.../abr_sampler_top/rtl/abr_sampler_top.sv:407-410`.
+  Dark lines: 223-225, 254-255, 264-266, 268, 274-275, 278, 281, 287, 294-295,
+  298, 301, 303, 305-306, 312-313, 316, 318-319, 321-322, 324, 326.
+  Toggle claim capped at the module's uncovered total (named signals sum to 4840).
+| 30 | 3256
+
+| `abr_keccak_2share` -- `gen_tie_unused` and the masked-only inputs
+  `rand_i`, `rand_aux_i`, `phase_sel_i`, `cycle_i`
+| `if (!EnMasking) begin : gen_tie_unused` at
+  `vendor/chipsalliance/adams-bridge/upstream/src/abr_sha3/rtl/abr_keccak_2share.sv:69`,
+  sinking the ports into `unused_rand` / `unused_rand_aux` (`:80-81`). The
+  masked datapath arms `g_2share_data` (`:92`), `g_2share_iota` (`:145`) and
+  `g_2share_chi` (`:152`) do not elaborate. Same `Sha3EnMasking = 0` root as the
+  row above; the ports are driven from `abr_keccak_round.sv:441-442`, which
+  forwards the `'0` ties at `abr_sampler_top.sv:407-410`.
+  Capped at the module total (named signals sum to 4844).
+| 0 | 3230
+
+| `abr_sha3pad` -- the cSHAKE prefix path (`StPrefix`, `StPrefixWait`,
+  `MuxPrefix`, the `CShake` funcpad arm) and the `L224` / `L384`
+  `block_addr_limit` arms; signals `prefix`, `prefix_sliced`, `ns_data_i`,
+  `encode_bytepad`, `mode_eq_cshake`
+| `mode_i` and `strength_i` come from a `unique case` over `sampler_mode_i` in
+  the only parent,
+  `vendor/chipsalliance/adams-bridge/upstream/src/abr_sampler_top/rtl/abr_sampler_top.sv:194`
+  and the module-level default at `:174-175`. Across every arm the RTL only ever
+  emits `mode = Shake` (9 sites) or `mode = Sha3` (2 sites) -- never `CShake` --
+  and `strength` only `L128` / `L256` / `L512` -- never `L224` or `L384`.
+  The cSHAKE N,S bus is tied as well: `.ns_data_i('0)` at
+  `.../abr_sampler_top/rtl/abr_sampler_top.sv:414`.
+  Dark lines: 151, 153, 324, 341, 343-344, 346-348, 350, 352, 357, 359-360, 362,
+  553, 585, 597, 609.
+  Capped at the module total (named signals sum to 2464).
+| 19 | 1610
+
+| `kv_fsm` -- states `KV_PAD`, `KV_ZERO`, `KV_LENGTH` and the signals
+  `write_pad`, `pad_data`, `length_for_pad`, `num_dwords_data`
+| Every `kv_fsm` in the design is `PAD = 0`. The three read clients pass
+  `.PAD(0)` at
+  `vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl.sv:322`,
+  `:351`, `:380`, forwarded at
+  `vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_read_client.sv:81`;
+  the write client hardcodes it at
+  `vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_write_client.sv:76`.
+  All four arcs into the pad chain are `(PAD == 1) && ...`:
+  `vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_fsm.sv:96`,
+  `:97`, `:98`, `:99` -- constant zero, so lines 127-147 cannot execute.
+  Capped at the module total (named signals sum to 412).
+| 23 | 366
+
+| `abr_ctrl` / `abr_reg` / `abr_top` -- `MLDSA_NAME`, `MLDSA_VERSION`,
+  `MLKEM_NAME`, `MLKEM_VERSION` `.next` buses
+| Driven from `parameter [63:0]` literals:
+  `vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_params_pkg.sv:96-99`,
+  assigned at
+  `vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl.sv:747-750`
+  and `:825-828`. Constant ID registers; no driver can change them.
+  abr_ctrl 1536 (internal + `_o` port copies), abr_top 1024, abr_reg 512.
+| 0 | 3072
+
+| `abr_top` -- `pcr_signing_data`, `ocp_lock_in_progress`,
+  `debugUnlock_or_scan_mode_switch`, `hsel_i`
+| Tied at the SEP instantiation:
+  `hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv:544` (`.pcr_signing_data('0)`),
+  `:545` (`.ocp_lock_in_progress(1'b0)`),
+  `:559` (`.debugUnlock_or_scan_mode_switch(1'b0)`) and
+  `:524` (`.hsel_i(1'b1)`, single AHB slave).
+  The comment block at `:548-558` states the contract for the
+  `debugUnlock_or_scan_mode_switch` tie explicitly. Covers
+  `pcr_mldsa_signing_seed[7:0][31:0]`, `pcr_ecc_signing_privkey[11:0][31:0]`
+  and `pcr_hash[15:0][31:0]`.
+| 0 | 2310
+
+| `abr_sha3` -- `rand_data_i`, `ns_data_i`, `rand_valid_i`, `rand_early_i`,
+  `rand_aux_i`
+| `.../abr_sampler_top/rtl/abr_sampler_top.sv:407-410` and `:414` tie all five to
+  zero on the only instance ("Entropy interface - not using").
+| 0 | 2312
+
+| *Total* | | *72* | *76860*
+|===
+
+[[rejected]]
+== Rejected -- stimulus gaps, not waivers
+
+`abr_reg` (283 lines, ~25 300 toggle bits) and `abr_ctrl` (52 lines, ~30 000)::
+The mass is `MLDSA_CTX` (8192 transitions), `MLDSA_MSG` (2112), `MLKEM_SEED_Z`
+(1024), `MLDSA_SIGN_RND` (1024), `MLDSA_EXTERNAL_MU`, `MLKEM_SEED_D` -- all
+software-written register storage with live `field_combo` / `field_storage`
+paths, and the `abr_ctrl` dark lines are the MLDSA keygen / sign / verify and
+MLKEM keygen / decaps program-counter entry points (`abr_ctrl.sv:1673-1782`) and
+the `MLDSA_MSG_*` streaming FSM (`:1876-1909`). No parameter or tie removes any
+of it. A new test is already targeting `abr_reg`; the rest is stimulus.
+**This is the honest answer for the bulk of adams-bridge: the engine was never
+driven through a real MLDSA or MLKEM operation in this run.**
+
+`abr_keccak_round` lines 217, 219-220 (the `clear_i` arm) and 377, 404-406
+(`rst_storage_error`)::
+`clear_i` is a live `mubi4_t` from `abr_sha3`; the design even asserts it is only
+legal in `StIdle` (`abr_keccak_round.sv:489-491`). Reachable, never driven.
+
+`abr_keccak_round` lines 331, 336-337 and `abr_sha3` lines 275-276, 303, 321-351::
+Sparse-FSM / `StTerminalError` and `error_o` assembly. Fault-injection stimulus.
+
+`efuse_token_processing` (~8500 toggle bits)::
+`SEC_DISABLE_TOKEN_I`, `RMA_SIP_TOKEN_I`, `RMA_CHIPLET_TOKEN_I` and the derived
+`sec_disable_token_rev` / SHA-256 digest buses. These are sensed fuse values, not
+ties -- an unprogrammed fuse image is a stimulus condition, not structure.
+
+`efuse_shadow_regs` lines 178-187 (`$readmemh` preload) and 504-506, 558-560
+(`'hbadcab1e` SLVERR responses), 709-714::
+Plusarg-gated preload (testbench-side, not RTL) and error responses nothing
+provoked. Already flagged in `fabric_ttip.adoc`; repeated here only so it is not
+double-counted.
+
+`efuse_interface_shim` lines 246, 481, 537-540 and `efuse_read_interface` /
+`efuse_program_interface`::
+`default:` recovery arms of reachable FSMs and reset-value assignments on paths
+no request took. Stimulus.
+
+`km_kpv_reg` (125 lines), `km_csr_reg` (66), `km_mailbox_*_reg` (17 each),
+`*_wrapper_key_reg` (7-20 each, ~30 000 toggle bits)::
+Generated register files. The mass is `KEY_SHARE0` / `KEY_SHARE1` /
+`MLDSA_SEED` / `MLKEM_SEED_D` / `MLKEM_SEED_Z` / `MLKEM_MSG` `field_storage`
+and `field_combo`. Software-writable key and seed registers; nothing in the
+integration constrains them. Stimulus, and a real hole.
+
+`*_wrapper_key_reg` `s_axil_awaddr[1:0]`, `s_axil_araddr[1:0]`,
+`s_axil_awprot`, `s_axil_arprot`, `s_axil_bresp`, `s_axil_rresp`::
+Tempting, but no RTL tie was found. The address LSBs stay zero because every
+access this run made was word-aligned, and `bresp` / `rresp` stay `OKAY` because
+nothing provoked a decode error. These are the AXI-Lite masters' behaviour, not a
+constant. Rejected on the strict test.
+
+`km_axi_lite_xbar` (4 lines, 2534 toggle bits), `key_manager` (1859),
+`km_csr` (2786)::
+Uncovered `aw` / `ar` / `r` channel address and data bits on live xbar ports, and
+`TB_CMD*` / `SRAM_LOCK` / `IRQ_ENTRY_ADDR` register fields nothing wrote.
+Stimulus.
+
+`axi_lite_mailbox_unit` (0 lines, 5755 toggle bits) and `axi_lite_mailbox_slave`
+(4 lines)::
+`mst_resps[*].r`, `mst_reqs[*].aw/ar` and the per-mailbox `gen_mailbox[*]`
+request/response structs. The mailbox slot count is a parameter but it is not
+reduced -- every slot elaborates and is addressable. Data-pattern stimulus. This
+matches the `sep_system_csr` filter-slot rejection in `fabric_ttip.adoc`.
+
+`memory_interface` (0 lines, 2804 toggle bits, of which 768 already waived)::
+Beyond the four CSR AXI-Lite ties already claimed in `fabric_ttip.adoc`, the
+remainder is `mem_axi_req_mem.aw/w/ar` address and data bits on the live memory
+port. Stimulus.
+
+`axi_window_remap` (0 lines, 2150 toggle bits, of which 128 already waived)::
+Beyond the `target_base_i` / `region_size_i` constants already claimed, the
+remainder is live request address and data. Stimulus.
+
+`prim_ram_1p_scr_ext` (5 lines, 2514 toggle bits) -- `key_i`, `nonce_i`,
+`wdata_scr_q`::
+`hw/sys/sep/rtl/sep_crypto_otbn_wrapper.sv:141-144` supplies a constant OTP key
+responder, so the *loaded* key would be constant -- but the key is only loaded on
+a scramble request the run never made, so what the report shows is the reset
+value, not a tie. The line 381-385 write-forwarding loop needs a read-during-write
+collision. Stimulus, and ambiguous enough that waiving it would hide a hole.
+
+`tlul_adapter_host:137` (`intg_err_q`), `tlul_socket_1n` (2954 toggle bits),
+`tlul_adapter_sram` (6830), `tlul_fifo_sync`, `tlul_*_intg_*`::
+Integrity-error injection and TL-UL address/data patterns. The `tlul_err` and
+`tlul_err_resp` structural arms are already claimed in `fabric_ttip.adoc`; what
+remains here is stimulus.
+
+`prim_refclk_count_w_cdc` (8 lines, 902 toggle bits)::
+Already rejected in `fabric_ttip.adoc`; unchanged.
+
+`sep_wrapper` (0 lines, 5275 toggle bits)::
+`ext_debug_bus_o`, `sep_ext_interrupts_i`, `ext_trng_axis_req[*].tdata`,
+`axi_extension_*` and the SMN outbound channels. Top-level ports whose drivers
+are outside the DUT. A testbench-side tie does not qualify, and no RTL tie was
+found inside `sep_wrapper`.
+
+`abr_msg_buffer` (3 lines, 1318 toggle bits), `abr_piso_multi` (3078),
+`abr_sample_buffer`, `ntt_*`, `sigdecode_*`, `skdecode_*`, `decompose*`,
+`compress*`, `pkdecode`, `power2round*`, `sample_in_ball*`::
+Adams-Bridge datapath. Uncovered because no MLDSA or MLKEM operation ran, not
+because anything is tied. Stimulus -- the same root cause as `abr_ctrl`.
+
+== Recommended tier
+
+[cols="4,1,4",options="header"]
+|===
+| Item | Tier | Note
+
+| `ntt_twiddle_lookup` ROM signals | 2
+| Arm-level `.el` on the four `zeta*` signals. Do **not** tier-1 the module --
+  its ports and lines are fully covered and should stay scored.
+
+| `efuse_field_map_i` (4 modules) | 2
+| One `.el` entry per module on the `efuse_field_map_i` port. Toggle only.
+
+| `abr_keccak_round` masked states | 2
+| Arm-level: the `StPhase1` / `StPhase2Cycle*` line range plus the randomness
+  ports. The module's unmasked `StActive` path is live and must stay scored.
+
+| `abr_keccak_2share` `gen_tie_unused` | 1
+| With `EnMasking = 0` the module is a pure pass-through; a `cm_hier` exclusion of
+  the instance is simpler than listing the sunk ports.
+
+| `abr_sha3pad` cSHAKE / `L224` / `L384` | 2
+| Arm-level. Shake and Sha3 padding are live.
+
+| `kv_fsm` `KV_PAD` / `KV_ZERO` / `KV_LENGTH` | 2
+| Arm-level on lines 126-147 plus the four `arc_KV_*` signals. `KV_RW` and
+  `KV_DONE` are live.
+
+| ABR `NAME` / `VERSION` `.next` | 2
+| Arm-level, toggle only, in `abr_ctrl`, `abr_reg` and `abr_top`.
+
+| `abr_top` `pcr_signing_data` / `ocp_lock` / `debugUnlock` / `hsel_i` | 2
+| Arm-level on the four ports. Revisit if SEP ever wires PCR signing.
+
+| `abr_sha3` randomness and `ns_data_i` ports | 2
+| Arm-level, toggle only.
+|===
+
+// ---- from pass3_fabric ----
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+= Pass 3 coverage waivers -- pulp-platform AXI fabric
+
+== W-FAB-1: `u_axi_dw_upsizer_dma` read slots `t = 1..7` are structurally unreachable
+
+*Scope*: `vendor/pulp-platform/axi/upstream/src/axi_dw_upsizer.sv`, the
+`AxiMaxReads` generate replicates of the read transaction slot, for the single
+SEP instance `u_axi_dw_upsizer_dma` (`hw/sys/sep/rtl/sep_dma_wrap.sv:272`,
+`AxiMaxReads(8)` at `:273`). This is the remainder that was left open after the
+constant-header waiver on the same instance.
+
+*Claim*: no stimulus can put more than one read in flight on that upsizer's
+slave port, so slots `t = 1..7` -- and the read-side arbitration between slots
+-- can never be occupied.
+
+*Evidence*: the upsizer's slave port is `axi32_mst_req`
+(`sep_dma_wrap.sv:292`), driven by `u_axi_lite_to_axi_dma`
+(`sep_dma_wrap.sv:263`), whose slave port `axi_lite_mst_req` is driven by
+`u_tlul_to_axi_lite_dma` (`sep_dma_wrap.sv:245`). `axi_lite_to_axi` is
+combinational, so the outstanding count at the upsizer equals the outstanding
+count at `tlul_to_axi_lite`.
+
+`hw/common/axi/tlul_to_axi_lite.sv` is a single-transaction FSM. From `IDLE`
+(`:172`) a TL-UL `Get` moves it to `AXI_AR_REQ` (`:187`); `AXI_AR_REQ`
+(`:197`) asserts exactly one `ar_valid` and moves to `AXI_R_ACK` on
+`ar_ready`; `AXI_R_ACK` (`:206`) waits for `r_valid` and moves to
+`TL_D_RESP`; `TL_D_RESP` (`:256`) returns to `IDLE` only on `tl_i.d_ready`
+(`:270`). `tl_o.a_ready` is asserted in `IDLE` alone, so a second TL-UL
+request cannot even be accepted until the first read has fully retired. The
+FSM therefore holds at most one AR outstanding for the life of the design.
+
+*Consequence*: the read-slot replicates above `t = 0` in
+`u_axi_dw_upsizer_dma` are dead by construction of the converter chain in
+front of them, not by stimulus gaps. Driving the DMA harder cannot reach them.
+
+*Not waived*: the `t = 0` read slot, and the write path, stay in scope and are
+driven by `sep_cov_axi_dw_upsizer_dma_test`. Waiving this does not touch the
+other `axi_dw_upsizer`-typed converters in SEP, which have real AXI masters in
+front of them.
+
+== Converter FSM: the two ties that make most of it unreachable
+
+`axi_dw_downsizer` carries 316 uncovered FSM transitions in run
+`20260922_172031__vcs__all`, 29% of every uncovered FSM transition in the
+design and the largest single block of it. Most of that is unreachable by
+construction, for two separate reasons, and the rest is a stimulus gap that
+stays in the score. Ten instances carry the metric: nine inside `sep_crypto`
+and `u_sep_dma_wrap.u_axi_dw_downsizer_reg` outside it. The waivers below are
+recorded for eight of the nine crypto instances; the Adams Bridge wrapper's
+`u_abr_axi_dw_converter` sits behind the same burst filter but carries no
+waiver yet, so its whole score stays in the denominator.
+
+=== SEP-CRYPTO-SINGLE-BEAT: no burst reaches a crypto aperture
+
+*Tie.* `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:111-112` computes
+`aw_is_burst = |aw.len` and `ar_is_burst = |ar.len`, and `:175` / `:205` route
+any such request to `SepCryptoAxiErrSlv` BEFORE the address decode runs. No
+beat of a burst reaches any accelerator, whatever its address. This is the
+architecture, not an accident: `hw/sys/sep/doc/crypto.adoc:126-132` ("Single-Beat
+Access Only") states it as a software contract, and
+`hw/sys/sep/doc/fabric.adoc:29` states the general rule that AXI4-Lite slave
+bridges convert bursts to single transactions.
+
+*Measured, not assumed.* A probe drove the AES aperture from the SMN inbound
+master with the inbound filter opened and `allow_burst=1`: single 4-byte and
+8-byte beats returned OKAY with real data, while 2-beat and 4-beat reads at
+both sizes returned DECERR on every beat with error-slave fill. The same shapes
+were refused identically from the CPU-LSU master.
+
+*What this waives.* The `R_SPLIT_INCR_DOWNSIZE` arm only builds a request when
+the converted length `(len+1) * conv_ratio - align_adj - 1` exceeds 255
+(`vendor/pulp-platform/axi/upstream/src/axi_dw_downsizer.sv:426`, taking the
+split branch at `:430`), which on this bus needs `ARLEN >= 128`. `len` is
+pinned to zero at all nine crypto instances, so that arm and its return to
+`R_IDLE` cannot be entered.
+
+*NOT waived, deliberately.* Three things stay in the denominator:
+
+* `u_sep_dma_wrap.u_axi_dw_downsizer_reg`. It sits outside `sep_crypto`, so
+  `:205` does not reach it. Its own argument would be the 336-byte extent of
+  `SECURE_DMA_REG_MAP`, which cannot hold the 1032 bytes a split needs -- a
+  weaker and different claim, and not made here.
+* `R_IDLE -> R_INCR_DOWNSIZE` and `R_IDLE -> R_PASSTHROUGH`, with their returns.
+  A SINGLE beat enters both: at `ARSIZE=3` the ratio is 2 and the converted
+  length is `1*2-0-1 = 1`, well inside the limit, so the converting arm runs on
+  an ordinary 64-bit access. These are dark because the suite drives 32-bit
+  single beats everywhere, which is a stimulus gap and a test's job.
+* The `BURST_WRAP` / `BURST_FIXED` arcs. The burst TYPE is independent of
+  `len`, and the crypto demux filters on `len` alone, so a single-beat WRAP or
+  FIXED reaches the converter. Reachability confirmed by reading, not driven
+  yet.
+
+=== SEP-ATOP-UPSTREAM-TIED: no atomic reaches SEP
+
+*Tie, and it is one level up.* SEP is delivered inside SMU rather than
+standalone, so its inbound port is only ever driven by `smu_axi_xbar`,
+instantiated with `.ATOPs (1'b0)` at `hw/sys/smu/rtl/smu_axi_xbar.sv:131`.
+`aw.atop` is therefore zero by construction in every real integration. That is
+exactly what SEP's own `NoAtopAllowed` assumption states
+(`axi_demux_simple.sv:570`, passed from `axi_filter_wrap.sv:242`), and the
+assumption is satisfied upstream rather than merely assumed. SEP's own
+`ATOPs(1'b0)` sites -- `sep_local_axi_xbar.sv:266`,
+`sep_crypto_axi_interconnect.sv:275`, `sep_crypto.sv:560`, `sep_cpu.sv:596` --
+are the places where the filter does not elaborate at all; the instances that
+DO elaborate sit inside `axi_to_axi_lite` and inside `axi_err_slv` within the
+width converters, and those are what this chain covers.
+
+Citing an SMU file is deliberate: the waiver describes the system being
+measured, not this repository in isolation.
+
+*Provenance.* This supersedes the earlier reading recorded under F-FAB-2 below,
+which treated the absorb path as reachable because nothing in SEP ties
+`aw.atop`. That was correct about SEP alone and wrong about the delivered
+system. The disposition was settled when the specification question was closed
+with "SEP ships as part of SMU, not standalone", and the same branch resolved
+the corresponding SMU question as an explicit out-of-scope waiver.
+
+*What this waives.* The `R_INJECT_AW` arm of every `axi_dw_downsizer`, entered
+only by `aw.atop[ATOP_R_RESP]` (`axi_dw_downsizer.sv:852`), and the FSM of the
+31 `axi_atop_filter` instances that elaborate.
+
+*NOT waived.* Nothing else changes: the filter instances that never elaborate
+carry no coverage objects, and the absorb path's line coverage is a separate
+claim from its FSM arcs.
+
+== DMA: which logic is waivable, read against a second bench's exclusion set
+
+A different bench carries a designer-reviewed DMA exclusion set, 575 items over
+`u_sep_dma_wrap` and `u_sep_dma_wrap.u_dma_local_alias_remap`. It is a
+REFERENCE for which logic is structurally dead, not a file to copy from: it was
+written against another elaboration, so no entry of it is carried over. Each
+claim was re-checked here against the open elaboration and the bar this
+document sets -- the RTL must declare the arm unreachable -- and anything
+waived in this tree is derived here, from the tie named below.
+
+*Waivable*, 23 items, each with a tie read in the open tree:
+
+[cols="2,1,3"]
+|===
+|Annotation |Items |Tie
+
+|`SEP-DMA-CTN-TIED`
+|11
+|The CTN TL-UL response is a constant in RTL:
+`hw/sys/sep/rtl/sep_dma_wrap.sv:324-333` drives `a_ready` 1, `d_valid` 0,
+`d_opcode` `AccessAck` and every other field to zero. The request side is
+unconnected at `:143`.
+
+|`SEP-DMA-LSIO-TIED`
+|10
+|`hw/sys/sep/rtl/sep.sv:1087` ties `lsio_trigger[10:1]` to zero; only bit 0
+carries the SPI trigger (`:1085`). The excluded bits are 1..10, and bit 0 is
+correctly left graded.
+
+|`SEP-DMA-ALERT-PING-TIED`
+|2
+|`hw/sys/sep/rtl/sep_dma_wrap.sv:347` ties `ping_req_i` to `1'b0` on every
+alert receiver, so `alert_rx_i[*].ping_p` and `.ping_n` cannot move.
+|===
+
+*Not waivable*, 552 items. Each is a real hole, and most of them are the same
+finding as the converter section above:
+
+[cols="2,1,4"]
+|===
+|Annotation |Items |Why it does not port
+
+|`MANUAL_AXI`
+|246
+|AXI header fields -- `len`, `size`, `burst`, `cache`, `id`, `qos`, `user`,
+`prot`, `lock`, `region`, `atop` -- on `reg_req_i` and the converted request
+inside the DMA. `reg_req_i` is a local-crossbar master port (`sep.sv:421`),
+fed from the SMN inbound full AXI4 master, so those fields are a function of
+stimulus. If they are constant in the reference bench, that is a
+testbench-side tie, which this document does not accept as a waiver.
+
+|`MANUAL_FIXED_LOCAL_REGION`
+|58
+|`sep_local_base_addr_i` and `sep_region_size_i`. Both are CSR outputs --
+`hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:759-760` drives
+them from `SEP_LOCAL_BASE_ADDR.addr` and `SEP_REGION_SIZE.size` -- so software
+can change them and a test that programs the window closes these directly.
+
+|`MANUAL_ALIGNED`
+|48
+|Address bits [1:0] across the DMA register path. Nothing in the RTL forces
+the two low bits of an inbound address: `sep_periph_bus_err_misaligned_test`
+already presents a misaligned peripheral address in this bench.
+
+|`MANUAL_TLUL` (the non-CTN part)
+|34
+|Constant TL-UL fields on `host_tl_h_*` and `tl_d_*`. Plausible -- the
+AXI-Lite-to-TL-UL bridge emits a narrow set of opcodes and sizes -- but no
+single `file:line` was found that forces each one, and `host_tl_h_o.a_size`
+tracks the DMA transfer width. Held back until each has a named tie.
+
+|`MANUAL_ADDR_TABLE`
+|158
+|Upper address bits on the DMA CSR path. The claim would be that the crossbar
+window makes them constant, but the excluded bit list is irregular -- bits 23
+and 28 of `reg_req_i.aw.addr` are NOT excluded while 9..22, 24..27 and 29..31
+are -- which is the shape of a snapshot of one run's uncovered set, not of a
+window derived from the address map. Held back until derived from the map.
+
+|`MANUAL_SCAN`, `MANUAL_DFT`
+|5
+|`test_en_i` / `scanmode`. The DUT input is driven by the testbench
+(`sep.sv:1104` passes it straight into the DMA wrapper), so holding it low is
+a testbench choice, not an RTL tie.
+
+|`MANUAL_ALERT` (the non-ping part)
+|3
+|`ack_p`, `ack_n` and `alert_p`. These move when the DMA actually raises an
+alert. That is a fault-injection gap, not an unreachable arm.
+|===
+
+So the expectation that this reference would move `u_sep_dma_wrap` materially
+does not hold: 23 of its 575 items describe logic that is dead in this
+elaboration too, all of them toggle items on tied pins. The remaining 552 are
+the DMA's real coverage debt, and the largest block of it is the same
+inbound-AXI-header stimulus gap the converter section names.
+
+== REJECTED: the eight fabric-facing converter instances (stimulus, not waivable)
+
+The `axi_dw_upsizer` waiver above covers one instance and one shape: a slave
+port synthesised by `axi_lite_to_axi`, which forces a constant header. The
+other converter instances in SEP do not share that shape, and none of them is
+waivable. Verdict per instance, with the parameter site and the driver:
+
+[cols="3,2,2,1"]
+|===
+|Instance |Widths (slv -> mst) |Slave port driven by |Verdict
+
+|`u_sep_io.axi_dw_converter`
+|64 -> 32 (`sep_io.sv:48-49`)
+|local xbar master port (`sep.sv:430`, into `sep_io.sv:66`)
+|stimulus
+
+|`u_sep_io.axi_to_axi_lite`
+|32, lite (`sep_io.sv:74`)
+|the converter above (`sep_io.sv:94`)
+|stimulus
+
+|`u_sep_wdt_wrap.u_wdt_axi_dw_converter`
+|64 -> 32 (`sep_wdt_wrap.sv:56-57`)
+|local xbar master port (`sep.sv:439`, into `sep_wdt_wrap.sv:74`)
+|stimulus
+
+|`u_sep_wdt_wrap.u_wdt_axi_to_axi_lite`
+|32, lite (`sep_wdt_wrap.sv:97`)
+|the converter above (`sep_wdt_wrap.sv:110`)
+|stimulus
+
+|`u_sep_dma_wrap.u_axi_dw_downsizer_reg`
+|64 -> 32 (`sep_dma_wrap.sv:156-157`)
+|local xbar master port (`sep.sv:421` -> `:1113` `reg_req_i`, into `sep_dma_wrap.sv:174`)
+|stimulus
+
+|`u_sep_dma_wrap.u_axi_to_axi_lite_reg`
+|32, lite (`sep_dma_wrap.sv:190`)
+|the downsizer above (`sep_dma_wrap.sv:203`)
+|stimulus
+
+|`u_sep_reset_ctrl.u_axi_to_axi_lite`
+|64, lite (`sep_reset_ctrl.sv:81`)
+|local xbar master port (`sep.sv:442`, into `sep_reset_ctrl.sv:95`)
+|stimulus
+
+|`u_sep_entropy_fifo.u_axi_to_axi_lite`
+|64, lite (`sep_entropy_fifo.sv:114`)
+|local xbar master port (`sep.sv:433`, into `sep_entropy_fifo.sv:127`)
+|stimulus
+|===
+
+The three facts that decide it:
+
+. *The widths differ, so the conversion arms do elaborate.*
+  `axi_dw_converter.sv:46/51/81` selects exactly one of `gen_no_dw_conversion`,
+  `gen_dw_upsize` and `gen_dw_downsize` from the width parameters, so the
+  uncovered code in these instances is inside the arm that DID build. A
+  parameter argument cannot waive it.
+. *Every slave port is a crossbar master port.* Each one comes out of
+  `sep_local_axi_xbar_wrapper` (`sep.sv:397`), whose `ext_axi_req_i`
+  (`sep.sv:414`) is the SMN inbound full AXI4 master. `len`, `size`, `burst`
+  and `cache` pass the crossbar unchanged, so `axi_pkg::modifiable()` and the
+  burst arms are all a function of inbound stimulus, not of a tie.
+. *Nothing ties the header.* The only header ties in SEP are the three VeeR
+  masters' ATOP (`sep_cpu.sv:467-469`) and the `ATOPs(1'b0)` crossbar
+  parameters, which concern `atop` alone -- see F-FAB-2 for that hole, which is
+  a testbench gap and is also not waived here.
+
+So the 17--33% scores on these instances are a stimulus result. Closing them
+means driving multi-beat and non-INCR shapes at each aperture, subject to
+F-FAB-1: the SRAM aperture asserts against non-INCR, so a burst-shape leaf
+belongs on a converter aperture instead.
+
+== F-FAB-1: `sep_cov_xbar_wrap_burst_test` drives a shape its target declares unsupported (finding, not a waiver)
+
+*Symptom*: the leaf reports PASS but the simulator prints four vendor
+`$error`s per run, at
+`vendor/pulp-platform/axi/upstream/src/axi_to_detailed_mem.sv:587` and `:590`,
+"Non-incrementing bursts are not supported!"
+(run `20260919_225443__vcs__all`, leaf log
+`sep_cov_xbar_wrap_burst_test/seed_1797011571/attempt_0/logs/sep_cov_xbar_wrap_burst_test.log`,
+times 613 ns, 626 ns, 782 ns, 938 ns, 951 ns, 1159 ns).
+
+*Diagnosis*: the leaf sends WRAP to the SEP SRAM aperture. That aperture is
+served by `u_sram_memory_interface.u_axi_to_mem.i_axi_to_detailed_mem`, whose
+two assertions require `burst == BURST_INCR` for any `len > 0` on both AR and
+AW. WRAP at this endpoint is not a legal-consume shape: the endpoint states it
+does not support it, and it answers OKAY with wrong data rather than an error,
+so the leaf is also driving an unspecified response.
+
+*No SEP endpoint consumes WRAP.* The other two endpoint families refuse it as
+well, but by design and without an assertion:
+
+* the data-width converters (`axi_dw_downsizer.sv:462`, `:548`, `:924`) take
+  `BURST_WRAP` to `*_PASSTHROUGH` with `throw_error`, which routes the
+  transaction to their internal `axi_err_slv` (`axi_dw_downsizer.sv:190`,
+  `Resp(RESP_SLVERR)`);
+* `axi_to_axi_lite` contains `axi_burst_splitter`, which documents at
+  `axi_burst_splitter.sv:22` that it does not support wrapping bursts.
+
+*Recommended fix* (one tracked file, `sep_cov_xbar_wrap_burst_test`):
+retarget the WRAP accesses from `SEP_SRAM_MEM_BASE_ADDR` to the crypto
+aperture behind `u_otbn_axi_dw_converter`
+(`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv:331`), and tolerate the
+by-design SLVERR. The crossbar `aw.burst[1]` / `ar.burst[1]` toggle the leaf
+exists for is reached identically on that route, and no assertion fires.
+
+*Duplication note*: the converter-side WRAP and multi-beat FIXED arms are
+already driven by `sep_cov_axi_dw_read_burst_shape_test` and
+`sep_cov_axi_dw_write_burst_shape_test`, so if the retarget is not wanted the
+leaf can be dropped without losing converter coverage; only the crossbar
+`burst[1]` toggle on the SRAM route would go dark.
+
+== F-FAB-2: a non-zero `AxATOP` cannot be presented from the testbench today (finding, not a waiver)
+
+*Scope*: the 31 `axi_atop_filter` instances that do elaborate -- unconditional
+inside `axi_to_axi_lite`, and inside each `axi_err_slv` that takes the default
+`ATOPs` (`axi_err_slv.sv:45`, `if (ATOPs)`), including the one inside every
+`axi_dw_downsizer` (`axi_dw_downsizer.sv:190`). Roughly 57 lines per instance
+are dark for want of a non-zero `aw.atop`.
+
+*Reachability*: the path is real. `smn_inbound_axi_req_i` (`hw/sys/sep/rtl/sep.sv:98`)
+is a full AXI4 port with no ATOP tie -- only `sep_cpu.sv:467-469` ties ATOP --
+so an inbound ATOP write would reach the filters through the ordinary fabric.
+
+*What blocks it*: two testbench-side gaps, both outside the RTL.
+
+. `hw/sys/sep/dv/tb/tb_top.sv:950` builds the inbound request with
+  `smn_inbound_req_drive = '{default: '0}` and then assigns each field from a
+  flat `m_axi_*` pin. There is no `m_axi_awatop` pin, so `aw.atop` keeps the
+  `'{default: '0}` value. (`:879` does the same for the CPU-LSU splice.)
+. The cocotb VIP has no ATOP either: `ocah_axi_struct_bridge.sv:13-14` states
+  that the pulp AW `atop` field "has no interface member and is not carried",
+  and `cocotbext.axi`'s master drives no such signal.
+
+*Exactly what to change* (testbench only; no RTL change, and this is not a
+backdoor -- it adds a master-side stimulus pin, it does not poke DUT state):
+
+* in `hw/sys/sep/dv/tb/tb_top.sv`, declare a module-scope
+  `logic [5:0] m_axi_awatop_drive = 6'b0;`
+* inside the SMN-inbound `always_comb` (the block starting at `:949`), after
+  the `'{default: '0}` line, add
+  `smn_inbound_req_drive.aw.atop = m_axi_awatop_drive;`
+
+A leaf then sets `cocotb.top.m_axi_awatop_drive.value` to an AXI atomic
+encoding (for example `6'h30`, AtomicLoad-ADD, or `6'h20`, AtomicStore), issues
+one single-beat write through the VIP master, waits for B, and clears the pin
+to 0. AXI requires an atomic burst to carry an ID no other in-flight burst
+uses, so the leaf must be the only traffic in flight while the pin is set, and
+must use an otherwise unused AxID. The response is SLVERR by design
+(`axi_atop_filter.sv:24`), so the leaf tolerates the error response and the
+`m_axi` monitor already runs with `fail_decerr=False`.
+
+This is filed rather than implemented because it needs a tracked file changed,
+which this pass is not allowed to do.
+
+// ---- from pass3_ttip ----
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Pass 3 coverage waivers -- Tenstorrent-owned SEP IP
+
+Source: `build/runs/20260919_225443__vcs__all/cov/report/modinfo.txt`.
+
+Scope: `ip/key_manager`, `ip/efuse`, `hw/sys/sep`. Every entry below is a
+structural claim -- a tie, a parameter, a constant, or an if-chain arm that a
+dominating arm makes unreachable. "No test drives it" is not a waiver and does
+not appear here.
+
+The already-recorded waivers are not repeated: `efuse_field_map_i`
+(`localparam EfuseFieldMap`, `hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:519`),
+locked-filter-slot reads, the per-slot/per-region upper address bits, and
+AxQOS/AxREGION/AxLOCK/AxCACHE.
+
+== W1 -- km_csr IRQ_STATUS stickybit arms (24 lines)
+
+`km_csr_reg.sv` generates each sticky IRQ bit as
+
+  if (SW write 1 clear) ... else if (hwif_in.<f>.next) ... else if (hwif_in.<f>.hwset) ...
+
+The integration ties the `.next` input of every one of these fields to `1'b0`
+and drives the `hwset` input instead. The RTL says so in its own comment,
+"Tie off (using hwset instead)":
+
+* `hw/ip/key_manager/rtl/km_csr.sv:214-220` -- `rom_parity_err`,
+  `sram_parity_err`, `rom_write_err`, `sram_write_lock_err`, `axi_slverr`,
+  `axi_decerr`, `drbg_err`
+* `hw/ip/key_manager/rtl/km_csr.sv:240` -- `wipe_state`
+* `hw/ip/key_manager/rtl/km_csr.sv:246-247` -- `otp_change`, `otp_sigint`
+* `hw/ip/key_manager/rtl/km_csr.sv:250` -- `exec_violation`
+* `hw/ip/key_manager/rtl/km_csr.sv:255` -- `rom_access_violation`
+
+With `.next` a constant zero the stickybit arm can never be selected. Twelve
+fields, two lines each.
+
+WAIVER.
+
+== W2 -- km_csr OTP_CHANGE_STATUS stickybit arms (18 lines)
+
+Same shape. `hw/ip/key_manager/rtl/km_csr.sv:641,643,645,647,649,651,653,655,657`
+tie `.next` to `1'b0` for `life_cycle`, `demotion`, `chiplet_uid`, `sip_uid`,
+`sys_uid`, `class_key`, `sep_chiplet_id`, `sep_sip_id`, `sep_sys_id`; the
+following line of each pair drives `.hwset` from the matching change pulse.
+Nine fields, two lines each.
+
+WAIVER.
+
+== W3 -- km_csr SRAM_WRITE_LOCK_VIOLATION HW-set arm (2 lines)
+
+`hw/ip/key_manager/rtl/km_csr.sv:376-377`:
+
+  assign hwif_in.SRAM_WRITE_LOCK_VIOLATION.violation_bits.next  = sram_write_lock_violation_region_i;
+  assign hwif_in.SRAM_WRITE_LOCK_VIOLATION.violation_bits.hwset = |sram_write_lock_violation_region_i;
+
+`hwset` is the reduction-OR of `next`, so `hwset` implies `next != '0'`. The
+generated if-chain tests the stickybit arm (`next != '0'`) *before* the HW-set
+arm, so the dominating arm is taken on every cycle `hwset` could have selected
+the later one. The HW-set arm is unreachable by construction, not by omission
+-- and the stickybit arm above it is already covered, which is the positive
+half of the same evidence.
+
+WAIVER.
+
+== W4 -- km_mailbox status stickybit arms (28 lines)
+
+`hw/ip/key_manager/rtl/km_mailbox.sv:560-572` (KM side) and `:576-...` (SEP
+side) tie `.next` to `1'b0` on the overflow / underflow / flushed sticky bits
+of `KM_STATUS`, `KM_IRQ_STATUS`, `SEP_STATUS` and `SEP_IRQ_STATUS`; the sticky
+set path is `hwset` (`km_mailbox.sv:554` states this: "STATUS sticky bits use
+hwset (not .next) because they have hwset=true and stickybit=true in RDL").
+Seven fields per side, two lines each.
+
+WAIVER.
+
+== W5 -- km_mailbox WRITE_DATA SW-write storage arm (6 lines)
+
+`km_mailbox_km_reg` / `km_mailbox_sep_reg` generate a storage field for
+`KM_WRITE_DATA.data` / `SEP_WRITE_DATA.data`. The integration never lets that
+storage arm run: `km_mailbox.sv` decodes the WRITE_DATA address itself and
+turns the access into a direct FIFO push --
+`hw/ip/key_manager/rtl/km_mailbox.sv:18` ("WRITE_DATA / READ_DATA addresses are
+handled as direct FIFO push/pop"), with the decodes at
+`km_mailbox.sv:161` (`sep_aw_is_write_data`) and `km_mailbox.sv:374`
+(`km_aw_is_write_data`).
+
+WAIVER.
+
+== W6 -- km_drbg_sampler STATUS stickybit arms (4 lines)
+
+`hw/ip/key_manager/rtl/km_drbg_sampler.sv:491,493` tie
+`STATUS.timeout_err.next` and `STATUS.stream_err.next` to `1'b0`; lines 492 and
+494 drive the matching `hwset`.
+
+WAIVER.
+
+== W7 -- abr_wrapper_key MLKEM_SHARED_KEY HW-clear arms (16 lines) and IRQ_STATUS stickybit (2 lines)
+
+The only driver of that register file's hardware interface is the KV shim,
+`hw/sys/sep/rtl/sep_abr_kv_shim.sv:159`:
+
+  always_comb begin
+    hwif_o = '{default: '0};
+    if (kv_write_i.write_en) begin ... end
+  end
+
+The block assigns `hwif_o` a default of all zeros and then sets only
+`KEY[sk_off].data.next`, `KEY[sk_off].data.we`, `KEY_CTRL.key_valid.hwset` and
+`IRQ_STATUS.key_valid.hwset` (`sep_abr_kv_shim.sv:161-165`). `KEY[].data.hwclr`
+and `IRQ_STATUS.key_valid.next` are never assigned anywhere in the tree, so
+they are constant zero and their arms cannot be selected. Eight replicated KEY
+entries at two lines each, plus the one stickybit pair.
+
+WAIVER.
+
+== W8 -- eFuse HAS_LC_STATE=0 arms (26 lines)
+
+SEP binds the parameter to one: `hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv:346`
+
+  .HAS_LC_STATE               (1'b1), // SEP has LC state
+
+Every `else` arm of an `if (HAS_LC_STATE)` is therefore an elaboration-time
+constant-false branch in this integration. They are the SMC configuration of
+the same shared IP, and several say so in their own comments:
+
+* `hw/ip/efuse/rtl/efuse_interface_controller.sv:234-237, 252-255, 369-374`
+  (11 lines) -- the non-LC address-decode arms for the AW select, the AR select
+  and the APB register select.
+* `hw/ip/efuse/rtl/efuse_shadow_regs.sv:709-714` (6 lines) -- the arm commented
+  "reset APB response channel in SMC case where HAS_LC_STATE=0".
+* `hw/ip/efuse/rtl/efuse_shadow_regs.sv:184-187` (4 lines) -- the
+  `smc_shadow_reg_preload` plusarg branch, selected against the
+  `sep_shadow_reg_preload` branch by `HAS_LC_STATE` at
+  `efuse_shadow_regs.sv:173` and named by it at `:192`.
+* `hw/ip/efuse/rtl/efuse_guard.sv:87-88` (2 lines) -- the arm commented "// SMC".
+* `hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:120-121` (2 lines) -- the
+  arm commented "// Standard lock checking for non-LC_STATE configurations".
+
+WAIVER.
+
+== W9 -- efuse_shadow_reg_access_control field-map range guard (1 line)
+
+`hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:79`, `in_range = 1'b0;`,
+is reached only when some entry of `efuse_field_map_i` is both not `'1` and
+outside `EFUSE_FIELDS`. That map is the `localparam EfuseFieldMap` constant at
+`hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv:519`, so the loop runs over an
+elaboration-time constant and the guard cannot fire in this integration. (This
+is a line claim; it is not the separate, already-recorded toggle waiver on the
+same constant.)
+
+WAIVER.
+
+== Rejected -- claims considered and NOT taken
+
+`km_csr` OTP_CHANGE_STATUS HW-set arms (18 lines). The `hwset` inputs are real
+change pulses, `hw/ip/key_manager/rtl/km_csr.sv:610-631`, which fire when
+`otp_data_i` differs from the previous registered capture. Nothing ties them.
+Reaching them needs an eFuse value that changes between two senses, which is a
+frontdoor program-then-resense sequence and therefore stimulus, not a waiver.
+Left open rather than stretched.
+
+`km_csr` IRQ_STATUS `rom_parity_err` and `otp_change` HW-set arms (4 lines).
+`km_csr.sv:226-227` and `:662-665` OR a software-writable `IRQ_SET` bit into
+each `hwset`, so both are frontdoor-reachable from a KM image. Stimulus, not a
+waiver.
+
+`km_kpv_reg` CTRL HW-set arms (124 lines). Reachable; see the new test below.
+
+`efuse_read_interface.sv:118-124,218` and `efuse_program_interface.sv:130-134,234`
+(13 lines). These are the address-error abort arms of the read and program state
+machines. Nothing ties them off; an out-of-range fuse address should reach them.
+Stimulus, not a waiver. Not written this pass.
+
+== Stimulus written this pass
+
+`sep_cov_km_kpv_seal_all_slots_test` -- `km_kpv_reg` CTRL HW-set arms, 124
+lines, the largest single dark region in `ip/key_manager`.
+
+`hw/ip/key_manager/rtl/km_kpv.sv:227,230`:
+
+  kpv_hwif_in.CTRL[i].lock_write.hwset = slot_sealed[i] & ~wipe_pulse_i;
+  kpv_hwif_in.CTRL[i].lock_use.hwset   = erase_done[i] & slot_sealed[i] & ~wipe_pulse_i;
+
+`slot_sealed[i]` is `CTRL[i].seal.value` (`km_kpv.sv:175`). The existing
+`km_rom_cov_kpv_walk.S` seals even slots only and takes the unsealed leg on odd
+slots, so on those slots both HW-set inputs stay low. The coverage report shows
+exactly that: the replicated CTRL instances alternate covered / not covered at
+`km_kpv_reg.sv:390-391` (`lock_write`) and `:419-420` (`lock_use`).
+
+The new image `km_rom_cov_kpv_seal.S` seals every slot and then erases it, so
+`lock_write.hwset` asserts on all 64 instances and `erase_done & slot_sealed`
+drives `lock_use.hwset` on all 64. It is the complement of the existing image,
+not a replacement -- the existing one is still what covers the HW-clear legs.
+
+
+== hw/sys/sep toggle waivers
+
+`hw/sys/sep` is 37 dark lines against 173,211 dark toggle bits, so the work here
+is toggle. The three claims below were each checked against the RTL directly.
+
+=== W10 -- AXI AxUSER on every CPU master and the TCM response (~2,000 bits)
+
+`hw/sys/sep/rtl/sep_cpu.sv:454-473` drives all nine CPU-master user fields and
+both TCM response user fields from one localparam:
+
+  assign ifu_axi_req_raw.aw.user = sep_pkg::SEP_SOURCE_ID;   // and w/ar
+  assign lsu_axi_req_raw.aw.user = sep_pkg::SEP_SOURCE_ID;   // and w/ar
+  assign dbg_axi_req_raw.aw.user = sep_pkg::SEP_SOURCE_ID;   // and w/ar
+  assign cpu_tcm_axi_resp_o.b.user = sep_pkg::SEP_SOURCE_ID;
+  assign cpu_tcm_axi_resp_o.r.user = sep_pkg::SEP_SOURCE_ID;
+
+`sep_pkg.sv:485` fixes `SEP_SOURCE_ID = 4'b1111`, zero-extended into the 12-bit
+user field, so all twelve bits are elaboration-time constants on those ports.
+The output side is forced too: `sep_system_peripherals.sv:261-262` and
+`:288-289` instantiate with `.UserOverrideEn(1'b1)` and
+`.UserOverrideVal(sep_pkg::OTHERS_SOURCE_ID)` (`sep_pkg.sv:488`, `4'b0000`).
+
+WAIVER -- but only for the CPU-master and overridden-output ports. The user
+fields on the *external inbound* ports (`smn_inbound_axi_req_i.*.user`,
+`ext_req_i.*.user`, ~120 bits) are not tied in RTL and stay stimulus; the
+tier-3 `sep_cov_xbar_axuser_sweep_test` is the vehicle.
+
+=== W11 -- AxATOP on the three EL2 master ports (~180 bits)
+
+`hw/sys/sep/rtl/sep_cpu.sv:467-469`, under its own comment "Tie off ATOP
+(atomic operation) fields - not supported by EL2":
+
+  assign ifu_axi_req_raw.aw.atop = '0;
+  assign lsu_axi_req_raw.aw.atop = '0;
+  assign dbg_axi_req_raw.aw.atop = '0;
+
+WAIVER for those three ports only. `ext_req_i.aw.atop` and `dma_req_i.aw.atop`
+are not tied anywhere in `hw/sys/sep/rtl`, and there is no `axi_atop_filter` in
+the tree, so the crossbar *output* atop fields stay reachable from an inbound
+external write with a non-zero AWATOP. Do not waive those.
+
+=== W12 -- region-size CSR ports, bits [55:32] (~48 bits per signal)
+
+`hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv:760,762`:
+
+  assign sep_region_size_o = 56'(sep_cpu_ctrl_hwif_out.SEP_REGION_SIZE.size.value);
+  assign smu_region_size_o = 56'(sep_cpu_ctrl_hwif_out.SMU_REGION_SIZE.size.value);
+
+The backing field is 32 bits wide -- `hw/sys/sep/regs/blocks/sep_cpu_ctrl/sep_cpu_ctrl.rdl:194`
+and `:212` both declare `size[31:0]`. The cast zero-extends, so bits [55:32] of
+both ports and of their mirrors in `sep_system_peripherals` and `sep` are
+structurally zero.
+
+WAIVER for [55:32]. Bits [31:0] are `sw=rw` and are stimulus: write
+`SEP_REGION_SIZE` / `SMU_REGION_SIZE`. The base-address ports next to them
+(`sep_global_base_addr_o`, `sep_local_base_addr_o`, `smu_global_base_addr_o`,
+`sep_system_csr.sv:758-759,761`) are full 56-bit `sw=rw` fields with no cast --
+those are stimulus across all 56 bits, NOT a waiver.
+
+=== hw/sys/sep -- reachable, not waived
+
+Recorded so the next pass does not re-derive them. None is a waiver.
+
+* ABR key-share CSR arrays, ~4,100 bits, the single largest reachable block in
+  the fabric. `hwif_i.{MLDSA_SEED,MLKEM_SEED_D,MLKEM_SEED_Z,MLKEM_MSG}.KEY_SHARE0/1[0-7].data.value`,
+  consumed by the share XOR at `sep_abr_kv_shim.sv:95-105`. Written by KM over
+  the private key bus. A `sep_cov_abr_mlkem_keygen_decaps_test` and a
+  `sep_cov_abr_mldsa_stream_msg_test` appeared in the working tree from another
+  pass while this one ran -- check those before writing anything here.
+* `extintsrc_req` / `sep_ext_interrupts_i`, ~424 bits. Top-level input,
+  `sep.sv:79`, into the PIC vector at `sep.sv:580`. No tie; the TB never wiggles it.
+* `dbg_req_i.w.data` / `dbg_resp_o.r.data`, 256 bits, entirely dark: the debug
+  master issued no transaction at all in this regression.
+* OTBN `dmem_sram_req_o.wmask[311:117]`, ~195 bits: only the lowest three
+  32-bit subwords of a DMEM line were ever written (`sep_crypto_otbn_wrapper.sv:189`).
+* eFuse `shadow_regs.locks.locks`, ~316 bits: program the lock words and resense.
+* `smc_global_base_addr_i` / `smc_region_size_i`, 224 bits: top-level inputs
+  (`sep_system_peripherals.sv:55-56`) live in the SMC-window compare at `:183`
+  and `:198`; the TB holds them constant.
+* AxPROT (~250 bits), AxSIZE bit 2 (~90 bits), `w.strb[7:4]` (~100 bits),
+  slave-port `addr[1:0]` -- all ordinary bus-shape stimulus with no tie.
+
+Two claims were raised and are NOT recorded as waivers because they could not be
+confirmed this pass:
+
+* `sep_reset_ctrl` `w.data[63:7]` / `r.data[63:7]`, ~228 bits, on the argument
+  that the register block defines only 7 bits. The block does sit behind an
+  `axi_to_axi_lite` 64-to-32 downsizer (`sep_reset_ctrl.sv:79-90,126`), which is
+  a different mechanism from a narrow register, and the 7-bit width was not
+  verified. Find the tie before waiving it.
+* Slave-port AxADDR bits above each decode window, ~1,750 bits on the crypto
+  interconnect alone, on the argument that the decoder only routes in-window
+  addresses to that port. Plausible and probably correct, but it needs the
+  per-port address rule quoted per port, not asserted in bulk.
+
+Uncovered-LINE analysis for the fabric modules was not run; only toggle data was
+analysed. `hw/sys/sep` has just 37 dark lines, so that residue is small.
+
+// ---- from pass3_opentitan ----
+= Coverage waivers, pass 3: OpenTitan IP and the primitives under it
+:toc:
+
+Coverage run: `hw/sys/sep/dv/build/runs/20260919_225443__vcs__all/cov/report/modinfo.txt`.
+
+Scope: the OpenTitan IP blocks SEP integrates -- `kmac`, `aes`, `csrng`, `edn`,
+`dma`, `hmac`, `spi_host`, `entropy_src`, `prim`, `aon_timer`. `otbn` is out of
+scope (a separate effort). Nothing claimed here is claimed in
+`opentitan.adoc` or `pass2.adoc`; the rows those files carry (`kmac_app`,
+`entropy_src_main_sm`, RACL, `csrng_cmd_stage[1]`) still stand and are not
+repeated.
+
+The easy structural rows were taken in pass 1. This pass found two new ones,
+both in `prim`, and closed the rest with stimulus. All paths are repo-relative
+to `/proj_soc/user_dev/yenhenglai/tt-oca-harness`.
+
+== Waivers
+
+[cols="3,6,>1,>1",options="header"]
+|===
+| Module / arm | Evidence (file:line, the tie/parameter) | Lines saved | Toggle bits saved
+
+| `prim_lfsr` -- the Fibonacci-XNOR arm and the unknown-type default of the
+  simulation model `compute_next_state`: lines 522, 523, 524, 526, 527, 528,
+  529, 532
+| `LfsrType` is a string parameter, and both `prim_lfsr` coverage objects in
+  this report are elaborated with `"GAL_XOR"`:
+  `vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_prng_clearing.sv:122`
+  and `hw/ip/key_manager/rtl/km_kpv_eraser.sv:67`. The dark lines are the
+  `end else if (64'(LfsrType) == "FIB_XNOR")` arm
+  (`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_lfsr.sv:522-529`) and
+  the `else` that follows it (`:531-533`, `$error("unknown lfsr type")`).
+  **The design asserts the same thing.** The type dispatch appears a second time
+  as a generate at `:336-337`, where the third arm elaborates
+  `OCAH_OT_ASSERT_INIT(UnknownLfsrType_A, 0)` -- an unconditional failure for any
+  type outside the two named ones. A `GAL_XOR` instance cannot take either dark
+  arm, and an instance that could would fail elaboration.
+  Merged across both instances, which leave the identical line set dark.
+| 8 | 0
+
+| `prim_prince` -- the decryption key modification: lines 62, 63, 64 and 78
+| `dec_i` is tied to zero at every instantiation of `prim_prince` in the build.
+  `hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv:261` -- `.dec_i ( 1'b0 )`, with
+  the source comment at `:260` stating the reason ("Since we operate in counter
+  mode, this can always be set to encryption mode"); the vendor copy of the same
+  block ties it identically at
+  `vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_scr.sv:339`.
+  Those are the only two instantiation sites in `hw/` and `vendor/`.
+  The dark lines are the whole body of `if (dec_i)` in `p_key_expansion`
+  (`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv:61-65`) and
+  the `if (dec_i)` inside `p_new_keyschedule_k0_alpha` (`:76-79`), which
+  elaborates because `UseOldKeySched` is left at its default of 0 at the
+  instantiation above.
+| 4 | 0
+
+| *Total, this pass*
+|
+| *12*
+| *0*
+|===
+
+Toggle is claimed at zero in both rows. Neither tie makes a named bus constant:
+`prim_lfsr`'s dark lines are inside a `` `ifndef SYNTHESIS `` function with no
+ports of its own, and `prim_prince`'s `dec_i` is a single bit already counted
+against the instantiating module. Claiming more would double-count.
+
+[[rejected]]
+== Rejected -- stimulus gaps, closed with tests in this pass
+
+Each of these was checked for a tie, a parameter, a non-elaborating generate arm
+or an assertion, and none was found. A `sep_cov_*` leaf now drives it.
+
+`entropy_src_main_sm` lines 107, 120, 127::
+The `!enable_i` exits from `BootPostHTChk` and `BootPhaseDone`, and the
+`alert_thresh_fail_i` exit from `BootPhaseDone`. `enable_i` is
+`CTRL.MODULE_ENABLE` and `alert_thresh_fail_i` is `any_fail_count >=
+ALERT_THRESHOLD` (`hw/ip/entropy_source/rtl/entropy_source.sv:1025`, `:1031`).
+Both are software registers. Driven by
+`sep_cov_esrc_disable_alert_walk_test`.
++
+One honest caveat on line 107: `BootPostHTChk` is one cycle wide in this
+integration because `bypass_stage_rdy_i` is tied to `1'b1`
+(`entropy_source.sv:1034`), so its `!enable_i` exit is only taken if the disable
+write lands in exactly that cycle. The test sweeps the write position with a
+seeded delay rather than claiming the hit. This is *not* a waiver -- the arm is
+reachable, just narrow.
+
+`entropy_src_main_sm` lines 275 and 283 (`Error` body, and the `default` arm)::
+Entered only from a sparse-FSM encoding fault. Not driveable by legal stimulus,
+and not waived here either: the arm exists for a fault the DV environment does
+not inject, which is a testbench gap, not a structural one. Left uncovered on
+purpose.
+
+`edn_main_sm` lines 70-72, 105-115, 120-171, 175 (44 lines)::
+The auto-request states, the boot uninstantiate and `SWPortMode`.
+`seq_lib/sep_esrc_bringup_seq.py` enables EDN once with `EDN_CTRL_AUTO`, which
+sets BOOT_REQ_MODE and AUTO_REQ_MODE together; the `Idle` arm at
+`vendor/lowRISC/opentitan/upstream/hw/ip/edn/rtl/edn_main_sm.sv:67` takes
+BOOT_REQ_MODE first, so the run never leaves the boot path. All three mode bits
+are CTRL fields. Driven by `sep_cov_edn_mode_walk_test`.
+
+`edn_main_sm` lines 178 and 181 (`RejectCsrngEntropy`, `Error`)::
+Fault states, same reasoning as the `entropy_src_main_sm` `Error` row. Not
+waived, not driven.
+
+`csrng_cmd_stage` (45 lines) and `csrng_main_sm` (11 lines)::
+The software application port. CSRNG's three application ports are wired at
+`vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_core.sv:509` and
+`:554-556`; port 2 is the CMD_REQ register, and no leaf writes it. The dark arms
+are `invalid_cmd_seq`, `invalid_acmd`, `reseed_cnt_exceeded`, the UPD and UNI
+commands, the multi-block generate walk (`GenCmdChk`/`SendMOP`) and the
+additional-data path through the main FSM. SW_APP_ENABLE is already set by the
+shared bring-up. Driven by
+`sep_cov_csrng_sw_cmd_walk_test`.
+
+`aes_key_expand` (58 lines) and `aes_cipher_control_fsm` (32 lines)::
+The AES-192 key schedule, the `CIPH_INV` decryption arms and the key / data
+clear states. `hw/sys/sep/rtl/aes_wrapper.sv:134` overrides no parameter, so
+`AES192Enable` and `SecMasking` keep their defaults of 1
+(`vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes.sv:13-15`) and the
+`if (AES192Enable)` arms at `aes_key_expand.sv:156` and `:335` elaborate.
+KEY_LEN, OPERATION and the TRIGGER clears are all CSRs. Driven by
+`sep_cov_aes_key192_dec_clear_test`.
++
+The GCM arms of `aes_ghash` and `aes_control_fsm` are separately driven by the
+existing `sep_cov_aes_gcm_phase_walk_test`; this pass did not duplicate them.
+
+`hmac` (29), `hmac_core` (12), `prim_sha2` (11), `prim_sha2_pad` (15),
+`prim_sha2_32` (13)::
+The stop/continue context save and restore, the `WIPE_SECRET` wipe and the four
+software error codes. All are CMD, CFG, KEY, DIGEST and MSG_LENGTH registers.
+Driven by `sep_cov_hmac_stop_continue_test`.
++
+`prim_sha2_pad` lines 115-128 -- the partial-final-word padding cases -- are
+reached only by a sub-word write to the MSG_FIFO window. `seq_lib/sep_kmac_seq.py`
+already has that mechanism (`_push_msg_bytes`, a byte-strobed
+`SepAxiAccessSeq`); the HMAC sequence library does not. Not waivable (the write
+is legal AXI), and not driven in this pass. Recorded as the one HMAC line group
+still open.
+
+`kmac_errchk` (19) and `kmac` (12, outside `kmac_app`)::
+`err_swsequence`, `err_modestrength`, `err_prefix`, `err_entropy_ready`, the
+`StSqueezing` manual-run path and the ERR_CODE source mux. All are reached from
+CMD, CFG_SHADOWED and PREFIX. Driven by
+`sep_cov_kmac_err_squeeze_walk_test`.
+
+== Blocks judged already closed
+
+`dma` (`secure_dma`, 53 lines)::
+Closed by the existing `sep_cov_dma_hash_and_tail_test`, which drives the SHA-512
+opcode, the 1-, 2- and 3-byte tails, the software abort and the size and address
+error arms. The one group it leaves is `DmaClearIntrSrc` /
+`DmaWaitIntrSrcResponse` (`vendor/lowRISC/opentitan/upstream/hw/ip/dma/rtl/secure_dma.sv:686-745`,
+about 30 lines), entered only with `cfg_handshake_en` **and** `|lsio_trigger`
+(`:681-683`).
++
+That is *not* waived, and the honest reading is narrower than a tie. `sep.sv:1087`
+ties `lsio_trigger[$bits-1:1]` to `'0`, which waives those lanes' toggle, but bit
+0 is `sep_io_spi_req_o.lsio_trigger` (`sep.sv:1085`) -- real RTL, not a tie, so
+the state is reachable in principle. Separately,
+`hw/sys/sep/rtl/sep_dma_wrap.sv:325` holds `ctn_tl_d2h.d_valid` at `1'b0`
+permanently, so a clear routed to the CTN bus would stall rather than complete;
+that is a hang, not unreachable logic. Left uncovered, with the evidence
+recorded, rather than stretched into a waiver.
+
+`spi_host` (24 lines) and `aon_timer` (4 lines)::
+`spi_host`, `spi_host_window`, `aon_timer` and `aon_timer_core` report **zero**
+uncovered lines in this run. Every dark line attributed to these two blocks is
+in `spi_host_reg_top` and `aon_timer_reg_top`, and the RACL arms there are
+already waived in `opentitan.adoc` on `EnableRacl = 1'b0`
+(`hw/sys/sep/rtl/sep_ot_spi_wrap.sv:150`, `hw/sys/sep/rtl/sep_wdt_wrap.sv:138`).
+Nothing new to claim and nothing worth a new leaf.
+
+`prim_ram_1p_scr_ext` lines 381-385 and 470::
+The read-during-write address-collision forwarding path. No tie: the forwarding
+mux is live and `rw_collision` is a real term. It needs an AXI read and write to
+the same SRAM row in back-to-back cycles, which the current agent does not
+produce reliably. Five lines; judged not worth a dedicated leaf, and explicitly
+*not* waived.
+
+`prim_secded_inv_*` (10 611 toggle bits)::
+Already rejected in `opentitan.adoc` as a data-pattern gap. Unchanged.
+
+// ---- spec cross-check ----
+= Spec check for two coverage questions
+:description: Whether the SEP and IP specifications answer, omit, or contradict the RTL on AXI atomics and on out-of-range eFuse addresses.
+
+Read-only survey of `hw/sys/sep/doc/`, `hw/ip/*/doc/`, and the generated
+register documentation under `hw/*/regs/gen/adoc/`. Nothing was changed.
+
+== Question 1 -- AXI atomic transactions (ATOP) on the SEP fabric
+
+=== Verdict: (c) SPEC IS SILENT
+
+No specification text in the tree mentions AXI atomics in any form.
+
+.Searches run, all over `.adoc`/`.md` outside `dv/` trees
+* `atop`, `AXI atomic`, `atomic transaction|operation|access`
+* `exclusive access`, `exclusive monitor`, `AWLOCK`, `ARLOCK`, `awatop`
+
+Only two hits exist in the whole `hw/` documentation set, and neither is
+about SEP's fabric:
+
+* `hw/sys/smc/doc/dma.adoc:100` -- "Atomic Operations | Atomic command
+  submission and status reading". This is about DMA command submission,
+  not AXI5 atomic transactions.
+* `hw/ip/memory_interface/README.adoc:167` -- a code listing of an AXI
+  request struct that happens to contain `axi_pkg::atop_t atop;`. A field
+  declaration in a quoted struct, not a statement of behaviour.
+
+One near-miss that is not about atomics at all:
+`hw/sys/sep/doc/crypto.adoc:528` -- "There is no atomic reset boundary
+across the entropy consumers."
+
+=== Answering the four sub-questions
+
+Does SEP claim AXI4 atomic support on its inbound/SMN port?::
+Neither claimed nor denied. `hw/sys/sep/doc/overview.adoc:21-22` lists
+"Outbound AXI4 system bus master" and "Inbound AXI4 system bus slave"
+with no attribute qualification. `hw/sys/sep/doc/fabric.adoc:19-33`
+describes the fabric as "a hierarchical AXI4 crossbar fabric" and
+enumerates exactly three things an AXI4-Lite bridge must handle -- bursts,
+WSTRB, and AxID. Atomics are not in that list, and the list is about
+Lite bridges, not about the top-level port.
+
+Is there an interface contract with the SoC/SMU side about atomics?::
+No. `hw/sys/sep/doc/port_table.adoc:76-77` is the only normative
+statement about the inbound port:
++
+----
+|`smn_inbound_axi_req_i` | ... | SMN inbound AXI request (system bus
+slave). | SMN fabric | Tie to '0 if unused
+----
++
+The "Integration note" column carries a tie-off rule for the unused case
+and nothing about permitted transaction attributes. No document tells the
+requester not to issue atomics, and none says SEP will refuse them.
+
+If atomics are out of scope, what does SEP do on receiving one?::
+Undefined by the documents. `hw/ip/axi_filter/doc/index.adoc` (section
+"Blocked Transactions") specifies the filter's only documented error
+behaviour, and it is address/attribute based, not atomic based:
++
+"A blocked transaction is not dropped. It is steered to an AXI error
+subordinate that terminates it with a `DECERR` response on `BRESP` or
+`RRESP`, so the initiator always receives a response and the fabric never
+stalls on a filter denial."
++
+The match conditions the same section lists are `entry_enabled`, address
+range, `prot[1]` vs `allow_ns`, source ID, and `allow_burst`. `atop` is
+not a match input. So the spec does not say SLVERR, does not say DECERR,
+and does not say undefined -- it never raises the case.
+
+Does any spec text imply the atop filters SHOULD be exercised?::
+No. No document names `axi_atop_filter` or any atomic-filtering function.
+There is no documented feature whose verification would require driving a
+non-zero `atop`.
+
+=== RTL findings, re-verified
+
+All four established findings hold.
+
+* `vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv:45` -- `if (ATOPs)
+  begin` wrapping an `axi_atop_filter` instance; the parameter defaults to
+  enabled, so every `axi_err_slv` that does not override it carries one.
+* `vendor/pulp-platform/axi/upstream/src/axi_dw_downsizer.sv:188` --
+  instantiates `axi_err_slv` with only `AxiIdWidth`, `Resp`, `axi_req_t`,
+  `axi_resp_t`. `ATOPs` is left at its default, so each downsizer brings a
+  filter with it.
+* `vendor/pulp-platform/axi/upstream/src/axi_to_axi_lite.sv:52` --
+  unconditional `axi_atop_filter` instance, no generate guard.
+* `hw/sys/sep/rtl/sep.sv:98` -- `input
+  sep_pkg::sep_system_peripherals_internal_axi_req_t
+  smn_inbound_axi_req_i;`. The type carries an `atop` field
+  (`hw/sys/sep/rtl/sep_pkg.sv:341`, `axi_pkg::atop_t atop;`) and nothing
+  in `sep.sv` ties it.
+* The only `atop` ties in the SEP RTL are `hw/sys/sep/rtl/sep_cpu.sv:467-469`,
+  for the IFU, LSU and DBG masters.
+* `hw/ip/axi_filter/rtl/axi_filter_wrap.sv:242` -- `.AtopSupport (1'b0)` on
+  an `axi_demux`, which reaches
+  `vendor/pulp-platform/axi/upstream/src/axi_demux_simple.sv:570`:
+  `OCAH_PULP_ASSUME(NoAtopAllowed, !AtopSupport && slv_req_i.aw_valid |->
+  slv_req_i.aw.atop == '0)`. Note this is an *assume*, so it constrains a
+  formal environment rather than flagging the simulation stimulus; in
+  simulation it still reports, but it encodes an input contract that no
+  document states.
+* `ATOPs(1'b0)` crossbars confirmed at
+  `hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv:116` and
+  `hw/sys/sep/rtl/sep_local_axi_xbar.sv:266`. Note the path given in the
+  question, `hw/sys/sep/rtl/sep_system_peripherals_xbar.sv`, does not
+  exist; the file is under `rtl/crossbars/`. Four further `ATOPs(1'b0)`
+  sites exist: `sep_cpu.sv:596`, `sep_crypto.sv:560`,
+  `sep_crypto_axi_interconnect.sv:275`, `axi_filter_wrap.sv:277`.
+
+=== What to ask the designer
+
+. Is the SMN inbound port specified as AXI4 *without* atomics, and if so
+  where is that written down for the SoC integrator? Today the only
+  statement of the contract is an `assume` inside a vendor file.
+. If the SoC may legally drive a non-zero `atop`, what is the intended
+  response -- SLVERR from the crossbar error slave, DECERR from the
+  filter's error subordinate, or is the fabric permitted to misbehave?
+  The `AtopSupport(1'b0)` demux and the `ATOPs(1'b0)` crossbars mean the
+  RTL has chosen "not supported" without a documented response.
+. Should `port_table.adoc` gain an integration constraint on the inbound
+  port, in the same column that already carries the tie-off rule?
+. If atomics are out of scope, the `axi_atop_filter` instances reached
+  through `axi_to_axi_lite`, `axi_err_slv` and `axi_dw_downsizer` are
+  unreachable by construction and should be waived as such, not left as
+  an open coverage hole. Confirm that reading before waiving.
+
+== Question 2 -- out-of-bounds eFuse addresses
+
+=== Verdict: (a) for the register spec vs the datapath RTL; (d) for the register spec vs the assertions
+
+The specification *does* define behaviour for an out-of-range address, and
+it defines it in the register documentation rather than the prose chapters.
+The datapath RTL implements exactly that behaviour. The two assertions
+forbid the stimulus that the specified behaviour exists to handle, so the
+assertions contradict the spec.
+
+=== The spec text
+
+`hw/ip/efuse/regs/efuse_interface_ctrl.rdl` is the canonical register
+source, and `hw/ip/efuse/doc/memmap.adoc` (section "eFuse Control
+Registers") includes its generated output into the shipped IP
+documentation. The generated copy is
+`hw/ip/efuse/regs/gen/adoc/efuse_interface_ctrl.adoc`.
+
+`EFUSE_INTERFACE_CTRL_STATUS`, register description
+(`efuse_interface_ctrl.rdl:9`):
+
+----
+eFuse interface status and error-clear register. Reports the sense-done
+flag and request/address error conditions, and provides write-1 strobes
+to clear those errors.
+----
+
+Bit 5, `efuse_program_addr_error` (`efuse_interface_ctrl.rdl:28-29`,
+generated at `efuse_interface_ctrl.adoc:27`):
+
+----
+Indicates that an invalid eFuse program address was used (address exceeds
+the implemented eFuse size). The error must be cleared by writing 1 to
+efuse_program_addr_error_clear.
+----
+
+Bit 6, `efuse_read_addr_error` (`efuse_interface_ctrl.rdl:34-35`,
+generated at `efuse_interface_ctrl.adoc:26`):
+
+----
+Indicates that an invalid eFuse read address was used (address exceeds
+the implemented eFuse size). The error must be cleared by writing 1 to
+efuse_read_addr_error_clear.
+----
+
+Their clear strobes, bits 9 and 10 (`efuse_interface_ctrl.rdl:48` and
+`:55`), name the condition again: "Clears the program out of bounds error
+bit" and "Clears the read out of bounds error bit".
+
+And `EFUSE_READ_CTRL.read_status`, bit 26
+(`efuse_interface_ctrl.rdl:147`, generated at
+`efuse_interface_ctrl.adoc:56`):
+
+----
+0: No Error.  1: Error. Set when read_go is asserted while read is not
+enabled, the address is out of bounds, or the read request times out.
+----
+
+This is decisive on the three sub-questions:
+
+Does the spec define behaviour for an out-of-range address?::
+Yes. Three status bits and two clear strobes, with "address exceeds the
+implemented eFuse size" stated as the setting condition. The behaviour is
+a sticky, software-cleared error flag, not a refusal that goes unreported.
+
+Or is the range a software contract the hardware need not police?::
+No. The opposite. The hardware is specified to police it and to report
+the violation. There is no text anywhere declaring a legal range that
+software must respect on its own.
+
+Is there a register description of the address-error status bit?::
+Yes -- quoted above -- and it is fed. `efuse_interface_controller.sv:531-533`
+computes `reg_interface_program_addr_oob` from the untruncated 16-bit CSR
+field against `SHADOW_REG_BITS`, and passes it as `program_addr_oob_i`
+into `efuse_program_interface.sv:39-41`, which returns
+`program_addr_error_o` and takes `program_addr_error_clear_i`. The read
+side mirrors it exactly at `efuse_interface_controller.sv:612-614` and
+`efuse_read_interface.sv:34-36`. So this is not the "documented bit with
+no reachable producer" case: the producer exists and is reachable. The
+gap is that it is never *driven* in simulation, because of the assertions.
+
+=== The contradiction
+
+`efuse_interface_controller.sv:835` and `:839`:
+
+----
+`OCAH_OT_ASSERT(ProgramAddrValid_A, reg_interface_program_go |->
+                !reg_interface_program_addr_oob, clk_i, !rst_ni)
+`OCAH_OT_ASSERT(ReadAddrValid_A, reg_interface_read_go |->
+                !reg_interface_read_addr_oob, clk_i, !rst_ni)
+----
+
+These are `assert property`, not `assume property`. An assert declares
+that the condition cannot occur; the register spec declares that it can,
+and specifies what the hardware reports when it does. Both cannot be
+right. Since the register spec is the contract and the datapath
+implements it, the assertions are the wrong artefact -- they should be
+assumes at most, or deleted, so that the specified error path can be
+covered without a `$assertoff`.
+
+The RTL comment at `:829-833` says the same thing in the code's own
+voice, but per the method note that comment is evidence about the code,
+not about the specification. The specification evidence is the RDL field
+descriptions quoted above, and they stand on their own.
+
+The consequence for SMC is the visible symptom: SMC must `$assertoff`
+both assertions behind a plusarg to run its boundary test, which means a
+behaviour the shipped register documentation promises to software can
+only be demonstrated with a piece of the RTL's own checking switched off.
+
+=== A secondary documentation defect found along the way
+
+`hw/ip/efuse/doc/programming.adoc` never mentions the address-error bits.
+Its "Program Operation Sequence" step 3 enumerates `program_status` as a
+four-value code:
+
+----
+* Read `program_status` field:
+** 0: Success
+** 1: Bad data (data was not 1)
+** 2: Bad enables (program_enable not set or lock active)
+** 3: Programming failure (verification failed)
+----
+
+`program_status` is a *one-bit* field in the RDL
+(`efuse_interface_ctrl.rdl:105`, `program_status [26:26]`, "0: No Error.
+1: Error"), and the example code at the top of the same file reads it as
+`(EFUSE_PROGRAM_CTRL >> 26) & 0x3`, which straddles bit 27
+(`program_enable`). The prose chapter is stale against the register
+source. Neither the read nor the program sequence tells firmware to check
+`EFUSE_INTERFACE_CTRL_STATUS` bits 5 and 6 after an operation, so a
+documented error report has no documented consumer procedure.
+
+This is a real gap but a different one from the question asked: the
+register spec answers the question, the prose chapter has not been
+updated to match it.
+
+=== What to ask the designer
+
+. Confirm that `ProgramAddrValid_A` and `ReadAddrValid_A` are wrong as
+  asserts, given that `efuse_program_addr_error` and
+  `efuse_read_addr_error` are documented, implemented and exist only to
+  report the condition the asserts forbid. Should they be removed, or
+  demoted to assumes for formal only?
+. With the asserts gone or demoted, both address-error arms become
+  ordinary coverable RTL and the negative test needs no plusarg. Confirm
+  that is the intended end state before the coverage item is closed.
+. Separately: should `programming.adoc` be corrected -- the stale
+  four-value `program_status` enumeration and the `& 0x3` mask -- and
+  should both operation sequences gain a step that reads
+  `EFUSE_INTERFACE_CTRL_STATUS` bits 5 and 6?
+
+== axi_atop_filter: unreachable by construction
+
+The 31 `axi_atop_filter` instances in SEP have an entirely uncovered active path. They
+are unreachable in the delivered system, and the evidence spans two subsystems because
+the enforcement does.
+
+SEP ships as part of SMU, not standalone, so the inbound port is only ever driven by
+`smu_axi_xbar`, instantiated with `.ATOPs (1'b0)` at
+`hw/sys/smu/rtl/smu_axi_xbar.sv:131`. An atomic cannot reach SEP.
+
+Inside SEP the same decision is applied throughout: `ATOPs(1'b0)` at
+`rtl/crossbars/sep_system_peripherals_xbar.sv:116`, `sep_local_axi_xbar.sv:266`,
+`sep_cpu.sv:596`, `sep_crypto.sv:560`, `sep_crypto_axi_interconnect.sv:275` and
+`axi_filter_wrap.sv:277`, plus `NoAtopAllowed` (`axi_filter_wrap.sv:242` ->
+an assume at `axi_demux_simple.sv:570`). `sep_cpu.sv:467-469` ties `atop` for the three
+VeeR masters.
+
+Citing SMU here is deliberate and is the correct scope for a waiver: the exclusion
+describes the system being measured. It would NOT be correct evidence for a claim about
+SEP's standalone interface specification, which ends at `sep_wrapper.sv:85`. That
+distinction cost a round trip on a since-closed issue, and is worth keeping in mind for
+the next waiver that reaches outside the subsystem.
+
+A stimulus test was written and withdrawn. `dv/tb/tb_top.sv` carries an
+`m_axi_awatop_drive` pin that makes an atomic presentable on the inbound port, but the
+path crosses the assume above, which sits behind `ifndef VERILATOR` -- so such a leaf
+looks clean on Verilator and fires on VCS, where coverage is measured. The pin defaults
+to zero, changes nothing, and remains as the mechanism if atomic support is ever added.
+
+= Metric scope: assertion coverage is not graded
+
+`sep_sim_cfg.toml` reports with `-metric line+cond+tgl+fsm+branch+group`
+(`sep_sim_cfg.toml:218`), which omits `assert`, so assertion coverage does not
+reach the headline. It is still INSTRUMENTED: the compile carries
+`-cm line+cond+tgl+fsm+branch+assert` (`:220-222`). The `assert`
+metric is absent by decision, not by oversight.
+
+== Reason
+
+SEP assertions are predominantly negative controls: the implication antecedent
+is an illegal condition -- a protocol violation, an out-of-range field, a
+forbidden state transition. VCS scores an assertion as covered only when it
+records a successful attempt, which requires the antecedent to match. This
+environment drives legal stimulus only, by policy, so a negative-control
+assertion cannot record an attempt from any test the policy permits.
+
+That makes the hole uncoverable by construction rather than by a stimulus gap,
+which is the same standard the structural waivers in this document meet: the
+design, not the testbench, decides the arm cannot be taken. Grading the metric
+reports the absence of traffic the stimulus policy forbids.
+
+Measured on the `sep-code-cov-v2a` database, assertion coverage was 52.64%
+(10403 assertions, 4927 uncovered, 79 without attempts). Removing the metric
+moves the headline to 60.38 and leaves every code metric unchanged. The gain of
+about one point is a consequence of the decision, not its purpose.
+
+== Where the metric is dropped, and why it is not the `-cm` list
+
+The drop is a `-metric` argument on the report command, set by
+`[coverage.vcs].report_cmd` in `sep_sim_cfg.toml`.
+
+Removing `assert` from the compile-time `-cm` list does NOT work, and must not
+be attempted: in this VCS version `-cm assert` does not gate assertion-coverage
+collection. The report still carries an ASSERT column without it.
+
+Worse, the `-lca -cm_common_hier` pair is what confines assertion coverage to
+the `-cm_hier` scope. Dropping that pair alongside `assert` admits assertions
+from the excluded library hierarchy, which pass trivially: ASSERT rose from
+52.67 to 88.89 and the headline to a meaningless 64.46. Both flags stay in
+`compile_args` for that reason, even though the metric is not reported.
+
+== What this does NOT do
+
+`-cm assert` governs coverage accounting only. Every assertion stays compiled,
+evaluating, and able to fail a test. An assertion that fires still stops the
+run and still reports. Nothing about the checking surface changes.
+
+== Consequences
+
+* `-cm_common_hier` and its `-lca` opt-in REMAIN on the compile
+  (`sep_sim_cfg.toml:233-234`) and on the urg command line of every run. They
+  extend `-cm_hier` from the code metrics to assertion coverage, and assertions
+  are still instrumented even though the report does not score them -- so
+  dropping them would widen the assertion scope, not simplify it. An earlier
+  revision of this section claimed they had been removed; they had not.
+* The report no longer renders assertion pages, so `asserts.txt` -- which also
+  carried the Failure and Incomplete tallies -- is gone. Assertion failures
+  still surface per test in the simulation log and in `results.xml`.
+
+== When to restore it
+
+Add `+assert` back if SEP gains an illegal-stimulus or error-injection
+environment. At that point the negative controls become reachable and the
+metric measures a real gap again.

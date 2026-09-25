@@ -201,6 +201,49 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     return responder(t).read_int(addr, size_bytes(size)) & data_mask(size);
   endfunction
 
+  // --- end-state byte image of a random write stream ----------------------
+  // Record the bytes of the word at `addr` that the image lacks.
+  function void snapshot_target_word(dtp_j2a_target_t t, ref bit [7:0] image[bit [63:0]],
+                                     input bit [63:0] addr, input int unsigned size);
+    bit [63:0] word = read_target_mem_int(t, addr, size);
+    for (int unsigned b = 0; b < size_bytes(size); b++) begin
+      if (!image.exists(addr + b)) image[addr+b] = word[8*b+:8];
+    end
+  endfunction
+
+  // Apply one write's enabled lanes to the byte image.
+  function void image_write(ref bit [7:0] image[bit [63:0]], input bit [63:0] addr,
+                            input bit [63:0] data, input bit [7:0] wstrb, input int unsigned size);
+    for (int unsigned b = 0; b < size_bytes(size); b++) begin
+      if (wstrb[b]) image[addr+b] = data[8*b+:8];
+    end
+  endfunction
+
+  // CHK-J2A-MEM-IMAGE: every byte of the image matches the responder memory.
+  // The image holds every lane a stream wrote at its last value and every
+  // untouched lane of a touched word at its prior value, so a write that
+  // landed on the wrong lane or disturbed a neighbour fails here.
+  function void check_memory_image(dtp_j2a_target_t t, ref bit [7:0] image[bit [63:0]],
+                                   input string context_s);
+    int unsigned mismatches = 0;
+    foreach (image[addr]) begin
+      bit [7:0] observed = 8'(read_target_mem_int(t, addr, 0));
+      if (observed !== image[addr]) begin
+        mismatches++;
+        `uvm_error("jtag2axi_image_chk", $sformatf("%s: %s byte 0x%0h holds 0x%02h, image 0x%02h",
+                                                   context_s, t.name, addr, observed, image[addr]))
+      end
+    end
+    if (axi_evidence != null)
+      void'(axi_evidence.expect_equal(
+          DtpJ2aMemImageCheckId,
+          64'(mismatches),
+          64'd0,
+          $sformatf(
+              "%s target=%s bytes=%0d", context_s, t.name, image.num())
+      ));
+  endfunction
+
   // CHK-AXI-WMEM: responder RAM bytes versus the stimulus intent.
   function void check_target_memory(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] expected,
                                     int unsigned size, string context_s);
@@ -283,17 +326,21 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
 
   // Poll SINGLE_OP until the bridge leaves BUSY_OR_FULL, then land
   // CHK-AXI-COMPLETION: a bridge stuck BUSY within the poll bound fails
-  // (every call site expects a final, settled status).
+  // (every call site expects a final, settled status). The log counts the
+  // captures that read BUSY_OR_FULL first, usually none at the bench's TCK
+  // ratio, since a scan outlasts the bus access.
   task poll_single(dtp_j2a_target_t t, output dtp_j2a_status_e status, output bit [63:0] rdata,
                    input string context_s = "single_op");
+    int unsigned busy_polls = 0;
     status = DTP_J2A_BUSY_OR_FULL;
     rdata  = '0;
     for (int unsigned poll = 0; poll < DtpJ2aMaxStatusPolls; poll++) begin
       single_status_once(t, status, rdata);
       if (status != DTP_J2A_BUSY_OR_FULL) break;
+      busy_polls++;
     end
-    `uvm_info(get_type_name(), $sformatf("%s SINGLE_OP status=%s rdata=0x%0h", t.name,
-                                         status.name(), rdata), UVM_MEDIUM)
+    `uvm_info(get_type_name(), $sformatf("%s SINGLE_OP status=%s rdata=0x%0h busy_polls=%0d",
+                                         t.name, status.name(), rdata, busy_polls), UVM_MEDIUM)
     if (axi_evidence != null)
       void'(axi_evidence.expect_true(
           "CHK-AXI-COMPLETION",
@@ -760,13 +807,21 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                          t.name, timeout_cycles))
   endtask
 
-  // --- bridge FSM observation (dtp_tb_if) -----------------------------------
-  function dtp_j2a_fsm_state_e bridge_fsm_state(dtp_j2a_target_t t);
-    logic [2:0] raw;
-    if (t.name == "smc_otp") raw = tb_vif.smc_otp_fsm_state;
-    else if (t.name == "sep_otp") raw = tb_vif.sep_otp_fsm_state;
-    else raw = tb_vif.smc_axi_fsm_state;
-    return dtp_j2a_fsm_state_e'(raw);
+  // --- bridge state-machine observation (dtp_tb_if) -------------------------
+  // tb_top decodes each bridge's AXI state machine by state name into the
+  // idle, write-path, and read-path flags.
+  function bit bridge_fsm_idle(dtp_j2a_target_t t);
+    if (t.name == "smc_otp") return tb_vif.smc_otp_fsm_idle;
+    if (t.name == "sep_otp") return tb_vif.sep_otp_fsm_idle;
+    return tb_vif.smc_axi_fsm_idle;
+  endfunction
+
+  function bit bridge_fsm_on_path(dtp_j2a_target_t t, bit is_read);
+    if (t.name == "smc_otp")
+      return is_read ? tb_vif.smc_otp_fsm_read_path : tb_vif.smc_otp_fsm_write_path;
+    if (t.name == "sep_otp")
+      return is_read ? tb_vif.sep_otp_fsm_read_path : tb_vif.sep_otp_fsm_write_path;
+    return is_read ? tb_vif.smc_axi_fsm_read_path : tb_vif.smc_axi_fsm_write_path;
   endfunction
 
   function bit bridge_op_pending(dtp_j2a_target_t t);
@@ -790,16 +845,15 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     wait_sys_cycles(1);
   endtask
 
-  // Step TCK in Run-Test/Idle until the bridge FSM leaves (want_idle = 0)
-  // or reaches (want_idle = 1) IDLE, within `tck_cycles`: the FSM and the
-  // CDC's TCK side advance only while TCK runs.
-  task wait_bridge_fsm(dtp_j2a_target_t t, bit want_idle, int unsigned tck_cycles,
-                       output dtp_j2a_fsm_state_e state);
-    state = bridge_fsm_state(t);
+  // Step TCK in Run-Test/Idle until the bridge's state machine leaves
+  // (want_idle = 0) or reaches (want_idle = 1) idle, within `tck_cycles`: the
+  // state machine and the CDC's TCK side advance only while TCK runs.
+  task wait_bridge_fsm(dtp_j2a_target_t t, bit want_idle, int unsigned tck_cycles, output bit idle);
+    idle = bridge_fsm_idle(t);
     for (int unsigned i = 0; i < tck_cycles; i++) begin
-      if ((state == DTP_J2A_FSM_IDLE) == want_idle) return;
+      if (idle == want_idle) return;
       step(1'b0);
-      state = bridge_fsm_state(t);
+      idle = bridge_fsm_idle(t);
     end
   endtask
 

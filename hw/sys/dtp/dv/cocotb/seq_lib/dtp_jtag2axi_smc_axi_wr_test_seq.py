@@ -280,6 +280,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner("SMC_AXI_SINGLE_OP Randomized Writes")
         await self.reset_tap()
         rng = self.rng("random_write_ops")
+        image: dict[int, int] = {}
         for idx in range(1, self.random_count + 1):
             size = rng.choice([0, 1, 2, 3])
             addr = self.random_aligned_addr(rng, size)
@@ -294,6 +295,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
                 data,
                 wstrb,
             )
+            self.snapshot_target_word("smc_axi", image, addr, size)
             item = await self.write_single_and_check(
                 addr,
                 data,
@@ -301,8 +303,10 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
                 wstrb=wstrb,
                 context=f"random_write#{idx}",
             )
+            self.image_write(image, addr, data, wstrb, size)
             self.status = item.status
             self.operation_count += 1
+        self.check_memory_image("smc_axi", image, context="random_write")
 
     async def run_write_security_gating(self) -> None:
         self.log_banner("SMC_AXI_SINGLE_OP Write Security Gating")

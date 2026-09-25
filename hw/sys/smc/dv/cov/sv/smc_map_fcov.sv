@@ -839,8 +839,13 @@ module smc_map_fcov (
       bins unmapped = {14'b0};
     }
     cp_dir: coverpoint is_write;
+    // EXOKAY answers an exclusive access, and no manager on this bench issues
+    // one (the c_bresp_exokay / c_rresp_exokay points record the same fact).
     cp_resp: coverpoint resp {
-      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
+      bins okay = {2'b00};
+      bins slverr = {2'b10};
+      bins decerr = {2'b11};
+      ignore_bins exokay = {2'b01};
     }
     x_region_resp: cross cp_region, cp_dir, cp_resp;
   endgroup

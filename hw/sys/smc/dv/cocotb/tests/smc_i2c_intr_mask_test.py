@@ -21,9 +21,10 @@ class smc_i2c_intr_mask_test(smc_base_test):
     required_evidence = (
         "CHK-I2C-INTR-MASK-ARM",
         "CHK-I2C-INTR-MASK-DEASSERT",
+        "CHK-I2C-INTR-MASK-EVERY-SOURCE",
         "CHK-I2C-INTR-MASK-LATCH",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

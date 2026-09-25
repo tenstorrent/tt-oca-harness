@@ -32,14 +32,18 @@ module dtp_xtrig_fcov (
   input wire [9:0]  ctm_dst_req_i,
   input wire [15:0] ctp_req_out_dout_i,
   input wire [15:0] ctp_req_out_dout_en_i,
+  input wire [15:0] ctp_req_out_din_en_i,
+  input wire [15:0] ctp_ct_dst_i,
   input wire [15:0] ctp_req_in_din_i,
   input wire [15:0] ctp_ack_in_din_i
 );
 
-  // CSR windows of the cross-trigger network (cross_trigger_network_pkg).
-  localparam logic [31:0] CtpBase = 32'(cross_trigger_network_pkg::CSR_ADDR_CTM_SIZE);
-  localparam int unsigned CtpStride = cross_trigger_network_pkg::CSR_ADDR_CTP_SIZE;
-  localparam int unsigned NumCtp = 16;
+  import cross_trigger_network_addrmap_pkg::*;
+
+  // CSR windows of the cross-trigger network (generated address map).
+  localparam logic [31:0] CtpBase = 32'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
+  localparam int unsigned CtpStride = int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
+  localparam int unsigned NumCtp = int'(CROSS_TRIGGER_NETWORK_CTP_NUM);
   localparam logic [31:0] CtpEnd = CtpBase + 32'(NumCtp * CtpStride);
 
   wire in_reset = (rst_ni !== 1'b1);
@@ -103,6 +107,20 @@ module dtp_xtrig_fcov (
   `OCAH_FCOV_COVER(c_ctp_p2p_state_acknowledge_phase, ctp_p2p_ack_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_p2p_state_idle, ctp_p2p_idle_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_p2p_state_reset_recovery, ctp_p2p_reset_recovery_e, clk_i, in_reset)
+
+  // Wire-OR receive: a port in wire-OR mode (pad input enabled) delivers a
+  // trigger. Its pad data rests at the asserted level of its sense, so the
+  // data pin tells the sense apart: 0 for INVERT=0, 1 for INVERT=1. Two or
+  // more ports delivering in one cycle heard the same shared wire.
+  logic [15:0] ctp_ct_dst_q;
+  always_ff @(posedge clk_i) ctp_ct_dst_q <= ctp_ct_dst_i;
+  wire [15:0] ctp_wire_or_rx_rise = ctp_ct_dst_i & ~ctp_ct_dst_q & ctp_req_out_din_en_i;
+  wire ctp_wire_or_rx_normal_e = |(ctp_wire_or_rx_rise & ~ctp_req_out_dout_i);
+  wire ctp_wire_or_rx_inverted_e = |(ctp_wire_or_rx_rise & ctp_req_out_dout_i);
+  wire ctp_wire_or_rx_shared_e = $countones(ctp_wire_or_rx_rise) >= 2;
+  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_normal, ctp_wire_or_rx_normal_e, clk_i, in_reset)
+  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_inverted, ctp_wire_or_rx_inverted_e, clk_i, in_reset)
+  `OCAH_FCOV_COVER(c_ctp_wire_or_rx_shared, ctp_wire_or_rx_shared_e, clk_i, in_reset)
 
   // ------------------------------------------------------------------
   // ctm_cg — source/destination types, fanout classes, and the per-port
@@ -284,6 +302,14 @@ module dtp_xtrig_fcov (
     }
   endgroup
 
+  // Wire-OR receive events: the sense of the wire the trigger came from and
+  // how many ports delivered it in the same cycle.
+  covergroup cg_ctp_wire_or_rx with function sample (logic inverted, logic shared);
+    option.per_instance = 1;
+    cp_sense: coverpoint inverted {bins normal = {1'b0}; bins inverted = {1'b1};}
+    cp_listeners: coverpoint shared {bins one = {1'b0}; bins shared_wire = {1'b1};}
+  endgroup
+
   covergroup cg_ctm with function sample (
       logic src_event,
       logic src_is_ctp,
@@ -304,11 +330,19 @@ module dtp_xtrig_fcov (
   endgroup
 
   cg_ctp u_cg_ctp = new();
+  cg_ctp_wire_or_rx u_cg_ctp_wire_or_rx = new();
   cg_ctm u_cg_ctm = new();
 
   always_ff @(posedge clk_i) begin
     if (ctp_config_write) begin
       u_cg_ctp.sample(axil_wdata_i[0], axil_wdata_i[1], 2'd1);
+    end
+    if (!in_reset) begin
+      for (int i = 0; i < 16; i++) begin
+        if (ctp_wire_or_rx_rise[i]) begin
+          u_cg_ctp_wire_or_rx.sample(ctp_req_out_dout_i[i], ctp_wire_or_rx_shared_e);
+        end
+      end
     end
     if (ctp_stretch_write) begin
       u_cg_ctp.sample(1'b0, 1'b0,

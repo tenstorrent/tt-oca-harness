@@ -30,6 +30,7 @@ _DMA_CTRL_ADDR_H = (
     / "c"
     / "dma_ctrl_addr.h"
 )
+_ALIAS_REMAP_H = _REPO / "hw" / "ip" / "axi_alias_remap" / "regs" / "gen" / "c" / "alias_remap.h"
 _DMA_CTRL_H = (
     _REPO / "vendor" / "pulp-platform" / "idma" / "overlay" / "rdl" / "gen" / "c" / "dma_ctrl.h"
 )
@@ -162,42 +163,6 @@ def _field_mask(path: Path, symbol: str) -> int:
 # --- Absolute addresses used by SMC clock-gating / DMA activity tests ---
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-# --- Local-alias aperture fold ---------------------------------------------
-# Every request entering the SMC local fabric is folded into the local-alias
-# aperture, which is `LOCAL_BASE`-aligned and `REGION_SIZE` bytes long: the
-# fabric keeps the low address bits under `REGION_SIZE - 1` and prefixes
-# `LOCAL_BASE` above them. Authority: the `SMC_BASE_CONFIG.REGION_SIZE` field
-# description in the RDL (the mask is `(size - 1)`, so the size must be a
-# non-zero power of two and both bases aligned to it) and
-# hw/sys/smc/doc/fabric.adoc "Local and Remote Resource Access". Both operands
-# are the generated RDL resets, so the model moves with the register map
-# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
-LOCAL_BASE_RESET = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
-_REGION_SIZE_FIELD_RESET = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
-
-
-def local_fabric_keep_mask(region_size: int = _REGION_SIZE_FIELD_RESET) -> int:
-    """Address bits that survive the local-alias fold for ``region_size``."""
-    assert region_size > 0 and region_size & (region_size - 1) == 0, (
-        f"REGION_SIZE 0x{region_size:x} is not a non-zero power of two; the RDL forbids "
-        "it because the fabric mask is (size - 1)"
-    )
-    return region_size - 1
-
-
-LOCAL_FABRIC_KEEP_MASK = local_fabric_keep_mask()
-LOCAL_FABRIC_REPLACE_MASK = 0xFFFF_FFFF & ~LOCAL_FABRIC_KEEP_MASK
-
-
-def local_fabric_masked_addr(
-    addr: int, local_base: int | None = None, region_size: int | None = None
-) -> int:
-    """Address a SEP_IN/system/local request arrives at after the fold above."""
-    base = LOCAL_BASE_RESET if local_base is None else local_base
-    keep = local_fabric_keep_mask(_REGION_SIZE_FIELD_RESET if region_size is None else region_size)
-    assert base & keep == 0, f"LOCAL_BASE 0x{base:x} is not aligned to REGION_SIZE 0x{keep + 1:x}"
-    return (base & 0xFFFF_FFFF) | (addr & keep)
-
 
 def reg_reset_word(header: Path, block: str, reg: str) -> int:
     """Compose a register's reset word from its generated ``_reset``/``_bp`` fields.
@@ -288,6 +253,18 @@ CG_HYST_SHIFT = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bp"
 )
 DMA_CONFIG_ENABLED_ND = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__ENABLED_ND_bm")
+DMA_CONFIG_DECOUPLE_RW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_RW_bm")
+DMA_CONFIG_DECOUPLE_AW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_AW_bm")
+
+ALIAS_REMAP_ATTRS_CACHEABLE = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm"
+)
+ALIAS_REMAP_ATTRS_VALID = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm"
+)
+ALIAS_REMAP_ATTRS_OFFSET = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bm"
+)
 
 # Zeroer CSR absolute addresses (generated smc_addr.h).
 ZEROER_CTRL_DEST_ADDR = smc_addr("SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR")
@@ -312,6 +289,72 @@ _GPIO_INTF_H = _REPO / "hw" / "ip" / "gpio" / "regs" / "gen" / "c" / "gpio_intf.
 def gpio_intf_u32(symbol: str) -> int:
     """Field mask/position from generated ``gpio_intf.h``."""
     return _field_mask(_GPIO_INTF_H, symbol)
+
+
+_UART_16550_DL_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl.h"
+)
+_UART_16550_DL_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl_addr.h"
+)
+
+
+_UART_16550_MAIN_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
+)
+_UART_16550_WO_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
+)
+_UART_16550_WO_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo_addr.h"
+)
+_LOG_ENGINE_H = _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c" / "log_engine.h"
+_UART_LOG_ENGINE_CTRL_H = (
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
+    / "uart_log_engine_ctrl.h"
+)
+
+
+def uart_16550_main_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main.h``."""
+    return _field_mask(_UART_16550_MAIN_H, symbol)
+
+
+def uart_16550_wo_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main_wo.h``."""
+    return _field_mask(_UART_16550_WO_H, symbol)
+
+
+def uart_16550_wo_offset(symbol: str) -> int:
+    """Register offset inside the write-only window from ``uart_16550_main_wo_addr.h``."""
+    return _field_mask(_UART_16550_WO_ADDR_H, symbol)
+
+
+def log_engine_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``log_engine.h``."""
+    return _field_mask(_LOG_ENGINE_H, symbol)
+
+
+def uart_log_engine_ctrl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_log_engine_ctrl.h``."""
+    return _field_mask(_UART_LOG_ENGINE_CTRL_H, symbol)
+
+
+def uart_16550_dl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_dl.h``."""
+    return _field_mask(_UART_16550_DL_H, symbol)
+
+
+def uart_16550_dl_offset(symbol: str) -> int:
+    """Register offset inside the divisor-latch window from ``uart_16550_dl_addr.h``."""
+    return _field_mask(_UART_16550_DL_ADDR_H, symbol)
 
 
 _GPIO_POC_H = (

@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes|starting|datasheets]|doc-stage>
 #   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
 #                   is what gets deployed
 #   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure
@@ -285,6 +285,7 @@ build_image() {
   if [[ -n "$DOCKER_CACHE_DIR" ]]; then
     image_location="$(image_cache_tar)"
   else
+    mkdir -p local
     image_location="local/nix-container-image.tar.gz"
   fi
   nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
@@ -487,8 +488,9 @@ doc_product_paths() {
   appnotes) echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
   starting) echo "doc/starting antora-starting-playbook.yml ocah-doc-starting-setup ocah-doc-starting-pdf" ;;
   home) echo "doc/home antora-home-playbook.yml ocah-doc-home-setup" ;;
+  datasheets) echo "doc/datasheets - ocah-doc-datasheets-setup ocah-doc-datasheets-pdf" ;;
   *)
-    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home or starting)" >&2
+    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home, starting or datasheets)" >&2
     exit 1
     ;;
   esac
@@ -521,6 +523,10 @@ doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=() kroki_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
+  if [[ "$product" == datasheets ]]; then
+    echo "error: datasheets are standalone PDFs; use: ./scripts/docker-run.sh doc-pdf datasheets" >&2
+    exit 1
+  fi
   doc_setup "$product"
   if [ "$product" = trm ]; then
     for companion in home integrator programmer appnotes starting; do
@@ -559,7 +565,7 @@ doc_html_all() {
 doc_pdf() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-  run_image "$IMAGE" env \
+  run env \
     OCAH_DOC_REGEN_REGS=0 \
     OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
     make "$pdf_target"
@@ -572,11 +578,12 @@ doc_pdf() {
 # Run this AFTER `doc-html all` and `doc-pdf trm`/`doc-pdf integrator`.
 doc_stage() {
   local ghpages_dir="${OCAH_GHPAGES_DIR:-doc/_build/html_antora}"
-  local trm_dist="${OCAH_TRM_DIST:-doc/trm/dist}" trm_pdf="${OCAH_TRM_PDF:-ocah-trm.pdf}"
-  local integrator_dist="${OCAH_INTEGRATOR_DIST:-doc/integrator/dist}" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
-  local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
-  local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
-  local starting_dist="${OCAH_STARTING_DIST:-doc/starting/dist}" starting_pdf="${OCAH_STARTING_PDF:-ocah-starting.pdf}"
+  local trm_pdf_dir="${OCAH_TRM_BUILD:-doc/trm/_build}/latex" trm_pdf="${OCAH_TRM_PDF:-ocah-trm.pdf}"
+  local integrator_pdf_dir="${OCAH_INTEGRATOR_BUILD:-doc/integrator/_build}/latex" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
+  local programmer_pdf_dir="${OCAH_PROGRAMMER_BUILD:-doc/programmer/_build}/latex" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
+  local appnotes_pdf_dir="${OCAH_APPNOTES_BUILD:-doc/appnotes/_build}/latex" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
+  local starting_pdf_dir="${OCAH_STARTING_BUILD:-doc/starting/_build}/latex" starting_pdf="${OCAH_STARTING_PDF:-ocah-starting.pdf}"
+  local datasheets_build="${OCAH_DATASHEETS_BUILD:-doc/datasheets/_build}"
 
   if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
     echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -587,35 +594,41 @@ doc_stage() {
   mkdir -p "$ROOT/$ghpages_dir/downloads"
   touch "$ROOT/$ghpages_dir/.nojekyll"
 
-  if [[ -f "$ROOT/$trm_dist/$trm_pdf" ]]; then
-    cp "$ROOT/$trm_dist/$trm_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$trm_pdf_dir/$trm_pdf" ]]; then
+    cp "$ROOT/$trm_pdf_dir/$trm_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: TRM PDF not found at $trm_dist/$trm_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf trm)"
+    echo "warning: TRM PDF not found at $trm_pdf_dir/$trm_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf trm)"
   fi
 
-  if [[ -f "$ROOT/$integrator_dist/$integrator_pdf" ]]; then
-    cp "$ROOT/$integrator_dist/$integrator_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$integrator_pdf_dir/$integrator_pdf" ]]; then
+    cp "$ROOT/$integrator_pdf_dir/$integrator_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Integrator Guide PDF not found at $integrator_dist/$integrator_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf integrator)"
+    echo "warning: Integrator Guide PDF not found at $integrator_pdf_dir/$integrator_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf integrator)"
   fi
 
-  if [[ -f "$ROOT/$programmer_dist/$programmer_pdf" ]]; then
-    cp "$ROOT/$programmer_dist/$programmer_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$programmer_pdf_dir/$programmer_pdf" ]]; then
+    cp "$ROOT/$programmer_pdf_dir/$programmer_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Programmer's Guide PDF not found at $programmer_dist/$programmer_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf programmer)"
+    echo "warning: Programmer's Guide PDF not found at $programmer_pdf_dir/$programmer_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf programmer)"
   fi
 
-  if [[ -f "$ROOT/$appnotes_dist/$appnotes_pdf" ]]; then
-    cp "$ROOT/$appnotes_dist/$appnotes_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$appnotes_pdf_dir/$appnotes_pdf" ]]; then
+    cp "$ROOT/$appnotes_pdf_dir/$appnotes_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Application Notes PDF not found at $appnotes_dist/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
+    echo "warning: Application Notes PDF not found at $appnotes_pdf_dir/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
   fi
 
-  if [[ -f "$ROOT/$starting_dist/$starting_pdf" ]]; then
-    cp "$ROOT/$starting_dist/$starting_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$starting_pdf_dir/$starting_pdf" ]]; then
+    cp "$ROOT/$starting_pdf_dir/$starting_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Getting Started PDF not found at $starting_dist/$starting_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf starting)"
+    echo "warning: Getting Started PDF not found at $starting_pdf_dir/$starting_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf starting)"
   fi
+
+  local datasheet_pdf
+  for datasheet_pdf in "$ROOT/$datasheets_build"/ocah-*-datasheet.pdf; do
+    [[ -f "$datasheet_pdf" ]] || continue
+    cp "$datasheet_pdf" "$ROOT/$ghpages_dir/downloads/"
+  done
 
   doc_stage_dashboard_data "$ROOT/$ghpages_dir"
 

@@ -17,7 +17,12 @@ The `drbg` top-level module wraps the OpenTitan CSRNG and EDN blocks with bus-pr
 
 == Parameters
 
+<<drbg-parameters-table>> lists the seed FIFO, endpoint-count, and endpoint FIFO
+parameters.
+
+[[drbg-parameters-table]]
 [cols="<25%,<15%,<15%,<45%",options="header"]
+.DRBG parameters
 |===
 |Parameter |Type |Default |Description
 |`SEED_FIFO_DEPTH` |`int unsigned` |1 |Depth of the seed FIFO in `drbg_csrng_seed_adapter`. Holds packed seeds awaiting CSRNG consumption.
@@ -30,7 +35,12 @@ The `drbg` top-level module wraps the OpenTitan CSRNG and EDN blocks with bus-pr
 
 The DRBG presents several interface types to the rest of the SEP subsystem.
 
+<<drbg-external-interfaces-table>> describes the entropy ingress, random-data endpoints,
+and control interfaces.
+
+[[drbg-external-interfaces-table]]
 [cols="<30%,<70%",options="header"]
+.DRBG external interfaces
 |===
 |Interface |Description
 |Entropy ingress |Fire-and-forget: `entropy_stream_data_i[31:0]` and `entropy_stream_vld_i` from the entropy source. There is no backpressure; each valid word feeds the CSRNG seed-packing path directly on the cycle it arrives.

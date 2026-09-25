@@ -24,6 +24,7 @@ This project incorporates code from the following third-party sources:
    Licensed under the Apache License, Version 2.0
    Project: https://github.com/lowRISC/opentitan
    Vendored under vendor/lowRISC/opentitan/upstream/
+   Includes core reference figures used by the SEP documentation.
 
 2. PULP Platform
    Copyright (c) ETH Zurich, University of Bologna and contributors
@@ -50,10 +51,11 @@ This project incorporates code from the following third-party sources:
    Vendored under scripts/ci/slang_to_rdjson.py
 
 6. Adams Bridge
-   Copyright CHIPS Alliance contributors
+   Copyright CHIPS Alliance and Adams Bridge contributors
    Licensed under the Apache License, Version 2.0
    Project: https://github.com/chipsalliance/adams-bridge
    Vendored under vendor/chipsalliance/adams-bridge/upstream/
+   Includes core reference figures used by the SEP documentation.
 
 7. Caliptra RTL
    Copyright CHIPS Alliance contributors
@@ -137,3 +139,5 @@ This project incorporates code from the following third-party sources:
     Project: https://github.com/mathjax/MathJax
     The unmodified es5/tex-svg.js bundle and LICENSE from mathjax@3.2.2
     are vendored under doc/ui-supplemental/js/vendor/mathjax/.
+
+================================================================================

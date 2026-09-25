@@ -19,8 +19,9 @@ grading rules and the waiver fields are in
 |Reference VPLAN |`SMU_VPLAN.adoc`
 |Reference architecture |`SMU_TB_ARCH.adoc`
 |Framework |PyUVM on cocotb
-|Simulator that collects |Verilator (`--cov`) in public CI; a `[coverage.vcs]` table and `cov/config/vcs/smu_wrapper_cov_scope.hier` mirror the wrapper's scope for the licensed flow, which no public job runs
-|What `--dut smu` collects |the release group, weekly `--cov` in `regress.yml`: line, expression and `user` over a scope that drops everything the wrapper instantiates; toggle on the VCS flow only, over the wrapper's ports after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
+|Simulator that collects |Verilator (`--cov`) and, on the licensed flow no public job runs, VCS through the `[coverage.vcs]` table and `cov/config/vcs/smu_wrapper_cov_scope.hier`
+|Coverage set |`--items all`, the 102-leaf package regression, as SEP grades its `all`; the SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run. The weekly `--cov` in `regress.yml` grades the toolchain-free `hosted` subset only
+|What `--dut smu` collects |line, expression and `user` over a scope that drops everything the wrapper instantiates; toggle on the VCS flow only, over the wrapper's ports after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
 |Scope file |`cov/config/verilator/smu_wrapper_cov_scope.vlt`
 |Policy file |`cov/config/verilator/smu_wrapper_coverage_policy.toml` (Verilator `user`); `cov/config/vcs/smu_wrapper_coverage_policy.toml` (VCS `toggle` / `assertion`)
 |Cover-property modules |10 under `cov/sv/`, 111 points in all; see <<smu-fcov-points>>
@@ -161,11 +162,15 @@ release metric nor a gate.
 
 Three limits decide what `SMU_VPLAN.adoc` is allowed to say about coverage:
 
-. *No per-testcase coverage attribution.* The `cov/sv` points are
-  free-running cover properties on DUT signals, not per-scenario covergroups,
-  so which testcase lights which point is a property of a run, not of the
-  source. Naming bins per plan entry without a run would be a claim nobody
-  measured.
+. *Per-testcase attribution is measured, never asserted.* The `cov/sv`
+  points are free-running cover properties on DUT signals, not per-scenario
+  covergroups, so which testcase lights which point is a property of a run,
+  not of the source. <<smu-fcov-owners>> is that measurement: written by
+  `tools/dv/fcov_owners.py` from the per-leaf databases of a named `all`
+  run, it carries the commit and simulator it was measured on and is
+  regenerated after each coverage run rather than edited. A point the table
+  shows on one leaf depends on that leaf, which is what SEP's owning-tests
+  rule exists to name.
 . *`smu_fcov.py` sources no coverage claim.* It is scenario intent, as stated
   above.
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
@@ -182,3 +187,17 @@ relying on the canonical `cov/config/<tool>/coverage_policy.toml` discovery,
 so the file says which DUT it grades. It carries one `[[holes]]` entry per
 unhit point, with `disposition = "waive"`, `status = "accepted"` and an
 `expires` date after which it grades as open again. It sets no threshold.
+
+=== Owning Tests
+
+The table below is regenerated from the coverage run's directory:
+
+    python3 tools/dv/fcov_owners.py --dut smu --run-dir <run dir> \
+        --output hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc
+
+`--check` in place of a rewrite says whether the committed table still
+matches the run. A row with `Leaves` of 1 is a point one leaf alone reaches;
+a row with 0 carries the policy disposition of the hole, or `unclassified`
+when the policy has none.
+
+include::SMU_FCOV_OWNERS.adoc[leveloffset=0]

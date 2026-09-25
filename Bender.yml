@@ -32,11 +32,18 @@ dependencies:
 
 # Third-party IP vendored under vendor/<org>/<pkg>/upstream via `bender vendor init`.
 vendor_package:
-  # OpenTitan: prim, per-IP rtl/hjson, and the reggen/mubi file set.
+  # OpenTitan: prim, per-IP rtl/hjson, reference figures, and reggen/mubi.
   - name: opentitan
     target_dir: vendor/lowRISC/opentitan/upstream
     upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "d1ce369cb357a7a4718c75f11567742a78a7ed07" }
     include_from_upstream:
+      # Core reference figures used by the TRM.
+      - "hw/ip/aes/doc/aes_block_diagram.svg"
+      - "hw/ip/hmac/doc/hmac_block_diagram.svg"
+      - "hw/ip/i2c/doc/i2c_block_diagram.svg"
+      - "hw/ip/kmac/doc/kmac-block-diagram.svg"
+      - "hw/ip/otbn/doc/otbn_blockarch.svg"
+      - "hw/ip/dma/doc/block_diagram.svg"
       - "hw/ip/prim/rtl"
       - "hw/ip/prim_generic/rtl"
       - "hw/ip/prim_generic/lint"
@@ -213,13 +220,15 @@ vendor_package:
     patch_dir: "vendor/pulp-platform/register_interface/patches"
 
   # Adams Bridge post-quantum engine (ML-DSA-87 / ML-KEM-1024).
-  # Only the RTL reachable from abr_top; the testbench and coverage collateral
-  # are left out.
+  # RTL reachable from abr_top and reference figures for the SEP documentation;
+  # testbench and coverage collateral are left out.
   - name: adams_bridge
     target_dir: "vendor/chipsalliance/adams-bridge/upstream"
     upstream: { git: "https://github.com/chipsalliance/adams-bridge.git", rev: "e59eba955eac2a1adcb059f250641ede78e304be" }
     include_from_upstream:
       - "LICENSE"
+      - "docs/images/MLDSA/image3.png"
+      - "docs/images/MLKEM/AdamsBridge_MLKEM.png"
       - "src/abr_top/rtl"
       - "src/abr_libs/rtl"
       - "src/abr_prim/rtl"
@@ -327,6 +336,7 @@ vendor_package:
     include_from_upstream:
       - "LICENSE"
       - "src"
+      - "doc/source/img/hc_top_level_arch.png"
     exclude_from_upstream:
       - "src/i3c_wrapper.sv"
       - "src/libs/mem"
@@ -608,6 +618,11 @@ sources:
     files:
       - hw/common/axi/axi4lite_intf.sv
       - hw/common/axi/axi_cg_snoop.sv
+  # axi_lite_to_ahb compiles inside SEP and standalone in its unit bench under
+  # hw/common/axi/dv (target `axi_lite_to_ahb`).
+  - target: any(sep, axi_lite_to_ahb)
+    files:
+      - hw/common/axi/axi_lite_to_ahb.sv
   - target: sep
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
@@ -1232,13 +1247,6 @@ sources:
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_ctrl.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_top.sv
           - vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.sv
-          # --- Reused VeeR AXI4->AHB bridge for the AB control/status path.
-          #     The el2 dependency does NOT compile this file for the AXI-mode
-          #     SEP config, so it is pulled in here explicitly from the tracked
-          #     el2 vendor tree (el2_pkg + el2_param.vh come from the el2 dep,
-          #     already in the build). NOTE: use the git-tracked vendor path,
-          #     not deps/el2 (a generated, gitignored dir absent in CI). ---
-          - vendor/chipsalliance/Cores-VeeR-EL2/upstream/design/lib/axi4_to_ahb.sv
           # --- SEP integration: KV shim + crypto wrapper ---
           - hw/sys/sep/rtl/sep_abr_kv_shim.sv
           - hw/sys/sep/rtl/sep_crypto_abr_wrapper.sv

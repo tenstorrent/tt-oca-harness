@@ -330,7 +330,7 @@ passive tap beside the console, and a mid-test baud change.
 | Errors and evidence | `OcahUartChecker` (`CHK-UART-*`); `finalize()` fails on a failed check, zero checks, or a missing required ID; every harness selftest carries an in-band negative probe, and `OCAH_UART_SELFTEST_NEGATIVE` forces a failing run | Register-level checks of a DUT's UART (line status, FIFO levels) stay in the DUT tree |
 | Protocol checking | The sampler's classification and the checker's frame rules; X on a data bit is a framing error on four-state simulators | SVA collateral: none ships |
 | Coverage | Rule coverage through the `CHK-UART-*` identifiers of the harness selftests | Covergroups: no SV coverage model ships |
-| Simulators | Verilator, VCS, and Xcelium (the `dv/` harness); Verilator (the SMC bench) | — |
+| Simulators | Verilator and the optional backends reported by `run_dv.py --list` | — |
 | SV collateral | None: no interface, SVA, coverage model, or SV-UVM realization ships; the package is cocotb only | — |
 
 ## Validation
@@ -378,7 +378,7 @@ code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_uart_vip import <Class>`, never from the subfolders.
 This package has no `interface/` or `uvm/` realization. The SV-UVM
-template and the commercial-VIP plug-in contract (env-level factory
+template and the optional-backend plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`
 ("Template Contract") — the reference implementation for all OCAH SV-UVM

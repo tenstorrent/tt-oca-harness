@@ -10,7 +10,6 @@ OCAH_APPNOTES_META ?= $(OCAH_APPNOTES_DIR)/meta
 OCAH_APPNOTES_MODULES ?= $(OCAH_APPNOTES_DIR)/modules
 OCAH_APPNOTES_ASSETS ?= $(OCAH_APPNOTES_DIR)/assets
 OCAH_APPNOTES_BUILD ?= $(OCAH_APPNOTES_DIR)/_build
-OCAH_APPNOTES_DIST ?= $(OCAH_APPNOTES_DIR)/dist
 OCAH_APPNOTES_PLAYBOOK ?= $(OCAH_ROOT)/antora-appnotes-playbook.yml
 OCAH_APPNOTES_PDF ?= ocah-appnotes.pdf
 
@@ -44,14 +43,13 @@ ocah-doc-appnotes-html: ocah-doc-appnotes-setup
 ocah-doc-appnotes-pdf: ocah-doc-appnotes-setup
 	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf appnotes"; exit 1; }
 	@echo "Building Application Notes PDF documentation (asciidoctor-pdf)"
-	@mkdir -p "$(OCAH_APPNOTES_BUILD)/latex" "$(OCAH_APPNOTES_DIST)"
+	@mkdir -p "$(OCAH_APPNOTES_BUILD)/latex"
 	@rm -rf "$(OCAH_APPNOTES_SRC)/assets" && ln -s ../assets "$(OCAH_APPNOTES_SRC)/assets"
 	@cd "$(OCAH_APPNOTES_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
 		-o "$(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF)" src/index.adoc
-	@cp "$(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF)" "$(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF)"
-	@echo "Done: $(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF)"
+	@echo "Done: $(OCAH_APPNOTES_BUILD)/latex/$(OCAH_APPNOTES_PDF)"
 
 .PHONY: ocah-doc-appnotes-serve
 ocah-doc-appnotes-serve: ocah-doc-appnotes-html
@@ -65,7 +63,7 @@ ocah-doc-appnotes-clean:
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_APPNOTES_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_APPNOTES_ASSETS)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh" --clean
-	@rm -rf "$(OCAH_APPNOTES_BUILD)" "$(OCAH_APPNOTES_DIST)"
+	@rm -rf "$(OCAH_APPNOTES_BUILD)"
 	@echo "Cleaned Application Notes documentation build artifacts."
 
 OCAH_PHONY += \

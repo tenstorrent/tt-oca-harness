@@ -23,6 +23,10 @@ entry point for the chiplet. The JIU connects to:
 * The SMC and SEP OTP controllers via JTAG2AXIL.
 * The SMC and SEP CPU debug TAPs via STAPs.
 
+<<dtp-jtag-scan-chain-figure>> shows the PTAP, secondary scan path, and iJTAG instrument
+network.
+
+[[dtp-jtag-scan-chain-figure]]
 .DTP JTAG scan chain
 image::dtp_jtag_scan_chain.svg[DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain and iJTAG SIB network,scaledwidth=90.0%]
 
@@ -42,9 +46,11 @@ scan chain and drives its internal host outputs low.
 
 == Clock Domains
 
-The DTP operates in two clock domains:
+The DTP operates in two clock domains (<<dtp-clock-domains-table>>).
 
+[[dtp-clock-domains-table]]
 [cols="<25%,<25%,<50%",options="header"]
+.DTP clock domains
 |===
 |Domain |Signal |Description
 
@@ -64,7 +70,11 @@ within the CTPs using two-flip-flop synchroniser chains.
 
 == Reset Architecture
 
+<<dtp-reset-signals-table>> identifies the reset inputs and the logic they reset.
+
+[[dtp-reset-signals-table]]
 [cols="<30%,<70%",options="header"]
+.DTP reset signals
 |===
 |Signal |Description
 
@@ -119,7 +129,11 @@ debug/test disable vector. Each field is active-high (1 = path disabled). The
 JTAG interface unit synchronizes the vector into the TCK domain and applies
 each field to the named path.
 
+<<dtp-debug-disable-paths-table>> maps each debug path to its active-high disable field.
+
+[[dtp-debug-disable-paths-table]]
 [cols="<40%,<60%",options="header"]
+.DTP debug-disable paths
 |===
 |Path |Disable Field
 
