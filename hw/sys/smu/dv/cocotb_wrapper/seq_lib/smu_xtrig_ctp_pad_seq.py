@@ -49,15 +49,31 @@ S5  Matrix routing to the internal cross-trigger lanes. Selecting lane 0's
     destination into the CT_SRC port of the first SMU-exposed internal lane
     makes ``xtrig_ctm_src_req_o[0]`` pulse on the same request.
 
-S6  Wire-OR receive. Lane 2 is left in wire-OR, where the incoming trigger is
-    an edge on ``xtrig_ctp_req_out_din_i``; routed into the same internal
-    lane it produces the same pulse.
+S6  Wire-OR receive. Every CT_Req_out pad sits on an ``ocah_open_drain_bus``
+    shared wire (private per pad, or the group wire the pads in
+    ``tb_xtrig_ctp_wire_group`` share) resting at the board pull of the
+    port's INVERT sense; the DUT never sees the pad driven directly. With
+    every wire resting, no port's ``ct_dst`` rises through reset
+    (``CHK-SMU-CTP-WIRE-IDLE``). Lane 2 stays wire-OR: a chiplet pull of its
+    private wire raises ``tb_xtrig_ctp_ct_dst[2]`` exactly
+    ``CT_DST_LATENCY`` clocks after the wire is first seen asserted, once for
+    the pull and never again at the release (``CHK-SMU-CTP-WIRE-RX``), and
+    the same pull reaches the routed internal lane
+    (``xtrig_ctm_src_req_o[0]``, ``CHK-SMU-CTM-SRC`` restated).
+
+S7  Wire-OR shared wire. Three wire-OR lanes join one group wire
+    (``tb_xtrig_ctp_wire_group``). One chiplet pull on one member reaches
+    every member's ``ct_dst`` once, at the same latency, and leaves every
+    non-member lane quiet -- the P2P lanes, the private-wire receiver, and
+    every lane above the group; two members pulled in overlapping windows
+    still reach every member exactly once and leave every non-member lane
+    quiet (``CHK-SMU-CTP-WIRE-SHARED``).
 """
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import smc_addr
@@ -88,6 +104,10 @@ CTP_STATUS_OFF = cross_trigger_u32("CROSS_TRIGGER_PORT_STATUS_BASE_ADDR")
 CONFIG_MODE_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__MODE_bm")
 CONFIG_MODE_BP = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__MODE_bp")
 CONFIG_MODE_RESET = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__MODE_reset")
+# Ties the board smu_base_test.drive_idle_inputs drives (every wire's pull
+# held at the literal 1) to the sense that literal assumes: INVERT=0 is a
+# pull-up. A header whose INVERT reset disagrees invalidates that board.
+CONFIG_INVERT_RESET = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__INVERT_reset")
 STATUS_REQ_IN_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__STATUS__REQ_IN_bm")
 STATUS_ACK_OUT_BM = cross_trigger_u32("CROSS_TRIGGER_PORT__STATUS__ACK_OUT_bm")
 CT_DST_SELECT_BM = cross_trigger_u32("CROSS_TRIGGER_MATRIX__CT_SRC__CONFIG_0__CT_DST_SELECT_bm")
@@ -110,6 +130,22 @@ SMU_CT_LANE = 0
 # outputs, so a mode write or a pad release reaches the pads a few clocks later.
 PAD_SETTLE = 8
 PULSE_BOUND = 64
+# Wire-OR lanes joined on the S7 group wire: not P2P_LANE/SINK_LANE, which S2/S4
+# moved to point-to-point, and not WIRE_OR_LANE, S6's private-wire receiver.
+WIRE_OR_SHARED_LANES = (3, 4, 5)
+
+# Not a DUT pin: a per-lane pseudo-vector the window samples like any other,
+# computed as the resolved wire tb_xtrig_ctp_req_out_din XOR its own pull, so
+# a bit reads 1 exactly when that lane's wire sits away from its rest level
+# ("the wire is first seen asserted"), whichever polarity INVERT selects.
+WIRE_ASSERTED_PSEUDO_NAME = "tb_xtrig_ctp_wire_asserted"
+
+# Clock edges from the wire's assertion edge to a wire-OR port's registered
+# ct_dst: the CTP synchronizer's one 2-FF synchronizer, i.e. two flop stages
+# (ctp_synchronizer row, hw/ip/cross_trigger/cross_trigger_port/doc/
+# architecture.adoc) plus the registered ct_dst output; the same constant as
+# DTP_CT_DST_LATENCY (hw/sys/dtp/dv/cocotb/env/dtp_dv_cfg.py).
+CT_DST_LATENCY = 3
 
 # CTP pad-control level per mode with no trigger in flight, transcribed from
 # the CTP signal interface table: an enable the table calls "enabled" is 1,
@@ -150,6 +186,74 @@ def expected_pad_vectors(modes: dict[int, int]) -> dict[str, int]:
     return out
 
 
+class _WireOrWindow:
+    """Per-clk_smu-cycle first-seen cycle and rise count of named vectors.
+
+    Mirrors ``DtpXtrigActivityWindow``: each window cycle samples in
+    ``ReadOnly`` the instant the window is at, then advances exactly one
+    clk_smu period (``NextTimeStep`` then ``ClockCycles(clk_smu_i, 1)``) before
+    sampling again, so cycle 0 is whatever instant ``start()`` was called at
+    rather than the next edge. ``first_seen`` holds the window cycle at which
+    each bit of each name first went high; ``rises`` counts how many times
+    each bit rose. A caller that both starts a window and changes a driven
+    vector must land on the same clk_smu edge first (e.g.
+    ``await ClockCycles(clk_smu_i, n)``) and make the change right after that
+    edge, in the same timestep as ``start()``, never inside ``ReadOnly``: a
+    write at an arbitrary phase makes cycle 0 no longer the edge the DUT's
+    synchronizer samples, which desyncs the measured latency from
+    CT_DST_LATENCY by the fraction of a cycle the write drifted.
+    """
+
+    def __init__(self, seq: "smu_xtrig_ctp_pad_seq") -> None:
+        self._seq = seq
+        self._task: cocotb.Task | None = None
+        self.names: tuple[str, ...] = ()
+        self.cycles = 0
+        self.activity: dict[str, int] = {}
+        self.last: dict[str, int] = {}
+        self.first_seen: dict[str, dict[int, int]] = {}
+        self.rises: dict[str, dict[int, int]] = {}
+
+    def start(self, names: tuple[str, ...]) -> None:
+        self.names = names
+        self.cycles = 0
+        self.activity = {name: 0 for name in names}
+        self.last = {name: 0 for name in names}
+        self.first_seen = {name: {} for name in names}
+        self.rises = {name: {} for name in names}
+        self._task = cocotb.start_soon(self._run())
+
+    async def _run(self) -> None:
+        clk = self._seq.dut.clk_smu_i
+        while True:
+            await ReadOnly()
+            self._record()
+            await NextTimeStep()
+            await ClockCycles(clk, 1)
+
+    def _record(self) -> None:
+        for name in self.names:
+            value = self._seq._vec(name)
+            new_bits = value & ~self.activity[name]
+            while new_bits:
+                bit = (new_bits & -new_bits).bit_length() - 1
+                self.first_seen[name][bit] = self.cycles
+                new_bits &= new_bits - 1
+            rose = value & ~self.last[name]
+            while rose:
+                bit = (rose & -rose).bit_length() - 1
+                self.rises[name][bit] = self.rises[name].get(bit, 0) + 1
+                rose &= rose - 1
+            self.activity[name] |= value
+            self.last[name] = value
+        self.cycles += 1
+
+    def stop(self) -> None:
+        if self._task is not None:
+            self._task.cancel()
+            self._task = None
+
+
 class smu_xtrig_ctp_pad_seq:
     """CTP pad direction and the point-to-point handshake at the SMU boundary."""
 
@@ -167,10 +271,19 @@ class smu_xtrig_ctp_pad_seq:
         return pin
 
     def _vec(self, name: str) -> int:
+        if name == WIRE_ASSERTED_PSEUDO_NAME:
+            wire = self._vec("tb_xtrig_ctp_req_out_din")
+            pull = self._vec("tb_xtrig_ctp_wire_pull")
+            return (wire ^ pull) & CTP_MASK
         val = self._pin(name).value
         if not val.is_resolvable:
             raise AssertionError(f"X/Z on {name}: {val}")
         return int(val)
+
+    @staticmethod
+    def _rises_in_mask(window: "_WireOrWindow", name: str, mask: int) -> int:
+        """Total rises of ``name`` across every bit set in ``mask``."""
+        return sum(count for bit, count in window.rises[name].items() if (mask >> bit) & 1)
 
     async def _rd32(self, addr: int, what: str) -> int:
         status, rdata = await jtag2axi_single_read(
@@ -211,6 +324,17 @@ class smu_xtrig_ctp_pad_seq:
     async def run(self) -> None:
         dut = self.dut
         await self.cfg.reset_done.wait()
+        if CONFIG_INVERT_RESET != 0:
+            raise AssertionError(
+                f"CONFIG.INVERT reset {CONFIG_INVERT_RESET} in the RDL header disagrees with "
+                "the wire-OR pull-up board smu_base_test.drive_idle_inputs drives for every "
+                "wire (that board assumes INVERT's reset value is 0)"
+            )
+        # As early as the sequence can observe: reset_done fires once the
+        # bench-side wire-OR board (drive_idle_inputs) is already resting
+        # every wire at its pull, so this is the earliest point wire idleness
+        # is provable.
+        await self._wire_or_idle()
         if CONFIG_MODE_RESET != WIRE_OR:
             raise AssertionError(
                 f"CONFIG.MODE reset {CONFIG_MODE_RESET} in the RDL header is not the wire-OR "
@@ -239,6 +363,7 @@ class smu_xtrig_ctp_pad_seq:
         await self._matrix_route_to_port()
         await self._matrix_route_to_internal()
         await self._wire_or_receive()
+        await self._wire_or_shared()
 
     def _check_pads(self, modes: dict[int, int], label: str, evidence: str) -> None:
         for name, want in expected_pad_vectors(modes).items():
@@ -437,22 +562,190 @@ class smu_xtrig_ctp_pad_seq:
         dut.tb_xtrig_ctp_req_in_din.value = 0
         await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
 
-    async def _wire_or_receive(self) -> None:
+    async def _wire_or_idle(self) -> None:
+        """CHK-SMU-CTP-WIRE-IDLE: every wire rests at its pull through reset.
+
+        Observed as early as the sequence can run, right after
+        ``cfg.reset_done``: no wire-OR port's ct_dst rises and the bench's
+        pull-mismatch flag stays clear for a window long enough to cover the
+        receive latency twice over plus a pad settle.
+        """
         dut = self.dut
-        # Lane 2 keeps the wire-OR default, where the trigger is an edge on the
-        # request-out data input rather than a level on the request-in pin.
+        window = _WireOrWindow(self)
+        idle_cycles = 2 * CT_DST_LATENCY + PAD_SETTLE
+        window.start(("tb_xtrig_ctp_ct_dst", "tb_xtrig_ctp_wire_mismatch"))
+        await ClockCycles(dut.clk_smu_i, idle_cycles)
+        window.stop()
+        rises = sum(window.rises["tb_xtrig_ctp_ct_dst"].values())
+        # activity is the OR of every sample the window took, so this is the
+        # mismatch flag never having read 1 at any point in the window, not
+        # merely at the one instant a single end-of-window sample would catch.
+        mismatch_activity = window.activity["tb_xtrig_ctp_wire_mismatch"]
+        self.sb.expect_eq(
+            "CHK-SMU-CTP-WIRE-IDLE",
+            (rises, mismatch_activity),
+            (0, 0),
+            evidence="CHK-SMU-CTP-WIRE-IDLE",
+        )
+
+    async def _wire_or_receive(self) -> None:
+        """CHK-SMU-CTP-WIRE-RX: lane 2 stays wire-OR, on its private wire.
+
+        A chiplet pull of that wire (held >= PULSE_BOUND clk_smu) must raise
+        tb_xtrig_ctp_ct_dst[2] exactly CT_DST_LATENCY clocks after the wire is
+        first seen asserted, once for the pull, and the release must raise
+        nothing in a further PULSE_BOUND-clock window. The same pull must
+        also route through to xtrig_ctm_src_req_o[0] (CHK-SMU-CTM-SRC
+        restated): the pulse follows the pull, not the release.
+        """
+        dut = self.dut
+        # Lane 2 keeps the wire-OR default, where the trigger is an edge on
+        # its shared wire rather than a level on the request-in pin.
         await self._route_to_internal(1 << WIRE_OR_LANE)
         await self._wait_vec_bit(
             "xtrig_ctm_src_req", SMU_CT_LANE, 0, "internal request idle before wire-OR trigger"
         )
-        dut.tb_xtrig_ctp_req_out_din.value = 1 << WIRE_OR_LANE
-        cycles = await self._wait_vec_bit("xtrig_ctm_src_req", SMU_CT_LANE, 1, "wire-OR trigger")
-        self.log.info("wire-OR trigger reached the internal lane after %d clk_smu", cycles)
+        # Land on a clean clk_smu edge first: window.start() and the pull that
+        # follows must share the exact timestep the window's cycle 0 samples,
+        # or cycle 0 stops lining up with the edge the DUT's synchronizer
+        # samples and the measured latency drifts off CT_DST_LATENCY.
+        await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+        window = _WireOrWindow(self)
+        window.start(
+            (
+                WIRE_ASSERTED_PSEUDO_NAME,
+                "tb_xtrig_ctp_ct_dst",
+                "xtrig_ctm_src_req",
+                "tb_xtrig_ctp_wire_mismatch",
+            )
+        )
+        dut.tb_xtrig_ctp_wire_ext_assert.value = 1 << WIRE_OR_LANE
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
+        dut.tb_xtrig_ctp_wire_ext_assert.value = 0
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
+        window.stop()
+
+        # The reference is the resolved wire (via WIRE_ASSERTED_PSEUDO_NAME),
+        # not the chiplet control tb_xtrig_ctp_wire_ext_assert: the two only
+        # coincide because ocah_open_drain_bus is combinational.
+        asserted_at = window.first_seen[WIRE_ASSERTED_PSEUDO_NAME].get(WIRE_OR_LANE)
+        # The release lands exactly PULSE_BOUND window cycles after the pull:
+        # one window sample is one clk_smu period, the same unit ClockCycles
+        # advanced by while the wire was held.
+        release_at = None if asserted_at is None else asserted_at + PULSE_BOUND
+        received_at = window.first_seen["tb_xtrig_ctp_ct_dst"].get(WIRE_OR_LANE)
+        latency = -1 if asserted_at is None or received_at is None else received_at - asserted_at
+        rises = window.rises["tb_xtrig_ctp_ct_dst"].get(WIRE_OR_LANE, 0)
+        mismatch_activity = window.activity["tb_xtrig_ctp_wire_mismatch"]
+        self.log.info(
+            "wire-OR lane %d: asserted@%s ct_dst@%s latency=%s rises=%d",
+            WIRE_OR_LANE,
+            asserted_at,
+            received_at,
+            latency,
+            rises,
+        )
         self.sb.expect_eq(
-            "a wire-OR edge on the request-out data input reaches the internal lane",
-            (self._vec("xtrig_ctm_src_req") >> SMU_CT_LANE) & 1,
-            1,
+            "CHK-SMU-CTP-WIRE-RX",
+            (latency, rises, mismatch_activity),
+            (CT_DST_LATENCY, 1, 0),
+            evidence="CHK-SMU-CTP-WIRE-RX",
+        )
+        ctm_first_seen = window.first_seen["xtrig_ctm_src_req"].get(SMU_CT_LANE)
+        ctm_rises = window.rises["xtrig_ctm_src_req"].get(SMU_CT_LANE, 0)
+        follows_pull = (
+            ctm_rises == 1
+            and asserted_at is not None
+            and ctm_first_seen is not None
+            and asserted_at <= ctm_first_seen < release_at
+        )
+        self.sb.expect_eq(
+            "the routed request follows the wire-OR pull, not the release "
+            "(CHK-SMU-CTM-SRC restated)",
+            follows_pull,
+            True,
             evidence="CHK-SMU-CTM-SRC",
         )
-        dut.tb_xtrig_ctp_req_out_din.value = 0
+        await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+
+    async def _wire_or_shared(self) -> None:
+        """CHK-SMU-CTP-WIRE-SHARED: three wire-OR lanes share one group wire.
+
+        (a) One chiplet pull on one member: every member's ct_dst rises
+        exactly once, each CT_DST_LATENCY clocks after the wire is first seen
+        asserted; every non-member lane (the P2P lanes, the private-wire
+        receiver, and every lane above the group) shows no rise.
+        (b) Two members pulled in overlapping windows: exactly one ct_dst per
+        member, and every non-member lane still shows no rise.
+        Both windows also require the mismatch flag never reads 1.
+        """
+        dut = self.dut
+        members = WIRE_OR_SHARED_LANES
+        member_mask = sum(1 << lane for lane in members)
+        non_member_mask = CTP_MASK & ~member_mask
+        dut.tb_xtrig_ctp_wire_group.value = member_mask
+        dut.tb_xtrig_ctp_wire_group_pull.value = 1
+        await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+
+        window = _WireOrWindow(self)
+        window.start(
+            (WIRE_ASSERTED_PSEUDO_NAME, "tb_xtrig_ctp_ct_dst", "tb_xtrig_ctp_wire_mismatch")
+        )
+        dut.tb_xtrig_ctp_wire_ext_assert.value = 1 << members[0]
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
+        dut.tb_xtrig_ctp_wire_ext_assert.value = 0
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
+        window.stop()
+        # The reference is the resolved wire (via WIRE_ASSERTED_PSEUDO_NAME),
+        # not the chiplet control tb_xtrig_ctp_wire_ext_assert.
+        asserted_at = window.first_seen[WIRE_ASSERTED_PSEUDO_NAME].get(members[0])
+        for member in members:
+            received_at = window.first_seen["tb_xtrig_ctp_ct_dst"].get(member)
+            latency = (
+                -1 if asserted_at is None or received_at is None else received_at - asserted_at
+            )
+            rises = window.rises["tb_xtrig_ctp_ct_dst"].get(member, 0)
+            self.sb.expect_eq(
+                "CHK-SMU-CTP-WIRE-SHARED",
+                (latency, rises),
+                (CT_DST_LATENCY, 1),
+                evidence="CHK-SMU-CTP-WIRE-SHARED",
+            )
+        non_member_rises = self._rises_in_mask(window, "tb_xtrig_ctp_ct_dst", non_member_mask)
+        self.sb.expect_eq(
+            "CHK-SMU-CTP-WIRE-SHARED",
+            (non_member_rises, window.activity["tb_xtrig_ctp_wire_mismatch"]),
+            (0, 0),
+            evidence="CHK-SMU-CTP-WIRE-SHARED",
+        )
+
+        await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+        window = _WireOrWindow(self)
+        window.start(("tb_xtrig_ctp_ct_dst", "tb_xtrig_ctp_wire_mismatch"))
+        dut.tb_xtrig_ctp_wire_ext_assert.value = 1 << members[1]
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND // 2)
+        dut.tb_xtrig_ctp_wire_ext_assert.value = (1 << members[1]) | (1 << members[2])
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND // 2)
+        dut.tb_xtrig_ctp_wire_ext_assert.value = 1 << members[2]
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND // 2)
+        dut.tb_xtrig_ctp_wire_ext_assert.value = 0
+        await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
+        window.stop()
+        for member in members:
+            self.sb.expect_eq(
+                "CHK-SMU-CTP-WIRE-SHARED",
+                window.rises["tb_xtrig_ctp_ct_dst"].get(member, 0),
+                1,
+                evidence="CHK-SMU-CTP-WIRE-SHARED",
+            )
+        non_member_rises = self._rises_in_mask(window, "tb_xtrig_ctp_ct_dst", non_member_mask)
+        self.sb.expect_eq(
+            "CHK-SMU-CTP-WIRE-SHARED",
+            (non_member_rises, window.activity["tb_xtrig_ctp_wire_mismatch"]),
+            (0, 0),
+            evidence="CHK-SMU-CTP-WIRE-SHARED",
+        )
+
+        dut.tb_xtrig_ctp_wire_group.value = 0
+        dut.tb_xtrig_ctp_wire_group_pull.value = 1
         await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
