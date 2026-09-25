@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-24T21:08:53+00:00",
+  "generated_at": "2026-09-25T00:28:18+00:00",
   "points": [
     {
       "failed_tests": 1,
@@ -929,6 +929,67 @@
             "assertion": 95.42,
             "branch": 86.94,
             "condition": 85.41,
+            "fsm_state": 52.85,
+            "functional": 100.0,
+            "line": 94.01,
+            "toggle": 57.94,
+            "user": 96.3983
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": false,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.01
+    },
+    {
+      "failed_tests": 3,
+      "flaky_tests": 6,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-25T00:28:18+00:00",
+      "id": "e47b1e69f835d2e3",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-c674455fd7c432d7",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 95.42,
+            "branch": 91.55,
+            "condition": 87.84,
+            "fsm_state": 71.68,
+            "functional": 100.0,
+            "line": 96.24,
+            "toggle": 82.49,
+            "user": 96.3983
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 17
+            },
+            "by_disposition": {
+              "cover": 17
+            },
+            "by_metric": {
+              "user": 17
+            },
+            "by_status": {
+              "open": 17
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 17,
+            "observations_complete": false,
+            "open": 17,
+            "unclassified": 17
+          },
+          "raw_metrics": {
+            "assertion": 95.42,
+            "branch": 86.92,
+            "condition": 85.35,
             "fsm_state": 52.85,
             "functional": 100.0,
             "line": 94.01,
