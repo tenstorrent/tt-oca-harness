@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-// Copyright 2026 Tenstorrent
 
-// Wrapper to adapt sep_local_axi_xbar (struct-based) to sep_pkg AXI req/resp types
+// SEP local AXI crossbar wrapper.
+// Adapts sep_pkg interfaces to the crossbar request and response types.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -168,7 +168,7 @@ module sep_local_axi_xbar_wrapper (
   `AXI_ASSIGN_RESP_STRUCT(sep_external_resp, sep_external_axi_resp_i)
 
   // =========================================================================
-  // Instantiate the generated crossbar
+  // Crossbar
   // =========================================================================
   sep_local_axi_xbar u_sep_local_axi_xbar (
     .clk_i  (clk_i),

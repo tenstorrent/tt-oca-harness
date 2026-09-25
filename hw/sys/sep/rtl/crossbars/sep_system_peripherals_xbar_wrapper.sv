@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-// Copyright 2026 Tenstorrent
 
-// Wrapper to adapt sep_system_peripherals_xbar (struct-based) to sep_pkg AXI req/resp types
+// SEP system-peripherals AXI crossbar wrapper.
+// Adapts sep_pkg interfaces to the crossbar request and response types.
 
 module sep_system_peripherals_xbar_wrapper
 
@@ -77,7 +77,7 @@ module sep_system_peripherals_xbar_wrapper
     `AXI_LITE_ASSIGN_RESP_STRUCT(system_csr_resp, system_csr_resp_i)
 
     // =========================================================================
-    // Instantiate the generated crossbar
+    // Crossbar
     // =========================================================================
     sep_system_peripherals_xbar u_sep_system_peripherals_xbar (
         .clk_i                              (clk_i),

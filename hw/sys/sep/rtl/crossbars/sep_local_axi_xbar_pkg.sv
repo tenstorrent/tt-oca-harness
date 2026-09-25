@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP local AXI crossbar types and address constants.
-//
-// Hand-maintained: fabric_gen's static config cannot express this crossbar, so
-// it is not regenerated. The in-scope constants (dma_csr, sep_wdt) derive their
-// windows from och_sep_top_addrmap_pkg so the RDL stays authoritative for
-// those extents; the remaining constants are still literal apertures.
+// SEP local AXI crossbar types and configuration.
+// Address rules are defined by sep_local_axi_xbar.
 
 `include "axi/typedef.svh"
 
@@ -114,82 +110,6 @@ package sep_local_axi_xbar_pkg;
     logic [31:0] start_addr;
     logic [32:0] end_addr;
   } apb_addr_rule_t;
-
-  // ===========================================================================
-  // Address Range Constants (Named)
-  // ===========================================================================
-  // Output: cpu_tcm
-  localparam logic [31:0] CPU_TCM_ICCM_BASE = 32'hc0000000;
-  localparam logic [31:0] CPU_TCM_ICCM_SIZE = 32'h40000;
-  localparam logic [32:0] CPU_TCM_ICCM_END = 33'hc0040000;
-  localparam logic [31:0] CPU_TCM_DCCM_BASE = 32'hc0040000;
-  localparam logic [31:0] CPU_TCM_DCCM_SIZE = 32'h20000;
-  localparam logic [32:0] CPU_TCM_DCCM_END = 33'hc0060000;
-
-  // Output: sram
-  localparam logic [31:0] SRAM_MAIN_BASE = 32'h10000000;
-  localparam logic [31:0] SRAM_MAIN_SIZE = 32'h40000;
-  localparam logic [32:0] SRAM_MAIN_END = 33'h10040000;
-
-  // Output: dma_csr
-  localparam logic [31:0] DMA_CSR_MAIN_BASE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR);
-  localparam logic [31:0] DMA_CSR_MAIN_SIZE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE);
-  localparam logic [32:0] DMA_CSR_MAIN_END  =
-      33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE);
-
-  // Output: sep_wdt
-  localparam logic [31:0] SEP_WDT_MAIN_BASE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR);
-  localparam logic [31:0] SEP_WDT_MAIN_SIZE =
-      32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE);
-  localparam logic [32:0] SEP_WDT_MAIN_END  =
-      33'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE);
-
-  // Output: sep_reset_ctrl
-  localparam logic [31:0] SEP_RESET_CTRL_MAIN_BASE = 32'h10803000;
-  localparam logic [31:0] SEP_RESET_CTRL_MAIN_SIZE = 32'h8;
-  localparam logic [32:0] SEP_RESET_CTRL_MAIN_END = 33'h10803008;
-
-  // Output: sep_crypto
-  localparam logic [31:0] SEP_CRYPTO_MAIN_BASE = 32'h10900000;
-  localparam logic [31:0] SEP_CRYPTO_MAIN_SIZE = 32'h50000;
-  localparam logic [32:0] SEP_CRYPTO_MAIN_END = 33'h10950000;
-
-  // Output: sep_system_peripherals
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_SCRATCH_REGION_BASE = 32'h10802000;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_SCRATCH_REGION_SIZE = 32'h100;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_SCRATCH_REGION_END = 33'h10802100;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_CSR_REGION_BASE = 32'h10a00000;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_CSR_REGION_SIZE = 32'h60000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_CSR_REGION_END = 33'h10a60000;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_REMAP_REGION_BASE = 32'h11000000;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_REMAP_REGION_SIZE = 32'h1000000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_REMAP_REGION_END = 33'h12000000;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_CHIPLET_BASE = 32'h0;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_CHIPLET_SIZE = 32'h10000000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_CHIPLET_END = 33'h10000000;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_SMU_BASE = 32'h40000000;
-  localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_SMU_SIZE = 32'h80000000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_SMU_END = 33'hc0000000;
-
-  // Output: sep_io
-  localparam logic [31:0] SEP_IO_MAIN_BASE = 32'h10b00000;
-  localparam logic [31:0] SEP_IO_MAIN_SIZE = 32'hfffff;
-  localparam logic [32:0] SEP_IO_MAIN_END = 33'h10bfffff;
-
-  // Output: entropy_fifo
-  localparam logic [31:0] ENTROPY_FIFO_MAIN_BASE = 32'h10950000;
-  localparam logic [31:0] ENTROPY_FIFO_MAIN_SIZE = 32'h10000;
-  localparam logic [32:0] ENTROPY_FIFO_MAIN_END = 33'h10960000;
-
-  // Output: sep_external
-  localparam logic [31:0] SEP_EXTERNAL_MAIN_BASE = 32'h20000000;
-  localparam logic [31:0] SEP_EXTERNAL_MAIN_SIZE = 32'h20000000;
-  localparam logic [32:0] SEP_EXTERNAL_MAIN_END = 33'h40000000;
 
   // ===========================================================================
   // Crossbar Configuration
