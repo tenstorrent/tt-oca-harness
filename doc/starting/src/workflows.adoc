@@ -405,8 +405,9 @@ The OCA Harness Virtual Platform (VP) is a SystemC-based simulation environment 
 * `smu-vp` — the SMC and SEP subsystems in one process (for cross-subsystem testing).
 
 === Prerequisites
-- SystemC, CCI, Boost, OpenSSL, and Whisper (will be built locally if unavailable)
-- A C++20 compiler (e.g., `g++-12`).
+
+* SystemC, CCI, Boost, OpenSSL, and Whisper (will be built locally if unavailable)
+* A C{plus}{plus}20 compiler (e.g., `g{plus}{plus}-12`).
 
 === Initialising the Virtual Platform
 
