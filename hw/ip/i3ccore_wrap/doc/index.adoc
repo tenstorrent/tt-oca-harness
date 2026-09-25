@@ -1,11 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// I3C Core Controller component documentation. interface.adoc carries the page
-// title and overview and pulls in architecture.adoc and memmap.adoc in turn.
+[[i3c-controller]]
+= I3C Controller
+:description: OCAH I3C wrapper. The controller core is the CHIPS Alliance i3c-core.
+
+The I3C controller is based on the
+https://github.com/chipsalliance/i3c-core[CHIPS Alliance i3c-core].
+Controller and target behavior, the HCI queues, common command codes, and
+the bus protocol are specified by that design.
+
+== OCAH Modifications
+
+SMC instantiates six controllers. `i3ccore_wrapper` exposes one AXI4-Lite
+slave and selects the instance from the address. Instances are spaced by
+`0x1000`, and each instance is presented with a 12-bit offset inside that
+window.
+
+`i3c_wrapper` drives the core's AXI4 register port as a single beat: `awlen`
+and `arlen` are 0 and `wlast` is 1. The core's controller-mode SCL and SDA
+outputs are bus levels. The wrapper turns those into open-drain pad enables:
+SCL is driven only low, and SDA is driven in both directions while push-pull
+mode is selected.
+
+Each instance brings out its device-address, device-characteristic, and
+reverse-lookup memories, one interrupt, and the recovery pins.
+
+Consult the https://github.com/chipsalliance/i3c-core[i3c-core documentation]
+for the controller. The register map of this wrapper follows.
+
 ifdef::backend-html5[]
-include::partial$i3ccore_wrap/doc/interface.adoc[]
+include::partial$i3ccore_wrap/doc/memmap.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::interface.adoc[]
+include::memmap.adoc[]
 endif::backend-pdf[]
