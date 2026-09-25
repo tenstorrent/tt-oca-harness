@@ -522,7 +522,8 @@ completion.
 
 * `ext_boot_seq_done_i`: Asynchronous input indicating the boot sequence (memory
   repair and shadow register override) is complete. Hold low to pause reset release
-  until external logic gives the go-ahead.
+  until external logic gives the go-ahead. required before the system can continue 
+  its boot sequence.
 
 **Repair Data:**
 
