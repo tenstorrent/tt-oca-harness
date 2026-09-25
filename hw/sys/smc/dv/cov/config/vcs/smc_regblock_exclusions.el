@@ -871,8 +871,6 @@ Condition 33 "253947308" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "1
 Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (2 "10")
 Condition 36 "3436931133" "(field_storage.CTRL.TELEMETRY_RX_FLUSH.value & ((~decoded_wr_biten[4]))) 1 -1" (3 "11")
 Condition 37 "3821888231" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
-Condition 39 "2746173117" "((field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) | (decoded_wr_data[8] & decoded_wr_biten[8])) 1 -1" (3 "10")
-Condition 40 "503348629" "(field_storage.CTRL.TELEMETRY_TX_FLUSH.value & ((~decoded_wr_biten[8]))) 1 -1" (3 "11")
 Condition 41 "4214688443" "(decoded_wr_data[8] & decoded_wr_biten[8]) 1 -1" (2 "10")
 Condition 50 "3055669046" "(decoded_wr_data[0] & decoded_wr_biten[0]) 1 -1" (2 "10")
 Condition 54 "615806284" "(decoded_wr_data[4] & decoded_wr_biten[4]) 1 -1" (2 "10")
