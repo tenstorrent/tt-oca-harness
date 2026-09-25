@@ -34,11 +34,12 @@ class smc_zeroer_multi_burst_test(smc_base_test):
     """Clear a region larger than one AXI burst and check both halves."""
 
     required_evidence = (
+        "CHK-ZEROER-INT-EN-HALF-WRITE",
         "CHK-ZEROER-MULTI-BURST-PRELOAD",
         "CHK-ZEROER-MULTI-BURST-STATUS",
         "CHK-ZEROER-MULTI-BURST-ZEROED",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

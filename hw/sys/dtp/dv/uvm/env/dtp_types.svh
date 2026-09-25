@@ -744,6 +744,11 @@ localparam int unsigned DtpXtrigNumCtp = dtp_dv_cfg_pkg::NumCtp;
 localparam int unsigned DtpXtrigNumIntCt = dtp_dv_cfg_pkg::NumIntCt;
 localparam int unsigned DtpXtrigNumCtmPorts = DtpXtrigNumCtp + DtpXtrigNumIntCt;
 localparam int unsigned DtpNumClkStopReq = dtp_dv_cfg_pkg::NumClkStopReq;
+// Shared-wire polarity per CONFIG.INVERT (bit index = INVERT) and the receive
+// latency of a port, from the bench configuration.
+localparam logic [1:0] DtpWireOrPull = dtp_dv_cfg_pkg::WireOrPull;
+localparam logic [1:0] DtpWireOrAssert = dtp_dv_cfg_pkg::WireOrAssert;
+localparam int unsigned DtpCtDstLatency = dtp_dv_cfg_pkg::CtDstLatency;
 
 localparam bit [63:0] DtpXtrigCtmBase = 64'h0;
 localparam int unsigned DtpXtrigCtmStride =

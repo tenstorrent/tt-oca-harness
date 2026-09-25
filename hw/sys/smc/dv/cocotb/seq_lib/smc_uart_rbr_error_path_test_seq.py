@@ -77,6 +77,9 @@ LSR_DR = _field_mask(_UART_H, "UART_16550_MAIN__LSR__DR_bm")
 LSR_PE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__PE_bm")
 LSR_FE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__FE_bm")
 LSR_BI = _field_mask(_UART_H, "UART_16550_MAIN__LSR__BI_bm")
+LSR_OE = _field_mask(_UART_H, "UART_16550_MAIN__LSR__OE_bm")
+#: The LSR error flags that clear on read (`uart_16550_main.rdl`).
+LSR_READ_CLEARED = LSR_OE | LSR_PE | LSR_FE | LSR_BI
 
 #: LCR.WLS encodings, from the field description in `uart_16550_main.rdl`.
 WLS_5 = 0x0
@@ -88,9 +91,14 @@ RX_UART = 0
 
 CLEAN_BYTE = 0x55
 #: Eight bits sent, five expected: the receiver samples its stop bit at the
-#: sixth transmitted bit. This byte puts a zero there and a one in the first
-#: five, so the frame is broken but not all zeros.
-FRAMING_BYTE = 0x01
+#: sixth transmitted bit. This byte, sent least significant bit first, puts a
+#: one in the first five, zeros in the sixth and seventh, and a one in the
+#: eighth. The sixth is where the stop bit is sampled, so the frame is broken
+#: but not all zeros. The eighth is what makes the receiver's framing visible:
+#: a receiver still framing eight bits reads the whole byte with a good stop
+#: bit, while one framing five reads only the low five bits.
+FRAMING_BYTE = 0x81
+FRAMING_FIVE_BITS = FRAMING_BYTE & 0x1F
 #: A trigger level above the receive FIFO depth: 0x5 selects 64 entries, which
 #: no FIFO in this configuration has.
 UNSUPPORTED_RXILVL = 0x5
@@ -112,6 +120,7 @@ class smc_uart_rbr_error_path_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_uart_rbr_error_path_test_seq") -> None:
         super().__init__(name)
         self.seen: list[tuple[str, int]] = []
+        self.received: dict[str, int] = {}
 
     def _regs(self, idx: int) -> dict[str, int]:
         return {
@@ -134,6 +143,7 @@ class smc_uart_rbr_error_path_test_seq(SmcCsrSeq):
         await self.csr_write(f"{tag}_DLH", r["ier"], 0)
         lcr = wls | (LCR_PEN if pen else 0) | (LCR_EPS if eps else 0)
         await self.csr_write(f"{tag}_LCR", r["lcr"], lcr)
+        await self.csr_read(f"{tag}_LCR_RB", r["lcr"], expected=lcr)
         await self.csr_write(f"{tag}_IER", r["ier"], IER_ERBFI | IER_ELSI)
         await self.csr_write(f"{tag}_FCR", r["iir"], fifo)
         # Reads clear what an earlier leg left behind.
@@ -143,13 +153,28 @@ class smc_uart_rbr_error_path_test_seq(SmcCsrSeq):
         return r
 
     async def _await_lsr(self, r: dict[str, int], tag: str, want: int) -> int:
+        """Poll LSR until ``want`` is set, then read it once more.
+
+        The character's error flags are levels while it sits in the receiver
+        buffer register, and `ERROR_IN_RCVR_FIFO` follows them directly, but
+        `PE`, `FE` and `BI` are sticky copies that are set a cycle later and
+        cleared by any read of LSR. The read that first sees `DR` can fall in
+        that cycle and return the character with its flag not yet set. The
+        character stays in the register until it is read out, so the flag is
+        set again after that read, and a second read before popping it sees
+        it. Every error flag returned by any read of the poll is kept.
+        """
         lsr = 0
+        seen = 0
         for _ in range(POLL_LIMIT):
             lsr = await self.csr_read(f"{tag}_LSR", r["lsr"])
+            seen |= lsr & LSR_READ_CLEARED
             if lsr & want == want:
-                return lsr
+                await Timer(POLL_NS, unit="ns")
+                again = await self.csr_read(f"{tag}_LSR_AGAIN", r["lsr"])
+                return again | seen
             await Timer(POLL_NS, unit="ns")
-        return lsr
+        return lsr | seen
 
     async def _leg(self, tag: str, tx_wls: int, rx_wls: int, tx_eps: bool, byte: int) -> int:
         """Send one character with the two ends configured as given."""
@@ -161,7 +186,8 @@ class smc_uart_rbr_error_path_test_seq(SmcCsrSeq):
         assert lsr & LSR_DR, (
             f"{tag}: no character reached the receiver with the FIFOs disabled (LSR=0x{lsr:08x})"
         )
-        await self.csr_read(f"{tag}_POP", rx["rbr"])
+        char = (await self.csr_read(f"{tag}_POP", rx["rbr"])) & 0xFF
+        self.received[tag] = char
         return lsr
 
     async def body(self) -> None:
@@ -194,6 +220,11 @@ class smc_uart_rbr_error_path_test_seq(SmcCsrSeq):
         assert framing & LSR_FE, (
             f"a character whose stop bit the receiver sampled on a data bit did not set LSR.FE "
             f"on the register path (LSR=0x{framing:08x})"
+        )
+        assert self.received["FRAMING"] == FRAMING_FIVE_BITS, (
+            f"the framing character was read back as 0x{self.received['FRAMING']:02x}, not the "
+            f"0x{FRAMING_FIVE_BITS:02x} of its low five bits; the receiver framed it with a "
+            f"word length other than the five it was programmed with"
         )
         assert framing & LSR_BI == 0, (
             f"the framing character also read as a break (LSR=0x{framing:08x}); it carries a "

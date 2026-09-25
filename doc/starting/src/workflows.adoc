@@ -758,7 +758,9 @@ contributor enables the hook.
 `regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
 (`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
 Verilator, and reviewdog artifacts; jobs report through
-`.github/actions/reviewdog-report`.
+`.github/actions/reviewdog-report`. A Checks API HTTP 5xx is retried.
+`lint-sv-verilator` and `lint-python` still pass or fail on the tool exit
+status when that post does not succeed.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab

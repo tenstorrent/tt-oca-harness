@@ -12,9 +12,13 @@ Layout
 * `tb/tb_top.sv` — pin-level testbench top (`cross_trigger_port_tb_top`):
   the DUT's AXI4-Lite CSR port is exposed as flattened `axil_*` pins for the
   shared AXI VIP's AXI4-Lite master; the core-side and GPIO pad pins are
-  exposed directly for cocotb stimulus and observation.
+  exposed directly for cocotb stimulus and observation. The CT_Req_out pad
+  sits on an open-drain shared wire (`ocah_open_drain_bus` from
+  `hw/common/dv/shims/analog/`) with two bench-side chiplet drivers; cocotb
+  sets the wire's pull and the drivers and observes the resolved wire.
 * `cocotb/tests/` — test modules; `ctp_base_test.py` carries the shared
-  bench helpers (bring-up, register access, pulse/window measurement).
+  bench helpers (bring-up, register access, pulse/window measurement, the
+  shared-wire drivers, and the cycle-exact wire-OR receive model).
 * `testlists/all.toml` — testlist and groups (`smoke`, `all`).
 
 The RTL closure comes from the `cross_trigger` Bender target plus the shared
@@ -42,10 +46,15 @@ Tests
 
 * `ctp_sanity_test` — reset defaults, CONFIG/STRETCH_MULT write/read law,
   STATUS read-only law, and a single-pulse wire-OR smoke.
-* `ctp_wire_or_test` — pad enable matrix and static data levels for both
+* `ctp_wire_or_test` — pad enable matrix and resting data levels for both
   INVERT senses, stretched transmit window (`STRETCH_MULT+1` cycles) over
   deterministic corners and randomized values, back-to-back restart, and
-  receive (`ct_dst`) checks for both INVERT senses and idle levels.
+  receive: one `ct_dst` pulse per wire assertion, at the assertion edge, for
+  both INVERT senses on the matching board pull.
+* `ctp_wire_or_bus_test` — the port on a shared wire with two other
+  chiplets: reset with the wire resting and held asserted, INVERT written
+  against the board, overlapping and adjacent pulls merging into one
+  trigger, the port hearing its own pull, and the bench's pull-mismatch flag.
 * `ctp_p2p_test` — pad enable matrix, sender and receiver four-phase
   handshake FSMs, full-duplex operation, `CONFIG.RESET` deadlock recovery,
   and INVERT-sense operation with logical STATUS readouts.
