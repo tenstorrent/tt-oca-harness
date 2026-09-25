@@ -72,8 +72,10 @@ module pll_wrap
 
   // 100 MHz reference clock (10 ns = 10000 ps period, fixed).
   initial begin : gen_clk_ref
-    osc_ref = 1'b0;
-    if (!osc_bench) forever #5000ps osc_ref = ~osc_ref;
+    if (!$test$plusargs("pll_osc_bench")) begin
+      osc_ref = 1'b0;
+      forever #5000ps osc_ref = ~osc_ref;
+    end
   end
 
   // Sys clock: 800 MHz (1.25 ns) default; override with +pll_sys_period_ns.
@@ -85,14 +87,18 @@ module pll_wrap
     if (period_ns != 1.25 && period_ns != 10.0)
       $fatal(1, "pll_wrap +pll_sys_period_ns must be 1.25 or 10, got %g", period_ns);
     period_ps = period_ns * 1000.0;
-    osc_sys = 1'b0;
-    if (!osc_bench) forever #(period_ps * 0.5) osc_sys = ~osc_sys;
+    if (!$test$plusargs("pll_osc_bench")) begin
+      osc_sys = 1'b0;
+      forever #(period_ps * 0.5) osc_sys = ~osc_sys;
+    end
   end
 
   // 200 MHz peripheral clock (5 ns = 5000 ps period, fixed).
   initial begin : gen_clk_periph
-    osc_periph = 1'b0;
-    if (!osc_bench) forever #2500ps osc_periph = ~osc_periph;
+    if (!$test$plusargs("pll_osc_bench")) begin
+      osc_periph = 1'b0;
+      forever #2500ps osc_periph = ~osc_periph;
+    end
   end
 
   /////////////////////////////

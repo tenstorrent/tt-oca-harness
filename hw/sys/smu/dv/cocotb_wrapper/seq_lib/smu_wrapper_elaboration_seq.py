@@ -180,9 +180,10 @@ class SmuWrapperElaborationSeq:
         seen_top: set[int] = set()
         mismatches = 0
         last_levels: dict = {}
-        # clk_smu_o is the clock pll_wrap delivers to the core (the reference
-        # oscillator while the primary reset holds), so the consumers are
-        # compared against it, a quarter period after each edge.
+        # clk_smu_o is the clock pll_wrap delivers to the core: with +pll_osc_bench
+        # it is the bench-driven sys oscillator at every instant, mux chain
+        # bypassed, so the consumers are compared against it a quarter period
+        # after each edge.
         quarter_ps = int(self.test.cfg.smu_clk_period_ns * 250)
         for _ in range(samples_per_edge):
             await RisingEdge(dut.clk_smu_o)
