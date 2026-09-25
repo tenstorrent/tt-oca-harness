@@ -152,7 +152,9 @@ tb/tb_top.sv                  one framework-neutral core: interface instances, D
                               and CDC-clear observables, SVA enables
   dtp_scan_if                 scan domain: scan-chain controls, forwarded STAP pins,
                               downstream-TAP attach enables
-  dtp_xtrig_if                cross-trigger domain: CTM req/ack pairs, CTP pad quartets
+  dtp_xtrig_if                cross-trigger domain: CTM req/ack pairs, CTP pad quartets,
+                              the CT_Req_out shared wires (pulls, chiplet drivers, group)
+                              and every port's receive pulse
   ocah_jtag_if x5             primary TAP and four downstream STAP TAPs
   ocah_axi_if x8              one active and one passive instance per DTP bus
 ----
@@ -202,7 +204,7 @@ through `OcahAxiConfig.bus()` at each bus's real geometry.
 |STAP host ports |Loopback (`tdi <- tdo`) by default; `dtp_scan_if.stap_<x>_ds_en` splices the downstream `u_stap_<x>_ds_if` TAP behind the port for the STAP-selection scenarios; the forwarded TAP pins mirrored onto `dtp_scan_if`
 |SMC/SEP OTP AXI-Lite |Flattened onto `u_smc_otp_slave_if` / `u_sep_otp_slave_if` (responders) and `u_smc_otp_axil_if` / `u_sep_otp_axil_if` (monitors); real geometry 32/32
 |DEBUG_CONTROL and IC_RESET |Boot-stall, clock-stop, and IC_RESET struct outputs flattened onto `dtp_tb_if`; `dtp_tb_if.xtrig_clk_stop_req` drives the CLA clock-stop requests
-|XTRIG CSR/CTP/CTM |`u_xtrig_master_if` (initiator) and `u_xtrig_axil_if` (monitor) for the CSR port (the generated CSR blocks elaborate under Verilator); CTM/CTP pins on `dtp_xtrig_if`
+|XTRIG CSR/CTP/CTM |`u_xtrig_master_if` (initiator) and `u_xtrig_axil_if` (monitor) for the CSR port (the generated CSR blocks elaborate under Verilator); CTM/CTP pins on `dtp_xtrig_if`. Every CT_Req_out pad sits on an open-drain wire (`ocah_open_drain_bus`, `hw/common/dv/shims/analog/`): a private wire with one bench-side chiplet driver, or the group wire the pads in `xtrig_ctp_wire_group` share; each wire rests at the pull of the board built for its port's INVERT sense, and the resolved wires and the ports' receive pulses are mirrored onto `dtp_xtrig_if`
 |Clocks/resets |`dtp_tb_if.clk`, `sys_rst_n`, `por_rst_n`: cocotb deposits them, the UVM harness generates the clock and sequences drive the resets; the JTAG master owns TCK/TRST sequencing
 |===
 
@@ -433,7 +435,8 @@ CTM model selects, `+DTP_XTRIG_NEGATIVE_CHECK=<n>+` corrupts the observed
 value of one cross-trigger evidence ID wherever the scenario records it (1
 `CHK-XTRIG-CSR`, 2 `CHK-XTRIG-SIGNAL`, 3 `CHK-XTRIG-ROUTE-MODEL`, 4
 `CHK-XTRIG-ISOLATION`, 5 `CHK-XTRIG-QUIET`, 6 `CHK-XTRIG-STRETCH`, 7
-`CHK-XTRIG-AXIL`, 8 `CHK-XTRIG-AW-LOCK`, 9 `CHK-XTRIG-AR-STALL`), (SV-UVM)
+`CHK-XTRIG-AXIL`, 8 `CHK-XTRIG-AW-LOCK`, 9 `CHK-XTRIG-AR-STALL`, 10
+`CHK-XTRIG-WIRE`), (SV-UVM)
 `DTP_J2A_REF_MODEL_NEGATIVE` makes the bridge request reference model predict
 corrupted addresses so the scoreboard pairing fails against the observed bus,
 `DTP_J2A_GEOMETRY_NEGATIVE` corrupts the expected address size of the per-pass
@@ -493,7 +496,8 @@ conventions under `uvm/` with identical basenames, one class per file:
   reset counters, the one-hot TAP state and the debug-TDR observables,
   named debug disables, request-activity counters, SVA enables), the scan domain
   (scan-chain controls, forwarded STAP pins, downstream-TAP attach
-  enables), and the cross-trigger pins.
+  enables), and the cross-trigger pins with the shared wires and the ports'
+  receive pulses.
 . `uvm/env/dtp_env_pkg.sv` — `dtp_types` (DUT constants, the JTAG2AXI
   codec and request decoder, the STAP device map, the cross-trigger CSR map
   from the generated address maps), `dtp_test_cfg`, `dtp_env_cfg`,
