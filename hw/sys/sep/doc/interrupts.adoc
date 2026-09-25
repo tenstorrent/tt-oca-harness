@@ -419,14 +419,20 @@ a delivery path, so software must not rely on sampling them; use the CSRs above.
 == Register Interfaces
 
 The EL2 PIC register block (`meipl`, `meie`, `meigwctrl`, `meigwclr`, and
-related registers) is documented with the full SEP address map in
-ifdef::backend-html5[]
-xref:sep:memory_map.adoc#sep-detailed-register-map[Memory Map — Detailed Register Map].
-endif::backend-html5[]
-ifdef::backend-pdf[]
-<<sep-detailed-register-map>>.
-endif::backend-pdf[]
+related registers) is documented in the register reference below.
 
 The per-source arrays in that table are listed from index 0. Index 0 is the
 reserved entry described in <<sep-interrupts,Interrupts>>: it exists so the array index
 equals the interrupt source ID, and the first programmable source is index 1.
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/el2_pic.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/el2_pic.adoc[leveloffset=+1]
+endif::backend-pdf[]

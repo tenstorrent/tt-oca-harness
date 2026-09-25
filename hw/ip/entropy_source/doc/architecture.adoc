@@ -118,3 +118,15 @@ the block and no further gating is required there. An integration that routes
 the pin off-chip, for example muxed onto a GPIO, owns restricting `DEBUG_CTRL`
 to the lifecycle or debug-enable states in which observing pre-conditioning
 entropy is acceptable.
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$entropy_source/regs/gen/html/entropy_source.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/entropy_source.adoc[leveloffset=+1]
+endif::backend-pdf[]

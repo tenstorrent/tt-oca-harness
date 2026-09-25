@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Clock and Reset Management
+= Clocks and Resets
 :description: SMC clock domains, reset architecture, and power-management integration.
 
 [[clock-and-reset-management]]

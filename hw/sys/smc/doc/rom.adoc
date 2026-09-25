@@ -38,3 +38,12 @@ On the response path, asserted `rom_flip_endianness_i` reverses the order of
 the eight bytes in each 64-bit ROM word; deasserted passes the word through
 unchanged. In `smc.sv`, this control comes from the ROM endianness bit in the
 eFuse shadow-register output.
+
+== Firmware Reference
+
+ifdef::backend-html5[]
+xref:smc-bootrom-prod:index.adoc[Production ROM Manual]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+`hw/sys/smc/bootrom/prod/doc/index.adoc` (Production ROM Manual)
+endif::backend-pdf[]

@@ -71,8 +71,20 @@ https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
 documentation] for the authoritative core functionality of the IP.
 The
 ifdef::backend-html5[]
-register map is reported in the xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map].
+register map follows below.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-register map is reported in the <<sep-detailed-register-map,Detailed Register Map>>.
+register map follows below.
+endif::backend-pdf[]
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$spi_controller/regs/gen/html/spi_controller.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc[leveloffset=+1]
 endif::backend-pdf[]

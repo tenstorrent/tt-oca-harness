@@ -12,6 +12,34 @@ pages covering the subsystem architecture, hardware services, and programming
 interfaces.
 
 ifdef::backend-html5[]
+== Reading Order
+
+* xref:overview.adoc[Overview]
+* xref:clk_rst.adoc[Clocks and Resets]
+* xref:cpu.adoc[CPU]
+* xref:rom.adoc[Boot ROM]
+* xref:fabric.adoc[Interconnect]
+* xref:interrupts.adoc[Interrupts]
+* xref:periphs.adoc[Peripherals]
+** xref:smc:dma.adoc[Direct Memory Access Engine]
+** xref:smc:zeroer.adoc[Zeroer]
+** xref:smc:watchdog.adoc[Watchdog Timers]
+** xref:ip:axi_lite_mailbox_unit/doc/index.adoc[Mailbox]
+** xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS]
+** xref:ip:efuse/doc/index.adoc[eFuse]
+** xref:ip:uart_16550/doc/index.adoc[UART 16550]
+** xref:ip:log_engine/doc/index.adoc[Log Engine]
+** xref:ip:i2c/doc/index.adoc[I2C]
+** xref:ip:i3ccore_wrap/doc/index.adoc[I3C]
+** xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
+** xref:ip:gpio/doc/index.adoc[GPIO]
+** xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
+* xref:dfd.adoc[Design-for-Debug and CLA]
+* xref:scan_protection.adoc[eFuse Scan Protection]
+* xref:memmap.adoc[Memory Map]
+endif::backend-html5[]
+
+ifdef::backend-html5[]
 ++++
 <span id="overview"></span>
 <span id="clock-and-reset-management"></span>
@@ -26,35 +54,12 @@ ifdef::backend-html5[]
 <span id="smc-scan-protection"></span>
 <span id="smc-memory-map"></span>
 ++++
+endif::backend-html5[]
 
-== Architecture and Processing
-
-* xref:overview.adoc#overview[Overview] -- responsibilities, structure, and the
-  top-level block diagram.
-* xref:clk_rst.adoc#clock-and-reset-management[Clock and Reset Management] --
-  clock domains, reset sequencing, and power-management integration.
-* xref:cpu.adoc#cpu-memory-system[CPU and Memory System] -- processor cluster,
-  caches, local memory, isolation, and debug.
-* xref:fabric.adoc#fabric[Fabric] -- internal networks, remapping, filtering,
-  protection, and routing.
-
-== Services and Peripherals
-
-* xref:periphs.adoc#peripherals[Peripherals] -- communication, telemetry, timer,
-  fuse, and GPIO blocks.
-* xref:interrupts.adoc#interrupts[Interrupts] -- interrupt routing, PLIC, CLINT,
-  and error delivery.
-* xref:rom.adoc#rom[Boot ROM] -- ROM architecture, firmware, and operation.
-* xref:dma.adoc#direct-memory-access-dma-engine[Direct Memory Access Engine] --
-  data-movement architecture, control, and integration.
-* xref:zeroer.adoc#memory-zeroer[Zeroer] -- hardware-assisted memory clearing.
-
-== Debug, Protection, and Reference
-
-* xref:dfd.adoc#smc-dfd-cla[Design-for-Debug and Core Logic Analyzer] -- event
-  observation, triggering, and trace capture.
-* xref:scan_protection.adoc#smc-scan-protection[eFuse Shadow Register Scan
-  Protection] -- scan policy for access-control assets.
-* xref:memmap.adoc#smc-memory-map[Memory Map] -- address-space organization,
-  access controls, and register documentation.
+ifdef::backend-html5[]
+++++
+<span id="architecture-and-processing"></span>
+<span id="services-and-peripherals"></span>
+<span id="debug-protection-and-reference"></span>
+++++
 endif::backend-html5[]

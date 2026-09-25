@@ -43,7 +43,7 @@ These three subsystems share a single primary clock domain (`clk_smu_i`) and
 are released from reset by the SMC's reset unit in a controlled sequence.
 Platform-wide clock, power and reset behaviour is described in the
 ifdef::backend-html5[]
-xref:ROOT:architecture.adoc#ocah-clock-domains[OCAH Architecture] chapter.
+xref:ROOT:clock_domains.adoc[Clock Domains] chapter.
 endif::backend-html5[]
 ifdef::backend-pdf[]
 <<ocah-clock-domains,OCAH Architecture>> chapter.

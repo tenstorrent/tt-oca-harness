@@ -87,3 +87,15 @@ hardware does not enforce the ordering.
 Following reset release, software reprograms ESRC, waits for startup health
 testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
 Consumers are released only after fresh endpoint/pool progress is observed.
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_reset_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[leveloffset=+1]
+endif::backend-pdf[]

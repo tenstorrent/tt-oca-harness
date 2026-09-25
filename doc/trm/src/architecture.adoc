@@ -11,6 +11,15 @@ subsystem composition, power and clock domains, reset hierarchy, and memory
 map. It is organised into focused topic pages; subsequent chapters provide
 detailed microarchitectural documentation for each subsystem.
 
+ifdef::backend-html5[]
+* xref:overview.adoc[Platform Overview]
+* xref:memory_map.adoc[OCAH Memory Map]
+* xref:power_domains.adoc[Power Domains]
+* xref:clock_domains.adoc[Clock Domains]
+* xref:reset.adoc[Reset]
+* <<ocah-rtl-assertions,RTL Assertions>>
+endif::backend-html5[]
+
 ifdef::backend-pdf[]
 include::overview.adoc[leveloffset=+1]
 include::memory_map.adoc[leveloffset=+1]

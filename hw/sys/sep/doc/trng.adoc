@@ -165,3 +165,27 @@ and its control interface.
 
 include::../../../ip/drbg/doc/architecture.adoc[leveloffset=+1]
 endif::backend-pdf[]
+
+== CSRNG Register Reference
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$csrng/regs/gen/html/csrng.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[leveloffset=+1]
+endif::backend-pdf[]
+
+== EDN Register Reference
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$edn/regs/gen/html/edn.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[leveloffset=+1]
+endif::backend-pdf[]

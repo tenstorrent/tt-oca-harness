@@ -51,3 +51,46 @@ secure-boot policy, checks the payload, locks sensitive fuse reads, and
 transfers control to BL1. The production ROM firmware documentation under
 `hw/sys/sep/bootrom/prod/doc/` describes that behavior and its build artifacts
 in detail.
+
+[[bl0-secure-boot-and-bl1-execution-unlock]]
+== BL0 Secure Boot and BL1 Execution Unlock
+
+The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
+SEP system into a runnable state after power on reset (PoR) and running
+the first stage of external firmware AKA BL1.
+
+The complete boot flow is specified by the production ROM documentation under
+`hw/sys/sep/bootrom/prod/doc/`. It covers CPU initialization, PMP fencing,
+fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
+manifest and payload validation, secure boot, demotion, attestation and
+hand-off, with requirement identifiers and an implementation-status matrix.
+The summary below places the ROM in the context of this chapter, the definitive
+description is in  the production ROM documentation
+
+* SEP initialization -- read configuration straps, determine boot options
+* Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
+* Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory
+* Validate it. Under secure boot this means authorizing the root key
+against a trust anchor the device holds -- a ROM-embedded digest or an
+OTP hash bank -- before any public-key operation, then checking
+revocation and anti-rollback, then verifying an RSA-3072 signature on
+OTBN
+* Load the payload it describes, decrypting it when the manifest says so,
+and verify its hashes -- over the ciphertext before decryption and the
+plaintext after
+* Select BL1 from the payload table of contents, unlock execution in the
+CPU PMP, and jump
+* Failure of any check ends the boot. A failure the backup manifest slot
+recovers from is a warning; exhausting every slot is an error, after
+which the processor enters a fail loop requiring a reset to exit
+
+
+ifdef::backend-html5[]
+xref:sep-bootrom-prod:index.adoc[Production ROM Manual]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+`hw/sys/sep/bootrom/prod/doc/index.adoc` (Production ROM Manual)
+endif::backend-pdf[]
+
+A future ROM patching facility using OTP backup storage is planned for the
+second generation; it is not implemented in the first generation.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= SEP Interconnect
+= Interconnect
 :description: SEP internal fabric, external interfaces, address remapping, and mailboxes.
 
 ifdef::backend-html5[]

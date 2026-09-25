@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= CPU & Memory System
+= CPU
 :description: SMC processor cluster, caches, local memory, isolation, interrupts, and debug.
 
 [[cpu-memory-system]]
@@ -29,7 +29,8 @@ management workloads
 .SMC CPU cluster and TileLink-to-AXI integration
 image::SMC_CPUCluster_FIG010.png[alt="SMC CPU cluster and TileLink-to-AXI integration",width=100%,pdfwidth=100%]
 
-== Processor Core Overview
+[[processor-core-overview]]
+== Processor Core
 
 <<smc-processor-core-features-table>> summarizes the key features of the Rocket CPU core, and
 its cache hierarchy
@@ -47,7 +48,8 @@ its cache hierarchy
 |Reset Vector |Per-core, independently configurable (56b)
 |========================================================
 
-== Cache and Memory Hierarchy
+[[cache-and-memory-hierarchy]]
+== Local Memory
 
 <<smc-cache-and-memory-hierarchy-table>> lists the default memory sizes and their
 configurability.
@@ -97,7 +99,8 @@ endif::backend-pdf[]
 ).
 
 [[smc-per-core-reset]]
-== Reset, Boot, and Initialization
+[[reset-boot-and-initialization]]
+== Reset and Boot
 
 Each CPU core supports an independent reset mechanism and a programmable
 reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
@@ -271,7 +274,8 @@ watchdog timeout is followed by a cold reset, so the
 brief crossing window has no functional consequence. The CSR path is
 synchronous and crosses no domains.
 
-== Interrupt and Control Integration
+[[interrupt-and-control-integration]]
+== Interrupt Integration
 
 All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
 units; the authoritative `cpu_interrupts_o` map; PLIC/CLINT register
@@ -283,25 +287,22 @@ ifdef::backend-pdf[]
 <<interrupts,Interrupts>>.
 endif::backend-pdf[]
 
-== Watchdog Timer System
+== Watchdog Interface
 
-Each CPU core includes a dedicated watchdog timer (at 0xC000_0000 + N *
-0x400), enabling per-core fault detection and recovery without impacting
-other cores. Base addresses and interrupt-related context for the WDT are
-summarized in
+Each core has a watchdog. See
 ifdef::backend-html5[]
-xref:smc:interrupts.adoc#interrupts[Interrupts].
+xref:watchdog.adoc[Watchdog Timers]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-<<interrupts,Interrupts>>.
+<<smc-watchdog,Watchdog Timers>>
 endif::backend-pdf[]
+for operation and the register reference.
 
-Timeouts are configurable to suit different workloads, and staged
-warnings (followed by reset) allow software intervention before hardware
-reset is triggered.
-
-Watchdog monitoring can be disabled during debugging to prevent false
-triggers, supporting uninterrupted development and troubleshooting.
+ifdef::backend-html5[]
+++++
+<span id="watchdog-timer-system"></span>
+++++
+endif::backend-html5[]
 
 == Advanced Bus Infrastructure Monitoring and Error Management
 
@@ -329,7 +330,8 @@ breakpoints. These debug capabilities function independently of
 functional resets and allow override of reset vectors to support
 firmware development and diagnostics.
 
-== Detailed Register Map
+[[detailed-register-map]]
+== Register Reference
 
 ifdef::backend-html5[]
 ++++
@@ -337,7 +339,6 @@ include::partial$smc/regs/gen/html/blocks/cpu_ctrl.html[]
 include::partial$smc/regs/gen/html/blocks/clint.html[]
 include::partial$smc/regs/gen/html/blocks/debug_module.html[]
 include::partial$smc/regs/gen/html/blocks/bus_error_unit.html[]
-include::partial$smc/regs/gen/html/blocks/wdt.html[]
 ++++
 endif::backend-html5[]
 
@@ -346,5 +347,4 @@ include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[leveloffset=+1]
 include::../regs/gen/adoc/blocks/clint.adoc[leveloffset=+1]
 include::../regs/gen/adoc/blocks/debug_module.adoc[leveloffset=+1]
 include::../regs/gen/adoc/blocks/bus_error_unit.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/wdt.adoc[leveloffset=+1]
 endif::backend-pdf[]

@@ -49,6 +49,22 @@ See <<fixed-figure>>.
 
 
 class BlockCatalogTests(unittest.TestCase):
+    def test_register_maps_keep_one_legacy_fragment(self):
+        source = '''= Registers
+:ocah-trm:
+
+++++
+<h3 id="csrng-INTR_STATE" data-register-alias="INTR_STATE">CSRNG status</h3>
+++++
+
+++++
+<h3 id="edn-INTR_STATE" data-register-alias="INTR_STATE">EDN status</h3>
+++++
+'''
+        html, _ = self.convert("javascript", source)
+        for fragment in ("INTR_STATE", "csrng-INTR_STATE", "edn-INTR_STATE"):
+            self.assertEqual(html.count(f'id="{fragment}"'), 1)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

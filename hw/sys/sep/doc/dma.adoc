@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Direct Memory Access (DMA)
+
+[[sep-dma]]
+
+[[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
+
+The module is based on the
+https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA
+Controller] design. Its primary purpose is to offload the SEP CPU from
+the overhead of large or slow data copying operations. The DMA has a
+built-in SHA2 engine for inline hashing.
+
+Consult the
+https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller
+documentation] for the authoritative core functionality of the IP. The
+register map follows the integration description.
+
+Transfers operate on a word by word basis. This is because the TL-UL
+bus, used in the OpenTitan implementation, does not support burst
+transfers. AXI4-lite also does not support bursts.
+
+Features:
+
+* Transfer modes
+** Memory to memory
+*** e.g. Scratch SRAM to CPU ICCM SRAM
+** Memory to peripheral
+*** e.g. Scratch SRAM to I3C
+** Peripheral to memory
+*** e.g. SPI to Scratch SRAM
+* Addressing modes
+** Autoincrementing source and/or destination address for memories
+** Fixed address for peripherals
+** Circular (wrapping) address range for buffers and queues in
+memories
+* Inline hashing during data transfer
+** SHA2-256 or SHA2-384
+** Digest stored in DMA CSR
+* Interrupt Outputs: full transaction done, chunk transaction done,
+error
+* Hardware handshake via interrupt inputs
+** Interrupts from IP peripherals enable streaming data transfers: UART,
+SPI
+** Peripheral signals read FIFO data available and transmit FIFO space
+available to DMA for automatic flow control
+
+[[sep-dma-reference-diagram]]
+.OpenTitan DMA core and inline hashing reference architecture
+image::opentitan_dma.svg[alt="OpenTitan DMA core and inline hashing reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-dma-reference-diagram>> shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.
+
+[[och-modifications]]
+== OCAH Modifications
+
+* Full AXI4 interfaces at the SEP DMA wrapper boundaries, with internal
+AXI4-Lite and TL-UL conversion for the OpenTitan core.
+
+[[future-enhancements]]
+== Future Enhancements
+
+_The following feature enhancements will be considered for the next
+generation implementation:_
+
+* Inline AES encryption or decryption (with/without inline hashing)
+* Inline hashing with only digest written to target slave
+* Optimize implementation by using cryptographic resources (AES,
+HMAC-SHA2) engines inside the cryptographic subsystem and adding
+streaming interfaces
+
+Replace the FSM based controller with microsequencer or simple CPU
+(potentially the same one as used in the Key Manager)
+
+<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
+described in this section.
+
+[[proposed-sep-dma-extensions-figure]]
+.Proposed SEP DMA extensions
+image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::ip:partial$secure_dma/regs/gen/html/secure_dma.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[leveloffset=+1]
+endif::backend-pdf[]

@@ -18,6 +18,17 @@ function tableTitle (section, headings) {
 exports.register = function (registry, { file } = {}) {
   registry.treeProcessor(function () {
     this.process(function (doc) {
+      // Keep legacy fragments at their first table while scoped IDs address
+      // each map independently on pages containing several register banks.
+      const legacyIds = new Set()
+      for (const block of doc.findBy()) {
+        if (block.getContext() !== 'pass') continue
+        block.lines = [block.getSource().replace(/(<h[1-6]\b[^>]* data-register-alias="([^"]+)"[^>]*>)/g, (heading, tag, id) => {
+          if (legacyIds.has(id) || doc.getCatalog().refs['$key?'](id)) return heading
+          legacyIds.add(id)
+          return `<span id="${id}"></span>${heading}`
+        })]
+      }
       if (!doc.hasAttribute('ocah-trm')) return doc
       const counts = { image: 0, table: 0 }
       const entries = []

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Fabric
+= Interconnect
 :description: SMC networks, address remapping, traffic filtering, protection, and routing.
 
 [[fabric]]

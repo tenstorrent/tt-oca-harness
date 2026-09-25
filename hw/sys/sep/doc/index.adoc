@@ -11,39 +11,45 @@ organized into focused topic pages so architecture, security policy, software
 interfaces, and generated register details can be read independently.
 
 ifdef::backend-html5[]
-== Start Here
+== Reading Order
 
-* xref:introduction.adoc[Introduction] -- SEP responsibilities and services.
-* xref:threat_model.adoc[Threat Model] -- attacks considered by the design.
-* xref:attack_countermeasures.adoc[Attack Countermeasures] -- architectural,
-  debug, and DFT protections.
-* xref:overview.adoc[Hardware Overview] -- major SEP blocks and their
-  relationships.
+* xref:overview.adoc[Overview]
+* xref:threat_model.adoc[Threat Model]
+* xref:attack_countermeasures.adoc[Attack Countermeasures]
+* xref:clk_rst.adoc[Clocks and Resets]
+** xref:sep:reset_controller.adoc[SEP Reset Controller]
+* xref:cpu.adoc[CPU]
+* xref:rom.adoc[Boot ROM]
+* xref:fabric.adoc[Interconnect]
+* xref:interrupts.adoc[Interrupts]
+* xref:periphs.adoc[Peripherals]
+** xref:sep:dma.adoc[Direct Memory Access (DMA)]
+** xref:sep:peripheral_subsystem.adoc[Peripheral Subsystem]
+** xref:sep:spi.adoc[Serial Peripheral Interface (SPI)]
+** xref:sep:watchdog.adoc[Watchdog Timer (WDT)]
+* xref:security.adoc[Security and Lifecycle]
+** xref:sep:otp_fuse_controller.adoc[OTP Fuse Controller]
+** xref:sep:token_processing.adoc[Token Processing]
+** xref:sep:security_disable.adoc[Security Disable]
+** xref:sep:lifecycle_controller.adoc[Lifecycle Controller]
+** xref:sep:test_mode.adoc[Test Mode Entry]
+* xref:crypto.adoc[Cryptographic Subsystem]
+** xref:sep:trng.adoc[TRNG and DRBG]
+** xref:ip:entropy_source/doc/index.adoc[Entropy Source]
+** xref:sep:aes.adoc[AES Cipher]
+** xref:sep:hmac.adoc[HMAC-SHA2]
+** xref:sep:kmac.adoc[KMAC-SHA3]
+** xref:sep:adams_bridge.adoc[Adams Bridge (ABR)]
+** xref:sep:otbn.adoc[OTBN PKA Public Key Accelerator]
+** xref:ip:key_manager/doc/index.adoc[Key Manager]
+* xref:memory_map.adoc[Memory Map]
+endif::backend-html5[]
 
-== Architecture and Interfaces
-
-* xref:fabric.adoc[SEP Interconnect] -- internal and external transaction paths.
-* xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter] -- shared SEP and SMC filter decode.
-* xref:cpu.adoc[CPU Subsystem] -- VeeR EL2 configuration, boot, DMA, and alarms.
-* xref:rom.adoc[Boot ROM] -- immutable boot firmware and ROM architecture.
-* xref:interrupts.adoc[Interrupts] -- PIC assignments and non-PIC interrupt paths.
-* xref:crypto.adoc[Cryptographic Subsystem] -- cryptographic accelerators,
-  entropy, and key management.
-* xref:periphs.adoc[Fuse Controller and Lifecycle Controller] -- OTP, lifecycle
-  and security control, SPI, watchdog, and reset control.
-
-== Security Control
-
-* xref:token_processing.adoc[Token Processing] -- token generation, matching,
-  and fault handling.
-* xref:security_disable.adoc[Security Disable] -- emergency security-disable
-  behavior.
-* xref:lifecycle_controller.adoc[Life Cycle Controller] -- lifecycle states,
-  demotion, and feature control.
-* xref:test_mode.adoc[Test Mode Entry] -- secure test-mode qualification.
-
-== Register Reference
-
-* xref:memory_map.adoc[Memory Map and Register Reference] -- address regions and
-  generated register tables.
+ifdef::backend-html5[]
+++++
+<span id="start-here"></span>
+<span id="architecture-and-interfaces"></span>
+<span id="security-control"></span>
+<span id="register-reference"></span>
+++++
 endif::backend-html5[]

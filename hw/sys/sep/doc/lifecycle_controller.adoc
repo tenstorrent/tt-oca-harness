@@ -1085,3 +1085,15 @@ NOTE: The specific bit-allocation convention -- which reserved bits
 are reserved for which adopters, and how bit assignments are advertised
 in the RDL / package outputs -- is currently *open* and will be defined
 in a future revision of this specification.
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_lifecycle_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[leveloffset=+1]
+endif::backend-pdf[]

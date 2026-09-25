@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Clocks and Resets
+
+[[sep-clocks-and-resets]]
+
+[[sep-clock-distribution]]
+== Clock Distribution
+
+<<sep-clock-tree>> shows the SEP clock distribution and the domains used by its
+subblocks.
+
+[[sep-clock-tree]]
+.SEP clock tree and clock domains
+image::SEP_CLOCKING_FIG002.svg[alt="SEP clock tree and clock domains",width=100%,pdfwidth=100%]
+
+== Reset Architecture
+
+The platform reset chapter describes the shared reset sources and their
+subsystem effects. The SEP Reset Controller describes software requests,
+AXI isolation, per-accelerator sequencing and the shared TRNG reset domain.
+
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:reset.adoc[Platform Reset]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-reset,Platform Reset>>
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+xref:reset_controller.adoc[SEP Reset Controller]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-reset-controller,SEP Reset Controller>>
+endif::backend-pdf[]

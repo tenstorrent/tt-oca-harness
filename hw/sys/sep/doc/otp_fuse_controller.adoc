@@ -368,3 +368,15 @@ shim interface. Only the generic controller and the shim interfaces are defined
 here.
 
 For the canonical eFuse IP documentation covering the `efuse_interface_controller` internals, sensing FSM, and programming protocol, see `hw/ip/efuse/doc/index.adoc` (included in the SMC documentation via `hw/sys/smc/doc/periphs.adoc`).
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_efuse_map.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[leveloffset=+1]
+endif::backend-pdf[]

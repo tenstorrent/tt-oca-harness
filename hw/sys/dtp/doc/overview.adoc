@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Architecture and Access Paths
+= Overview
 :description: DTP internal structure and how debug access reaches the JIU and CTN.
 
 [[dtp-overview]]

@@ -82,6 +82,7 @@ stage_gen_html() {
   [ -d "$src" ] || return 0
   mkdir -p "$dst"
   cp -R "$src/." "$dst/"
+  python3 "$ROOT/tools/doc/scope_register_ids.py" "$src" "$dst"
 }
 
 # draw.io-exported SVGs append a trailing <switch> fallback block ("Text is

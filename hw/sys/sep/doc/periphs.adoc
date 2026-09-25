@@ -1,52 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Fuse Controller and Lifecycle Controller
-:description: SEP OTP, lifecycle and security control, SPI, watchdog, and reset-control peripherals.
+= Peripherals
 
-The SEP integrates an OTP fuse controller, a peripheral subsystem, a SPI host,
-a watchdog timer, and software-controlled reset domains.
+[[sep-peripherals]]
+
+SEP peripherals provide data movement, external I/O and watchdog services.
+Reset control is described in Clocks and Resets; OTP and lifecycle controls
+are described in Security and Lifecycle.
 
 ifdef::backend-html5[]
+* xref:dma.adoc[Direct Memory Access (DMA)]
+* xref:peripheral_subsystem.adoc[Peripheral Subsystem]
+* xref:spi.adoc[Serial Peripheral Interface (SPI)]
+* xref:watchdog.adoc[Watchdog Timer (WDT)]
+endif::backend-html5[]
 
+ifdef::backend-html5[]
 ++++
 <span id="fuse-controller-otp-fuse-controller-otp"></span>
 <span id="fuse-fields"></span>
 <span id="anti-rollback-counter-arbc-anti-rollback-counter-arbc"></span>
 <span id="rtl-integration"></span>
-++++
-
-* xref:sep:otp_fuse_controller.adoc[OTP Fuse Controller]
-
-++++
 <span id="peripheral-subsystem"></span>
-++++
-
-* xref:sep:peripheral_subsystem.adoc[Peripheral Subsystem]
-
-++++
 <span id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"></span>
 <span id="spi-use-cases"></span>
 <span id="features"></span>
-++++
-
-* xref:sep:spi.adoc[Serial Peripheral Interface (SPI)]
-
-++++
 <span id="watchdog-timer-wdt-watchdog-timer-wdt"></span>
-++++
-
-* xref:sep:watchdog.adoc[Watchdog Timer (WDT)]
-
-++++
 <span id="sep-reset-controller"></span>
 <span id="sep-trng-reset"></span>
 ++++
-
-* xref:sep:reset_controller.adoc[SEP Reset Controller]
-
-* xref:sep:token_processing.adoc[Token Processing]
-* xref:sep:security_disable.adoc[Security Disable]
-* xref:sep:lifecycle_controller.adoc[Life Cycle Controller]
-
+For related controls, see xref:security.adoc[Security and Lifecycle] and
+xref:clk_rst.adoc[Clocks and Resets].
 endif::backend-html5[]

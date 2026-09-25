@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= CPU Subsystem
-:description: SEP VeeR EL2 configuration, boot, DMA, and alarm processing.
+= CPU
+:description: SEP VeeR EL2 configuration, local memories, debug and interfaces.
 ifdef::backend-html5[]
 :sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
 :sep-rom-reference: xref:sep:rom.adoc#sep-rom[SEP Boot ROM]
@@ -39,7 +39,7 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
 
 [[cpu-feature-summary]]
-== CPU Feature Summary
+== Processor Core
 
 * RV32IMC including bit manipulation extensions Zb(abcsefbr)
 * 4-stage pipeline
@@ -72,8 +72,64 @@ for the complete source-by-source mapping
 * Debug unit with JTAG interface and internal AXI4 Debug Master
 * Hardware Secure Boot Unlock
 
+== Local Memory
+
+[[dual-scratch-register-banks]]
+=== Dual Scratch Register Banks
+
+The SEP top level has two scratch banks, each containing eight 32-bit
+registers. Both have AXI4-lite slave interfaces and an 8-byte register
+stride. The registers have the following properties:
+
+* Software read and write access
+* No hardware read access - they are only intended as a software
+register
+
+The two sets are distinguished by their different reset properties.
+
+Scratch register set 0 has the default *cold reset* behavior. This means
+that its state is only changed by either a software write operation or a
+power-on-reset event.
+
+Scratch register set 1 has *additional warm reset* behavior. It can be
+reset by a signal from the Watchdog Timer (WDT).
+
+
+==== Scratch Register Reference
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_scratch.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_scratch.adoc[leveloffset=+3]
+endif::backend-pdf[]
+
+
+== Reset and Boot
+
+The CPU begins execution in BL0 after cold reset. Boot ROM owns the ROM
+layout, integrity limitations and BL0-to-BL1 boot sequence.
+
+{sep-rom-reference}.
+
+ifdef::backend-html5[]
+[[boot-rom]]
+See xref:rom.adoc[Boot ROM].
+
+[[bl0-secure-boot-and-bl1-execution-unlock]]
+See xref:rom.adoc#bl0-secure-boot-and-bl1-execution-unlock[BL0 boot sequence].
+
+endif::backend-html5[]
+Future versions of the SEP will also have additional hardware redundancy
+by running the CPU in Dual Core Lock Step. This will further protect
+against fault attacks.
+
+
 [[configuration-straps]]
-== Configuration Straps
+=== Configuration Straps
 
 There shall be a minimum of 8 static configuration straps (preferably
 16) which are associated with the GPIO interface pins. Note that the
@@ -89,7 +145,7 @@ configuring the device as a primary versus secondary chiplet and
 recovery mode versus normal mode.
 
 [[cpu-reset-vector]]
-== Reset Vector
+=== Reset Vector
 
 The SEP CPU reset vector is held in a test data register (TDR) in the EL2
 debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
@@ -102,166 +158,38 @@ address into the TDR through JTAG while the SEP CPU is held in reset. The
 programmed value persists until the TAP is reset. This supports bring-up and
 failure analysis flows that execute from a memory other than the Boot ROM.
 
+
+== System Interfaces
+
+=== DMA Interface
+
+The DMA engine is described under Peripherals:
+ifdef::backend-html5[]
+xref:dma.adoc[Direct Memory Access (DMA)]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-dma,Direct Memory Access (DMA)>>
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+[[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
+See xref:dma.adoc[DMA].
+
+[[och-modifications]]
+See xref:dma.adoc#och-modifications[DMA integration].
+
+[[future-enhancements]]
+See xref:dma.adoc#future-enhancements[DMA future enhancements].
+
+endif::backend-html5[]
 [[debug-module]]
-== Debug Module
+== Debug
 
 The VeeR EL2 debug module is reached from the DTP SEP debug STAP through the
 core's JTAG TAP. TAP access is already gated by lifecycle state, so the DMI
 core aperture is left enabled at the SMU and does not take a second lifecycle
 check. The DMI uncore aperture is unused: the debug module's AXI master already
 reaches the rest of the SEP fabric.
-
-[[boot-rom]]
-== Boot ROM
-
-The Boot ROM holds the BL0 immutable Root-of-Trust code which is the
-first code running on the SEP host upon power on. It has the following
-features:
-
-* 64 kB capacity
-* 64-bit data path without ECC or an integrity-error sideband in the open
-generic ROM integration
-
-See {sep-rom-reference} for the hardware and firmware-image layout.
-
-There is no ROM patching facility in the first generation
-implementation. This feature is planned for the second generation design
-and will use OTP as the backup storage.
-
-[[bl0-secure-boot-and-bl1-execution-unlock]]
-== BL0 Secure Boot and BL1 Execution Unlock
-
-The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
-SEP system into a runnable state after power on reset (PoR) and running
-the first stage of external firmware AKA BL1.
-
-The complete boot flow is specified by the production ROM documentation under
-`hw/sys/sep/bootrom/prod/doc/`. It covers CPU initialization, PMP fencing,
-fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
-manifest and payload validation, secure boot, demotion, attestation and
-hand-off, with requirement identifiers and an implementation-status matrix.
-The summary below places the ROM in the context of this chapter, the definitive
-description is in  the production ROM documentation
-
-* SEP initialization -- read configuration straps, determine boot options
-* Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
-* Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory
-* Validate it. Under secure boot this means authorizing the root key
-against a trust anchor the device holds -- a ROM-embedded digest or an
-OTP hash bank -- before any public-key operation, then checking
-revocation and anti-rollback, then verifying an RSA-3072 signature on
-OTBN
-* Load the payload it describes, decrypting it when the manifest says so,
-and verify its hashes -- over the ciphertext before decryption and the
-plaintext after
-* Select BL1 from the payload table of contents, unlock execution in the
-CPU PMP, and jump
-* Failure of any check ends the boot. A failure the backup manifest slot
-recovers from is a warning; exhausting every slot is an error, after
-which the processor enters a fail loop requiring a reset to exit
-
-Future versions of the SEP will also have additional hardware redundancy
-by running the CPU in Dual Core Lock Step. This will further protect
-against fault attacks.
-
-[[dual-scratch-register-banks]]
-== Dual Scratch Register Banks
-
-There shall be two sets of 16 x 32-bit scratch register banks
-instantiated at the SEP top level. Both are designed as simple SystemRDL
-defined configuration registers with AXI4-lite slave interfaces. The
-configuration registers have the following properties:
-
-* Software read and write access
-* No hardware read access - they are only intended as a software
-register
-
-The two sets are distinguished by their different reset properties.
-
-Scratch register set 0 has the default *cold reset* behavior. This means
-that its state is only changed by either a software write operation or a
-power-on-reset event.
-
-Scratch register set 1 has *additional warm reset* behavior. It can be
-reset by a signal from the Watchdog Timer (WDT).
-
-[[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
-== Direct Memory Access (DMA)
-
-The module is based on the
-https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA
-Controller] design. Its primary purpose is to offload the SEP CPU from
-the overhead of large or slow data copying operations. The DMA has a
-built-in SHA2 engine for inline hashing.
-
-Consult the
-https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller
-documentation] for the authoritative core functionality of the IP. The
-register map is reported in the {sep-register-map}.
-
-Transfers operate on a word by word basis. This is because the TL-UL
-bus, used in the OpenTitan implementation, does not support burst
-transfers. AXI4-lite also does not support bursts.
-
-Features:
-
-* Transfer modes
-** Memory to memory
-*** e.g. Scratch SRAM to CPU ICCM SRAM
-** Memory to peripheral
-*** e.g. Scratch SRAM to I3C
-** Peripheral to memory
-*** e.g. SPI to Scratch SRAM
-* Addressing modes
-** Autoincrementing source and/or destination address for memories
-** Fixed address for peripherals
-** Circular (wrapping) address range for buffers and queues in
-memories
-* Inline hashing during data transfer
-** SHA2-256 or SHA2-384
-** Digest stored in DMA CSR
-* Interrupt Outputs: full transaction done, chunk transaction done,
-error
-* Hardware handshake via interrupt inputs
-** Interrupts from IP peripherals enable streaming data transfers: UART,
-SPI
-** Peripheral signals read FIFO data available and transmit FIFO space
-available to DMA for automatic flow control
-
-[[sep-dma-reference-diagram]]
-.OpenTitan DMA core and inline hashing reference architecture
-image::opentitan_dma.svg[alt="OpenTitan DMA core and inline hashing reference architecture",width=100%,pdfwidth=100%]
-
-<<sep-dma-reference-diagram>> shows the upstream DMA core. SEP adapts the host register interface
-to its AXI fabric as described below.
-
-[[och-modifications]]
-=== OCAH Modifications
-
-* 64-bit AXI4-lite slave interface (replaces or translates the 32-bit
-TL-UL bus protocol)
-
-[[future-enhancements]]
-=== Future Enhancements
-
-_The following feature enhancements will be considered for the next
-generation implementation:_
-
-* Inline AES encryption or decryption (with/without inline hashing)
-* Inline hashing with only digest written to target slave
-* Optimize implementation by using cryptographic resources (AES,
-HMAC-SHA2) engines inside the cryptographic subsystem and adding
-streaming interfaces
-
-Replace the FSM based controller with microsequencer or simple CPU
-(potentially the same one as used in the Key Manager)
-
-<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
-described in this section.
-
-[[proposed-sep-dma-extensions-figure]]
-.Proposed SEP DMA extensions
-image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
 [[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]
 == Alarm Aggregation Processor (AGP)
@@ -282,3 +210,15 @@ them and issue response actions. Response actions include:
 * Force wipe of all sensitive state
 * Initiate reset sequence on local components, subsystems or the entire
 SEP
+
+== Register Reference
+
+ifdef::backend-html5[]
+++++
+include::partial$sep/regs/gen/html/blocks/sep_cpu_ctrl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/sep_cpu_ctrl.adoc[leveloffset=+1]
+endif::backend-pdf[]
