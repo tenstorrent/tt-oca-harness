@@ -26,3 +26,23 @@ not forked here.
 
 The root [`Bender.yml`](../../../Bender.yml) is the source inventory for these
 modules and their vendored counterparts.
+
+## CDC and synchronizers
+
+TT product RTL reaches synchronizers through this stack (see
+[`../README.md`](../README.md) for the full picture):
+
+| Module | Role |
+|--------|------|
+| `prim_sync3`, `prim_sync3r`, `prim_sync4`, `prim_sync4r` | Width-parametrized wrappers around [`../och_prim_generic/`](../och_prim_generic/) multi-stage flop chains; under `` `ifdef SIMULATION `` they optionally insert OpenTitan `prim_cdc_rand_delay` before the leaf chain |
+| `prim_sync_reset` | Async-reset synchronizer with scan bypass |
+| `prim_sync_data_autohs` | Multi-bit coherent CDC with auto handshake |
+| `prim_sync3_pulse` | Clock-domain pulse crossing |
+
+For a plain 2-FF synchronizer, instantiate OpenTitan `prim_flop_2sync` directly.
+Do not add another wrapper here.
+
+[`../sync.sv`](../sync.sv) is **not** part of `och_prim`. It implements the
+PULP `sync` module name for vendored `common_cells` when flows pass
+`-t common_cell_sync_shim`. Product blocks must not instantiate `sync`; only
+PULP CDC sources in `vendor/pulp-platform/common_cells/` do.
