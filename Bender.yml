@@ -1564,6 +1564,7 @@ sources:
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_wrapper.sv
+      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_padring.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv
       - hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals_cdc.sv
@@ -1588,6 +1589,7 @@ sources:
       - hw/top/sep_ip_integration.sv
   - target: sep_wrapper
     files:
+      - hw/sys/smc/rtl/smc_peripherals/rtl/ext_boot_seq_done_qual.sv
       - hw/top/sep_wrapper.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:

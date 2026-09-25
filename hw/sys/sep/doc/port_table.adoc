@@ -43,7 +43,7 @@ endif::backend-html5[]
 
 |`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1
-|`ext_boot_seq_done_i` |`logic` |Input |1 |External boot sequence completion (memory repair and shadow register override done); gates reset release. |External boot/repair controller |1'b1
+|`ext_boot_seq_done_i` |`logic` |Input |1 |Boot sequence completion qualified to `clk_i` (memory repair and shadow register override done); gates reset release. In SMU, driven from SMC-qualified logic. In standalone SEP, synchronize and qualify before this port. |SMC-qualified boot done or external synchronizer |1'b1
 
 |`dmi_core_enable` |`logic` |Input |1 |Enables DMI accesses to the core debug module (addresses 0x00-0x4F). Tied high at SMU; TAP access is already lifecycle-gated. |Debug infrastructure |1'b1
 |`dmi_uncore_enable` |`logic` |Input |1 |Enables DMI accesses to an external uncore aperture (addresses 0x50+). Unused: the core debug module AXI master already reaches the SEP fabric. |Debug infrastructure |Tie to '0 if unused

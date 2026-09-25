@@ -147,7 +147,8 @@ module efuse_interface_controller #(
 
   // Fuse Sense Released Reset
   assign fuse_sense_done_o = fuse_sense_done;
-  // External boot sequence done includes memory repair and shadow reg override being complete, the rest of SMC can now boot
+
+  // ext_boot_seq_done_i must be synchronized and set-once qualified
   assign reset_n = fuse_sense_done && rst_ni && ext_boot_seq_done_i;
 
   prim_rst_sync u_reset_n_sync (

@@ -175,6 +175,15 @@ module sep_wrapper
 
   assign wdt_timer_rst_req_o = wdt_timer_rst_req;
 
+  logic ext_boot_seq_done_qual;
+
+  ext_boot_seq_done_qual u_ext_boot_seq_done_qual (
+    .clk_i                    (clk_i),
+    .rst_ni                   (rst_ni),
+    .ext_boot_seq_done_i      (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
+  );
+
   /////////////////////
   // SEP core        //
   /////////////////////
@@ -208,7 +217,7 @@ module sep_wrapper
     .cpu_run_req_i,
     .test_en_i,
     .scan_rst_ni,
-    .ext_boot_seq_done_i,
+    .ext_boot_seq_done_i (ext_boot_seq_done_qual),
     .dmi_core_enable,
     .dmi_uncore_enable,
     .dmi_uncore_en,

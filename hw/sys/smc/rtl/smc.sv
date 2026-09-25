@@ -157,6 +157,7 @@ module smc #(
   // External boot / memory-repair signals
   output logic skip_mem_repair_o,
   input  logic ext_boot_seq_done_i,
+  output logic ext_boot_seq_done_qual_o,
 
   // SEP security disable
   input logic sep_security_disable_i,
@@ -594,6 +595,7 @@ module smc #(
 
     // Efuse dft signal
     .ext_boot_seq_done_i                   (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o              (ext_boot_seq_done_qual_o),
 
     // SEP security disable
     .sep_security_disable_i                (sep_security_disable_i),

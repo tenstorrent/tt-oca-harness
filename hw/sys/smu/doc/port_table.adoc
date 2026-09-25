@@ -126,7 +126,7 @@
 |`smc_fuse_sense_done_o` |`logic` |Output |1 |SMC fuse sense completion output. |Memory repair logic |N/A
 |`smc_fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output. |External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Memory repair logic |N/A
-|`ext_boot_seq_done_i` |`logic` |Input |1 |External boot sequence completion input (memory repair and shadow register override done); gates reset release. |External boot/repair controller |N/A
+|`ext_boot_seq_done_i` |`logic` |Input |1 |Asynchronous external boot sequence completion (memory repair and shadow register override done). Connect only to SMC; qualified internally and fanned to SEP. |External boot/repair controller |N/A
 
 |`lc_state_o` |`logic` |Output |`[2*LC_STATE_WIDTH-1:0]` |Lifecycle state output (driven by SEP when `SEP=1`, else `8'hf0`). |External systems |N/A
 |`lc_sigint_err_o` |`logic` |Output |1 |Lifecycle signal integrity error. |External systems |N/A

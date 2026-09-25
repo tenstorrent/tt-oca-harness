@@ -106,6 +106,7 @@ module smc_peripherals #(
 
   // Efuse dft signal
   input  logic ext_boot_seq_done_i,
+  output logic ext_boot_seq_done_qual_o,
 
   // SEP security disable
   input  logic sep_security_disable_i,
@@ -856,6 +857,14 @@ module smc_peripherals #(
   /////////////////////
 
   logic fuse_reset_n;
+  logic ext_boot_seq_done_qual;
+
+  ext_boot_seq_done_qual u_ext_boot_seq_done_qual (
+    .clk_i                    (clk_smc_i),
+    .rst_ni                   (rst_cold_ni),
+    .ext_boot_seq_done_i      (ext_boot_seq_done_i),
+    .ext_boot_seq_done_qual_o (ext_boot_seq_done_qual)
+  );
 
   smc_efuse_wrapper u_smc_efuse_wrapper (
     .clk_i                           (clk_smc_i),
@@ -882,7 +891,7 @@ module smc_peripherals #(
     .efuse_shim_command_resp_i       (efuse_shim_command_resp_i),
 
     .sep_security_disable_i          (sep_security_disable_i),
-    .ext_boot_seq_done_i             (ext_boot_seq_done_i),
+    .ext_boot_seq_done_i             (ext_boot_seq_done_qual),
 
     .reset_n_o                       (fuse_reset_n),
     .fuse_sense_done_o               (fuse_sense_done_o),
@@ -1124,6 +1133,8 @@ module smc_peripherals #(
     .test_en_i                  (test_en_i),
     .scan_rst_ni                (scan_rst_ni)
   );
+
+  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_qual;
 
   assign powergood_stable_o = powergood_stable;
 
