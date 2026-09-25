@@ -214,8 +214,8 @@ details |interrupts
 |Fabric Control |Address remapping, inbound/outbound filters, and fabric
 control registers |fabric
 
-|Peripherals and I/O |GPIO, UART, I2C, PVT, eFuse, Telemetry, and System
-Timer registers |periphs
+|Peripherals and I/O |Mailbox, System Timer OCTS, eFuse, UART 16550, Log
+Engine, I2C, I3C, AVSBus, GPIO, and Telemetry Receiver |periphs
 
 |Reset Management |Reset unit and system control registers |clk_rst
 
