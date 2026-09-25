@@ -201,56 +201,56 @@ module smc_efuse_wrapper
 
     .efuse_map_t                 (smc_efuse_pkg::efuse_map_t)
   ) u_efuse_interface_controller (
-    .clk_i                            (clk_i),
-    .rst_ni                           (rst_ni),
+    .clk_i                              (clk_i),
+    .rst_ni                             (rst_ni),
 
-    .test_en_i                        (test_en_i),
-    .scan_rst_ni                      (scan_rst_ni),
+    .test_en_i                          (test_en_i),
+    .scan_rst_ni                        (scan_rst_ni),
 
     // Functional AXI4-Lite
-    .axil_req_i                       (axil_req_i),
-    .axil_resp_o                      (axil_resp_o),
+    .axil_req_i                         (axil_req_i),
+    .axil_resp_o                        (axil_resp_o),
 
     // JTAG AXI4-Lite Post-access-control demux
-    .axil_jtag_req_i                  (axil_smc_otp_jtag_req_filtered[0]),
-    .axil_jtag_resp_o                 (axil_smc_otp_jtag_resp_filtered[0]),
+    .axil_jtag_req_i                    (axil_smc_otp_jtag_req_filtered[0]),
+    .axil_jtag_resp_o                   (axil_smc_otp_jtag_resp_filtered[0]),
 
     // SHIM CSR
-    .fuse_bank_ctrl_req_o             (fuse_bank_ctrl_req_o),
-    .fuse_bank_ctrl_resp_i            (fuse_bank_ctrl_resp_i),
+    .fuse_bank_ctrl_req_o               (fuse_bank_ctrl_req_o),
+    .fuse_bank_ctrl_resp_i              (fuse_bank_ctrl_resp_i),
 
     // SHIM custom command interface
-    .fuse_command_req_o               (efuse_shim_command_req_o),
-    .fuse_command_resp_i              (efuse_shim_command_resp_i),
+    .fuse_command_req_o                 (efuse_shim_command_req_o),
+    .fuse_command_resp_i                (efuse_shim_command_resp_i),
 
-    .secure_tm_i                      (1'b0),
-    .security_disable_i               (sep_security_disable_i),
-    .efuse_field_map_i                (smc_efuse_pkg::EfuseFieldMap),
+    .secure_tm_i                        (1'b0),
+    .security_disable_i                 (sep_security_disable_i),
+    .efuse_field_map_i                  (smc_efuse_pkg::EfuseFieldMap),
 
-    .reset_n_o                        (reset_n_o),
-    .fuse_sense_done_o                (fuse_sense_done_o),
-    .security_disable_o               (), // SEP only
-    .shadow_regs_o                    (shadow_regs_o),
+    .reset_n_o                          (reset_n_o),
+    .fuse_sense_done_o                  (fuse_sense_done_o),
+    .security_disable_o                 (), // SEP only
+    .shadow_regs_o                      (shadow_regs_o),
 
-    .ext_boot_seq_done_i              (ext_boot_seq_done_i),
+    .ext_boot_seq_done_i                (ext_boot_seq_done_i),
 
-    .is_write_locked_shadow_regs_o    (efuse_debug_o[0]),
-    .is_read_locked_shadow_regs_o     (efuse_debug_o[1]),
-    .is_program_locked_o              (efuse_debug_o[2]),
-    .is_read_locked_o                 (efuse_debug_o[3]),
-    .is_write_setup_only_o            (efuse_debug_o[4]),
-    .is_lc_state_access_o             (efuse_debug_o[5]),
-    .is_read_timeout_debug_o          (efuse_debug_o[6]),
-    .is_program_timeout_debug_o       (efuse_debug_o[7]),
-    .is_efuse_req_err_o               (efuse_debug_o[8]),
-    .is_secure_tm_blocked_o           (efuse_debug_o[9]),
-    .is_rma_sip_token_match_debug     (),
-    .is_rma_chiplet_token_match_debug (),
+    .is_write_locked_shadow_regs_o      (efuse_debug_o[0]),
+    .is_read_locked_shadow_regs_o       (efuse_debug_o[1]),
+    .is_program_locked_o                (efuse_debug_o[2]),
+    .is_read_locked_o                   (efuse_debug_o[3]),
+    .is_write_setup_only_o              (efuse_debug_o[4]),
+    .is_lc_state_access_o               (efuse_debug_o[5]),
+    .is_read_timeout_debug_o            (efuse_debug_o[6]),
+    .is_program_timeout_debug_o         (efuse_debug_o[7]),
+    .is_efuse_req_err_o                 (efuse_debug_o[8]),
+    .is_secure_tm_blocked_o             (efuse_debug_o[9]),
+    .is_rma_sip_token_match_debug_o     (),
+    .is_rma_chiplet_token_match_debug_o (),
 
-    .sec_disable_token_o              (),
-    .token_match_fault_o              (),
+    .sec_disable_token_o                (),
+    .token_match_fault_o                (),
 
-    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
+    .locked_field_access_interrupt_o    (locked_field_access_interrupt_o)
   );
 
   assign lc_sigint_err_o = lc_sigint_err;

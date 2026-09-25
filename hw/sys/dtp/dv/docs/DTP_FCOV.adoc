@@ -80,7 +80,7 @@ covergroups are unaffected by the scope file.
 |STAP / 3DCR |`stap_3dcr_cg` |`dtp_scan_fcov` (`c_stap_*`, `c_3dcr_*`)
 |iJTAG SIBs |`ijtag_sib_cg` |`dtp_scan_fcov` (`c_sib_*`, `c_instrument_*`)
 |Cross-trigger CTP |`ctp_cg`, `ctp_wire_or_rx_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
-|Cross-trigger CTM |`ctm_cg` |`dtp_xtrig_fcov` (`c_ctm_*`)
+|Cross-trigger CTM |`ctm_cg`, `ctm_route_cg` |`dtp_xtrig_fcov` (`c_ctm_*`; `cg_ctm_route` on the commercial simulator)
 |Debug-disable gating |`dbg_disable_cg` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests, mirrored by `dtp_scan_fcov` field-value points
 |===
 
@@ -326,6 +326,20 @@ mode delivering a trigger from its shared wire.
 |Destination index |all configured destination ports (26 default)
 |===
 
+==== `ctm_route_cg`
+
+*Description*: Covers the routes the matrix carried. A destination rise is
+credited to each source that rose within the preceding 32 system clocks and
+that the destination's `CT_SRC` `CONFIG_0` `CT_DST_SELECT` mask, shadowed from
+the CSR writes, selects.
+
+[cols=",",options="header",]
+|===
+|Cross |Bins
+|CLA source x CTP destination |10 internal CT sources x 16 CTP destinations
+|CTP source x CLA destination |16 CTP sources x 10 internal CT destinations
+|===
+
 ==== `dbg_disable_cg`
 
 *Description*: Covers the per-field debug-disable gating contract for the
@@ -528,7 +542,7 @@ changes, and the review accepts no entry that stimulus can reach.
 |`dtp_scan_dbg_disable_matrix_test` |`dbg_disable_cg` scan-side cells (8 fields)
 |`dtp_jtag2axi_dbg_disable_matrix_test` |`dbg_disable_cg` bridge cells (3 fields)
 |`dbg_disable` group |Complete 22-cell `dbg_disable_cg` closure
-|CTP / CTM scenarios |`ctp_cg`, `ctp_wire_or_rx_cg`, `ctm_cg`
+|CTP / CTM scenarios |`ctp_cg`, `ctp_wire_or_rx_cg`, `ctm_cg`, `ctm_route_cg`
 |===
 
 === Collection Strategy

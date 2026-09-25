@@ -55,38 +55,38 @@ module sep #(
   input  logic ext_boot_seq_done_i,
 
   // DMI port for uncore
-  input  logic        dmi_core_enable,
-  input  logic        dmi_uncore_enable,
-  output logic        dmi_uncore_en,
-  output logic        dmi_uncore_wr_en,
-  output logic [6:0]  dmi_uncore_addr,
-  output logic [31:0] dmi_uncore_wdata,
-  input  logic [31:0] dmi_uncore_rdata,
-  output logic        dmi_active,
+  input  logic        dmi_core_enable_i,
+  input  logic        dmi_uncore_enable_i,
+  output logic        dmi_uncore_en_o,
+  output logic        dmi_uncore_wr_en_o,
+  output logic [6:0]  dmi_uncore_addr_o,
+  output logic [31:0] dmi_uncore_wdata_o,
+  input  logic [31:0] dmi_uncore_rdata_i,
+  output logic        dmi_active_o,
 
-  output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
+  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,
 
   // CPU lockstep control/status (inert unless the core is built with
   // RV_LOCKSTEP_ENABLE)
   input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
   output sep_pkg::sep_lockstep_status_t lockstep_status_o,
 
-  input logic [31:1] jtag_id,
+  input logic [31:1] jtag_id_i,
 
   // Interrupt inputs
-  input logic                      timer_int,
-  input logic                      soft_int,
-  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
+  input logic                      timer_int_i,
+  input logic                      soft_int_i,
+  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req_i,
 
   // Memory macro interfaces
   output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
   input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
 
-  output sep_pkg::sep_sram_req_t    sep_sram_req,
-  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp,
+  output sep_pkg::sep_sram_req_t    sep_sram_req_o,
+  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,
 
-  output sep_pkg::sep_sram_req_t    sep_boot_rom_req,
-  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp,
+  output sep_pkg::sep_sram_req_t    sep_boot_rom_req_o,
+  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp_i,
 
   /////////
   // SMN External AXI interfaces
@@ -109,15 +109,15 @@ module sep #(
   input logic entropy_rosc_sample_clk_i,
 
   // OTBN external SRAM interfaces (from prim_ram_1p_scr_ext inside OTBN)
-  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req,
-  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp,
+  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req_o,
+  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp_i,
 
-  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req,
-  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp,
+  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req_o,
+  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp_i,
 
   // Adams Bridge external SRAM interface (tech macros in sep_ip_integration)
-  output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req,
-  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp,
+  output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req_o,
+  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,
 
   // External TRNG AXI-Lite passthrough (to sep_ip_integration in sep_wrapper)
   output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,
@@ -577,7 +577,7 @@ NUM_EXT_DEMUX_PORTS
     sep_internal_interrupts[42]     = |periph_bus_err;
   end
 
-  assign sep_interrupts = {extintsrc_req, sep_internal_interrupts};
+  assign sep_interrupts = {extintsrc_req_i, sep_internal_interrupts};
 
   // Expose KM error signals as output ports
   assign km_unrecoverable_err_o = km_unrecoverable_err;
@@ -617,37 +617,37 @@ NUM_EXT_DEMUX_PORTS
     .test_en_i                      (test_en_i),
 
     // DMI port for uncore
-    .dmi_core_enable                (dmi_core_enable),
-    .dmi_uncore_enable              (dmi_uncore_enable),
-    .dmi_uncore_en                  (dmi_uncore_en),
-    .dmi_uncore_wr_en               (dmi_uncore_wr_en),
-    .dmi_uncore_addr                (dmi_uncore_addr),
-    .dmi_uncore_wdata               (dmi_uncore_wdata),
-    .dmi_uncore_rdata               (dmi_uncore_rdata),
-    .dmi_active                     (dmi_active),
+    .dmi_core_enable_i              (dmi_core_enable_i),
+    .dmi_uncore_enable_i            (dmi_uncore_enable_i),
+    .dmi_uncore_en_o                (dmi_uncore_en_o),
+    .dmi_uncore_wr_en_o             (dmi_uncore_wr_en_o),
+    .dmi_uncore_addr_o              (dmi_uncore_addr_o),
+    .dmi_uncore_wdata_o             (dmi_uncore_wdata_o),
+    .dmi_uncore_rdata_i             (dmi_uncore_rdata_i),
+    .dmi_active_o                   (dmi_active_o),
 
-    // jtag_id and nmi_vec should be tied to constant in the top level or sourced from a CSR
-    .nmi_vec                        (nmi_vec),
-    .jtag_id                        (jtag_id),
+    // jtag_id_i and nmi_vec_i should be tied to constant in the top level or sourced from a CSR
+    .nmi_vec_i                      (nmi_vec),
+    .jtag_id_i                      (jtag_id_i),
 
     // Non-maskable interrupt, should be asserted for at least 2 clock cycles
     //                             (Documentation section 3.16, https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/memory-map.html#non-maskable-interrupt-nmi-signal-and-vector)
-    .nmi_int                        (intr_wdog_timer_bark),
-    .timer_int                      (timer_int),
-    .soft_int                       (soft_int),
-    .extintsrc_req                  (sep_interrupts),
+    .nmi_int_i                      (intr_wdog_timer_bark),
+    .timer_int_i                    (timer_int_i),
+    .soft_int_i                     (soft_int_i),
+    .extintsrc_req_i                (sep_interrupts),
 
-    .sep_cpu_trace                  (sep_cpu_trace),
+    .sep_cpu_trace_o                (sep_cpu_trace_o),
 
-    .iccm_ecc_single_error          (cpu_iccm_ecc_single_error),
-    .iccm_ecc_double_error          (cpu_iccm_ecc_double_error),
-    .dccm_ecc_single_error          (cpu_dccm_ecc_single_error),
-    .dccm_ecc_double_error          (cpu_dccm_ecc_double_error),
+    .iccm_ecc_single_error_o        (cpu_iccm_ecc_single_error),
+    .iccm_ecc_double_error_o        (cpu_iccm_ecc_double_error),
+    .dccm_ecc_single_error_o        (cpu_dccm_ecc_single_error),
+    .dccm_ecc_double_error_o        (cpu_dccm_ecc_double_error),
 
-    .dec_tlu_perfcnt0               (cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
-    .dec_tlu_perfcnt1               (cpu_dec_tlu_perfcnt1),
-    .dec_tlu_perfcnt2               (cpu_dec_tlu_perfcnt2),
-    .dec_tlu_perfcnt3               (cpu_dec_tlu_perfcnt3),
+    .dec_tlu_perfcnt0_o             (cpu_dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
+    .dec_tlu_perfcnt1_o             (cpu_dec_tlu_perfcnt1),
+    .dec_tlu_perfcnt2_o             (cpu_dec_tlu_perfcnt2),
+    .dec_tlu_perfcnt3_o             (cpu_dec_tlu_perfcnt3),
 
     .lockstep_ctrl_i                (lockstep_ctrl_i),
     .lockstep_status_o              (lockstep_status_o),
@@ -706,8 +706,8 @@ NUM_EXT_DEMUX_PORTS
     .csr_in_axil_resp_o   (/* UNUSED */),
     .csr_out_axil_req_o   (/* UNUSED */),
     .csr_out_axil_resp_i  ('0),
-    .mem_req_o            (sep_sram_req),
-    .mem_rsp_i            (sep_sram_rsp),
+    .mem_req_o            (sep_sram_req_o),
+    .mem_rsp_i            (sep_sram_rsp_i),
     .busy_o               (/* UNUSED */)
   );
 
@@ -777,8 +777,8 @@ NUM_EXT_DEMUX_PORTS
     .csr_in_axil_resp_o   (/* UNUSED */),
     .csr_out_axil_req_o   (/* UNUSED */),
     .csr_out_axil_resp_i  ('0),
-    .mem_req_o            (sep_boot_rom_req),
-    .mem_rsp_i            (sep_boot_rom_rsp),
+    .mem_req_o            (sep_boot_rom_req_o),
+    .mem_rsp_i            (sep_boot_rom_rsp_i),
     .busy_o               (/* UNUSED */)
   );
 
@@ -886,13 +886,13 @@ NUM_EXT_DEMUX_PORTS
     .intr_abr_error_o                       (intr_abr_error),
     .intr_abr_notif_o                       (intr_abr_notif),
 
-    .sep_crypto_pka_imem_sram_req_o         (sep_crypto_pka_imem_sram_req),
-    .sep_crypto_pka_imem_sram_rsp_i         (sep_crypto_pka_imem_sram_rsp),
-    .sep_crypto_pka_dmem_sram_req_o         (sep_crypto_pka_dmem_sram_req),
-    .sep_crypto_pka_dmem_sram_rsp_i         (sep_crypto_pka_dmem_sram_rsp),
+    .sep_crypto_pka_imem_sram_req_o         (sep_crypto_pka_imem_sram_req_o),
+    .sep_crypto_pka_imem_sram_rsp_i         (sep_crypto_pka_imem_sram_rsp_i),
+    .sep_crypto_pka_dmem_sram_req_o         (sep_crypto_pka_dmem_sram_req_o),
+    .sep_crypto_pka_dmem_sram_rsp_i         (sep_crypto_pka_dmem_sram_rsp_i),
 
-    .abr_mem_req_o                          (abr_mem_req),
-    .abr_mem_rsp_i                          (abr_mem_rsp),
+    .abr_mem_req_o                          (abr_mem_req_o),
+    .abr_mem_rsp_i                          (abr_mem_rsp_i),
 
     .crypto_alert_o                         (crypto_alert),
 
@@ -1122,7 +1122,7 @@ NUM_EXT_DEMUX_PORTS
 
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugCpuStatusLaneWidth_A, $bits
-      ({sep_cpu_trace.trace_rv_i_valid_ip, sep_cpu_trace.trace_rv_i_exception_ip, sep_cpu_trace.trace_rv_i_interrupt_ip, 13'b0}
+      ({sep_cpu_trace_o.trace_rv_i_valid_ip, sep_cpu_trace_o.trace_rv_i_exception_ip, sep_cpu_trace_o.trace_rv_i_interrupt_ip, 13'b0}
           ) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugEccPerfLaneWidth_A, $bits
@@ -1136,12 +1136,12 @@ NUM_EXT_DEMUX_PORTS
                                     ({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0})
                                     == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceAddressLaneWidth_A, $bits
-                                    (sep_cpu_trace.trace_rv_i_address_ip[15:0]) == 16)
+                                    (sep_cpu_trace_o.trace_rv_i_address_ip[15:0]) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceInsnLaneWidth_A, $bits
-                                    (sep_cpu_trace.trace_rv_i_insn_ip[15:0]) == 16)
+                                    (sep_cpu_trace_o.trace_rv_i_insn_ip[15:0]) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugTraceExceptionLaneWidth_A, $bits
-      ({sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]}) == 16)
+      ({sep_cpu_trace_o.trace_rv_i_ecause_ip[3:0], sep_cpu_trace_o.trace_rv_i_tval_ip[11:0]}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugControlLaneWidth_A, $bits
       ({8'b0, cpu_run_ack_o, debug_mode_status_o, cpu_halt_status_o, cpu_halt_ack_o, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
@@ -1166,9 +1166,9 @@ NUM_EXT_DEMUX_PORTS
   // External debug bus assignment (24 lanes, 16 bits per lane)
   assign ext_debug_bus_o = {
     // [383:368] CPU trace valid and exception
-    sep_cpu_trace.trace_rv_i_valid_ip,
-    sep_cpu_trace.trace_rv_i_exception_ip,
-    sep_cpu_trace.trace_rv_i_interrupt_ip,
+    sep_cpu_trace_o.trace_rv_i_valid_ip,
+    sep_cpu_trace_o.trace_rv_i_exception_ip,
+    sep_cpu_trace_o.trace_rv_i_interrupt_ip,
     13'b0,
 
     // [367:352] ECC errors and performance counters
@@ -1200,14 +1200,14 @@ NUM_EXT_DEMUX_PORTS
     13'b0,
 
     // [319:304] CPU trace instruction address [15:0]
-    sep_cpu_trace.trace_rv_i_address_ip[15:0],
+    sep_cpu_trace_o.trace_rv_i_address_ip[15:0],
 
     // [303:288] CPU trace instruction [15:0]
-    sep_cpu_trace.trace_rv_i_insn_ip[15:0],
+    sep_cpu_trace_o.trace_rv_i_insn_ip[15:0],
 
     // [287:272] CPU trace ecause and tval [15:0]
     {
-      sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]
+      sep_cpu_trace_o.trace_rv_i_ecause_ip[3:0], sep_cpu_trace_o.trace_rv_i_tval_ip[11:0]
     },
 
     // [271:256] Debug control signals
