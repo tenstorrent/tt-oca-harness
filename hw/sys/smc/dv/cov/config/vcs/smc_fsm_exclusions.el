@@ -16,12 +16,6 @@
 // generator's docstring and the ANNOTATION before each block state the facts.
 //==================================================
 
-CHECKSUM: "3775597833 2717742095"
-ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
-MODULE: accumulator_bank
-Fsm bank_status "2717742095"
-Transition BANK_PARTIAL->BANK_EMPTY "1->0"
-
 CHECKSUM: "3564686069 2272768170"
 ANNOTATION: "SMC-FSM-F2-DEFAULT: next_state = AVS_IDLE is the always_comb default of the protocol FSM, which the extractor lists as a transition from every state; every state has a case arm and every arm assigns next_state, so the default never fires. The three states whose own arm assigns AVS_IDLE reach it in the ordinary sequence and stay graded."
 ANNOTATION: "SMC-FSM-F5-RESET-EDGE: the state register's reset assignment is expanded into a transition from every state, and no case arm of the source state assigns the reset state, so the edge exists only if the block's reset is asserted while the FSM occupies that one state. The DV package grades reset behaviour through its reset leaves."
@@ -154,10 +148,8 @@ Transition StretchTxSetup->AcquireStart "23->1"
 Transition StretchTxSetup->Idle "23->0"
 Transition StretchTxSetup->WaitForStop "23->13"
 Transition TransmitAck->AcquireStart "11->1"
-Transition TransmitAck->Idle "11->0"
 Transition TransmitAck->WaitForStop "11->13"
 Transition TransmitAckPulse->AcquireStart "12->1"
-Transition TransmitAckPulse->Idle "12->0"
 Transition TransmitHold->AcquireStart "10->1"
 Transition TransmitHold->Idle "10->0"
 Transition TransmitHold->WaitForStop "10->13"
