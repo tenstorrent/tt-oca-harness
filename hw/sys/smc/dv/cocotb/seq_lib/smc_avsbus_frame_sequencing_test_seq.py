@@ -43,6 +43,8 @@ from .smc_avsbus_protocol_utils import (
     AVS_STATE,
     CLEAR_MAX_RETRIES_ATTEMPTED_BM,
     CLEAR_SLAVE_UNRESPONSIVE_BM,
+    CMD_FIFO_OCCUPIED_BM,
+    CMD_FIFO_OCCUPIED_BP,
     CMD_TYPE_READ,
     MAX_RETRIES_BM,
     MAX_RETRIES_BP,
@@ -376,6 +378,13 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         its reply buffered and pushed later, after the earlier reply has taken
         the last slot, so with one slot left before the pair the second reply
         meets a full FIFO.
+
+        The pair only goes out as a middle subframe if the second command is
+        queued before the first subframe ends, which two register writes in a
+        row cannot promise against a fast AVS clock. `architecture.adoc` says
+        the master launches nothing while the readback FIFO is full, so the
+        pair is queued behind a full FIFO and one reply is then popped: both
+        commands are waiting when the first launch is decided.
         """
         label = "OVERFLOW"
         cfg0 = await self.csr_read(f"{label}_CFG0", AVS_CFG_0)
@@ -386,6 +395,8 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         for i in range(prefill):
             await self.csr_write(f"{label}_PREFILL{i}", AVS_CMD, CMD_RAIL_VOLTAGE)
         await self._await_occupancy(label, prefill)
+        await self.csr_write(f"{label}_FILL", AVS_CMD, CMD_RAIL_VOLTAGE)
+        await self._await_occupancy(label, RB_FIFO_DEPTH)
         interrupt = await self.csr_read(f"{label}_INTR_BEFORE", AVS_INTERRUPT)
         assert interrupt & INT_READBACK_OVERFLOW == 0, (
             f"{label}: READBACK_OVERFLOW_INT already set before the pair (0x{interrupt:08x})"
@@ -393,6 +404,14 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         set_avs_sdata(1)
         await self.csr_write(f"{label}_CMD0", AVS_CMD, CMD_RAIL_VOLTAGE)
         await self.csr_write(f"{label}_CMD1", AVS_CMD, CMD_AVSBUS_STATUS)
+        fifos = await self.csr_read(f"{label}_PAIR_QUEUED", AVS_FIFOS_STATUS)
+        queued = fifo_field(fifos, CMD_FIFO_OCCUPIED_BM, CMD_FIFO_OCCUPIED_BP)
+        assert queued == 2, (
+            f"{label}: {queued} of the pair are still queued behind a full readback FIFO, "
+            f"not 2; the master launched a command with no room for its reply "
+            f"(AVS_FIFOS_STATUS=0x{fifos:08x})"
+        )
+        await self.csr_read(f"{label}_POP", AVS_READBACK_REG)
         await self._wait_state(label, "AVS_RETRY_SHIFT_XMIT_AND_RECV_SUBFRAME")
         set_avs_sdata(0)
         for _ in range(POLL_LIMIT):
