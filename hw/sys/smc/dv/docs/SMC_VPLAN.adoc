@@ -11389,6 +11389,39 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-290-smc_cpu_uncore_reset_test]]
+===== 290 `smc_cpu_uncore_reset_test`
+
+*Source Module*: `smc_cpu_uncore_reset_test`
+
+*BFM / Model*: none; observation on `RESET_CTRL` and `RESET_TIMEOUT`
+
+*Objective*: Request the CPU cluster's uncore reset on its own with every core released. The other CPU reset leaves request core level resets and core pulses, never the uncore reset alone.
+
+*Test Coverage*:
+
+* `RESET_CTRL.uncore_reset_n_n0_scan` is the uncore's active-low reset. `RESET_TIMEOUT.reset_applied` is set once a software reset request "has been applied either after drain completes or after a force-mode timeout". With `RESET_TIMEOUT` in force mode after 32 cycles, writing the uncore reset low with every core field high has to set `reset_applied`.
+* Writing the uncore reset high again removes the only request, so `reset_applied` has to clear and `reset_timeout` has to read clear.
+
+*Test Procedure*:
+
+[arabic]
+. Check that `RESET_CTRL` has the uncore and every core released and that no reset is applied.
+. Program `RESET_TIMEOUT` to force mode after 32 cycles. Write the uncore reset low, read it back, and poll for `reset_applied`.
+. Write the uncore reset high and poll for `reset_applied` clear. Restore `RESET_TIMEOUT` and read back both registers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CPU-UNCORE-RESET` |The uncore reset held alone set `reset_applied`, and releasing it cleared `reset_applied` and `reset_timeout`
+|===
+
+*Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
