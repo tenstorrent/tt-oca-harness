@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-24T19:19:53+00:00",
+  "generated_at": "2026-09-25T19:22:13+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -233,6 +233,70 @@
         }
       ],
       "test_pass_rate": 97.06
+    },
+    {
+      "failed_tests": 2,
+      "flaky_tests": 2,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-25T19:22:13+00:00",
+      "id": "e462bf812d31bfea",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-82d91350a0fabef4",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 92.38,
+            "branch": 97.54,
+            "condition": 69.0,
+            "functional": 66.54,
+            "line": 98.75,
+            "toggle": 95.85,
+            "user": 92.381
+          },
+          "flow": "smu",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 6,
+            "by_category": {
+              "missing_stimulus": 2,
+              "needs_review": 1,
+              "unreachable": 3,
+              "user": 2
+            },
+            "by_disposition": {
+              "cover": 2,
+              "waive": 6
+            },
+            "by_metric": {
+              "user": 8
+            },
+            "by_status": {
+              "accepted": 6,
+              "open": 2
+            },
+            "details_available": true,
+            "hole_group_count": 6,
+            "native_point_count": 8,
+            "observations_complete": false,
+            "open": 2,
+            "unclassified": 2
+          },
+          "raw_metrics": {
+            "assertion": 92.38,
+            "branch": 97.54,
+            "condition": 69.0,
+            "functional": 46.58,
+            "line": 98.75,
+            "toggle": 96.11,
+            "user": 92.381
+          },
+          "status": "FAIL",
+          "target": "compile_smu_chiplet",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.04
     }
   ],
   "schema_version": "0.2"
