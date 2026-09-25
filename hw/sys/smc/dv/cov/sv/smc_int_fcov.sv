@@ -158,10 +158,12 @@ module smc_int_fcov #(
       bins out_of_range = default;
     }
     cp_threshold: coverpoint threshold;
-    x_claim: cross cp_dev, cp_threshold {
+    x_claim: cross cp_dev, cp_threshold{
       // Priorities are three bits wide, so threshold 7 passes no source and
       // the only claim it can pair with is the idle one.
-      ignore_bins masked_all = binsof(cp_threshold) intersect {7} && !binsof(cp_dev) intersect {0};
+      ignore_bins masked_all = binsof (cp_threshold) intersect {7} && !binsof (cp_dev) intersect {
+        0
+      };
     }
   endgroup
 
