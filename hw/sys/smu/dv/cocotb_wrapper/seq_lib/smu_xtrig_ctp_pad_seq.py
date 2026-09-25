@@ -72,6 +72,8 @@ S7  Wire-OR shared wire. Three wire-OR lanes join one group wire
 
 from __future__ import annotations
 
+from typing import cast
+
 import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from ocah_jtag_vip import OcahJtagState
@@ -274,7 +276,7 @@ class smu_xtrig_ctp_pad_seq:
         if name == WIRE_ASSERTED_PSEUDO_NAME:
             wire = self._vec("tb_xtrig_ctp_req_out_din")
             pull = self._vec("tb_xtrig_ctp_wire_pull")
-            return (wire ^ pull) & CTP_MASK
+            return cast(int, (wire ^ pull) & CTP_MASK)
         val = self._pin(name).value
         if not val.is_resolvable:
             raise AssertionError(f"X/Z on {name}: {val}")
@@ -292,7 +294,7 @@ class smu_xtrig_ctp_pad_seq:
         require_jtag_tdo_resolved(f"{what} RD @0x{addr:08x}")
         if status != J2A_STATUS_SUCCESS:
             raise AssertionError(f"{what} read @0x{addr:08x} status={status}")
-        return axi64_unpack32(addr, rdata)
+        return cast(int, axi64_unpack32(addr, rdata))
 
     async def _wr32(self, addr: int, data: int, what: str) -> None:
         wstrb, beat = axi64_pack32(addr, data)
@@ -306,10 +308,11 @@ class smu_xtrig_ctp_pad_seq:
     def _ctp_addr(self, lane: int, offset: int) -> int:
         if not 0 <= lane < NUM_CTP:
             raise AssertionError(f"CTP lane {lane} outside CROSS_TRIGGER_NETWORK_CTP_NUM={NUM_CTP}")
-        return (
+        return cast(
+            int,
             DTP_CSR_BASE
             + cross_trigger_network_indexed_addr("CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR", lane)
-            + offset
+            + offset,
         )
 
     def _ctm_src_addr(self, port: int) -> int:
@@ -317,8 +320,12 @@ class smu_xtrig_ctp_pad_seq:
             raise AssertionError(
                 f"CTM port {port} outside CROSS_TRIGGER_NETWORK_CTM_CT_SRC_NUM={NUM_CT_SRC}"
             )
-        return DTP_CSR_BASE + cross_trigger_network_indexed_addr(
-            "CROSS_TRIGGER_NETWORK_CTM_CT_SRC_BASE_ADDR", port
+        return cast(
+            int,
+            DTP_CSR_BASE
+            + cross_trigger_network_indexed_addr(
+                "CROSS_TRIGGER_NETWORK_CTM_CT_SRC_BASE_ADDR", port
+            ),
         )
 
     async def run(self) -> None:
@@ -525,7 +532,7 @@ class smu_xtrig_ctp_pad_seq:
                 f"exposed lane {SMU_CT_LANE} of {SMU_INT_CT_EXPOSED} does not fit the "
                 f"{dtp_int_ct} DTP internal lanes"
             )
-        return NUM_CTP + (dtp_int_ct - SMU_INT_CT_EXPOSED) + SMU_CT_LANE
+        return cast(int, NUM_CTP + (dtp_int_ct - SMU_INT_CT_EXPOSED) + SMU_CT_LANE)
 
     async def _route_to_internal(self, dst_mask: int) -> None:
         port = self._internal_src_port()
@@ -653,12 +660,14 @@ class smu_xtrig_ctp_pad_seq:
         )
         ctm_first_seen = window.first_seen["xtrig_ctm_src_req"].get(SMU_CT_LANE)
         ctm_rises = window.rises["xtrig_ctm_src_req"].get(SMU_CT_LANE, 0)
-        follows_pull = (
+        follows_pull = False
+        if (
             ctm_rises == 1
             and asserted_at is not None
             and ctm_first_seen is not None
-            and asserted_at <= ctm_first_seen < release_at
-        )
+            and release_at is not None
+        ):
+            follows_pull = asserted_at <= ctm_first_seen < release_at
         self.sb.expect_eq(
             "the routed request follows the wire-OR pull, not the release "
             "(CHK-SMU-CTM-SRC restated)",
