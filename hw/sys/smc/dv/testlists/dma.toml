@@ -37,6 +37,14 @@ tags = ["ci", "zeroer"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_zeroer_size_corners_test"
+module = "smc_zeroer_size_corners_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dma_reg_byte_enable_error_test"
 module = "smc_dma_reg_byte_enable_error_test"
 seed = 1

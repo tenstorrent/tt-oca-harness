@@ -11283,6 +11283,41 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-288-smc_zeroer_size_corners_test]]
+===== 288 `smc_zeroer_size_corners_test`
+
+*Source Module*: `smc_zeroer_size_corners_test`
+
+*BFM / Model*: output-fabric responder and its memory model; observation on the responder's write-transaction counter and on readbacks through the JTAG AXI path
+
+*Objective*: Run a zeroer job of zero bytes, and one that starts four bytes below a 4 KB boundary and ends mid-word. Every other zeroer leaf starts on a word, ends on a word and stays inside one page.
+
+*Test Coverage*:
+
+* `SIZE` is "Size in bytes of zeros to write". With `SIZE` at 0 the trigger write to `CTRL_STATUS` must write nothing: the poisoned word at `DEST_ADDR` keeps its poison, and across that trigger and an eight-byte job started after it the responder books exactly one write transaction.
+* `DEST_ADDR` is a byte address, and `zeroer.adoc` lists unaligned starts and fragmentation at page boundaries. A sixteen-byte job from four bytes below a page boundary must zero the upper half of the word below the boundary, the word at it and the lower half of the word above, leave the other halves and the guard words on either side poisoned, and take at least two write transactions, since no AXI burst may cross a 4 KB boundary.
+
+*Test Procedure*:
+
+[arabic]
+. Open the output fabric filters and poison the destination words.
+. Program `SIZE` 0, trigger, wait for `CTRL_STATUS.STATUS` at 0, then run an eight-byte job at another poisoned word and count the responder's write transactions across both.
+. Poison the three words around a page boundary and a guard word either side, run the sixteen-byte job from `page - 4`, and compare each word against its poison with the job's bytes cleared.
+. Clear `SIZE` and `DEST_ADDR`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ZEROER-EMPTY-JOB` |A trigger with `SIZE` 0 left its destination poisoned, and the responder booked one write transaction across it and the eight-byte job after it
+|`CHK-ZEROER-PAGE-CROSS` |A sixteen-byte job from four bytes below a page boundary zeroed exactly its bytes in at least two write transactions, with the guard words intact
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
