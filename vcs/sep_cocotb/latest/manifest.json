@@ -8,31 +8,31 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/dashboard-data/history.json",
-    "history_points": 9,
+    "history_points": 10,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/dashboard-data/summary.json",
     "tests": {
-      "failing": 173,
+      "failing": 1,
       "incomplete_runs": 0,
-      "pass_rate": 0.57,
-      "passing": 1,
+      "pass_rate": 99.43,
+      "passing": 173,
       "skipped": 0,
       "total": 174,
       "unknown": 0
     }
   },
   "errors": [
-    "sep: runner rc=2",
-    "sep: native status=ERROR",
+    "sep: runner rc=1",
+    "sep: native status=FAIL",
     "sep: normalized status=FAIL"
   ],
-  "generated_at": "2026-09-25T00:09:29.852662+00:00",
+  "generated_at": "2026-09-25T01:42:36.274838+00:00",
   "git": {
-    "commit": "f8512bac5a59a77fffced5994f952c8aab7e9149",
-    "requested_ref": "f8512bac5a59a77fffced5994f952c8aab7e9149"
+    "commit": "a8d0a0b4ec054da7ac1e361ef49a9261b922af0f",
+    "requested_ref": "a8d0a0b4ec054da7ac1e361ef49a9261b922af0f"
   },
   "jenkins": {
-    "build_number": "33",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/cocotb/33/",
+    "build_number": "34",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/cocotb/34/",
     "job_name": "tt-oca-harness/sep/cocotb",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/sep/job/cocotb/"
   },
@@ -43,12 +43,12 @@
       "group": "all",
       "mode": "regression",
       "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/runs/result.json",
-      "native_status": "ERROR",
+      "native_status": "FAIL",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/dashboard-data/result.json",
       "normalized_status": "FAIL",
       "profile": "sep",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/sep/cocotb/vcs/sep_cocotb/runs",
-      "runner_rc": 2,
+      "runner_rc": 1,
       "tool": "vcs"
     }
   ],
