@@ -232,8 +232,8 @@ module i3ccore_wrapper
       .sda_i(sda_i[idx]),
       .scl_o(scl_o[idx]),
       .sda_o(sda_o[idx]),
-      .scl_oe(scl_oe_o[idx]),
-      .sda_oe(sda_oe_o[idx]),
+      .scl_oe_o(scl_oe_o[idx]),
+      .sda_oe_o(sda_oe_o[idx]),
       .sel_od_pp_o(sel_od_pp_o[idx]),
 
       // Recovery interface

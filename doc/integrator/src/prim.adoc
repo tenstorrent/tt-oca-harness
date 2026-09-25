@@ -4,7 +4,7 @@
 [[prim-cell-replacement]]
 = Prim Cell Replacement and Don't-Touch Constraints
 
-OCAH primitives (`prim_stdbuf`, `prim_and2`, `prim_clkgater`, the
+OCAH primitives (`prim_stdbuf`, `prim_and2`, `prim_and3`, `prim_clkgater`, the
 `prim_flop_*sync*` family, and so on) ship as behavioral models with a
 reference technology mapping. Adopters replace them with cells from their own
 library.
@@ -43,7 +43,7 @@ are:
 |`d0nt_clkxor`    |Don't touch |`prim_xor2`
 |`d0nt_stdbuf`    |Size only   |`prim_stdbuf`
 |`d0nt_stdinv`    |Size only   |`prim_flop_*sync_*` reset inverter
-|`d0nt_an`        |Size only   |`prim_and2`
+|`d0nt_an*`       |Size only   |`prim_and2`, `prim_and3`
 |`d0nt_ao222`     |Size only   |`prim_ao222`
 |`d0nt_wrap_sync` |Size only   |`prim_flop_*sync_*` synchronizer flops
 |===
