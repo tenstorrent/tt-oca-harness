@@ -11549,6 +11549,80 @@ Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs g
 *Pass Criteria*: `CHK-JTAG-AXI-BURSTS`, `CHK-JTAG-AXI-ERRORS` and `CHK-JTAG-AXI-PORT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
+[[sec-294-smc_i2c_window_landing_test]]
+===== 294 `smc_i2c_window_landing_test`
+
+*Source Module*: `smc_i2c_window_landing_test`
+
+*BFM / Model*: `SmcI2cMasterVip` on the `tb_i2c0_*` pads, its lines driven from chosen I2C clock edges; observation on `INTR_STATE`, `ACQDATA` and the controller's view of each acknowledge
+
+*Objective*: Place I2C0 `CTRL` writes, and a second timeout, on I2C clocks where a bus-monitor or target decision rests on a one- or two-clock condition. No other leaf times a register write to the I2C clock.
+
+*Test Coverage*:
+
+* The register path from SEP_IN to I2C0 crosses into the peripheral clock, so its length depends on the run's clock periods. It is measured first: `OVRD` with `TXOVRDEN` set and `SCLVAL` clear, in the same register block as `CTRL`, drives the SCL pad low on the clock it takes effect.
+* The bench changes the bus from a clock edge it picks. A START or STOP is recognised `TIMING3.THD_DAT` clocks after that, plus the two-clock input synchroniser, so a `CTRL` write called that many clocks after the bus edge, less the measured path, takes effect on the recognising clock. Each placement is swept over two clocks either side.
+* Monitor disabled as a START or STOP is recognised (`THD_DAT` 12). `CTRL` is cleared at each sweep point. After each point the target, enabled again, must acknowledge a write and deliver its byte.
+* Target disabled as a read ends with a STOP. `CTRL` is written with `MULTI_CONTROLLER_MONITOR_EN` only, so the bus monitor keeps running while `ENABLETARGET` falls, at each point around the STOP in a read byte's acknowledge slot. `i2c.rdl` raises `UNEXP_STOP` "when the controller sends this target a STOP before this target NACKs". With the target disabled two clocks or more before the STOP it must stay clear, and with it disabled two clocks or more after, the target was enabled for the STOP and it must be raised. The two points between are recorded.
+* A NACK timeout and a bus timeout on the same clock. With ACK Control Mode on, `TARGET_ACK_CTRL.NBYTES` 0 and `CTRL.ACQ_START_STOP_EN` set, the target stretches after the first data byte until `TARGET_TIMEOUT_CTRL` (100 clocks) expires and then NACKs it. The bus monitor times the same low SCL from the controller's fall, eight clocks earlier, so the bus timeout is swept over 108 plus or minus two. At every point the address must be acknowledged, the data byte NACKed, and the ACQ FIFO must start with the START entry for the address. The rest of the ACQ FIFO is recorded per point.
+
+*Test Procedure*:
+
+[arabic]
+. Enable I2C0 as a target and measure the register path through `OVRD`.
+. For each offset, pull SDA low, or release it after a START, from a chosen clock with `CTRL` cleared at the offset; then write to the target again.
+. For each offset, read a byte from the target and release SDA in its acknowledge slot with `ENABLETARGET` cleared at the offset; read `INTR_STATE`.
+. For each bus-timeout value, write an address and a data byte with ACK Control Mode on and both timeouts set; read the ACQ FIFO.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-MONITOR-DISABLE-AT-DETECT` |`CTRL` cleared around the clock a START or STOP is recognised left the target, enabled again, delivering a write at every point
+|`CHK-I2C-TARGET-DISABLE-AT-STOP` |`ENABLETARGET` cleared around the clock a read's STOP is recognised left `UNEXP_STOP` clear when the target was disabled before the STOP and raised when it was disabled after
+|`CHK-I2C-NACK-AND-BUS-TIMEOUT` |With a NACK timeout and bus timeouts around it, the address was acknowledged, the data byte NACKed and the START entry first in the ACQ FIFO at every point
+|===
+
+*Pass Criteria*: every checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-295-smc_uart_window_landing_test]]
+===== 295 `smc_uart_window_landing_test`
+
+*Source Module*: `smc_uart_window_landing_test`
+
+*BFM / Model*: the UART0 TX pad wired back to its RX pad by the bench for the transmit sweep, and the RX pad driven by the bench from chosen UART clock edges for the receive sweep; observation on `LSR` and `RBR`
+
+*Objective*: Place UART0 register writes on the clock the transmit FIFO empties and on the clock the receive timeout fires. No other leaf times a register write to the UART clock.
+
+*Test Coverage*:
+
+* The register path from SEP_IN to UART0 crosses into the UART clock, so its length depends on the run's clock periods. It is measured first: a write setting `LCR.SET_BREAK` drives the TX pad low one clock after it takes effect.
+* THR write on the empty clock. With divisor 1 and 8N1, two bytes are queued and the transmit FIFO empties as the second moves to the transmitter, 288 clocks after the first byte's start bit reaches the TX pad. A third THR write is placed at each of two clocks either side of that clock. `uart_core.sv` clears the THR-empty interrupt's cleared flag on the empty clock and sets it on a THR write, so the on-clock write leaves a byte queued with the flag clear. With the TX pad wired back to RX, all three bytes of every point must arrive in order.
+* FCR write on the timeout clock. The bench drives a byte on the RX pad, and the timeout count reaches its limit of 40 bit ticks 1589 clocks after the start bit begins. A write clearing `FCR.FIFO_ENABLE` is placed at each of two clocks either side of that clock. After each point the FIFO is enabled again and a byte driven on RX must read back intact.
+
+*Test Procedure*:
+
+[arabic]
+. Enable UART0 without loopback at divisor 1, 8N1, FIFOs on, and measure the register path through `LCR.SET_BREAK`.
+. For each offset, queue two bytes, call the third THR write at the offset from the first start bit, and read three bytes from the wired-back receiver.
+. For each offset, drive a byte on RX with the FCR write called at the offset from its start bit, enable the FIFO again, drive another byte, and read it.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-THR-ON-EMPTY` |A THR write placed around the clock the transmit FIFO empties delivered all three bytes of every point in order
+|`CHK-UART-FCR-ON-TIMEOUT` |After an FCR write placed around the clock the receive timeout fires, a byte received with the FIFO enabled again read back intact at every point
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `uart`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
