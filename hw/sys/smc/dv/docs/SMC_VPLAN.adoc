@@ -2681,6 +2681,7 @@ Drive `smc_jtag_boot_stall_sanity_test_seq`. Each checker below is a named compa
 
 * Packed jtag_reset_ctrl_i cool and SS0 warm override.
 * Not DTP IC_RESET or SW SS_WARM_RESET_N.
+* The warm override holding the warm reset released while the cool override asserts the primary reset: `rst_primary_smc_clk_no` reads 0 and the SMC-clock warm reset reads 1 on every SMC clock of a 64-cycle window, and both release afterwards.
 
 *Test Procedure*:
 
@@ -2696,11 +2697,12 @@ Drive `smc_jtag_reset_ctrl_test_seq`. Each checker below is a named compare the 
 |`CHK-JTAG-RST-COOL` |Named compare in `smc_jtag_reset_ctrl_test_seq.py`; the run fails if it mismatches
 |`CHK-JTAG-RST-IDLE` |Named compare in `smc_jtag_reset_ctrl_test_seq.py`; the run fails if it mismatches
 |`CHK-JTAG-RST-SS0` |Named compare in `smc_jtag_reset_ctrl_test_seq.py`; the run fails if it mismatches
+|`CHK-JTAG-RST-WARM-HELD` |With the cool override asserting the primary reset and the warm override holding the warm reset released, the primary reset read low and the SMC-clock warm reset read high throughout the window
 |`CHK-JTAG-RST-WARM-SCRATCH` |Named compare in `smc_jtag_reset_ctrl_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-JTAG-RST-BASIC`, `CHK-JTAG-RST-COOL`, `CHK-JTAG-RST-IDLE`, `CHK-JTAG-RST-SS0`, `CHK-JTAG-RST-WARM-SCRATCH` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
+*Pass Criteria*: `CHK-JTAG-RST-BASIC`, `CHK-JTAG-RST-COOL`, `CHK-JTAG-RST-IDLE`, `CHK-JTAG-RST-SS0`, `CHK-JTAG-RST-WARM-HELD`, `CHK-JTAG-RST-WARM-SCRATCH` hold after their compares. Enrolled in: `all`, `hosted`, `reset`.
 '''''
 
 [[sec-050-smc_jtag_reset_proxy_test]]
