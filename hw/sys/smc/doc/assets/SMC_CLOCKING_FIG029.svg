@@ -1,0 +1,345 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg width="1560" height="2020" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1560 2020" font-family="Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="SMC clocking diagram: clock domains and clock-modification cells, one arrow per clock into each hierarchy container">
+  <title>SMC clocking</title>
+  <defs>
+    <marker id="a-smc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f4fd6"/></marker>
+    <marker id="a-ref" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1a8a3c"/></marker>
+    <marker id="a-per" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#d9480f"/></marker>
+    <marker id="a-tel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#e0b000"/></marker>
+    <marker id="a-avs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c9184a"/></marker>
+    <marker id="a-msc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6e7781"/></marker>
+    <g id="cg">
+      <rect x="0" y="0" width="30" height="18" rx="3" fill="#ffffff" stroke="currentColor" stroke-width="1.6"/>
+      <text x="15" y="13" text-anchor="middle" font-size="10" font-weight="600" fill="#1f2328">CG</text>
+    </g>
+    <linearGradient id="g-legend" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#dbe6ff"/><stop offset="0.250" stop-color="#dbe6ff"/><stop offset="0.250" stop-color="#d5f2de"/><stop offset="0.500" stop-color="#d5f2de"/><stop offset="0.500" stop-color="#ffe0cc"/><stop offset="0.750" stop-color="#ffe0cc"/><stop offset="0.750" stop-color="#fff2b8"/><stop offset="1.000" stop-color="#fff2b8"/></linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#dbe6ff"/><stop offset="0.579" stop-color="#dbe6ff"/><stop offset="0.579" stop-color="#d5f2de"/><stop offset="1.000" stop-color="#d5f2de"/></linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbe6ff"/><stop offset="0.762" stop-color="#dbe6ff"/><stop offset="0.762" stop-color="#d5f2de"/><stop offset="1" stop-color="#d5f2de"/></linearGradient>
+    <linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#dbe6ff"/><stop offset="0.500" stop-color="#dbe6ff"/><stop offset="0.500" stop-color="#d5f2de"/><stop offset="1.000" stop-color="#d5f2de"/></linearGradient>
+    <linearGradient id="g4" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#dbe6ff"/><stop offset="0.509" stop-color="#dbe6ff"/><stop offset="0.509" stop-color="#e4e7ea"/><stop offset="1.000" stop-color="#e4e7ea"/></linearGradient>
+    <linearGradient id="g5" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#ffe0cc"/><stop offset="1" stop-color="#ffe0cc"/></linearGradient>
+    <linearGradient id="g6" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#ffe0cc"/><stop offset="1" stop-color="#ffe0cc"/></linearGradient>
+    <linearGradient id="g7" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="1" stop-color="#dbe6ff"/></linearGradient>
+    <linearGradient id="g8" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="1" stop-color="#dbe6ff"/></linearGradient>
+    <linearGradient id="g9" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="1" stop-color="#dbe6ff"/></linearGradient>
+    <linearGradient id="g10" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="1" stop-color="#dbe6ff"/></linearGradient>
+    <linearGradient id="g11" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#ffe0cc"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="1" stop-color="#dbe6ff"/></linearGradient>
+    <linearGradient id="g12" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#d5f2de"/><stop offset="1" stop-color="#d5f2de"/></linearGradient>
+    <linearGradient id="g13" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="0.5" stop-color="#fff2b8"/><stop offset="1" stop-color="#fff2b8"/></linearGradient>
+    <linearGradient id="g14" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e4e7ea"/><stop offset="0.5" stop-color="#e4e7ea"/><stop offset="0.5" stop-color="#dbe6ff"/><stop offset="1" stop-color="#dbe6ff"/></linearGradient>
+    <linearGradient id="g15" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#dbe6ff"/><stop offset="0.500" stop-color="#dbe6ff"/><stop offset="0.500" stop-color="#e4e7ea"/><stop offset="1.000" stop-color="#e4e7ea"/></linearGradient>
+    <linearGradient id="g16" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#d5f2de"/><stop offset="0.333" stop-color="#d5f2de"/><stop offset="0.333" stop-color="#dbe6ff"/><stop offset="0.667" stop-color="#dbe6ff"/><stop offset="0.667" stop-color="#ffe0cc"/><stop offset="1.000" stop-color="#ffe0cc"/></linearGradient>
+    <linearGradient id="g17" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#dbe6ff"/><stop offset="0.500" stop-color="#dbe6ff"/><stop offset="0.500" stop-color="#fff2b8"/><stop offset="1.000" stop-color="#fff2b8"/></linearGradient>
+    <linearGradient id="g18" x1="0" y1="0" x2="0" y2="1"><stop offset="0.000" stop-color="#d5f2de"/><stop offset="0.487" stop-color="#d5f2de"/><stop offset="0.487" stop-color="#ffe0cc"/><stop offset="1.000" stop-color="#ffe0cc"/></linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1560" height="2020" fill="#ffffff"/>
+  <text x="30" y="42" font-size="19" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f2328">SMC clocking</text>
+  <text x="30" y="62" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">module smc · names in monospace for PD stamping</text>
+  <text x="30" y="76" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">one arrow per clock per subsystem, tip at its wall</text>
+  <text x="30" y="90" font-size="11" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">box tint shows the clock of each instance inside</text>
+  <rect x="830" y="14" width="700" height="150" rx="6" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="846" y="34" font-size="11" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">CLOCK DOMAINS</text>
+  <rect x="846" y="41" width="32" height="14" rx="2" fill="#dbe6ff" stroke="#c8ced6" stroke-width="0.8"/><line x1="846" y1="48" x2="878" y2="48" stroke="#1f4fd6" stroke-width="2.5"/><text x="884" y="52" font-size="11" fill="#1f2328">SMCCLK — clk_smc_i</text>
+  <rect x="846" y="61" width="32" height="14" rx="2" fill="#d5f2de" stroke="#c8ced6" stroke-width="0.8"/><line x1="846" y1="68" x2="878" y2="68" stroke="#1a8a3c" stroke-width="2.5"/><text x="884" y="72" font-size="11" fill="#1f2328">REFCLK — clk_ref_i</text>
+  <rect x="846" y="81" width="32" height="14" rx="2" fill="#ffe0cc" stroke="#c8ced6" stroke-width="0.8"/><line x1="846" y1="88" x2="878" y2="88" stroke="#d9480f" stroke-width="2.5"/><text x="884" y="92" font-size="11" fill="#1f2328">PERIPHCLK — clk_periph_i</text>
+  <rect x="1030" y="41" width="32" height="14" rx="2" fill="#fff2b8" stroke="#c8ced6" stroke-width="0.8"/><line x1="1030" y1="48" x2="1062" y2="48" stroke="#e0b000" stroke-width="2.5"/><text x="1068" y="52" font-size="11" fill="#1f2328">TELCLK — clk_telemetry_i</text>
+  <rect x="1030" y="61" width="32" height="14" rx="2" fill="#ffd9e3" stroke="#c8ced6" stroke-width="0.8"/><line x1="1030" y1="68" x2="1062" y2="68" stroke="#c9184a" stroke-width="2.5" stroke-dasharray="6 4"/><text x="1068" y="72" font-size="11" fill="#1f2328">AVSCLK — generated (÷N)</text>
+  <rect x="1030" y="81" width="32" height="14" rx="2" fill="#e4e7ea" stroke="#c8ced6" stroke-width="0.8"/><line x1="1030" y1="88" x2="1062" y2="88" stroke="#6e7781" stroke-width="2.5"/><text x="1068" y="92" font-size="11" fill="#1f2328">TCK / pad clocks</text>
+  <line x1="846" y1="114" x2="878" y2="114" stroke="#1f2328" stroke-width="2" stroke-dasharray="6 4"/><text x="884" y="118" font-size="11" fill="#1f2328">gated / derived clock</text>
+  <path d="M846 134 L854 134 A5 5 0 0 1 864 134 L878 134" fill="none" stroke="#1f2328" stroke-width="2"/><line x1="859" y1="126" x2="859" y2="142" stroke="#1f2328" stroke-width="2"/><circle cx="1046" cy="134" r="3.5" fill="#1f2328"/><line x1="1030" y1="134" x2="1062" y2="134" stroke="#1f2328" stroke-width="2"/><text x="884" y="138" font-size="11" fill="#1f2328">crossing — no connection</text><text x="1068" y="138" font-size="11" fill="#1f2328">junction — tap off trunk</text>
+  <rect x="846" y="146" width="32" height="12" rx="2" fill="url(#g-legend)" stroke="#57606a" stroke-width="1"/><text x="884" y="156" font-size="11" fill="#1f2328">swatch fill = instance box tint for that domain · multi-domain instances banded top→bottom in arrow order</text>
+  <text x="1290" y="34" font-size="11" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">SYMBOLS</text>
+  <use href="#cg" xlink:href="#cg" x="1290" y="38" color="#1f2328"/><text x="1330" y="51" font-size="11" fill="#1f2328">clock gater (ICG)</text>
+  <polygon points="1290,60 1290,80 1312,74 1312,66" fill="#ffffff" stroke="#1f2328" stroke-width="1.5"/><text x="1330" y="73" font-size="11" fill="#1f2328">clock mux</text>
+  <rect x="1290" y="86" width="30" height="16" rx="3" fill="#ffffff" stroke="#1f2328" stroke-width="1.5"/><text x="1305" y="98" text-anchor="middle" font-size="9" font-weight="700" fill="#1f2328">÷ N</text><text x="1330" y="98" font-size="11" fill="#1f2328">clock divider</text>
+  <rect x="1290" y="108" width="30" height="16" rx="3" fill="#ffffff" stroke="#57606a" stroke-width="1.2"/><text x="1330" y="119" font-size="11" fill="#1f2328">consumer module instance</text>
+  <rect x="1290" y="130" width="30" height="16" rx="3" fill="#ffffff" stroke="#57606a" stroke-width="1.2" stroke-dasharray="4 3"/><text x="1330" y="141" font-size="11" fill="#1f2328">internal logic of the parent module</text>
+  <rect x="210" y="170" width="1320" height="1820" rx="8" fill="none" stroke="#1f2328" stroke-width="2"/>
+  <text x="226" y="196" font-size="15" font-weight="700" font-family="Consolas, monospace" fill="#1f2328">smc</text>
+  <text x="200" y="234" text-anchor="end" font-size="12" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">clk_smc_i</text>
+  <line x1="90" y1="240" x2="376" y2="240" stroke="#1f4fd6" stroke-width="2.5"/>
+  <line x1="376" y1="240" x2="376" y2="1240.0" stroke="#1f4fd6" stroke-width="2.5"/>
+  <text x="200" y="274" text-anchor="end" font-size="12" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1a8a3c">clk_ref_i</text>
+  <line x1="90" y1="280" x2="334" y2="280" stroke="#1a8a3c" stroke-width="2.5"/>
+  <line x1="334" y1="280" x2="334" y2="1560.0" stroke="#1a8a3c" stroke-width="2.5"/>
+  <text x="200" y="314" text-anchor="end" font-size="12" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#d9480f">clk_periph_i</text>
+  <line x1="90" y1="320" x2="292" y2="320" stroke="#d9480f" stroke-width="2.5"/>
+  <line x1="292" y1="320" x2="292" y2="1326.0" stroke="#d9480f" stroke-width="2.5"/>
+  <text x="200" y="354" text-anchor="end" font-size="12" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#e0b000">clk_telemetry_i</text>
+  <line x1="90" y1="360" x2="250" y2="360" stroke="#e0b000" stroke-width="2.5"/>
+  <line x1="250" y1="360" x2="250" y2="1590.0" stroke="#e0b000" stroke-width="2.5"/>
+  <g transform="translate(376 480)"><rect x="-7" y="-26" width="14" height="52" rx="3" fill="#ffffff" stroke="#1f4fd6" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#1f4fd6">SMCCLK</text></g>
+  <g transform="translate(334 480)"><rect x="-7" y="-26" width="14" height="52" rx="3" fill="#ffffff" stroke="#1a8a3c" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#1a8a3c">REFCLK</text></g>
+  <g transform="translate(292 480)"><rect x="-7" y="-30" width="14" height="60" rx="3" fill="#ffffff" stroke="#d9480f" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#d9480f">PERIPHCLK</text></g>
+  <g transform="translate(250 480)"><rect x="-7" y="-26" width="14" height="52" rx="3" fill="#ffffff" stroke="#e0b000" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#e0b000">TELCLK</text></g>
+  <g transform="translate(376 965)"><rect x="-7" y="-26" width="14" height="52" rx="3" fill="#ffffff" stroke="#1f4fd6" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#1f4fd6">SMCCLK</text></g>
+  <g transform="translate(334 1000)"><rect x="-7" y="-26" width="14" height="52" rx="3" fill="#ffffff" stroke="#1a8a3c" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#1a8a3c">REFCLK</text></g>
+  <g transform="translate(292 1000)"><rect x="-7" y="-30" width="14" height="60" rx="3" fill="#ffffff" stroke="#d9480f" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#d9480f">PERIPHCLK</text></g>
+  <g transform="translate(250 1000)"><rect x="-7" y="-26" width="14" height="52" rx="3" fill="#ffffff" stroke="#e0b000" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#e0b000">TELCLK</text></g>
+  <g transform="translate(250 1520)"><rect x="-7" y="-26" width="14" height="52" rx="3" fill="#ffffff" stroke="#e0b000" stroke-width="1"/><text transform="rotate(-90)" x="0" y="3.5" text-anchor="middle" font-size="9" font-weight="700" fill="#e0b000">TELCLK</text></g>
+  <rect x="420" y="232" width="1100" height="732.0" rx="6" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+  <text x="432" y="256" font-size="13" font-weight="700" font-family="Consolas, monospace" fill="#1f2328">u_smc_base</text>
+  <circle cx="376" cy="250" r="3.5" fill="#1f4fd6"/>
+  <path d="M376 250 L418 250" fill="none" stroke="#1f4fd6" stroke-width="2" marker-end="url(#a-smc)"/>
+  <rect x="445" y="272" width="420" height="302.0" rx="5" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="457" y="294" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_fabric</text>
+  <rect x="460" y="308" width="390" height="86.0" rx="5" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="472" y="330" font-size="11" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_input_fabric</text>
+  <rect x="595" y="338" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="354" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">smc_sys_inbound_filter</text>
+  <use href="#cg" xlink:href="#cg" x="480" y="341" color="#1f4fd6"/>
+  <line x1="510" y1="350.0" x2="593" y2="350.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="480" y="373.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">sys_in_filter_cg</text>
+  <rect x="460" y="402.0" width="390" height="160.0" rx="5" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="472" y="424.0" font-size="11" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_output_fabric</text>
+  <rect x="595" y="432.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="448.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">output_axi_demux</text>
+  <rect x="595" y="462.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="478.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">output_mux</text>
+  <use href="#cg" xlink:href="#cg" x="480" y="465" color="#1f4fd6"/>
+  <line x1="510" y1="474.0" x2="560" y2="474.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="560" y1="444.0" x2="560" y2="474.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="560" y1="444.0" x2="593" y2="444.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="560" y1="474.0" x2="593" y2="474.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="480" y="497.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">fabric_cg</text>
+  <rect x="595" y="506.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="522.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">smc_sys_outbound_filter</text>
+  <use href="#cg" xlink:href="#cg" x="480" y="509" color="#1f4fd6"/>
+  <line x1="510" y1="518.0" x2="593" y2="518.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="480" y="541.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">sys_out_filter_cg</text>
+  <rect x="445" y="594.0" width="420" height="346.0" rx="5" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="457" y="616.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_data_accelerator_wrap</text>
+  <rect x="460" y="630.0" width="390" height="160.0" rx="5" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="472" y="652.0" font-size="11" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_dma_wrap</text>
+  <rect x="595" y="660.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="676.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">idma_frontend_wrapper</text>
+  <use href="#cg" xlink:href="#cg" x="480" y="663" color="#1f4fd6"/>
+  <line x1="510" y1="672.0" x2="593" y2="672.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="480" y="695.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">frontend_cg</text>
+  <rect x="595" y="704.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="720.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">idma_request_manager_wrapper</text>
+  <rect x="595" y="734.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="750.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">idma_backend_wrapper</text>
+  <use href="#cg" xlink:href="#cg" x="480" y="737" color="#1f4fd6"/>
+  <line x1="510" y1="746.0" x2="560" y2="746.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="560" y1="716.0" x2="560" y2="746.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="560" y1="716.0" x2="593" y2="716.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="560" y1="746.0" x2="593" y2="746.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="480" y="769.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">request_maneger_cg</text>
+  <rect x="460" y="798.0" width="390" height="130.0" rx="5" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="472" y="820.0" font-size="11" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_zeroer</text>
+  <rect x="595" y="828.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <text xml:space="preserve" x="607" y="844.0" font-size="9" fill="#1f2328"><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">internal AXI-master FSM</tspan></text>
+  <use href="#cg" xlink:href="#cg" x="480" y="831" color="#1f4fd6"/>
+  <line x1="510" y1="840.0" x2="593" y2="840.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="480" y="863.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">axi_clk_gater</text>
+  <rect x="595" y="872.0" width="240" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="607" y="888.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">zeroer_reg</text>
+  <use href="#cg" xlink:href="#cg" x="480" y="875" color="#1f4fd6"/>
+  <line x1="510" y1="884.0" x2="593" y2="884.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="480" y="907.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">zeroer_cg</text>
+  <rect x="890" y="272" width="615" height="672.0" rx="5" fill="url(#g2)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="902" y="294" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_internal_regs</text>
+  <rect x="1040" y="308" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="324" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_axil_mailbox</text>
+  <use href="#cg" xlink:href="#cg" x="925" y="311" color="#1f4fd6"/>
+  <line x1="955" y1="320.0" x2="1038" y2="320.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="925" y="343.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">mailbox_cg</text>
+  <rect x="1040" y="352.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="368.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">outbound_filter_axil_demux</text>
+  <rect x="1040" y="382.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="398.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">outbound_filter_ctrl_reg ×N</text>
+  <rect x="1040" y="412.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="428.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">err_slv</text>
+  <use href="#cg" xlink:href="#cg" x="925" y="415" color="#1f4fd6"/>
+  <line x1="955" y1="424.0" x2="1005" y2="424.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="364.0" x2="1005" y2="424.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="364.0" x2="1038" y2="364.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="394.0" x2="1038" y2="394.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="424.0" x2="1038" y2="424.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="925" y="447.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">outbound_filter_reg_cg</text>
+  <rect x="1040" y="456.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="472.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">inbound_filter_axil_demux</text>
+  <rect x="1040" y="486.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="502.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">inbound_filter_ctrl_reg ×N</text>
+  <rect x="1040" y="516.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="532.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">err_slv</text>
+  <use href="#cg" xlink:href="#cg" x="925" y="519" color="#1f4fd6"/>
+  <line x1="955" y1="528.0" x2="1005" y2="528.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="468.0" x2="1005" y2="528.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="468.0" x2="1038" y2="468.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="498.0" x2="1038" y2="498.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="528.0" x2="1038" y2="528.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="925" y="551.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">inbound_filter_reg_cg</text>
+  <rect x="1040" y="560.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="576.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">mmode_remap_axil_demux</text>
+  <rect x="1040" y="590.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="606.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">smc_mmode_remap_reg ×N</text>
+  <use href="#cg" xlink:href="#cg" x="925" y="593" color="#1f4fd6"/>
+  <line x1="955" y1="602.0" x2="1005" y2="602.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="572.0" x2="1005" y2="602.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="572.0" x2="1038" y2="572.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="602.0" x2="1038" y2="602.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="925" y="625.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">mmode_remap_cg</text>
+  <rect x="1040" y="634.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="650.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">xvisor_remap_axil_demux</text>
+  <rect x="1040" y="664.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="680.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">smc_xvisor_remap_reg ×N</text>
+  <use href="#cg" xlink:href="#cg" x="925" y="667" color="#1f4fd6"/>
+  <line x1="955" y1="676.0" x2="1005" y2="676.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="646.0" x2="1005" y2="676.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="646.0" x2="1038" y2="646.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="676.0" x2="1038" y2="676.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="925" y="699.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">xvisor_remap_cg</text>
+  <rect x="1040" y="708.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="724.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">axi_alias_remap_demux</text>
+  <rect x="1040" y="738.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="754.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">smc_alias_remap_reg ×N</text>
+  <use href="#cg" xlink:href="#cg" x="925" y="741" color="#1f4fd6"/>
+  <line x1="955" y1="750.0" x2="1005" y2="750.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="720.0" x2="1005" y2="750.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="720.0" x2="1038" y2="720.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="750.0" x2="1038" y2="750.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="925" y="773.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">alias_remap_cg</text>
+  <rect x="905" y="792.0" width="585" height="140.0" rx="5" fill="url(#g1)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="917" y="814.0" font-size="11" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_dfd_wrap</text>
+  <rect x="1040" y="822.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="838.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_dfd_top</text>
+  <rect x="1040" y="852.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1052" y="868.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_debug_bus_mux_l2 · u_debug_bus_mux_l3</text>
+  <use href="#cg" xlink:href="#cg" x="925" y="855" color="#1f4fd6"/>
+  <line x1="955" y1="864.0" x2="1005" y2="864.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="834.0" x2="1005" y2="864.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <line x1="1005" y1="834.0" x2="1038" y2="834.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="1005" y1="864.0" x2="1038" y2="864.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="925" y="887.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">dfd_clk_gate (generic_ccg)</text>
+  <rect x="920" y="896.0" width="555" height="24" rx="4" fill="#d5f2de" stroke="#57606a" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <text x="932" y="912.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">ref-tick counter for DFD timestamp</text>
+  <circle cx="334" cy="908.0" r="3.5" fill="#1a8a3c"/>
+  <path d="M334 908.0 L371 908.0 A5 5 0 0 1 381 908.0 L418 908.0" fill="none" stroke="#1a8a3c" stroke-width="2" marker-end="url(#a-ref)"/>
+  <rect x="420" y="984.0" width="1100" height="218.0" rx="6" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+  <text x="432" y="1008.0" font-size="13" font-weight="700" font-family="Consolas, monospace" fill="#1f2328">u_smc_cpu_wrapper</text>
+  <circle cx="376" cy="1002.0" r="3.5" fill="#1f4fd6"/>
+  <path d="M376 1002.0 L418 1002.0" fill="none" stroke="#1f4fd6" stroke-width="2" marker-end="url(#a-smc)"/>
+  <rect x="445" y="1024.0" width="420" height="92.0" rx="5" fill="url(#g3)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="457" y="1046.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_cpu_ctrl_wrap</text>
+  <rect x="460" y="1076.0" width="390" height="24" rx="4" fill="#d5f2de" stroke="#57606a" stroke-width="1.2" stroke-dasharray="4 3"/>
+  <text x="472" y="1092.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">WDT ref-tick counter</text>
+  <circle cx="334" cy="1093.0" r="3.5" fill="#1a8a3c"/>
+  <path d="M334 1093.0 L371 1093.0 A5 5 0 0 1 381 1093.0 L418 1093.0" fill="none" stroke="#1a8a3c" stroke-width="2" marker-end="url(#a-ref)"/>
+  <rect x="890" y="1024.0" width="615" height="158.0" rx="5" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text x="902" y="1046.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_cpu</text>
+  <rect x="1025" y="1060.0" width="465" height="110.0" rx="5" fill="url(#g4)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1037" y="1082.0" font-size="11" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_digital_top</text>
+  <text xml:space="preserve" x="1040" y="1162.0" font-size="8.5" fill="#57606a"><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif">fine-grain </tspan><tspan font-weight="600" font-family="Consolas, monospace">EICG_wrapper</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif"> ICGs inside the generated netlist · </tspan><tspan font-weight="600" font-family="Consolas, monospace">debug_clock_gate</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif"> off unless dmactive</tspan></text>
+  <rect x="1040" y="1090.0" width="435" height="24" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="1052" y="1106.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">.debug_clock </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— from debug_clock_gate</tspan></text>
+  <rect x="1040" y="1120.0" width="435" height="24" rx="4" fill="#e4e7ea" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="1052" y="1136.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">.debug_systemjtag_jtag_TCK </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— TCK</tspan></text>
+  <use href="#cg" xlink:href="#cg" x="910" y="1093" color="#1f4fd6"/>
+  <line x1="940" y1="1102.0" x2="1023" y2="1102.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <text x="910" y="1125.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">debug_clock_gate</text>
+  <text x="200" y="1126.0" text-anchor="end" font-size="12" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#6e7781">smc_cpu_jtag_TCK_i</text>
+  <path d="M90 1132.0 L245 1132.0 A5 5 0 0 1 255 1132.0 L287 1132.0 A5 5 0 0 1 297 1132.0 L329 1132.0 A5 5 0 0 1 339 1132.0 L371 1132.0 A5 5 0 0 1 381 1132.0 L418 1132.0" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#a-msc)"/>
+  <rect x="420" y="1222.0" width="1100" height="738.0" rx="6" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+  <text x="432" y="1246.0" font-size="13" font-weight="700" font-family="Consolas, monospace" fill="#1f2328">u_smc_peripherals</text>
+  <circle cx="376" cy="1240.0" r="3.5" fill="#1f4fd6"/>
+  <path d="M376 1240.0 L418 1240.0" fill="none" stroke="#1f4fd6" stroke-width="2" marker-end="url(#a-smc)"/>
+  <rect x="445" y="1262.0" width="420" height="394.0" rx="5" fill="#f6f8fa" stroke="#57606a" stroke-width="1.2"/>
+  <text x="457" y="1284.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_peripherals_cdc</text>
+  <text x="457" y="1301.0" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">rows: left half = source clock · right half = destination clock</text>
+  <rect x="460" y="1314.0" width="390" height="24" rx="4" fill="url(#g5)" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="472" y="1330.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_{avsbus,i2c,uart,i3c}_axi_cdc (axi_cdc) </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— AXI-Lite requests</tspan></text>
+  <rect x="460" y="1344.0" width="390" height="36" rx="4" fill="url(#g6)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="472" y="1360.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_{i2c,uart,avs,i3c}_cg_en_sync (prim_sync2/3)</text>
+  <text xml:space="preserve" x="472" y="1372.0" font-size="9" fill="#1f2328"><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— clock-gate enables</tspan></text>
+  <rect x="460" y="1386.0" width="390" height="24" rx="4" fill="url(#g7)" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="472" y="1402.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_log_engine_axi_cdc (axi_cdc) </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— log-engine AXI-Lite master</tspan></text>
+  <rect x="460" y="1416.0" width="390" height="24" rx="4" fill="url(#g8)" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="472" y="1432.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_{i2c,uart}_enable_sync (prim_sync2/3) </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— peripheral enables</tspan></text>
+  <rect x="460" y="1446.0" width="390" height="24" rx="4" fill="url(#g9)" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="472" y="1462.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_{i2c,uart_combined,i3c,avsbus}_irq_sync (prim_sync2/3) </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— IRQs</tspan></text>
+  <rect x="460" y="1476.0" width="390" height="24" rx="4" fill="url(#g10)" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="472" y="1492.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_i2c_debug_sync (prim_sync2/3) </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— I2C debug bus</tspan></text>
+  <rect x="460" y="1506.0" width="390" height="36" rx="4" fill="url(#g11)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="472" y="1522.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_avsbus_cur_state_debug_sync (prim_sync_data_autohs)</text>
+  <text xml:space="preserve" x="472" y="1534.0" font-size="9" fill="#1f2328"><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— AVSBus state</tspan></text>
+  <rect x="460" y="1548.0" width="390" height="24" rx="4" fill="url(#g12)" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="472" y="1564.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_avs_cg_en_ref_sync (prim_sync2/3) </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— AVS clock-gate enable</tspan></text>
+  <rect x="460" y="1578.0" width="390" height="24" rx="4" fill="url(#g13)" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="472" y="1594.0" font-size="9" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_tel_cg_en_sync (prim_sync2/3) </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— telemetry clock-gate enable</tspan></text>
+  <rect x="460" y="1608.0" width="390" height="36" rx="4" fill="url(#g14)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="472" y="1624.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_ndmreset_request_sync (prim_sync3)</text>
+  <text xml:space="preserve" x="472" y="1636.0" font-size="9" fill="#1f2328"><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— ndmreset_request_i, async pin</tspan></text>
+  <circle cx="292" cy="1326.0" r="3.5" fill="#d9480f"/>
+  <path d="M292 1326.0 L329 1326.0 A5 5 0 0 1 339 1326.0 L418 1326.0" fill="none" stroke="#d9480f" stroke-width="2" marker-end="url(#a-per)"/>
+  <circle cx="334" cy="1560.0" r="3.5" fill="#1a8a3c"/>
+  <path d="M334 1560.0 L418 1560.0" fill="none" stroke="#1a8a3c" stroke-width="2" marker-end="url(#a-ref)"/>
+  <circle cx="250" cy="1590.0" r="3.5" fill="#e0b000"/>
+  <path d="M250 1590.0 L418 1590.0" fill="none" stroke="#e0b000" stroke-width="2" marker-end="url(#a-tel)"/>
+  <rect x="445" y="1676.0" width="420" height="80.0" rx="5" fill="url(#g15)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="457" y="1698.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_padring</text>
+  <text x="457" y="1715.0" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">spi_clk_i · avs_clock: pad datapath only</text>
+  <text x="200" y="1730.0" text-anchor="end" font-size="12" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#6e7781">spi_clk_i</text>
+  <path d="M90 1736.0 L418 1736.0" fill="none" stroke="#6e7781" stroke-width="2" marker-end="url(#a-msc)"/>
+  <rect x="445" y="1776.0" width="420" height="64.0" rx="5" fill="url(#g16)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="457" y="1798.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_smc_reset_unit</text>
+  <text x="457" y="1815.0" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">reset syncs only — no clock mods</text>
+  <rect x="587.08" y="1860.0" width="277.91999999999996" height="80.0" rx="5" fill="url(#g17)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="599.08" y="1882.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">telemetry_receiver_wrap</text>
+  <text x="599.08" y="1899.0" font-size="10" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">internal CDC between sides</text>
+  <use href="#cg" xlink:href="#cg" x="465" y="1871" color="#1f4fd6"/>
+  <use href="#cg" xlink:href="#cg" x="465" y="1911" color="#e0b000"/>
+  <text x="465" y="1903.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">tel_clk_smc_gater</text>
+  <text x="465" y="1943.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">tel_clk_telemetry_gater</text>
+  <line x1="495" y1="1880.0" x2="585.08" y2="1880.0" stroke="#1f4fd6" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-smc)"/>
+  <line x1="495" y1="1920.0" x2="585.08" y2="1920.0" stroke="#e0b000" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-tel)"/>
+  <rect x="1025" y="1262.0" width="480" height="226.0" rx="5" fill="url(#g18)" stroke="#57606a" stroke-width="1.2"/>
+  <text x="1037" y="1284.0" font-size="12" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">avsbus_controller</text>
+  <text xml:space="preserve" x="1040" y="1466.0" font-size="8.5" fill="#57606a"><tspan font-weight="600" font-family="Consolas, monospace">u_refclk_apbclk_mux</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif">: </tspan><tspan font-weight="600" font-family="Consolas, monospace">prim_ag_clk_mux</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif"> · sel avs_clock_select[1] · </tspan><tspan font-weight="600" font-family="Consolas, monospace">test_clkmux2_0</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif">: clk_test_i (=0)</tspan></text>
+  <text xml:space="preserve" x="1040" y="1480.0" font-size="8.5" fill="#57606a"><tspan font-weight="600" font-family="Consolas, monospace">u_clk_div</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif"> ÷[1, 255] (default ÷4) → avs_clk · </tspan><tspan font-weight="600" font-family="Consolas, monospace">u_avs_bus_clkgate</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif">: stop_avs_clock_on_idle</tspan></text>
+  <use href="#cg" xlink:href="#cg" x="910" y="1343" color="#1a8a3c"/>
+  <use href="#cg" xlink:href="#cg" x="910" y="1383" color="#d9480f"/>
+  <text x="910" y="1375.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">avs_clk_ref_gater</text>
+  <text x="910" y="1415.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">avs_clk_periph_gater</text>
+  <line x1="940" y1="1352.0" x2="1043" y2="1352.0" stroke="#1a8a3c" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-ref)"/>
+  <line x1="940" y1="1392.0" x2="1043" y2="1392.0" stroke="#d9480f" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-per)"/>
+  <use href="#cg" xlink:href="#cg" x="1045" y="1343" color="#1a8a3c"/>
+  <use href="#cg" xlink:href="#cg" x="1045" y="1383" color="#d9480f"/>
+  <text x="1045" y="1375.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">u_refclk_clkgate</text>
+  <text x="1045" y="1415.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">u_apbclk_clkgate</text>
+  <line x1="1075" y1="1352.0" x2="1132.36" y2="1352.0" stroke="#1a8a3c" stroke-width="1.8" stroke-dasharray="6 4"/>
+  <line x1="1075" y1="1392.0" x2="1132.36" y2="1392.0" stroke="#d9480f" stroke-width="1.8" stroke-dasharray="6 4"/>
+  <polygon points="1132.36,1332 1132.36,1412 1164.36,1400 1164.36,1344" fill="#ffffff" stroke="#1f2328" stroke-width="1.6"/>
+  <text x="1148.36" y="1316.0" text-anchor="middle" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_refclk_apbclk_mux</text>
+  <line x1="1164.36" y1="1372.0" x2="1194.36" y2="1372.0" stroke="#6e7781" stroke-width="1.8" stroke-dasharray="6 4"/>
+  <polygon points="1194.36,1352 1194.36,1432 1226.36,1420 1226.36,1364" fill="#ffffff" stroke="#1f2328" stroke-width="1.6"/>
+  <text x="1210.36" y="1336.0" text-anchor="middle" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">test_clkmux2_0</text>
+  <line x1="1226.36" y1="1392.0" x2="1256.36" y2="1392.0" stroke="#6e7781" stroke-width="1.8" stroke-dasharray="6 4"/>
+  <rect x="1256.36" y="1376.0" width="80" height="32" rx="4" fill="#ffffff" stroke="#1f2328" stroke-width="1.6"/><text x="1296.36" y="1397.0" text-anchor="middle" font-size="13" font-weight="700" fill="#1f2328">÷ N</text>
+  <text x="1296.36" y="1368.0" text-anchor="middle" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_clk_div</text>
+  <line x1="1336.36" y1="1392.0" x2="1366.36" y2="1392.0" stroke="#c9184a" stroke-width="2" stroke-dasharray="6 4"/>
+  <use href="#cg" xlink:href="#cg" x="1366.36" y="1383" color="#c9184a"/>
+  <text x="1366.36" y="1415.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">u_avs_bus_clkgate</text>
+  <path d="M1396.36 1392.0 L1548 1392.0" fill="none" stroke="#c9184a" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#a-avs)"/>
+  <text xml:space="preserve" x="1495" y="1442.0" text-anchor="end" font-size="8.5" fill="#c9184a"><tspan font-weight="600" font-family="Consolas, monospace">avs_clock</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif"> → AVSBus pad</tspan></text>
+  <rect x="1025" y="1518.0" width="480" height="26" rx="4" fill="#ffe0cc" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="1037" y="1535.0" font-size="10" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">i2c_wrap </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— I2C ×3</tspan></text>
+  <use href="#cg" xlink:href="#cg" x="910" y="1522" color="#d9480f"/>
+  <line x1="940" y1="1531.0" x2="1023" y2="1531.0" stroke="#d9480f" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-per)"/>
+  <text x="910" y="1554.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">i2c_clk_periph_gater</text>
+  <rect x="1025" y="1588.0" width="480" height="26" rx="4" fill="#ffe0cc" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="1037" y="1605.0" font-size="10" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_uart_wrap </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— UART ×4</tspan></text>
+  <use href="#cg" xlink:href="#cg" x="910" y="1592" color="#d9480f"/>
+  <line x1="940" y1="1601.0" x2="1023" y2="1601.0" stroke="#d9480f" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-per)"/>
+  <text x="910" y="1624.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">uart_clk_periph_gater</text>
+  <rect x="1025" y="1658.0" width="480" height="26" rx="4" fill="#ffe0cc" stroke="#57606a" stroke-width="1.2"/>
+  <text xml:space="preserve" x="1037" y="1675.0" font-size="10" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_i3ccore_wrapper </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— I3C ×6</tspan></text>
+  <use href="#cg" xlink:href="#cg" x="910" y="1662" color="#d9480f"/>
+  <line x1="940" y1="1671.0" x2="1023" y2="1671.0" stroke="#d9480f" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#a-per)"/>
+  <text x="910" y="1694.0" font-size="8" font-weight="600" font-family="Consolas, monospace" fill="#57606a">i3c_clk_periph_gater</text>
+  <circle cx="965" cy="1671.0" r="3.5" fill="#d9480f"/>
+  <path d="M965 1671.0 L965 1639.0 L1548 1639.0" fill="none" stroke="#d9480f" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#a-per)"/>
+  <text xml:space="preserve" x="1495" y="1633.0" text-anchor="end" font-size="8.5" fill="#d9480f"><tspan font-weight="600" font-family="Consolas, monospace">gated_clk_periph_i3c_o</tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif"> → I3C memory macros</tspan></text>
+</svg>

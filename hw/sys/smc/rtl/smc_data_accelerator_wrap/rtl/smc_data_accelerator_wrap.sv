@@ -9,7 +9,8 @@ module smc_data_accelerator_wrap #(
   parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,
   parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,
   parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0,
+  parameter int unsigned DMA_BUFFER_DEPTH = 16
 ) (
   input  logic                                             clk_i,
   input  logic                                             rst_ni,
@@ -124,6 +125,7 @@ module smc_data_accelerator_wrap #(
     .CTRL_OUTSTANDING_TX                (smc_pkg::FABRIC_OUTSTANDING_TX),
     .F2M_FIFO_DEPTH                     (smc_pkg::F2M_FIFO_DEPTH),
     .M2B_FIFO_DEPTH                     (smc_pkg::M2B_FIFO_DEPTH),
+    .BUFFER_DEPTH                       (DMA_BUFFER_DEPTH),
     .EN_R_AW_COUPLING                   (1'b1),
     .BYPASS_DMA_CTRL_FLOPS              (1'b0),
     .BYPASS_DMA_MST_FLOPS               (1'b0),

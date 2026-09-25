@@ -74,8 +74,9 @@ the backend
 through `cocotbext-axi` and `cocotb`. `ocah_spi_vip`, `ocah_uart_vip`,
 `ocah_checker`, and `ocah_lib` bind no third-party protocol package. The
 SystemVerilog collateral compiles from the tree; the SV-UVM layer takes the
-UVM library from the simulator. Commercial VIP is adopter-owned and lives in
-the proprietary companion repository (<<shared-vip-commercial-deployment>>).
+UVM library from the simulator. Optional VIP backends are adopter-owned and
+enter through the backend-neutral integration contract
+(<<shared-vip-backend-deployment>>).
 
 [[shared-vip-clean-environment]]
 === Clean-Environment Qualification
@@ -111,42 +112,38 @@ simulators on `PATH`, and the license variables each licensed tool expects.
 
 Each package's wire-harness selftests (`--dut ocah_<protocol>_vip`) are the
 qualification vehicle of a simulator and framework pair. The native runner's
-cocotb framework runs on Verilator, VCS, and Xcelium; its SV-UVM framework
-runs on VCS.
+cocotb framework runs on Verilator and the optional backends accepted by its
+profile; the SV-UVM framework runs on the backend accepted by its profile.
+`run_dv.py --list --json` is the authoritative framework/tool matrix.
 
-[cols="<2,<2,<2,<2,<2",options="header"]
+[cols="<2,<3,<3,<3",options="header"]
 |===
-|Package |Verilator, cocotb |VCS, cocotb |Xcelium, cocotb |VCS, SV-UVM
+|Package |Verilator, cocotb |Optional backend, cocotb |SV-UVM
 
 |`ocah_axi_vip`
 |harness `smoke`, DTP/SEP/SMC/SMU benches
-|harness `smoke`
 |harness `smoke`
 |harness `smoke`, DTP/SEP/SMC/SMU benches
 
 |`ocah_jtag_vip`
 |harness `smoke`, DTP/SMC/SMU benches
 |harness `smoke`
-|harness `smoke`
 |harness `smoke`, DTP/SMU benches
 
 |`ocah_spi_vip`
 |harness `smoke`, SEP/SMC benches
-|harness `smoke`
 |harness `smoke`
 |no SV-UVM realization
 
 |`ocah_uart_vip`
 |harness `smoke`, SMC bench
 |harness `smoke`
-|harness `smoke`
 |no SV-UVM realization
 |===
 
-Verilator is the license-free baseline hosted CI runs; VCS and Xcelium runs
-take a licensed host, so their qualification is recorded on the tracker with
-the tool release, and hosted CI runs neither. The following combinations are
-unsupported, each with the diagnostic it produces:
+Verilator is the license-free baseline that hosted CI runs. Optional-backend
+qualification records the tool release outside the repository. The following
+combinations are unsupported, each with the diagnostic it produces:
 
 [cols="<3,<4,<4",options="header"]
 |===
@@ -168,10 +165,9 @@ responders need the backend
 |Verilator compiles no UVM library; the cocotb realization is the
 license-free path
 
-|SV-UVM on Xcelium
-|the runner's SV-UVM framework lists VCS as its only tool
-|deferred: no qualifying run exists; the SV-UVM realizations are qualified
-on VCS
+|SV-UVM on a backend outside the framework allowlist
+|the runner rejects the selected tool for the framework
+|use a backend reported for the SV-UVM view by `run_dv.py --list`
 
 |Covergroups on Verilator
 |`cov/` collateral never enters a Verilator filelist
@@ -330,7 +326,7 @@ interface to the VIP config object (`ocah_jtag_master_config`,
 `ocah_axi_config`, ...), sets geometry, gating, and the evidence `name_tag`
 there, and publishes the config to the VIP-level environment it
 instantiates. The VIP environments and agents are the factory seam:
-commercial integrations override them by type, so DUT code creates them
+optional backend integrations override them by type, so DUT code creates them
 through the factory and never hard-codes backend classes.
 
 *Sequences.* DUT sequences drive a VIP only through its `*_sequence` API
@@ -359,25 +355,23 @@ subscribers from the environment. The protocol SVA modules
 (`sva/ocah_*_sva.sv`) are instantiated in the testbench top on the raw
 signals, enabled through a testbench-interface control.
 
-*Vendor hooks.* Each VIP config carries the opaque `vendor_cfg` extension
+*Backend hooks.* Each VIP config carries the opaque `vendor_cfg` extension
 and the `en_monitor` knob, and each shared interface carries a guarded
-vendor-interface nest — the commercial integration points; see
-<<shared-vip-commercial-deployment>>.
+vendor-interface nest for optional integrations; see
+<<shared-vip-backend-deployment>>.
 
-[[shared-vip-commercial-deployment]]
-=== Commercial Backend Deployment
+[[shared-vip-backend-deployment]]
+=== Optional Backend Deployment
 
-Commercial VIP is optional and adopter-owned. The normative integration
+An optional VIP backend is adopter-owned. The normative integration
 contract is the *Template Contract* section of
 `hw/common/dv/vip/ocah_jtag_vip/README.md`: the open tree carries only the
 hooks — the opaque `vendor_cfg` extension, the `cfg.en_monitor` knob, the
 guarded vendor-interface nest, and the factory-overridable VIP
-environments — and every implementation built on them lives in the
-proprietary `nonfree/` companion repository, with a strictly one-way
-dependency (the open tree never references companion paths and is complete
-without it).
+environments. Adopter overlays supply backend implementations without adding
+a dependency from the open tree.
 
-License-free contributor tests must remain runnable without commercial
+License-free contributor tests must remain runnable without optional
 packages, and an integration preserves OCAH item/config/result semantics so
 tests, VPLAN evidence, and DUT scoreboards stay backend-independent.
 
@@ -432,8 +426,8 @@ python3 tools/dv/run_dv.py \
 ----
 
 Retain the run-level `result.json`, structured test result, relevant log, tool
-versions, seed, and commit SHA as qualification evidence in the tracker and the
-CI artifact store.
+versions, seed, and commit SHA in the CI artifact store or another external
+qualification record.
 
 [[shared-vip-deployment-troubleshooting]]
 === Troubleshooting

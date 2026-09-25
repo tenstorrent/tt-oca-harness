@@ -11,7 +11,11 @@ an `axi_lite_to_apb` bridge, so APB4 is not exposed at the module boundary.
 
 === Configuration Parameters
 
+<<avsbus-configuration-parameters-table>> lists the command and readback FIFO depths.
+
+[[avsbus-configuration-parameters-table]]
 [width="100%",cols="30%,20%,50%",options="header",]
+.AVSBus configuration parameters
 |========================================================================
 |Parameter |Default |Description
 |COMMAND_FIFO_DEPTH |8 |Command FIFO depth in entries; must be a power of two
@@ -20,7 +24,10 @@ an `axi_lite_to_apb` bridge, so APB4 is not exposed at the module boundary.
 
 === Port List
 
-.Register Interface
+<<avsbus-register-interface-table>> defines the AXI4-Lite register-access ports.
+
+[[avsbus-register-interface-table]]
+.AVSBus Register Interface
 [width="100%",cols="25%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Description
@@ -31,6 +38,9 @@ address, 32-bit data, 4-bit strobe)
 |axil_resp_o |struct |Output |AXI4-Lite response, `avsbus_axil_resp_t`
 |=====================================================================================
 
+<<avsbus-protocol-signals-table>> defines the AVSBus data, clock, and pad-control ports.
+
+[[avsbus-protocol-signals-table]]
 .AVSBus Protocol Signals
 [width="100%",cols="25%,10%,10%,55%",options="header",]
 |=====================================================================================
@@ -46,7 +56,11 @@ address, 32-bit data, 4-bit strobe)
 pins; see <<avsbus-controller-gpio-enable>>
 |=====================================================================================
 
-.Clock, Reset and DFT Signals
+<<avsbus-clock-reset-and-dft-signals-table>> defines the clock, reset, and test-control
+inputs.
+
+[[avsbus-clock-reset-and-dft-signals-table]]
+.AVSBus Clock, Reset and DFT Signals
 [width="100%",cols="25%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Description
@@ -74,7 +88,11 @@ while `test_en_i` is high
 source muxes to their test setting and enables the clock-gate test inputs
 |=====================================================================================
 
-.Interrupt and Debug Signals
+<<avsbus-interrupt-and-debug-signals-table>> defines the interrupt and protocol-state
+outputs.
+
+[[avsbus-interrupt-and-debug-signals-table]]
+.AVSBus Interrupt and Debug Signals
 [width="100%",cols="25%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Description
@@ -93,6 +111,9 @@ master subframe carries a fixed `2'b01` preamble in its two most significant
 bits; the remaining fields occupy the same bit positions as the `AVS_CMD`
 register, so software writes a command in wire order.
 
+<<avsbus-master-subframe-table>> defines the fields transmitted in a master subframe.
+
+[[avsbus-master-subframe-table]]
 .AVSBus Master Subframe
 [width="100%",cols="25%,10%,10%,55%",options="header",]
 |=====================================================================================
@@ -115,6 +136,9 @@ manufacturer-specific
 |CRC-3 |[2:0] |3 |Calculated by hardware over bits [31:3]
 |=====================================================================================
 
+<<avsbus-controller-cmd-codes>> lists the command-group-zero data types, resolutions,
+and access modes.
+
 [[avsbus-controller-cmd-codes]]
 .AVSBus Command Codes (Command Group 0)
 [width="100%",cols="10%,25%,15%,50%",options="header",]
@@ -131,9 +155,10 @@ maximum power, 0x4-0x7 manufacturer-specific
 |0xF |AVSBus Version |N/A |4 bits, LSB aligned, read only
 |=================================================================================
 
-With command group 1 the command code is manufacturer-specific and the table
+With command group 1 the command code is manufacturer-specific and <<avsbus-slave-subframe-table>>
 above does not apply.
 
+[[avsbus-slave-subframe-table]]
 .AVSBus Slave Subframe
 [width="100%",cols="25%,10%,10%,55%",options="header",]
 |=====================================================================================
@@ -173,6 +198,10 @@ divider is used: bit 1 picks the source (0 = `clk_reg_i`, 1 = `clk_ref_i`) and
 bit 0 picks the divider (0 = bypass, 1 = divided). The reset value is `2'b11`,
 so the controller comes up on a divided `clk_ref_i`.
 
+<<avs-clock-configuration-fields-table>> defines the source-selection and divider
+configuration fields.
+
+[[avs-clock-configuration-fields-table]]
 .AVS Clock Configuration Fields
 [width="100%",cols="45%,15%,40%",options="header",]
 |=====================================================================================
@@ -205,7 +234,10 @@ While `test_en_i` is high the source and divider-bypass muxes ignore
 
 === Reset Architecture
 
-.Reset Domains
+<<avsbus-reset-domains-table>> identifies the logic reset by each AVSBus reset input.
+
+[[avsbus-reset-domains-table]]
+.AVSBus Reset Domains
 [width="100%",cols="25%,75%",options="header",]
 |=====================================================================================
 |Reset |Scope
@@ -227,7 +259,10 @@ clock domain never starts.
 `interrupt_o` is a level output, asserted while any `AVS_INTERRUPT` bit is set
 and its corresponding `AVS_INTERRUPT_MASK` bit is clear.
 
-.Interrupt Sources (AVS_INTERRUPT)
+<<avsbus-interrupt-sources-table>> maps AVS_INTERRUPT bits to the events that set them.
+
+[[avsbus-interrupt-sources-table]]
+.AVSBus Interrupt Sources
 [width="100%",cols="10%,35%,55%",options="header",]
 |=====================================================================================
 |Bit |Field |Raised when
@@ -271,7 +306,10 @@ because the protocol FSM begins running as soon as reset is deasserted.
 
 === Timing
 
-.Protocol Timing
+<<avsbus-protocol-timing-table>> summarises the subframe and clock timing.
+
+[[avsbus-protocol-timing-table]]
+.AVSBus Protocol Timing
 [width="100%",cols="40%,60%",options="header",]
 |=====================================================================================
 |Parameter |Value

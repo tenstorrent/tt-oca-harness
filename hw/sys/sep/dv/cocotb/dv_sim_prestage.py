@@ -95,6 +95,16 @@ def _lc_transition_fixed(seed: int) -> dict[str, int]:
     return fixed
 
 
+def _feat_ctrl_dis_fixed(seed: int) -> dict[str, int]:
+    """Same vectors as ``sep_efuse_image_test``'s feat_ctrl_nonvacuous_fixed().
+
+    Returns CHIPLET_UID alone on the common seed; replaces the disable vectors
+    only when the natural draw would make post-sense FEAT_CTRL zero.
+    """
+    mod = _load_env_module("sep_efuse_feat_ctrl", "sep_efuse_feat_ctrl.py")
+    return mod.feat_ctrl_nonvacuous_fixed(seed, base={"CHIPLET_UID": 0})
+
+
 def _set_only_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_efuse_set_only_monotonicity_test``'s ``cfg.image_fixed()``."""
     mod = _load_env_module("sep_efuse_set_only", "sep_efuse_set_only.py")
@@ -123,7 +133,12 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
     # (the test programs one bit of it after the first sense). Must match the test's
     # select_efuse_image(fixed={"CHIPLET_UID": 0}).
-    "sep_efuse_image_test": {"mode": "random", "fixed": {"CHIPLET_UID": 0}},
+    # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
+    # (the test programs one bit of it after the first sense). The disable vectors
+    # stay random; feat_ctrl_nonvacuous_fixed() replaces them ONLY on a draw that
+    # would make post-sense FEAT_CTRL zero, which would leave the test's
+    # fail-closed contrast comparing 0 against 0.
+    "sep_efuse_image_test": {"mode": "random", "fixed_from": "feat_ctrl_dis"},
     # Committed preload image (test passes +sep_efuse_preload, seed-independent).
     "sep_efuse_sense_test": {"mode": "preload", "preload": str(_DEFAULT_EFUSE_PRELOAD)},
     # LC stitch: starts at TEST_DEV (lc_raw=0x0) with SIP/SYS pins.
@@ -323,6 +338,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
         fixed = spec.get("fixed")
         if spec.get("fixed_from") == "rma_token":
             fixed = _rma_token_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "feat_ctrl_dis":
+            fixed = _feat_ctrl_dis_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "set_only":
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "lc_transition":

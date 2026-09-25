@@ -4,48 +4,73 @@
 # SMC coverage scope
 
 SMC scopes coverage in two files because the two simulators scope by different
-things, and neither can express the other's form:
+things, and the two flows answer different questions:
 
-| File | Flow | Mechanism |
-| --- | --- | --- |
-| `../verilator/smc_cov_scope.vlt` | public CI (graded) | `coverage_off -file`, globs |
-| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` |
+| File | Flow | Mechanism | Population |
+| --- | --- | --- | --- |
+| `smc_cov_scope.hier` | commercial signoff | `-cm_hier` / `-cm_common_hier`, design units named by `gen_smc_cov_scope.py` | the SEP rule: DUT minus the bench, the CPU subtree, the library and interconnect cells and the I3C controllers; every other functional third-party IP stays graded |
+| `../verilator/smc_cov_scope.vlt` | public CI | `coverage_off -file`, globs | what SMC owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`, the `hw/top` shells and the `cov/sv` points |
 
 Both are applied at **compile** time, following what SEP measured
 (`hw/sys/sep/dv/cov/config/vcs/README.md`): a report-time filter prunes the
 report pages and still grades the whole database, so scope that has to hold
-must keep the code out of the database. Edit either file then `--rebuild` —
+must keep the code out of the database. Edit either file then `--rebuild` --
 neither is fingerprinted.
 
-**The two files express one set.** Verilator's `coverage_off` takes `-file`
-only, so the Verilator file drops trees by source path with globs. VCS scopes
-by design unit or instance, and the trees SMC does not own -- vendored RTL,
-`hw/ip`, `hw/common`, the chipyard-generated CPU cluster, the bench's own
-models -- are instantiated at hundreds of places inside SMC's own modules, so
-no `-tree` reaches them without dropping real SMC RTL. `gen_smc_cov_scope.py`
-therefore reads the build filelists, takes every module, interface and
-program compiled from those trees, and writes one `-module` line per unit;
-the file is regenerated (`--check` says when it is stale) rather than kept by
-hand.
+The VCS scope follows the rule `hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier`
+states, so the two subsystems' signoff figures are read on one definition:
+the bench, the CPU subtree and the library cells leave the database, and
+functional third-party IP stays graded regardless of authorship, because SMC
+tests target it by name (the I3C controller, the DMA, the debug and trace
+blocks, the AXI fabric). VCS scopes by design unit or instance, and those
+trees are instantiated at hundreds of places inside SMC's own modules where
+no `-tree` reaches them, so `gen_smc_cov_scope.py` reads the build filelists,
+takes every module, interface and program compiled from the dropped trees,
+and writes one `-module` line per unit under the reason it leaves; the file is
+regenerated (`--check` says when it is stale) rather than kept by hand.
+
+The Verilator scope keeps the narrower owned-files set. Verilator's
+`coverage_off` takes source-path globs only, it does not apply to a file whose
+last line has no newline (which is the state of several vendored files), and
+the public runner compiles the coverage-instrumented model within a fixed
+time budget, so widening its population to the vendored trees is a separate
+decision with a measurement of its own.
 
 ## What the numbers are
 
-Both grade what SMC owns: `hw/sys/smc/rtl/**` (less the chipyard-generated
-cluster), `hw/sys/smc/regs/**`, the two `hw/top` integration shells and the
-`cov/sv` points. They still differ in what a point is -- Verilator's
-expression family against VCS's condition, FSM and toggle -- and Verilator
-5.050 leaves some vendored files instrumented that VCS drops (the known gap
-below), so quote the simulator with the number.
+The VCS figure is the SMC DUT minus the CPU subtree and the library cells,
+functional third-party IP included. Not "SMC-owned RTL coverage": say which.
+The Verilator figure is SMC-owned RTL. They also differ in what a point is --
+Verilator's expression family against VCS's condition, FSM and toggle -- and
+Verilator 5.050 leaves some vendored files instrumented that its scope names
+(the known gap below), so quote the flow with the number.
 
 ## What each file excludes
 
 ### `smc_cov_scope.hier` (VCS)
 
     -tree smc_uvm_top 1        TB top's own body, children kept
-    -module <unit>             one line per design unit compiled from
-                               vendor/, hw/ip/, hw/common/, the chipyard-
-                               generated cluster, hw/sys/smc/dv/tb and
-                               hw/sys/smc/dv/models
+    // bench                   units compiled from hw/sys/smc/dv/tb,
+                               hw/sys/smc/dv/models and the dv/ trees of the
+                               hw/ip blocks (the eFuse bank model and its
+                               register block), as SEP drops efuse_bank_model
+    // cpu subtree             the chipyard-generated CPU cluster, the same
+                               argument SEP uses to drop sep_cpu
+    // library cells           vendor/pulp-platform/common_cells, the OpenTitan
+                               prim library (the cells SEP drops) and the OCAH
+                               och_prim library, the same kind of leaf cell
+    // interconnect cells      the vendored pulp AXI, APB, register_interface,
+                               AXI-Stream and OBI mux, demux, crossbar and
+                               converter children; the SMC fabric wrappers that
+                               instantiate them stay graded, so a decode or
+                               isolation fault still lands on SMC's own module
+    // package                 axi_pkg, which would report an assertion row
+                               with no logic behind it
+    // i3c controllers         -tree ...u_smc_peripherals.u_i3ccore_wrapper: the six
+                               I3C controllers and their AXI-Lite demux, a large
+                               third-party block that one SMC leaf reaches and
+                               that has its own bench (hw/ip/i3ccore_wrap/dv),
+                               the same argument SEP uses to drop sep_cpu
 
 The `-module` lines are generated:
 
@@ -71,19 +96,138 @@ reason under "Verilator glob matching" below:
 `hw/sys/smc/dv/cov/sv/*` is **not** excluded — those files carry
 the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 
+## Exclusion files
+
+`coverage_policy.toml` beside this file names six `-elfile` files the report
+applies, the form `hw/sys/sep/dv/cov/config/vcs/coverage_policy.toml` uses.
+The first four are written by `gen_smc_cov_exclusions.py` from urg's exclusion
+templates and the run's raw report (`cov/report_raw`, written without the
+exclusion files). Every entry lists a point that report marks uncovered, rows,
+branch arms and FSM states and transitions alike, so a reachable point is never
+hidden by a pattern. That rule is a backstop rather than the argument: each
+class states a fact, and the fact has to be narrow enough that its pattern
+would not have named a reachable point to begin with, so no class takes a whole
+state variable or a whole signal. F2 takes the edges into the always_comb
+default's state that no case arm of the source produces, F3 the states of an
+FSM that no tied-off response lets it reach, F4 a state whose decode arm a
+parameter leaves unelaborated, F5 the edges that exist only as a state
+register's reset assignment, and F6 the edge an enable-edge load cannot
+supply. A vector is read from the
+report's EXPRESSION table only: below it the report scores each operand again
+under its own SUB-EXPRESSION heading, and a vector uncovered for an operand is
+often covered for the expression containing it, so those rows are never merged
+into the parent's. The classes that take operand rows, A6 and B1, read each
+operand table as its own point, paired with its template entry within one
+source line. A
+branch arm is read from the table of the construct at its source line. Where
+the report scores a construct as paths through several decisions, as it does
+for a case statement or an else-if chain, each path is read whole: its decision
+columns come from the annotated source (a ternary whose `?` opens its own line takes
+its selector from the line above), it is paired with its template entry by
+its column values, and it is written only when one of its own decisions is out
+of reach under a class's fact, or when its decisions have no common solution
+(C1). A comparison is one opaque truth value to that test. Condition and
+branch entries of one module are written as separate blocks, each under its
+own metric's checksum, since urg checks a block against the metric it holds. Where a
+fact turns on which term of an expression a row holds away from a tied value,
+the class reads the report's term list for that expression and decides the row
+from it, rather than matching the expression by name:
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions cond+branch+fsm -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_exclusions.py <dir> <run dir>/cov/report_raw/modinfo.txt
+
+| File | Class | Fact |
+| --- | --- | --- |
+| `smc_regblock_exclusions.el` | A1 NO-STALL | a PeakRDL regblock without external registers hardwires `cpuif_req_stall_rd/wr` to zero: the valid-without-ready row of each AXI-Lite handshake condition, the stall branches, and each stall sub-expression row that needs a stall input at one cannot occur |
+| `smc_regblock_exclusions.el` | A2 NO-ERROR | a regblock generated with "No valid address check" never sets `decoded_err`, `cpuif_wr_err` or `cpuif_rd_err`: its error branches and SLVERR responses cannot occur |
+| `smc_regblock_exclusions.el` | A3 NO-READ-CHANNEL | the UART's read-channel select has no branch for the write-only register map, and `axi_lite_demux` raises a port's AR valid only when that port is selected, so that block's `arvalid` is never asserted. Its `axil_arvalid` register and `axil_ar_accept` stay low, every request is a write, and `readback_done`, `cpuif_rd_ack` and the external read ack (generated as zero) never rise: a row or branch path needing any of them high cannot occur. A row with `ar_accept` low and `aw_accept` high stays graded |
+| `smc_regblock_exclusions.el` | A4 READ-NEVER-ERRORS | in the vendored iDMA register top `reg_re` and `reg_we` are mutually exclusive, `wr_err` is gated on `reg_we` and `addrmiss` requires that no address hit, so the per-address read term crossed with an error cannot occur |
+| `smc_regblock_exclusions.el` | A5 INPUT-UNCONNECTED | the SMC integration leaves that block's `devmode_i` unconnected, so the explicit-error-on-unmapped-access term it gates never evaluates true |
+| `smc_regblock_exclusions.el` | A6 SINGLEPULSE-RETAIN | the RDL declares the field `singlepulse`, so its storage holds a written one for a single cycle and the cpuif takes no second write in that cycle, which leaves the storage at zero at every accepted write. The retain row of the write-data ternary, and each row of its retain operand that asks for the storage at one, cannot occur; this holds at any cpuif width. A W1C or plain write-only field keeps its value between writes and stays graded |
+| `smc_regblock_exclusions.el` | A7 SINGLEPULSE-LOADS | PeakRDL sets a singlepulse field's `load_next` on its software-write arm and on the else arm that clears it back to zero, so the storage loads on every clock out of reset and the path of its flop that skips the load cannot occur. A field with any arm that leaves `load_next` at zero stays graded |
+| `smc_regblock_exclusions.el` | B7 DFX-INPUTS-TIED | **a bench fact, not a design one.** `smc.sv:236-241` and `smc_dfx_ctrl_status_wrap.sv:37-42` pass `mem_repair_done`, `mem_repair_success`, `mbist_done` and `mbist_pass` straight to the DFX status register's sticky fields, whose `load_next` is that input, and `hw/sys/smc/dv/tb/tb_top.sv` ties all four to one in both instances because the boot sequencer waits on them. The input-low arm of each sticky field and the no-load path of its flop have no stimulus. **Bench ports that drive those inputs retire the class** |
+| `smc_regblock_exclusions.el` | C1 CONTRADICTORY-PATH | urg lists every combination of an if and else-if chain's decisions as a path. PeakRDL's response logic tests `cpuif_rd_ack` and `cpuif_wr_ack` alone inside `if (cpuif_rd_ack \|\| cpuif_wr_ack)`, so the path with the OR true and both acks false needs a contradiction. A path is written only when its own decisions, over the same signals, have no common solution |
+| `smc_regblock_exclusions.el` | B1 PARTIAL-LANE-WRITE | **a bench fact, not a design one.** The SMC AXI agent writes whole 32-bit words, so on a block whose cpuif carries no more than that every write has every lane on. A row of a field's software-write branch (`next_c = ...` under `// SW write`) that needs some `decoded_wr_biten` lane off, the retain row or a row of the retain or write-data operand, is reachable in the design and uncovered for want of a partial write. The test is exact: the row must be out of reach with every lane on and within reach with them free, over the report's own term list. **A block with a wider cpuif takes a half-word write from the same agent**, so its rows stay graded. The clear-on-write form of a W1C field is left out, and a leaf covers it |
+| `smc_opentitan_toggle_exclusions.el` | T1 OPENTITAN-PORTS-ONLY | a unit that comes from OpenTitan is graded on its ports for toggle, its internals being verified upstream; every other unit the scope keeps is graded on all of its nets. Origin is the source's copyright line, not the unit's name, and the generator re-checks it. The ten units and their qualifying lines are listed below |
+| `smc_xor_network_exclusions.el` | X1 XOR-NETWORK | a CRC or parity network is an XOR of four or more terms; condition coverage enumerates 2^n input combinations of a function the tests compare by its output |
+| `smc_fsm_exclusions.el` | F2 DEFAULT | `avsbus_controller.cur_state` has `next_state = AVS_IDLE` as its always_comb default, which the extractor lists as an edge from every state; every state has a case arm and every arm assigns next_state, so the default never fires. `AVS_IDLE`, `AVS_SLAVE_RESYNC` and `AVS_END_LAST_SUBFRAME` assign AVS_IDLE in their own arm, reach it in the ordinary sequence, and stay graded |
+| `smc_fsm_exclusions.el` | F3 TIEOFF | `smc_dfd_wrap` ties every `m_trc_axi_*` response input to zero, so `trace_axi_master` never completes a response handshake and cannot pass REQ_HANDSHAKE: the states an `aw_ready`, `w_ready` or `b_valid` is needed to enter, and the edges touching them, cannot occur. The request it issues on `valid_i` needs no response, so RESET_VALUE, REQ_HANDSHAKE and the edge between them stay graded |
+| `smc_fsm_exclusions.el` | F4 PARAM-OFF | `efuse_interface_controller.efuse_reg_select` selects EFUSE_MMR_REG_MAP only when the instance has lifecycle state (`hw/ip/efuse/doc/memmap.adoc`); `smc_efuse_wrapper` sets `HAS_LC_STATE = 0`, so the arm is not elaborated and the state and its edges have no access that reaches them |
+| `smc_fsm_exclusions.el` | F5 RESET-EDGE | a state register's reset assignment is expanded into a transition from every state; where no case arm of the source state assigns the reset state, the edge exists only if the block's reset is asserted while the FSM occupies that one state, and the package grades reset behaviour through its reset leaves. `accumulator_bank.bank_status` is one: the `BANK_PARTIAL` arm assigns only `BANK_FULL` or `BANK_PARTIAL`, so `BANK_PARTIAL->BANK_EMPTY` can only come from the reset at `accumulator_bank.sv:123` The seven `efuse_interface_shim` write-sequence states whose arms never return to `StWriteIdle`, only `StWriteFinish` doing so, are the same case |
+| `smc_fsm_exclusions.el` | F6 ENABLE-EDGE | the bus monitor enters StBusBusyHigh from its StBusBusyLow arm on an idle bus, and from the monitor enable's rising edge in multi-controller mode, where the disabled branch has already parked the register at StBusFree; StBusBusyStop has no arm to StBusBusyHigh and cannot be the register's value at that edge, so only an edge from there cannot occur. The edge from StBusBusyLow is the ordinary sequence and stays graded |
+| `smc_fsm_exclusions.el` | F7 SCL-HELD-LOW | `i2c_bus_monitor.sv:118` raises `start_det_trigger` only on a falling SDA while SCL is high on two samples, and `:103` clears the pending flag whenever SCL is low, so a target state driving `scl_d = 1'b0` holds the wired-AND SCL low for its whole duration and `start_detect_i` cannot rise in it: the fan-in override to AcquireStart (`i2c_target_fsm.sv:1029`) cannot fire from the seven stretch states |
+| `smc_fsm_exclusions.el` | F8 NO-INTERFERENCE | `i2c_core.sv:620-622` gates `sda_released_but_low` on `scl_sync` and the interference and arbitration-lost terms on the transmitting flag, so a state leaving `transmitting_o` at zero, or holding SCL low, makes the term identically false and the override it feeds cannot fire from it: eight target states for `->WaitForStop` (`i2c_target_fsm.sv:1033`) and five controller states for `->Idle` (`i2c_controller_fsm.sv:999`). A state whose own arm assigns the same destination for another reason keeps that edge graded |
+| `smc_fsm_exclusions.el` | B2 UNAIMED-OVERRIDE | **a bench fact, not a design one.** The I2C target and controller FSMs end their next-state logic with fan-in overrides (`i2c_target_fsm.sv:1017-1033`: start detect to AcquireStart; target disable, stop detect or bus timeout to Idle; arbitration loss to WaitForStop. `i2c_controller_fsm.sv:999`: interference or a failed symbol to Idle) taken on bus events and register writes. The states they leave are timed below one bit by the block's own counters, and the SMC bench drives the bus through the pads and registers, so it cannot place an event or a write in a chosen one of them. **A bench that can place a bus event or a register write in a chosen sub-bit state retires the class.** An edge the source state's own case arm assigns, read from the FSM source at generation time, stays graded; F7 and F8 name the edges the design forbids |
+| `smc_fsm_exclusions.el` | F9 LOOP-INDEX-EXTRACTION | **a property of the extraction.** `telemetry_receiver.block_index` is a loop index local to an `always_comb` (declared `:185`, set `:189`, walked by the `for` at `:191`) with no flop behind it; the values and transitions the extractor records are sampled from that combinational loop and none is a state of the design. Only its uncovered points are written, so the sampled values it did record stay in the score |
+| `smc_fsm_exclusions.el` | B4 SRAM-AUTOINIT-BYPASSED | **a bench fact, not a design one.** The CPU scratch SRAM is zeroed by a hardware sequence (`smc_4core_cpu.sv:437-470`) unless `smc_disable_sram_auto_init_i` is high, and `hw/sys/smc/dv/tb/tb_top.sv` ties it high, so MEM_ZERO_BUSY and its edges never run. **A bench that deasserts the input retires the class** |
+| `smc_disabled_feature_exclusions.el` | P1 NTRACE-OFF | the DFD top instantiates the trace wrapper with `NUM_NTRACE_INST(0)` and `NTRACE_SUPPORT(0)`, and `trace_wrapper.sv` gives `Core_fuse_enable_Ntrace` a constant zero at zero instances, so every N-trace signal of the sink reads zero. A `trace_sink` row is taken only where the report's own term list shows it asking one of those signals for a value zero forbids; a row every N-trace term of which sits at zero stays graded, whatever the expression's other signals are. In `mmrs` the NTR sink's address decode, chip select and WARL check follow, while the shared clock-disable and reset terms name other DFD blocks beside the N-trace one and stay graded |
+| `smc_disabled_feature_exclusions.el` | P2 SKIP-TIED-OFF | both SMC fabrics instantiate the AXI filter with `filter_skip_i` tied to zero, so the arm the filter decision takes when it is high never runs; the arm it takes when low is the one the fabrics use and stays graded |
+| `smc_disabled_feature_exclusions.el` | P3 WREN-TIED | the CLA assigns twenty of its MMR hardware write-enables a constant one (`cla_counter.sv`, `core_logic_analyzer.sv`), so the enable never reads zero and the write-data ternary never takes its else arm |
+| `smc_disabled_feature_exclusions.el` | P4 SINGLE-SOURCE | with one trace source the two-source term of `TrRamPendPkt*WrEn` is always false and the per-way pending count stays at zero (`trace_sink.sv` pending logic), so every pending valid and enable and every south-port valid reads zero. A row is taken only where the report's term list shows it out of reach with those held at zero and within reach with them free; the pending RAM's source field is RAM content and is left free, so rows ordinary trace traffic reaches stay graded |
+| `smc_disabled_feature_exclusions.el` | P5 INSTR-TYPE-CONST | `reg_wr_instr_type` has no driver outside the MMR files, so neither encoding the two `instr_type` comparisons test is ever presented and their true rows cannot occur; the write-data ternaries that pass the type to `update_value` stay graded |
+| `smc_disabled_feature_exclusions.el` | P8 WREN-TIED-ZERO | `MMR_CDbgEapStatus_F_Rsvd3116_WrEn` is its CLA write structure's field and nothing else, and the CLA gives that structure a zero default and never names the field, so the enable holds zero and the then arm of the ternary it selects is unreachable; this is the converse of P3. It is the block's only reserved-field enable that qualifies: `ClaCtrlStatus`, `ClaTimestampConfig`, `MuxSelHi`, `MuxSelLo`, `LfsrMask` and `ClaTimestampOffset` each add a `reg_write & reg_addr` term that a software write to the register asserts, and the report marks all of those arms covered |
+| `smc_disabled_feature_exclusions.el` | P9 DEBUG-WIDTH-64 | `core_logic_analyzer` derives `DBG_SIGNAL_CONFIG` from `DEBUG_SIGNAL_WIDTH == 128` and `smc_dfd_wrap.sv:141` passes 64, so the `cla_snapshot_mmr_hi_blk` generate that drives every snapshot `Hi` write enable is not elaborated and each holds zero. The report agrees: all sixteen `Hi` true arms are uncovered and all sixteen `Lo` true arms, assigned outside that generate, are covered |
+| `smc_disabled_feature_exclusions.el` | P10 PACKET-SHORTER-THAN-BANK | each accumulator bank spans `BANK_DATA_WIDTH_IN_BYTES` bytes, 32 here (`accumulator.sv:63-67`), and the packetizer is elaborated with `PACKET_WIDTH_IN_BYTES = VLT_PACKET_WIDTH / 8`, which a 64-bit debug bus makes 10 (`VLT_HDR_WIDTH = 8 + DEBUG_SIGNAL_WIDTH/8`), so one write cannot both start at or below a bank's first byte and end past its last: `target_write_byte_boundary_crosses_bank_range` is false for the life of the design. Only the row that needs it true is taken; the `equals_range_end` and `wraparound` rows of the same condition stay graded |
+| `smc_disabled_feature_exclusions.el` | P11 UART-SELF-CHECK | each UART holding register stores `~^data` beside its data, written with the valid flag and cleared with it (`uart_core.sv:224-245`, `:432-454`), and each `prim_fifo_sync_parity` stores `{~^data, data}` and guards its pointers with a redundant `prim_count`, so a valid entry always has odd parity and `~^{parity, data}` reads one only on corrupted storage. The rows that need `thr_err`, `rbr_err` or either FIFO error at one follow |
+| `smc_disabled_feature_exclusions.el` | P12 BREAK-IMPLIES-FRAMING | `uart_core.sv:345` forms `allzero_err` as the framing error of an all-zero frame and stores it as `break_err` beside `framing_err` in both the FIFO (`:361-362`) and the holding register (`:399-400`), so the `rx_char_err` row with `break_err` alone cannot occur |
+| `smc_disabled_feature_exclusions.el` | P6 LC-STATE-OFF | `smc_efuse_wrapper` instantiates the eFuse with `HAS_LC_STATE = 0`, so the lifecycle-state arms of `efuse_interface_controller`, `efuse_shadow_regs`, `efuse_shadow_reg_access_control` and `efuse_guard` are never entered and the RMA token comparisons they hold have no access that reaches them; the fuse-sense, security-disable and image-lock terms outside those arms stay graded |
+| `smc_disabled_feature_exclusions.el` | P7 NO-ERROR-CAP | `idma_backend_wrapper` elaborates the backend with `ErrorCap = NO_ERROR_HANDLING`, whose bypass gives the legalizer's `flush_i` and `kill_i` a constant zero, so a term needing either asserted is false for the life of the design; the `r_ready_i`/`w_ready_i` backpressure rows and the software-writable `opt_tf_q.decouple_rw` branch stay graded |
+| `smc_disabled_feature_exclusions.el` | P13 CLAMP-TIED | `generic_ipx_clk_rst_ctrl` forms `o_gated_func_clamp` as `i_func_clamp \| i_fuse_dis`; `smc_dfd_wrap` ties both to zero for the CLA, DST source, DST sink and funnel, and the DFD top ties both to one for the NTR sink; the trace network interface clamp is the AND of the DST inputs and the absent N-trace side's, and the MMR interface clamp the AND over every block, so both are zero. Each gated clamp is constant, and the ternary arm the other value selects in `cla_wrapper`, `trace_wrapper`, `dst_wrapper`, `tnif_wrapper` and `mmrs` cannot occur |
+| `smc_disabled_feature_exclusions.el` | P14 JTAG-MMR-TIED | `smc_dfd_wrap` ties `i_jtag_mmr_req_vld` to zero, `mmrs` tests it directly and `mmr_req_ctrl` sets `gnt_is_jtag` from it alone, so no arm selecting the JTAG request can occur |
+| `smc_disabled_feature_exclusions.el` | P15 SECURE-TM-TIED | `smc_efuse_wrapper` ties `secure_tm_i` to zero, so the secure-test-mode arms of `efuse_shadow_regs`, `efuse_shadow_reg_access_control` and `efuse_guard` cannot occur. The program-lock and read-lock arms beside them stay graded |
+| `smc_disabled_feature_exclusions.el` | P16 SINK-ENABLE-CONST | the DFD top elaborates `mmrs` with `NTRACE_SUPPORT(0)` and default `TRACE_SINK_SUPPORT` and `DST_SUPPORT` of one, so `NTR_SINK_EN` is zero and `DST_SINK_EN` one, and the arm of each `if` on them that the constant does not select cannot occur |
+| `smc_disabled_feature_exclusions.el` | P17 ONE-TRACE-CORE | the DFD top passes the trace wrapper `NUM_CORES` as the larger of `NUM_DST_INST(1)` and `NUM_NTRACE_INST(0)`, and the wrapper passes it to the trace sink, so the then arm of `NUM_CORES > 1` cannot occur, and the south-channel frame start it guards stays at its zero default, which closes the arm that needs it (`trace_sink.sv:779`) |
+| `smc_disabled_feature_exclusions.el` | P18 TDR-OVERRIDE-TIED | `avsbus_controller.sv:366` assigns `i_tdr_peripherals_apb2avsbus_postdiv_override` a constant zero, so the TDR arm of each post-divider ternary it selects (`:372-375`) cannot occur |
+| `smc_disabled_feature_exclusions.el` | P19 NTR-RAM-READ-TIED | the DFD top connects the trace wrapper's `trRamDataRdEn` to a constant zero, so the trace sink's `trRamDataRdEn_ANY` is zero and the N-trace RAM data read never occurs: the `InsnTraceRdEn` rows that need it high and the read-address and read-enable arms it selects (`trace_sink.sv:1672`, `:1674`, `:1678`) cannot occur |
+| `smc_disabled_feature_exclusions.el` | P20 TCOUNT-SELECT-PAIRED | the I2C FSMs reload their counter by `tcount_sel` only under `load_tcount` and assign it only named values, so the case's `default` item cannot occur in either FSM; the target assigns `tNoDelay` only beside `load_tcount = 0` (`i2c_target_fsm.sv:703-704`, `:1008-1009`), every reload pairing `tSetupData` or `tHoldData`, so its `tNoDelay` item cannot occur either. The controller reloads with `tNoDelay` on purpose, and that item stays graded |
+| `smc_disabled_feature_exclusions.el` | B6 SIM-ONLY-FUSE-BYPASS | **a property of this bench and its policy, not of the design.** `efuse_shadow_regs.sv:151-205` reads `+skip_fuse_sense` in simulation-only initial blocks and `:163` ties `sim_skip_fuse_sense` to zero outside simulation; with the plusarg set the shadow registers take a preload file or zeros in place of the sensed fuse image (`:443-446`, `:485`). The DV policy (section 1.6) forbids a skipped fuse sense as evidence and no SMC testlist entry passes the plusarg, so the plusarg arms and every row or branch path that needs `sim_skip_fuse_sense` high never run. **A policy change admitting the plusarg retires the class** |
+
+A regblock whose stall is `external_pending` (it has external registers)
+gets A2 only; a regblock that decodes errors gets neither. `--check` reports
+when the committed files no longer match the templates.
+
+The fifth file is a covergroup exclusion. `-cm_hier` scopes line, condition,
+FSM, toggle and branch, and `-cm_common_hier` extends it to assertions;
+neither reaches a covergroup, so a covergroup declared inside RTL is graded
+wherever the elaboration instantiates it. The six
+`cg_bus_event_fsm_transitions` groups the chipsalliance I3C core declares in
+`i3c_target_fsm.sv` therefore land in urg's GROUP score beside SMC's own
+`cov/sv` covergroups even though the scope file drops the `u_i3ccore_wrapper`
+tree from every code metric. `gen_smc_group_exclusions.py` writes
+`smc_group_exclusions.el` from urg's group template, so the definition
+checksum and every instance path come from urg, and `--check` tells whether
+the committed file is stale. Every covergroup under `u_dut` must fall in a
+class the script names; one that does not stops the script.
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions group -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_group_exclusions.py <dir>/fullexclude.tb_def
+
+| File | Class | Fact |
+| --- | --- | --- |
+| `smc_group_exclusions.el` | VENDORED-I3C | the I3C controllers' internals are graded by `hw/ip/i3ccore_wrap/dv`; SMC reaches them through its own fabric and grades that reach with the `cov/sv` points |
+
+What remains in GROUP is the `u_smc_*_fcov::cg_*` set, the covergroup half of
+SMC's functional coverage; the `cov/sv` cover properties are the other half
+and are read under `assertion`.
+
 ## Why these exclusions
 
-Third-party RTL and the chipyard-generated CPU cluster dominate the unscoped
-denominator and are barely exercised by SMC-level tests, so an unscoped
-headline is a statement about someone else's code — the same reason SEP drops
-`sep_cpu`. `hw/ip/**` and `hw/common/**` are dropped for the same reason the SMU
-and DTP scopes drop them: each block there carries its own DV package and its
-own coverage, and grading its internals again here attributes its holes to SMC
-and hides SMC's own integration inside a denominator an order of magnitude
-larger. What SMC grades is what it owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`
-and the `cov/sv` points. Whether an integrated block is *reached* from the SMC
-boundary is a functional-coverage question and is answered by the `user` points,
-not by that block's line count.
+The chipyard-generated CPU cluster dominates the unscoped denominator and is
+reached only by the CPU-boot tests, so an unscoped headline is a statement
+about a core nobody grades here -- the same reason SEP drops `sep_cpu`. The
+six I3C controllers are the same case at the peripheral level: one SMC leaf
+reaches them, they carried three fifths of the uncovered points under the
+SEP rule, and `hw/ip/i3ccore_wrap/dv` grades their internals. The library
+cells (pulp `common_cells`, OpenTitan `prim*`, OCAH `och_prim`) are leaf
+primitives whose branches depend on parameters no SMC test chooses, and the
+vendored interconnect cells (pulp AXI/APB mux, demux, crossbar and converter
+children) are the same kind of parameterised library inside the fabric; SMC's
+own fabric wrappers around them stay graded. Everything else the build
+compiles stays graded: the vendored DMA, debug and trace blocks, and the
+`hw/ip` and `hw/common` blocks SMC integrates, because SMC tests drive them
+by name and their reachability from the SMC boundary is part of what this
+bench claims. The Verilator public-CI scope keeps the narrower
+owned-files set for the reasons above.
 
 ## Known gap in the Verilator scope
 
@@ -136,3 +280,42 @@ scope file silently); and `u_dut` matches
   hierarchy is gone from the code metrics but still graded for assertions.
 - **`-cm_common_hier` needs `-lca`.** An opt-in switch, not a separate
   licence.
+
+## Toggle inside OpenTitan units
+
+`smc_opentitan_toggle_exclusions.el` carries the T1 rule. `-cm_tgl portsonly`
+applies to a whole run and cannot name one unit, and a `begin tgl(portsonly)
+... end` block in `smc_cov_scope.hier` is not an option either:
+`hw/sys/smu/dv/cov/config/vcs/README.md` records that VCS keeps the toggle
+points of the subtrees a hierarchy file drops once a metric block is present,
+and this scope drops 603 units that way. The nets are therefore excluded at
+report time, which also means the effect shows up without a `--rebuild`.
+
+A unit qualifies on the copyright line of the source the build compiles it
+from, checked again whenever the file is generated. Units compiled from
+`vendor/lowRISC/` are all `prim*` library cells the scope already drops, and
+the lowRISC-headered files under `vendor/chipsalliance/i3c-core/` sit inside
+the I3C wrapper the scope drops as a tree, so neither is named here. A child
+module of a listed unit is its own unit: unless it is listed too, it keeps all
+of its nets.
+
+| Unit | Source | Copyright line | Port bits kept | Nets excluded |
+| --- | --- | --- | ---: | ---: |
+| `i2c` | `hw/ip/i2c/rtl/i2c.sv` | `Copyright lowRISC contributors (OpenTitan project).` | 36 | 197 |
+| `i2c_core` | `hw/ip/i2c/rtl/i2c_core.sv` | same | 214 | 173 |
+| `i2c_controller_fsm` | `hw/ip/i2c/rtl/i2c_controller_fsm.sv` | same | 44 | 35 |
+| `i2c_target_fsm` | `hw/ip/i2c/rtl/i2c_target_fsm.sv` | same | 48 | 43 |
+| `i2c_bus_monitor` | `hw/ip/i2c/rtl/i2c_bus_monitor.sv` | same | 18 | 22 |
+| `uart_16550` | `hw/ip/uart/uart_16550/rtl/uart_16550.sv` | `Copyright lowRISC contributors.` | 35 | 148 |
+| `uart_core` | `hw/ip/uart/uart_16550/rtl/uart_core.sv` | same | 83 | 161 |
+| `uart_rx` | `hw/ip/uart/uart_16550/rtl/uart_rx.sv` | same | 16 | 12 |
+| `uart_tx` | `hw/ip/uart/uart_16550/rtl/uart_tx.sv` | same | 12 | 7 |
+| `prim_clock_mux2` | `hw/common/och_prim_generic/rtl/prim_clock_mux2.sv` | `Copyright lowRISC contributors (OpenTitan project).` | 4 | 0 |
+| **total** | | | **510** | **798** |
+
+`prim_clock_mux2` declares nothing but its ports, so it contributes no entry;
+it is listed because the rule reaches it. The scope drops `hw/common/och_prim/`
+but not `och_prim_generic/`, which is why this one is graded at all.
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
+    python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_opentitan_toggle_exclusions.py <dir>

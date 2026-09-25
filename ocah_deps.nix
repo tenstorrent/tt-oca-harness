@@ -10,6 +10,9 @@
 in {
   ocah_env =
     rec {
+      # Needed to allow dashboard to fetch badges
+      SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
+
       # Bypass NPX for MDlint
       OCAH_MARKDOWNLINT = "${pkgs.markdownlint-cli}/bin/markdownlint";
       # Documentation Variables - bypass NPX
@@ -61,6 +64,8 @@ in {
         OCAH_REG_SKIP_UV_SYNC = "1";
         # OTBN
         OTBN_PYTHON = PYTHON;
+        # SEP ROM builds
+        MANIFEST_PYTHON = PYTHON;
       }
       else {}
     );

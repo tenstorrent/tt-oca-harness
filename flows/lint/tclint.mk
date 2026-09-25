@@ -9,13 +9,11 @@ include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 # Path to lint/format, scoped by filesystem rather than by block. Not named
 # PATH=, which would override the shell's own command-search PATH. Empty
 # (the default) scopes to the whole repo.
-TCL_PATH ?=
-
-ocah_tcl_root := $(if $(TCL_PATH),$(OCAH_ROOT)/$(TCL_PATH),$(OCAH_ROOT))
+TCL_PATH ?= .
 
 # .tcl files under TCL_PATH, excluding build output, the local uv venv, and
 # vendored third-party sources.
-ocah_tcl_files = $(shell find $(ocah_tcl_root) -name '*.tcl' -not -path '*/build/*' -not -path '*/.venv/*' -not -path '*/vendor/*' 2>/dev/null)
+ocah_tcl_files = $(shell cd $(OCAH_ROOT) && find $(TCL_PATH) -name '*.tcl' -not -path '*/build/*' -not -path '*/.venv/*' -not -path '*/vendor/*' 2>/dev/null)
 
 ocah_tcl_check_files = @[ -n "$(strip $(ocah_tcl_files))" ] || { echo "error: no .tcl files under $(if $(TCL_PATH),$(TCL_PATH),repo root)" >&2; exit 1; }
 

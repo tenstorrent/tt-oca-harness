@@ -213,43 +213,6 @@ def run_stamp(record: dict[str, Any], path: str) -> datetime:
     return datetime.min.replace(tzinfo=timezone.utc)
 
 
-def legacy(series: list[dict[str, Any]]) -> dict[str, Any]:
-    """
-    The single-axis shape, written alongside the series for one release.
-
-    The page that reads it shares one run axis across every flow and cannot
-    tell two series of one block apart, so a block verified twice keeps only
-    the series read last. Written so the page can be updated separately, and
-    removed once it is.
-
-    Args:
-        series: The aggregated series
-
-    Returns:
-        A document holding ``runs`` and ``flows``
-    """
-    # One column per archive, as the page expects; an archive carries no
-    # identifier of its own, so runs are not merged by date.
-    columns = sorted(
-        (
-            (run["date"], run["id"], index, position)
-            for index, entry in enumerate(series)
-            for position, run in enumerate(entry["runs"])
-        ),
-        key=lambda column: (column[0], column[1]),
-    )
-    axis = [{"date": date, "id": run_id} for date, run_id, _, _ in columns]
-
-    flows: dict[str, dict[str, list[Any]]] = {}
-    for column, (_, _, index, position) in enumerate(columns):
-        entry = series[index]
-        tests = flows.setdefault(str(entry["flow"]), {})
-        for name, cells in entry["tests"].items():
-            row: list[Any] = tests.setdefault(name, [None] * len(axis))
-            row[column] = cells[position]
-    return {"runs": axis, "flows": flows}
-
-
 def main() -> int:
     """
     Aggregate the archives on a ref and write the test-history file.
@@ -325,10 +288,8 @@ def main() -> int:
 
     # Written compact rather than indented: it is machine-read only.
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    document = {"series": series}
-    document.update(legacy(series))
     args.output.write_text(
-        json.dumps(document, separators=(",", ":"), sort_keys=True) + "\n",
+        json.dumps({"series": series}, separators=(",", ":"), sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return 0

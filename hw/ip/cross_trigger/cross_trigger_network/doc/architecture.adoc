@@ -3,10 +3,12 @@
 
 [[cross-trigger-network-architecture]]
 
-The following diagram is an example of a SiP with a heterogeneous cross
+<<sip-cross-trigger-topology-figure>> is an example of a SiP with a heterogeneous cross
 triggering scheme utilizing both wire-OR and point-to-point cross triggering
 interfaces:
 
+[[sip-cross-trigger-topology-figure]]
+.SiP cross-trigger topology
 image::sip_xtrig_diagram.png[SiP Cross Trigger Diagram,scaledwidth=90.0%]
 
 === Cross Trigger Port (CTP)
@@ -23,8 +25,9 @@ Each CTP connects to four separate I/O pads:
   acknowledges the request. In wire-OR mode, this signal drives the
   output-enable port of the I/O pad for duration defined by a pulse stretching
   module, and the pad output is driven static-low. Also in wire-OR mode the I/O
-  pad input signal must be inverted, as the pad signal itself is an open-drain
-  active-low signal. +
+  pad input connects to the CTP without inversion. The shared wire is an
+  open-drain active-low signal, and the CTP receives a cross trigger on its
+  falling (assertion) edge. +
 * *CT_Ack_in* - The cross trigger acknowledge input signal. Exclusive to
   point-to-point mode. The cross trigger receiver asserts this signal when it
   acknowledges the CTP's cross trigger request. +
@@ -40,8 +43,10 @@ When a GPIO pad is configured for cross triggering, the I/O pad assumes the role
 of one of these four cross trigger signals, and the pad controls and I/O data
 signals are connected to the associated CTP.
 
-The following diagram illustrates the logical structure of a CTP module:
+<<ctn-cross-trigger-port-structure-figure>> illustrates the logical structure of a CTP module:
 
+[[ctn-cross-trigger-port-structure-figure]]
+.CTN cross-trigger port structure
 image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
 
 Signal names, directions, and pad controls are listed in the
@@ -72,14 +77,18 @@ configured I/O pad. For I/O pads that do have explicit open-drain control, the
 request data signal should connect to the output-enable control pin of the I/O
 pad, and the output data signal of the I/O pin should be driven statically low.
 
-The following diagram illustrates the logical behavior of the CTPs when
+<<ctn-wire-or-port-behavior-figure>> illustrates the logical behavior of the CTPs when
 configured in wire-OR mode:
 
+[[ctn-wire-or-port-behavior-figure]]
+.CTN wire-OR port behavior
 image::ctp_wireor_diagram.png[CTP Wire-OR Mode Diagram,scaledwidth=90.0%]
 
 Any number of chiplets may have their _CT_Req_out_ pads interconnected as shown
-in the following example diagram:
+in <<ctn-wire-or-chiplet-connections-figure>>:
 
+[[ctn-wire-or-chiplet-connections-figure]]
+.CTN wire-OR chiplet connections
 image::sip_wireor_diagram.png[SiP Wire-OR Cross Trigger Diagram,scaledwidth=90.0%]
 
 ==== Point-to-Point Mode
@@ -91,14 +100,18 @@ for each chiplet-to-chiplet interconnection, and each CTP requires four I/O pads
 for bi-directional communication, or two pads for unidirectional communication.
 All output pads are configured for push-pull operation.
 
-The following diagram illustrates the logical behavior of the CTPs when
+<<ctn-point-to-point-port-behavior-figure>> illustrates the logical behavior of the CTPs when
 configured in point-to-point mode:
 
+[[ctn-point-to-point-port-behavior-figure]]
+.CTN point-to-point port behavior
 image::ctp_p2p_diagram.png[CTP Point-to-Point Mode Diagram,scaledwidth=90.0%]
 
 Any two chiplets may have their four cross trigger pads cross-coupled as shown
-in the following example diagram:
+in <<ctn-point-to-point-chiplet-connections-figure>>:
 
+[[ctn-point-to-point-chiplet-connections-figure]]
+.CTN point-to-point chiplet connections
 image::sip_p2p_diagram.png[SiP Point-to-Point Cross Trigger Diagram,scaledwidth=90.0%]
 
 On the sender side, the receiver's _CT_Ack_out_ is connected to the sender's
@@ -110,8 +123,10 @@ _CT_Req_in_ pad. On any positive edge of _CT_Req_in_, the receiver generates a
 pulse on _CT_Dst_ and asserts _CT_Ack_out_. Deassertion proceeds in exactly the
 same sequence.
 
-The timing of the request/acknowledge handshake is shown in the diagram below:
+The timing of the request/acknowledge handshake is shown in <<ctn-request-acknowledge-timing-figure>>:
 
+[[ctn-request-acknowledge-timing-figure]]
+.CTN request-acknowledge timing
 image::p2p_timing_diagram.svg[Point-to-Point Request/Acknowledge Timing,scaledwidth=90.0%]
 
 === Cross Trigger Matrix (CTM)
@@ -123,6 +138,11 @@ is compatible with CTPs operating in either of the two signaling modes,
 point-to-point or wire-OR. Typically, each device or logic module connected to
 the CTM will act as both a source and a sink for cross trigger pulses.
 
+<<ctn-cross-trigger-matrix-figure>> shows the source selection and destination routing
+performed by the CTM.
+
+[[ctn-cross-trigger-matrix-figure]]
+.CTN cross-trigger matrix
 image::ctm_module_diagram.png[Cross Trigger Matrix Module Diagram,scaledwidth=90.0%]
 
 The CTM is programmed at runtime via firmware or debug transactions. Proper
@@ -137,13 +157,17 @@ The CTN provides a unified CSR address space accessed via a single AXI-Lite
 subordinate port. An internal AXI-Lite crossbar (`axi_lite_xbar`) routes
 transactions to the CTM and external CTPs based on address decoding.
 
+<<ctn-address-allocation-table>> lists the CTM and external-CTP address ranges.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTN address map" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctn-address-allocation-table]]
 [cols="<18,<25,<12,<45",options="header",role="port-reference"]
+.CTN address allocation
 |===
 |Component |Address Range |Size |Description
 
@@ -194,13 +218,18 @@ The CTN instantiates 16 external CTPs using the full `cross_trigger_port` module
 with CSR interface, and 10 internal CTPs using only the
 `cross_trigger_port_core` module without registers.
 
+<<external-and-internal-ctp-comparison-table>> compares the modules, configuration, and
+connections used for external and internal CTPs.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="External and internal CTP comparison" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[external-and-internal-ctp-comparison-table]]
 [cols="<22,<39,<39",options="header",role="port-reference"]
+.External and internal CTP comparison
 |===
 |Aspect |External CTP |Internal CTP
 
@@ -226,7 +255,7 @@ endif::backend-html5[]
 
 |Signal Mapping
 |Standard GPIO pad controls
-|Repurposed GPIO signals (see table below)
+|Repurposed GPIO signals (see <<internal-ctp-wire-or-connections-table>> and <<internal-ctp-point-to-point-connections-table>>)
 |===
 
 ifdef::backend-html5[]
@@ -240,10 +269,18 @@ endif::backend-html5[]
 Internal CTPs reuse the cross_trigger_port_core GPIO interface but connect to
 logical signals rather than physical pads. The `INT_CT_MODE` parameter bits are
 inverted before use: `MODE_WIRE_OR = ~INT_CT_MODE[i]`. This means
-`INT_CT_MODE[i]=0` selects Point-to-Point mode, while `INT_CT_MODE[i]=1` selects
-Wire-OR mode.
+`INT_CT_MODE[i]=0` selects Wire-OR mode, while `INT_CT_MODE[i]=1` selects
+Point-to-Point mode.
 
-*Wire-OR Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):*
+The internal wire-OR request from a CLA is active-high, while the CTP core
+receives a wire-OR cross trigger on the falling edge of an idle-high wire. The
+network therefore inverts `ctm_dst_req_i[i]` before `ct_req_out_din`, so an
+internal CTP receives a cross trigger on the rising edge of the CLA request.
+
+*Wire-OR Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):*
+
+<<internal-ctp-wire-or-connections-table>> maps the CTP core signals to internal
+connections in wire-OR mode.
 
 ifdef::backend-html5[]
 ++++
@@ -251,7 +288,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[internal-ctp-wire-or-connections-table]]
 [cols="<32,<68",options="header",role="port-reference"]
+.Internal CTP wire-OR connections
 |===
 |CTP Core Signal |Internal Connection
 
@@ -259,7 +298,7 @@ endif::backend-html5[]
 |→ `ctm_src_req_o[i]` (stretched pulse to CLA)
 
 |`ct_req_out_din`
-|← `ctm_dst_req_i[i]` (stretched pulse from CLA)
+|← `~ctm_dst_req_i[i]` (stretched pulse from CLA, inverted)
 
 |All other signals
 |Unused (tied to constants)
@@ -271,7 +310,10 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-*Point-to-Point Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):*
+*Point-to-Point Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):*
+
+<<internal-ctp-point-to-point-connections-table>> maps the CTP core signals to internal
+connections in point-to-point mode.
 
 ifdef::backend-html5[]
 ++++
@@ -279,7 +321,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[internal-ctp-point-to-point-connections-table]]
 [cols="<32,<68",options="header",role="port-reference"]
+.Internal CTP point-to-point connections
 |===
 |CTP Core Signal |Internal Connection
 
@@ -325,13 +369,18 @@ sources using a two-stage OR-tree architecture. The module separates CLA-only
 status from the combined functional halt signal to support independent JTAG
 visibility and chiplet clock gating control.
 
+<<ctn-clock-stop-signals-table>> identifies the clock-stop requests, enables, and status
+signals.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTN clock stop signals" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctn-clock-stop-signals-table]]
 [cols="<28,<27,<45",options="header",role="port-reference"]
+.CTN clock-stop signals
 |===
 |Signal |Width |Description
 
@@ -375,9 +424,12 @@ stops.
 
 === Port Indexing
 
-CTM ports are indexed as follows:
+<<ctn-matrix-port-indices-table>> maps CTM port indices to external CTPs, internal CTPs,
+and clock-stop connections.
 
+[[ctn-matrix-port-indices-table]]
 [cols="<30,<70",options="header"]
+.CTN matrix port indices
 |===
 |Port Index |Description
 |0 to N-1 |External CTPs (NUM_CTP)
