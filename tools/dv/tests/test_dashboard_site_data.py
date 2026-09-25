@@ -226,6 +226,7 @@ def expected_site_data(
     coverage_status: str = "SKIP",
     coverage_total_percent: float | None = None,
     effective_metrics: dict[str, float] | None = None,
+    coverage_total_percent: float | None = None,
 ) -> dict[str, Any]:
     """The three trimmed documents for one run of the fixture DUT.
 
@@ -409,6 +410,7 @@ class TrimmedSiteData(SiteDataCase):
                 coverage_status="PASS",
                 coverage_total_percent=COVERAGE_SUMMARY["overall_percent"],
                 effective_metrics=EFFECTIVE_METRICS,
+                coverage_total_percent=COVERAGE_SUMMARY["overall_percent"],
             ),
         )
         self.assert_trim_terms_present(summary, history)
