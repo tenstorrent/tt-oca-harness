@@ -129,7 +129,12 @@ module smc_axi_chan_fcov (
   covergroup cg_axi_resp with function sample (logic [1:0] resp);
     option.per_instance = 1;
     cp_resp: coverpoint resp {
-      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
+      bins okay = {2'b00};
+      bins slverr = {2'b10};
+      bins decerr = {2'b11};
+      // No subordinate behind these ports answers an exclusive access: the
+      // memory adapters tie exokay off and the crossbars carry no atomics.
+      ignore_bins exokay = {2'b01};
     }
   endgroup
 

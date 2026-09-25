@@ -23,12 +23,20 @@ and associativity
 management workloads
 * Full support for RISC-V privilege levels (Machine, Supervisor, User)
 
+<<smc-cpu-cluster-diagram>> shows the CPU cluster, memory hierarchy, and fabric bridge.
+
+[[smc-cpu-cluster-diagram]]
+.SMC CPU cluster and TileLink-to-AXI integration
+image::SMC_CPUCluster_FIG010.png[alt="SMC CPU cluster and TileLink-to-AXI integration",width=100%,pdfwidth=100%]
+
 == Processor Core Overview
 
-The table below summarizes the key features of the Rocket CPU core, and
+<<smc-processor-core-features-table>> summarizes the key features of the Rocket CPU core, and
 its cache hierarchy
 
+[[smc-processor-core-features-table]]
 [cols="30%,70%",options="header"]
+.SMC processor core features
 |========================================================
 |Attribute |Description
 |Cores |4, Rocket RV64GC
@@ -41,13 +49,18 @@ its cache hierarchy
 
 == Cache and Memory Hierarchy
 
+<<smc-cache-and-memory-hierarchy-table>> lists the default memory sizes and their
+configurability.
+
 ifdef::backend-html5[]
 ++++
 <div class="smc-memory-table-scroll" role="region" aria-label="Cache and memory hierarchy" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[smc-cache-and-memory-hierarchy-table]]
 [cols="25%,20%,30%,25%",options="header",role="smc-memory-table"]
+.SMC cache and memory hierarchy
 |=======================================================================
 |Component |Default Size |Notes |Configurability
 |L1 I-Cache per core |4 KiB (32 sets × 2 ways) |Write-through, Parity
@@ -153,7 +166,12 @@ repair unless explicitly bypassed via strap configuration.
 
 == System Interfaces
 
+<<smc-cpu-system-interfaces-table>> identifies the protocols and roles of the CPU
+cluster interfaces.
+
+[[smc-cpu-system-interfaces-table]]
 [cols="25%,20%,55%",options="header"]
+.SMC CPU system interfaces
 |==============================================
 |Interface |Protocol |Description
 |MMIO |AXI4-Lite |56b addressing, low-latency
@@ -257,7 +275,7 @@ synchronous and crosses no domains.
 
 All interrupt wiring—MMIO bases for PLIC, CLINT, watchdog, and bus-error
 units; the authoritative `cpu_interrupts_o` map; PLIC/CLINT register
-documentation; and BEU NMI delivery—is documented in
+documentation; and BEU direct interrupt delivery—is documented in
 ifdef::backend-html5[]
 xref:smc:interrupts.adoc#interrupts[Interrupts].
 endif::backend-html5[]

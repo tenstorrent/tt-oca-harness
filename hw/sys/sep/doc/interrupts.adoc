@@ -28,7 +28,7 @@ Bit `i` of that vector is PIC source `i + 1`. The core's `extintsrc_req` port
 is numbered from 1, and the core ties source 0 to zero, so the low bit of the
 driven vector is the first programmable source. The comment directly above
 `NUM_INTERNAL_IRQS` in `sep_pkg.sv` numbers sources by that vector index, one
-less than the PIC source in the table below.
+less than the PIC source in <<sep-pic-source-assignments-table>>.
 
 Each per-source array carries an entry 0, so that the array index is the source
 ID and no off-by-one applies: `meipl[7]` is source 7. That entry is reserved and
@@ -53,7 +53,12 @@ SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
 (SMC mailboxes, SPI). Slots 44–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.
 
+<<sep-pic-source-assignments-table>> lists the assigned PIC sources and the range
+reserved for chip-level inputs.
+
+[[sep-pic-source-assignments-table]]
 [width="100%",cols="10%,35%,55%",options="header",]
+.SEP PIC source assignments
 |=======================================================================
 |PIC source |Source |Description
 
@@ -291,8 +296,15 @@ configuration register.
 
 The `timer_int` and `soft_int` pins of the VeeR EL2 core are tied to zero at
 the SMU integration boundary. There is no external CLINT-style delivery path.
-The VeeR core contains independent internal timers that generate standard RISC-V
-`mip.MTIP` and `mip.MSIP` interrupts without requiring an external signal.
+The external pins drive `mip.MTIP` and `mip.MSIP`, respectively, so these
+pending bits remain inactive in this integration.
+
+The two internal timers instead report `mip.MITIP0` (bit 29) and
+`mip.MITIP1` (bit 28). Enable them through `mie.MITIE0` and `mie.MITIE1`
+at the corresponding bit positions, together with `mstatus.MIE`. Their
+interrupt cause codes are `0x1D` and `0x1C`, respectively (with the interrupt
+bit set in `mcause`). Enabling `mie.MTIE` or `mie.MSIE` does not enable the
+internal timers.
 
 [[sep-memory-error-reporting]]
 === Memory ECC Errors
@@ -309,9 +321,11 @@ counters below are live.
 ==== Correctable (single-bit) errors
 
 Hardware corrects the data and the access is retried, so no data is lost and no
-trap is taken. Each protected memory has a counter CSR:
+trap is taken. Each protected memory has a counter CSR (<<sep-correctable-error-counters-table>>).
 
+[[sep-correctable-error-counters-table]]
 [width="100%",cols="20%,15%,65%",options="header",]
+.SEP correctable-error counters
 |=======================================================================
 |CSR |Address |Counts
 
@@ -352,9 +366,11 @@ lets transient flips accumulate before firmware is told.
 ==== Uncorrectable (double-bit) errors
 
 These cannot be masked and have no enable bit. The access returned no valid
-data, so the core traps on the instruction that hit the error:
+data, so the core traps on the instruction that hit the error (<<sep-uncorrectable-error-traps-table>>).
 
+[[sep-uncorrectable-error-traps-table]]
 [width="100%",cols="35%,20%,45%",options="header",]
+.SEP uncorrectable-error traps
 |=======================================================================
 |Access |`mcause` |Trap
 

@@ -66,5 +66,34 @@ runs:
         [ -n "$RD_FORMAT" ] && fmt_flags=(-f="$RD_FORMAT")
         level_flags=()
         [ -n "$RD_LEVEL" ] && level_flags=(-level="$RD_LEVEL")
-        cat "$RD_LOG_FILE" \
-          | reviewdog "${efm_flags[@]}" "${fmt_flags[@]}" "${level_flags[@]}" -name="$RD_NAME" -reporter="$RD_REPORTER" -filter-mode=nofilter -fail-level="$RD_FAIL_LEVEL"
+        # reviewdog exits non-zero for a finding at fail-level and for a
+        # failed Checks API post. Retry only an HTTP 5xx post. A finding
+        # stays one attempt so a comment is not posted again.
+        post_log="$(mktemp)"
+        trap 'rm -f "$post_log"' EXIT
+        status=1
+        for attempt in 1 2 3; do
+          set +e
+          cat "$RD_LOG_FILE" \
+            | reviewdog "${efm_flags[@]}" "${fmt_flags[@]}" "${level_flags[@]}" \
+              -name="$RD_NAME" \
+              -reporter="$RD_REPORTER" \
+              -filter-mode=nofilter \
+              -fail-level="$RD_FAIL_LEVEL" \
+            >"$post_log" 2>&1
+          status=$?
+          set -e
+          cat "$post_log"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ] \
+            && grep -q 'failed to post result' "$post_log" \
+            && grep -Eq '(^|[^0-9])(500|502|503|504)([^0-9]|$)' "$post_log"; then
+            echo "reviewdog: GitHub API post failed (attempt ${attempt}/3); retrying in $((attempt * 10))s" >&2
+            sleep $((attempt * 10))
+            continue
+          fi
+          exit "$status"
+        done
+        exit "$status"
