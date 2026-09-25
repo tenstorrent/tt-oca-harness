@@ -14,7 +14,7 @@ the bus protocol are specified by that design.
 .CHIPS Alliance i3c-core reference architecture
 image::i3c_core_block_diagram.png[alt="CHIPS Alliance i3c-core reference architecture",width=100%,pdfwidth=100%]
 
-<<i3c-core-diagram>> shows the upstream core. The OCAH wrapper is described below.
+<<i3c-core-diagram>> shows the upstream core.
 
 == OCAH Modifications
 
@@ -31,6 +31,12 @@ mode is selected.
 
 Each instance brings out its device-address, device-characteristic, and
 reverse-lookup memories, one interrupt, and the recovery pins.
+
+[[i3c-wrapper-diagram]]
+.OCAH I3C wrapper
+image::SMC_I3C_FIG024.png[alt="OCAH I3C wrapper",width=100%,pdfwidth=100%]
+
+<<i3c-wrapper-diagram>> shows that wrapper around the CHIPS Alliance core.
 
 Consult the https://github.com/chipsalliance/i3c-core[i3c-core documentation]
 for the controller. The register map of this wrapper follows.

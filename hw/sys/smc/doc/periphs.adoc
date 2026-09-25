@@ -113,25 +113,6 @@ subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
 endif::backend-pdf[]
 |=======================================================================
 
-[[smc-peripheral-integration]]
-== Peripheral Integration
-
-The wrapper diagrams in this section show the SMC integration and interrupt
-connections. The individual IP sections describe the internal controller behavior.
-
-<<smc-mailbox-diagram>> shows the SMC mailbox wrapper and its interrupt connections.
-
-[[smc-mailbox-diagram]]
-.SMC mailbox architecture and interrupt routing
-image::SMC_AXILMailbox_FIG027.png[alt="SMC mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
-
-<<smc-i3c-diagram>> shows the I3C wrapper and controller interfaces.
-
-[[smc-i3c-diagram]]
-.SMC I3C wrapper and controller interfaces
-image::SMC_I3C_FIG024.png[alt="SMC I3C wrapper and controller interfaces",width=100%,pdfwidth=100%]
-
-
 ifdef::backend-pdf[]
 include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[leveloffset=+1]
 
@@ -155,17 +136,6 @@ include::../../../ip/telemetry_receiver/doc/index.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
 == UART and Log Engine Wrapper Registers
-
-The UART wrapper is shown in <<smc-uart-wrapper-diagram>>; <<smc-log-engine-diagram>>
-shows the log-engine wrapper and its memory-to-UART data paths.
-
-[[smc-uart-wrapper-diagram]]
-.SMC UART wrapper
-image::UART_Wrap_FIG025-1.png[alt="SMC UART wrapper",width=100%,pdfwidth=100%]
-
-[[smc-log-engine-diagram]]
-.SMC UART log-engine wrapper and data paths
-image::UART_Log_Engine_Wrap_FIG025-2.png[alt="SMC UART log-engine wrapper and data paths",width=100%,pdfwidth=100%]
 
 The wrapper maps include the UART and log-engine control registers and their
 composed register banks. Offsets are relative to each wrapper's base address.
