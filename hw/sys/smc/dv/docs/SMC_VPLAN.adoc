@@ -11156,7 +11156,7 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 * **W1C held across a zero, then cleared.** Six I2C0 `INTR_STATE` events (`RX_OVERFLOW`, `SDA_UNSTABLE`, `UNEXP_STOP`, `SMBALERT`, `CONTROLLER_RX_FIFO_ERROR`, `TARGET_RX_FIFO_ERROR`) and log-engine `INTR_STATUS.LOG_FETCH_ERR` are raised through `INTR_TEST`. Each must survive a full write of zero and clear on a write of one. Anything already latched, such as I2C0's `SMBALERT` event, which follows the SMBALERT output driven above, is cleared first.
 * **Zero into a trigger or a status.** Full writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` (`singlepulse`) and telemetry-receiver `INTR_STATUS` must leave each reading what it read before.
 * **Writes whose only effect is documented.** OCTS `CREDIT_EXPIRED` is an external register that `system_timer_octs.rdl` resets on any write, so a write must leave it reading 0. I2C0 `TARGET_NACK_COUNT` is `rclr` and holds 0 at idle, so a read returns 0.
-* **A flush held across a partial write.** Telemetry-receiver `CTRL.TELEMETRY_TX_FLUSH` is `hwclr` and clears on the ATB flush handshake, AFREADY with AFVALID. With receiver 0's AFREADY held low by the bench, the flush stays set, so a byte write to lane 0 must leave it set. Raising AFREADY then clears it.
+* **A flush held across a partial write.** Telemetry-receiver `CTRL.TELEMETRY_TX_FLUSH` is `hwclr` and clears on the ATB flush handshake, AFREADY with AFVALID. With receiver 0's AFREADY held low by the bench, the flush stays set, so a byte write to lane 0 must leave it set, and so must a full-word write of 1 to it. Raising AFREADY then clears it.
 * **A byte write at FCR+1.** `uart_16550.sv` sends a write to the write-only block only when its address is exactly THR or FCR. A byte write at FCR+1 therefore reaches the main block, where it decodes at address 8, the read-only IIR word. `IIR` must read the same afterwards, with the FIFOs still off.
 * **Rows left, and why.** A one on a lane whose strobe is off cannot come from SEP_IN, whose master zero-fills unstrobed lanes.
 ** It cannot come from the CPU into these 32-bit blocks either. A firmware byte store of `0xFF` into the empty top byte of I2C0 `INTR_STATE` arrived at `i2c_reg` as `wdata 0xFF000000`, `wstrb 0x8`, so the path from the cluster zeroes the other lanes. The replication that reaches the 64-bit blocks (`smc_fw_narrow_store_lane_test`) does not reach the 32-bit ones. The `(data & biten)` "1 0" rows of `i2c_reg` (`INTR_STATE`, `CONTROLLER_EVENTS`, `TARGET_EVENTS`), `log_engine_reg` and `telemetry_receiver_reg` are therefore unreachable in this design.
@@ -11164,7 +11164,6 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 ** `WDT_TIMEOUT_RESET` (`singlepulse` core resets);
 ** `FILTER_CONFIG` (write-once `locked`, or a live window);
 ** zeroer `INT_EN` (any write starts a job);
-** telemetry `CTRL.TELEMETRY_TX_FLUSH`, which is `hwclr`: it clears before a second write can arrive to find it set;
 ** `TARGET_EVENTS.START_DETECT` and `STOP_DETECT` cleared while set, which need target bus traffic.
 * **Design observation: a write queued behind the locking write reaches FILTER_CONFIG.**
 ** *What the RDL promises.* `filter_ctrl.rdl` makes `locked` (bit 63) `woset`, "Lock filter configurations. Write once register". No other field carries a write enable, so `filter_ctrl_reg` itself accepts every write. The lock is enforced outside it: `smc_internal_regs.sv:306` (outbound) and `:471` (inbound) set the inner demux's AW select to the error slave when `FILTER_CONFIG.locked.value && (aw_valid || w_valid)`.
@@ -11182,7 +11181,7 @@ Drive `smc_regblock_partial_write_test_seq`. Each checker below is a named compa
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-REGBLOCK-DOCUMENTED-WRITE` |A write reset OCTS `CREDIT_EXPIRED` to 0; I2C0 `TARGET_NACK_COUNT` read 0 at idle; telemetry `TX_FLUSH` held across a lane-0 byte write while AFREADY was low and cleared once it rose; a byte write at UART0 FCR+1 left `IIR` unchanged
+|`CHK-REGBLOCK-DOCUMENTED-WRITE` |A write reset OCTS `CREDIT_EXPIRED` to 0; I2C0 `TARGET_NACK_COUNT` read 0 at idle; telemetry `TX_FLUSH` held across a lane-0 byte write and a full-word rewrite of 1 while AFREADY was low and cleared once it rose; a byte write at UART0 FCR+1 left `IIR` unchanged
 |`CHK-REGBLOCK-PARTIAL-HOLD` |`SMBUS_EN` on the three `I2C_CTRL` instances and I2C0 `SMBUS_CTRL.SMBALERT` read back set after a byte write to another lane, and each was restored and read back
 |`CHK-REGBLOCK-W1C-HOLD` |The six I2C0 events and `LOG_FETCH_ERR`, raised through `INTR_TEST`, read back set after a write of zero and clear after a write of one
 |`CHK-REGBLOCK-ZERO-WRITE` |Writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` and telemetry `INTR_STATUS` left each reading what it read before

@@ -26,8 +26,8 @@ field and mask here comes from the block's generated header.
 * **A flush held across a partial write.** Telemetry-receiver
   `CTRL.TELEMETRY_TX_FLUSH` is `hwclr` and clears on the ATB flush handshake,
   AFREADY with AFVALID. With receiver 0's AFREADY held low by the bench, the flush
-  stays set, so a byte write to lane 0 must leave it set. Raising AFREADY then
-  clears it.
+  stays set, so a byte write to lane 0 must leave it set, and so must a
+  full-word write of 1 to it. Raising AFREADY then clears it.
 * **A byte write at FCR+1.** The UART sends a write to the write-only block only
   when its address is exactly THR or FCR (`uart_16550.sv`). A byte write at
   FCR+1 therefore reaches the main block, where it lands on the read-only IIR
@@ -185,6 +185,8 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
             await self.csr_read("TEL_CTRL_FLUSH_HELD", TEL_CTRL, expected=base | TX_FLUSH)
             await self.csr_write("TEL_CTRL_LANE0", TEL_CTRL, base & 0xFF, length=1)
             await self.csr_read("TEL_CTRL_FLUSH_KEPT", TEL_CTRL, expected=base | TX_FLUSH)
+            await self.csr_write("TEL_CTRL_FLUSH_AGAIN", TEL_CTRL, base | TX_FLUSH)
+            await self.csr_read("TEL_CTRL_FLUSH_AGAIN_KEPT", TEL_CTRL, expected=base | TX_FLUSH)
         finally:
             dut.tb_telemetry0_afready.value = 1
         await ClockCycles(dut.clk_smc_i, 8)
@@ -241,6 +243,6 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-REGBLOCK-DOCUMENTED-WRITE: a write reset OCTS CREDIT_EXPIRED to 0, I2C0 "
             "TARGET_NACK_COUNT read 0 at idle, telemetry TX_FLUSH held across a lane-0 byte "
-            "write while AFREADY was low and cleared once it rose, and a byte write at UART0 "
+            "write and a full-word rewrite of 1 while AFREADY was low and cleared once it rose, and a byte write at UART0 "
             "FCR+1 left IIR unchanged with the FIFOs off"
         )
