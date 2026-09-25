@@ -186,12 +186,16 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         )
         await self._reset_op(SmcResetOp.COLD_RST_LO)
         await self._wait_reset_state(
-            want_asserted=True, bound_smc=RESET_WAIT_BOUND_SMC, label="BYPASS_ENTER_ASSERT"
+            want_asserted=True,
+            bound_smc=int(RESET_WAIT_BOUND_NS / self.cfg.smc_clk_period_ns),
+            label="BYPASS_ENTER_ASSERT",
         )
         dut.tb_test_en_i.value = 1
         await self._reset_op(SmcResetOp.COLD_RST_HI)
         await self._wait_reset_state(
-            want_asserted=False, bound_smc=RESET_RECOVER_BOUND_SMC, label="BYPASS_ENTER_RELEASE"
+            want_asserted=False,
+            bound_smc=int(RESET_RECOVER_BOUND_NS / self.cfg.smc_clk_period_ns),
+            label="BYPASS_ENTER_RELEASE",
         )
         await self._program_cg(dma_en=True, zeroer_en=True)
         # The window spans at least as many cycles as S1 took to see all three
