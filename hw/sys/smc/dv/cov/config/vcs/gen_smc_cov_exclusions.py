@@ -908,8 +908,10 @@ B14 = (
     "so a THR write starts at the register's own address, and every master of this bench "
     "strobes the lane at its start address: the cocotb AXI masters write contiguous bytes from "
     "it, a CPU store is sized and aligned, and the iDMA and the zeroer build their first strobe "
-    "from the address offset. A THR write with its data lane unstrobed never arrives. A master "
-    "that issues sparse strobes retires the class."
+    "from the address offset. A THR write with its data lane unstrobed never arrives, and no "
+    "write arrives with no strobe at all, which the I2C FDATA and TXDATA pushes would need since "
+    "their enables OR the whole strobe. A master that issues sparse or empty strobes retires "
+    "the class."
 )
 B8 = (
     "SMC-B8-DFD-BENCH-INPUTS-TIED: a property of this bench, not of the design. The "
@@ -2113,6 +2115,20 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
         ),
     ],
     "i2c_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
+    "dst_wrapper": [
+        (
+            P22,
+            lambda terms, vector: (
+                len(terms) == 1
+                and bool(
+                    re.fullmatch(
+                        r"\(dst_inst\[\d+\]\.trig_control_e == TRIG_TRACE_(?:ON|OFF)\)", terms[0]
+                    )
+                )
+                and vector == "1"
+            ),
+        )
+    ],
     "uart_core": [
         (
             B14,
@@ -2127,7 +2143,20 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         )
     ],
-    "i2c_core": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
+    "i2c_core": [
+        (B13, lambda terms, vector: lane_zero_fill_row(terms, vector)),
+        # FDATA and TXDATA take the whole decoded_wr_biten, reserved bits included, so
+        # the enable OR is low only for a write with no strobe at all.
+        (
+            B14,
+            lambda terms, vector: (
+                len(terms) == 3
+                and terms[0] in ("reg_out_i.FDATA.req", "reg_out_i.TXDATA.req")
+                and terms[2] in ("((|reg_out_i.FDATA.wr_biten))", "((|reg_out_i.TXDATA.wr_biten))")
+                and vector == "110"
+            ),
+        ),
+    ],
     "log_engine_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
     "telemetry_receiver_reg": [(B13, lambda terms, vector: lane_zero_fill_row(terms, vector))],
     "generic_ccg": [
