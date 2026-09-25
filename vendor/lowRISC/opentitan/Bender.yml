@@ -29,6 +29,7 @@ sources:
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_and2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_clock_gating.sv
       - upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
