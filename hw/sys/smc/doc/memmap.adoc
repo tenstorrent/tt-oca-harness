@@ -191,20 +191,6 @@ include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[leveloffset=+2]
 include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
-[[smc-i3c-registers]]
-== I3C Controller Registers
-
-The SMC I3C controller is the
-https://github.com/chipsalliance/i3c-core[CHIPS Alliance i3c-core],
-with an OCAH AXI4-Lite wrapper. Integration verification remains a work in
-progress. The register map is on the
-ifdef::backend-html5[]
-xref:ip:i3ccore_wrap/doc/index.adoc[I3C] page.
-endif::backend-html5[]
-ifdef::backend-pdf[]
-<<i3c-controller,I3C>> page.
-endif::backend-pdf[]
-
 == Component-Specific Register Documentation
 
 For detailed register-level documentation of each SMC component, refer

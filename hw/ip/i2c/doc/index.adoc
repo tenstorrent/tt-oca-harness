@@ -13,6 +13,12 @@ https://opentitan.org/book/hw/ip/i2c/doc/theory_of_operation.html[OpenTitan theo
 and the
 https://opentitan.org/book/hw/ip/i2c/doc/programmers_guide.html[OpenTitan programmer's guide].
 
+[[i2c-core-diagram]]
+.OpenTitan I2C core reference architecture
+image::opentitan_i2c.svg[alt="OpenTitan I2C core reference architecture",width=100%,pdfwidth=100%]
+
+<<i2c-core-diagram>> shows the upstream core. The OCAH wrapper is described below.
+
 == OCAH Modifications
 
 * AXI4-Lite register interface in place of the OpenTitan TileLink host port.

@@ -10,6 +10,12 @@ https://github.com/chipsalliance/i3c-core[CHIPS Alliance i3c-core].
 Controller and target behavior, the HCI queues, common command codes, and
 the bus protocol are specified by that design.
 
+[[i3c-core-diagram]]
+.CHIPS Alliance i3c-core reference architecture
+image::i3c_core_block_diagram.png[alt="CHIPS Alliance i3c-core reference architecture",width=100%,pdfwidth=100%]
+
+<<i3c-core-diagram>> shows the upstream core. The OCAH wrapper is described below.
+
 == OCAH Modifications
 
 SMC instantiates six controllers. `i3ccore_wrapper` exposes one AXI4-Lite

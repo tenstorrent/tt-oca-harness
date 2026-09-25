@@ -37,9 +37,10 @@ vendor_package:
     target_dir: vendor/lowRISC/opentitan/upstream
     upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "d1ce369cb357a7a4718c75f11567742a78a7ed07" }
     include_from_upstream:
-      # Core reference figures used by the SEP documentation.
+      # Core reference figures used by the TRM.
       - "hw/ip/aes/doc/aes_block_diagram.svg"
       - "hw/ip/hmac/doc/hmac_block_diagram.svg"
+      - "hw/ip/i2c/doc/i2c_block_diagram.svg"
       - "hw/ip/kmac/doc/kmac-block-diagram.svg"
       - "hw/ip/otbn/doc/otbn_blockarch.svg"
       - "hw/ip/dma/doc/block_diagram.svg"
@@ -335,6 +336,7 @@ vendor_package:
     include_from_upstream:
       - "LICENSE"
       - "src"
+      - "doc/source/img/hc_top_level_arch.png"
     exclude_from_upstream:
       - "src/i3c_wrapper.sv"
       - "src/libs/mem"
