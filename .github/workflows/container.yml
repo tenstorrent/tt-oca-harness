@@ -42,7 +42,9 @@ permissions:
 jobs:
   validate:
     name: Build and validate Nix image
-    runs-on: ubuntu-latest
+    # The from-source RISC-V GCC build needs this runner's disk. A missing
+    # label queues until the job timeout.
+    runs-on: ubuntu-latest-16-cores
     timeout-minutes: 120
     steps:
       - name: Checkout
