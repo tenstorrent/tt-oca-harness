@@ -28,6 +28,17 @@ package dtp_dv_cfg_pkg;
   localparam int unsigned NumClkStopReq = 9;
   localparam logic [NumIntCt-1:0] IntCtMode = '0;
 
+  // Wire-OR shared-wire polarity per CONFIG.INVERT (cross_trigger_port.rdl),
+  // bit index = INVERT: INVERT=0 is an active-low wire with a pull-up, INVERT=1
+  // an active-high wire with a pull-down. A port receives a trigger when its
+  // synchronized wire moves from the pull level to the asserted level.
+  localparam logic [1:0] WireOrPull = 2'b01;
+  localparam logic [1:0] WireOrAssert = 2'b10;
+  // Clock edges from the edge at which a wire-OR receive input moves to the
+  // edge at which the port's ct_dst is high: the two synchronizer stages and
+  // the registered ct_dst output.
+  localparam int unsigned CtDstLatency = 3;
+
   // JTAG interface unit and PTAP configuration.
   localparam int unsigned NumExtraStaps = 1;
   localparam bit BsrEnable = 1'b1;

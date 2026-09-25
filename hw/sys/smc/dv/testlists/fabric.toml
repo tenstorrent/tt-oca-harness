@@ -206,6 +206,14 @@ tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_jtag_axi_shape_test"
+module = "smc_jtag_axi_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dual_base_addressing_test"
 module = "smc_dual_base_addressing_test"
 seed = 1

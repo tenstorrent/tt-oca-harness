@@ -11508,6 +11508,130 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-232-smc_i2c_target_addr_stretch_test]]
+===== 232 `smc_i2c_target_addr_stretch_test`
+
+*Source Module*: `smc_i2c_target_addr_stretch_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, which `+smc_i2c_shared_bus` puts in front of all three instances; observation on the resolved SCL net and on `ACQDATA`
+
+*Objective*: A repeated START issued while the target's acquisition FIFO is full must hold the bus through the address phase until software drains it, on every instance.
+
+*Test Coverage*:
+
+* The address phase, which `smc_i2c_target_acq_stretch_test` does not reach: that leaf fills the FIFO part-way through a transfer, so the target stretches at a data byte. Holding the address phase needs the FIFO to still be out of room when a new address arrives, which only a repeated START can arrange -- a STOP would end the transfer and let software drain at leisure.
+* Both settings of `CTRL.NACK_ADDR_AFTER_TIMEOUT`, which `i2c.rdl` gives as ACK the address byte even if a stretch timeout occurs (`0`, for SMBus) or NACK it (`1`). The two settings take the target down different paths to the same hold, and in both the transfer has to complete once the FIFO is drained.
+* A third leg where the repeated START asks the target to *transmit*. The target leaves the address-phase stretch into the transmit stretch rather than into byte acquisition, and stays there until software supplies a byte: the drain alone does not release it, and the leg requires that.
+* All three instances. Only I2C0 has pads of its own on the bench bus, so the other two are reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
+* No stretch timeout is enabled in either leg, so a drain by software is the only thing that can release the hold. A leg that passed without the drain would be a different mechanism.
+* `CTRL.ACQ_START_STOP_EN` is set, so the acquired stream carries its own framing and the repeated START arrives as an `ACQDATA.SIGNAL` of `RESTART` after every byte written before it. The STOP entry is matched on its signal alone, since the RDL defines no byte for it.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target and require its acquisition FIFO to read empty and not full.
+. Write bytes one at a time, checking `STATUS.ACQFULL` between them, and stop as soon as the target reports it is out of room.
+. Issue a repeated START and the address again in the background, and measure the hold: only samples where the bus is low while the bench has released its own pull are counted.
+. Require the bench's transfer to still be in flight, then drain `ACQDATA` until it completes.
+. Compare the whole acquired stream against the bench's traffic and require every ACK bit to be low.
+. Repeat with `CTRL.NACK_ADDR_AFTER_TIMEOUT` set, and again with the repeated START asking for a read, where the release needs a byte in `TXDATA` as well as the drain.
+. Repeat the whole sequence on each instance in turn, with the other two disabled.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-ADDR-STRETCH` |With `NACK_ADDR_AFTER_TIMEOUT` clear, the repeated START was held on the bus, the drain released it, and the acquired stream carried the restart entry after every earlier byte and ended in a STOP
+|`CHK-I2C-TGT-ADDR-STRETCH-NACK-MODE` |The same with `NACK_ADDR_AFTER_TIMEOUT` set, which takes the target's other address-phase path to the same result
+|`CHK-I2C-TGT-ADDR-STRETCH-READ` |When the held address phase belonged to a read, the target went on holding for a byte to send and was released only by a drain and a write into `TXDATA`, after which the bench read that byte back
+|===
+
+*Pass Criteria*: all three checkers hold after their compares, on every instance, and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-236-smc_i2c_target_fast_controller_test]]
+===== 236 `smc_i2c_target_fast_controller_test`
+
+*Source Module*: `smc_i2c_target_fast_controller_test`
+
+*BFM / Model*: `SmcI2cMasterVip` bit-banging the `tb_i2c0_*` pads, with its bit rate changed part-way through a transfer; observation on the ACK bits, `TARGET_NACK_COUNT` and `ACQDATA`
+
+*Objective*: A controller that releases SCL before the target's data hold time has elapsed must have its transaction abandoned, on every instance.
+
+*Test Coverage*:
+
+* `TIMING3.THD_DAT`, the hold the target keeps with SCL low before driving an acknowledge. The threshold is a relation between that hold and the controller's SCL low period, so the leaf sets both: the target is given a hold far longer than any other leaf uses, and the bench is run at one rate well over it and one well under it.
+* Both places the target makes the decision: the acknowledge of the address byte and the acknowledge of a data byte.
+* The rate changes after the START in both fast legs, not before. The same hold governs both acknowledges, so at a single rate the address is always the first to go; and the bus monitor takes the same `THD_DAT` as its threshold for detecting a START (`i2c_bus_monitor.sv`), so a START clocked fast enough to violate the hold is not seen as a START at all. The measured consequence of getting that wrong was a transaction the target never joined: no acknowledge, no count, nothing acquired.
+* The hold is also kept below half the slow rate's low period, so the target always finishes driving an acknowledge before the clock rises again and the control transfers are clean.
+* A transfer entirely at the slow rate runs before and after the two fast legs, so the abandons are the difference the rate makes rather than a target that never works.
+* All three instances, reached through `+smc_i2c_shared_bus` with only the instance under test enabled.
+* `TARGET_NACK_COUNT` is the register witness. It takes the edge on which the target decides to NACK the transaction and is read-to-clear, so each leg clears it and requires exactly its own -- one for each abandon, none for either control.
+* What reaches the acquisition FIFO separates the two abandons: the address leg records nothing for the address and closes with the NACK-stop entry, the data leg keeps its start entry but records no data.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up I2C0 as a target with a long `TIMING3.THD_DAT`, read back the timing, and require the acquisition FIFO empty.
+. Slow transfer: START, address, one data byte, STOP, all at the slow rate.
+. Address leg: START at the slow rate, change rate, then the address byte.
+. Data leg: START and address at the slow rate, park until the target's hold on that acknowledge has finished, change rate, then the data byte.
+. Slow transfer again.
+. For each leg, drain the acquisition FIFO once its level has settled and read `TARGET_NACK_COUNT`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-FAST-CTRL-CONTROL` |Both slow transfers were acknowledged throughout, acquired in full and counted no NACK
+|`CHK-I2C-TGT-FAST-CTRL-ADDR` |The address clocked under the hold time got no acknowledge, was counted once, and left only the NACK-stop entry
+|`CHK-I2C-TGT-FAST-CTRL-DATA` |With the address acknowledged at the slow rate, the data byte clocked under the hold time got no acknowledge, was counted once, and left no data entry
+|===
+
+*Pass Criteria*: all three checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
+[[sec-242-smc_jtag_axi_shape_test]]
+===== 242 `smc_jtag_axi_shape_test`
+
+*Source Module*: `smc_jtag_axi_shape_test`
+
+*BFM / Model*: JTAG AXI driver (`ocah_axi_vip` AXI4 master on the JTAG2AXI input port), SEP_IN AXI driver for the filter arm
+
+*Objective*: The third inbound manager of the input fabric carries the same burst and error-response shapes the SEP_IN and SYS_IN shape leaves establish.
+
+*Test Coverage*:
+
+* INCR bursts of 2, 8 and 32 full-width beats into the SPM, each read back as one burst of the same length, so a splitter that drops, repeats or reorders beats on the JTAG port is caught on the data.
+* A read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR.
+* GPIO0 ACCESS_FILTER is armed over SEP_IN with a privileged write; an unprivileged JTAG read of the register is refused with DECERR and the error-slave signature 0xBADCAB1E, as `hw/ip/gpio/doc/programming.adoc` ("Filter Configuration") specifies, and an unprivileged JTAG write of the disarm value is refused with an error response whose code is reported, not asserted, since no document fixes how the fabric forwards a write-channel refusal; a privileged readback shows the refused write took no effect.
+* The filter is restored to its generated reset and the access counts are measured: the sequence requires its own SEP_IN count and the scoreboard's JTAG AXI count to equal the expected numbers.
+
+*Test Procedure*:
+
+Drive `smc_jtag_axi_shape_test_seq` on the SEP_IN AXI sequencer; the JTAG legs go out through the JTAG AXI agent's sequencer as one-shot items. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-JTAG-AXI-BURSTS` |Each burst readback is an exact scoreboard compare of every beat against the payload written; a dropped, repeated or misplaced beat fails
+|`CHK-JTAG-AXI-ERRORS` |The unimplemented-region read and the refused filter read are compared against DECERR and the refused read against the error-slave signature by the sequence; the refused write must answer an error response and the privileged readback must still show the armed filter
+|`CHK-JTAG-AXI-PORT` |Ledger line in the leaf: the completed JTAG AXI and SEP_IN access counts and the two reported response codes, logged after the sequence has recorded both error legs
+|===
+
+
+*Pass Criteria*: `CHK-JTAG-AXI-BURSTS`, `CHK-JTAG-AXI-ERRORS` and `CHK-JTAG-AXI-PORT` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
