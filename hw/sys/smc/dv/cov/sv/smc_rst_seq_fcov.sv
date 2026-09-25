@@ -195,7 +195,9 @@ module smc_rst_seq_fcov (
     // warm resets sit below it in the same tree, so none of them is released
     // during the hold; the SEP_IN port's ready terms are driven by the
     // fabric, which the primary hold does not lower.
-    cp_core: coverpoint core_held {ignore_bins released_during_hold = {1'b0};}
+    cp_core: coverpoint core_held {
+      ignore_bins released_during_hold = {1'b0};
+    }
     cp_fabric: coverpoint fabric_held {ignore_bins ready_lowered_by_hold = {1'b1};}
     cp_periph: coverpoint periph_held {ignore_bins released_during_hold = {1'b0};}
     cp_warm: coverpoint warm_held {ignore_bins released_during_hold = {1'b0};}
