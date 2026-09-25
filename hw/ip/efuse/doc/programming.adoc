@@ -31,10 +31,10 @@ EFUSE_PROGRAM_CTRL = (1 << 27) | (1 << 16) | (bit_addr & 0xFFFF);
 EFUSE_PROGRAM_CTRL |= (1 << 17);
 
 // Wait for completion
-while (EFUSE_PROGRAM_CTRL & (1 << 24)); // Wait for busy to clear
+while (!(EFUSE_PROGRAM_CTRL & (1u << 25))); // Wait for PROGRAM_DONE
 
 // Check status
-if ((EFUSE_PROGRAM_CTRL >> 26) & 0x3) {
+if ((EFUSE_PROGRAM_CTRL >> 26) & 0x1) {
     // Handle error
 }
 
@@ -46,20 +46,22 @@ EFUSE_PROGRAM_CTRL &= ~(1 << 27);
 
 [source,sourceCode,c]
 ----
-// Own the read path (read_enable is bit 28). program_enable must already be 0.
-EFUSE_READ_CTRL = (1 << 28) | (num_words << 16) | (bit_addr & 0xFFFF);
+// Each command reads one 32-bit word; addresses are measured in bits.
+// program_enable must already be 0.
+for (uint32_t i = 0; i < num_words; ++i) {
+    uint32_t addr = bit_addr + 32u * i;
+    EFUSE_READ_CTRL = (1u << 28) | (addr & 0xFFFFu);
+    EFUSE_READ_CTRL |= (1u << 16); // READ_GO
+    while (!(EFUSE_READ_CTRL & (1u << 25))); // READ_DONE
+    if (EFUSE_READ_CTRL & (1u << 26)) {
+        // Handle read error before consuming data.
+        break;
+    }
+    data[i] = EFUSE_READ_INTERFACE_READ_DATA;
+}
 
-// Trigger read
-EFUSE_READ_CTRL |= (1 << 17);
-
-// Wait for completion
-while (EFUSE_READ_CTRL & (1 << 24)); // Wait for busy to clear
-
-// Read data
-uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
-
-// Release read ownership before any later program
-EFUSE_READ_CTRL &= ~(1 << 28);
+// Release read ownership before any later program.
+EFUSE_READ_CTRL &= ~(1u << 28);
 ----
 
 === Program Operation Sequence
@@ -77,9 +79,7 @@ EFUSE_READ_CTRL &= ~(1 << 28);
 3.  *Status Check*:
 * Read `program_status` field:
 ** 0: Success
-** 1: Bad data (data was not 1)
-** 2: Bad enables (program_enable not set or lock active)
-** 3: Programming failure (verification failed)
+** 1: Error. This one-bit field does not distinguish failure causes.
 4.  *Release*:
 * Clear `program_enable` in `EFUSE_PROGRAM_CTRL`. This returns the
 command path so a subsequent read can proceed.
@@ -90,7 +90,8 @@ command path so a subsequent read can proceed.
 * Confirm `EFUSE_PROGRAM_CTRL.program_enable` is 0
 * Set `read_enable` = 1 in `EFUSE_READ_CTRL`
 * Configure `efuse_addr` with target bit address
-* Set `efuse_read_length_words` for multi-word reads
+* Issue one command per 32-bit word; advance the bit address by 32 for each
+additional word. There is no software read-length field.
 2.  *Execute Phase*:
 * Set `efuse_read_go` = 1 to trigger operation
 * Monitor `read_busy` until it goes low

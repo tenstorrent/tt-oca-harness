@@ -244,9 +244,17 @@ module smc_dma_fcov (
   cg_dma_burst u_cg_dma_burst = new();
   cg_dma_gates u_cg_dma_gates = new();
 
+  // The strobes live on the W channel, so the shape is sampled per accepted
+  // write beat with the length of the burst that beat belongs to.
+  logic [7:0] burst_awlen_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (aw_acc) burst_awlen_q <= mst_awlen_i;
+  end
+  wire [7:0] beat_awlen = aw_acc ? mst_awlen_i : burst_awlen_q;
+
   always_ff @(posedge clk_smc_i) begin
     if (!in_reset) begin
-      if (aw_acc) u_cg_dma_burst.sample(mst_awlen_i, strb_ones);
+      if (w_acc) u_cg_dma_burst.sample(beat_awlen, strb_ones);
       u_cg_dma_gates.sample(cg_en_i, frontend_wakeup_i, backend_busy_i, frontend_clk_toggling,
                             gated_clk_toggling);
     end

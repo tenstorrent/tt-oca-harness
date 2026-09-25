@@ -18,15 +18,17 @@ class smc_jtag_reset_ctrl_test(smc_base_test):
         "CHK-JTAG-RST-COOL",
         "CHK-JTAG-RST-IDLE",
         "CHK-JTAG-RST-SS0",
+        "CHK-JTAG-RST-WARM-HELD",
         "CHK-JTAG-RST-WARM-SCRATCH",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_jtag_reset_ctrl_test_seq("jtag_reset_ctrl_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.cool_ok and seq.ss0_ok, (
-            f"jtag_reset_ctrl incomplete cool={seq.cool_ok} ss0={seq.ss0_ok}"
+        assert seq.cool_ok and seq.ss0_ok and seq.warm_held, (
+            f"jtag_reset_ctrl incomplete cool={seq.cool_ok} ss0={seq.ss0_ok} "
+            f"warm_held={seq.warm_held}"
         )

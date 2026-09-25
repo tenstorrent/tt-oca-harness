@@ -26,7 +26,12 @@ The PTAP provides:
 
 == Configuration Parameters
 
+<<ptap-configuration-parameters-table>> lists the PTAP feature enables, dimensions, and
+default parameter values.
+
+[[ptap-configuration-parameters-table]]
 [width="100%",cols="<28%,<12%,<12%,<48%",options="header"]
+.PTAP configuration parameters
 |===
 |Parameter |Type |Default |Description
 

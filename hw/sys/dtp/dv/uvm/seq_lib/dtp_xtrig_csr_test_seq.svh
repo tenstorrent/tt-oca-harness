@@ -55,8 +55,8 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   // acknowledge enable or CTP busy flop moves while an access is in flight,
   // the crossbar's READY-low stall counters do not advance, and a routed
   // pulse afterwards is the positive control of the same observables. The
-  // pad levels stay out of the window because they follow the polarity CSR
-  // the accesses write.
+  // pad levels and the receive pulses stay out of the window because they
+  // follow the polarity CSR the accesses write.
   protected task run_reg_stall();
     bit [15:0] stretch = 16'($urandom);
     bit [31:0] select = $urandom_range(CtmSelectMask, 1);
@@ -67,7 +67,8 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     string in_flight[$];
     `uvm_info(get_type_name(), "XTRIG accepted-path CSR access and stall rationale", UVM_LOW)
     foreach (reset_signals[i])
-      if (!(reset_signals[i] inside {"xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout"}))
+      if (!(reset_signals[i] inside {"xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout",
+                                     "xtrig_ctp_ct_dst", "xtrig_int_ct_dst"}))
         in_flight.push_back(reset_signals[i]);
     idle_inputs();
     start_activity_window_on(in_flight);

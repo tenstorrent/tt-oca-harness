@@ -21,16 +21,23 @@ from smc_base_test import smc_base_test
 # 77 software-owned CLA MMR registers (78 in the generated map, less
 # CDbgClaCtrlStatus), 9 accesses each: the reset read, then for each of the ones
 # and restore patterns a low-half write, a readback, a high-half write and a
-# readback. No polling, every leg directed.
-CLA_MMR_SWEEP_MIN_CSR_ACCESSES = 77 * 9
+# readback. Then 9 for the timestamp (the enable write, two reads, the whole write
+# and its readback, the upper-half write and its readback, and the two restore
+# writes) and 6 for the hole (two neighbour reads, the read and the write, two
+# neighbour reads). No polling, every leg directed.
+CLA_MMR_SWEEP_MIN_CSR_ACCESSES = 77 * 9 + 9 + 6
 
 
 @pyuvm.test()
 class smc_dfd_cla_mmr_sweep_test(smc_base_test):
     """Sweep every software-owned CLA MMR field against its RDL contract."""
 
-    required_evidence = ("CHK-CLA-MMR-WRITE-SWEEP",)
-    min_evidence = 1
+    required_evidence = (
+        "CHK-CLA-MMR-HOLE",
+        "CHK-CLA-MMR-WRITE-SWEEP",
+        "CHK-CLA-TIMESTAMP",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 

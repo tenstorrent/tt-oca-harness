@@ -26,12 +26,8 @@ The bench EEPROM target answers the first leg; the second addresses a device
 that is not there.
 
 The controller's third ending, the automatic stop it makes when
-`CTRL.ENABLEHOST` is cleared with a transaction still open, is not driven
-here. `i2c_controller_fsm.sv:291` clears `trans_started` in the same cycle the
-enable drops, so the `trans_started && !host_enable_i` arms in `Idle` and in
-`PopFmtFifo` are each one cycle wide; with the controller parked
-mid-transaction and the queue spent, clearing the enable returned it to idle
-without the bench target seeing a stop.
+`CTRL.ENABLEHOST` is cleared with a transaction still open, is driven by
+`smc_i2c_controller_disable_stop_test`.
 """
 
 from __future__ import annotations
@@ -87,6 +83,20 @@ I2C0_HOST_NACK_HANDLER_TIMEOUT = smc_indexed_addr(
 )
 
 EVENTS_NACK = _i2c_u32("I2C__CONTROLLER_EVENTS__NACK_bm")
+FDATA_RCONT = _i2c_u32("I2C__FDATA__RCONT_bm")
+STATUS_RXEMPTY = _i2c_u32("I2C__STATUS__RXEMPTY_bm")
+#: A read count of zero in `FDATA.FBYTE` asks for 256 bytes (`i2c.rdl`), one more
+#: than any nonzero count can express, and four times the depth of the
+#: controller's receive FIFO, so software has to drain while it runs.
+FULL_READ_BYTES = 256
+#: Read lengths for the read that continues across two format entries: the
+#: first entry's last byte is acknowledged because it carries `RCONT`.
+RCONT_FIRST = 2
+RCONT_SECOND = 1
+#: A controller bit period short enough that the 256-byte read costs a few
+#: hundred microseconds of simulation. The bench target samples on the SMC
+#: clock, far faster than this.
+FAST_TIMING0 = (4, 6)
 EVENTS_UNHANDLED_NACK_TIMEOUT = _i2c_u32("I2C__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT_bm")
 NACK_TIMEOUT_VAL = _i2c_u32("I2C__HOST_NACK_HANDLER_TIMEOUT__VAL_bm")
 NACK_TIMEOUT_EN = _i2c_u32("I2C__HOST_NACK_HANDLER_TIMEOUT__EN_bm")
@@ -101,12 +111,14 @@ EVENT_POLLS = 2000
 
 
 class smc_i2c_controller_exits_test_seq(SmcCsrSeq):
-    """A read that continues, an automatic stop, and a NACK left unhandled."""
+    """A read that continues, and a NACK left unhandled."""
 
     def __init__(self, name: str = "smc_i2c_controller_exits_test_seq") -> None:
         super().__init__(name)
         self.slave: SmcI2cEepromSlave | None = None
         self.retained: list[str] = []
+        self.rcont = b""
+        self.full_read = 0
 
     async def _wait_hostidle(self, label: str) -> None:
         for _ in range(IDLE_POLLS):
@@ -127,10 +139,12 @@ class smc_i2c_controller_exits_test_seq(SmcCsrSeq):
             await ClockCycles(cocotb.top.clk_smc_i, 20)
         raise AssertionError(f"{label}: the controller never left idle after the queue")
 
-    async def _enable_host(self, label: str, nack_timeout: bool = False) -> None:
+    async def _enable_host(
+        self, label: str, nack_timeout: bool = False, timing0: tuple[int, int] = (0x1A, 0x32)
+    ) -> None:
         await self.csr_write(f"{label}_DISABLE", I2C0_CTRL, 0)
         await self.csr_write(f"{label}_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
-        await self.csr_write(f"{label}_TIMING0", I2C0_TIMING0, _pack_timing0(0x1A, 0x32))
+        await self.csr_write(f"{label}_TIMING0", I2C0_TIMING0, _pack_timing0(*timing0))
         await self.csr_write(f"{label}_TIMING1", I2C0_TIMING1, _pack_timing1(2, 2))
         await self.csr_write(f"{label}_TIMING2", I2C0_TIMING2, _pack_timing2(5, 4))
         await self.csr_write(f"{label}_TIMING3", I2C0_TIMING3, _pack_timing3(2, 5))
@@ -192,6 +206,84 @@ class smc_i2c_controller_exits_test_seq(SmcCsrSeq):
             "queued behind it reached the target, and the target saw a single stop",
             READ_BACK_BYTE,
         )
+
+    async def _read_continue_leg(self) -> None:
+        """A read split across two format entries, the first carrying RCONT."""
+        label = "RCONT"
+        await self._enable_host(label)
+        pattern = bytes((0xE0 + i) & 0xFF for i in range(RCONT_FIRST + RCONT_SECOND))
+        self.slave.write_mem(EEPROM_OFFSET + 8, pattern)
+        starts, stops = self.slave.starts, self.slave.stops
+        await self.csr_write(
+            f"{label}_ADDR_W", I2C0_FDATA, _fdata(EEPROM_ADDR << 1, I2C_FDATA_START)
+        )
+        await self.csr_write(f"{label}_OFFSET", I2C0_FDATA, _fdata(EEPROM_OFFSET + 8))
+        await self.csr_write(
+            f"{label}_ADDR_R", I2C0_FDATA, _fdata((EEPROM_ADDR << 1) | 1, I2C_FDATA_START)
+        )
+        await self.csr_write(
+            f"{label}_READ1", I2C0_FDATA, _fdata(RCONT_FIRST, I2C_FDATA_READB | FDATA_RCONT)
+        )
+        await self.csr_write(
+            f"{label}_READ2", I2C0_FDATA, _fdata(RCONT_SECOND, I2C_FDATA_READB | I2C_FDATA_STOP)
+        )
+        await self._wait_hostidle(label)
+        got = bytes(
+            [
+                (await self.csr_read(f"{label}_RDATA{i}", I2C0_RDATA)) & 0xFF
+                for i in range(RCONT_FIRST + RCONT_SECOND)
+            ]
+        )
+        assert got == pattern, (
+            f"{label}: the read split across two format entries returned {got.hex()}, not "
+            f"the {pattern.hex()} the target holds; RCONT makes the controller acknowledge the "
+            f"first entry's last byte and carry on reading"
+        )
+        assert self.slave.starts == starts + 2 and self.slave.stops == stops + 1, (
+            f"{label}: the target saw {self.slave.starts - starts} starts and "
+            f"{self.slave.stops - stops} stops; the write, the restart and the continued read "
+            f"are one transaction"
+        )
+        self.rcont = got
+
+    async def _full_read_leg(self) -> None:
+        """A read count of zero reads 256 bytes."""
+        label = "READ256"
+        await self._enable_host(label, timing0=FAST_TIMING0)
+        pattern = bytes((0x3C + 7 * i) & 0xFF for i in range(FULL_READ_BYTES))
+        self.slave.write_mem(0, pattern)
+        await self.csr_write(
+            f"{label}_ADDR_W", I2C0_FDATA, _fdata(EEPROM_ADDR << 1, I2C_FDATA_START)
+        )
+        await self.csr_write(f"{label}_OFFSET", I2C0_FDATA, _fdata(0))
+        await self.csr_write(
+            f"{label}_ADDR_R", I2C0_FDATA, _fdata((EEPROM_ADDR << 1) | 1, I2C_FDATA_START)
+        )
+        await self.csr_write(
+            f"{label}_READ", I2C0_FDATA, _fdata(0, I2C_FDATA_READB | I2C_FDATA_STOP)
+        )
+        got = bytearray()
+        for _ in range(IDLE_POLLS * 8):
+            status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
+            if not status & STATUS_RXEMPTY:
+                got.append((await self.csr_read(f"{label}_RDATA", I2C0_RDATA)) & 0xFF)
+                continue
+            if status & I2C_STATUS_HOSTIDLE and len(got) >= FULL_READ_BYTES:
+                break
+            if status & I2C_STATUS_HOSTIDLE:
+                # Idle with the receive FIFO empty: the read has ended.
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, 10)
+        events = await self.csr_read(f"{label}_EVENTS", I2C0_CONTROLLER_EVENTS)
+        assert len(got) == FULL_READ_BYTES, (
+            f"{label}: a read with a count of zero returned {len(got)} bytes, not "
+            f"{FULL_READ_BYTES} (CONTROLLER_EVENTS=0x{events:08x})"
+        )
+        assert bytes(got) == pattern, (
+            f"{label}: the 256 bytes read back differ from the target's memory; first "
+            f"difference at {next(i for i, (a, b) in enumerate(zip(got, pattern)) if a != b)}"
+        )
+        self.full_read = len(got)
 
     async def _retain_checks(self, label: str, bit: int, name: str) -> None:
         """A set event must survive both writes that are not a written one."""
@@ -277,4 +369,19 @@ class smc_i2c_controller_exits_test_seq(SmcCsrSeq):
         await Timer(1, unit="us")
 
         await self._read_continues_leg()
+        await self._read_continue_leg()
+        await self._full_read_leg()
+        cocotb.log.info(
+            "CHK-I2C-CTRL-READ-RCONT: a read split across two format entries, the first "
+            "carrying RCONT, came back as one continuous read of %d bytes (%s) inside a single "
+            "transaction: the controller acknowledged the first entry's last byte and carried "
+            "on",
+            len(self.rcont),
+            self.rcont.hex(),
+        )
+        cocotb.log.info(
+            "CHK-I2C-CTRL-READ-256: a read with a count of zero returned %d bytes, the whole "
+            "of the target's memory in order, drained from a receive FIFO a quarter that deep",
+            self.full_read,
+        )
         await self._unhandled_nack_leg()

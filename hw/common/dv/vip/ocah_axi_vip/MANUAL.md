@@ -42,7 +42,7 @@ side-neutral and carries no token.
 | `cocotb/ocah_axi_checker.py` | Item-level protocol checker (side-neutral) |
 | `cocotb/ocah_axi_config.py` | Bus geometry and interface-scope binding (side-neutral; twin of `uvm/ocah_axi_config.svh`) |
 | `cocotb/ocah_axi_types.py` | Response/protection code constants and value-conversion helpers (side-neutral) |
-| `cov/ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
+| `cov/ocah_axi_cov.sv` | Optional-backend functional coverage hook |
 
 Tests always drive a side through its `*Sequence` class — usually
 `agent.sequence` — never through the raw driver; missing operations get
@@ -402,7 +402,7 @@ it retains item-level protocol findings in `errors` AND emits named
 expect_not_timed_out/expect_timeout`, finalized once with `finalize()`
 (zero checks, failures, and missing required IDs all fail).
 
-Item-level rules (clean-room from the public AMBA AXI4 spec, IHI 0022):
+Item-level rules derived from the public AMBA AXI4 specification, IHI 0022:
 `AXI-RESP-LEGAL`, `AXI-LITE-SINGLE`, `AXI-LITE-RESP` (no EXOKAY on Lite),
 `AXI-BEATS`, `AXI-BURST-LEGAL` (reserved 0b11), `AXI-WRAP-ALIGN`,
 `AXI-FIXED-LEN`, `AXI-ALIGN` (opt-in), `AXI-4KB` (INCR only),
@@ -493,7 +493,7 @@ modules simply do not elaborate. Its contents:
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
   lives in `ocah_axi_config` on the SV side and `OcahAxiConfig` on the cocotb
   side; Lite adapters tie the AXI4-only fields).
-- `sva/ocah_axi_sva.sv` — clean-room SVA protocol rules
+- `sva/ocah_axi_sva.sv` — SVA protocol rules derived from IHI 0022
   (`OCAH_AXI_*` asserts + `OCAH_AXI_C_*` covers): reset-VALID, per-channel
   stability/hold/X-hygiene, burst legality (reserved encoding, size,
   FIXED<=16, WRAP length+alignment, 4KB), WLAST/RLAST position, strobe
@@ -501,14 +501,13 @@ modules simply do not elaborate. Its contents:
   response-legality rules. `IS_LITE` selects the subset; `en_i` is the
   runtime suppress knob. The `dv/` harness binds it to every VIP-driven
   bundle; the response-ID corruption bundles stay unbound because the
-  ID-ordering rules fire there by design. Rules are implemented from IHI 0022 rule
-  descriptions only — no third-party checker source was consulted. Two
-  trees by simulator capability: the two-state rules use `OCAH_SVA_RULE`
-  (`hw/common/assert/ocah_sva_macros.svh`) and run on every simulator,
-  Verilator included under `--assert`, and on licensed formal backends under
-  `FORMAL`; the X-hygiene rules and the covers use `OCAH_RULE` /
-  `OCAH_COVER` and run on four-state simulators and licensed backends only.
-  Each rule belongs to the side that drives its signals, and
+  ID-ordering rules fire there by design. Rules implement the IHI 0022 rule
+  descriptions. Simulator capability selects between two trees. The two-state
+  rules use `OCAH_SVA_RULE` (`hw/common/assert/ocah_sva_macros.svh`) and run
+  on every simulator, Verilator included under `--assert`, and on licensed
+  formal backends under `FORMAL`; the X-hygiene rules and the covers use
+  `OCAH_RULE` / `OCAH_COVER` and run on four-state simulators and licensed
+  backends only. Each rule belongs to the side that drives its signals, and
   `ASSUME_MASTER_RULES` / `ASSUME_SLAVE_RULES` emit that side's rules as
   assumptions, so a formal environment asserts the design's side and assumes
   its own; both default to assertions.
@@ -547,17 +546,15 @@ modules simply do not elaborate. Its contents:
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   stimulus API — see below), `ocah_axi_master_agent` (driver + sequencer;
   no agent monitor — observation stays with the side-neutral
-  `cfg`; the commercial-override unit, same template contract as
+  `cfg`; the optional-backend override unit, with the same template contract as
   `ocah_jtag_master_env`).
 
-Commercial-VIP integration follows the Template Contract in the
+Optional-backend integration follows the Template Contract in the
 ocah_jtag_vip README: the open tree carries only the hooks (the opaque
 `vendor_cfg` extension, the `en_monitor` knob, the guarded
 `OCAH_AXI_VENDOR_IF` nest inside `ocah_axi_if`, and the factory-overridable
-env/agent classes above); the implementations live in the proprietary
-`nonfree/` companion repository, and the dependency is strictly one-way —
-the open tree never references companion paths and is complete without
-them.
+env/agent classes above). Adopter overlays supply backend implementations
+without adding a dependency from the open tree.
 
 ### SV-UVM master sequence API
 
@@ -631,7 +628,7 @@ one surface convention, with the JTAG master env as the reference template:
 
 ## Functional Coverage Hook
 
-`ocah_axi_cov.sv` is commercial-simulator-only collateral. It provides:
+`ocah_axi_cov.sv` is optional-backend collateral. It provides:
 
 - `ocah_axi_cov_if` with `sample_write()` and `sample_read()` tasks.
 - `ocah_axi_cov` module wrapper with scalar sample ports for bind-friendly flows.

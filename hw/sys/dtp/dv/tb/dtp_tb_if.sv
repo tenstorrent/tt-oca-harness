@@ -188,5 +188,8 @@ interface dtp_tb_if;
   logic [7:0]  cfg_num_ext_ic_reset = 8'(dtp_dv_cfg_pkg::NumExtIcReset);
   logic [7:0]  cfg_och_ver          = dtp_dv_cfg_pkg::OchVer;
   logic [31:0] cfg_idcode           = dtp_dv_cfg_pkg::Idcode;
+  logic [7:0]  cfg_wire_or_pull     = 8'(dtp_dv_cfg_pkg::WireOrPull);
+  logic [7:0]  cfg_wire_or_assert   = 8'(dtp_dv_cfg_pkg::WireOrAssert);
+  logic [7:0]  cfg_ct_dst_latency   = 8'(dtp_dv_cfg_pkg::CtDstLatency);
 
 endinterface : dtp_tb_if

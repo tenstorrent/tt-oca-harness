@@ -27,6 +27,13 @@ integration with the UART transmitter—including flow control—streamlines
 log data output. Error conditions in log fetch or write operations are
 tracked via a comprehensive interrupt system for robust monitoring.
 
+[[log-engine-wrapper-diagram]]
+.SMC log-engine wrapper and data paths
+image::UART_Log_Engine_Wrap_FIG025-2.png[alt="SMC log-engine wrapper and data paths",width=100%,pdfwidth=100%]
+
+<<log-engine-wrapper-diagram>> shows the SMC wrapper and its memory-to-UART
+data paths.
+
 ifdef::backend-html5[]
 include::partial$log_engine/doc/architecture.adoc[]
 endif::backend-html5[]

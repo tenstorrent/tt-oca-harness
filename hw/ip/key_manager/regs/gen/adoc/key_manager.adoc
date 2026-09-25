@@ -13,12 +13,87 @@
 * *RMA_SIP_TOKEN_I[8]*: 8 registers, base 0x11500, stride 0x4
 * *RMA_CHIPLET_TOKEN_I[8]*: 8 registers, base 0x11520, stride 0x4
 * *SEC_DISABLE_TOKEN_I[8]*: 8 registers, base 0x11540, stride 0x4
-* *WORD[16]*: 16 registers, base 0x12000, stride 0x4
+* *kpv.KEY_ENTRY[0].WORD[16]*: 16 registers, base 0x12000, stride 0x4
+* *kpv.KEY_ENTRY[1].WORD[16]*: 16 registers, base 0x12040, stride 0x4
+* *kpv.KEY_ENTRY[2].WORD[16]*: 16 registers, base 0x12080, stride 0x4
+* *kpv.KEY_ENTRY[3].WORD[16]*: 16 registers, base 0x120C0, stride 0x4
+* *kpv.KEY_ENTRY[4].WORD[16]*: 16 registers, base 0x12100, stride 0x4
+* *kpv.KEY_ENTRY[5].WORD[16]*: 16 registers, base 0x12140, stride 0x4
+* *kpv.KEY_ENTRY[6].WORD[16]*: 16 registers, base 0x12180, stride 0x4
+* *kpv.KEY_ENTRY[7].WORD[16]*: 16 registers, base 0x121C0, stride 0x4
+* *kpv.KEY_ENTRY[8].WORD[16]*: 16 registers, base 0x12200, stride 0x4
+* *kpv.KEY_ENTRY[9].WORD[16]*: 16 registers, base 0x12240, stride 0x4
+* *kpv.KEY_ENTRY[10].WORD[16]*: 16 registers, base 0x12280, stride 0x4
+* *kpv.KEY_ENTRY[11].WORD[16]*: 16 registers, base 0x122C0, stride 0x4
+* *kpv.KEY_ENTRY[12].WORD[16]*: 16 registers, base 0x12300, stride 0x4
+* *kpv.KEY_ENTRY[13].WORD[16]*: 16 registers, base 0x12340, stride 0x4
+* *kpv.KEY_ENTRY[14].WORD[16]*: 16 registers, base 0x12380, stride 0x4
+* *kpv.KEY_ENTRY[15].WORD[16]*: 16 registers, base 0x123C0, stride 0x4
+* *kpv.KEY_ENTRY[16].WORD[16]*: 16 registers, base 0x12400, stride 0x4
+* *kpv.KEY_ENTRY[17].WORD[16]*: 16 registers, base 0x12440, stride 0x4
+* *kpv.KEY_ENTRY[18].WORD[16]*: 16 registers, base 0x12480, stride 0x4
+* *kpv.KEY_ENTRY[19].WORD[16]*: 16 registers, base 0x124C0, stride 0x4
+* *kpv.KEY_ENTRY[20].WORD[16]*: 16 registers, base 0x12500, stride 0x4
+* *kpv.KEY_ENTRY[21].WORD[16]*: 16 registers, base 0x12540, stride 0x4
+* *kpv.KEY_ENTRY[22].WORD[16]*: 16 registers, base 0x12580, stride 0x4
+* *kpv.KEY_ENTRY[23].WORD[16]*: 16 registers, base 0x125C0, stride 0x4
+* *kpv.KEY_ENTRY[24].WORD[16]*: 16 registers, base 0x12600, stride 0x4
+* *kpv.KEY_ENTRY[25].WORD[16]*: 16 registers, base 0x12640, stride 0x4
+* *kpv.KEY_ENTRY[26].WORD[16]*: 16 registers, base 0x12680, stride 0x4
+* *kpv.KEY_ENTRY[27].WORD[16]*: 16 registers, base 0x126C0, stride 0x4
+* *kpv.KEY_ENTRY[28].WORD[16]*: 16 registers, base 0x12700, stride 0x4
+* *kpv.KEY_ENTRY[29].WORD[16]*: 16 registers, base 0x12740, stride 0x4
+* *kpv.KEY_ENTRY[30].WORD[16]*: 16 registers, base 0x12780, stride 0x4
+* *kpv.KEY_ENTRY[31].WORD[16]*: 16 registers, base 0x127C0, stride 0x4
+* *kpv.KEY_ENTRY[32].WORD[16]*: 16 registers, base 0x12800, stride 0x4
+* *kpv.KEY_ENTRY[33].WORD[16]*: 16 registers, base 0x12840, stride 0x4
+* *kpv.KEY_ENTRY[34].WORD[16]*: 16 registers, base 0x12880, stride 0x4
+* *kpv.KEY_ENTRY[35].WORD[16]*: 16 registers, base 0x128C0, stride 0x4
+* *kpv.KEY_ENTRY[36].WORD[16]*: 16 registers, base 0x12900, stride 0x4
+* *kpv.KEY_ENTRY[37].WORD[16]*: 16 registers, base 0x12940, stride 0x4
+* *kpv.KEY_ENTRY[38].WORD[16]*: 16 registers, base 0x12980, stride 0x4
+* *kpv.KEY_ENTRY[39].WORD[16]*: 16 registers, base 0x129C0, stride 0x4
+* *kpv.KEY_ENTRY[40].WORD[16]*: 16 registers, base 0x12A00, stride 0x4
+* *kpv.KEY_ENTRY[41].WORD[16]*: 16 registers, base 0x12A40, stride 0x4
+* *kpv.KEY_ENTRY[42].WORD[16]*: 16 registers, base 0x12A80, stride 0x4
+* *kpv.KEY_ENTRY[43].WORD[16]*: 16 registers, base 0x12AC0, stride 0x4
+* *kpv.KEY_ENTRY[44].WORD[16]*: 16 registers, base 0x12B00, stride 0x4
+* *kpv.KEY_ENTRY[45].WORD[16]*: 16 registers, base 0x12B40, stride 0x4
+* *kpv.KEY_ENTRY[46].WORD[16]*: 16 registers, base 0x12B80, stride 0x4
+* *kpv.KEY_ENTRY[47].WORD[16]*: 16 registers, base 0x12BC0, stride 0x4
+* *kpv.KEY_ENTRY[48].WORD[16]*: 16 registers, base 0x12C00, stride 0x4
+* *kpv.KEY_ENTRY[49].WORD[16]*: 16 registers, base 0x12C40, stride 0x4
+* *kpv.KEY_ENTRY[50].WORD[16]*: 16 registers, base 0x12C80, stride 0x4
+* *kpv.KEY_ENTRY[51].WORD[16]*: 16 registers, base 0x12CC0, stride 0x4
+* *kpv.KEY_ENTRY[52].WORD[16]*: 16 registers, base 0x12D00, stride 0x4
+* *kpv.KEY_ENTRY[53].WORD[16]*: 16 registers, base 0x12D40, stride 0x4
+* *kpv.KEY_ENTRY[54].WORD[16]*: 16 registers, base 0x12D80, stride 0x4
+* *kpv.KEY_ENTRY[55].WORD[16]*: 16 registers, base 0x12DC0, stride 0x4
+* *kpv.KEY_ENTRY[56].WORD[16]*: 16 registers, base 0x12E00, stride 0x4
+* *kpv.KEY_ENTRY[57].WORD[16]*: 16 registers, base 0x12E40, stride 0x4
+* *kpv.KEY_ENTRY[58].WORD[16]*: 16 registers, base 0x12E80, stride 0x4
+* *kpv.KEY_ENTRY[59].WORD[16]*: 16 registers, base 0x12EC0, stride 0x4
+* *kpv.KEY_ENTRY[60].WORD[16]*: 16 registers, base 0x12F00, stride 0x4
+* *kpv.KEY_ENTRY[61].WORD[16]*: 16 registers, base 0x12F40, stride 0x4
+* *kpv.KEY_ENTRY[62].WORD[16]*: 16 registers, base 0x12F80, stride 0x4
+* *kpv.KEY_ENTRY[63].WORD[16]*: 16 registers, base 0x12FC0, stride 0x4
 * *CTRL[64]*: 64 registers, base 0x13000, stride 0x4
 * *KEY_SHARE0[12]*: 12 registers, base 0x18000, stride 0x4
 * *KEY_SHARE1[12]*: 12 registers, base 0x18030, stride 0x4
-* *KEY_SHARE0[8]*: 8 registers, base 0x19000, stride 0x4
-* *KEY_SHARE1[8]*: 8 registers, base 0x19020, stride 0x4
+* *aes_wrapper_key.KEY_SHARE0[8]*: 8 registers, base 0x19000, stride 0x4
+* *aes_wrapper_key.KEY_SHARE1[8]*: 8 registers, base 0x19020, stride 0x4
+* *kmac_wrapper_key.KEY_SHARE0[8]*: 8 registers, base 0x1A000, stride 0x4
+* *kmac_wrapper_key.KEY_SHARE1[8]*: 8 registers, base 0x1A020, stride 0x4
+* *hmac_wrapper_key.KEY_SHARE0[8]*: 8 registers, base 0x1B000, stride 0x4
+* *hmac_wrapper_key.KEY_SHARE1[8]*: 8 registers, base 0x1B020, stride 0x4
+* *abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]*: 8 registers, base 0x1C000, stride 0x4
+* *abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]*: 8 registers, base 0x1C020, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]*: 8 registers, base 0x1C100, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]*: 8 registers, base 0x1C120, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]*: 8 registers, base 0x1C200, stride 0x4
+* *abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]*: 8 registers, base 0x1C220, stride 0x4
+* *abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]*: 8 registers, base 0x1C300, stride 0x4
+* *abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]*: 8 registers, base 0x1C320, stride 0x4
 * *KEY[8]*: 8 registers, base 0x1C400, stride 0x4
 ======
 
@@ -90,15 +165,78 @@
 | 0x11568 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-RMA_CHIPLET_TOKEN_MATCH,RMA_CHIPLET_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
 | 0x1156C | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-SEC_DISABLE_TOKEN_MATCH,SEC_DISABLE_TOKEN_MATCH>> | R a| Token match status. Reports the result of the token hash comparison (match, mismatch, or error).
 | 0x11570 | <<reg-{regmap-instance}-key_manager-otp_efuse_mmr-TOKEN_MATCH_FAULT,TOKEN_MATCH_FAULT>> | R a| Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
-| 0x12000 - 0x1203C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-0-WORD-0-,WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12000 - 0x1203C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-0-WORD-0-,kpv.KEY_ENTRY[0].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12040 - 0x1207C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-1-WORD-0-,kpv.KEY_ENTRY[1].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12080 - 0x120BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-2-WORD-0-,kpv.KEY_ENTRY[2].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x120C0 - 0x120FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-3-WORD-0-,kpv.KEY_ENTRY[3].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12100 - 0x1213C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-4-WORD-0-,kpv.KEY_ENTRY[4].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12140 - 0x1217C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-5-WORD-0-,kpv.KEY_ENTRY[5].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12180 - 0x121BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-6-WORD-0-,kpv.KEY_ENTRY[6].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x121C0 - 0x121FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-7-WORD-0-,kpv.KEY_ENTRY[7].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12200 - 0x1223C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-8-WORD-0-,kpv.KEY_ENTRY[8].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12240 - 0x1227C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-9-WORD-0-,kpv.KEY_ENTRY[9].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12280 - 0x122BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-10-WORD-0-,kpv.KEY_ENTRY[10].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x122C0 - 0x122FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-11-WORD-0-,kpv.KEY_ENTRY[11].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12300 - 0x1233C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-12-WORD-0-,kpv.KEY_ENTRY[12].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12340 - 0x1237C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-13-WORD-0-,kpv.KEY_ENTRY[13].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12380 - 0x123BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-14-WORD-0-,kpv.KEY_ENTRY[14].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x123C0 - 0x123FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-15-WORD-0-,kpv.KEY_ENTRY[15].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12400 - 0x1243C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-16-WORD-0-,kpv.KEY_ENTRY[16].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12440 - 0x1247C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-17-WORD-0-,kpv.KEY_ENTRY[17].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12480 - 0x124BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-18-WORD-0-,kpv.KEY_ENTRY[18].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x124C0 - 0x124FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-19-WORD-0-,kpv.KEY_ENTRY[19].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12500 - 0x1253C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-20-WORD-0-,kpv.KEY_ENTRY[20].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12540 - 0x1257C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-21-WORD-0-,kpv.KEY_ENTRY[21].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12580 - 0x125BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-22-WORD-0-,kpv.KEY_ENTRY[22].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x125C0 - 0x125FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-23-WORD-0-,kpv.KEY_ENTRY[23].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12600 - 0x1263C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-24-WORD-0-,kpv.KEY_ENTRY[24].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12640 - 0x1267C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-25-WORD-0-,kpv.KEY_ENTRY[25].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12680 - 0x126BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-26-WORD-0-,kpv.KEY_ENTRY[26].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x126C0 - 0x126FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-27-WORD-0-,kpv.KEY_ENTRY[27].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12700 - 0x1273C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-28-WORD-0-,kpv.KEY_ENTRY[28].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12740 - 0x1277C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-29-WORD-0-,kpv.KEY_ENTRY[29].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12780 - 0x127BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-30-WORD-0-,kpv.KEY_ENTRY[30].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x127C0 - 0x127FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-31-WORD-0-,kpv.KEY_ENTRY[31].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12800 - 0x1283C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-32-WORD-0-,kpv.KEY_ENTRY[32].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12840 - 0x1287C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-33-WORD-0-,kpv.KEY_ENTRY[33].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12880 - 0x128BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-34-WORD-0-,kpv.KEY_ENTRY[34].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x128C0 - 0x128FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-35-WORD-0-,kpv.KEY_ENTRY[35].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12900 - 0x1293C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-36-WORD-0-,kpv.KEY_ENTRY[36].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12940 - 0x1297C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-37-WORD-0-,kpv.KEY_ENTRY[37].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12980 - 0x129BC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-38-WORD-0-,kpv.KEY_ENTRY[38].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x129C0 - 0x129FC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-39-WORD-0-,kpv.KEY_ENTRY[39].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12A00 - 0x12A3C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-40-WORD-0-,kpv.KEY_ENTRY[40].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12A40 - 0x12A7C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-41-WORD-0-,kpv.KEY_ENTRY[41].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12A80 - 0x12ABC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-42-WORD-0-,kpv.KEY_ENTRY[42].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12AC0 - 0x12AFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-43-WORD-0-,kpv.KEY_ENTRY[43].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12B00 - 0x12B3C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-44-WORD-0-,kpv.KEY_ENTRY[44].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12B40 - 0x12B7C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-45-WORD-0-,kpv.KEY_ENTRY[45].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12B80 - 0x12BBC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-46-WORD-0-,kpv.KEY_ENTRY[46].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12BC0 - 0x12BFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-47-WORD-0-,kpv.KEY_ENTRY[47].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12C00 - 0x12C3C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-48-WORD-0-,kpv.KEY_ENTRY[48].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12C40 - 0x12C7C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-49-WORD-0-,kpv.KEY_ENTRY[49].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12C80 - 0x12CBC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-50-WORD-0-,kpv.KEY_ENTRY[50].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12CC0 - 0x12CFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-51-WORD-0-,kpv.KEY_ENTRY[51].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12D00 - 0x12D3C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-52-WORD-0-,kpv.KEY_ENTRY[52].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12D40 - 0x12D7C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-53-WORD-0-,kpv.KEY_ENTRY[53].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12D80 - 0x12DBC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-54-WORD-0-,kpv.KEY_ENTRY[54].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12DC0 - 0x12DFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-55-WORD-0-,kpv.KEY_ENTRY[55].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12E00 - 0x12E3C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-56-WORD-0-,kpv.KEY_ENTRY[56].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12E40 - 0x12E7C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-57-WORD-0-,kpv.KEY_ENTRY[57].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12E80 - 0x12EBC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-58-WORD-0-,kpv.KEY_ENTRY[58].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12EC0 - 0x12EFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-59-WORD-0-,kpv.KEY_ENTRY[59].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12F00 - 0x12F3C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-60-WORD-0-,kpv.KEY_ENTRY[60].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12F40 - 0x12F7C | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-61-WORD-0-,kpv.KEY_ENTRY[61].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12F80 - 0x12FBC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-62-WORD-0-,kpv.KEY_ENTRY[62].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
+| 0x12FC0 - 0x12FFC | <<reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-63-WORD-0-,kpv.KEY_ENTRY[63].WORD[16]>> | RW a| One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.
 | 0x13000 - 0x130FC | <<reg-{regmap-instance}-key_manager-kpv-CTRL-0-,CTRL[64]>> | RW a| Per-slot control: lock bits (W1S) and the erase trigger
 | 0x13100 | <<reg-{regmap-instance}-key_manager-kpv-KPV_SCRAMBLER_KEY,KPV_SCRAMBLER_KEY>> | RW a| 32-bit key for KPV key entry scrambling. No reset; powers up random. Locked when KPV_SCRAMBLER_CTRL.LOCK=1.
 | 0x13104 | <<reg-{regmap-instance}-key_manager-kpv-KPV_SCRAMBLER_CTRL,KPV_SCRAMBLER_CTRL>> | RW a| KPV scrambler enable and lock. Reset to 0 on KM reset. LOCK is write-one-only.
 | 0x14000 | <<reg-{regmap-instance}-key_manager-kmcsr-VERSION,VERSION>> | R a| Hardware version register (semantic versioning: major.minor.patch)
 | 0x14004 | <<reg-{regmap-instance}-key_manager-kmcsr-CTRL,CTRL>> | R a| Control register (reserved for future use)
 | 0x14008 | <<reg-{regmap-instance}-key_manager-kmcsr-SOFT_RST_CODE,SOFT_RST_CODE>> | RW a| Software reset code register. Write 0x53525354 ('SRST') to trigger soft reset. Any other value has no effect.
-| 0x1400C | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_STATUS,IRQ_STATUS>> | RW a| Interrupt status register. Sticky bits cleared by writing 1.
-| 0x14010 | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_ENABLE,IRQ_ENABLE>> | RW a| Interrupt enable/mask register
+| 0x1400C | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_STATUS,kmcsr.IRQ_STATUS>> | RW a| Interrupt status register. Sticky bits cleared by writing 1.
+| 0x14010 | <<reg-{regmap-instance}-key_manager-kmcsr-IRQ_ENABLE,kmcsr.IRQ_ENABLE>> | RW a| Interrupt enable/mask register
 | 0x14014 | <<reg-{regmap-instance}-key_manager-kmcsr-SCRAMBLER_KEY,SCRAMBLER_KEY>> | RW a| 32-bit scrambler key for SRAM address/data scrambling. When locked: writes ignored, reads return 0. No reset; powers up random.
 | 0x14018 | <<reg-{regmap-instance}-key_manager-kmcsr-SCRAMBLER_CTRL,SCRAMBLER_CTRL>> | RW a| Scrambler control register
 | 0x1401C | <<reg-{regmap-instance}-key_manager-kmcsr-SRAM_LOCK,SRAM_LOCK>> | RW a| SRAM write-lock bits. Bit[i]=1 locks region i (1 KB each, 32 regions). Write-1-only: writing 1 sets the bit, writing 0 has no effect. Cleared by warm or cold reset (warm reset domain); ROM re-applies the lock policy on every boot before handover to mutable firmware.
@@ -246,15 +384,63 @@
 No reset; powers up with undefined value.
 | 0x18030 - 0x1805C | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_SHARE1-0-,KEY_SHARE1[12]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x18060 | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_CTRL,KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+| 0x18060 | <<reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_CTRL,otbn_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
 valid signal to the OTBN core.
-| 0x19000 - 0x1901C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE0-0-,KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x19000 - 0x1901C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE0-0-,aes_wrapper_key.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x19020 - 0x1903C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE1-0-,KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x19020 - 0x1903C | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE1-0-,aes_wrapper_key.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
+| 0x19040 | <<reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_CTRL,aes_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+valid signal to the AES core.
+| 0x1A000 - 0x1A01C | <<reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE0-0-,kmac_wrapper_key.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1A020 - 0x1A03C | <<reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE1-0-,kmac_wrapper_key.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1A040 | <<reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_CTRL,kmac_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+valid signal to the KMAC core.
+| 0x1B000 - 0x1B01C | <<reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE0-0-,hmac_wrapper_key.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1B020 - 0x1B03C | <<reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE1-0-,hmac_wrapper_key.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1B040 | <<reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_CTRL,hmac_wrapper_key.KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+valid signal to the HMAC core.
+| 0x1C000 - 0x1C01C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE0-0-,abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C020 - 0x1C03C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE1-0-,abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C040 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_CTRL,abr_wrapper_key.MLDSA_SEED.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x1C100 - 0x1C11C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE0-0-,abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C120 - 0x1C13C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE1-0-,abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C140 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_CTRL,abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x1C200 - 0x1C21C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE0-0-,abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C220 - 0x1C23C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE1-0-,abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C240 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_CTRL,abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
+| 0x1C300 - 0x1C31C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE0-0-,abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C320 - 0x1C33C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE1-0-,abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
+No reset; powers up with undefined value.
+| 0x1C340 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_CTRL,abr_wrapper_key.MLKEM_MSG.KEY_CTRL>> | RW a| Seed control register. Writing KEY_VALID=1 marks the seed as loaded.
+Write 0 to invalidate. The KV shim gates the AB kv_read response
+on this bit.
 | 0x1C400 - 0x1C41C | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY-0-,KEY[8]>> | R a| One 32-bit word of ML-KEM shared key output. Written by hardware
 when key is ready; read by KM firmware to consume. Hardware clears
 all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
+| 0x1C420 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY_CTRL,abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL>> | RW a| Shared-key control. HW sets KEY_VALID when a new key is ready.
+Firmware writes 0 to clear (consume and zeroize).
+| 0x1C424 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_STATUS,abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS>> | RW a| Interrupt status for ML-KEM shared key. Sticky bit set by
+hardware when a new shared key becomes valid; cleared by writing 1.
+| 0x1C428 | <<reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_ENABLE,abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE>> | RW a| Interrupt enable for ML-KEM shared key. Mask for the
+PicoRV32 IRQ vector bit driven by the shared-key-valid event.
 |===
 
 [#reg-{regmap-instance}-key_manager-mailbox_km-KM_WRITE_DATA]
@@ -1018,7 +1204,637 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 |===
 
 [#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-0-WORD-0-]
-=== WORD[16]
+=== kpv.KEY_ENTRY[0].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-1-WORD-0-]
+=== kpv.KEY_ENTRY[1].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-2-WORD-0-]
+=== kpv.KEY_ENTRY[2].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-3-WORD-0-]
+=== kpv.KEY_ENTRY[3].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-4-WORD-0-]
+=== kpv.KEY_ENTRY[4].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-5-WORD-0-]
+=== kpv.KEY_ENTRY[5].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-6-WORD-0-]
+=== kpv.KEY_ENTRY[6].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-7-WORD-0-]
+=== kpv.KEY_ENTRY[7].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-8-WORD-0-]
+=== kpv.KEY_ENTRY[8].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-9-WORD-0-]
+=== kpv.KEY_ENTRY[9].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-10-WORD-0-]
+=== kpv.KEY_ENTRY[10].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-11-WORD-0-]
+=== kpv.KEY_ENTRY[11].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-12-WORD-0-]
+=== kpv.KEY_ENTRY[12].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-13-WORD-0-]
+=== kpv.KEY_ENTRY[13].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-14-WORD-0-]
+=== kpv.KEY_ENTRY[14].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-15-WORD-0-]
+=== kpv.KEY_ENTRY[15].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-16-WORD-0-]
+=== kpv.KEY_ENTRY[16].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-17-WORD-0-]
+=== kpv.KEY_ENTRY[17].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-18-WORD-0-]
+=== kpv.KEY_ENTRY[18].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-19-WORD-0-]
+=== kpv.KEY_ENTRY[19].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-20-WORD-0-]
+=== kpv.KEY_ENTRY[20].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-21-WORD-0-]
+=== kpv.KEY_ENTRY[21].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-22-WORD-0-]
+=== kpv.KEY_ENTRY[22].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-23-WORD-0-]
+=== kpv.KEY_ENTRY[23].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-24-WORD-0-]
+=== kpv.KEY_ENTRY[24].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-25-WORD-0-]
+=== kpv.KEY_ENTRY[25].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-26-WORD-0-]
+=== kpv.KEY_ENTRY[26].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-27-WORD-0-]
+=== kpv.KEY_ENTRY[27].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-28-WORD-0-]
+=== kpv.KEY_ENTRY[28].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-29-WORD-0-]
+=== kpv.KEY_ENTRY[29].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-30-WORD-0-]
+=== kpv.KEY_ENTRY[30].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-31-WORD-0-]
+=== kpv.KEY_ENTRY[31].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-32-WORD-0-]
+=== kpv.KEY_ENTRY[32].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-33-WORD-0-]
+=== kpv.KEY_ENTRY[33].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-34-WORD-0-]
+=== kpv.KEY_ENTRY[34].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-35-WORD-0-]
+=== kpv.KEY_ENTRY[35].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-36-WORD-0-]
+=== kpv.KEY_ENTRY[36].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-37-WORD-0-]
+=== kpv.KEY_ENTRY[37].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-38-WORD-0-]
+=== kpv.KEY_ENTRY[38].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-39-WORD-0-]
+=== kpv.KEY_ENTRY[39].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-40-WORD-0-]
+=== kpv.KEY_ENTRY[40].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-41-WORD-0-]
+=== kpv.KEY_ENTRY[41].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-42-WORD-0-]
+=== kpv.KEY_ENTRY[42].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-43-WORD-0-]
+=== kpv.KEY_ENTRY[43].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-44-WORD-0-]
+=== kpv.KEY_ENTRY[44].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-45-WORD-0-]
+=== kpv.KEY_ENTRY[45].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-46-WORD-0-]
+=== kpv.KEY_ENTRY[46].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-47-WORD-0-]
+=== kpv.KEY_ENTRY[47].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-48-WORD-0-]
+=== kpv.KEY_ENTRY[48].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-49-WORD-0-]
+=== kpv.KEY_ENTRY[49].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-50-WORD-0-]
+=== kpv.KEY_ENTRY[50].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-51-WORD-0-]
+=== kpv.KEY_ENTRY[51].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-52-WORD-0-]
+=== kpv.KEY_ENTRY[52].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-53-WORD-0-]
+=== kpv.KEY_ENTRY[53].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-54-WORD-0-]
+=== kpv.KEY_ENTRY[54].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-55-WORD-0-]
+=== kpv.KEY_ENTRY[55].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-56-WORD-0-]
+=== kpv.KEY_ENTRY[56].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-57-WORD-0-]
+=== kpv.KEY_ENTRY[57].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-58-WORD-0-]
+=== kpv.KEY_ENTRY[58].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-59-WORD-0-]
+=== kpv.KEY_ENTRY[59].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-60-WORD-0-]
+=== kpv.KEY_ENTRY[60].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-61-WORD-0-]
+=== kpv.KEY_ENTRY[61].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-62-WORD-0-]
+=== kpv.KEY_ENTRY[62].WORD[16]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | RW | - a| 32-bit key data word. No reset for security; power-up value undefined.
+Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
+|===
+
+[#reg-{regmap-instance}-key_manager-kpv-KEY_ENTRY-63-WORD-0-]
+=== kpv.KEY_ENTRY[63].WORD[16]
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -1108,7 +1924,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-IRQ_STATUS]
-=== IRQ_STATUS
+=== kmcsr.IRQ_STATUS
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -1129,7 +1945,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 
 [#reg-{regmap-instance}-key_manager-kmcsr-IRQ_ENABLE]
-=== IRQ_ENABLE
+=== kmcsr.IRQ_ENABLE
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -2518,7 +3334,7 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 
 [#reg-{regmap-instance}-key_manager-otbn_wrapper_key-KEY_CTRL]
-=== KEY_CTRL
+=== otbn_wrapper_key.KEY_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -2529,7 +3345,7 @@ Write 0 to invalidate the current key.
 |===
 
 [#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE0-0-]
-=== KEY_SHARE0[8]
+=== aes_wrapper_key.KEY_SHARE0[8]
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -2538,12 +3354,197 @@ Write 0 to invalidate the current key.
 |===
 
 [#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_SHARE1-0-]
-=== KEY_SHARE1[8]
+=== aes_wrapper_key.KEY_SHARE1[8]
 
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-aes_wrapper_key-KEY_CTRL]
+=== aes_wrapper_key.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+Write 0 to invalidate the current key.
+|===
+
+[#reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE0-0-]
+=== kmac_wrapper_key.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_SHARE1-0-]
+=== kmac_wrapper_key.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-kmac_wrapper_key-KEY_CTRL]
+=== kmac_wrapper_key.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+Write 0 to invalidate the current key.
+|===
+
+[#reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE0-0-]
+=== hmac_wrapper_key.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_SHARE1-0-]
+=== hmac_wrapper_key.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-hmac_wrapper_key-KEY_CTRL]
+=== hmac_wrapper_key.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, asserts keymgr_key_i.valid to indicate key is loaded.
+Write 0 to invalidate the current key.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE0-0-]
+=== abr_wrapper_key.MLDSA_SEED.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_SHARE1-0-]
+=== abr_wrapper_key.MLDSA_SEED.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLDSA_SEED-KEY_CTRL]
+=== abr_wrapper_key.MLDSA_SEED.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE0-0-]
+=== abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_SHARE1-0-]
+=== abr_wrapper_key.MLKEM_SEED_D.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_D-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_SEED_D.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE0-0-]
+=== abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_SHARE1-0-]
+=== abr_wrapper_key.MLKEM_SEED_Z.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SEED_Z-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_SEED_Z.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE0-0-]
+=== abr_wrapper_key.MLKEM_MSG.KEY_SHARE0[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_SHARE1-0-]
+=== abr_wrapper_key.MLKEM_MSG.KEY_SHARE1[8]
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_MSG-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_MSG.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| When 1, the seed is loaded and the KV shim will serve it to Adams Bridge.
+Write 0 to invalidate and allow a new seed to be written.
 |===
 
 [#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY-0-]
@@ -2554,4 +3555,37 @@ Write 0 to invalidate the current key.
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | R | 0x0 a| 32-bit shared-key word. Hardware writes on key-ready event;
 hardware clears to 0 on key-consume event (KEY_VALID cleared).
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-KEY_CTRL]
+=== abr_wrapper_key.MLKEM_SHARED_KEY.KEY_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| 1 = shared key is valid and ready for firmware consumption.
+Hardware sets this bit on key-ready event. Write 0 to clear;
+write 1 has no effect (software cannot set this bit).
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_STATUS]
+=== abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid` | RW | 0x0 a| ML-KEM shared key valid. Sticky, write 1 to clear.
+|===
+
+[#reg-{regmap-instance}-key_manager-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_ENABLE]
+=== abr_wrapper_key.MLKEM_SHARED_KEY.IRQ_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:1 | `rsvd` | R | 0x0 a| Reserved
+| 0 | `key_valid_en` | RW | 0x0 a| 1 = enable PicoRV32 IRQ when ML-KEM shared key is valid.
+0 = mask the interrupt (KEY_CTRL.KEY_VALID can still be polled).
 |===
