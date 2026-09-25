@@ -62,7 +62,7 @@ NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-contai
 # A built image can be cached as a tarball on shared storage, keyed by the flake
 # output hash. When a registry repository is configured, ensure can pull that
 # same content-addressed tag before falling back to the existing cache/build
-# paths. Registry acquisition remains opt-in until a public image is published.
+# paths. Registry acquisition remains opt-in while the package is private.
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
 # Will this invocation actually need a container engine? run/run-here/verify/shell

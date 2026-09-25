@@ -7,18 +7,37 @@ on:
   pull_request:
     paths:
       - '.github/workflows/container.yml'
+      - '.gitmodules'
       - 'flake.nix'
       - 'flake.lock'
       - 'nix/**'
       - 'ocah_deps.nix'
       - 'pyproject.toml'
       - 'uv.lock'
+      - 'hw/common/dv/pyproject.toml'
+      - 'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest'
+      - 'scripts/docker-run.sh'
+      - 'scripts/docker.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/container.yml'
+      - '.gitmodules'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'ocah_deps.nix'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'hw/common/dv/pyproject.toml'
+      - 'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest'
       - 'scripts/docker-run.sh'
       - 'scripts/docker.md'
   workflow_dispatch:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   validate:
@@ -30,10 +49,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      # The manifest remains private during registry preparation. This token is
-      # used only to populate the submodule and Nix input on the ephemeral
-      # runner; the workflow does not log in to GHCR or publish an image.
       - name: Checkout manifest submodule
         env:
           MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
@@ -44,11 +61,27 @@ jobs:
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
         with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
 
       - name: Build and validate full image
+        env:
+          # Nix clones submodules while copying the flake into its store. Use
+          # the checkout populated above so the token is not needed while Nix
+          # evaluates or builds the image.
+          GIT_CONFIG_COUNT: 3
+          GIT_CONFIG_KEY_0: protocol.file.allow
+          GIT_CONFIG_VALUE_0: always
+          GIT_CONFIG_KEY_1: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
+          GIT_CONFIG_VALUE_1: git@github.com:tenstorrent/tt-oca-manifest.git
+          GIT_CONFIG_KEY_2: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
+          GIT_CONFIG_VALUE_2: ssh://git@github.com/tenstorrent/tt-oca-manifest.git
         run: |
           archive=$(nix build \
             .#dockerContainers.x86_64-linux.with_uv_deps \
@@ -71,3 +104,31 @@ jobs:
             verilator --version
             bender --version
           '
+
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ]; then
+            local_id=$(docker image inspect --format '{{.Id}}' "$registry_ref")
+            if docker manifest inspect "$registry_ref" >/dev/null 2>&1; then
+              echo "Immutable image already published: $registry_ref"
+            else
+              docker push "$registry_ref"
+            fi
+
+            docker pull "$registry_ref"
+            remote_id=$(docker image inspect --format '{{.Id}}' "$registry_ref")
+            if [ "$local_id" != "$remote_id" ]; then
+              echo "error: immutable tag $registry_ref refers to different content" >&2
+              exit 1
+            fi
+            digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$registry_ref")
+
+            main_ref="ghcr.io/tenstorrent/ocah-container:main"
+            docker tag "$registry_ref" "$main_ref"
+            docker push "$main_ref"
+            {
+              echo "### Published OCAH container"
+              echo
+              echo "\`$registry_ref\`"
+              echo
+              echo "\`$digest\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

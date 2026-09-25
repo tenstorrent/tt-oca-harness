@@ -79,9 +79,14 @@ local build.
 For example, once an image has been published:
 
 ```bash
+docker login ghcr.io -u <github-user>
 OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container \
   ./scripts/docker-run.sh ensure
 ```
+
+The login is required while the package is private. The token needs
+`read:packages`; CI should use its short-lived job token rather than a personal
+token.
 
 On hosts **without Nix installed**, all nix operations (`build`, `ensure`,
 `image_hash`) are transparently proxied through a container running
