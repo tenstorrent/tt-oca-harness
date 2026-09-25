@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="790" viewBox="0 0 1000 790" role="img" aria-labelledby="title desc">
   <title id="title">eFuse connections at the smu.sv boundary</title>
-  <desc id="desc">Inside smu.sv, the SMC and the SEP each contain their own eFuse controller. Each controller drives its own bank control AXI-Lite window, command request and command response across the smu.sv boundary, prefixed smc_ or sep_. Below the boundary the adopter places two separate Interface SHIM instances, each fronting its own 8 Kbit eFuse macro. Each eFuse controller also drives its fuse_sense_done output out to the smu.sv boundary as smc_fuse_sense_done_o and sep_fuse_sense_done_o, and both done signals are read by the SEP system CSRs.</desc>
+  <desc id="desc">Inside smu.sv, the SMC and the SEP each contain their own eFuse controller. Each controller drives its own bank control AXI-Lite window, command request and command response across the smu.sv boundary, prefixed smc_ or sep_. Below the boundary the adopter places two separate Interface SHIM instances, each fronting its own 8 Kbit eFuse macro. Each eFuse controller also drives its fuse_sense_done output out to the smu.sv boundary as smc_fuse_sense_done_o and sep_fuse_sense_done_o, and holds the sensed values in its shadow registers.</desc>
   <defs>
     <marker id="gray-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L7,3.5 L0,7 z" fill="#374151"/>
@@ -62,23 +62,19 @@
 
   <!-- SMC -->
   <text x="56" y="104" class="label">SMC</text>
-  <rect x="60" y="145" width="400" height="60" rx="6" class="ctrl"/>
-  <text x="260" y="170" text-anchor="middle" class="label">SMC eFuse controller</text>
-  <text x="260" y="189" text-anchor="middle" class="small">senses its 8 Kbit bank once per cold boot</text>
+  <rect x="60" y="115" width="400" height="90" rx="6" class="ctrl"/>
+  <text x="260" y="138" text-anchor="middle" class="label">SMC eFuse controller</text>
+  <text x="260" y="155" text-anchor="middle" class="small">senses its 8 Kbit bank once per cold boot</text>
+  <rect x="150" y="165" width="220" height="32" rx="5" class="block"/>
+  <text x="260" y="186" text-anchor="middle" class="small" font-weight="bold">Shadow registers</text>
 
   <!-- SEP -->
   <text x="944" y="104" text-anchor="end" class="label">SEP</text>
-  <rect x="540" y="92" width="200" height="42" rx="5" class="block"/>
-  <text x="640" y="113" text-anchor="middle" class="label">SEP system CSRs</text>
-  <text x="640" y="127" text-anchor="middle" class="note">both sense-done bits</text>
-  <rect x="540" y="145" width="400" height="60" rx="6" class="ctrl"/>
-  <text x="740" y="170" text-anchor="middle" class="label">SEP eFuse controller</text>
-  <text x="740" y="189" text-anchor="middle" class="small">senses its 8 Kbit bank once per cold boot</text>
-
-  <!-- Sense-done fan-out to SEP system CSRs -->
-  <path d="M440 145 V113 H540" class="done"/>
-  <text x="490" y="107" text-anchor="middle" class="done-label">smc done</text>
-  <path d="M920 145 V113 H740" class="done"/>
+  <rect x="540" y="115" width="400" height="90" rx="6" class="ctrl"/>
+  <text x="740" y="138" text-anchor="middle" class="label">SEP eFuse controller</text>
+  <text x="740" y="155" text-anchor="middle" class="small">senses its 8 Kbit bank once per cold boot</text>
+  <rect x="630" y="165" width="220" height="32" rx="5" class="block"/>
+  <text x="740" y="186" text-anchor="middle" class="small" font-weight="bold">Shadow registers</text>
 
   <!-- SMC ports -->
   <path d="M90 205 V560" class="axil"/>
@@ -104,7 +100,7 @@
   <text x="440" y="522" text-anchor="middle" class="done-label">adopter logic,</text>
   <text x="440" y="537" text-anchor="middle" class="done-label">e.g. memory repair</text>
   <text x="920" y="522" text-anchor="middle" class="done-label">adopter logic,</text>
-  <text x="920" y="537" text-anchor="middle" class="done-label">system integration</text>
+  <text x="920" y="537" text-anchor="middle" class="done-label">e.g. memory repair</text>
 
   <!-- SMC SHIM instance -->
   <text x="360" y="524" text-anchor="end" class="label">SMC SHIM</text>
