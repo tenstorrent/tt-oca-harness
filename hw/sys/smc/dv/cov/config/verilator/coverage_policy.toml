@@ -42,10 +42,10 @@
 # branch 75.9964, expression 69.0966) and stay as regression guards; the
 # `hosted fw` measurement (192 leaves) read line 97.50, branch
 # 89.07, expression 86.46 and user 407 of 467. The `[[holes]]` below are
-# the points that measurement left unhit; two PLIC points the hosted
-# measurement had waived are hit by smc_fw_plic_claim_test and carry no
-# row. This file carries 56 accepted user rows (every `expected_matches`
-# is 1); the four rows added for the `hosted fw` set classify what that
+# the points that measurement left unhit; the PLIC claim, source-bit and
+# idle-claim points the hosted measurement had waived are hit by
+# smc_fw_plic_claim_test and carry no row. This file carries 55 accepted
+# user rows (every `expected_matches` is 1); the four rows added for the `hosted fw` set classify what that
 # measurement left unhit and unclassified beside the map points taken
 # from the generated map.
 #
@@ -418,42 +418,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_gpio_fcov.c_straps_all_zero"
 
 [[holes]]
-id = "fcov-smc-c_arbitrary_bit_plus_one"
-title = "c arbitrary bit plus one"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "blocked with the PLIC claim points: ext_interrupts_i[1] held asserted with cpu_interrupts[1] observed high at the synchroniser leaves PLIC pending_2 at 0 for 256 clk_smc_i cycles; ext_interrupts_i[2] and above are tied off in the tb (SMC-INT-PLICID.S1:arbitrary-bit-plus-one)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_int_fcov.c_arbitrary_bit_plus_one"
-
-[[holes]]
-id = "fcov-smc-c_bit0_source1"
-title = "c bit0 source1"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "blocked with the PLIC claim points: ext_interrupts_i[0] held asserted with cpu_interrupts[0] observed high at the synchroniser leaves PLIC pending_1 at 0 for 256 clk_smc_i cycles, so the gateway side needs a firmware route; smc_fw_plic_claim_test is in the coverage set and does not raise this source (SMC-INT-PLICID.S1:bit0-source1)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_int_fcov.c_bit0_source1"
-
-[[holes]]
 id = "fcov-smc-c_bit323_source324"
 title = "c bit323 source324"
 category = "missing_stimulus"
@@ -470,24 +434,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_int_fcov.c_bit323_source324"
-
-[[holes]]
-id = "fcov-smc-c_claim_returns_zero_when_none_pending"
-title = "c claim returns zero when none pending"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: anchor smc_fw_plic_claim_test is in the coverage set and reads the claim register only with a source pending; no test reads it while nothing is pending (SMC-PLIC-CLAIM.S1:claim-returns-zero-when-none-pending)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_int_fcov.c_claim_returns_zero_when_none_pending"
 
 [[holes]]
 id = "fcov-smc-c_cla_top_decodes"
