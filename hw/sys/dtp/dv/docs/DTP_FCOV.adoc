@@ -79,7 +79,7 @@ covergroups are unaffected by the scope file.
 |Capability TDRs |`caps_tdr_cg` |`dtp_debug_tdr_fcov` (`c_caps_*`)
 |STAP / 3DCR |`stap_3dcr_cg` |`dtp_scan_fcov` (`c_stap_*`, `c_3dcr_*`)
 |iJTAG SIBs |`ijtag_sib_cg` |`dtp_scan_fcov` (`c_sib_*`, `c_instrument_*`)
-|Cross-trigger CTP |`ctp_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
+|Cross-trigger CTP |`ctp_cg`, `ctp_wire_or_rx_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
 |Cross-trigger CTM |`ctm_cg` |`dtp_xtrig_fcov` (`c_ctm_*`)
 |Debug-disable gating |`dbg_disable_cg` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests, mirrored by `dtp_scan_fcov` field-value points
 |===
@@ -300,6 +300,18 @@ capture events.
 |P2P state |idle, request phase, acknowledge phase, reset recovery
 |===
 
+==== `ctp_wire_or_rx_cg`
+
+*Description*: Covers the wire-OR receive of the CTP ports: a port in wire-OR
+mode delivering a trigger from its shared wire.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|Sense |normal (INVERT=0, the wire pulled low), inverted (INVERT=1, the wire pulled high)
+|Listeners |one port, a shared wire (two or more ports delivering in the same cycle)
+|===
+
 ==== `ctm_cg`
 
 *Description*: Covers CTM source-to-destination routing.
@@ -516,7 +528,7 @@ changes, and the review accepts no entry that stimulus can reach.
 |`dtp_scan_dbg_disable_matrix_test` |`dbg_disable_cg` scan-side cells (8 fields)
 |`dtp_jtag2axi_dbg_disable_matrix_test` |`dbg_disable_cg` bridge cells (3 fields)
 |`dbg_disable` group |Complete 22-cell `dbg_disable_cg` closure
-|CTP / CTM scenarios |`ctp_cg`, `ctm_cg`
+|CTP / CTM scenarios |`ctp_cg`, `ctp_wire_or_rx_cg`, `ctm_cg`
 |===
 
 === Collection Strategy

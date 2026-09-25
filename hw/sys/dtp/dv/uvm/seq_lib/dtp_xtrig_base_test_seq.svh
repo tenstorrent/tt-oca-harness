@@ -33,10 +33,15 @@
 // therefore program `output_port <- input_port_mask` and log both the VPLAN
 // source/destination intent and the concrete CSR mapping.
 //
-// Pad polarity follows CONFIG.INVERT: an inverted CTP's request and
-// acknowledge pads idle high and assert low, so every pad the sequences drive
-// goes through pad_level() and the idle levels are re-applied whenever a CTP
-// is programmed.
+// Pad polarity follows CONFIG.INVERT. Point-to-point request and acknowledge
+// pads of an inverted CTP idle high and assert low, so every such pad the
+// sequences drive goes through pad_level(). A wire-OR pad sits on the bench's
+// open-drain shared wire: the wire rests at the pull of the board built for
+// the CTP's sense (DtpWireOrPull, high for INVERT=0) and a chiplet driver
+// pulls it to the asserted level, so the sequences never drive that pad's
+// level; the port receives a trigger DtpCtDstLatency cycles after the wire is
+// pulled and nothing when it is released. The idle levels and the board pulls
+// are re-applied whenever a CTP is programmed.
 
 class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   `uvm_object_utils(dtp_xtrig_base_test_seq)
@@ -108,6 +113,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   localparam string ChkAxil = "CHK-XTRIG-AXIL";
   localparam string ChkAwLock = "CHK-XTRIG-AW-LOCK";
   localparam string ChkArStall = "CHK-XTRIG-AR-STALL";
+  localparam string ChkWire = "CHK-XTRIG-WIRE";
 
   // Selected by the test before start(); dispatch_scenario() switches on it.
   string scenario = "";
@@ -119,12 +125,14 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // Observables already reported X in this pass (one error per name).
   protected bit           m_x_reported[string];
 
-  // Observables a routed pulse can reach; the activity window ORs and ANDs
-  // them per cycle from before the input pulse until the drain tail ends.
+  // Observables a routed pulse can reach, plus the wire pulls, internal
+  // requests, and receive pulses that date the receive edge; the activity
+  // window ORs and ANDs them per cycle from before the input pulse until the
+  // drain tail ends.
   protected string output_signals[$];
   // Observables that must show no activity from the first held cycle of a
   // system reset until after its release: every request and acknowledge
-  // output plus the CTP busy flops.
+  // output, the CTP busy flops, and every port's receive pulse.
   protected string reset_signals[$];
   // Crossbar demux state watched across a two-outstanding write.
   protected string demux_signals[$];
@@ -134,13 +142,23 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   protected bit [31:0] window_activity[string];
   protected bit [31:0] window_hold[string];
   protected bit [31:0] window_last[string];
-  // Cycle offset (from the window start) at which each bit first rose.
+  // Cycle offset (from the window start) at which each bit first rose, and
+  // the number of times it rose.
   protected int window_first_seen[string][int unsigned];
+  protected int unsigned window_rises[string][int unsigned];
 
   function new(string name = "dtp_xtrig_base_test_seq");
     super.new(name);
     ctm_model = new();
-    output_signals = '{"xtrig_ctm_src_req", "xtrig_ctp_req_out_dout", "xtrig_ctp_req_out_dout_en"};
+    output_signals = '{
+        "xtrig_ctm_src_req",
+        "xtrig_ctp_req_out_dout",
+        "xtrig_ctp_req_out_dout_en",
+        "xtrig_ctp_wire_ext_assert",
+        "xtrig_ctm_dst_req",
+        "xtrig_ctp_ct_dst",
+        "xtrig_int_ct_dst"
+    };
     reset_signals = '{
         "xtrig_ctm_src_req",
         "xtrig_ctm_dst_ack",
@@ -148,7 +166,9 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
         "xtrig_ctp_ack_out_dout_en",
         "xtrig_ctp_req_out_dout",
         "xtrig_ctp_ack_out_dout",
-        "xtrig_ctp_busy"
+        "xtrig_ctp_busy",
+        "xtrig_ctp_ct_dst",
+        "xtrig_int_ct_dst"
     };
     demux_signals = '{"xtrig_demux_aw_lock", "xtrig_demux_w_pending"};
   endfunction
@@ -190,24 +210,33 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       "ctp_csr_sweep":        begin ids = route_ids; ids.push_back(ChkStretch); end
       "ctm_csr_sweep":        ids = route_ids;
       "ctm_all_source_select": ids = route_ids;
-      "wire_or":              ids = {ChkCsr, ChkSignal, ChkStretch};
+      "wire_or":              ids = {ChkCsr, ChkSignal, ChkStretch, ChkRouteModel, ChkWire};
+      "wire_or_bus":          begin ids = route_ids; ids.push_back(ChkWire); end
       "p2p":                  ids = {ChkCsr, ChkSignal};
       "random":               begin ids = route_ids; ids.push_back(ChkStretch); end
       "reset":                begin ids = route_ids; ids.push_back(ChkQuiet); end
       "ctm_wire_or_cla_to_ctp",
             "ctm_wire_or_ctp_to_cla",
             "ctm_wire_or_cla_to_cla",
-            "ctm_wire_or_ctp_to_ctp": begin ids = route_ids; ids.push_back(ChkStretch); end
-      "ctm_reset_wire_or_mode",
-            "ctm_reset_p2p_mode",
+            "ctm_wire_or_ctp_to_ctp": begin
+        ids = route_ids;
+        ids.push_back(ChkStretch);
+        ids.push_back(ChkWire);
+      end
+      "ctm_reset_wire_or_mode": begin
+        ids = route_ids;
+        ids.push_back(ChkQuiet);
+        ids.push_back(ChkWire);
+      end
+      "ctm_reset_p2p_mode",
             "ctm_reset_all_modes":  begin ids = route_ids; ids.push_back(ChkQuiet); end
+      "ctm_rand_wire_or_only":  begin ids = route_ids; ids.push_back(ChkWire); end
       "dst_port_sweep",
             "ctm_p2p_cla_to_ctp",
             "ctm_p2p_ctp_to_cla",
             "ctm_p2p_cla_to_cla",
             "ctm_p2p_ctp_to_ctp",
             "ctm_rand_all_scenarios",
-            "ctm_rand_wire_or_only",
             "ctm_rand_p2p_only",
             "ctm_rand_cla_to_ctp",
             "ctm_rand_ctp_to_cla": ids = route_ids;
@@ -247,6 +276,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       ChkAxil:       return 7;
       ChkAwLock:     return 8;
       ChkArStall:    return 9;
+      ChkWire:       return 10;
       default:       return 0;
     endcase
   endfunction
@@ -472,9 +502,15 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
                    bit rst = 1'b0, bit [15:0] stretch = '0);
     bit [31:0] cfg_word = pack_ctp_config(mode, invert, rst);
     p_sequencer.m_xtrig_ctp_shadow.note(ctp_idx, mode, invert);
-    `uvm_info(get_type_name(),
-              $sformatf("Configure CTP[%0d]: mode=%s invert=%0d reset=%0d stretch=%0d", ctp_idx,
-                        mode == CtpModeP2p ? "p2p" : "wire_or", invert, rst, stretch), UVM_MEDIUM)
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "Configure CTP[%0d]: mode=%s invert=%0d reset=%0d stretch=%0d (wire rests at %0d)",
+            ctp_idx, mode == CtpModeP2p ? "p2p" : "wire_or", invert, rst, stretch,
+            DtpWireOrPull[invert]), UVM_MEDIUM)
+    // The board comes first: the wire rests at the pull of the new sense
+    // before software sets INVERT to match it.
+    xtrig_vif.xtrig_ctp_wire_pull <= XtrigNumCtp'(p_sequencer.m_xtrig_ctp_shadow.wire_pull_mask());
     write_read_check(ctp_config_addr(ctp_idx), cfg_word, cfg_word, 4'hF, CtpConfigMask, $sformatf(
                      "ctp%0d.config", ctp_idx));
     write_read_check(ctp_stretch_addr(ctp_idx), 32'(stretch), 32'(stretch), 4'hF, CtpStretchMask,
@@ -535,29 +571,38 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // ------------------------------------------------------------------
   // Cross-trigger pin surface over dtp_xtrig_if.
   // ------------------------------------------------------------------
+  // Quiesce every stimulus vector; the wire pulls and the group describe the
+  // board and stay.
   task clear_xtrig_inputs();
-    xtrig_vif.xtrig_ctm_src_ack     <= '0;
-    xtrig_vif.xtrig_ctm_dst_req     <= '0;
-    xtrig_vif.xtrig_ctp_req_out_din <= '0;
-    xtrig_vif.xtrig_ctp_req_in_din  <= '0;
-    xtrig_vif.xtrig_ctp_ack_in_din  <= '0;
-    xtrig_vif.xtrig_ctp_ack_out_din <= '0;
+    xtrig_vif.xtrig_ctm_src_ack         <= '0;
+    xtrig_vif.xtrig_ctm_dst_req         <= '0;
+    xtrig_vif.xtrig_ctp_wire_ext_assert <= '0;
+    xtrig_vif.xtrig_ctp_req_in_din      <= '0;
+    xtrig_vif.xtrig_ctp_ack_in_din      <= '0;
+    xtrig_vif.xtrig_ctp_ack_out_din     <= '0;
     wait_sys_cycles(1);
   endtask
 
-  // Pad levels of `ctp_mask`: an asserted pad is high, an idle pad low,
+  // Point-to-point pad levels of `ctp_mask`: asserted high and idle low,
   // inverted CTPs the reverse.
   function bit [31:0] pad_level(bit [31:0] ctp_mask, bit asserted);
     bit [31:0] inverted = p_sequencer.m_xtrig_ctp_shadow.invert_mask();
     return asserted ? (ctp_mask & ~inverted) : (ctp_mask & inverted);
   endfunction
 
-  // Drive every CTP request and acknowledge pad to its idle level.
+  // Rest every point-to-point pad at its idle level and every wire at its
+  // board's pull.
   function void apply_idle_levels();
     bit [31:0] inverted = p_sequencer.m_xtrig_ctp_shadow.invert_mask();
-    xtrig_vif.xtrig_ctp_req_out_din <= XtrigNumCtp'(inverted);
-    xtrig_vif.xtrig_ctp_req_in_din  <= XtrigNumCtp'(inverted);
-    xtrig_vif.xtrig_ctp_ack_in_din  <= XtrigNumCtp'(inverted);
+    xtrig_vif.xtrig_ctp_req_in_din <= XtrigNumCtp'(inverted);
+    xtrig_vif.xtrig_ctp_ack_in_din <= XtrigNumCtp'(inverted);
+    xtrig_vif.xtrig_ctp_wire_pull  <= XtrigNumCtp'(p_sequencer.m_xtrig_ctp_shadow.wire_pull_mask());
+  endfunction
+
+  // Put the CTPs of `mask` on one shared wire resting at the pull for `invert`.
+  function void share_wire(bit [31:0] mask, bit invert);
+    xtrig_vif.xtrig_ctp_wire_group      <= XtrigNumCtp'(mask);
+    xtrig_vif.xtrig_ctp_wire_group_pull <= DtpWireOrPull[invert];
   endfunction
 
   // Return every driven cross-trigger input to its idle level.
@@ -580,6 +625,12 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       "xtrig_ctp_req_out_dout_en": sampled = 32'(xtrig_vif.xtrig_ctp_req_out_dout_en);
       "xtrig_ctp_req_out_din":     sampled = 32'(xtrig_vif.xtrig_ctp_req_out_din);
       "xtrig_ctp_req_out_din_en":  sampled = 32'(xtrig_vif.xtrig_ctp_req_out_din_en);
+      "xtrig_ctp_wire_ext_assert": sampled = 32'(xtrig_vif.xtrig_ctp_wire_ext_assert);
+      "xtrig_ctp_wire_pull":       sampled = 32'(xtrig_vif.xtrig_ctp_wire_pull);
+      "xtrig_ctp_wire_group":      sampled = 32'(xtrig_vif.xtrig_ctp_wire_group);
+      "xtrig_ctp_wire_mismatch":   sampled = 32'(xtrig_vif.xtrig_ctp_wire_mismatch);
+      "xtrig_ctp_ct_dst":          sampled = 32'(xtrig_vif.xtrig_ctp_ct_dst);
+      "xtrig_int_ct_dst":          sampled = 32'(xtrig_vif.xtrig_int_ct_dst);
       "xtrig_ctp_req_in_dout":     sampled = 32'(xtrig_vif.xtrig_ctp_req_in_dout);
       "xtrig_ctp_req_in_dout_en":  sampled = 32'(xtrig_vif.xtrig_ctp_req_in_dout_en);
       "xtrig_ctp_req_in_din":      sampled = 32'(xtrig_vif.xtrig_ctp_req_in_din);
@@ -637,19 +688,21 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     xtrig_vif.xtrig_ctm_dst_req <= xtrig_vif.xtrig_ctm_dst_req & ~(XtrigNumIntCt'(1) << int_idx);
   endtask
 
-  // Pulse CTP request-out pads and internal CT requests in the same cycles;
-  // an inverted pad pulses low from its high idle level.
+  // Pull the shared wires of `ctp_mask` and request the internal CTs of
+  // `int_mask` in the same cycles: the chiplet on each selected wire pulls it
+  // to the asserted level of its sense for `cycles` clocks.
   task pulse_input_mask(bit [31:0] ctp_mask, bit [31:0] int_mask, int unsigned cycles = 2);
-    bit [31:0] inverted = p_sequencer.m_xtrig_ctp_shadow.invert_mask();
-    bit [31:0] ctp_rest = 32'(xtrig_vif.xtrig_ctp_req_out_din) & ~ctp_mask;
-    xtrig_vif.xtrig_ctp_req_out_din <= XtrigNumCtp'(ctp_rest | (ctp_mask & ~inverted));
-    xtrig_vif.xtrig_ctm_dst_req     <= xtrig_vif.xtrig_ctm_dst_req | XtrigNumIntCt'(int_mask);
+    xtrig_vif.xtrig_ctp_wire_ext_assert <= xtrig_vif.xtrig_ctp_wire_ext_assert
+        | XtrigNumCtp'(ctp_mask);
+    xtrig_vif.xtrig_ctm_dst_req         <= xtrig_vif.xtrig_ctm_dst_req | XtrigNumIntCt'(int_mask);
     wait_sys_cycles(cycles);
-    xtrig_vif.xtrig_ctp_req_out_din <= XtrigNumCtp'(ctp_rest | (ctp_mask & inverted));
-    xtrig_vif.xtrig_ctm_dst_req     <= xtrig_vif.xtrig_ctm_dst_req & ~XtrigNumIntCt'(int_mask);
+    xtrig_vif.xtrig_ctp_wire_ext_assert <= xtrig_vif.xtrig_ctp_wire_ext_assert
+        & ~XtrigNumCtp'(ctp_mask);
+    xtrig_vif.xtrig_ctm_dst_req         <= xtrig_vif.xtrig_ctm_dst_req & ~XtrigNumIntCt'(int_mask);
   endtask
 
-  task drive_ctp_req_out_din_pulse(int unsigned ctp_idx, int unsigned cycles = 2);
+  // The chiplet on CTP `ctp_idx`'s wire pulls it for `cycles` clocks.
+  task pull_ctp_wire(int unsigned ctp_idx, int unsigned cycles = 2);
     pulse_input_mask(32'd1 << ctp_idx, '0, cycles);
   endtask
 
@@ -852,6 +905,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     window_names = names;
     window_cycles = 0;
     window_first_seen.delete();
+    window_rises.delete();
     foreach (window_names[i]) begin
       window_activity[window_names[i]] = '0;
       window_hold[window_names[i]] = '1;
@@ -870,8 +924,10 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     foreach (window_names[i]) begin
       bit [31:0] value = xtrig_pin(window_names[i]);
       bit [31:0] new_bits = value & ~window_activity[window_names[i]];
+      bit [31:0] rose = value & ~window_last[window_names[i]];
       for (int unsigned b = 0; b < 32; b++) begin
         if (new_bits[b]) window_first_seen[window_names[i]][b] = int'(window_cycles);
+        if (rose[b]) window_rises[window_names[i]][b]++;
       end
       window_activity[window_names[i]] |= value;
       window_hold[window_names[i]] &= value;
@@ -890,6 +946,52 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     if (window_first_seen.exists(name) && window_first_seen[name].exists(bit_idx))
       return window_first_seen[name][bit_idx];
     return -1;
+  endfunction
+
+  // Number of times bit `bit_idx` of `name` rose inside the window.
+  function int unsigned window_rise_count(string name, int unsigned bit_idx);
+    if (window_rises.exists(name) && window_rises[name].exists(bit_idx))
+      return window_rises[name][bit_idx];
+    return 0;
+  endfunction
+
+  // One wire-OR source received its own assertion once, DtpCtDstLatency
+  // cycles after `asserted_at` (the window cycle its wire was pulled or its
+  // CLA request rose; -1 when it never was), and never again in the window.
+  function void check_receive_edge(string receive_name, int unsigned bit_idx, int asserted_at,
+                                   string label);
+    int received_at = window_first_rise(receive_name, bit_idx);
+    int latency = (asserted_at < 0 || received_at < 0) ? -1 : received_at - asserted_at;
+    check_evidence(ChkWire, {label, ".ct_dst_latency"}, 64'(latency), 64'(DtpCtDstLatency),
+                   $sformatf("asserted@%0d ct_dst@%0d", asserted_at, received_at));
+    check_evidence(ChkWire, {label, ".ct_dst_pulses"}, 64'(window_rise_count(receive_name, bit_idx
+                   )), 64'd1, "one receive per wire assertion");
+  endfunction
+
+  // Every wire-OR source of the window received its own assertion: the CTP
+  // sources of `ctp_sources` through the chiplet pull of their wire, the
+  // internal sources of `int_sources` through their CLA request (CHK-XTRIG-WIRE).
+  function void check_receive_edges(bit [31:0] ctp_sources, bit [31:0] int_sources, string label);
+    int unsigned bits[$];
+    port_bits(ctp_sources, bits);
+    foreach (bits[i])
+    check_receive_edge("xtrig_ctp_ct_dst", bits[i], window_first_rise(
+                       "xtrig_ctp_wire_ext_assert", bits[i]), $sformatf("%s.ctp%0d", label, bits[i]
+                       ));
+    port_bits(int_sources, bits);
+    foreach (bits[i])
+    check_receive_edge("xtrig_int_ct_dst", bits[i], window_first_rise("xtrig_ctm_dst_req", bits[i]),
+                       $sformatf("%s.int%0d", label, bits[i]));
+  endfunction
+
+  // Every member of a shared wire received the one assertion `pulled_by`
+  // made on it, dated by `pulled_at_name`.
+  function void check_shared_wire_receive(int unsigned members[$], string pulled_at_name,
+                                          int unsigned pulled_by, string label);
+    int pulled_at = window_first_rise(pulled_at_name, pulled_by);
+    foreach (members[i])
+    check_receive_edge("xtrig_ctp_ct_dst", members[i], pulled_at, $sformatf(
+                       "%s.ctp%0d", label, members[i]));
   endfunction
 
   // CTM-port vector (CTP bits low, internal bits high) of every output that
@@ -940,14 +1042,24 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       wait_signal_mask("xtrig_ctm_src_req", int_outputs, int_outputs, 60, {label, ".internal"});
   endtask
 
+  // Judge one route: selected outputs fire, the window matches the model,
+  // nothing else moves. The wire-OR sources of `input_mask` (every internal
+  // source, and the CTP sources unless `mode` is point-to-point) also receive
+  // their own assertion once, at the receive latency. With `await_outputs`
+  // clear the selected outputs have already fired inside the window and only
+  // the drain tail is waited for.
   task check_output_mask(bit [31:0] output_mask, int unsigned mode, bit [31:0] predicted,
-                         string label, int unsigned drain_cycles = IsolationTailCycles);
+                         string label, int unsigned drain_cycles = IsolationTailCycles,
+                         bit [31:0] input_mask = '0, bit await_outputs = 1'b1);
     bit [31:0] intent = output_mask & CtmSelectMask;
     bit [31:0] fired;
-    await_selected_outputs(output_mask, mode, label);
+    bit [31:0] ctp_sources = (mode == CtpModeP2p) ? '0 : project_ctp_mask(input_mask);
+    if (await_outputs) await_selected_outputs(output_mask, mode, label);
     wait_sys_cycles(drain_cycles);
     stop_activity_window();
     fired = fired_vector();
+    check_receive_edges(ctp_sources & ~p_sequencer.m_xtrig_ctp_shadow.p2p_mask(),
+                        project_internal_mask(input_mask), label);
     `uvm_info(
         get_type_name(),
         $sformatf(
@@ -973,11 +1085,16 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   task run_route_window(bit [31:0] input_mask, bit [31:0] intent_mask, int unsigned mode,
                         string label, int unsigned drain_cycles = IsolationTailCycles);
     bit [31:0] predicted = ctm_model.route(input_mask);
+    open_route_window();
+    drive_input_mask(input_mask, mode);
+    check_output_mask(intent_mask, mode, predicted, label, drain_cycles, input_mask);
+  endtask
+
+  // Idle the inputs and start an activity window over the route observables.
+  task open_route_window();
     idle_inputs();
     wait_sys_cycles(2);
     start_activity_window();
-    drive_input_mask(input_mask, mode);
-    check_output_mask(intent_mask, mode, predicted, label, drain_cycles);
   endtask
 
   task verify_route(int unsigned input_port, bit [31:0] output_mask, int unsigned mode,
