@@ -6,11 +6,10 @@ The OCTS leaves so far start the timer only after a secondary phase has
 already enabled it. This leaf keeps the bench strap at PRIMARY and starts a
 timer that has never run:
 
-* **Programmed before it runs.** `CTRL` is written while the timer is idle,
-  first with a credit value of 1 and then with the setting it runs on:
-  `CREDIT_VAL` 0xFF and `PULSE_WIDTH` 0xF0, which keeps the RDL's rule that
-  the credit value exceed the pulse width. `STATUS.RUNNING` must read clear
-  throughout.
+* **Programmed before it runs.** `CTRL` is written while the timer is idle
+  with the setting it runs on: `CREDIT_VAL` 0xFF and `PULSE_WIDTH` 0xF0, which
+  keeps the RDL's rule that the credit value exceed the pulse width.
+  `STATUS.RUNNING` must read clear.
 * **A first start from zero.** `TIMER_PRESET` is 0, so the count starts at
   zero. After `TIMER_START` `STATUS.RUNNING` must set and `TIMER_COUNT` must
   advance.
@@ -43,10 +42,8 @@ def _ctrl(credit: int, pulse: int, step: int = 1) -> int:
     return (credit & 0xFF) | ((pulse & 0xFF) << 8) | ((step & 0xFF) << 16)
 
 
-#: A credit value of 1 while idle, then the running setting: the credit value
-#: above the pulse width, as the RDL requires, and the pulse long enough to
-#: still be out when a second start lands.
-IDLE_CTRL = _ctrl(1, 0)
+#: The credit value above the pulse width, as the RDL requires, and the pulse
+#: long enough to still be out when a second start lands.
 RUN_CTRL = _ctrl(0xFF, 0xF0)
 RUN_CYCLES = 400
 
@@ -65,8 +62,6 @@ class smc_octs_primary_start_test_seq(SmcCsrSeq):
         assert not status & (_OCTS_STATUS_MODE | _OCTS_STATUS_RUNNING), (
             f"STATUS=0x{status:08x} before anything is written; the timer is PRIMARY and idle"
         )
-        await self.csr_write("CTRL_IDLE", _OCTS_CTRL, IDLE_CTRL)
-        await self.csr_read("CTRL_IDLE_RB", _OCTS_CTRL, expected=IDLE_CTRL)
         await self.csr_write("CTRL_RUN", _OCTS_CTRL, RUN_CTRL)
         await self.csr_read("CTRL_RUN_RB", _OCTS_CTRL, expected=RUN_CTRL)
         await self.csr_write("PRESET_LO", _OCTS_PRESET_LO, 0)

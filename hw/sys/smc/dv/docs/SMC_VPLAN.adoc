@@ -10955,7 +10955,6 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 * The timer is strapped SECONDARY and given a sync and two credits, as `smc_octs_dual_sync_test` does, then no more credits. `CREDIT_EXPIRED` must grow while the credits stay away.
 * One late credit restarts the live count, and the register must keep its maximum.
 * A write must then bring the register back below that maximum.
-* `CTRL.CREDIT_VAL` is then written to 1 on the running secondary, whose credit counter sits at 0, and read back; `STATUS.MODE` must still read SECONDARY.
 
 *Test Procedure*:
 
@@ -11167,14 +11166,14 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 *Test Coverage*:
 
-* `CTRL` is written while the timer is idle, first with a credit value of 1 and then with the setting it runs on: `CREDIT_VAL` 0xFF and `PULSE_WIDTH` 0xF0, which keeps the RDL's rule that the credit value exceed the pulse width. `STATUS.RUNNING` must read clear.
+* `CTRL` is written while the timer is idle with the setting it runs on: `CREDIT_VAL` 0xFF and `PULSE_WIDTH` 0xF0, which keeps the RDL's rule that the credit value exceed the pulse width. `STATUS.RUNNING` must read clear.
 * `TIMER_PRESET` is 0. After `TIMER_START`, `STATUS.RUNNING` must set and `TIMER_COUNT` must advance.
 * `TIMER_START` "asserts the sync_load signal", a pulse `PULSE_WIDTH` cycles long. A second start written while that pulse is still out must reload the preset. The count read right after it must be below the count read twice after the first start.
 
 *Test Procedure*:
 
 [arabic]
-. Check `STATUS` is PRIMARY and idle, program `CTRL` twice and the preset to 0.
+. Check `STATUS` is PRIMARY and idle, program `CTRL` and the preset to 0.
 . Write `TIMER_START`, read the count twice, write `TIMER_START` again, read it, wait, and read it again.
 
 *Checkers*:

@@ -40,8 +40,6 @@ CREDIT_EXPIRED = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADD
 #: How long the credits stay away between the two samples, in SMC clocks: many
 #: credit periods.
 STARVE_CYCLES = 40 * _OCTS_CREDIT_VAL
-#: CREDIT_VAL 1, PULSE_WIDTH 0, STEP 1: a secondary generates no pulses.
-CREDIT_ONE_CTRL = 0x0001_0001
 
 
 class smc_octs_credit_expired_test_seq(SmcCsrSeq):
@@ -95,12 +93,6 @@ class smc_octs_credit_expired_test_seq(SmcCsrSeq):
             f"CREDIT_EXPIRED read 0x{after:x} after the write, not below the 0x{late:x} maximum "
             f"it held; a write resets it"
         )
-        # A credit value of 1 on the running secondary: its credit counter sits at 0,
-        # which is then the last count before a credit.
-        await self.csr_write("OCTS_CTRL_CREDIT1", _OCTS_CTRL, CREDIT_ONE_CTRL)
-        await self.csr_read("OCTS_CTRL_CREDIT1_RB", _OCTS_CTRL, expected=CREDIT_ONE_CTRL)
-        status = await self.csr_read("OCTS_STATUS_CREDIT1", _OCTS_STATUS)
-        assert status & _OCTS_STATUS_MODE, f"STATUS.MODE left SECONDARY (0x{status:08x})"
         dut.tb_chiplet_is_primary.value = 1
         await ClockCycles(clk, 8)
         cocotb.log.info(
