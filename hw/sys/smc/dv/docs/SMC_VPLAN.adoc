@@ -11283,6 +11283,43 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-287-smc_decode_hole_test]]
+===== 287 `smc_decode_hole_test`
+
+*Source Module*: `smc_decode_hole_test`
+
+*BFM / Model*: none; system AXI accesses with their responses recorded
+
+*Objective*: Write and read past the last mapped register of three block windows. The misc block and the GPIO padring get 2 KB and 4 KB windows from the peripheral crossbar, and the data accelerator gets 4 KB from the local crossbar. Each block decodes its window again, and no other enrolled leaf reaches the unmapped tail, where that decode falls to its default.
+
+*Test Coverage*:
+
+* Misc: 0xC000_2C00, past `NDM_RESET` ending at 0xC000_2A0C. The live register is `SCRATCH_COLD` 0.
+* GPIO padring: 0xC000_3800, past the 65th GPIO interface ending at 0xC000_3410. The live register is `DATA_CTRL` of GPIO 64.
+* Data accelerator: 0xC003_8338, past the zeroer registers ending at 0xC003_8218. The data accelerator sends it to the DMA, whose register port keeps nine address bits, so it lands at offset 0x138, past the DMA's last register, rather than on a live DMA register (issue #585 covers that aliasing). The live register is the DMA's `DST_ADDRESS_LO`.
+* For each, the live register is seeded and read back first, so a stray write can show. The unmapped write must leave the seed in place, and the unmapped read must not return it. The responses are recorded but not asserted, because no document fixes which error an unmapped offset inside a block window returns.
+
+*Test Procedure*:
+
+[arabic]
+. For each window: read the live register, seed it, and read the seed back.
+. Write a payload to the unmapped address, then read it back.
+. Require the live register to still hold the seed and the unmapped read not to return it, then restore the live register.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DECODE-HOLE-MISC` |An unmapped write and read in the misc window's tail left `SCRATCH_COLD` 0 holding its seed and did not read it back
+|`CHK-DECODE-HOLE-GPIO` |An unmapped write and read past the last GPIO interface left `DATA_CTRL` of GPIO 64 holding its seed and did not read it back
+|`CHK-DECODE-HOLE-DATA_ACCEL` |An unmapped write and read past the zeroer registers left the DMA's `DST_ADDRESS_LO` holding its seed and did not read it back
+|===
+
+*Pass Criteria*: every checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[sec-288-smc_zeroer_size_corners_test]]
 ===== 288 `smc_zeroer_size_corners_test`
 

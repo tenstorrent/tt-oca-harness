@@ -158,6 +158,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_decode_hole_test"
+module = "smc_decode_hole_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_address_map_region_decode_test"
 module = "smc_address_map_region_decode_test"
 seed = 1
