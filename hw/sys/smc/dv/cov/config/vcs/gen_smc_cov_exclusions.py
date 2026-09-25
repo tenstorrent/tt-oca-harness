@@ -230,9 +230,11 @@ Claims examined and not held, so their points stay graded:
   replicates a narrow store's data across the whole 64-bit bus.
 * A write at the UART's RBR or IIR offsets: an unaligned write to THR+1..3 or
   FCR+1..3 is not routed to the write-only map and decodes there.
-* The trace sink's DST lap-distance and memory-mode flush rows: the RAM start
-  register is a plain DST sink field outside the N-trace WARL clamp, and the
-  flush follows a software threshold.
+* The trace sink's DST lap-distance and memory-mode flush rows: the RAM-mode
+  start register is a plain DST sink field outside the N-trace WARL clamp, and
+  the flush follows a software threshold. The memory-mode start is not
+  software-programmable in this build: it is the absent NTR sink's custom-RAM
+  limit, which reads zero (C16).
 * The I2C target entering AcquireAckWait with its nack flag set: a START in
   the cycle that sets the flag carries it into the next transaction.
 * `trans_started && !host_enable_i` in the I2C controller: the flop clears a
@@ -1026,6 +1028,17 @@ D2 = (
     "holds that AW valid until its handshake. The block keeps awready and wready equal except "
     "while it holds an AW without its W, so a W is never taken before its AW and the W holding "
     "register is never full with the AW register empty."
+)
+C16 = (
+    "SMC-C16-DST-READ-WRAP-BOUND: three facts hold together. The trace write master waits for "
+    "a response the F3 tie never gives, so its ready falls after the first request and the DST "
+    "read-address flop, which advances only on a write-out, moves at most once per reset; the "
+    "memory-mode start is the absent NTR sink's custom-RAM limit, which P1 holds at zero; and "
+    "the set count is then the constant TRC_SIZE >> 5 over the 64-byte set, 64 for the 16 KB "
+    "trace RAM. The flop reads only 0 or 1, so the read-address wrap, the flop's offset ANDed "
+    "with the set count, never sets. A B response on the trace write port retires the first "
+    "fact, an NTR sink build or a writable memory-mode start the second, and a trace RAM whose "
+    "set count is odd, which no whole-kilobyte size gives, the third."
 )
 P28 = (
     "SMC-P28-LOG-WRITE-OKAY: uart_log_engine_wrap wires the log engine's write port only to its "
@@ -2215,6 +2228,12 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
     # the same clock as the valid, so a non-zero way comes with a staged valid, and
     # with no pending write that valid is the north write enable.
     "trace_sink": [
+        (
+            C16,
+            lambda terms, vector: any(
+                t == "TrdstMemRamRdAddrWrap_ANY" and b == "1" for t, b in zip(terms, vector)
+            ),
+        ),
         # With the N-trace read enable at zero the DST read-ready is the OR of the DST
         # read enables, and the interleave flops enable only on an N-trace term.
         (
@@ -3665,6 +3684,7 @@ FEATURE_CLASSES = (
     C13,
     C14,
     C15,
+    C16,
     D1,
     D2,
     F3,
