@@ -328,7 +328,9 @@ module cross_trigger_network
                 // - CTP receives stretched pulses from CLAs on ct_req_out_din
                 // - All other signals unused
                 assign ctm_src_req_o[i]   = int_ct_req_out_dout_en; // dout_en indicates active pulse
-                assign int_ct_req_out_din = ctm_dst_req_i[i];       // CLAs send pulses here
+                // The core receives wire-OR triggers on the falling edge of an
+                // idle-high wire, so the active-high CLA request is inverted.
+                assign int_ct_req_out_din = ~ctm_dst_req_i[i];
                 assign int_ct_req_in_din  = 1'b0;                   // Unused in Wire-OR
                 assign int_ct_ack_in_din  = 1'b0;                   // Unused in Wire-OR
                 assign ctm_dst_ack_o[i]   = 1'b0;                   // Unused in Wire-OR
