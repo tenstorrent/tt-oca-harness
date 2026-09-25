@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I2C0 target abandons a transaction a controller drives too fast for it.
+"""An I2C target abandons a transaction a controller drives too fast for it.
 
 `TIMING3.THD_DAT` is the data hold time the target keeps before it drives an
 acknowledge, counted in its own clock periods. The target waits out that count
@@ -24,7 +24,12 @@ violate the hold is not seen as a start at all. The START therefore goes out
 at the slow rate in every leg, and only the bits after it change.
 
 A transfer at the slow rate runs before and after, so the abandons are the
-difference the rate makes rather than a target that never works. The register
+difference the rate makes rather than a target that never works.
+
+One instance is driven per simulation. The hold relation needs a bus slow
+enough that the whole leaf is dominated by it, and three instances of that do
+not fit in the time one simulation is given, so the instance is a parameter of
+the sequence and the package carries one entry per instance. The register
 witness is `TARGET_NACK_COUNT`, which `i2c_core.sv` increments on the edge
 where the target decides to NACK the transaction; it is read-to-clear, so each
 leg requires exactly its own.
@@ -63,9 +68,12 @@ from .smc_i2c_target_smbus_test_seq import (
     _pack_timing4,
 )
 
-#: Every instance is driven. `+smc_i2c_shared_bus` puts all three on one
-#: open-drain bus, so the bench controller on I2C0's pads reaches each of them
-#: by address, and only the instance under test is enabled while a leg runs.
+#: The instances this sequence can be pointed at. `+smc_i2c_shared_bus` puts
+#: all three on one open-drain bus, so the bench controller on I2C0's pads
+#: reaches each of them by address, and only the instance under test is
+#: enabled while a leg runs. One instance is driven per simulation: the hold
+#: relation needs a bus rate slow enough that three instances of it run past
+#: the time a single run is given.
 INSTANCES = (0, 1, 2)
 TARGET_ADDR = {0: 0x26, 1: 0x2A, 2: 0x2B}
 
@@ -128,8 +136,10 @@ _ABYTE_BM = 0xFF
 class smc_i2c_target_fast_controller_test_seq(SmcCsrSeq):
     """A controller faster than the target's hold time must be refused."""
 
-    def __init__(self, name: str = "smc_i2c_target_fast_controller_test_seq") -> None:
+    def __init__(self, name: str = "smc_i2c_target_fast_controller_test_seq", idx: int = 0) -> None:
         super().__init__(name)
+        assert idx in INSTANCES, f"I2C instance {idx} is not one of {INSTANCES}"
+        self.idx = idx
         self.results: dict[str, tuple[list[int], list[tuple[int, int]], int]] = {}
 
     @staticmethod
@@ -304,35 +314,37 @@ class smc_i2c_target_fast_controller_test_seq(SmcCsrSeq):
         )
 
     async def body(self) -> None:
+        idx = self.idx
         assert "smc_i2c_shared_bus" in cocotb.plusargs, (
-            "smc_i2c_target_fast_controller_test needs +smc_i2c_shared_bus; without it only "
-            "I2C0's pads are on the bench bus and the other two instances cannot be reached"
+            f"the I2C{idx} fast-controller leaf needs +smc_i2c_shared_bus; without it only "
+            f"I2C0's pads are on the bench bus and the other two instances cannot be reached"
         )
         await self.prove_dut_i2c0_pins()
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
-        for idx in INSTANCES:
-            await self._instance(idx)
+        await self._instance(idx)
 
         cocotb.log.info(
-            "CHK-I2C-TGT-FAST-CTRL-CONTROL: at a bit rate whose SCL low period is well over "
+            "CHK-I2C%d-TGT-FAST-CTRL-CONTROL: at a bit rate whose SCL low period is well over "
             "the target's programmed hold of %d cycles, the transfer before the two fast legs "
             "and the transfer after them were acknowledged throughout, acquired in full and "
-            "counted no NACK, on every instance",
+            "counted no NACK",
+            idx,
             TARGET_HOLD_CYCLES,
         )
         cocotb.log.info(
-            "CHK-I2C-TGT-FAST-CTRL-ADDR: a controller whose SCL low period is under the "
-            "target's %d-cycle hold time got no acknowledge for its address on any instance, "
-            "each transaction was counted once in TARGET_NACK_COUNT, and the only thing "
-            "acquired was the NACK-stop entry closing it (%s)",
+            "CHK-I2C%d-TGT-FAST-CTRL-ADDR: a controller whose SCL low period is under the "
+            "target's %d-cycle hold time got no acknowledge for its address, the transaction "
+            "was counted once in TARGET_NACK_COUNT, and the only thing acquired was the "
+            "NACK-stop entry closing it (%s)",
+            idx,
             TARGET_HOLD_CYCLES,
-            {k: v[2] for k, v in self.results.items() if k.endswith("_ADDR")},
+            self.results[f"I2C{idx}_ADDR"][1],
         )
         cocotb.log.info(
-            "CHK-I2C-TGT-FAST-CTRL-DATA: with the address clocked slowly and acknowledged, "
-            "the same transfer sped up for its data byte got no acknowledge for it on any "
-            "instance, was counted once in TARGET_NACK_COUNT and left no data entry behind "
-            "(%s)",
-            {k: v[0] for k, v in self.results.items() if k.endswith("_DATA")},
+            "CHK-I2C%d-TGT-FAST-CTRL-DATA: with the address clocked slowly and acknowledged, "
+            "the same transfer sped up for its data byte got no acknowledge for it, was "
+            "counted once in TARGET_NACK_COUNT and left no data entry behind (ACK bits %s)",
+            idx,
+            self.results[f"I2C{idx}_DATA"][0],
         )

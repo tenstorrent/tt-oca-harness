@@ -116,7 +116,7 @@ module cross_trigger_port_core (
     .busy_o             (handshake_busy)
   );
 
-  // Wire-OR mode: ct_dst generation from synchronized ct_req_out_din (edge detection)
+  // Wire-OR mode: ct_dst pulses on the falling (assertion) edge of ct_req_out_din.
   logic wire_or_ct_dst;
   logic wire_or_req_out_prev;
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -126,7 +126,7 @@ module cross_trigger_port_core (
       wire_or_req_out_prev <= ct_req_out_din_sync_inv;
     end
   end
-  assign wire_or_ct_dst = ct_req_out_din_sync_inv & ~wire_or_req_out_prev;  // Positive edge pulse
+  assign wire_or_ct_dst = ~ct_req_out_din_sync_inv & wire_or_req_out_prev;
 
   // Mode multiplexing for ct_dst output
   logic ct_dst_raw;

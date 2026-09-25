@@ -9,11 +9,10 @@ bus-error units at ``BASE + 0x801_0000 + N * 0x1000``, and ``fabric.adoc``
 (Local and Remote Resource Access) sizes both the local and the global
 aperture with the ``REGION_SIZE`` CSR, whose reset is 16 MiB.
 
-At the 16 MiB reset the PLIC, CLINT and BEU addresses lie outside the local
-aperture, and neither ``fabric.adoc`` nor ``memmap.adoc`` says what an inbound
-access above the aperture returns; this sequence reads the PLIC priority word
-at the reset size with the response tolerated and reports what came back,
-without comparing it. It then programs ``REGION_SIZE`` to 256 MiB, the
+At the 16 MiB reset the PLIC, CLINT and BEU addresses lie outside the local and
+global apertures, and the input fabric answers an inbound access there with
+DECERR; this sequence reads the PLIC priority word at the reset size and
+requires DECERR. It then programs ``REGION_SIZE`` to 256 MiB, the
 smallest power of two that contains the whole documented map up to
 ``BASE + 0x801_3FFF``, and drives the three windows -- their co-resident
 patterns and generated resets are what prove the aperture widened:
@@ -47,7 +46,7 @@ from .smc_addr_map import (
     smc_addr,
     smc_indexed_addr,
 )
-from .smc_decode_probe_utils import SmcDecodeProbeSeq
+from .smc_decode_probe_utils import AXI_RESP_DECERR, SmcDecodeProbeSeq
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -78,9 +77,8 @@ PLIC_CORE0_ENABLE_0 = smc_indexed_addr("SMC_TOP_SMC_CLUSTER_PLIC_CORE0_MEIP_ENAB
 # memmap.adoc / interrupts.adoc: PLIC = BASE + 0x400_0000 - BASE + 0x43F_FFFF.
 PLIC_SPEC_TOP = LOCAL_BASE + 0x043F_FFF8
 PLIC_SPEC_ABOVE = LOCAL_BASE + 0x0440_0000
-# The PLIC word at the watchdog CMP's window offset: read at the reset aperture
-# with the response tolerated (the specification does not define it) and again
-# once the aperture covers the PLIC.
+# The PLIC word at the watchdog CMP's window offset: read at the reset aperture,
+# where it must answer DECERR, and again once the aperture covers the PLIC.
 PLIC_WORD_AT_WDT_CMP_OFFSET = PLIC_BASE + WDT_CMP_WINDOW_OFFSET
 # plic.h: PRIORITY.VALUE is 3 bits, so the pattern has to fit in it.
 _PRIORITY_PATTERN = 0x5
@@ -119,8 +117,7 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
     def __init__(self, name: str = "smc_region_size_plic_clint_beu_decode_test_seq") -> None:
         super().__init__(name)
         self.value_checks_measured = 0
-        # What the PLIC word answered at the reset aperture: (resp, rdata),
-        # reported and not compared -- the specification leaves it undefined.
+        # What the PLIC word answered at the reset aperture: (resp, rdata).
         self.above_aperture_at_reset: tuple[int, int] | None = None
         self.plic_word_at_256m: int | None = None
 
@@ -128,17 +125,18 @@ class smc_region_size_plic_clint_beu_decode_test_seq(SmcDecodeProbeSeq):
         """REGION_SIZE reads its generated reset; the local window answers below it."""
         await self.read_reset("REGION_SIZE_AT_RESET", REGION_SIZE, REGION_SIZE_RESET)
         await self.read_reset("WDT0_CMP_LOCAL", WDT0_CMP, WDT_CMP_REG_DEFAULT)
-        self.above_aperture_at_reset = await self.read_any(
+        self.env.axi_monitor.expected_decerr_addrs.add(PLIC_WORD_AT_WDT_CMP_OFFSET)
+        rdata = await self.read_decerr(
             "PLIC_WORD_ABOVE_RESET_APERTURE", PLIC_WORD_AT_WDT_CMP_OFFSET
         )
-        resp, rdata = self.above_aperture_at_reset
+        self.above_aperture_at_reset = (AXI_RESP_DECERR, rdata)
+        resp = AXI_RESP_DECERR
         self.close_cell(
             "region-size-reset-16mib",
             f"REGION_SIZE read its generated reset {REGION_SIZE_RESET:#x} and WDT0 CMP inside "
             f"that aperture read its generated reset 0x{WDT_CMP_REG_DEFAULT:x}; "
-            f"0x{PLIC_WORD_AT_WDT_CMP_OFFSET:08x}, above the aperture, answered resp={resp} "
-            f"rdata=0x{rdata:x}, which fabric.adoc leaves undefined and this leg reports "
-            f"without comparing",
+            f"0x{PLIC_WORD_AT_WDT_CMP_OFFSET:08x}, above the aperture, answered DECERR "
+            f"(resp={resp}, rdata=0x{rdata:x})",
         )
 
     async def _widen_region_size(self) -> None:

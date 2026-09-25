@@ -15,9 +15,9 @@ adopter external port (``tb_axil_external_active`` pulses while the access is
 in flight; the bench PVT model answers OKAY with zero data).
 
 The DTP control window is not probed: ``tb_top`` leaves its AXI-Lite response
-idle, so an access there would never complete. The four bus error units sit
-behind the bit-25 fold of ``smc_local_fabric`` and are not reachable from
-SEP_IN (see ``smc_cluster_beu_test``).
+idle, so an access there would never complete. The four bus error units lie
+outside the local and global apertures at the reset ``REGION_SIZE`` and answer
+DECERR from SEP_IN (see ``smc_cluster_beu_test``); this leaf does not widen it.
 """
 
 from __future__ import annotations
@@ -472,8 +472,8 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.leave_open(
             "beu-instance-3",
-            "the BEU window 0xC801_x000 folds onto the local base in smc_local_fabric; no SEP_IN "
-            "access reaches a bus error unit",
+            "the BEU window 0xC801_x000 lies outside the local and global apertures at the reset "
+            "REGION_SIZE and answers DECERR, so no SEP_IN access here reaches a bus error unit",
         )
 
         self.value_checks_measured = sb.sys_axi_value_checks_seen - value_checks_before
