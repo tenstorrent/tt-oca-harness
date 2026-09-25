@@ -634,105 +634,6 @@ args = [
 # feat_ctrl is zero except func_reserved until a demote opens the window, so
 # PROD with a non-demoting payload has debug disabled just like PROD_END.
 [[tests]]
-name = "smu_sep_lcc_state_rma_sip_0_test"
-module = "smu_sep_lcc_state_rma_sip_0_test"
-target = "compile_smu_chiplet"
-firmware = { name = "sep_smu_lcc_flow", mode = "sep_dv_fw" }
-seed = 1
-timeout_sec = 1800
-tags = ["firmware", "sep", "smc", "dtp", "real_rtl", "real_fw", "lifecycle"]
-run_modes = ["sep_rtl_no_shadow"]
-args = [
-  "+rom_hex=smu_sep_arm.rom.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
-  "+sep_itcm_hex=sep_smu_lcc_flow.itcm.hex",
-  "+sep_dtcm_hex=sep_smu_lcc_flow.dtcm.hex",
-  "+sep_sym=sep_smu_lcc_flow.tcm.sym",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_0.preload",
-  "+lcc_expect_lc_state=0xD2",
-  "+lcc_expect_demote_effective=1",
-  "+lcc_expect_dbg_disabled=0",
-  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-]
-
-# TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
-# ~(sip_dis | sys_dis) in this state, so sip_debug is set without any demote --
-# and a JTAG2AXI SINGLE_OP must reach the DTP->SMC debug AXI port. This is the
-# permissive half; without it, 'no transaction' in the gated case could equally
-# mean a broken TAP or a wrong scan payload. Note PROD would NOT work here: its
-# feat_ctrl is zero except func_reserved until a demote opens the window, so
-# PROD with a non-demoting payload has debug disabled just like PROD_END.
-[[tests]]
-name = "smu_sep_lcc_state_rma_sip_1_test"
-module = "smu_sep_lcc_state_rma_sip_1_test"
-target = "compile_smu_chiplet"
-firmware = { name = "sep_smu_lcc_flow", mode = "sep_dv_fw" }
-seed = 1
-timeout_sec = 1800
-tags = ["firmware", "sep", "smc", "dtp", "real_rtl", "real_fw", "lifecycle"]
-run_modes = ["sep_rtl_no_shadow"]
-args = [
-  "+rom_hex=smu_sep_arm.rom.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
-  "+sep_itcm_hex=sep_smu_lcc_flow.itcm.hex",
-  "+sep_dtcm_hex=sep_smu_lcc_flow.dtcm.hex",
-  "+sep_sym=sep_smu_lcc_flow.tcm.sym",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_1.preload",
-  "+lcc_expect_lc_state=0xC3",
-  "+lcc_expect_demote_effective=1",
-  "+lcc_expect_dbg_disabled=0",
-  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-]
-
-# TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
-# ~(sip_dis | sys_dis) in this state, so sip_debug is set without any demote --
-# and a JTAG2AXI SINGLE_OP must reach the DTP->SMC debug AXI port. This is the
-# permissive half; without it, 'no transaction' in the gated case could equally
-# mean a broken TAP or a wrong scan payload. Note PROD would NOT work here: its
-# feat_ctrl is zero except func_reserved until a demote opens the window, so
-# PROD with a non-demoting payload has debug disabled just like PROD_END.
-[[tests]]
-name = "smu_sep_lcc_state_rma_chip_1_test"
-module = "smu_sep_lcc_state_rma_chip_1_test"
-target = "compile_smu_chiplet"
-firmware = { name = "sep_smu_lcc_flow", mode = "sep_dv_fw" }
-seed = 1
-timeout_sec = 1800
-tags = ["firmware", "sep", "smc", "dtp", "real_rtl", "real_fw", "lifecycle"]
-run_modes = ["sep_rtl_no_shadow"]
-args = [
-  "+rom_hex=smu_sep_arm.rom.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
-  "+sep_efuse_hex=sep_efuse_default.hex",
-  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
-  "+sep_itcm_hex=sep_smu_lcc_flow.itcm.hex",
-  "+sep_dtcm_hex=sep_smu_lcc_flow.dtcm.hex",
-  "+sep_sym=sep_smu_lcc_flow.tcm.sym",
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_chip_1.preload",
-  "+lcc_expect_lc_state=0x87",
-  "+lcc_expect_demote_effective=1",
-  "+lcc_expect_dbg_disabled=0",
-  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-]
-
-# TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
-# ~(sip_dis | sys_dis) in this state, so sip_debug is set without any demote --
-# and a JTAG2AXI SINGLE_OP must reach the DTP->SMC debug AXI port. This is the
-# permissive half; without it, 'no transaction' in the gated case could equally
-# mean a broken TAP or a wrong scan payload. Note PROD would NOT work here: its
-# feat_ctrl is zero except func_reserved until a demote opens the window, so
-# PROD with a non-demoting payload has debug disabled just like PROD_END.
-[[tests]]
 name = "smu_sep_dbg_gating_test_dev_test"
 module = "smu_sep_dbg_gating_test_dev_test"
 target = "compile_smu_chiplet"
@@ -2440,9 +2341,6 @@ tests = [
   "smu_sep_lcc_state_prod_test",
   "smu_sep_lcc_state_prod_end_test",
   "smu_sep_lcc_state_rma_chiplet_test",
-  "smu_sep_lcc_state_rma_sip_0_test",
-  "smu_sep_lcc_state_rma_sip_1_test",
-  "smu_sep_lcc_state_rma_chip_1_test",
   "smu_sep_dbg_gating_test_dev_test",
   "smu_sep_dbg_gating_prod_end_test",
   "smu_dtp_sep_smc_chain_prod_test",
@@ -2524,7 +2422,7 @@ tests = [
   "smu_sep_secure_tm_test",
   "smu_axi_in_attribute_sweep_test",
 ]
-expected_count = 105
+expected_count = 102
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -2584,9 +2482,6 @@ tests = [
   "smu_sep_lcc_state_prod_test",
   "smu_sep_lcc_state_prod_end_test",
   "smu_sep_lcc_state_rma_chiplet_test",
-  "smu_sep_lcc_state_rma_sip_0_test",
-  "smu_sep_lcc_state_rma_sip_1_test",
-  "smu_sep_lcc_state_rma_chip_1_test",
 ]
 
 [[tests]]

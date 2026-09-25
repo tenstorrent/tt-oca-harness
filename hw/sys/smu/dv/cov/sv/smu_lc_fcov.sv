@@ -93,24 +93,9 @@ module smu_lc_fcov #(
       logic [7:0] lc_state, logic [1:0] demote1, logic [1:0] demote2
   );
     option.per_instance = 1;
-    // LcStateSep0 is the SEP-absent broadcast value; with the SEP present the
-    // released value is its eFuse shadow word.
-    cp_lc_state: coverpoint lc_state {
-      bins sep0 = {LcStateSep0};
-      bins other = default;
-      ignore_bins sep_present = {LcStateSep0} with (SepPresent);
-    }
-    // Each demote output is a differential code: 2'b10 not demoted, 2'b01
-    // demoted. 2'b00 and 2'b11 are not codes, and the demote register is
-    // written by SEP firmware, which has not run at the primary release.
-    cp_demote1: coverpoint demote1 {
-      ignore_bins not_a_code = {2'b00, 2'b11};
-      ignore_bins demoted_before_release = {2'b01};
-    }
-    cp_demote2: coverpoint demote2 {
-      ignore_bins not_a_code = {2'b00, 2'b11};
-      ignore_bins demoted_before_release = {2'b01};
-    }
+    cp_lc_state: coverpoint lc_state {bins sep0 = {LcStateSep0}; bins other = default;}
+    cp_demote1: coverpoint demote1;
+    cp_demote2: coverpoint demote2;
     x_demote: cross cp_demote1, cp_demote2;
   endgroup
 

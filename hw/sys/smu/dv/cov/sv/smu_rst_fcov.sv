@@ -261,13 +261,10 @@ module smu_rst_fcov #(
       logic smc_rst, logic dtp_rst, logic sep_rst, logic xbar_rst
   );
     option.per_instance = 1;
-    // Sampled at the primary SMC reset's release edge. The block resets
-    // release ahead of the primary, so every one of them reads released
-    // at that edge.
-    cp_smc: coverpoint smc_rst {ignore_bins held_at_primary_release = {1'b0};}
-    cp_dtp: coverpoint dtp_rst {ignore_bins held_at_primary_release = {1'b0};}
-    cp_sep: coverpoint sep_rst {ignore_bins held_at_primary_release = {1'b0};}
-    cp_xbar: coverpoint xbar_rst {ignore_bins held_at_primary_release = {1'b0};}
+    cp_smc: coverpoint smc_rst;
+    cp_dtp: coverpoint dtp_rst;
+    cp_sep: coverpoint sep_rst;
+    cp_xbar: coverpoint xbar_rst;
     x_blocks: cross cp_smc, cp_dtp, cp_sep, cp_xbar;
   endgroup
 
