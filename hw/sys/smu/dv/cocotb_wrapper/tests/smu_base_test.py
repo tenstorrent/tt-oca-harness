@@ -535,6 +535,10 @@ class smu_base_test(uvm_test):
         await self.bring_up()
         try:
             await self.run_scenario()
+            # A cover property samples a handshake at one clock and records it at
+            # the next; a scenario whose last access completes in its final cycle
+            # loses that record if the run ends in the same time step.
+            await ClockCycles(cocotb.top.clk_smu_i, 2)
             if self.use_shared_env:
                 self.env.scoreboard.prove_mapped_features()
             else:

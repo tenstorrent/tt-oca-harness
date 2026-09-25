@@ -61,6 +61,9 @@ module system_timer_octs
   logic [31:0] count_hi;
   logic [7:0]  pulse_width;
   logic [31:0] credit_expired;
+  logic        rst_credit_expired;
+
+  assign rst_credit_expired = hwif_out.CREDIT_EXPIRED.req & hwif_out.CREDIT_EXPIRED.req_is_wr; // If we get a write to this register, reset the value
 
   /////////////////////////
   // Timer Core Instance //
@@ -93,6 +96,7 @@ module system_timer_octs
     .timer_cnt_step_i     (step),
 
     // Credit expired counter (SECONDARY only)
+    .credit_expired_clr_i (rst_credit_expired),
     .credit_expired_o     (credit_expired),
 
     // Timer outputs
@@ -107,11 +111,9 @@ module system_timer_octs
   // Credit Expired Logic //
   //////////////////////////
 
-  logic rst_credit_expired;
   logic [31:0] credit_expired_value_d, credit_expired_value_q;
 
   assign credit_expired_value_d   = (credit_expired_value_q < credit_expired) ? credit_expired : credit_expired_value_q; // Max(credit_expired_value, credit_expired)
-  assign rst_credit_expired       = hwif_out.CREDIT_EXPIRED.req & hwif_out.CREDIT_EXPIRED.req_is_wr; // If we get a write to this register, reset the value
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin

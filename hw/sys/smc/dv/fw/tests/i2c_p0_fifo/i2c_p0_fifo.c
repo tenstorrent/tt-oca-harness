@@ -75,25 +75,27 @@
 
 /* Poll bounds, in loop iterations.
  *
- * Sized from measured cost, not guessed. A single-register poll iteration in
- * this testbench costs 0.44-1.15 us of simulation (the measurement recorded on
- * I2C_TIMEOUT_DEFAULT in i2c_opentitan.h); the loops below read two registers
- * per pass, so ~0.9-2.3 us each.
+ * Sized from measured cost, not guessed, at the corner the bench can draw. A
+ * single-register poll iteration costs 0.23 us at the 4 ns core clock the bench
+ * can pick (measured in i2c_fifo_full) and ~0.34 us at 6 ns; the loops below
+ * read two registers per pass, so ~0.46-0.68 us each.
  *
  * The longest legitimate wait in this test is the VIP's 5-byte write at 100 kHz,
- * which took 1.10 ms in the reference run (1783040 ns -> 2888040 ns). The
+ * which took 1.10 ms in the reference run (1783040 ns -> 2888040 ns) and takes
+ * up to 1.5x that when the bench draws the 12 ns peripheral clock. The
  * outermost bound in the stack is the testbench's 20 ms completion wait
  * (tb_wrap_cocotb/tests/smc_i2c_p0_fifo.py). Every bound here must therefore
  * expire well inside 20 ms, or its failure branch is unreachable code and the
  * diagnostics behind it can never print.
  *
- *   4000 iterations ~= 3.5-9.2 ms : 3-8x the 1.10 ms transaction, under 20 ms.
- *   2000 iterations ~= 1.8-4.6 ms : the STOP entry lands about one byte period
- *                                   (90 us at 100 kHz) after the last data byte.
- *    500 iterations ~= 0.45-1.2 ms: a TXDATA store reaches TXLVL in a few cycles.
+ *  12000 iterations ~= 5.5-8.2 ms : 3.3x the 1.65 ms worst-corner transaction,
+ *                                   under 20 ms.
+ *   6000 iterations ~= 2.8-4.1 ms : the STOP entry lands about one byte period
+ *                                   (90-135 us) after the last data byte.
+ *    500 iterations ~= 0.23-0.34 ms: a TXDATA store reaches TXLVL in a few cycles.
  */
-#define RX_INTR_POLL_BOUND 4000u
-#define RX_ENTRIES_POLL_BOUND 2000u
+#define RX_INTR_POLL_BOUND 12000u
+#define RX_ENTRIES_POLL_BOUND 6000u
 #define TX_LEVEL_POLL_BOUND 500u
 
 /**
