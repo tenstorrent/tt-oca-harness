@@ -13,16 +13,6 @@ https://opentitan.org/book/hw/ip/i2c/doc/theory_of_operation.html[OpenTitan theo
 and the
 https://opentitan.org/book/hw/ip/i2c/doc/programmers_guide.html[OpenTitan programmer's guide].
 
-ifdef::backend-pdf[]
-:imagesdir: assets
-endif::backend-pdf[]
-
-[[i2c-wrapper-diagram]]
-.OCAH I2C wrapper and generated register interface
-image::SMC_I2C_FIG023.png[alt="OCAH I2C wrapper and generated register interface",width=100%,pdfwidth=100%]
-
-<<i2c-wrapper-diagram>> shows the OCAH wrapper around that core.
-
 == OCAH Modifications
 
 * AXI4-Lite register interface in place of the OpenTitan TileLink host port.
