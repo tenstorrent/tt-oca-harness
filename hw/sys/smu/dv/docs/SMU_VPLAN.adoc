@@ -251,7 +251,7 @@ one-line intent.
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=1, no Force)
 |`smu_dtp_scan_chain_boundary_test` |dtp |The iJTAG SIB hosts and the secondary TAPs leave and re-enter `smu_wrapper` at the pads, and the shift path runs through those boundary pins.
 |`smu_otp_bridges_under_dbg_disable_test` |dtp |The SMC and SEP OTP JTAG2AXI bridges complete while the lifecycle posture has closed the SMC fabric bridge.
-|`smu_xtrig_ctp_pad_test` |dtp |The four CTP pad groups of `smu_wrapper` follow the cross-trigger network's mode, handshake and matrix routing at the pads.
+|`smu_xtrig_ctp_pad_test` |dtp |The four CTP pad groups of `smu_wrapper` follow the cross-trigger network's mode, handshake and matrix routing at the pads, and a wire-OR port receives cycle-exactly on its shared wire's assertion edge.
 |`smu_xtrig_mode_composition_test` |dtp |The per-internal-CT mode vector reaches the DTP, and a handshake lane acknowledges where a pulse-sync lane does not.
 |`smu_sep_smoke_test` |sep |wrapper SEP RTL boot: ROM fetch, ICCM, 256 retires / 16 PCs, DCCM write
 |`smu_sep_fuse_sense_done_test` |sep |SEP fuse sense completes on the composition and reports on `sep_fuse_sense_done_o` after the cold reset released and after eFuse read traffic appeared.
@@ -2589,9 +2589,9 @@ row's EXPECT sentence is worth, read the check.
 
 *Source Module*: `smu_xtrig_ctp_pad_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: `ocah_jtag_vip` (SMC fabric JTAG2AXI into the SMC peripheral window that programs the cross-trigger network); TB drive of the CTP pads; `elaboration` firmware mode
+*BFM / Model*: `ocah_jtag_vip` (SMC fabric JTAG2AXI into the SMC peripheral window that programs the cross-trigger network); every CT_Req_out pad sits on an `ocah_open_drain_bus` shared wire (private, or the group wire the pads in `tb_xtrig_ctp_wire_group` share), resting at the board pull of the port's INVERT sense, with a bench chiplet driver pulling it -- the other three CTP pad groups keep TB drive of the pad; `elaboration` firmware mode
 
-*Objective*: The four CTP pad groups of `smu_wrapper` follow the cross-trigger network's mode, handshake and matrix routing at the pads. Every expected level, address and count on the proof path comes from the generated cross-trigger headers or from a DV-owned table transcribed from the cross-trigger specification; the leaf cites no RTL.
+*Objective*: The four CTP pad groups of `smu_wrapper` follow the cross-trigger network's mode, handshake and matrix routing at the pads, and a wire-OR port receives cycle-exactly on its shared wire's assertion edge. Every expected level, address and count on the proof path comes from the generated cross-trigger headers or from a DV-owned table transcribed from the cross-trigger specification; the leaf cites no RTL.
 
 *Test Coverage*:
 
@@ -2601,14 +2601,17 @@ row's EXPECT sentence is worth, read the check.
 * Spec gap: the signal interface table calls `ct_ack_out_dout` "unused" in wire-OR mode and describes the two point-to-point data outputs only in terms of the request or acknowledge that drives them. The DV rule reads every data output as 0 while no trigger is in flight.
 * The CTM port of the internal lane follows the port-indexing table (external CTPs at 0..N-1, internal lanes after; `hw/ip/cross_trigger/cross_trigger_matrix/doc/architecture.adoc`) and the SMU integrator statement that the low DTP internal-CT lanes are reserved for the SMC and the SMU exposes the lanes above them, with the SMU default of 8 exposed lanes (`doc/integrator/src/smu.adoc`, DTP configuration table; `hw/sys/smu/doc/port_table.adoc`). The DTP internal-lane count is the CTM port count less the CTP count from the header, and the `xtrig_ctm_src_req` width is required to equal the exposed count before the port is walked.
 * The four-phase handshake runs in both directions at the pads, and a trigger is routed through the cross-trigger matrix to a second port and to an internal cross-trigger lane at `xtrig_ctm_src_req_o`, so the routing is observed at a different pin from the one that sourced it.
+* A wire-OR port's `ct_dst` is CT_DST_LATENCY (3 clk_smu: the CTP synchronizer's one 2-FF synchronizer, i.e. two flop stages, plus the registered `ct_dst` output; the same constant as `DTP_CT_DST_LATENCY`) after its shared wire is first seen asserted, never at the release, and never through a reset with the wire resting. A per-clk_smu-cycle activity sampler records the cycle each observable first went high and how many times it rose, so the latency and the one-pulse-per-assertion bound are both cycle-exact.
 
 *Test Procedure*:
 
 [arabic]
+. With every CT_Req_out wire resting at its pull after reset, observe `tb_xtrig_ctp_ct_dst` and `tb_xtrig_ctp_wire_mismatch` for a window and require no rises and no mismatch.
 . Read CONFIG.MODE at reset and every CTP pad control; require the RDL reset value and the wire-OR column of the CTP table on every lane, and 0 on the five undriven controls.
 . Write CONFIG.MODE=1 on one lane and require the point-to-point column on that lane, the wire-OR column elsewhere, and 0 on the undriven controls.
 . Drive a point-to-point request in, require the acknowledge out and STATUS, release and require it retired.
-. Point CT_SRC[1].CT_DST_SELECT at lane 0 and require the trigger on lane 1's request out; route lane 0 into the CT_SRC port of the first SMU-exposed internal lane and require `xtrig_ctm_src_req_o[0]`, then the same from a wire-OR edge on lane 2.
+. Point CT_SRC[1].CT_DST_SELECT at lane 0 and require the trigger on lane 1's request out; route lane 0 into the CT_SRC port of the first SMU-exposed internal lane and require `xtrig_ctm_src_req_o[0]`, then the same from a chiplet pull of lane 2's shared wire, held and released, requiring the receive latency, one pulse, and the routed request following the pull rather than the release.
+. Put three wire-OR lanes on the group wire; require one chiplet pull reaches every member's `ct_dst` once at the same latency and leaves every non-member lane quiet, and that two members pulled in overlapping windows still reach every member exactly once and leave every non-member lane quiet, with the mismatch flag clear throughout both windows.
 
 *Checkers*:
 
@@ -2620,7 +2623,10 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-SMU-CTP-P2P-MODE` |CONFIG.MODE=1 reads back, moves the written lane's pad controls to the point-to-point level of the CTP signal interface table and leaves every other lane at its wire-OR level
 |`CHK-SMU-CTP-P2P-RX` |a point-to-point request in raises the acknowledge out and shows in STATUS, and releasing the request retires it
 |`CHK-SMU-CTP-ROUTE` |with CT_SRC[1].CT_DST_SELECT pointing at lane 0, the trigger appears as lane 1's request out and the acknowledge in retires it
-|`CHK-SMU-CTM-SRC` |routing lane 0's destination into the CTM port of the first SMU-exposed internal lane raises xtrig_ctm_src_req_o[0], and a wire-OR edge on lane 2's request-out data input does the same
+|`CHK-SMU-CTM-SRC` |routing lane 0's destination into the CTM port of the first SMU-exposed internal lane raises xtrig_ctm_src_req_o[0], and a chiplet pull of lane 2's shared wire routes the same way, the pulse following the pull rather than the release
+|`CHK-SMU-CTP-WIRE-IDLE` |with every CT_Req_out wire resting at its pull after reset, no wire-OR lane's `ct_dst` rises and the wire-mismatch flag is 0
+|`CHK-SMU-CTP-WIRE-RX` |a chiplet pull of lane 2's private wire (held >= PULSE_BOUND clk_smu) raises `tb_xtrig_ctp_ct_dst[2]` exactly CT_DST_LATENCY clocks after the wire is first seen asserted, once, and the release raises nothing further
+|`CHK-SMU-CTP-WIRE-SHARED` |three wire-OR lanes on one group wire: one chiplet pull reaches every member's `ct_dst` once at the same latency and leaves every non-member lane quiet; two members pulled in overlapping windows still reach every member exactly once and leave every non-member lane quiet
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
