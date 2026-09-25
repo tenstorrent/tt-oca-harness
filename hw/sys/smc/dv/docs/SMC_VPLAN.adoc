@@ -11109,6 +11109,53 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-285-smc_i2c_bus_corners_test]]
+===== 285 `smc_i2c_bus_corners_test`
+
+*Source Module*: `smc_i2c_bus_corners_test`
+
+*BFM / Model*: `SmcI2cMasterVip` on the `tb_i2c0_*` pads as the external controller; observation on `INTR_STATE`, `STATUS`, `ACQDATA`, the bus response to an undecoded address, and `DATA_CTRL` of the I2C0 SCL pad
+
+*Objective*: Five edges around the I2C0 target that the target leaves never reach.
+
+*Test Coverage*:
+
+* A STOP where a NACK belongs. `i2c.rdl` raises `INTR_STATE.UNEXP_STOP` "when the controller sends this target a STOP before this target NACKs".
+** A read from the target whose controller sends the STOP in the byte's acknowledge slot, where the controller rather than the target owns SDA, must raise it.
+** The same read with `CTRL.ENABLETARGET` cleared before the STOP, and the controller enabled so the bus monitor still sees it, must not raise it.
+* A NACK request that does not apply. `TARGET_ACK_CTRL.NACK` takes effect "when `STATUS.ACK_CTRL_STRETCH = 1`". With ACK Control Mode off, the target is made to stretch on a full acquisition FIFO, and `NACK` is written during that stretch. Every byte of the write must still be acknowledged and read out in order.
+* SCL taken during the bus-free time. `TIMING4.T_BUF` is lengthened and SCL is pulled low inside the wait after a STOP. The target must still answer the next write.
+* An access above the I2C wrapper's control registers, inside its window, belongs to no register map. A read and a write there must both be refused on the bus.
+* LSIO ownership withdrawn. `gpio_intf.rdl` sets `lsio_enable` "while `lsio_interface_select_i` is asserted and `lsio_disable` is clear".
+** With I2C0 enabled, its SCL pad (`DATA_CTRL[37]`) must report `lsio_enable`.
+** With `lsio_disable` set, `lsio_enable` must read clear, also with `lsio_select` forced.
+** Clearing `lsio_disable` must restore the register.
+
+*Test Procedure*:
+
+[arabic]
+. Enable I2C0 as a target; read one byte and send the STOP in its acknowledge slot; repeat with the target disabled before the STOP.
+. Write more bytes than the acquisition FIFO holds, write `TARGET_ACK_CTRL.NACK` while it stretches, and drain.
+. With a long `T_BUF`, write one byte, pull SCL low after the STOP, and write another.
+. Read and write above the control registers.
+. Enable the controller and toggle `lsio_disable` and `lsio_select` on the SCL pad.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-TGT-UNEXP-STOP` |A STOP in a read byte's acknowledge slot raised `UNEXP_STOP`; with the target disabled first it did not
+|`CHK-I2C-TGT-NACK-IGNORED` |`NACK` written during a FIFO-full stretch with ACK Control Mode off left every byte acknowledged and read out in order
+|`CHK-I2C-BUS-FREE-SCL` |SCL pulled inside the bus-free time left the target answering the next write
+|`CHK-I2C-WRAP-PAST-CTRL` |A read and a write above the wrapper's control registers were refused
+|`CHK-I2C-PAD-LSIO-DISABLE` |`lsio_disable` cleared `lsio_enable` on the SCL pad, also with `lsio_select` forced, and clearing it restored the register
+|===
+
+*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`, `i2c`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
