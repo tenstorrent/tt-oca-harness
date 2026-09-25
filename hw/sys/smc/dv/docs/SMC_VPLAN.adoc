@@ -11436,6 +11436,44 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-291-smc_dma_backpressure_test]]
+===== 291 `smc_dma_backpressure_test`
+
+*Source Module*: `smc_dma_backpressure_test`
+
+*BFM / Model*: output-fabric responder with `tb_output_axi_resp_hold` and its one-shot read-error injection; DMA sources in scratchpad memory
+
+*Objective*: Queue DMA descriptors behind a destination that stops answering, and read a burst the responder errors part-way through. The other DMA leaves launch one descriptor of at most eight bytes and wait for it, so the DMA never has more than one burst in flight, never reads more than one beat per burst, and never has a descriptor waiting behind another.
+
+*Test Coverage*:
+
+* Every destination is in the output-fabric window, and the responder's R and B channels are held before the first launch, so the DMA's writes go unanswered, it runs out of write credit, and later descriptors wait in the frontend's queue.
+* The queue holds a 64-byte copy to a destination four bytes into a word (a multi-beat read and partial first and last write beats), a two-dimensional copy of forty eight-byte rows, a zero-length descriptor, a 64-byte copy whose source crosses a 4 KB boundary and whose destination does not, one whose destination crosses and whose source does not, and further 64-byte copies.
+* `dma_ctrl.rdl` gives `STATUS.BUSY[7:0]` as readiness to accept another command. Descriptors are launched until it reads clear, one more is launched, and the hold is released once that launch's read is accepted on SEP_IN.
+* `NEXT_ID` must hand out consecutive ids starting one past `DONE`, `DONE` must reach the last one, and every destination must hold exactly its source bytes, with the four bytes either side keeping their poison.
+* A 64-byte read from the output-fabric window is answered SLVERR on its third beat. The DMA has no error handling configured, so the transfer must still complete, exactly one SLVERR beat must be seen on SYS_OUT, and the beats answered OKAY must arrive intact. The errored beat's destination bytes are recorded.
+
+*Test Procedure*:
+
+[arabic]
+. Open the inbound and outbound filters. Fill every source span with a pattern and every destination span, plus a word either side, with poison.
+. Hold the output responder, then program and launch descriptors, reading `STATUS` after each program, until it reports no readiness.
+. Launch the refused descriptor, release the hold when its read is accepted on SEP_IN, wait for `DONE` to reach the last id, and compare every destination.
+. Inject a read SLVERR at the third beat of an output-fabric source, copy it to scratchpad memory, and compare the other beats.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DMA-BACKPRESSURE` |Descriptors queued behind held destination responses until `STATUS.BUSY` reported no readiness all completed with consecutive ids, and every destination held exactly its source bytes with its neighbours untouched
+|`CHK-DMA-READ-ERROR-BEAT` |A 64-byte read answered SLVERR on its third beat completed, one SLVERR beat was seen on SYS_OUT, and the other beats arrived intact
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
