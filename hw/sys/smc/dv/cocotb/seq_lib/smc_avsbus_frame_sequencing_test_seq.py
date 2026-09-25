@@ -91,6 +91,9 @@ CLEAR_SLAVE_ISSUED = avs_field(
 SUPPRESSED_COMMANDS = 3
 #: Bound on the wait for a state on the FSM debug bus, in clk_periph_i cycles.
 STATE_WAIT_CYCLES = 20_000
+#: Commands queued behind a full readback FIFO: two for the frame the first pop
+#: releases, and one more left waiting when that frame refills the FIFO.
+LAUNCH_GATE_COMMANDS = 3
 
 
 class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
@@ -106,6 +109,7 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         self.suppressed_mid: tuple[int, list[str]] = (0, [])
         self.slave_clear: tuple[int, int] = (0, 0)
         self.overflow: tuple[int, int] = (0, 0)
+        self.launch_gate: tuple[int, int] = (0, 0)
 
     async def _occupancy(self, label: str) -> int:
         fifos = await self.csr_read(label, AVS_FIFOS_STATUS)
@@ -435,6 +439,64 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         await self._clear_all_retry_flags(f"{label}_END")
         await self.csr_write(f"{label}_CFG0_RESTORE", AVS_CFG_0, cfg0)
 
+    async def _cmd_fifo_occupancy(self, label: str) -> tuple[int, int]:
+        fifos = await self.csr_read(label, AVS_FIFOS_STATUS)
+        return (
+            fifo_field(fifos, CMD_FIFO_OCCUPIED_BM, CMD_FIFO_OCCUPIED_BP),
+            fifo_field(fifos, RB_FIFO_OCCUPIED_BM, RB_FIFO_OCCUPIED_BP),
+        )
+
+    async def _launch_gate_leg(self) -> None:
+        """A command held back by the reply that takes the last readback slot.
+
+        `architecture.adoc` says the master launches nothing while the readback
+        FIFO is full. Three commands are queued behind a full FIFO and one
+        reply is popped, so the first two go out as one frame and the first
+        reply takes the last slot at the end of the middle subframe with the
+        third still queued. The third has to stay queued until software pops
+        again, and then go out on its own.
+        """
+        label = "LAUNCH_GATE"
+        await self._clear_all_retry_flags(label)
+        await self._settle_idle(label)
+        prefill = RB_FIFO_DEPTH - 1
+        for i in range(prefill):
+            await self.csr_write(f"{label}_PREFILL{i}", AVS_CMD, CMD_RAIL_VOLTAGE)
+        await self._await_occupancy(label, prefill)
+        await self.csr_write(f"{label}_FILL", AVS_CMD, CMD_RAIL_VOLTAGE)
+        await self._await_occupancy(label, RB_FIFO_DEPTH)
+        for i in range(LAUNCH_GATE_COMMANDS):
+            await self.csr_write(f"{label}_CMD{i}", AVS_CMD, CMD_AVSBUS_STATUS)
+        queued, occupied = await self._cmd_fifo_occupancy(f"{label}_QUEUED")
+        assert (queued, occupied) == (LAUNCH_GATE_COMMANDS, RB_FIFO_DEPTH), (
+            f"{label}: {queued} commands queued and {occupied} replies held behind a full "
+            f"readback FIFO, not {LAUNCH_GATE_COMMANDS} and {RB_FIFO_DEPTH}"
+        )
+        await self.csr_read(f"{label}_POP0", AVS_READBACK_REG)
+        await self._wait_state(label, "AVS_SHIFT_MID_SUBFRAME")
+        await self._wait_state(label, "AVS_IDLE")
+        held, full = await self._cmd_fifo_occupancy(f"{label}_HELD")
+        assert (held, full) == (1, RB_FIFO_DEPTH), (
+            f"{label}: after the frame that refilled the readback FIFO, {held} commands are "
+            f"queued and {full} replies held; the third command has to wait for room "
+            f"(expected 1 and {RB_FIFO_DEPTH})"
+        )
+        await self.csr_read(f"{label}_POP1", AVS_READBACK_REG)
+        released, refilled = held, full - 1
+        for _ in range(POLL_LIMIT):
+            released, refilled = await self._cmd_fifo_occupancy(f"{label}_RELEASED")
+            if released == 0 and refilled == RB_FIFO_DEPTH:
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        assert (released, refilled) == (0, RB_FIFO_DEPTH), (
+            f"{label}: after a second pop the held command did not go out and answer "
+            f"({released} queued, {refilled} replies held)"
+        )
+        interrupt = await self.csr_read(f"{label}_INTR", AVS_INTERRUPT)
+        self.launch_gate = (held, interrupt)
+        await self._clear_all_retry_flags(f"{label}_END")
+        await self._settle_idle(label)
+
     async def _slave_interrupt_clear_leg(self) -> None:
         """Clear the slave-issued interrupt once nothing can raise it again.
 
@@ -495,6 +557,7 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         await self._suppressed_mid_leg()
         await self._slave_interrupt_clear_leg()
         await self._overflow_leg()
+        await self._launch_gate_leg()
         set_avs_sdata(0)
         cocotb.log.info(
             "CHK-AVS-LONE-RETRY: a command with nothing behind it, answered as not "
@@ -528,4 +591,11 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
             "(AVS_INTERRUPT=0x%08x, %d occupied), which its clear removed",
             self.overflow[0],
             self.overflow[1],
+        )
+        cocotb.log.info(
+            "CHK-AVS-LAUNCH-GATE: with three commands queued behind a full readback FIFO and "
+            "one reply popped, the frame that refilled the FIFO left %d command queued until a "
+            "second pop released it (AVS_INTERRUPT=0x%08x)",
+            self.launch_gate[0],
+            self.launch_gate[1],
         )

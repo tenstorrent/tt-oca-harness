@@ -21,13 +21,14 @@ class smc_avsbus_frame_sequencing_test(smc_base_test):
         "CHK-AVS-BACK-TO-BACK",
         "CHK-AVS-BUFFERED-REPLY",
         "CHK-AVS-LATE-COMMAND",
+        "CHK-AVS-LAUNCH-GATE",
         "CHK-AVS-LONE-RETRY",
         "CHK-AVS-READBACK-OVERFLOW",
         "CHK-AVS-SINGLE-COMMAND",
         "CHK-AVS-SLAVE-INT-CLEAR",
         "CHK-AVS-SUPPRESSED-MID",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     auto_protocol_vip = False
 

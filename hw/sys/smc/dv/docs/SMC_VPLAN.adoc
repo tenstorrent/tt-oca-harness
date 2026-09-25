@@ -10152,6 +10152,7 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 * Retries suppressed with three commands queued, so the first frame has a middle subframe with more commands waiting behind it; every failing reply is kept, none retried.
 * The slave-issued interrupt cleared once nothing can raise it again. `avsbus_controller.sv` raises it while the bus is idle with sdata low and at the end of a first subframe whose reply opens with two zero bits, so with sdata at its responding level a clear is overtaken at once. With sdata released high neither can, and the clear has to hold until sdata is taken low again.
 * The readback FIFO overflowing from the bus side. Each launch checks the room left for the reply of the frame it launches, but a frame launched while an earlier one is still retrying has its reply buffered and pushed later, after the earlier reply has taken the last slot. With one slot left before a retried pair, the second reply meets a full FIFO and raises `READBACK_OVERFLOW_INT`: a reply is lost, which `architecture.adoc` states cannot happen while the FIFO is full. The pair is queued behind a full FIFO, which launches nothing, and one reply is then popped, so both commands are waiting when the first launch is decided and the second goes out as a middle subframe whatever the AVS clock rate.
+* A command held back by the reply that takes the last readback slot. Three commands are queued behind a full readback FIFO and one reply is popped; the first two go out as one frame, the first reply takes the last slot at the end of the middle subframe with the third command still queued, and the third has to wait until a second pop and then go out on its own. `architecture.adoc` says nothing is launched while the FIFO is full. The leg records `AVS_INTERRUPT`, which on this design shows `READBACK_OVERFLOW_INT`: the second reply of that frame meets the full FIFO.
 * A reply the master had to buffer. A frame retried while a later frame is already on the wire leaves that later reply pending; when the master returns to it, it either retries that one too or, if it is good, resynchronises the slave. The bench decides which by driving the pad: the retries are provoked at the idle level and the pad is then released to its responding level, so the buffered reply is a good one.
 
 *Test Procedure*:
@@ -10160,6 +10161,7 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 . With the pad at its responding level and the readback FIFO drained, queue one command and require a response and the last-subframe shift state on the debug bus.
 . Queue several commands one at a time with a short gap, and require a response for each.
 . With a retry budget programmed and the pad at its idle level, queue two commands and wait for `TOTAL_RETRIES` to move; release the pad to its responding level and require the slave-resynchronisation state on the debug bus.
+. With the readback FIFO filled, queue three commands, require all three still queued, pop one reply, and after the frame that refills the FIFO require one command still queued; pop again and require that command to go out and its reply to arrive.
 
 *Checkers*:
 
@@ -10173,6 +10175,7 @@ The controller's third ending, the automatic stop it makes when `CTRL.ENABLEHOST
 |`CHK-AVS-BACK-TO-BACK` |A command written while another frame's last subframe was on the wire started its first subframe straight from the end of it, and both replies arrived
 |`CHK-AVS-SUPPRESSED-MID` |With `MAX_RETRIES` at 0 and three commands queued, every failing reply was kept without a retry, including one ended at a middle subframe with more commands waiting
 |`CHK-AVS-SLAVE-INT-CLEAR` |The slave-issued interrupt, cleared with sdata released high, stayed clear until sdata was taken low again at idle
+|`CHK-AVS-LAUNCH-GATE` |With three commands queued behind a full readback FIFO and one reply popped, the frame that refilled the FIFO left the third command queued until a second pop, after which it went out and answered
 |`CHK-AVS-READBACK-OVERFLOW` |With one readback slot left before a retried pair, the second frame's buffered reply met a full FIFO and raised `READBACK_OVERFLOW_INT`, which its clear removed
 |===
 
