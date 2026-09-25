@@ -358,11 +358,23 @@ never when it was written.
 |`sep_abr_pipelined_read_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|ABR is the one crypto block reached over AHB, through `axi4_to_ahb`, and that bridge pipelines reads through a single shared data buffer. An SoC master may hold several single-beat reads outstanding with distinct `ARID`s, and each must be answered with its own register's value. Every read in the sweep targets the SAME read-only register, so every response must carry the identical value and no reordering or per-id confusion can explain a difference. FAILS today: from the third read in flight some responses carry zero with an OKAY response -- issue #2253.
+|ABR is the one crypto block reached over AHB, through `axi_lite_to_ahb`. An SoC master may hold several single-beat reads outstanding with distinct `ARID`s, and each must be answered with its own register's value. Every read in the sweep targets the SAME read-only register, so every response must carry the identical value and no reordering or per-id confusion can explain a difference. A bridge that drops `HADDR[2:0]` on streamed reads answers zero with an OKAY response from the third read in flight.
 |`sep_abr_mlkem_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |ML-KEM-1024 key generation, encapsulation and decapsulation through the ML-KEM register block: the two keys, the ciphertext and the shared key each compared against the published ACVP vector, with decapsulation walked as both the valid case and the modified-ciphertext case that FIPS-203 answers by implicit rejection. Also the Adams Bridge `SW_RESET_N` domain: a live encaps result survives a sibling engine's reset bit-exact, the host path returns SLVERR while the ABR bit is held, and the result does not survive ABR's own reset.
+|`sep_abr_pipelined_read_matrix_test`
+|no_cpu + external SMN master, +skip_fuse_sense
+|ocah_axi_vip
+|Several reads in flight on the ABR aperture each return the word they name: concurrent single-beat reads of `MLDSA_VERSION1` at depths 1, 2, 3, 4 and 8 on each TB master, the four ML-DSA identity words in several orders and on one ARID, and both masters at once. The AR and R handshakes recorded on the pins prove the reads overlapped, and every R beat is graded by the RID it carried.
+|`sep_abr_access_size_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|The ABR access-size rules of `adams_bridge.adoc`: a 64-bit read returns both registers it covers, a narrow read the addressed bytes with every other byte lane zero, a 64-bit write lands exactly the words its strobe covers whole, and every partial-word strobe answers SLVERR without moving the register.
+|`sep_abr_concurrent_rw_test`
+|no_cpu + external SMN master, +skip_fuse_sense
+|ocah_axi_vip
+|Seeded interleaved reads and writes from both TB masters at once, several outstanding on each and both response channels throttled, graded by a scoreboard that bounds each read by its register owner's write window and checks each register's final value.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -843,6 +855,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Adams Bridge ML-KEM-1024
 |`sep_abr_mlkem_kat_test`. keyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` and the key-vault seed path are not claimed.
+
+|Adams Bridge host bus: pipelined reads, access sizes, concurrent masters
+|`sep_abr_pipelined_read_test` (up to eight reads of one register in flight on the SMN inbound master), `sep_abr_pipelined_read_matrix_test` (up to eight reads in flight per master, and both masters at once, each returning its own word), `sep_abr_access_size_test` (the ABR access-size rules of `adams_bridge.adoc` for 64-bit, narrow and partial-strobe accesses) and `sep_abr_concurrent_rw_test` (seeded concurrent reads and writes from both masters under response backpressure). The AHB transfer sequence itself is not observed; these grade what the host bus returns and what the registers hold.
 
 |Entropy pool aperture + PIC sources
 |`sep_entropy_pool_aperture_test`. Drain-under-fill is not claimed; stall duration is graded by `CHK-STALL-DURATION`.
@@ -3249,7 +3264,7 @@ is why they are asserted from Python probes rather than left to the SVA.
 [arabic]
 . The aperture is a `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the way the OTBN tests already reach their block.
 . It is *not* behind an `axi_lite_isolate` unit: unlike the ESRC, CSRNG and EDN legs, the external TRNG passthrough in `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` carries none.
-. Accesses are 32-bit beats (`AxSIZE=2`) because this path has no width converter.
+. Accesses are 32-bit beats (`AxSIZE=2`), one register each. Other access sizes and strobes are graded by <<sep_abr_access_size_test>>.
 . The Key-Manager-side key CSR is the generated PeakRDL `abr_wrapper_key_reg`. The ABR register block behind this aperture is real RTL.
 . This leaf writes the seed window over the bus. The key-vault seed path is not claimed.
 
@@ -3478,6 +3493,246 @@ rejection has no error to observe, so the only thing that can fail is the value.
 
 *Not claimed*: `KEYGEN+DECAPS` (0x4), the key-vault seed and message read lanes,
 the shared-key write lane to the key vault, and ML-DSA.
+
+'''''
+
+[[sep_abr_pipelined_read_matrix_test]]
+===== `sep_abr_pipelined_read_matrix_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_pipelined_read_matrix_test`
+
+*BFM / Model*: ocah_axi_vip, both TB masters
+
+*Objective*: Proves that reads held outstanding together on the Adams Bridge
+aperture each return the value of the address they name. The ABR host path ends
+in a bridge that performs one AHB transfer at a time behind a fabric that holds
+several accesses outstanding. A bridge that streams reads and drops
+`HADDR[2:0]` on the streamed transfers answers every read OKAY and returns the
+word at the wrong address from the third read of a pipeline on, so a lone read
+cannot show it.
+
+*Test Coverage*: pipelines of depth 1, 2, 3, 4 and 8 on `m_axi` and on `s_axi`;
+four address orders over the ML-DSA identity words; one order on a single ARID;
+both masters pipelining at once.
+
+*Test Procedure*:
+
+[arabic]
+. The inbound filter denies by default, so `s_axi` programs one read window over
+the whole ABR aperture (`0x1094_0000`..`0x1094_FFFF`) before `m_axi` reads.
+. A lone read of `MLDSA_VERSION1` on each master is the control.
+. Each leg issues all of its reads in the same cycle by driving the VIP master
+sequence directly -- the SEP AXI sequencer awaits each item to completion, so
+nothing overlaps through it -- and records every AR and R handshake on the TB
+pins.
+. Every leg runs before the verdict, so one run lists every failing leg with the
+RID, address and data of each read.
+
+*Randomization*: none. The depths and orders are the cells, and the expected
+words are fixed identity values.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ABR-PIPE-CTRL
+|A lone read of `MLDSA_VERSION1` returns `0x0000_3100` OKAY on each master. The pipelined legs assume a working single read, so a failure here is a path fault rather than a pipelining one.
+|CHK-ABR-PIPE-DEPTH-M-AXI
+|On `m_axi`, every read of each depth-1, 2, 3, 4 and 8 pipeline of `MLDSA_VERSION1` returns `0x0000_3100` OKAY, both through the VIP result and as the lane of the R beat carrying its RID.
+|CHK-ABR-PIPE-DEPTH-S-AXI
+|The same on `s_axi`.
+|CHK-ABR-PIPE-MIXED
+|On each master, pipelines over `NAME0`, `NAME1`, `VERSION0` and `VERSION1` in ascending, descending and even-words-first order, and an eight-read interleaving with repeats, each return the word they name. The four words differ pairwise within each granule, so a response for the wrong word, or the wrong half of a granule, is a mismatch.
+|CHK-ABR-PIPE-SAME-ID
+|Four reads on one ARID return their own words in request order, so a path that reorders same-ID reads hands a request its neighbour's word.
+|CHK-ABR-PIPE-DUAL
+|`m_axi` and `s_axi` each pipelining eight reads at the same time get their own words, with both masters outstanding in the same cycles.
+|CHK-ABR-PIPE-RID
+|On every leg the multiset of RIDs on the R beats equals the ARIDs issued and accepted. The VIP's own ID capture samples the first response after issue, which under concurrency may belong to another request, so the grade comes from the pin record.
+|CHK-ABR-PIPE-OVERLAP
+|On every distinct-ID leg all reads were accepted before the first response, and on the single-ARID legs at least three. Without the overlap the data compare proves nothing about pipelining.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Anti-vacuity*: the overlap is measured, not assumed, and graded alongside the
+data. The expected words are non-zero and distinct, so a zero or a neighbour's
+word is a mismatch rather than a coincidence.
+
+*Not claimed*: writes, which <<sep_abr_access_size_test>> and
+<<sep_abr_concurrent_rw_test>> own, and the AHB transfer sequence itself.
+
+'''''
+
+[[sep_abr_access_size_test]]
+===== `sep_abr_access_size_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_access_size_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Randomization*: RANDCFG -- the data values come from the run seed
+(`SepAbrAccessSizeCfg`). Every size, offset and strobe pattern is walked on every
+seed.
+
+*Objective*: Proves the ABR access-size rules in
+`hw/sys/sep/doc/adams_bridge.adoc`. Every ABR register is 32 bits wide: an
+8-byte-aligned 64-bit access is two 32-bit accesses, low address first, and one
+at `addr[2]=1` reaches only the upper register; a write whose strobe covers
+only one of the two words writes that word alone; a word whose strobe is partial
+is not written and the access answers SLVERR, while the other word of a 64-bit
+write is still written when its strobe is full; a narrow read reads the whole
+register and returns only the bytes it names, with the other byte lanes zero.
+`abr_top` ties the register block's byte enables high and the AHB slave
+zero-extends a narrow write, so a partial write that got through would clear the
+rest of the register.
+
+*Test Coverage*: 32-bit, 64-bit, AxSIZE=3 at `addr[2]=1`, byte and halfword
+reads; 32-bit, 64-bit full-strobe, `WSTRB=0x0F`, `WSTRB=0xF0` and partial-word
+writes, including 64-bit beats that cover one word whole and the other in part.
+
+*Test Procedure*:
+
+[arabic]
+. `s_axi`, one access at a time through the SEP AXI sequencer, so the SEP
+scoreboard also fails any response the test did not mark as refused.
+. Reads are graded on the eight ML-DSA and ML-KEM identity words.
+. Writes use the `global_intr_en_r` / `error_intr_en_r` pair (`+0x8100` /
+`+0x8104`), the one 8-byte granule with a read-write register in each half, and
+the 32-bit `error_internal_intr_count_r` counter (`+0x8200`), whose upper
+neighbour owns no register and reads zero.
+. Every refused write targets a register primed with a set bit in every byte it
+holds and writes the complement, so a write that landed on any byte moves the
+readback.
+. The AR, R, AW and B handshakes on the `s_axi` pins are recorded, so narrow reads and
+AxSIZE=3 reads at `addr[2]=1` are graded on the whole 64-bit R beat as well as
+through the VIP result.
+. Every register written is restored to its entry value.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ABR-SIZE-RD32
+|Each identity word reads its own value at AxSIZE=2.
+|CHK-ABR-SIZE-RD64
+|A 64-bit read at each identity pair returns `{high word, low word}`.
+|CHK-ABR-SIZE-RD64-UNALIGNED
+|An AxSIZE=3 read starting at the upper word of a granule returns that word, and the lower four byte lanes of its R beat read zero.
+|CHK-ABR-SIZE-RD-NARROW
+|Every byte and aligned halfword of the ML-DSA NAME and VERSION granules reads back the addressed bytes of the golden, and every other byte lane of its R beat reads zero.
+|CHK-ABR-SIZE-WR32
+|32-bit writes land on each write target, walked to all-ones and back to zero on the enables and through seeded values on the counter.
+|CHK-ABR-SIZE-WR64-FULL
+|A full-strobe 64-bit write lands both words of the pair, and all 32 bits of the low word on the counter while the unpopulated upper word still reads zero.
+|CHK-ABR-SIZE-WR64-LO
+|AxSIZE=3 with `WSTRB=0x0F` writes the low word alone, OKAY, the upper register unchanged.
+|CHK-ABR-SIZE-WR64-HI
+|AxSIZE=3 at `addr[2]=1` with `WSTRB=0xF0` writes the upper word alone, OKAY.
+|CHK-ABR-SIZE-WR32-HI
+|AxSIZE=2 at `addr[2]=1` (`WSTRB=0xF0`) sets and clears the upper register, OKAY, the lower unchanged.
+|CHK-ABR-SIZE-WR-PARTIAL
+|Each of the eight partial-word strobes (single bytes, both halfwords, both three-byte runs) on the low word, the upper word and the counter answers SLVERR and leaves the register unchanged.
+|CHK-ABR-SIZE-WR64-MIXED
+|A 64-bit beat with `WSTRB=0x7F` writes the low word, leaves the upper one, and answers SLVERR; `WSTRB=0xFC` does the reverse.
+|CHK-ABR-SIZE-RD-NARROW-RW
+|Byte and halfword reads of the counter return the addressed bytes of its seeded value, and every other byte lane of the R beat reads zero.
+|CHK-ABR-SIZE-RESTORE
+|Every register written reads back its entry value.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Anti-vacuity*: each write target is driven through values it does not hold
+before its compare, and the counter carries a full 32-bit seeded value, so a
+dropped write, a write on the wrong lane or a zero-extended partial write each
+change a readback.
+
+*Not claimed*: concurrency, which <<sep_abr_pipelined_read_matrix_test>> and
+<<sep_abr_concurrent_rw_test>> own, and `m_axi`.
+
+'''''
+
+[[sep_abr_concurrent_rw_test]]
+===== `sep_abr_concurrent_rw_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_concurrent_rw_test`
+
+*BFM / Model*: ocah_axi_vip, both TB masters
+
+*Randomization*: RANDCFG -- the op mix, addresses, data, per-master outstanding
+depth (3 to 6), AWIDs and the RREADY / BREADY throttle patterns come from the
+run seed (`SepAbrConcurrentRwCfg`); `reseed = 3`.
+
+*Objective*: Proves the statement in `adams_bridge.adoc` that any number of
+reads and writes may be outstanding on the aperture from any mix of masters,
+and that each returns the value of the address it names.
+
+*Test Coverage*: 32-bit and 64-bit reads of identity and read-write registers,
+and 32-bit writes and refused partial-word writes, from `s_axi` and `m_axi` at
+the same time with both response channels throttled; 64-bit writes from `s_axi`
+alone, which owns the one read-write register pair in an 8-byte granule.
+
+*Test Procedure*:
+
+[arabic]
+. `s_axi` opens a read-write inbound-filter window over the ABR aperture for
+`m_axi`, then sets each read-write register to a seeded start value.
+. Each read-write register is written by one master only, and that master
+issues all its writes on one AWID, so its writes to the register land in issue
+order. `s_axi` owns the interrupt-enable pair and `error_internal_intr_count_r`;
+`m_axi` owns `notif_intr_en_r` and `notif_cmd_done_intr_count_r`.
+. Identity reads name only words whose value no other identity word read holds;
+ML-KEM's VERSION words equal ML-DSA's and are left out, so a response swapped
+between two identity reads is a mismatch.
+. Both masters run their seeded streams at once, each with several accesses
+outstanding, while seeded pause patterns hold RREADY and BREADY low.
+. After both drain, every register is read from both masters, then restored.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-ABR-CRW-WRITE-RESP
+|Every full-word write answers OKAY and every partial-word write SLVERR.
+|CHK-ABR-CRW-READ
+|Every read answers OKAY. An identity word returns its value exactly. A read-write word returns a value inside its owner's write window: the last write whose response came back before the read was issued, or any later write issued before the read returned. At least one read-write word had a single legal value and at least one cross-master read observed a value the other master wrote.
+|CHK-ABR-CRW-STRESS
+|The pins show one AR per read and one AW and B per write, at least three accesses outstanding at once on each master, cycles with both masters outstanding, and RREADY and BREADY each held low while a response was valid.
+|CHK-ABR-CRW-FINAL
+|After both streams drain, each read-write register reads its owner's last written value from both masters.
+|CHK-ABR-CRW-RESTORE
+|Every register reads back its entry value.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Anti-vacuity*: the window is computed from each access's issue and completion
+times rather than widened to every value ever written, and the strict final
+check does not depend on timing at all. The stress floors are measured on the
+pins, so a run whose streams serialized fails rather than passing on sequential
+traffic.
+
+*Not claimed*: the order in which the bridge chooses between a waiting read and
+a waiting write, and two masters writing the same register.
 
 '''''
 
@@ -5524,15 +5779,13 @@ reported as such rather than counted as a pass.
 
 *BFM / Model*: ocah_axi_vip
 
-*Testlist*: `crypto.toml`, also in `all.toml`. NOT in a class group: it grades a contract the RTL fails today, so a group that must go green does not carry it.
+*Testlist*: `crypto.toml`; `all` and `cpu_stub` in `all.toml`.
 
-*Status*: FAILING by design while issue #2253 stands. It is the reproducer for that issue and passes when the RTL is fixed. It is not an `expect_fail`: the gap is a real defect, and masking it would make the leaf green over a broken contract.
-
-*Objective*: ABR is the only crypto block reached over AHB rather than AXI, through `axi4_to_ahb` in `sep_crypto_abr_wrapper.sv:93`. That bridge carries pipelined reads through a single shared data buffer and a streaming FSM state. A master on the SoC-facing inbound port may legitimately hold several single-beat reads outstanding with distinct `ARID`s -- AXI places no restriction on that (IHI 0022 A5.3), and no SEP document places one on this aperture -- and each must be answered with its own register's value. The KAT leaves read one word at a time and wait, so the streaming path carries no evidence from any other leaf.
+*Objective*: ABR is the only crypto block reached over AHB rather than AXI, through `axi_lite_to_ahb` in `sep_crypto_abr_wrapper.sv`. A bridge that streams pipelined reads can present the later transfers of a stream with a truncated address, and every such read still answers OKAY. A master on the SoC-facing inbound port may legitimately hold several single-beat reads outstanding with distinct `ARID`s -- AXI places no restriction on that (IHI 0022 A5.3), and no SEP document places one on this aperture -- and each must be answered with its own register's value. The KAT leaves read one word at a time and wait, so the streaming path carries no evidence from any other leaf.
 
 *Test Coverage*: The ABR register aperture, read from the SMN inbound master at 1, 2, 3, 4 and 8 reads in flight.
 
-*Why the inbound master*: driven from `m_axi`, the SoC-facing port (`sep.sv:98`, `ext_axi_req_i` at `:415`), because that is a real master. The CPU-LSU splice is deliberately NOT used: `s_axi` exists only to present what the VeeR LSU would present, and the LSU serialises MMIO loads -- a firmware run of the same reads keeps one transaction in flight and never enters the bridge's streaming state. Pipelining on that port would be stimulus the port cannot carry in the real design, and would prove nothing.
+*Why the inbound master*: driven from `m_axi`, the SoC-facing port (`sep.sv:98`, `ext_axi_req_i` at `:415`), because that is a real master. The CPU-LSU splice is deliberately NOT used: `s_axi` exists only to present what the VeeR LSU would present, and the LSU serialises MMIO loads -- a firmware run of the same reads keeps one transaction in flight. Pipelining on that port would be stimulus the port cannot carry in the real design, and would prove nothing.
 
 *Test Procedure*:
 

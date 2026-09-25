@@ -32,7 +32,7 @@ Default to DUT-local ownership. Promote only after the criteria in
 . Integrate one real DUT consumer.
 . Run positive, negative, timeout, and non-vacuity validation.
 . Record the qualifying commit, tool versions, seed, result, and artifact in
-  the tracker.
+  an external qualification record.
 
 [[shared-vip-development-api]]
 === Public API Rules
@@ -194,7 +194,7 @@ Every dependency needs:
 * behavior when the dependency is absent.
 
 Required public CI dependencies belong in `hw/common/dv/pyproject.toml` and the
-root lock. Optional or commercial dependencies must fail with actionable
+root lock. Optional dependencies must fail with actionable
 messages or be explicitly non-gating; they must never silently convert missing
 traffic into PASS.
 
@@ -274,8 +274,8 @@ python3 tools/dv/run_dv.py \
   --dut <dut> --items <test> --tool verilator --seed 1
 ----
 
-For commercial simulators, record the tool release and license environment, but
-do not expose server names or credentials in public logs.
+For optional simulator backends, record the tool release and license
+environment, but do not expose server names or credentials in public logs.
 
 [[shared-vip-development-review]]
 === Review Checklist

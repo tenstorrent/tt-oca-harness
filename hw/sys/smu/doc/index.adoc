@@ -28,15 +28,15 @@ anchor:composition[]The SMU combines:
   and memory-zeroer accelerators.
 
 ifdef::backend-html5[]
-* xref:dtp:index.adoc[*Debug and Test Ports (DTP)*] — {smu-dtp-desc}
 * xref:sep:index.adoc[*Security Processor (SEP)*] — {smu-sep-desc}
 * xref:smc:index.adoc[*System Management Controller (SMC)*] — {smu-smc-desc}
+* xref:dtp:index.adoc[*Debug and Test Ports (DTP)*] — {smu-dtp-desc}
 endif::backend-html5[]
 ifdef::backend-pdf[]
-* *Debug and Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
 * *Security Processor (SEP)* — {smu-sep-desc} See <<security-processor-sep>>.
 * *System Management Controller (SMC)* — {smu-smc-desc}
   See <<system-management-controller>>.
+* *Debug and Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
 endif::backend-pdf[]
 
 These three subsystems share a single primary clock domain (`clk_smu_i`) and
@@ -49,6 +49,15 @@ ifdef::backend-pdf[]
 <<ocah-clock-domains,OCAH Architecture>> chapter.
 endif::backend-pdf[]
 
+[[smu-composition-diagram]]
+.SMU composition with the optional SEP subsystem
+image::SMU_TopLevel_FIG001.drawio.png[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
+
+The SMU composition is shown in <<smu-composition-diagram>>.
+The dashed SEP boundary denotes the optional subsystem controlled by the
+`SEP` integration parameter. Memory capacities in the diagram describe the
+illustrated configuration.
+
 [[smu-axi-crossbar]]
 == AXI Crossbar
 
@@ -58,6 +67,14 @@ fabric between SEP, SMC, and the rest of the chiplet (reached through the
 non-reflexive connectivity: each master can reach the other two subordinates
 but never its own inbound port.
 
+[[smu-crossbar-connectivity-diagram]]
+.SMU AXI crossbar connectivity
+image::SMU_AxiXbar_Connectivity_FIG002.1.drawio.png[alt="SMU AXI crossbar connectivity",width=100%,pdfwidth=100%]
+
+<<smu-axi-crossbar-ports-table>> lists the permitted initiator-to-subordinate paths and
+their purposes.
+
+[[smu-axi-crossbar-ports-table]]
 .SMU AXI crossbar ports
 [cols="<22%,<22%,<56%",options="header"]
 |===
@@ -83,7 +100,48 @@ for the fixed-vs-programmable split and the reference envelope convention, and
 see the SMU AXI Crossbar Address Map section in the Integrator Guide for
 firmware programming order.
 
+[[smu-crossbar-decode-diagram]]
+.SMU aperture decode and routing
+image::smu-aperture-decode.svg[alt="SMU aperture decode and routing",width=100%,pdfwidth=100%]
+
+<<smu-crossbar-decode-diagram>> shows the independent SEP and SMC address
+comparisons for each read or write request. Each aperture includes its base
+address and excludes `base + size`; the addition uses 57 bits to preserve
+carry from the 56-bit address. A match selects the corresponding subordinate,
+subject to the connectivity in <<smu-crossbar-connectivity-diagram>>.
+An unmatched SEP or SMC request uses `ext_out`. An unmatched external request
+returns `DECERR`, because `ext_in` cannot loop back to `ext_out`.
+
+[[smu-clocks-and-resets]]
+== Clocks and Resets
+
+<<smu-clock-distribution>> and <<smu-reset-distribution>> show the clock and
+reset distribution from the SMU boundary to DTP, SEP, SMC, and the shared
+AXI infrastructure. Each row identifies a source and its consumers; repeated
+instance names denote the same RTL instance. Boundary ports use blue boxes,
+SMU instances use grey boxes, and generated signals use green boxes.
+Arrows show signal direction. A comma-separated consumer list denotes fan-out.
+
+[[smu-clock-distribution]]
+.SMU clock distribution
+image::smu-clock-distribution.svg[alt="SMU clock sources and consumers",width=100%,pdfwidth=100%]
+
+[[smu-reset-distribution]]
+.SMU reset distribution
+image::smu-reset-distribution.svg[alt="SMU reset sources and consumers",width=100%,pdfwidth=100%]
+
+[[smu-lifecycle-propagation]]
+== Lifecycle and Feature Control
+
+SEP lifecycle state and feature controls constrain the debug paths in DTP
+and the management functions in SMC, as shown in
+<<smu-lifecycle-propagation-diagram>>.
+
+[[smu-lifecycle-propagation-diagram]]
+.SEP lifecycle and feature-control propagation to SMC and DTP
+image::smu-lifecycle-controls.svg[alt="SEP lifecycle and feature-control propagation to SMC and DTP",width=100%,pdfwidth=100%]
+
 [[child-subsystems]]
-anchor:smu-child-subsystems[]The subsystem chapters (DTP, SEP, SMC) follow
+anchor:smu-child-subsystems[]The subsystem chapters (SEP, SMC, DTP) follow
 immediately; see the <<smu-composition,Composition>> section above for roles
 and cross-references.

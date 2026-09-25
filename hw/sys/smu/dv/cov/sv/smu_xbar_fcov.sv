@@ -249,7 +249,13 @@ module smu_xbar_fcov #(
   covergroup cg_axi_in_resp with function sample (logic [1:0] resp);
     option.per_instance = 1;
     cp_resp: coverpoint resp {
-      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
+      bins okay = {2'b00};
+      bins slverr = {2'b10};
+      bins decerr = {2'b11};
+      // No subordinate behind the crossbar answers an exclusive access: every
+      // AXI interconnect in the SEP and SMC is built without atomics and the
+      // memory adapters tie exokay off.
+      ignore_bins exokay = {2'b01};
     }
   endgroup
 

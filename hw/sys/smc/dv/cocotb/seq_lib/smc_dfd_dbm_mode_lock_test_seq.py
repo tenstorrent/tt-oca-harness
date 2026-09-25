@@ -35,6 +35,10 @@ from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import dfd_register, pack_fields, reg_field
 
+# dfx_ctrl_status.rdl Dbmmode: the value its description names as the mux
+# identifier output mode.
+_DBM_MODE_IDENTIFIER = 2
+
 
 class smc_dfd_dbm_mode_lock_test_seq(SmcCsrSeq):
     """Program every debug-bus mux mode, then latch the CLA lock and hold it."""
@@ -91,12 +95,32 @@ class smc_dfd_dbm_mode_lock_test_seq(SmcCsrSeq):
             f"the mode walk programmed {self.modes_programmed}, not every value of the "
             f"{mode.width}-bit Dbmmode field"
         )
+        # The walk ends in the toggle mode. Every mux is then taken out of it into
+        # the identifier output mode, so the mode leaves toggle with the mux
+        # clocked, rather than into the off mode that stops its clock.
+        leave = _DBM_MODE_IDENTIFIER
+        for identity in range(1 << dbmid.width):
+            await self._write(
+                reg,
+                pack_fields(reg, {"Dbmmode": leave, "Dbmid": identity}),
+                f"leave_id{identity}",
+            )
+            self.mux_writes += 1
+        last = await self._read(reg, "leave_rb")
+        got_mode = (last & mode.mask) >> mode.offset
+        assert got_mode == leave, (
+            f"{reg.path} @ 0x{reg.addr:08x}: after taking every identifier from the toggle "
+            f"mode to mode {leave} it reads mode {got_mode}"
+        )
+        self.modes_programmed.append(leave)
+        self.value_checks += 1
         cocotb.log.info(
             "CHK-DBM-MODE-SWEEP: every one of the %d modes the %d-bit Dbmmode field offers "
-            "was programmed into every one of the %d mux identifiers and read back, %d "
+            "was programmed into every one of the %d mux identifiers and read back, and the "
+            "array was then taken from the toggle mode into the identifier output mode, %d "
             "writes in all; a mux takes a mode only while the programmed identifier is its "
             "own, so this is the whole array in every mode rather than one mux in one mode",
-            len(self.modes_programmed),
+            1 << mode.width,
             mode.width,
             1 << dbmid.width,
             self.mux_writes,

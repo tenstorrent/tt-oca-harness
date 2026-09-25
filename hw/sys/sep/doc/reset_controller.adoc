@@ -8,11 +8,21 @@
 
 The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
 
+<<sep-reset-domain-diagram>> shows the reset domains controlled by the SEP Reset
+Controller.
+
+[[sep-reset-domain-diagram]]
+.SEP reset domains and reset sequencing
+image::SEP_ResetDomains_FIG003.1.png[alt="SEP reset domains and reset sequencing",width=100%,pdfwidth=100%]
+
 == Software Reset Register
 
-The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
+<<sep-sw-reset-n-fields-table>> defines the software reset controls and their reset
+values.
 
+[[sep-sw-reset-n-fields-table]]
 [cols="<10%,<20%,<10%,<10%,<50%",options="header",]
+.SEP SW_RESET_N fields
 |=======================================================================
 |Bit |Field |Access |Default |Description
 |0 |km_sw_rst_n |RW |0 |KM reset (0=assert, 1=release)

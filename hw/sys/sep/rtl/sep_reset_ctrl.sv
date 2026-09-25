@@ -61,13 +61,21 @@ module sep_reset_ctrl (
 );
   // Internal reset signal (after JTAG override) for efuse sensing being done
   logic sep_reset_n;
+  logic sep_cpu_func_reset_n;
   // CPU reset = sep_reset_n gated with the Aggregated WDT Resets from SMC and SEP
   prim_and2 #(
     .Width(1)
   ) u_sep_cpu_rst_and (
     .in0_i (sep_reset_n),
     .in1_i (wdt_rst_ni),
-    .out_o (sep_cpu_reset_no)
+    .out_o (sep_cpu_func_reset_n)
+  );
+
+  prim_rstbypass_stdmux2 u_sep_cpu_rst_scan_bypass (
+    .rst_ni      (sep_cpu_func_reset_n),
+    .test_rst_ni (scan_rst_ni),
+    .test_mode_i (test_en_i),
+    .rst_no      (sep_cpu_reset_no)
   );
 
   // =========================================================================
@@ -245,13 +253,62 @@ module sep_reset_ctrl (
   // resets unconditionally, bypassing the isolation sequencing. JTAG
   // overrides act last so debug can force a reset regardless of isolation.
 
-  // jtag_sep_reset_ctrl_i val and ovrd are on the TCK clock domain.
-  // This creates a known CDC for the reset bits under normal operation.
+  // Per-IP override bits cross from TCK into clk_i. rst_ni clears both
+  // synchronizers asynchronously, so a hard reset drops a held override and
+  // the mux follows the functional reset with no clock. The packing order
+  // matches sep_sw_rst_t (abr, trng, kmac, hmac, aes, otbn, km).
+  localparam int unsigned NUM_JTAG_IP_RST = $bits(sep_pkg::sep_sw_rst_t);
 
-  // If synchronized to clk_i, this would create a dependecny on clk_i being functional during TCK operations. This is not always the case.
-  // If stop clock propagation is used, there might not be a clock and the jtag_sep_reset_ctrl_i value can't propagate.
+  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_ovrd_tck;
+  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_val_tck;
+  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_ovrd_sync;
+  logic [NUM_JTAG_IP_RST-1:0] jtag_ip_val_sync;
+
+  assign jtag_ip_ovrd_tck = {
+    jtag_sep_reset_ctrl_i.ovrd.abr_jtag_rst_n_ovrd,
+    jtag_sep_reset_ctrl_i.ovrd.trng_jtag_rst_n_ovrd,
+    jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd,
+    jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd,
+    jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd,
+    jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd,
+    jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd
+  };
+
+  assign jtag_ip_val_tck = {
+    jtag_sep_reset_ctrl_i.val.abr_jtag_rst_n_val,
+    jtag_sep_reset_ctrl_i.val.trng_jtag_rst_n_val,
+    jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val,
+    jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val,
+    jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val,
+    jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val,
+    jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val
+  };
+
+  prim_sync2r #(
+    .WIDTH(NUM_JTAG_IP_RST)
+  ) u_jtag_ip_ovrd_sync (
+    .clk_i (clk_i),
+    .d_i   (jtag_ip_ovrd_tck),
+    .rst_ni(rst_ni),
+    .q_o   (jtag_ip_ovrd_sync)
+  );
+
+  prim_sync2r #(
+    .WIDTH(NUM_JTAG_IP_RST)
+  ) u_jtag_ip_val_sync (
+    .clk_i (clk_i),
+    .d_i   (jtag_ip_val_tck),
+    .rst_ni(rst_ni),
+    .q_o   (jtag_ip_val_sync)
+  );
+
+  sep_pkg::sep_sw_rst_t jtag_ip_ovrd;
+  sep_pkg::sep_sw_rst_t jtag_ip_val;
+  assign jtag_ip_ovrd = sep_pkg::sep_sw_rst_t'(jtag_ip_ovrd_sync);
+  assign jtag_ip_val  = sep_pkg::sep_sw_rst_t'(jtag_ip_val_sync);
 
   sep_pkg::sep_sw_rst_t pre_jtag_rst_n;
+  sep_pkg::sep_sw_rst_t jtag_ovrd_rst_n;
 
   prim_and2 #(
     .Width(1)
@@ -311,59 +368,122 @@ module sep_reset_ctrl (
 
   prim_rst_mux2_hf_n u_abr_rst_ovrd_mux (
     .rst0_ni (pre_jtag_rst_n.abr),
-    .rst1_ni (jtag_sep_reset_ctrl_i.val.abr_jtag_rst_n_val),
-    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.abr_jtag_rst_n_ovrd),
-    .rst_no  (sep_crypto_gated_rst_no.abr)
+    .rst1_ni (jtag_ip_val.abr),
+    .sel_i   (jtag_ip_ovrd.abr),
+    .rst_no  (jtag_ovrd_rst_n.abr)
   );
 
   prim_rst_mux2_hf_n u_kmac_rst_ovrd_mux (
     .rst0_ni (pre_jtag_rst_n.kmac),
-    .rst1_ni (jtag_sep_reset_ctrl_i.val.kmac_jtag_rst_n_val),
-    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.kmac_jtag_rst_n_ovrd),
-    .rst_no  (sep_crypto_gated_rst_no.kmac)
+    .rst1_ni (jtag_ip_val.kmac),
+    .sel_i   (jtag_ip_ovrd.kmac),
+    .rst_no  (jtag_ovrd_rst_n.kmac)
   );
 
   prim_rst_mux2_hf_n u_hmac_rst_ovrd_mux (
     .rst0_ni (pre_jtag_rst_n.hmac),
-    .rst1_ni (jtag_sep_reset_ctrl_i.val.hmac_jtag_rst_n_val),
-    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.hmac_jtag_rst_n_ovrd),
-    .rst_no  (sep_crypto_gated_rst_no.hmac)
+    .rst1_ni (jtag_ip_val.hmac),
+    .sel_i   (jtag_ip_ovrd.hmac),
+    .rst_no  (jtag_ovrd_rst_n.hmac)
   );
 
   prim_rst_mux2_hf_n u_aes_rst_ovrd_mux (
     .rst0_ni (pre_jtag_rst_n.aes),
-    .rst1_ni (jtag_sep_reset_ctrl_i.val.aes_jtag_rst_n_val),
-    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.aes_jtag_rst_n_ovrd),
-    .rst_no  (sep_crypto_gated_rst_no.aes)
+    .rst1_ni (jtag_ip_val.aes),
+    .sel_i   (jtag_ip_ovrd.aes),
+    .rst_no  (jtag_ovrd_rst_n.aes)
   );
 
   prim_rst_mux2_hf_n u_otbn_rst_ovrd_mux (
     .rst0_ni (pre_jtag_rst_n.otbn),
-    .rst1_ni (jtag_sep_reset_ctrl_i.val.otbn_jtag_rst_n_val),
-    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.otbn_jtag_rst_n_ovrd),
-    .rst_no  (sep_crypto_gated_rst_no.otbn)
+    .rst1_ni (jtag_ip_val.otbn),
+    .sel_i   (jtag_ip_ovrd.otbn),
+    .rst_no  (jtag_ovrd_rst_n.otbn)
   );
 
   prim_rst_mux2_hf_n u_km_rst_ovrd_mux (
     .rst0_ni (pre_jtag_rst_n.km),
-    .rst1_ni (jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val),
-    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.km_jtag_rst_n_ovrd),
-    .rst_no  (sep_crypto_gated_rst_no.km)
+    .rst1_ni (jtag_ip_val.km),
+    .sel_i   (jtag_ip_ovrd.km),
+    .rst_no  (jtag_ovrd_rst_n.km)
   );
 
   prim_rst_mux2_hf_n u_trng_rst_ovrd_mux (
     .rst0_ni (pre_jtag_rst_n.trng),
-    .rst1_ni (jtag_sep_reset_ctrl_i.val.trng_jtag_rst_n_val),
-    .sel_i   (jtag_sep_reset_ctrl_i.ovrd.trng_jtag_rst_n_ovrd),
-    .rst_no  (sep_crypto_gated_rst_no.trng)
+    .rst1_ni (jtag_ip_val.trng),
+    .sel_i   (jtag_ip_ovrd.trng),
+    .rst_no  (jtag_ovrd_rst_n.trng)
   );
 
-  // JTAG override to efuse reset
+  // Assert is asynchronous, so the override still forces reset while a debug
+  // clock stop has gated clk_i. Deassert is synchronous to clk_i.
+  logic sep_reset_mux_n;
   prim_rst_mux2_hf_n u_sep_reset_ovrd_mux (
     .rst0_ni (sep_intermediate_reset_ni),
     .rst1_ni (jtag_sep_reset_ctrl_i.val.sep_reset_n_val),
     .sel_i   (jtag_sep_reset_ctrl_i.ovrd.sep_reset_n_ovrd),
-    .rst_no  (sep_reset_n)
+    .rst_no  (sep_reset_mux_n)
+  );
+
+  prim_sync_reset #(
+    .WIDTH(2)
+  ) u_sep_reset_sync (
+    .clk_i       (clk_i),
+    .rst_ni      (sep_reset_mux_n),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (sep_reset_n)
+  );
+
+  // Test mode substitutes scan_rst_ni after each override mux, so scan reset
+  // reaches the flops these outputs reset.
+  prim_rstbypass_stdmux2 u_abr_rst_scan_bypass (
+    .rst_ni     (jtag_ovrd_rst_n.abr),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no     (sep_crypto_gated_rst_no.abr)
+  );
+
+  prim_rstbypass_stdmux2 u_kmac_rst_scan_bypass (
+    .rst_ni     (jtag_ovrd_rst_n.kmac),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no     (sep_crypto_gated_rst_no.kmac)
+  );
+
+  prim_rstbypass_stdmux2 u_hmac_rst_scan_bypass (
+    .rst_ni     (jtag_ovrd_rst_n.hmac),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no     (sep_crypto_gated_rst_no.hmac)
+  );
+
+  prim_rstbypass_stdmux2 u_aes_rst_scan_bypass (
+    .rst_ni     (jtag_ovrd_rst_n.aes),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no     (sep_crypto_gated_rst_no.aes)
+  );
+
+  prim_rstbypass_stdmux2 u_otbn_rst_scan_bypass (
+    .rst_ni     (jtag_ovrd_rst_n.otbn),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no     (sep_crypto_gated_rst_no.otbn)
+  );
+
+  prim_rstbypass_stdmux2 u_km_rst_scan_bypass (
+    .rst_ni     (jtag_ovrd_rst_n.km),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no     (sep_crypto_gated_rst_no.km)
+  );
+
+  prim_rstbypass_stdmux2 u_trng_rst_scan_bypass (
+    .rst_ni     (jtag_ovrd_rst_n.trng),
+    .test_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
+    .rst_no     (sep_crypto_gated_rst_no.trng)
   );
 
   assign sep_reset_no = sep_reset_n;

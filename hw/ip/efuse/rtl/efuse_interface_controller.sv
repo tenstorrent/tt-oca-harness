@@ -130,8 +130,6 @@ module efuse_interface_controller #(
   output logic                                  token_match_fault_o
 );
 
-  `include "prim_assert.sv"
-
   localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
 
@@ -150,7 +148,12 @@ module efuse_interface_controller #(
   // Fuse Sense Released Reset
   assign fuse_sense_done_o = fuse_sense_done;
   // External boot sequence done includes memory repair and shadow reg override being complete, the rest of SMC can now boot
-  assign reset_n = fuse_sense_done && rst_ni && ext_boot_seq_done_i;
+  prim_and3 u_reset_release_and (
+    .in0_i (fuse_sense_done),
+    .in1_i (ext_boot_seq_done_i),
+    .in2_i (rst_ni),
+    .out_o (reset_n)
+  );
 
   prim_rst_sync u_reset_n_sync (
     .clk_i                  (clk_i),
@@ -821,22 +824,5 @@ module efuse_interface_controller #(
 
   assign is_efuse_req_err_o = efuse_req_err;
   assign is_secure_tm_blocked_o = secure_tm_blocked;
-
-  ////////////////////////////////////////////////////////////////////////////
-  // Address Validation Assertions
-  ////////////////////////////////////////////////////////////////////////////
-  //
-  // These assertions compare the full-width CSR address against SHADOW_REG_BITS.
-  // OOB addresses are *expected* to be reachable from SW (that is the whole
-  // point of efuse_{program,read}_addr_error); when running negative tests that
-  // intentionally drive OOB, disable these assertions via the simulator.
-
-  // Assert that program addresses are within valid range
-  `OCAH_OT_ASSERT(ProgramAddrValid_A, reg_interface_program_go |-> !reg_interface_program_addr_oob,
-                  clk_i, !rst_ni)
-
-  // Assert that read addresses are within valid range
-  `OCAH_OT_ASSERT(ReadAddrValid_A, reg_interface_read_go |-> !reg_interface_read_addr_oob, clk_i,
-                  !rst_ni)
 
 endmodule : efuse_interface_controller

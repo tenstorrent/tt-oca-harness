@@ -4,108 +4,22 @@
 [[i3ccore-wrap-memory-map]]
 == Memory Map
 
-=== Overview
+=== Integration Limits
 
-The I3C Core Controller provides a comprehensive register interface organized
-into five major sections accessible through an AXI4-Lite slave interface. The
-register space is organized into a 12-bit address space (0x000-0xFFF) per
-I3C instance, with each instance occupying 0x1000 bytes of address space when
-multiple instances are implemented via i3ccore_wrapper.
+The SoC Management Interface header at `0x300` reports `CAP_LENGTH = 0x1A`
+DWORDs. This is inconsistent with the next capability header at `0x398`: the
+span is `0x98` bytes, or `0x26` DWORDs. A generic walker that trusts the reported
+length advances to `0x368`, inside the timing registers, and misinterprets data
+as a capability header. Software for this implementation must use the
+offsets in this paragraph rather than discovering that boundary from `CAP_LENGTH`.
 
-The register map follows the MIPI I3C HCI v1.2 specification with OCA-specific
-extensions for recovery and enhanced IBI handling. All registers are 32-bit
-aligned and support only 32-bit access widths.
-
-=== Register Organization
-
-* *I3CBase Section* (0x00-0x68): Core controller configuration and status
-registers including bus control, capabilities, interrupts, and reset management
-* *PIOControl Section* (0x80-0xB0): Programmable I/O interface with queue
-ports, threshold controls, and PIO-specific interrupt management
-* *I3C_EC Section* (0x100-0x3A0): Extended Capabilities including Secure Firmware
-Recovery Interface (0x100-0x168), Standby Controller Mode (0x180-0x1C0), Target
-Transaction Interface (0x200-0x290), SoC Management Interface (0x300-0x390,
-includes bus-timing registers), Controller Config (0x398-0x39C), and Termination
-(0x3A0)
-* *DAT Section* (0x400-0x7FF): Device Address Table, 128-entry address window
-(2 DWORDs / 64-bit per entry); physical depth DAT_DEPTH=16 (usable index 0-15)
-* *DCT Section* (0x800-0xFFF): Device Characteristic Table, 128-entry address window
-(4 DWORDs / 128-bit per entry); physical depth DCT_DEPTH=16 (usable index 0-15)
-
-=== Address Alignment and Access
-
-*Address Alignment:*
-* All registers are aligned to 32-bit boundaries (addresses are multiples of 4)
-* Effective address space per instance: 12 bits (0x000-0xFFF)
-* Instance spacing in multi-instance configurations: 0x1000 bytes
-
-*Access Width Requirements:*
-* All registers must be accessed using 32-bit operations
-* Byte and halfword accesses are not supported
-* AXI4-Lite write strobe signals should be set to 4'b1111 for full-word writes
-
-*Endianness:*
-* Data byte ordering: Little-endian (configurable via HC_CONTROL.DATA_BYTE_ORDER_MODE)
-* Bit numbering: Bit 0 is LSB, bit 31 is MSB
-* Multi-byte fields follow little-endian byte ordering
-
-=== Programming Guidance
-
-Configure queue thresholds and the DAT and DCT entries before setting
-`HC_CONTROL.BUS_ENABLE`. In a multi-controller system, check
-`PRESENT_STATE.AC_CURRENT_OWN` before submitting commands. When disabling the
-controller, wait until the controller no longer owns an active bus transaction.
-
-The command port accepts one 64-bit descriptor as two consecutive 32-bit writes;
-the second write enqueues the descriptor. TX and RX data share offset `0x88`,
-with writes targeting the TX FIFO and reads consuming the RX FIFO. Fill the TX
-FIFO before a write transaction begins, drain the RX and response FIFOs promptly,
-and use the queue-size and threshold fields rather than assuming a configured
-FIFO depth.
-
-Each `RESPONSE_PORT` read returns a 32-bit response descriptor. Bits `[15:0]`
-contain the transferred data length, bits `[23:16]` are reserved, bits `[27:24]`
-contain the transaction ID, and bits `[31:28]` contain one of the following error
-status codes from TCRI 6.4.1:
-
-[cols="1,2,5", options="header"]
-|===
-|Code |RTL status |Meaning
-
-|`0x0` |`Success` |Transaction completed without an error
-|`0x1` |`Crc` |CRC error
-|`0x2` |`Parity` |Parity error
-|`0x3` |`Frame` |Frame error
-|`0x4` |`AddrHeader` |Address-header error
-|`0x5` |`Nack` |Address or dynamic-address-assignment NACK
-|`0x6` |`Ovl` |Receive overflow or transmit underflow
-|`0x7` |`I3cShortReadErr` |Target returned fewer bytes than requested when a short read was not permitted
-|`0x8` |`HcAborted` |Host controller internal error or abort operation
-|`0x9` |`I2cDataNackOrI3cBusAborted` |I2C write-data NACK or I3C bus abort
-|`0xA` |`NotSupported` |Command is not supported
-|`0xB` |`AbortedWithCRC` |HDR-BT transaction aborted with a CRC error
-|`0xC` |`ErrorC` |Transfer-type-specific error
-|`0xD` |`ErrorD` |Transfer-type-specific error
-|`0xE` |`ErrorE` |Transfer-type-specific error
-|`0xF` |`ErrorF` |Transfer-type-specific error
-|===
-
-Reset bits are self-clearing. Poll a requested reset until it reads as zero, and
-do not reset a queue while a transaction is active: doing so can discard queued
-commands, completion status, or transfer data. A soft reset resets controller
-state but does not restore the CSR configuration.
-
-Host-controller status interrupts and PIO queue interrupts have separate status,
-enable, and signal-enable registers. Service every asserted status bit and clear
-write-one-to-clear fields as described in the generated register reference.
-
-IBI data is padded to a 4-byte boundary. Use the data length from the IBI status
-descriptor to distinguish payload bytes from padding, and service the IBI queue
-before it overflows.
-
-For standby-controller operation, configure `STBY_CR_ENABLE_INIT` and the
-required dynamic-address-assignment methods before enabling the bus. Send a
-controller-role request only while in standby mode and while the bus is idle.
+The DAT and DCT capability fields advertise `TABLE_SIZE = 127`, but only 16
+independent entries are implemented. Index decoding retains four bits, so
+higher window slots alias lower entries rather than providing extra storage.
+For example, DAT slot 16 at `0x480` aliases slot 0 at `0x400`; DCT slot 16 at
+`0x900` aliases slot 0 at `0x800`. Limit accesses to indexes 0–15. The complete
+windows in the generated map describe address decoding, not independent
+128-entry capacity.
 
 === Detailed Register Map
 

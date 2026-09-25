@@ -14,7 +14,8 @@ clocked from ``clk_smc_i`` (a different, faster period on every seed) or from
 ``clk_periph_i`` at a non-unity ratio falls outside that window.
 
 The CLINT ``mtime`` half of the scenario is not reachable from SEP_IN in this
-bench (the cluster-local window folds onto the local base) and is left open.
+bench (at the reset REGION_SIZE the cluster-local window lies outside the local
+and global apertures and answers DECERR) and is left open.
 """
 
 from __future__ import annotations
@@ -169,6 +170,7 @@ class smc_ref_clock_timer_rate_test_seq(SmcCsrSeq):
             CDC_SKEW_REF,
         )
         cocotb.log.info(
-            "CHK-CLINT-TICK-NOT-CLOSED: CLINT mtime is behind the cluster-local window that "
-            "smc_local_fabric folds onto the local base; not reachable from SEP_IN"
+            "CHK-CLINT-TICK-NOT-CLOSED: CLINT mtime is in the cluster-local window, which lies "
+            "outside the local and global apertures at the reset REGION_SIZE and answers "
+            "DECERR; not reachable from SEP_IN"
         )

@@ -5,7 +5,7 @@
 
 === Cross Trigger Port (CTP)
 
-The table below lists the CTP signals and their mode-dependent behavior.
+<<ctn-cross-trigger-signal-interface-table>> lists the CTP signals and their mode-dependent behavior.
 For the module diagram and signalling modes, see
 <<cross-trigger-network-architecture,CTN Architecture>>.
 
@@ -15,7 +15,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[ctn-cross-trigger-signal-interface-table]]
 [cols="<30,<12,<58",options="header",role="port-reference"]
+.CTN cross-trigger signal interface
 |=======================================================================
 |Name |Direction |Description
 |mode |input |Indicates the operational mode of the CTP. 0 for wire-OR
@@ -47,8 +49,9 @@ pad. In peer-to-peer mode the pulse capture latch controls this signal.
 In wire-OR mode it is held static-low.
 
 |ct_req_out_din |input |The input data that is driven on the
-_CT_Req_out_ pad. In wire-OR mode this signal triggers a pulse on
-_ct_dst_ after synchronization. In peer-to-peer mode it is unused.
+_CT_Req_out_ pad. In wire-OR mode the assertion edge of this signal
+triggers a pulse on _ct_dst_ after synchronization. In peer-to-peer mode
+it is unused.
 
 |ct_req_in_din_en |output |Enables the input buffer for the _CT_Req_in_
 pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it

@@ -12,6 +12,13 @@ for debugger readback.
 
 == Halt Path Architecture
 
+<<dtp-clock-stop-diagram>> shows how JTAG and CLA requests contribute to the chiplet
+halt path.
+
+[[dtp-clock-stop-diagram]]
+.DTP JTAG and CLA clock-stop aggregation
+image::DTP_ClockStopAggregration_FIG010.png[alt="DTP JTAG and CLA clock-stop aggregation",width=100%,pdfwidth=100%]
+
 Three distinct signals participate in clock stop:
 
 *`jtag_clock_stop`* (JTAG DEBUG_CONTROL bit)::
@@ -53,3 +60,22 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<cross-trigger-network,Cross-Trigger Network>>.
 endif::backend-pdf[]
+
+[[dtp-clock-distribution]]
+== Clock Distribution
+
+<<dtp-clock-tree>> shows which DTP blocks use the system clock and which use TCK.
+
+[[dtp-clock-tree]]
+.DTP system-clock and JTAG-clock distribution
+image::DTP_ClockingArchitecture_FIG021.png[alt="DTP system-clock and JTAG-clock distribution",width=100%,pdfwidth=100%]
+
+[[dtp-reset-distribution]]
+== Reset Distribution
+
+<<dtp-reset-tree>> shows the reset distribution for DTP system logic and the JTAG scan
+paths.
+
+[[dtp-reset-tree]]
+.DTP system and JTAG reset distribution
+image::DTP_ResetArchitecture_FIG022.png[alt="DTP system and JTAG reset distribution",width=100%,pdfwidth=100%]

@@ -110,7 +110,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -128,7 +128,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -146,7 +146,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -164,7 +164,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -182,7 +182,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -200,7 +200,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -218,7 +218,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -236,7 +236,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -254,7 +254,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -272,7 +272,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -290,7 +290,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -308,7 +308,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -326,7 +326,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -344,7 +344,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -362,7 +362,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -380,7 +380,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>DMA busy bits. Reading 0 means the DMA has written the last data beat but not necessarily seen the last response</ipxact:description>
+            <ipxact:description>Status for the active stream: bits [7:0] each indicate readiness to accept another command, bit 8 is zero, and bit 9 indicates midend activity. These bits do not report backend busy or prove transfer completion; use DONE for completed transfer IDs. Unused streams read zero.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
