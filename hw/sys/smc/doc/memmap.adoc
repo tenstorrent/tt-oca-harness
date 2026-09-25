@@ -191,22 +191,6 @@ include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[leveloffset=+2]
 include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
-[[smc-i3c-registers]]
-== I3C Controller Registers
-
-The generated I3C register map describes the current register specification.
-I3C integration verification remains a work in progress.
-
-ifdef::backend-html5[]
-++++
-include::ip:partial$i3ccore_wrap/regs/gen/html/oca_i3c_wrap.html[]
-++++
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../../../ip/i3ccore_wrap/regs/gen/adoc/oca_i3c_wrap.adoc[leveloffset=+1]
-endif::backend-pdf[]
-
 == Component-Specific Register Documentation
 
 For detailed register-level documentation of each SMC component, refer
@@ -230,8 +214,8 @@ details |interrupts
 |Fabric Control |Address remapping, inbound/outbound filters, and fabric
 control registers |fabric
 
-|Peripherals and I/O |GPIO, UART, I2C, PVT, eFuse, Telemetry, and System
-Timer registers |periphs
+|Peripherals and I/O |Mailbox, System Timer OCTS, eFuse, UART 16550, Log
+Engine, I2C, I3C, AVSBus, GPIO, and Telemetry Receiver |periphs
 
 |Reset Management |Reset unit and system control registers |clk_rst
 
