@@ -526,8 +526,7 @@ completion.
   In an integrated SMU, connect this port only to SMC. `smc_peripherals` synchronizes it
   onto `clk_smc`, latches it set-once until cold reset, and fans the
   qualified result to both the SMC and SEP eFuse controllers. In a standalone SEP integration (without SMC),
-  synchronize and qualify `ext_boot_seq_done_i` onto the SEP clock before the SEP port
-  (`sep_wrapper` reference).
+  synchronize and qualify `ext_boot_seq_done_i` onto the SEP clock before the SEP port.
 
 **Repair Data:**
 
@@ -577,7 +576,7 @@ SMU. SMC `smc_peripherals` owns the `prim_flop_3sync` and set-once latch
 (`ext_boot_seq_done_qual`); both eFuse interface controllers consume that
 qualified signal. Do not insert additional synchronizers between SMC and SEP
 inside `smu.sv`. For a standalone SEP, the adopter must provide equivalent
-qualification outside `sep.sv` (see `sep_wrapper`).
+qualification outside `sep.sv`.
 
 For direct access to the eFuse besides from the shim, i.e. from a DFT fuse controller,
 adopters must ensure the integrated logic will not interfere with accesses from the

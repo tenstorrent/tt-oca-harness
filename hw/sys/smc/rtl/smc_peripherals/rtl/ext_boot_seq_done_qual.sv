@@ -5,8 +5,7 @@
 // External boot-sequence-done qualifier
 //
 // Synchronizes an asynchronous integrator input onto clk_i, then latches it
-// set-once until cold reset. The sticky register uses an _n0_scan suffix so
-// synthesis scan insertion leaves it off every scan chain.
+// set-once until cold reset.
 //-----------------------------------------------------------------------------
 
 module ext_boot_seq_done_qual (
@@ -17,7 +16,7 @@ module ext_boot_seq_done_qual (
 );
 
   logic ext_boot_seq_done_sync;
-  logic ext_boot_seq_done_sticky_n0_scan;
+  logic ext_boot_seq_done_sticky;
 
   prim_flop_3sync u_ext_boot_seq_done_sync (
     .clk_i(clk_i),
@@ -31,10 +30,10 @@ module ext_boot_seq_done_qual (
   ) u_ext_boot_seq_done_sticky (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
-    .d_i  (ext_boot_seq_done_sync | ext_boot_seq_done_sticky_n0_scan),
-    .q_o  (ext_boot_seq_done_sticky_n0_scan)
+    .d_i  (ext_boot_seq_done_sync | ext_boot_seq_done_sticky),
+    .q_o  (ext_boot_seq_done_sticky)
   );
 
-  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_sticky_n0_scan;
+  assign ext_boot_seq_done_qual_o = ext_boot_seq_done_sticky;
 
 endmodule
