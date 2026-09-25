@@ -224,7 +224,6 @@ def expected_site_data(
     failed_tests: int = 0,
     flaky_tests: int = 0,
     coverage_status: str = "SKIP",
-    coverage_total_percent: float | None = None,
     effective_metrics: dict[str, float] | None = None,
     coverage_total_percent: float | None = None,
 ) -> dict[str, Any]:
@@ -408,7 +407,6 @@ class TrimmedSiteData(SiteDataCase):
                 pass_rate=100.0,
                 flow_pass_rate=100.0,
                 coverage_status="PASS",
-                coverage_total_percent=COVERAGE_SUMMARY["overall_percent"],
                 effective_metrics=EFFECTIVE_METRICS,
                 coverage_total_percent=COVERAGE_SUMMARY["overall_percent"],
             ),
