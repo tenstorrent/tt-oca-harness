@@ -1393,7 +1393,10 @@ Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: unga
 
 *Test Coverage*:
 
-* Bounded AXI error-response checks over real SEP_IN AXI.
+* Bounded AXI error-response checks over real SEP_IN AXI. Three probes must each answer DECERR with the exact error data, and an always-OKAY register must read the same before and after them:
+** the last page of `ecam_region`, an `external` region with no implementation behind it on this bench;
+** the same page offset fourteen apertures above `LOCAL_BASE`, which lies outside the local and global apertures at the reset `REGION_SIZE`, so the input fabric's window check answers it;
+** the first `EXTERNAL_MANDATORY` GPIO_CTRL window, with no pad block behind it.
 
 *Test Procedure*:
 
@@ -1905,7 +1908,7 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 ** A write past it matches neither the DMA nor the zeroer range in `smc_data_accelerator_wrap.sv:57-68`, so it takes the default select, DMA (`:58-59`). The DMA register block answers OKAY and stores it at the aliased offset. A probe write of `0x5A5A1234` to `0xC0038318` read back from DMA `LENGTH_LO` at `0xC0038118`.
 ** No generated block declares the address, so by the rule the beyond-region probes apply it should be refused. The leaf writes 0 there, which is taken where every aliased DMA descriptor register already holds 0, and it requires those registers and the zeroer's `DEST_ADDR` to still read 0. It does not grade the response.
 * The APB4-fronted blocks are read at their 32-bit generated-map addresses, and 32-bit reads are required to return values with bits above 16 set, so the APB4 data path is exercised beyond a 16-bit window.
-* The regions SEP_IN cannot reach in this bench are named in the log and left open rather than claimed: the PLIC and CLINT/BEU windows fold onto the local base in `smc_local_fabric`, the generated map declares no register in the debug-module region, and the M-mode/Xvisor remap regions are outbound apertures with no inbound decode pinned by the specification.
+* The regions SEP_IN cannot reach in this bench are named in the log and left open rather than claimed: the PLIC and CLINT/BEU windows lie outside the local and global apertures at the reset `REGION_SIZE` and answer DECERR (`smc_region_size_plic_clint_beu_decode_test` reaches them after widening it), the generated map declares no register in the debug-module region, and the M-mode/Xvisor remap regions are outbound apertures with no inbound decode pinned by the specification.
 
 *Test Procedure*:
 
@@ -2222,7 +2225,7 @@ Drive `smc_axil_downstream_concurrency_test_seq` on the SEP_IN AXI sequencer wit
 * Single-instance blocks are closed by a register whose generated reset is non-zero, so the compare can tell a decoded block from an absent window that reads 0.
 * Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs and the log engines at their first and last instance, and the four watchdogs (`CMP` through the `KEY` unlock, one key write per register write), the three I2C controllers (`TARGET_ID`), the four UARTs (`SCR`) and the three telemetry receivers (`INTR_ENABLE`) at every instance. A reset read alone cannot tell N registers from one aliased register or from an undecoded window answering OKAY with the reset word, so every multi-instance block carries a co-resident leg.
 * The PVT wrapper is proven at its consumer: the access must drive `smc_external_req_o` while in flight, not merely complete.
-* Left open and named, not claimed: the DTP control window (`tb_top` leaves its AXI-Lite response idle, so an access there would never complete) and the bus error units (behind the bit-25 fold of `smc_local_fabric`, so no SEP_IN access reaches one).
+* Left open and named, not claimed: the DTP control window (`tb_top` leaves its AXI-Lite response idle, so an access there would never complete) and the bus error units (outside the local and global apertures at the reset `REGION_SIZE`, where SEP_IN accesses answer DECERR).
 
 *Test Procedure*:
 
@@ -2233,7 +2236,7 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-PERIPHERAL-INSTANCE` |The cell ledger: one line per block or instance cell closed with the measured evidence behind it, plus one line per cell left NOT closed in this bench with the tie-off or address fold that prevents it. The NOT-closed lines are recorded gaps, not compares
+|`CHK-PERIPHERAL-INSTANCE` |The cell ledger: one line per block or instance cell closed with the measured evidence behind it, plus one line per cell left NOT closed in this bench with the tie-off or aperture limit that prevents it. The NOT-closed lines are recorded gaps, not compares
 |`CHK-PERIPHERAL-INSTANCE-DECODE` |Summary line: cells closed, the scoreboard exact-value compare count against its floor, the access count, the PVT external-port active cycles and the number of cells left open. Logged after the per-block compares and both floors have held
 |`CHK-PERIPHERAL-INSTANCE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
@@ -11793,7 +11796,7 @@ Each row names the blocker whose clearing restores the module, and its sequence,
 |`smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive. Restore when the product pin reaches the wrapper.
 |smc_clint_csr_test
 |adopter-pending OUT
-|The `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so its reads never reach the CLINT and the MTIME-monotonic leg cannot pass. Restore from the CPU side, with a firmware image that reads the CLINT.
+|At the reset `REGION_SIZE` the `0xC8xx_xxxx` cluster-local window lies outside the local and global apertures and answers DECERR on SEP_IN, so its reads never reach the CLINT and the MTIME-monotonic leg cannot pass. Restore from the CPU side, with a firmware image that reads the CLINT.
 |smc_cluster_plic_csr_test
 |adopter-pending OUT
 |The `0xC400_0000` PLIC aperture accepts SEP_IN writes with OKAY and stores nothing, and its `+2 MB` context pages return non-OKAY. Restore with a write path from SEP_IN or a firmware image that reads back what it programmed; `smc_fw_plic_claim_test` covers the PLIC's function.

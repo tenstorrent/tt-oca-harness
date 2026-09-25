@@ -13,8 +13,9 @@ proven at its consumer: ``tb_axil_external_active`` must pulse while the
 access is in flight.
 
 Regions the SEP_IN port cannot reach in this bench are named in the log and
-left open, not claimed: the PLIC and CLINT/BEU windows above bit 25 fold onto
-the local base in ``smc_local_fabric`` (see ``smc_cluster_beu_test``), the
+left open, not claimed: the PLIC and CLINT/BEU windows lie outside the local and
+global apertures at the reset ``REGION_SIZE`` and answer DECERR (see
+``smc_cluster_beu_test`` and ``smc_region_size_plic_clint_beu_decode_test``), the
 debug-module region has no register in the generated map, and the remap
 regions are outbound-path apertures with no inbound decode pinned by the
 specification.
@@ -580,13 +581,15 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.leave_open(
             "plic-region",
-            "PLIC window 0xC400_0000 folds onto the local base in smc_local_fabric (bits [31:25] "
-            "replaced), so no SEP_IN access reaches it; needs the CPU local path",
+            "PLIC window 0xC400_0000 lies outside the local and global apertures at the reset "
+            "REGION_SIZE and answers DECERR; smc_region_size_plic_clint_beu_decode_test reaches it "
+            "after widening REGION_SIZE",
         )
         self.leave_open(
             "timer-buserror-region",
-            "CLINT/BEU window 0xC800_0000 folds onto the local base (see smc_cluster_beu_test); "
-            "needs the CPU local path",
+            "CLINT/BEU window 0xC800_0000 lies outside the local and global apertures at the "
+            "reset REGION_SIZE and answers DECERR (smc_cluster_beu_test); "
+            "smc_region_size_plic_clint_beu_decode_test reaches it after widening REGION_SIZE",
         )
         self.leave_open(
             "debug-region",
