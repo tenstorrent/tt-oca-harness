@@ -112,7 +112,7 @@ endif::backend-html5[]
 
 The PTAP depends on the following components:
 
-* https://github.com/tenstorrent/tt-oca-harness/tree/829b09cf54dde1969dc309733f97f8fb32cefbdd/hw/common/och_prim[`hw/common/och_prim`] — Primitive cells (synchronizers, clock gating)
+* https://github.com/tenstorrent/tt-oca-harness/tree/829b09cf54dde1969dc309733f97f8fb32cefbdd/hw/common/ocah_prim[`hw/common/ocah_prim`] — Primitive cells (synchronizers, clock gating)
 ifdef::backend-html5[]
 * xref:ip:jtag_stap/doc/index.adoc[`hw/ip/jtag/jtag_stap`] — Secondary TAP (when 3DIC support enabled)
 endif::backend-html5[]

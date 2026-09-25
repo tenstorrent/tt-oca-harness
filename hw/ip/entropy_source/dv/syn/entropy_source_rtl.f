@@ -29,8 +29,8 @@
 // Generic cells and primitives
 // Note: Ring oscillators use asynchronous logic - requires special synthesis constraints
 +incdir+../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
-../../../../common/och_prim_generic/rtl/prim_clock_nand2.sv
-../../../../common/och_prim_generic/rtl/prim_stdmux2.sv
+../../../../common/ocah_prim_generic/rtl/prim_clock_nand2.sv
+../../../../common/ocah_prim_generic/rtl/prim_stdmux2.sv
 ../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
 ../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_gating.sv
 ../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv

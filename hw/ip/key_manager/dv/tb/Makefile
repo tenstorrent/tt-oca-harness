@@ -82,7 +82,7 @@ endif
 COMPILE_ARGS += +incdir+$(KM_ROOT)/dv/tb
 COMPILE_ARGS += +incdir+$(KM_ROOT)/rtl
 COMPILE_ARGS += +incdir+$(KM_ROOT)/regs/gen/svh
-COMPILE_ARGS += +incdir+$(OCH_ROOT)/hw/common/och_prim/rtl
+COMPILE_ARGS += +incdir+$(OCH_ROOT)/hw/common/ocah_prim/rtl
 COMPILE_ARGS += +incdir+$(OCH_ROOT)/vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
 COMPILE_ARGS += +incdir+$(OCH_ROOT)/hw/common/assert
 COMPILE_ARGS += +incdir+$(OCH_ROOT)/vendor/pulp-platform/axi/upstream/include

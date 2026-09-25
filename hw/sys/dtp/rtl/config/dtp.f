@@ -6,20 +6,20 @@
 
 # Include directories
 +incdir+$OCH_ROOT/hw/sys/dtp/rtl
-+incdir+$OCH_ROOT/hw/common/och_prim/rtl
++incdir+$OCH_ROOT/hw/common/ocah_prim/rtl
 +incdir+$OCH_ROOT/vendor/opentitan/upstream/hw/ip/prim/rtl
 +incdir+$OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl
 
 # Package files (must be compiled first)
-$OCH_ROOT/hw/common/och_prim/rtl/prim_jtag_pkg.sv
+$OCH_ROOT/hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
 
 # Primitive JTAG modules
-$OCH_ROOT/hw/common/och_prim/rtl/prim_jtag_scan_reg.sv
-$OCH_ROOT/hw/common/och_prim/rtl/prim_jtag_sib_mux_pre.sv
-$OCH_ROOT/hw/common/och_prim/rtl/prim_jtag_sib_mux_post.sv
+$OCH_ROOT/hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv
+$OCH_ROOT/hw/common/ocah_prim/rtl/prim_jtag_sib_mux_pre.sv
+$OCH_ROOT/hw/common/ocah_prim/rtl/prim_jtag_sib_mux_post.sv
 
 # JTAG PTAP modules
 $OCH_ROOT/hw/ip/jtag/jtag_ptap/rtl/jtag_tap_ctrlr.sv

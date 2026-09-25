@@ -15,8 +15,8 @@
 // The discriminator is library CLASS, not authorship and not a path prefix: a
 // cell whose behaviour is the same in every design that instantiates it, and
 // about which no SEP test states a requirement. `/upstream/` in the source path
-// is the common case, not the rule -- the TT-owned och_prim and
-// och_prim_generic cells below are library-class too, and each block states
+// is the common case, not the rule -- the TT-owned ocah_prim and
+// ocah_prim_generic cells below are library-class too, and each block states
 // its own reason. A `vendor/` rule would be wrong in the other direction: SEP's
 // own SPI controller, TCM wrapper and clock gate live under
 // vendor/.../overlay/, so it would drop TT logic.
@@ -108,7 +108,7 @@
 -module stream_mux
 -module stream_register
 
-// TT-owned generic standard-cell wrappers (hw/common/och_prim_generic).
+// TT-owned generic standard-cell wrappers (hw/common/ocah_prim_generic).
 // Authored by TT, but library-class by the same rule as the two blocks above.
 -module prim_ao222
 -module prim_clock_nand2
@@ -157,13 +157,13 @@
 // assertion has no antecedent in this elaboration.
 -module axi_pkg
 
-// TT-owned CDC, reset and code-conversion primitives (hw/common/och_prim).
+// TT-owned CDC, reset and code-conversion primitives (hw/common/ocah_prim).
 // Library-class by the same rule as the blocks above: a synchroniser chain, a
 // reset synchroniser, a scan/bypass reset mux, a Gray codec and a revision-ID
 // cell carry the same behaviour in every design that instantiates them, and no
 // SEP test states a requirement about one.
 //
-// The rest of och_prim stays graded, because a SEP test does name the function:
+// The rest of ocah_prim stays graded, because a SEP test does name the function:
 // prim_axi_lite_err_slv (sep_axi_map_refuse_test and the dead-space decode
 // tests grade the refusal), prim_axi_addr_fixer, prim_axil_addr_fixer,
 // prim_axi_id_converter and prim_axi_user_override (the remap and filter

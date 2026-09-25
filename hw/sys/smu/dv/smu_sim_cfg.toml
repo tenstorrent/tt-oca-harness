@@ -110,7 +110,7 @@ exclude_files = [
   "meta/models/spi",
 ]
 stubs = [
-  # Stand-in for the och_prim prim_sync3 cell, emitted ahead of the Bender
+  # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
   # filelist so -Wno-MODDUP first-definition-wins picks it on Verilator. On
   # VCS only, the runner drops any stub whose basename the Bender graph
   # supplies, so the product prim_sync3 elaborates there; Xcelium

@@ -53,9 +53,9 @@ OCAH_SV_DECLARATION_SPACING_CHECK := $(OCAH_ROOT)/scripts/ci/check_sv_declaratio
 OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 	hw/common/axi/axi_lite_to_tlul.sv \
 	hw/common/axi/tlul_to_axi_lite.sv \
-	hw/common/och_prim/rtl/prim_jtag_scan_reg.sv \
-	hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv \
-	hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv \
+	hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv \
+	hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv \
+	hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv \
 	hw/common/tlul/rtl/tlul_adapter_host.sv \
 	hw/common/tlul/rtl/tlul_adapter_reg.sv \
 	hw/common/tlul/rtl/tlul_adapter_sram.sv \

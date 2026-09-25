@@ -625,7 +625,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 [cols="1,4"]
 |===
 |Claim accepted
-|Every synchroniser output the bench observes on Verilator is produced by a two- or three-stage flop pipe that starts at a defined `0` with no reset, not by the `och_prim` cells the product elaborates; the product cells are on no Verilator proof path. The claims downstream -- power-good stability, primary and cold reset release, the boot-stall gate, `i2c_enable` into the LSIO mux -- are accepted as proven over the stand-in's behaviour.
+|Every synchroniser output the bench observes on Verilator is produced by a two- or three-stage flop pipe that starts at a defined `0` with no reset, not by the `ocah_prim` cells the product elaborates; the product cells are on no Verilator proof path. The claims downstream -- power-good stability, primary and cold reset release, the boot-stall gate, `i2c_enable` into the LSIO mux -- are accepted as proven over the stand-in's behaviour.
 |Why the real path cannot be used
 |The product `prim_sync2` / `prim_sync3` start with X on the first stage and the wrapper port exposes no `rst_ni` to clear it, so on a four-state view the X persists into every consumer; the stand-ins add `initial '0` on each stage and change nothing else about the pipe.
 |Scope

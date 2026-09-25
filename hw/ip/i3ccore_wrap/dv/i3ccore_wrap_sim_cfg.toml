@@ -49,7 +49,7 @@ sources = [
 # prim_prince / prim_subst_perm it instantiates, which are gated on
 # any(opentitan_smu, sep, smu, key_manager). Nothing in this TB uses a scrambled RAM.
 exclude_files = [
-  "hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv",
+  "hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv",
 ]
 
 [frameworks.cocotb]

@@ -58,7 +58,7 @@ Verilator 5.050 leaves some vendored files instrumented that its scope names
                                argument SEP uses to drop sep_cpu
     // library cells           vendor/pulp-platform/common_cells, the OpenTitan
                                prim library (the cells SEP drops) and the OCAH
-                               och_prim library, the same kind of leaf cell
+                               ocah_prim library, the same kind of leaf cell
     // interconnect cells      the vendored pulp AXI, APB, register_interface,
                                AXI-Stream and OBI mux, demux, crossbar and
                                converter children; the SMC fabric wrappers that
@@ -218,7 +218,7 @@ about a core nobody grades here -- the same reason SEP drops `sep_cpu`. The
 six I3C controllers are the same case at the peripheral level: one SMC leaf
 reaches them, they carried three fifths of the uncovered points under the
 SEP rule, and `hw/ip/i3ccore_wrap/dv` grades their internals. The library
-cells (pulp `common_cells`, OpenTitan `prim*`, OCAH `och_prim`) are leaf
+cells (pulp `common_cells`, OpenTitan `prim*`, OCAH `ocah_prim`) are leaf
 primitives whose branches depend on parameters no SMC test chooses, and the
 vendored interconnect cells (pulp AXI/APB mux, demux, crossbar and converter
 children) are the same kind of parameterised library inside the fabric; SMC's
@@ -310,12 +310,12 @@ of its nets.
 | `uart_core` | `hw/ip/uart/uart_16550/rtl/uart_core.sv` | same | 83 | 161 |
 | `uart_rx` | `hw/ip/uart/uart_16550/rtl/uart_rx.sv` | same | 16 | 12 |
 | `uart_tx` | `hw/ip/uart/uart_16550/rtl/uart_tx.sv` | same | 12 | 7 |
-| `prim_clock_mux2` | `hw/common/och_prim_generic/rtl/prim_clock_mux2.sv` | `Copyright lowRISC contributors (OpenTitan project).` | 4 | 0 |
+| `prim_clock_mux2` | `hw/common/ocah_prim_generic/rtl/prim_clock_mux2.sv` | `Copyright lowRISC contributors (OpenTitan project).` | 4 | 0 |
 | **total** | | | **510** | **798** |
 
 `prim_clock_mux2` declares nothing but its ports, so it contributes no entry;
-it is listed because the rule reaches it. The scope drops `hw/common/och_prim/`
-but not `och_prim_generic/`, which is why this one is graded at all.
+it is listed because the rule reaches it. The scope drops `hw/common/ocah_prim/`
+but not `ocah_prim_generic/`, which is why this one is graded at all.
 
     urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl -report <dir>
     python3 hw/sys/smc/dv/cov/config/vcs/gen_smc_opentitan_toggle_exclusions.py <dir>

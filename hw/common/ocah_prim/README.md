@@ -1,10 +1,10 @@
-# och_prim
+# ocah_prim
 
 Tenstorrent building-block RTL for which OpenTitan has no primitive: bus
 adapters and arbiters, counters, clock dividers and glitch-free clock muxes,
 multi-stage and pulse synchronizers, reset synchronizers, JTAG scan cells and
 memory wrappers. Modules here are composed from ordinary RTL and from the cells
-in [`../och_prim_generic/`](../och_prim_generic/) and the vendored OpenTitan
+in [`../ocah_prim_generic/`](../ocah_prim_generic/) and the vendored OpenTitan
 `prim` / `prim_generic` libraries; they are never swapped for a technology cell
 themselves.
 
@@ -34,7 +34,7 @@ TT product RTL reaches synchronizers through this stack (see
 
 | Module | Role |
 |--------|------|
-| `prim_sync3`, `prim_sync3r`, `prim_sync4`, `prim_sync4r` | Width-parametrized wrappers around [`../och_prim_generic/`](../och_prim_generic/) multi-stage flop chains; under `` `ifdef SIMULATION `` they optionally insert OpenTitan `prim_cdc_rand_delay` before the leaf chain |
+| `prim_sync3`, `prim_sync3r`, `prim_sync4`, `prim_sync4r` | Width-parametrized wrappers around [`../ocah_prim_generic/`](../ocah_prim_generic/) multi-stage flop chains; under `` `ifdef SIMULATION `` they optionally insert OpenTitan `prim_cdc_rand_delay` before the leaf chain |
 | `prim_sync_reset` | Async-reset synchronizer with scan bypass |
 | `prim_sync_data_autohs` | Multi-bit coherent CDC with auto handshake |
 | `prim_sync3_pulse` | Clock-domain pulse crossing |
@@ -42,7 +42,7 @@ TT product RTL reaches synchronizers through this stack (see
 For a plain 2-FF synchronizer, instantiate OpenTitan `prim_flop_2sync` directly.
 Do not add another wrapper here.
 
-[`../sync.sv`](../sync.sv) is **not** part of `och_prim`. It implements the
+[`../sync.sv`](../sync.sv) is **not** part of `ocah_prim`. It implements the
 PULP `sync` module name for vendored `common_cells` when flows pass
 `-t common_cell_sync_shim`. Product blocks must not instantiate `sync`; only
 PULP CDC sources in `vendor/pulp-platform/common_cells/` do.

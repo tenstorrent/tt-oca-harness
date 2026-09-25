@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Verilator stubs (SMC)
 
-Behavioural stand-in for the `och_prim` three-stage synchroniser. The runner
+Behavioural stand-in for the `ocah_prim` three-stage synchroniser. The runner
 compiles it on Verilator and Xcelium and drops it on VCS.
 
 | File | Replaces | Difference from the product cell |
 |------|----------|----------------------------------|
-| `prim_sync3.sv` | `hw/common/och_prim/rtl/prim_sync3.sv` | same three-flop pipe, every stage `initial '0` |
+| `prim_sync3.sv` | `hw/common/ocah_prim/rtl/prim_sync3.sv` | same three-flop pipe, every stage `initial '0` |
 
 The port list (`clk_i` / `d_i` / `q_o`) and parameters are identical to the
 product cell, which is in the same compile. The product cell's

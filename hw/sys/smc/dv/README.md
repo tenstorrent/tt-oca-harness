@@ -284,7 +284,7 @@ Two pieces of DV-owned RTL answer in place of something else on this bench:
 
 | Stand-in | Where | Reaches |
 |----------|-------|---------|
-| `tb/verilator_stubs/prim_sync3.sv` | `smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender filelist | Verilator and Xcelium compile it; on VCS only, the runner drops a stub whose basename the Bender graph supplies, so VCS elaborates the product `och_prim` cell |
+| `tb/verilator_stubs/prim_sync3.sv` | `smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender filelist | Verilator and Xcelium compile it; on VCS only, the runner drops a stub whose basename the Bender graph supplies, so VCS elaborates the product `ocah_prim` cell |
 | `models/axil_okay_slv.sv` behind `models/pll_wrap.sv` / `pvt_wrap.sv` | Bender `smc_wrapper` target, inside `smc_ip_integration` | every tool |
 
 Which product cell each stand-in replaces, which enrolled leaves read a signal

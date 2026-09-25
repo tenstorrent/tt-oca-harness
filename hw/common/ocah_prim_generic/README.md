@@ -1,4 +1,4 @@
-# och_prim_generic
+# ocah_prim_generic
 
 Behavioral models of standard cells that a synthesis flow replaces one-for-one
 with a technology cell: multi-stage synchronizer flops, a metastability-hardened
@@ -13,21 +13,21 @@ lists this directory under `not(synth)`, so simulation, lint and FPGA builds
 use these models as-is. A synthesis flow that passes `-t synth` must supply a
 matching technology-library implementation for **every** module in the inventory
 below — not only the files in `rtl/`. A module with no technology replacement
-belongs in [`../och_prim/`](../och_prim/) instead.
+belongs in [`../ocah_prim/`](../ocah_prim/) instead.
 
 ## Technology swap inventory
 
 These **26 modules** are the exhaustive set of behavioral `prim_*` leaf cells
 guarded with `not(synth)` in the open tree. An adopter synthesis flow that
 passes `-t synth` must provide a one-for-one technology replacement for each
-name (same module name and ports). Nothing else in [`../och_prim/`](../och_prim/)
+name (same module name and ports). Nothing else in [`../ocah_prim/`](../ocah_prim/)
 or [`../sync.sv`](../sync.sv) belongs on this list — those are composed blocks
 or vendor shims, not mappable standard cells.
 
 The manifests are the source of truth:
 
 - OpenTitan: [`vendor/lowRISC/opentitan/Bender.yml`](../../../vendor/lowRISC/opentitan/Bender.yml)
-- OCAH: [`Bender.yml`](../../../Bender.yml) (`och_prim_generic` group)
+- OCAH: [`Bender.yml`](../../../Bender.yml) (`ocah_prim_generic` group)
 
 ### OpenTitan `prim_generic` (11)
 
@@ -46,7 +46,7 @@ Vendored behavioral sources under
 - `prim_xnor2`
 - `prim_xor2`
 
-### OCAH `och_prim_generic` (15)
+### OCAH `ocah_prim_generic` (15)
 
 Behavioral sources under [`rtl/`](rtl/):
 
@@ -70,7 +70,7 @@ Behavioral sources under [`rtl/`](rtl/):
 
 The multi-stage entries above are single-purpose flop chains mapped to standard
 cells. Product RTL normally instantiates them only through the wrappers in
-[`../och_prim/`](../och_prim/) (`prim_sync3`, `prim_sync3r`, …), not directly.
+[`../ocah_prim/`](../ocah_prim/) (`prim_sync3`, `prim_sync3r`, …), not directly.
 
 | Cell | Stages / style |
 |------|----------------|

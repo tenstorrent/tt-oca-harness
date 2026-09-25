@@ -145,4 +145,4 @@ The JTAG Interface Unit depends on the following components:
 
 * `hw/ip/jtag/jtag_ptap` - Primary TAP
 * `hw/ip/jtag/jtag_stap` - Secondary TAP
-* `hw/common/och_prim` - Primitive cells
+* `hw/common/ocah_prim` - Primitive cells
