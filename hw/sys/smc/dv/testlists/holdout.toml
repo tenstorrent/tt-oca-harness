@@ -19,9 +19,9 @@ schema_version = 1
 #     regress.yml), green while the defects stand and red the week one is
 #     fixed; the leaf then moves back to its feature testlist without the
 #     `expect_fail` pair. No `ci` tag: a graded expected failure must never
-#     count in the hosted set. One test per defect. The group and its
-#     `regress.yml` row exist only while a reproducer does; there is none at
-#     present.
+#     count in the hosted set. One test per defect. The group currently holds
+#     `smc_filter_lock_window_test` and `smc_isolate_req_smc_lane_test`.
+#     `smc_deadspace_decode_test` left it and runs from `fabric.toml`.
 #   * `occp_boot` / `occp_dual` -- held out on runtime. The production ROM's
 #     whole reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) and the
 #     dual-SMC unsecure boot (hours of wall clock while a full sram image
@@ -37,6 +37,33 @@ schema_version = 1
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
+
+[[tests]]
+# A write queued right behind the write that locks a filter reaches filter_ctrl
+# after locked = 1: the inner demux at smc_internal_regs.sv:306 latches its lock
+# select into its AW spill register, and the outer demux forwards the next AW as
+# soon as the locking write's W has passed. locked is woset (filter_ctrl.rdl).
+name = "smc_filter_lock_window_test"
+module = "smc_filter_lock_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "FILTER_CONFIG lock: a write queued behind the locking write reaches the locked filter"
+expect_fail_match = "writes queued behind the locking write landed on locked filter"
+
+[[tests]]
+# ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
+# enable anywhere in the register, whatever the data (smc_cool_reset_wrap.sv:272-276);
+# reset_unit.rdl:130-135 makes the request a sw=rw field at bit 0.
+name = "smc_isolate_req_smc_lane_test"
+module = "smc_isolate_req_smc_lane_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "ISOLATE_REQ_SMC_REG: a write outside bit 0's byte lane clears the FLR-latched request"
+expect_fail_match = "cleared the FLR-latched request from a byte lane the field does not"
 
 [[tests]]
 name = "smc_prod_rom_occp_ready_test"
@@ -92,6 +119,15 @@ seed = 1
 timeout_sec = 1800
 tags = ["clock"]
 run_modes = ["smoke"]
+
+[[groups]]
+# Filed-defect reproducers; the weekly tier's own row.
+name = "rtl_issue"
+expected_count = 2
+tests = [
+    "smc_filter_lock_window_test",
+    "smc_isolate_req_smc_lane_test",
+]
 
 [[groups]]
 # Production boot ROM to its OCCP loop; on demand, about one hour.

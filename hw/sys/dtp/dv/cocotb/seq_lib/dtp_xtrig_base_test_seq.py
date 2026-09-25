@@ -10,6 +10,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_xtrig_agent import DtpXtrigActivityWindow
 from env.dtp_xtrig_types import (
+    XTRIG_CT_DST_LATENCY,
     XTRIG_CTM_SELECT_MASK,
     XTRIG_CTP_CONFIG_MASK,
     XTRIG_CTP_MODE_P2P,
@@ -25,6 +26,8 @@ from env.dtp_xtrig_types import (
     XTRIG_NUM_CTP,
     XTRIG_NUM_INT_CT,
     XTRIG_UNMAPPED_BASE,
+    XTRIG_WIRE_OR_ASSERT,
+    XTRIG_WIRE_OR_PULL,
     DtpCtmRefModel,
     apply_wstrb,
     ctm_config_addr,
@@ -71,9 +74,15 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     therefore program ``output_port <- input_port_mask`` and log both the VPLAN
     source/destination intent and the concrete CSR mapping.
 
-    Pad polarity follows CONFIG.INVERT: an inverted CTP's request and
-    acknowledge pads idle high and assert low, so every pad the sequences
-    drive goes through ``pad_level`` and the idle levels are re-applied
+    Pad polarity follows CONFIG.INVERT. Point-to-point request and
+    acknowledge pads of an inverted CTP idle high and assert low, so every
+    such pad the sequences drive goes through ``pad_level``. A wire-OR pad
+    sits on the bench's open-drain shared wire: the wire rests at the pull of
+    the board built for the CTP's sense (``XTRIG_WIRE_OR_PULL``, high for
+    INVERT=0) and a chiplet driver pulls it to the asserted level, so the
+    sequences never drive that pad's level; the port receives a trigger
+    ``XTRIG_CT_DST_LATENCY`` cycles after the wire is pulled and nothing when
+    it is released. The idle levels and the board pulls are re-applied
     whenever a CTP is programmed.
     """
 
@@ -85,20 +94,28 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         "xtrig_ctp_req_out_dout_en",
         "xtrig_ctp_ack_out_dout_en",
     )
-    # Observables a routed pulse can reach; the activity window ORs them per
-    # cycle from before the input pulse until the drain tail ends.
+    # Observables a routed pulse can reach, plus the wire pulls, internal
+    # requests, and receive pulses that date the receive edge; the activity
+    # window ORs them per cycle from before the input pulse until the drain
+    # tail ends.
     OUTPUT_SIGNALS = (
         "xtrig_ctm_src_req",
         "xtrig_ctp_req_out_dout",
         "xtrig_ctp_req_out_dout_en",
+        "xtrig_ctp_wire_ext_assert",
+        "xtrig_ctm_dst_req",
+        "xtrig_ctp_ct_dst",
+        "xtrig_int_ct_dst",
     )
     # Observables that must show no activity from the first held cycle of a
     # system reset until after its release: every request and acknowledge
-    # output plus the CTP busy flops.
+    # output, the CTP busy flops, and every port's receive pulse.
     RESET_SIGNALS = QUIET_GROUPS + (
         "xtrig_ctp_req_out_dout",
         "xtrig_ctp_ack_out_dout",
         "xtrig_ctp_busy",
+        "xtrig_ctp_ct_dst",
+        "xtrig_int_ct_dst",
     )
     # Observables that must show no activity while a CSR access is in flight:
     # the request and acknowledge enables and the CTP busy flops. The pad
@@ -135,6 +152,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     CHK_AXIL = "CHK-XTRIG-AXIL"
     CHK_AW_LOCK = "CHK-XTRIG-AW-LOCK"
     CHK_AR_STALL = "CHK-XTRIG-AR-STALL"
+    CHK_WIRE = "CHK-XTRIG-WIRE"
 
     # DTP_XTRIG_NEGATIVE_CHECK=<n> is the per-check negative-validation hook:
     # every record of the evidence ID at index n is written with a corrupted
@@ -149,9 +167,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         CHK_AXIL: 7,
         CHK_AW_LOCK: 8,
         CHK_AR_STALL: 9,
+        CHK_WIRE: 10,
     }
 
     _ROUTE_IDS = (CHK_CSR, CHK_SIGNAL, CHK_ROUTE_MODEL, CHK_ISOLATION)
+    _WIRE_OR_ROUTE_IDS = _ROUTE_IDS + (CHK_STRETCH, CHK_WIRE)
     SCENARIO_REQUIRED_IDS = {
         "reg_stall": (CHK_CSR, CHK_QUIET, CHK_AXIL),
         "axi_channel_skew": (CHK_CSR, CHK_AXIL),
@@ -160,24 +180,25 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         "ctp_csr_sweep": _ROUTE_IDS + (CHK_STRETCH,),
         "ctm_csr_sweep": _ROUTE_IDS,
         "ctm_all_source_select": _ROUTE_IDS,
-        "wire_or": (CHK_CSR, CHK_SIGNAL, CHK_STRETCH),
+        "wire_or": (CHK_CSR, CHK_SIGNAL, CHK_STRETCH, CHK_ROUTE_MODEL, CHK_WIRE),
+        "wire_or_bus": _ROUTE_IDS + (CHK_WIRE,),
         "p2p": (CHK_CSR, CHK_SIGNAL),
         "random": _ROUTE_IDS + (CHK_STRETCH,),
         "reset": _ROUTE_IDS + (CHK_QUIET,),
         "dst_port_sweep": _ROUTE_IDS,
-        "ctm_wire_or_cla_to_ctp": _ROUTE_IDS + (CHK_STRETCH,),
-        "ctm_wire_or_ctp_to_cla": _ROUTE_IDS + (CHK_STRETCH,),
-        "ctm_wire_or_cla_to_cla": _ROUTE_IDS + (CHK_STRETCH,),
-        "ctm_wire_or_ctp_to_ctp": _ROUTE_IDS + (CHK_STRETCH,),
+        "ctm_wire_or_cla_to_ctp": _WIRE_OR_ROUTE_IDS,
+        "ctm_wire_or_ctp_to_cla": _WIRE_OR_ROUTE_IDS,
+        "ctm_wire_or_cla_to_cla": _WIRE_OR_ROUTE_IDS,
+        "ctm_wire_or_ctp_to_ctp": _WIRE_OR_ROUTE_IDS,
         "ctm_p2p_cla_to_ctp": _ROUTE_IDS,
         "ctm_p2p_ctp_to_cla": _ROUTE_IDS,
         "ctm_p2p_cla_to_cla": _ROUTE_IDS,
         "ctm_p2p_ctp_to_ctp": _ROUTE_IDS,
-        "ctm_reset_wire_or_mode": _ROUTE_IDS + (CHK_QUIET,),
+        "ctm_reset_wire_or_mode": _ROUTE_IDS + (CHK_QUIET, CHK_WIRE),
         "ctm_reset_p2p_mode": _ROUTE_IDS + (CHK_QUIET,),
         "ctm_reset_all_modes": _ROUTE_IDS + (CHK_QUIET,),
         "ctm_rand_all_scenarios": _ROUTE_IDS,
-        "ctm_rand_wire_or_only": _ROUTE_IDS,
+        "ctm_rand_wire_or_only": _ROUTE_IDS + (CHK_WIRE,),
         "ctm_rand_p2p_only": _ROUTE_IDS,
         "ctm_rand_cla_to_ctp": _ROUTE_IDS,
         "ctm_rand_ctp_to_cla": _ROUTE_IDS,
@@ -312,13 +333,17 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         cfg = pack_ctp_config(mode=mode, invert=invert, reset=reset)
         self.cfg.xtrig_ctp_shadow.note(ctp_idx, mode=mode, invert=invert)
         self.log.info(
-            "Configure CTP[%d]: mode=%s invert=%d reset=%d stretch=%d",
+            "Configure CTP[%d]: mode=%s invert=%d reset=%d stretch=%d (wire rests at %d)",
             ctp_idx,
             "p2p" if mode else "wire_or",
             invert,
             reset,
             stretch,
+            XTRIG_WIRE_OR_PULL[invert],
         )
+        # The board comes first: the wire rests at the pull of the new sense
+        # before software sets INVERT to match it.
+        self.xtrig.set_ctp_wire_pull(self.cfg.xtrig_ctp_shadow.wire_pull_mask)
         await self.write_read_check(
             ctp_config_addr(ctp_idx),
             cfg,
@@ -445,16 +470,16 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         return self.cfg.xtrig_ctp_shadow.invert_mask
 
     def pad_level(self, ctp_mask_: int, *, asserted: bool) -> int:
-        """Pad levels of ``ctp_mask_``: an asserted pad is high, an idle pad low, inverted CTPs the reverse."""
+        """Point-to-point pad levels of ``ctp_mask_``: asserted high and idle low, inverted CTPs the reverse."""
         inverted = self._ctp_invert_mask()
         return (ctp_mask_ & ~inverted) if asserted else (ctp_mask_ & inverted)
 
     def apply_idle_levels(self) -> None:
-        """Drive every CTP request and acknowledge pad to its idle level."""
+        """Rest every point-to-point pad at its idle level and every wire at its board's pull."""
         inverted = self._ctp_invert_mask()
-        self.xtrig.set_ctp_req_out_din(inverted)
         self.xtrig.set_ctp_req_in_din(inverted)
         self.xtrig.set_ctp_ack_in_din(inverted)
+        self.xtrig.set_ctp_wire_pull(self.cfg.xtrig_ctp_shadow.wire_pull_mask)
 
     async def idle_inputs(self) -> None:
         """Return every driven cross-trigger input to its idle level."""
@@ -563,7 +588,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     async def drive_input_mask(self, input_mask: int, mode: int, *, cycles: int = 2) -> None:
         """Pulse every input of ``input_mask`` in the same cycles; a P2P CTP source raises its request pad.
 
-        Internal sources request through a pulse in every mode.
+        A wire-OR CTP source has its shared wire pulled by the chiplet on it;
+        internal sources request through a pulse in every mode.
         """
         ctp_bits = project_ctp_mask(input_mask)
         if mode == XTRIG_CTP_MODE_P2P and ctp_bits:
@@ -574,10 +600,67 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             await self.drive_p2p_req_in(ports[0], asserted=False)
             return
         await self.xtrig.pulse_input_mask(
-            project_ctp_mask(input_mask),
-            project_internal_mask(input_mask),
-            ctp_invert=self._ctp_invert_mask(),
-            cycles=cycles,
+            project_ctp_mask(input_mask), project_internal_mask(input_mask), cycles=cycles
+        )
+
+    def check_receive_edges(
+        self,
+        window: DtpXtrigActivityWindow,
+        *,
+        ctp_sources: int,
+        int_sources: int,
+        label: str,
+    ) -> None:
+        """Every wire-OR source received its own assertion once, at the receive latency.
+
+        A CTP source's wire is pulled by its chiplet, an internal source's
+        CLA request rises; the port's ct_dst rises ``XTRIG_CT_DST_LATENCY``
+        cycles later and never again in the window (CHK-XTRIG-WIRE).
+        """
+        for ctp_idx in self.port_bits(ctp_sources):
+            self._check_receive_edge(
+                window,
+                assert_name="xtrig_ctp_wire_ext_assert",
+                receive_name="xtrig_ctp_ct_dst",
+                bit=ctp_idx,
+                label=f"{label}.ctp{ctp_idx}",
+            )
+        for int_idx in self.port_bits(int_sources):
+            self._check_receive_edge(
+                window,
+                assert_name="xtrig_ctm_dst_req",
+                receive_name="xtrig_int_ct_dst",
+                bit=int_idx,
+                label=f"{label}.int{int_idx}",
+            )
+
+    def _check_receive_edge(
+        self,
+        window: DtpXtrigActivityWindow,
+        *,
+        assert_name: str,
+        receive_name: str,
+        bit: int,
+        label: str,
+        asserted_at: int | None = None,
+    ) -> None:
+        if asserted_at is None:
+            asserted_at = window.first_seen[assert_name].get(bit)
+        received_at = window.first_seen[receive_name].get(bit)
+        latency = -1 if asserted_at is None or received_at is None else received_at - asserted_at
+        self.check_evidence(
+            self.CHK_WIRE,
+            f"{label}.ct_dst_latency",
+            latency,
+            XTRIG_CT_DST_LATENCY,
+            context=f"asserted@{asserted_at} ct_dst@{received_at}",
+        )
+        self.check_evidence(
+            self.CHK_WIRE,
+            f"{label}.ct_dst_pulses",
+            window.rises[receive_name].get(bit, 0),
+            1,
+            context="one receive per wire assertion",
         )
 
     def fired_vector(self, activity: dict[str, int], hold: dict[str, int]) -> int:
@@ -642,12 +725,29 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         window: DtpXtrigActivityWindow,
         label: str,
         drain_cycles: int = ISOLATION_TAIL_CYCLES,
+        input_mask: int = 0,
+        await_outputs: bool = True,
     ) -> None:
-        """Judge one route: selected outputs fire, the window matches the model, nothing else moves."""
-        await self.await_selected_outputs(output_mask, mode, label=label)
+        """Judge one route: selected outputs fire, the window matches the model, nothing else moves.
+
+        The wire-OR sources of ``input_mask`` (every internal source, and the
+        CTP sources unless ``mode`` is point-to-point) also receive their own
+        assertion once, at the receive latency. With ``await_outputs`` false
+        the selected outputs have already fired inside the window and only the
+        drain tail is waited for.
+        """
+        if await_outputs:
+            await self.await_selected_outputs(output_mask, mode, label=label)
         await ClockCycles(self.xtrig.clk, drain_cycles)
         activity, hold, last = await window.stop()
         fired = self.fired_vector(activity, hold)
+        ctp_sources = 0 if mode == XTRIG_CTP_MODE_P2P else project_ctp_mask(input_mask)
+        self.check_receive_edges(
+            window,
+            ctp_sources=ctp_sources & ~self._ctp_p2p_mask(),
+            int_sources=project_internal_mask(input_mask),
+            label=label,
+        )
         intent = output_mask & XTRIG_CTM_SELECT_MASK
         self.log.info(
             "XTRIG WINDOW %-28s fired=0x%07x predicted=0x%07x intent=0x%07x p2p_ctps=0x%04x "
@@ -714,6 +814,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             window=window,
             label=label,
             drain_cycles=drain_cycles,
+            input_mask=input_mask,
         )
 
     async def verify_route(
@@ -791,13 +892,23 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             await self.program_route(int_port, 1 << ctp_port, label=f"wire_or.stretch{stretch}")
             await self.run_wire_or_pulse(ctp_idx, int_idx, stretch=stretch)
 
-        self.log_step("sync", "Drive external CT_Req_out input and expect internal CT delivery")
+        for invert in (0, 1):
+            self.log_step(
+                "sync",
+                "A chiplet pulls the CTP's shared wire (INVERT=%d) and the internal CT delivers",
+                invert,
+            )
+            await self.program_ctp(ctp_idx, mode=XTRIG_CTP_MODE_WIRE_OR, invert=invert, stretch=0)
+            await self.program_route(
+                ctp_port, 1 << int_port, label=f"wire_or.external_to_internal.inv{invert}"
+            )
+            await self.run_route_window(
+                1 << ctp_port,
+                1 << int_port,
+                XTRIG_CTP_MODE_WIRE_OR,
+                label=f"wire_or.external_sync.inv{invert}",
+            )
         await self.program_ctp(ctp_idx, mode=XTRIG_CTP_MODE_WIRE_OR, stretch=0)
-        await self.program_route(ctp_port, 1 << int_port, label="wire_or.external_to_internal")
-        await self.drive_input_port(ctp_port, XTRIG_CTP_MODE_WIRE_OR)
-        await self.wait_signal_mask(
-            "xtrig_ctm_src_req", 1 << int_idx, 1 << int_idx, label="wire_or.external_sync"
-        )
         self.log_summary("wire_or", ctp=ctp_idx, internal=int_idx, checked_stretches="15,0,random")
 
     async def run_wire_or_pulse(self, ctp_idx: int, int_idx: int, *, stretch: int) -> None:
@@ -836,6 +947,151 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             self.xtrig.sample_signal("xtrig_ctp_busy") & mask,
             0,
         )
+
+    async def run_wire_or_bus(self) -> None:
+        """Several CTPs on one shared wire: the transmitter's, a chiplet's, and a merged pull each reach every member once."""
+        self.log_banner("DTP XTRIG CTPs on one shared wire-OR wire")
+        # Seeded per pass: the members of the wire, their common sense and
+        # stretch, the transmitter, the internal source that triggers it, and
+        # one internal output per member.
+        rng = self.rng("xtrig_wire_or_bus")
+        members = rng.sample(range(XTRIG_NUM_CTP), rng.randrange(2, 5))
+        invert = rng.randrange(2)
+        stretch = rng.randrange(0, 8)
+        int_src, *int_outs = rng.sample(range(XTRIG_NUM_INT_CT), len(members) + 1)
+        tx = members[0]
+        member_ports = sum(1 << external_ctp_port(m) for m in members)
+        listener_outputs = sum(1 << internal_ct_port(k) for k in int_outs)
+        self.log.info(
+            "shared wire: CTPs %s (INVERT=%d, STRETCH_MULT=%d), transmitter CTP[%d] from "
+            "internal CT[%d], listeners to internal CTs %s",
+            members,
+            invert,
+            stretch,
+            tx,
+            int_src,
+            int_outs,
+        )
+        for member in members:
+            await self.program_ctp(
+                member, mode=XTRIG_CTP_MODE_WIRE_OR, invert=invert, stretch=stretch
+            )
+        self.xtrig.set_ctp_wire_group(member_ports, pull=XTRIG_WIRE_OR_PULL[invert])
+        await self.clear_ctm_routes()
+        await self.program_ctm_src(external_ctp_port(tx), 1 << internal_ct_port(int_src))
+        for member, int_out in zip(members, int_outs, strict=True):
+            await self.program_ctm_src(internal_ct_port(int_out), 1 << external_ctp_port(member))
+        transmit_predicted = self.ctm_model.route(1 << internal_ct_port(int_src)) | (
+            self.ctm_model.route(member_ports)
+        )
+        transmit_intent = (1 << external_ctp_port(tx)) | listener_outputs
+
+        self.log_step(
+            1, "The transmitter pulls the wire: every member, itself included, receives once"
+        )
+        window = await self._open_route_window()
+        await self.xtrig.pulse_ctm_dst_req(1 << int_src, cycles=1)
+        await self.check_output_mask(
+            transmit_intent,
+            XTRIG_CTP_MODE_WIRE_OR,
+            predicted=transmit_predicted,
+            window=window,
+            label="wire_or_bus.transmit",
+            drain_cycles=self.ISOLATION_TAIL_CYCLES + stretch,
+            input_mask=1 << internal_ct_port(int_src),
+        )
+        self._check_shared_wire_receive(
+            window,
+            members,
+            pulled_at_name="xtrig_ctp_req_out_dout_en",
+            pulled_by=tx,
+            label="wire_or_bus.transmit",
+        )
+
+        self.log_step(2, "A chiplet pulls the wire: every member receives once")
+        puller = members[-1]
+        window = await self._open_route_window()
+        await self.xtrig.pull_ctp_wire(puller, cycles=rng.randrange(1, 6))
+        await self.check_output_mask(
+            listener_outputs,
+            XTRIG_CTP_MODE_WIRE_OR,
+            predicted=self.ctm_model.route(member_ports),
+            window=window,
+            label="wire_or_bus.chiplet",
+        )
+        self._check_shared_wire_receive(
+            window,
+            members,
+            pulled_at_name="xtrig_ctp_wire_ext_assert",
+            pulled_by=puller,
+            label="wire_or_bus.chiplet",
+        )
+
+        self.log_step(
+            3, "The transmitter pulls while a chiplet holds the wire: one merged assertion"
+        )
+        window = await self._open_route_window()
+        self.xtrig.set_ctp_wire_ext_assert(1 << puller)
+        await ClockCycles(self.xtrig.clk, rng.randrange(1, 4))
+        await self.xtrig.pulse_ctm_dst_req(1 << int_src, cycles=1)
+        # The chiplet keeps the wire asserted until the transmitter has released it.
+        await self.wait_signal_mask(
+            "xtrig_ctp_req_out_dout_en", 1 << tx, 1 << tx, label="wire_or_bus.merged.tx_pulls"
+        )
+        await self.wait_signal_mask(
+            "xtrig_ctp_req_out_dout_en", 1 << tx, 0, label="wire_or_bus.merged.tx_releases"
+        )
+        await ClockCycles(self.xtrig.clk, 2)
+        self.xtrig.set_ctp_wire_ext_assert(0)
+        await self.check_output_mask(
+            transmit_intent,
+            XTRIG_CTP_MODE_WIRE_OR,
+            predicted=transmit_predicted,
+            window=window,
+            label="wire_or_bus.merged",
+            drain_cycles=self.ISOLATION_TAIL_CYCLES + stretch,
+            await_outputs=False,
+        )
+        self._check_shared_wire_receive(
+            window,
+            members,
+            pulled_at_name="xtrig_ctp_wire_ext_assert",
+            pulled_by=puller,
+            label="wire_or_bus.merged",
+        )
+
+        self.xtrig.set_ctp_wire_group(0, pull=XTRIG_WIRE_OR_PULL[0])
+        await self.clear_ctm_routes()
+        self.log_summary("wire_or_bus", members=members, invert=invert, stretch=stretch)
+
+    async def _open_route_window(self) -> DtpXtrigActivityWindow:
+        """Idle the inputs and start an activity window over the route observables."""
+        await self.idle_inputs()
+        await ClockCycles(self.xtrig.clk, 2)
+        window = self.xtrig.activity_window(self.OUTPUT_SIGNALS)
+        window.start()
+        return window
+
+    def _check_shared_wire_receive(
+        self,
+        window: DtpXtrigActivityWindow,
+        members: list[int],
+        *,
+        pulled_at_name: str,
+        pulled_by: int,
+        label: str,
+    ) -> None:
+        """Every member of the shared wire received the one assertion ``pulled_by`` made."""
+        pulled_at = window.first_seen[pulled_at_name].get(pulled_by)
+        for member in members:
+            self._check_receive_edge(
+                window,
+                assert_name=pulled_at_name,
+                receive_name="xtrig_ctp_ct_dst",
+                bit=member,
+                label=f"{label}.ctp{member}",
+                asserted_at=pulled_at,
+            )
 
     async def run_p2p(self) -> None:
         self.log_banner("DTP XTRIG CTP point-to-point handshakes")
@@ -978,12 +1234,12 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 await self.verify_wire_or_pulse(
                     ctp_idx, int_idx, stretch=stretch, invert=invert, label=label
                 )
-                # The pad data of a wire-OR port is the static level INVERT
-                # selects while its enable pulses.
+                # The pad data of a wire-OR port rests at the level the port
+                # pulls the wire to.
                 await self.wait_signal_mask(
                     "xtrig_ctp_req_out_dout",
                     1 << ctp_idx,
-                    (1 << ctp_idx) if invert else 0,
+                    XTRIG_WIRE_OR_ASSERT[invert] << ctp_idx,
                     label=f"{label}.wire_polarity",
                 )
                 continue

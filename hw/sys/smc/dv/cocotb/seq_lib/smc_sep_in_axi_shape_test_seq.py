@@ -23,6 +23,13 @@ exercised here, each against an expectation the conversion chain fixes:
   path that errored the response but still wrote is caught. The code actually
   returned is reported, not asserted; a specification statement fixing it
   would let this become an exact expectation.
+* A 16-beat INCR burst of full-width beats into the SPM: every beat must land
+  at its own address and a 16-beat read must return them in order, so a
+  splitter that drops, repeats or reorders beats past the first few is caught.
+* A 2-beat FIXED burst of full-width beats to the scratch registers: the
+  response is tolerated either way and reported, since the same fabric
+  statement is missing for it, and its payload equals what the registers
+  already hold, so a path that stores it changes nothing the readbacks test.
 
 SCRATCH_COLD_0/1 are the targets: plain read/write storage with no side
 effects, restored to zero before the sequence ends.
@@ -33,7 +40,7 @@ from __future__ import annotations
 import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_indexed_addr
+from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 SCRATCH_COLD_0 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0)
@@ -56,12 +63,24 @@ BURST_BEAT1 = 0x5A5A_0002
 # Payload of the rejected FIXED / WRAP bursts, which must never be stored.
 REJECTED_BEAT0 = 0xDEAD_0001
 REJECTED_BEAT1 = 0xDEAD_0002
+# Sixteen full-width beats into the SPM, above the window other hosted
+# sequences use and below the top of the memory.
+LONG_BURST_BEATS = 16
+LONG_BURST_BYTES = 8
+LONG_BURST_BASE = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR") + 0x3_0000
+
+
+def long_beat(index: int) -> int:
+    return (0x10B0_0000_0000_0000 | (index << 32)) ^ (0x0000_0000_C0DE_0000 | index)
+
+
+LONG_BURST_PAYLOAD = sum(long_beat(i) << (64 * i) for i in range(LONG_BURST_BEATS))
 
 # Accesses this sequence issues over SEP_IN, counted for the reachability gate.
-EXPECTED_ACCESSES = 18
-# Scoreboard value compares the sequence must book: all ten reads carry an
-# expectation, so all ten are compared by the scoreboard.
-MIN_VALUE_CHECKS = 10
+EXPECTED_ACCESSES = 23
+# Scoreboard value compares the sequence must book: all thirteen reads carry
+# an expectation, so all thirteen are compared by the scoreboard.
+MIN_VALUE_CHECKS = 13
 
 
 class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
@@ -83,6 +102,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
         wdata: int = 0,
         expected: int | None = None,
         expect_error: bool = False,
+        allow_error: bool = False,
     ) -> SmcSysAxiItem:
         item = SmcSysAxiItem(f"{op.value}_{label}")
         item.op = op
@@ -92,8 +112,9 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
         item.burst = burst
         item.wdata = wdata
         item.expected = expected
-        if expect_error:
+        if expect_error or allow_error:
             item.allow_error = True
+        if expect_error:
             item.expect_error = True
         await self.start_item(item)
         await self.finish_item(item)
@@ -149,8 +170,50 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             wdata=rejected_payload,
             expect_error=True,
         )
+        # A FIXED burst of full-width beats carries the words the registers
+        # already hold, so whether the path stores or refuses it the readbacks
+        # below still test the INCR result.
+        fixed_wide = await self._axi(
+            "fixed_wide_burst",
+            SmcSysAxiOp.WRITE,
+            SCRATCH_COLD_0,
+            length=8,
+            beats=2,
+            burst=BURST_FIXED,
+            wdata=(burst_payload << 64) | burst_payload,
+            allow_error=True,
+        )
         await self._axi("after_reject0", SmcSysAxiOp.READ, SCRATCH_COLD_0, expected=BURST_BEAT0)
         await self._axi("after_reject1", SmcSysAxiOp.READ, SCRATCH_COLD_1, expected=BURST_BEAT1)
+
+        # AxLEN=15 INCR of full-width beats into the SPM, read back beat by
+        # beat at both ends and as one burst.
+        await self._axi(
+            "long_burst",
+            SmcSysAxiOp.WRITE,
+            LONG_BURST_BASE,
+            length=LONG_BURST_BYTES,
+            beats=LONG_BURST_BEATS,
+            wdata=LONG_BURST_PAYLOAD,
+        )
+        await self._axi(
+            "long_beat0", SmcSysAxiOp.READ, LONG_BURST_BASE, length=8, expected=long_beat(0)
+        )
+        await self._axi(
+            "long_beat_last",
+            SmcSysAxiOp.READ,
+            LONG_BURST_BASE + (LONG_BURST_BEATS - 1) * LONG_BURST_BYTES,
+            length=8,
+            expected=long_beat(LONG_BURST_BEATS - 1),
+        )
+        await self._axi(
+            "long_burst_rd",
+            SmcSysAxiOp.READ,
+            LONG_BURST_BASE,
+            length=LONG_BURST_BYTES,
+            beats=LONG_BURST_BEATS,
+            expected=LONG_BURST_PAYLOAD,
+        )
 
         await self._axi("restore0", SmcSysAxiOp.WRITE, SCRATCH_COLD_0, wdata=0)
         await self._axi("restore1", SmcSysAxiOp.WRITE, SCRATCH_COLD_1, wdata=0)
@@ -185,4 +248,18 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             wrap.resp_code,
             BURST_BEAT0,
             BURST_BEAT1,
+        )
+        cocotb.log.info(
+            "CHK-SEP-IN-BURST-LONG: AxLEN=%d INCR write of %d-byte beats at 0x%08x read back "
+            "beat 0 = 0x%016x and beat %d = 0x%016x, and the AxLEN=%d read returned every beat "
+            "in order; the AxLEN=1 FIXED burst of 8-byte beats answered resp=%s (reported, not "
+            "asserted)",
+            LONG_BURST_BEATS - 1,
+            LONG_BURST_BYTES,
+            LONG_BURST_BASE,
+            long_beat(0),
+            LONG_BURST_BEATS - 1,
+            long_beat(LONG_BURST_BEATS - 1),
+            LONG_BURST_BEATS - 1,
+            fixed_wide.resp_code,
         )

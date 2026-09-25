@@ -1,18 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Cross Trigger Network loopback: full paths over emulated pad wiring.
+"""Cross Trigger Network loopback: full paths over chip-to-chip wiring.
 
 Where the routing test judges one matrix hop per scenario, these scenarios
-emulate the chip-to-chip wiring in the bench (pad output mirrored onto a pad
-input every cycle) and judge complete multi-hop paths:
+wire chiplets together in the bench and judge complete multi-hop paths:
 
-1. Wire-OR chain — CTP[i] --matrix--> CTP[j] --emulated wire--> CTP[k]
-   --matrix--> internal wire-OR CT[m]: one external pulse into i must arrive
-   at m exactly once, having crossed two matrix hops and one wire.
-2. External P2P pair — CTP[i] (sender) cross-coupled with CTP[j] (receiver):
-   the four-phase handshake completes autonomously through the mirrors, the
-   received trigger lands on an internal observable exactly once, and both
-   CTPs report BUSY==0 through the CSR crossbar afterwards.
+1. Wire-OR chain — CTP[i] --matrix--> CTP[j] --shared wire--> CTP[k] and
+   CTP[l] --matrix--> internal wire-OR CT[m] and CT[n]: one pull of i's wire
+   by its chiplet arrives at m and at n exactly once, having crossed two
+   matrix hops and the open-drain wire j, k and l share. Every port fires
+   CT_DST_LATENCY cycles after the wire it listens to is pulled, and the
+   repeater's own pull is the one assertion the wire carries.
+2. External P2P pair — CTP[i] (sender) cross-coupled with CTP[j] (receiver)
+   by pad mirrors (push-pull point-to-point pads): the four-phase handshake
+   completes autonomously, the received trigger lands on an internal
+   observable exactly once, and both CTPs report BUSY==0 through the CSR
+   crossbar afterwards.
 3. Internal P2P duplex — two internal P2P CTs routed at each other complete
    simultaneous handshakes in both directions.
 """
@@ -24,6 +27,7 @@ import random
 import cocotb
 from cocotb.triggers import ClockCycles, FallingEdge
 from ctn_base_test import (
+    CT_DST_LATENCY,
     CTP_STATUS_BUSY_BIT,
     E2E_LATENCY,
     EXT_WIRE_OR_STRETCH,
@@ -38,11 +42,11 @@ from ctn_base_test import (
 
 
 class PadMirror:
-    """Mirror pad outputs onto pad inputs each cycle (bench-emulated wiring).
+    """Mirror pad outputs onto pad inputs each cycle (point-to-point wiring).
 
     Each connection maps one bit of a DUT output vector onto one bit of a
     driven input vector, standing in for the board/package wire between two
-    chiplets' pads.
+    chiplets' push-pull pads.
     """
 
     def __init__(self, tb: CtnTb, connections: list[tuple[str, int, str, int]]) -> None:
@@ -73,9 +77,10 @@ class PadMirror:
 
 @cocotb.test()
 async def ctn_loopback_test(dut) -> None:
+    """Multi-hop paths over a shared wire-OR wire and point-to-point pad mirrors."""
     tb = CtnTb(dut, name="ctn_loopback_test")
     seed = random_seed()
-    random.seed(seed)
+    rng = random.Random(seed)
     tb.log.info("seed=%d", seed)
 
     await tb.start()
@@ -84,30 +89,43 @@ async def ctn_loopback_test(dut) -> None:
 
     # ------------------------------------------------------------------
     tb.log.info("=" * 70)
-    tb.log.info("TEST 1: wire-OR chain over an emulated wire")
+    tb.log.info("TEST 1: wire-OR chain over a shared wire with two listeners")
     tb.log.info("=" * 70)
-    i, j, k = random.sample(range(NUM_CTP), 3)
-    m = random.randrange(NUM_INT_CT_WIRE_OR)
+    i, j, k, q = rng.sample(range(NUM_CTP), 4)
+    m, n = rng.sample(range(NUM_INT_CT_WIRE_OR), 2)
     tb.log.info(
-        "chain: CTP[%d] -> matrix -> CTP[%d] -> wire -> CTP[%d] -> matrix -> int CT[%d]",
+        "chain: CTP[%d] -> matrix -> CTP[%d] -> shared wire -> CTP[%d], CTP[%d] -> matrix -> "
+        "int CT[%d], int CT[%d]",
         i,
         j,
         k,
+        q,
         m,
+        n,
     )
     await tb.route(j, 1 << i)
     await tb.route(int_ct_matrix_port(m), 1 << k)
-    mirror = PadMirror(tb, [("ctp_req_out_dout_en", j, "ctp_req_out_din", k)]).start()
+    await tb.route(int_ct_matrix_port(n), 1 << q)
+    tb.share_wire((1 << j) | (1 << k) | (1 << q))
+    i_dst = BitWatcher(tb, dut.ctp_ct_dst, i, f"CTP[{i}] ct_dst").start()
     j_watch = BitWatcher(tb, dut.ctp_req_out_dout_en, j, f"CTP[{j}] window").start()
+    listeners = {
+        idx: BitWatcher(tb, dut.ctp_ct_dst, idx, f"CTP[{idx}] ct_dst").start() for idx in (j, k, q)
+    }
     m_watch = BitWatcher(tb, dut.ctm_src_req, m, f"int CT[{m}] pulse").start()
+    n_watch = BitWatcher(tb, dut.ctm_src_req, n, f"int CT[{n}] pulse").start()
 
-    await tb.pulse_input_bit("ctp_req_out_din", i, 4)
-    await tb.wait_bit(dut.ctm_src_req, m, 1, 3 * E2E_LATENCY, "chain: arrival at int CT")
+    pulled_at = await tb.assert_wire(i)
+    await tb.wait_bit(dut.ctm_src_req, m, 1, 2 * E2E_LATENCY, "chain: arrival at int CT m")
+    await tb.wait_bit(dut.ctm_src_req, n, 1, 2 * E2E_LATENCY, "chain: arrival at int CT n")
     await ClockCycles(dut.clk, E2E_LATENCY)
 
-    await mirror.stop()
-    await j_watch.stop()
-    await m_watch.stop()
+    for watch in (i_dst, j_watch, m_watch, n_watch, *listeners.values()):
+        await watch.stop()
+    assert i_dst.rise_cycles == [pulled_at + CT_DST_LATENCY], (
+        f"chain: CTP[{i}] wire pulled at cycle {pulled_at}, expected one ct_dst at "
+        f"{pulled_at + CT_DST_LATENCY}, observed {i_dst.rise_cycles}"
+    )
     assert j_watch.pulses == 1, (
         f"chain: CTP[{j}] repeater fired {j_watch.pulses} windows, expected exactly 1"
     )
@@ -115,20 +133,30 @@ async def ctn_loopback_test(dut) -> None:
         f"chain: CTP[{j}] window {j_watch.high_samples} cycles != "
         f"STRETCH_MULT+1 = {EXT_WIRE_OR_STRETCH + 1}"
     )
-    assert m_watch.pulses == 1, (
-        f"chain: internal CT[{m}] fired {m_watch.pulses} pulses, expected exactly 1 "
-        "for one external trigger"
-    )
+    # The repeater's enable pulls the shared wire in the cycle it rises; the
+    # repeater and both listeners receive that one assertion together.
+    wire_pulled_at = j_watch.rise_cycles[0]
+    for idx, watch in listeners.items():
+        assert watch.rise_cycles == [wire_pulled_at + CT_DST_LATENCY], (
+            f"chain: shared wire pulled at cycle {wire_pulled_at}, expected CTP[{idx}] ct_dst "
+            f"once at {wire_pulled_at + CT_DST_LATENCY}, observed {watch.rise_cycles}"
+        )
+    for idx, watch in ((m, m_watch), (n, n_watch)):
+        assert watch.pulses == 1, (
+            f"chain: internal CT[{idx}] fired {watch.pulses} pulses, expected exactly 1 "
+            "for one external trigger"
+        )
     await tb.route(j, 0)
     await tb.route(int_ct_matrix_port(m), 0)
+    await tb.route(int_ct_matrix_port(n), 0)
     await tb.quiesce()
 
     # ------------------------------------------------------------------
     tb.log.info("=" * 70)
     tb.log.info("TEST 2: external P2P pair with autonomous four-phase handshake")
     tb.log.info("=" * 70)
-    i, j = random.sample(range(NUM_CTP), 2)
-    a = random.randrange(NUM_INT_CT_WIRE_OR)
+    i, j = rng.sample(range(NUM_CTP), 2)
+    a = rng.randrange(NUM_INT_CT_WIRE_OR)
     m = (a + 1) % NUM_INT_CT_WIRE_OR
     tb.log.info(
         "pair: int CT[%d] -> matrix -> CTP[%d](sender) <-> CTP[%d](receiver) -> "
@@ -182,7 +210,7 @@ async def ctn_loopback_test(dut) -> None:
     tb.log.info("=" * 70)
     tb.log.info("TEST 3: internal P2P duplex (both directions at once)")
     tb.log.info("=" * 70)
-    a, b = random.sample(range(NUM_INT_CT_WIRE_OR, NUM_INT_CT), 2)
+    a, b = rng.sample(range(NUM_INT_CT_WIRE_OR, NUM_INT_CT), 2)
     tb.log.info("duplex: int CT[%d] <-> int CT[%d]", a, b)
     await tb.route(int_ct_matrix_port(b), 1 << int_ct_matrix_port(a))
     await tb.route(int_ct_matrix_port(a), 1 << int_ct_matrix_port(b))

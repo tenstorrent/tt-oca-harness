@@ -11,6 +11,7 @@ from .smc_addr_map import (
     HANG_DET_DATA_ACCEL_CTRL,
     HANG_DET_ENABLE,
     HANG_DET_FIRE,
+    HANG_DET_IRQ_EN,
     HANG_DET_IRQ_TEST,
     HANG_DET_SEP_AXI_CTRL,
     HANG_DET_SYS_AXI_CTRL,
@@ -87,9 +88,21 @@ class smc_hang_detector_sanity_test_seq(SmcCsrSeq):
             "HANG_SYS_EN_TEST", HANG_DET_SYS_AXI_CTRL, HANG_DET_ENABLE | HANG_DET_IRQ_TEST
         )
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0}, "POISON_NO_IRQ_EN")
+        # irq_en and irq_test without enable: enable gates irq_o as well.
+        await self.csr_write(
+            "HANG_SYS_IRQEN_TEST", HANG_DET_SYS_AXI_CTRL, HANG_DET_IRQ_EN | HANG_DET_IRQ_TEST
+        )
+        await self._await_irqs(
+            dut,
+            {"tb_axi_hang_irq": 0, "tb_axi_hang_irq_sys": 0},
+            "POISON_NO_ENABLE",
+        )
         await self.csr_write("HANG_SYS_CLEAR_POISON", HANG_DET_SYS_AXI_CTRL, 0)
         await self._await_irqs(dut, {"tb_axi_hang_irq": 0}, "POISON_CLR")
-        cocotb.log.info("CHK-HANG-POISON: irq_test gated by enable+irq_en")
+        cocotb.log.info(
+            "CHK-HANG-POISON: irq_test gated by enable+irq_en (test alone, enable+test and "
+            "irq_en+test each left irq_o low)"
+        )
 
         # Per-detector: fire one, others off, then clear.
         for label, addr, pin in _DETECTORS:

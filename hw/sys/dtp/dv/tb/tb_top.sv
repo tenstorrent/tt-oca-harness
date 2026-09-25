@@ -257,6 +257,15 @@ module dtp_uvm_top
   logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_out_dout_en;
   logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_out_din;
   logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ack_out_din_en;
+  // CT_Req_out shared wires (ocah_open_drain_bus): a private wire per pad
+  // with one chiplet driver, or the group wire the pads in
+  // xtrig_ctp_wire_group share; the receive pulse of every port.
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_wire_private;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_wire_private_mismatch;
+  logic                              xtrig_ctp_wire_group_wire;
+  logic                              xtrig_ctp_wire_group_mismatch;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_ct_dst;
+  logic [dtp_dv_cfg_pkg::NumIntCt-1:0] xtrig_int_ct_dst;
 
   // ------------------------------------------------------------------
   // TB interfaces: both frameworks bind to these instances (SV-UVM through
@@ -1039,6 +1048,8 @@ module dtp_uvm_top
     .ctm_dst_req_i         (xtrig_ctm_dst_req),
     .ctp_req_out_dout_i    (xtrig_ctp_req_out_dout),
     .ctp_req_out_dout_en_i (xtrig_ctp_req_out_dout_en),
+    .ctp_req_out_din_en_i  (xtrig_ctp_req_out_din_en),
+    .ctp_ct_dst_i          (xtrig_ctp_ct_dst),
     .ctp_req_in_din_i      (xtrig_ctp_req_in_din),
     .ctp_ack_in_din_i      (xtrig_ctp_ack_in_din)
   );
@@ -1613,11 +1624,50 @@ module dtp_uvm_top
   // '0 = quiescent).
   assign xtrig_ctm_src_ack     = u_xtrig_if.xtrig_ctm_src_ack;
   assign xtrig_ctm_dst_req     = u_xtrig_if.xtrig_ctm_dst_req;
-  assign xtrig_ctp_req_out_din = u_xtrig_if.xtrig_ctp_req_out_din;
   assign xtrig_ctp_req_in_din  = u_xtrig_if.xtrig_ctp_req_in_din;
   assign xtrig_ctp_ack_in_din  = u_xtrig_if.xtrig_ctp_ack_in_din;
   assign xtrig_ctp_ack_out_din = u_xtrig_if.xtrig_ctp_ack_out_din;
 
+  // CT_Req_out shared wires. A chiplet driver pulls towards the level
+  // opposite its wire's pull; a pad in the group leaves its private wire.
+  for (genvar ctp = 0; ctp < dtp_dv_cfg_pkg::NumCtp; ctp++) begin : gen_xtrig_ctp_wire
+    ocah_open_drain_bus #(
+      .NumDrivers (2)
+    ) u_wire (
+      .pull_i     (u_xtrig_if.xtrig_ctp_wire_pull[ctp]),
+      .dout_i     ({~u_xtrig_if.xtrig_ctp_wire_pull[ctp], xtrig_ctp_req_out_dout[ctp]}),
+      .dout_en_i  ({u_xtrig_if.xtrig_ctp_wire_ext_assert[ctp], xtrig_ctp_req_out_dout_en[ctp]}
+                   & {2{~u_xtrig_if.xtrig_ctp_wire_group[ctp]}}),
+      .wire_o     (xtrig_ctp_wire_private[ctp]),
+      .mismatch_o (xtrig_ctp_wire_private_mismatch[ctp])
+    );
+    assign xtrig_ctp_req_out_din[ctp] = u_xtrig_if.xtrig_ctp_wire_group[ctp]
+        ? xtrig_ctp_wire_group_wire : xtrig_ctp_wire_private[ctp];
+    assign u_xtrig_if.xtrig_ctp_wire_mismatch[ctp] = u_xtrig_if.xtrig_ctp_wire_group[ctp]
+        ? xtrig_ctp_wire_group_mismatch : xtrig_ctp_wire_private_mismatch[ctp];
+    assign xtrig_ctp_ct_dst[ctp] = u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.ct_dst_o;
+  end
+
+  ocah_open_drain_bus #(
+    .NumDrivers (2 * dtp_dv_cfg_pkg::NumCtp)
+  ) u_xtrig_ctp_group_wire (
+    .pull_i     (u_xtrig_if.xtrig_ctp_wire_group_pull),
+    .dout_i     ({{dtp_dv_cfg_pkg::NumCtp{~u_xtrig_if.xtrig_ctp_wire_group_pull}},
+                  xtrig_ctp_req_out_dout}),
+    .dout_en_i  ({u_xtrig_if.xtrig_ctp_wire_ext_assert & u_xtrig_if.xtrig_ctp_wire_group,
+                  xtrig_ctp_req_out_dout_en & u_xtrig_if.xtrig_ctp_wire_group}),
+    .wire_o     (xtrig_ctp_wire_group_wire),
+    .mismatch_o (xtrig_ctp_wire_group_mismatch)
+  );
+
+  for (genvar ict = 0; ict < dtp_dv_cfg_pkg::NumIntCt; ict++) begin : gen_xtrig_int_ct_dst
+    assign xtrig_int_ct_dst[ict] =
+        u_dut.u_cross_trigger_network.gen_int_ctp[ict].u_int_ctp_core.ct_dst_o;
+  end
+
+  assign u_xtrig_if.xtrig_ctp_req_out_din     = xtrig_ctp_req_out_din;
+  assign u_xtrig_if.xtrig_ctp_ct_dst          = xtrig_ctp_ct_dst;
+  assign u_xtrig_if.xtrig_int_ct_dst          = xtrig_int_ct_dst;
   assign u_xtrig_if.xtrig_ctm_src_req         = xtrig_ctm_src_req;
   assign u_xtrig_if.xtrig_ctm_dst_ack         = xtrig_ctm_dst_ack;
   assign u_xtrig_if.xtrig_ctp_req_out_dout    = xtrig_ctp_req_out_dout;
