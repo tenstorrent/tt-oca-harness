@@ -181,12 +181,13 @@ tests = [
 
 [[groups]]
 name = "xtrig"
-expected_count = 28
+expected_count = 29
 tests = [
     "dtp_xtrig_reg_stall_test",
     "dtp_xtrig_rand_deterministic_csr_sweep_test",
     "dtp_ctm_rand_deterministic_csr_sweep_test",
     "dtp_xtrig_wire_or_test",
+    "dtp_xtrig_wire_or_bus_test",
     "dtp_xtrig_p2p_test",
     "dtp_xtrig_rand_test",
     "dtp_ctm_rand_all_source_select_coverage_test",
@@ -217,7 +218,7 @@ tests = [
 name = "all"
 # Exact nightly inventory; must match the VPLAN's scenario-expanded test-case
 # count. The loader errors when the list and this count diverge.
-expected_count = 151
+expected_count = 152
 tests = [
     "dtp_sanity_test",
     "dtp_jtag_bypass_test",
@@ -346,6 +347,7 @@ tests = [
     "dtp_xtrig_rand_deterministic_csr_sweep_test",
     "dtp_ctm_rand_deterministic_csr_sweep_test",
     "dtp_xtrig_wire_or_test",
+    "dtp_xtrig_wire_or_bus_test",
     "dtp_xtrig_p2p_test",
     "dtp_xtrig_rand_test",
     "dtp_ctm_rand_all_source_select_coverage_test",

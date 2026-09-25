@@ -43,6 +43,11 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
             dut.captured_straps_i.value = 0
         if hasattr(dut, "gpio_boot_stall_drive_i"):
             dut.gpio_boot_stall_drive_i.value = 0
+        # The per-pad drive enables are among the idle inputs; left undriven on
+        # a four-state simulator they put X on every pad, and pad 57 is the
+        # boot-stall input whose sticky flop then holds fuse_reset_n_delayed_o
+        # at X once the boot gate opens.
+        self.drive_idle_inputs()
         # Prefix, not literal names: this TB calls the same slave ext_in_*.
         axi = smu_axi_in_prefix(dut)
         for suffix in ("awvalid", "wvalid", "bready", "arvalid", "rready"):

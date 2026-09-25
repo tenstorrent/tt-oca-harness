@@ -38,6 +38,14 @@ tags = ["xtrig"]
 run_modes = ["xtrig"]
 
 [[tests]]
+name = "dtp_xtrig_wire_or_bus_test"
+module = { cocotb = "dtp_xtrig_wire_or_bus_test", uvm = "dtp_xtrig_wire_or_bus_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["xtrig"]
+run_modes = ["xtrig"]
+
+[[tests]]
 name = "dtp_xtrig_p2p_test"
 module = { cocotb = "dtp_xtrig_p2p_test", uvm = "dtp_xtrig_p2p_test" }
 seed = 1

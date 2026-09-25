@@ -19,10 +19,14 @@ class smc_i2c_target_nack_timeout_test(smc_base_test):
     """A stretch nobody releases must end in the target's own NACK."""
 
     required_evidence = (
+        "CHK-I2C-TGT-EVENTS-RETAIN",
+        "CHK-I2C-TGT-NACK-COUNT-SATURATES",
         "CHK-I2C-TGT-NACK-TIMEOUT-RX",
         "CHK-I2C-TGT-NACK-TIMEOUT-TX",
+        "CHK-I2C-TGT-RESTART",
+        "CHK-I2C-VAL-IDLE",
     )
-    min_evidence = 2
+    min_evidence = 6
 
     auto_protocol_vip = False
 

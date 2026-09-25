@@ -25,6 +25,7 @@ bind cross_trigger_network dtp_ctn_xtrig_props #(
   .hs_busy_i             (gen_ext_ctp[0].u_ctp.u_core.u_handshake_ctrl.busy_q),
   .req_in_sync_i         (gen_ext_ctp[0].u_ctp.u_core.ct_req_in_din_sync_inv),
   .ack_in_sync_i         (gen_ext_ctp[0].u_ctp.u_core.ct_ack_in_din_sync_inv),
+  .req_out_din_raw_sync_i (gen_ext_ctp[0].u_ctp.u_core.ct_req_out_din_sync),
   .req_out_din_sync_i    (gen_ext_ctp[0].u_ctp.u_core.ct_req_out_din_sync_inv),
   .req_out_din_prev_i    (gen_ext_ctp[0].u_ctp.u_core.wire_or_req_out_prev),
   .ct_dst_i              (gen_ext_ctp[0].u_ctp.u_core.ct_dst_q),

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I2C0 target holds SCL through the address phase of a repeated START.
+"""An I2C target holds SCL through the address phase of a repeated START.
 
 `smc_i2c_target_acq_stretch_test` fills the acquisition FIFO part-way through
 a transfer, so the target stretches at a *data* byte. The address phase is a
@@ -25,6 +25,11 @@ framing: the repeated START arrives as an `ACQDATA.SIGNAL` of
 `I2C_ACQ_SIGNAL_RESTART`, after every byte written before it. That entry is
 what proves the held address phase was recorded after the drain rather than
 lost.
+
+One instance is driven per simulation. Filling an acquisition FIFO byte by
+byte costs most of the leaf's time, and three of them in one run take longer
+than a single simulation is given, so the instance is a parameter of the
+sequence and the package carries one entry per instance.
 
 The hold itself is measured the same way as the data-byte case, by
 `SclStretchMonitor`: only samples where the bus is low while the bench has
@@ -67,15 +72,24 @@ from .smc_i2c_target_smbus_test_seq import (
     _pack_timing4,
 )
 
-#: Every instance is driven. `+smc_i2c_shared_bus` puts all three on one
-#: open-drain bus, so the bench controller on I2C0's pads reaches each of them
-#: by address, and only the instance under test is enabled while a leg runs.
+#: The instances this sequence can be pointed at. `+smc_i2c_shared_bus` puts
+#: all three on one open-drain bus, so the bench controller on I2C0's pads
+#: reaches each of them by address, and only the instance under test is
+#: enabled while a leg runs. One instance is driven per simulation: filling an
+#: acquisition FIFO three times over runs past the time a single VCS leaf is
+#: given.
 INSTANCES = (0, 1, 2)
 TARGET_ADDR = {0: 0x23, 1: 0x28, 2: 0x29}
 
 # Bit-bang half-period, matching the other target-stretch leaves: the VIP
 # clocks one bus period per two of these.
 VIP_SPEED = 2_000_000
+# The fill is the longest part of the run and nothing in it is being measured,
+# so it is clocked faster than the phases that are. The rate is still far
+# below the point where the target's own timing matters: `TIMING3.THD_DAT` is
+# five core clocks here, an order of magnitude inside a bit at this rate, and
+# every byte of the fill is required to be acknowledged.
+FILL_SPEED = 4_000_000
 # More bytes than any acquisition FIFO in this configuration holds. The fill
 # stops as soon as STATUS.ACQFULL reports the target is out of room, so this
 # is only a bound on how long the bench will keep trying.
@@ -121,8 +135,10 @@ MIN_STRETCH_SAMPLES = 16
 class smc_i2c_target_addr_stretch_test_seq(SmcCsrSeq):
     """A repeated START against a full acquisition FIFO must hold the bus."""
 
-    def __init__(self, name: str = "smc_i2c_target_addr_stretch_test_seq") -> None:
+    def __init__(self, name: str = "smc_i2c_target_addr_stretch_test_seq", idx: int = 0) -> None:
         super().__init__(name)
+        assert idx in INSTANCES, f"I2C instance {idx} is not one of {INSTANCES}"
+        self.idx = idx
         self.legs: list[tuple[str, int, int]] = []
         self.reads: list[tuple[str, int]] = []
 
@@ -180,6 +196,7 @@ class smc_i2c_target_addr_stretch_test_seq(SmcCsrSeq):
         self, r: dict[str, int], master: SmcI2cMasterVip, idx: int, label: str
     ) -> list[int]:
         """Write bytes one at a time until the target reports it is out of room."""
+        master.set_speed(FILL_SPEED)
         await master.send_start()
         nack = await master.send_byte((TARGET_ADDR[idx] & 0x7F) << 1)
         assert nack == 0, f"{label}: the target NACKed its own address at the first START"
@@ -187,6 +204,7 @@ class smc_i2c_target_addr_stretch_test_seq(SmcCsrSeq):
         for i in range(MAX_FILL_BYTES):
             status = await self.csr_read(f"I2C{idx}_STATUS_FILL_{label}", r["status"])
             if status & I2C_STATUS_ACQFULL:
+                master.set_speed(VIP_SPEED)
                 return sent
             value = (0x40 + i) & 0xFF
             nack = await master.send_byte(value)
@@ -365,42 +383,44 @@ class smc_i2c_target_addr_stretch_test_seq(SmcCsrSeq):
         )
 
     async def body(self) -> None:
+        idx = self.idx
         assert "smc_i2c_shared_bus" in cocotb.plusargs, (
-            "smc_i2c_target_addr_stretch_test needs +smc_i2c_shared_bus; without it only "
-            "I2C0's pads are on the bench bus and the other two instances cannot be reached"
+            f"the I2C{idx} address-stretch leaf needs +smc_i2c_shared_bus; without it only "
+            f"I2C0's pads are on the bench bus and the other two instances cannot be reached"
         )
         await self.prove_dut_i2c0_pins()
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
         await self.csr_write("CLOCK_GATE_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
 
-        for idx in INSTANCES:
-            await self._disable_others(idx)
-            await self._leg(idx, nack_addr_after_timeout=False)
-            await self._leg(idx, nack_addr_after_timeout=True)
-            await self._read_leg(idx)
+        await self._disable_others(idx)
+        await self._leg(idx, nack_addr_after_timeout=False)
+        await self._leg(idx, nack_addr_after_timeout=True)
+        await self._read_leg(idx)
 
+        ack, nack = (leg for leg in self.legs)
         cocotb.log.info(
-            "CHK-I2C-TGT-ADDR-STRETCH: with CTRL.NACK_ADDR_AFTER_TIMEOUT clear, a repeated "
+            "CHK-I2C%d-TGT-ADDR-STRETCH: with CTRL.NACK_ADDR_AFTER_TIMEOUT clear, a repeated "
             "START against a full acquisition FIFO was held on the bus and draining ACQDATA "
-            "released it, on every instance: the address was acknowledged, the restart entry "
-            "was recorded after every byte written before it, and the transfer ended in a "
-            "STOP (%s)",
-            ", ".join(
-                f"{n} held {h} samples, {e} entries"
-                for n, h, e in self.legs
-                if "ACKADDR" in n and "NACK" not in n
-            ),
+            "released it: the address was acknowledged, the restart entry was recorded after "
+            "every byte written before it, and the transfer ended in a STOP (held %d samples, "
+            "%d entries)",
+            idx,
+            ack[1],
+            ack[2],
         )
         cocotb.log.info(
-            "CHK-I2C-TGT-ADDR-STRETCH-NACK-MODE: the same repeated START with "
+            "CHK-I2C%d-TGT-ADDR-STRETCH-NACK-MODE: the same repeated START with "
             "CTRL.NACK_ADDR_AFTER_TIMEOUT set took the target's other address-phase path to "
-            "the same result once drained, on every instance (%s). No stretch timeout is "
-            "enabled in either leg, so software is the only thing that can release the hold",
-            ", ".join(f"{n} held {h} samples" for n, h, _ in self.legs if "NACKADDR" in n),
+            "the same result once drained (held %d samples). No stretch timeout is enabled in "
+            "either leg, so software is the only thing that can release the hold",
+            idx,
+            nack[1],
         )
         cocotb.log.info(
-            "CHK-I2C-TGT-ADDR-STRETCH-READ: when the held address phase belonged to a read, "
-            "every instance went on holding for a byte to send and was released only by a "
-            "drain and a write into TXDATA, after which the bench read back the byte (%s)",
-            ", ".join(f"{n} held {h} samples" for n, h in self.reads),
+            "CHK-I2C%d-TGT-ADDR-STRETCH-READ: when the held address phase belonged to a read, "
+            "the target went on holding for a byte to send and was released only by a drain "
+            "and a write into TXDATA, after which the bench read back the byte (held %d "
+            "samples)",
+            idx,
+            self.reads[0][1],
         )

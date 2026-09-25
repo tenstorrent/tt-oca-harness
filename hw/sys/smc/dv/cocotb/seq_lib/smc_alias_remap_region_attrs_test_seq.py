@@ -62,7 +62,7 @@ _REGION = 7
 _ATTR_BITS = ALIAS_REMAP_ATTRS_CACHEABLE | ALIAS_REMAP_ATTRS_VALID
 _LOW_HALF = 0xFFFF_FFFF
 
-_ACCESSES = 8 + 2 + 2 + 2 + 2
+_ACCESSES = 8 + 2 + 4 + 2 + 2 + 2
 
 
 class smc_alias_remap_region_attrs_test_seq(SmcCsrSeq):
@@ -72,6 +72,7 @@ class smc_alias_remap_region_attrs_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.regions_checked = 0
         self.attrs_held = 0
+        self.attrs_at_reset = 0
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -107,6 +108,20 @@ class smc_alias_remap_region_attrs_test_seq(SmcCsrSeq):
             f"it valid only because a non-inclusive end equal to its start contains no "
             f"address, and that is no longer true"
         )
+
+        # First with both attribute bits at their reset of 0. A four-byte write
+        # at the low half leaves their lanes deasserted and they have to stay
+        # clear; one at the upper half selects their lanes and writes 0 into
+        # them, which is also what they already hold. Neither can open a remap:
+        # `valid` stays 0 throughout.
+        for tag, addr in (("ATTRS_RESET_LOW", attrs), ("ATTRS_RESET_UPPER", attrs + 4)):
+            await self.csr_write(tag, addr, 0, length=4)
+            word = await self.csr_read(f"{tag}_RB", attrs, length=8)
+            assert word & _ATTR_BITS == 0, (
+                f"REGION_ATTRS reads 0x{word:016x} after a four-byte write of 0 with "
+                f"cacheable and valid at their reset; both have to still read 0"
+            )
+        self.attrs_at_reset = 2
 
         await self.csr_write("ATTRS_SET", attrs, _ATTR_BITS, length=8)
         guard = await self.csr_read("ATTRS_SET_RB", attrs, length=8)
@@ -151,10 +166,11 @@ class smc_alias_remap_region_attrs_test_seq(SmcCsrSeq):
 
         cocotb.log.info(
             "CHK-ALIAS-REMAP-ATTRS-RETAIN: all %d alias-remap regions read with valid "
-            "clear, region %d was then marked cacheable and valid over a window its own "
-            "reset leaves empty and with the remap offset at zero, and both attribute bits "
-            "survived a four-byte write of the half of the register they do not occupy "
-            "before the register was restored to its reset and read back",
+            "clear; on region %d cacheable and valid first held their reset of 0 across "
+            "four-byte writes at each half of the register, and were then marked set over "
+            "a window its own reset leaves empty, with the remap offset at zero, and "
+            "survived a four-byte write of the half they do not occupy before the register "
+            "was restored to its reset and read back",
             self.regions_checked,
             _REGION,
         )

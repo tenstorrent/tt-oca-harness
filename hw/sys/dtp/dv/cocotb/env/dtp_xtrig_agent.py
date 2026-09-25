@@ -36,8 +36,10 @@ class DtpXtrigActivityWindow:
     Sampling happens in the read-only phase of every clock cycle, so a
     one-cycle pulse anywhere in the window lands in ``activity`` (OR of all
     samples) and a one-cycle drop lands in ``hold`` (AND of all samples), which
-    is how an active-low request is seen. ``stop`` cancels the sampler and
-    returns activity, hold, and the last sample.
+    is how an active-low request is seen. ``first_seen`` holds the window
+    cycle at which each bit first rose and ``rises`` how many times it rose.
+    ``stop`` cancels the sampler and returns activity, hold, and the last
+    sample.
     """
 
     ALL_ONES = (1 << 32) - 1
@@ -50,6 +52,8 @@ class DtpXtrigActivityWindow:
         self.last = {name: 0 for name in names}
         # Cycle offset (from start) at which each bit of each signal first rose.
         self.first_seen: dict[str, dict[int, int]] = {name: {} for name in names}
+        # Number of rises of each bit of each signal.
+        self.rises: dict[str, dict[int, int]] = {name: {} for name in names}
         self.cycles = 0
         self._task: cocotb.Task | None = None
 
@@ -72,6 +76,11 @@ class DtpXtrigActivityWindow:
                 bit = (new_bits & -new_bits).bit_length() - 1
                 self.first_seen[name][bit] = self.cycles
                 new_bits &= new_bits - 1
+            rose = value & ~self.last[name]
+            while rose:
+                bit = (rose & -rose).bit_length() - 1
+                self.rises[name][bit] = self.rises[name].get(bit, 0) + 1
+                rose &= rose - 1
             self.activity[name] |= value
             self.hold[name] &= value
             self.last[name] = value
@@ -104,10 +113,11 @@ class DtpXtrigBfm:
         self.clk = tb_if.clk
 
     def init_signals(self) -> None:
+        """Quiesce every stimulus vector; the wire pulls and the group describe the board and stay."""
         for name in (
             "xtrig_ctm_src_ack",
             "xtrig_ctm_dst_req",
-            "xtrig_ctp_req_out_din",
+            "xtrig_ctp_wire_ext_assert",
             "xtrig_ctp_req_in_din",
             "xtrig_ctp_ack_in_din",
             "xtrig_ctp_ack_out_din",
@@ -125,6 +135,12 @@ class DtpXtrigBfm:
             "xtrig_ctp_req_out_dout_en",
             "xtrig_ctp_req_out_din",
             "xtrig_ctp_req_out_din_en",
+            "xtrig_ctp_wire_ext_assert",
+            "xtrig_ctp_wire_pull",
+            "xtrig_ctp_wire_group",
+            "xtrig_ctp_wire_mismatch",
+            "xtrig_ctp_ct_dst",
+            "xtrig_int_ct_dst",
             "xtrig_ctp_req_in_dout",
             "xtrig_ctp_req_in_dout_en",
             "xtrig_ctp_req_in_din",
@@ -150,27 +166,37 @@ class DtpXtrigBfm:
         await NextTimeStep()
         return sample
 
-    async def pulse_input_mask(
-        self, ctp_mask: int, int_mask: int, *, ctp_invert: int = 0, cycles: int = 2
-    ) -> None:
-        """Pulse CTP request-out pads and internal CT requests in the same cycles.
+    async def pulse_input_mask(self, ctp_mask: int, int_mask: int, *, cycles: int = 2) -> None:
+        """Pull the shared wires of ``ctp_mask`` and request the internal CTs of ``int_mask``.
 
-        A pad of ``ctp_invert`` pulses low from its high idle level; every
-        other pad pulses high from low. Bits outside the masks keep their
-        levels.
+        The chiplet on each selected wire pulls it to the asserted level of
+        its sense for ``cycles`` clocks; the internal requests rise for the
+        same cycles. Bits outside the masks keep their state.
         """
         ctp_mask &= (1 << XTRIG_NUM_CTP) - 1
         int_mask &= (1 << XTRIG_NUM_INT_CT) - 1
-        ctp_rest = _int(self.pins.xtrig_ctp_req_out_din) & ~ctp_mask
-        self.pins.xtrig_ctp_req_out_din.value = ctp_rest | (ctp_mask & ~ctp_invert)
+        self.pins.xtrig_ctp_wire_ext_assert.value = (
+            _int(self.pins.xtrig_ctp_wire_ext_assert) | ctp_mask
+        )
         self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) | int_mask
         await ClockCycles(self.clk, cycles)
-        self.pins.xtrig_ctp_req_out_din.value = ctp_rest | (ctp_mask & ctp_invert)
+        self.pins.xtrig_ctp_wire_ext_assert.value = (
+            _int(self.pins.xtrig_ctp_wire_ext_assert) & ~ctp_mask
+        )
         self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~int_mask
 
-    def set_ctp_req_out_din(self, mask: int) -> None:
-        """Drive the CTP request-out pad inputs to ``mask``."""
-        self.pins.xtrig_ctp_req_out_din.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+    def set_ctp_wire_pull(self, mask: int) -> None:
+        """Rest each CTP's private wire at the level of its bit in ``mask``."""
+        self.pins.xtrig_ctp_wire_pull.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+
+    def set_ctp_wire_ext_assert(self, mask: int) -> None:
+        """The chiplets on the wires of ``mask`` pull them; the others release."""
+        self.pins.xtrig_ctp_wire_ext_assert.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+
+    def set_ctp_wire_group(self, mask: int, *, pull: int) -> None:
+        """Put the CTPs of ``mask`` on one shared wire resting at ``pull``."""
+        self.pins.xtrig_ctp_wire_group.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+        self.pins.xtrig_ctp_wire_group_pull.value = pull & 1
 
     def set_ctp_req_in_din(self, mask: int) -> None:
         """Drive the CTP request-in pad inputs to ``mask``."""
@@ -186,11 +212,9 @@ class DtpXtrigBfm:
         await ClockCycles(self.clk, cycles)
         self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~mask
 
-    async def drive_ctp_req_out_din_pulse(self, ctp_idx: int, cycles: int = 2) -> None:
-        mask = 1 << ctp_idx
-        self.pins.xtrig_ctp_req_out_din.value = _int(self.pins.xtrig_ctp_req_out_din) | mask
-        await ClockCycles(self.clk, cycles)
-        self.pins.xtrig_ctp_req_out_din.value = _int(self.pins.xtrig_ctp_req_out_din) & ~mask
+    async def pull_ctp_wire(self, ctp_idx: int, cycles: int = 2) -> None:
+        """The chiplet on CTP ``ctp_idx``'s wire pulls it for ``cycles`` clocks."""
+        await self.pulse_input_mask(1 << ctp_idx, 0, cycles=cycles)
 
     async def drive_ctp_p2p_req_in(self, ctp_idx: int, value: int) -> None:
         mask = 1 << ctp_idx

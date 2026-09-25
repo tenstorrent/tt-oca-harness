@@ -23,8 +23,16 @@ same run:
   sink. Without this leg the deny leg would also pass on a trace path that was
   dead for some other reason.
 
-A second, smaller sink window is then programmed and has to take the stream as
-well, so the window bounds are not a constant the sink ignores.
+The allow leg keeps the stream running until the write pointer has passed the
+size of the second, smaller window without wrapping in the first. The smaller
+window is then programmed and the stream driven until the sink's wrap flag
+sets, with every write-pointer sample required to stay inside it. The same
+pointer that ran past that size in the large window is held under it in the
+small one, so the limit register is what bounds it.
+
+The window registers are written through each field's own bit positions: the
+pointer and limit fields sit above two reserved bits and hardware writes them
+too, so the register's plain read-write mask leaves them out.
 """
 
 from __future__ import annotations
@@ -35,8 +43,10 @@ from cocotb.triggers import ClockCycles
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import (
+    checked_mask,
     dfd_register,
     dst_register,
+    field_word,
     funnel_register,
     pack_fields,
     reg_field,
@@ -53,6 +63,8 @@ _WINDOWS = (0x4000, 0x400)
 
 _SETTLE_CYCLES = 32
 _MOVE_POLLS = 32
+# Action sweeps a leg may take to pass the small window or to wrap it.
+_SWEEPS = 8
 
 
 class smc_dfd_trace_sink_window_test_seq(SmcCsrSeq):
@@ -63,6 +75,8 @@ class smc_dfd_trace_sink_window_test_seq(SmcCsrSeq):
         self.denied_pointer: int | None = None
         self.allowed_pointer: int | None = None
         self.windows_taken: dict[int, int] = {}
+        self.large_sweeps = 0
+        self.small_samples: list[int] = []
         self.value_checks = 0
 
     # -- register helpers -------------------------------------------------
@@ -81,9 +95,10 @@ class smc_dfd_trace_sink_window_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self._write(reg, word, label)
         readback = await self._read(reg, f"{label}_rb")
-        assert readback & reg.rw_mask == word & reg.rw_mask, (
-            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & reg.rw_mask:x} into its "
-            f"software-writable bits, reads 0x{readback & reg.rw_mask:x}"
+        mask = checked_mask(reg, values)
+        assert readback & mask == word & mask, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into its "
+            f"software-writable bits, reads 0x{readback & mask:x}"
         )
         self.value_checks += 1
 
@@ -100,7 +115,7 @@ class smc_dfd_trace_sink_window_test_seq(SmcCsrSeq):
             ("Trdstramwplow", 0),
         ):
             reg = sink_register(name)
-            await self._write(reg, value & reg.rw_mask, label)
+            await self._write(reg, field_word(reg, name, value), label)
         await self._write_check(control, {"Trdstramactive": 1, "Trdstramenable": 1}, label)
 
     async def _set_funnel(self, disable_dst: bool, label: str) -> None:
@@ -227,14 +242,16 @@ class smc_dfd_trace_sink_window_test_seq(SmcCsrSeq):
             wp.reset_word,
         )
 
+        pointer = reg_field(wp, "Trdstramwplow")
+        wrap = reg_field(wp, "Trdstramwrap")
         await self._set_funnel(disable_dst=False, label="allow")
         await self._run_actions(logical_op, "allow")
         self.allowed_pointer = await self._await_pointer_move("allow_post")
-        assert self.allowed_pointer != wp.reset_word, (
-            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} still reads its RDL reset of "
-            f"0x{wp.reset_word:08x} after the DST sources were re-enabled in the funnel and "
-            f"the action range driven again, so nothing reaches the sink either way and the "
-            f"deny leg above proves nothing"
+        assert self.allowed_pointer & pointer.mask, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads 0x{self.allowed_pointer:08x} "
+            f"after the DST sources were re-enabled in the funnel and the action range driven "
+            f"again: the write pointer field is still 0, so nothing reaches the sink either "
+            f"way and the deny leg above proves nothing"
         )
         self.value_checks += 1
         self.windows_taken[_WINDOWS[0]] = self.allowed_pointer
@@ -245,23 +262,49 @@ class smc_dfd_trace_sink_window_test_seq(SmcCsrSeq):
             self.allowed_pointer,
         )
 
-        for window in _WINDOWS[1:]:
-            await self._open_sink(window, f"window{window:x}")
-            await self._run_actions(logical_op, f"window{window:x}")
-            moved = await self._await_pointer_move(f"window{window:x}_post")
-            assert moved != wp.reset_word, (
-                f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} stayed at its RDL reset with the "
-                f"sink re-armed over a 0x{window:x}-byte window, so the sink only takes the "
-                f"one window size this sequence tried first"
-            )
-            self.windows_taken[window] = moved
-            self.value_checks += 1
+        large, small = _WINDOWS
+        word = self.allowed_pointer
+        while word & pointer.mask <= small and self.large_sweeps < _SWEEPS:
+            self.large_sweeps += 1
+            await self._run_actions(logical_op, f"large{self.large_sweeps}")
+            word = await self._read(wp, f"large{self.large_sweeps}")
+        assert word & pointer.mask > small and not word & wrap.mask, (
+            f"DST_SINK Trdstramwplow reads 0x{word:08x} after {self.large_sweeps} further "
+            f"sweeps in the 0x{large:x}-byte window: the pointer has to pass 0x{small:x} "
+            f"without wrapping for the small window below to be a bound it would otherwise "
+            f"cross"
+        )
+        self.windows_taken[large] = word
+        await self._open_sink(small, f"window{small:x}")
+        for sweep in range(_SWEEPS):
+            await self._run_actions(logical_op, f"window{small:x}_{sweep}")
+            word = await self._read(wp, f"window{small:x}_{sweep}")
+            self.small_samples.append(word)
+            if word & wrap.mask:
+                break
+        outside = [w for w in self.small_samples if w & pointer.mask > small]
+        assert not outside, (
+            f"DST_SINK Trdstramwplow read {[hex(w) for w in outside]} with the sink armed over "
+            f"a 0x{small:x}-byte window, past the limit it was given"
+        )
+        assert self.small_samples[-1] & wrap.mask, (
+            f"the sink wrap flag stayed 0 through {len(self.small_samples)} sweeps in the "
+            f"0x{small:x}-byte window, so the stream never reached the limit and the samples "
+            f"above do not show it bounding anything"
+        )
+        self.windows_taken[small] = self.small_samples[-1]
+        self.value_checks += 3
         cocotb.log.info(
-            "CHK-DST-SINK-WINDOW: the sink took the stream into each of the %d window sizes "
-            "programmed through Trdstramlimitlow, ending at %s, so the window bound is "
-            "re-read rather than fixed at whatever it was first given",
-            len(_WINDOWS),
-            {f"0x{w:x}": f"0x{p:08x}" for w, p in sorted(self.windows_taken.items())},
+            "CHK-DST-SINK-WINDOW: in the 0x%x-byte window the write pointer ran to 0x%08x, "
+            "past 0x%x, without wrapping; re-armed over a 0x%x-byte window the same stream "
+            "set the wrap flag with every one of %d samples (%s) inside that window, so "
+            "Trdstramlimitlow is what bounds the pointer",
+            large,
+            self.windows_taken[large],
+            small,
+            small,
+            len(self.small_samples),
+            ", ".join(hex(w) for w in self.small_samples),
         )
 
         for reg in (
