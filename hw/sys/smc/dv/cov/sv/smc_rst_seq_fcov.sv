@@ -191,10 +191,14 @@ module smc_rst_seq_fcov (
       logic core_held, logic fabric_held, logic periph_held, logic warm_held
   );
     option.per_instance = 1;
-    cp_core: coverpoint core_held;
-    cp_fabric: coverpoint fabric_held;
-    cp_periph: coverpoint periph_held;
-    cp_warm: coverpoint warm_held;
+    // Sampled only while the primary SMC reset is held. The core, periph and
+    // warm resets sit below it in the same tree, so none of them is released
+    // during the hold; the SEP_IN port's ready terms are driven by the
+    // fabric, which the primary hold does not lower.
+    cp_core: coverpoint core_held {ignore_bins released_during_hold = {1'b0};}
+    cp_fabric: coverpoint fabric_held {ignore_bins ready_lowered_by_hold = {1'b1};}
+    cp_periph: coverpoint periph_held {ignore_bins released_during_hold = {1'b0};}
+    cp_warm: coverpoint warm_held {ignore_bins released_during_hold = {1'b0};}
     x_holds: cross cp_core, cp_fabric, cp_periph, cp_warm;
   endgroup
 
