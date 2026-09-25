@@ -16,16 +16,20 @@ registers -- so on every other block they have never run:
   Each block here takes an outstanding group of interleaved reads and writes,
   so both the read-side and the write-side accept meet an acknowledge.
 * **Write data ahead of its address.** `AxiTimingProfile` with `aw_delay` set
-  presents W before AW, so the front end captures W with no AW to pair it with
-  -- the `awvalid && wvalid` row with AW low. `cpu_ctrl` and `zeroer_ctrl` also
-  take the opposite skew, AW ahead of W, which only those two had not seen.
+  presents W before AW at SEP_IN; `cpu_ctrl` and `zeroer_ctrl` also take the
+  opposite skew, AW ahead of W. Every demux in front of a block routes W only
+  after it has forwarded that write's AW, so no block registers W alone, and on
+  `cpu_ctrl` and `zeroer_ctrl` AW and W arrive together under either skew.
 * **A read arriving on a held write.** The front end dispatches a waiting read
   ahead of a waiting write when the last access was a write, so a read that
   reaches the block in the cycle it registers AW and W holds that write for one
   cycle. If the next write's AW is already behind it, AWREADY is seen low. Each
   block takes a pair of writes and a read with the read's arrival swept over
   twelve offsets, and a single write and a read over the same offsets, which
-  lines a read accept up with a write's acknowledge.
+  lines a read accept up with a write's acknowledge. The hold never lasts a
+  second cycle, so the next AW has to arrive within one cycle of the previous
+  W; behind two or more demux stages, and behind the one-write, one-read
+  converter in front of `cpu_ctrl` and `zeroer_ctrl`, it arrives later.
 * **Mixed groups against a held response.** Eight writes and a read against a
   held BREADY, and eight reads and a write against a held RREADY, queue the
   opposite access behind two unacknowledged ones.
@@ -51,8 +55,8 @@ trigger unnoticed.
 The claim for each block is the one a pipelined, skewed, backpressured manager
 is owed: every read in every group returns the value the block held, every
 write is answered, and the register holds that value at the end. A front end
-that dropped, reordered or mis-paired one of the outstanding accesses, or that
-mishandled W arriving alone, returns the wrong word or loses the write.
+that dropped, reordered or mis-paired one of the outstanding accesses returns
+the wrong word or loses the write.
 
 Three blocks need their own handling, and the card records each:
 
@@ -114,7 +118,7 @@ _PROBES: tuple[tuple[str, str], ...] = (
     ("efuse_interface_ctrl", "efuse_interface_ctrl/EFUSE_READ_REQ_TIMEOUT"),
 )
 
-# The only two blocks whose front end had not seen AW ahead of W.
+# The two blocks behind the AXI-to-AXI-Lite converter, which also take AW ahead of W.
 _AW_FIRST_BLOCKS = frozenset({"cpu_ctrl", "zeroer_ctrl"})
 
 # memmap.adoc, "Captured GPIO Straps": STRAPS_LO at the adopter external window
