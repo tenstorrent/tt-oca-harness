@@ -12,6 +12,7 @@ import pyuvm
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 from seq_lib.smu_ext_boot_seq_gate_test_seq import smu_ext_boot_seq_gate_test_seq
+from seq_lib.smu_tb_pins import smu_axi_in_prefix
 from smu_base_test import smu_base_test
 
 
@@ -32,12 +33,26 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
         dut.jtag_tck.value = 0
         dut.jtag_tms.value = 1
         dut.jtag_tdi.value = 0
-        # Every bench input the shared bring-up drives idle, the GPIO pad drivers
-        # among them: left undriven on a four-state simulator, pad 57 reads X and
-        # the boot-stall input it feeds holds fuse_reset_n_delayed_o at X.
-        self.drive_idle_inputs()
+        if hasattr(dut, "xtrig_ctm_dst_req"):
+            dut.xtrig_ctm_dst_req.value = 0
+        if hasattr(dut, "xtrig_ctm_src_ack"):
+            dut.xtrig_ctm_src_ack.value = 0
+        if hasattr(dut, "xtrig_clk_stop_req"):
+            dut.xtrig_clk_stop_req.value = 0
         if hasattr(dut, "captured_straps_i"):
             dut.captured_straps_i.value = 0
+        if hasattr(dut, "gpio_boot_stall_drive_i"):
+            dut.gpio_boot_stall_drive_i.value = 0
+        # The per-pad drive enables are among the idle inputs; left undriven on
+        # a four-state simulator they put X on every pad, and pad 57 is the
+        # boot-stall input whose sticky flop then holds fuse_reset_n_delayed_o
+        # at X once the boot gate opens.
+        self.drive_idle_inputs()
+        # Prefix, not literal names: this TB calls the same slave ext_in_*.
+        axi = smu_axi_in_prefix(dut)
+        for suffix in ("awvalid", "wvalid", "bready", "arvalid", "rready"):
+            getattr(dut, f"{axi}_{suffix}").value = 0
+
         await self.arm_async_resets()
         dut.powergood_i.value = 0
         dut.rst_cold_ni.value = 0

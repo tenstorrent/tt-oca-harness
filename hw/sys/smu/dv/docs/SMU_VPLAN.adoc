@@ -886,14 +886,14 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * The rule is the integrator guide's (`doc/integrator/src/smu.adoc`, "SMU AXI Crossbar Address Map": unmatched inbound requests return a decode error and do not reach `ext_out`); the SEP and SMC apertures are read live from the DUT to pick an address outside both.
-* Both a read and a write are issued; the crossbar itself must answer DECERR with the issued IDs, and the SMN egress boundary counters must not move.
+* A read and two writes are issued, the second write with every AWID bit set; the crossbar itself must answer DECERR with the issued IDs, and the SMN egress boundary counters must not move.
 * SMU-XBAR-CONN.S5 and S6 (the SEP and SMC self-routes) need SEP or SMC firmware that targets its own aperture and are not claimed here.
 
 *Test Procedure*:
 
 [arabic]
 . Read the live SEP and SMC aperture registers and choose a candidate address outside both.
-. Sample the `ext_out` egress boundary counters, issue a read and a write at that address, and require DECERR with the issued IDs.
+. Sample the `ext_out` egress boundary counters, issue a read and two writes at that address, the second with the all-ones AWID, and require DECERR with the issued IDs.
 . Re-sample the egress counters after a settle and require them unchanged.
 
 *Checkers*:
@@ -901,7 +901,7 @@ row's EXPECT sentence is worth, read the check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMU-XBAR-CONN-S7` |unmatched ext_in read and write DECERR with the issued IDs and nothing reaches ext_out
+|`CHK-SMU-XBAR-CONN-S7` |unmatched ext_in read and writes, including the all-ones AWID, DECERR with the issued IDs and nothing reaches ext_out
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.

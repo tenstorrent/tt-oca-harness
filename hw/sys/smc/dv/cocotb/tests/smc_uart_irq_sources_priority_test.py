@@ -50,8 +50,9 @@ class smc_uart_irq_sources_priority_test(smc_base_test):
         "CHK-UART-IRQ-PRI-RDR_vs_THRE",
         "CHK-UART-IRQ-PRI-THRE_vs_MODEM",
         "CHK-UART-IRQ-PRI-TO_vs_RDR",
+        "CHK-UART-MSR-SINGLE-DELTA",
     )
-    min_evidence = 14
+    min_evidence = 15
 
     auto_protocol_vip = False
 

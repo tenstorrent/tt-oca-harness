@@ -22,8 +22,9 @@ from smc_base_test import smc_base_test
 
 # Directed stimulus floor, written out here rather than read back from
 # `seq.accesses`: a floor derived from the sequence's own counter shrinks with a
-# sequence that silently stopped issuing accesses. Bounded polls can add reads,
-# never remove them, so this is the count with every poll satisfied first time.
+# sequence that silently stopped issuing accesses. Bounded polls and the
+# sampled-mux discovery can add accesses, never remove them, so this is the count
+# with every poll and discovery satisfied first time.
 #
 #   DEBUG_CTRL force_clk_en write + readback                                  2
 #   the initial segment-select programming, one write per mux id             64
@@ -33,15 +34,18 @@ from smc_base_test import smc_base_test
 #   Trdstcontrol write + readback                                             2
 #   empty start: the packetizer read and the sink pointer read                2
 #   CLA arm: EAP reset write, control write, 2 for the LogicalOp discovery    4
+#   64 CLA mux writes, normal debug mode                                     64
+#   sampled-mux discovery: 64 identifier-mode writes, the two-word
+#     snapshot, one probe (write and two-word snapshot)                      69
 #   64 action writes                                                         64
-#   3 further segment rotations at 64 writes each                           192
+#   4 segment rotations of the sampled mux (write and two-word snapshot)     12
 #   1 further frame-length write + readback                                   2
 #   the quiesce write and the delivered read                                  2
-#   restore: Trdstcontrol, Trdstimpl, EAP, CLA control, funnel, sink
-#     control, DEBUG_BUS_MUX, DEBUG_CTRL                                      8
+#   restore: Trdstcontrol, Trdstimpl, EAP, CLA control, CLA mux, funnel,
+#     sink control, DEBUG_BUS_MUX, DEBUG_CTRL                                 9
 #                                                                         ------
-#                                                                            355
-TRACE_FORMAT_MIN_CSR_ACCESSES = 355
+#                                                                            309
+TRACE_FORMAT_MIN_CSR_ACCESSES = 309
 
 
 @pyuvm.test()

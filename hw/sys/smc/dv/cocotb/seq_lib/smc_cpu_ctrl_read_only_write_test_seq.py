@@ -58,6 +58,10 @@ _WRITE_PATTERN = 0xFFFF_FFFF_FFFF_FFFF
 
 _ACCESSES_PER_READ_ONLY = 3
 _ACCESSES_FOR_WDT = 4
+_MUTEX = "smc_cpu_ctrl/MUTEX"
+# Accesses one mutex costs: four reads that each take it, two half writes while
+# held, a full write carrying a one, two half writes while free, and the release.
+_ACCESSES_PER_MUTEX = 10
 
 
 class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
@@ -65,6 +69,7 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_cpu_ctrl_read_only_write_test_seq") -> None:
         super().__init__(name)
+        self.mutexes_held = 0
         self.read_only_registers = 0
         self.pulse_count_before = -1
         self.pulse_count_after = -1
@@ -80,6 +85,50 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             f"`sw = r`, so the write has to take no effect"
         )
         self.read_only_registers += 1
+
+    async def _mutex_leg(self, index: int, addr: int, width: int) -> None:
+        """Every combination of the mutex bit and its byte lane, and a one on it.
+
+        `cpu_ctrl.rdl` makes `MUTEX.mutex` bit 0 of a 64-bit register and
+        describes it as "HW mutex. Reads will attempt to acquire mutex, 1 on
+        success. If the mutex is already acquired, the read will return 0. To
+        release the mutex, write any value to the register." So a read is the
+        only way to see the field, it takes the mutex, and any write gives it
+        back -- whichever half the write selects.
+
+        The leg writes the register with the bit both free and held, and with
+        the lane that carries it both selected and not: a four-byte write at the
+        low half selects it, one at the upper half does not. Each write while
+        held must give the mutex back, which the read after it shows by taking
+        it again; each write while free must leave it free. A one is also
+        carried on the bit's lane, which the releases elsewhere never do.
+        """
+        half = width // 2
+        name = f"MUTEX{index}"
+
+        async def take(tag: str, why: str) -> None:
+            got = await self.csr_read(f"{name}_{tag}", addr, length=width)
+            assert got & 1, f"MUTEX[{index}] read 0x{got:x} {why}"
+
+        await take("ACQUIRE", "at the start; the RDL returns 0 when something else holds it")
+        await self.csr_write(f"{name}_HELD_LOW", addr, 0, length=4)
+        await take("AFTER_HELD_LOW", "after a low-half write while held; any write releases it")
+        await self.csr_write(f"{name}_HELD_UPPER", addr + half, 0, length=4)
+        await take(
+            "AFTER_HELD_UPPER",
+            "after an upper-half write while held; that write did not select bit 0's "
+            "lane, but any write releases it",
+        )
+        await self.csr_write(f"{name}_RELEASE_ONE", addr, 1, length=width)
+        await self.csr_write(f"{name}_FREE_LOW", addr, 1, length=4)
+        await self.csr_write(f"{name}_FREE_UPPER", addr + half, 0, length=4)
+        await take(
+            "AFTER_FREE",
+            "after a low-half and an upper-half write while free; neither may take it, so "
+            "it had to still be free",
+        )
+        await self.csr_write(f"{name}_RELEASE", addr, 0, length=width)
+        self.mutexes_held += 1
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
@@ -131,6 +180,21 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             f"fields; it carries the configured pulse durations and a bit that reads low "
             f"while a core reset is in progress, and none of that may move"
         )
+        mutexes = rdl_array(_MUTEX)
+        for index, reg in enumerate(mutexes):
+            await self._mutex_leg(index, reg.addr, reg.width_bytes)
+        assert self.mutexes_held == len(mutexes), (
+            f"{self.mutexes_held} of {len(mutexes)} mutexes driven"
+        )
+        cocotb.log.info(
+            "CHK-CPU-CTRL-MUTEX-HALF-WRITE: each of the %d CPU_CTRL mutexes took a "
+            "four-byte write at the half its bit occupies and at the half it does not, "
+            "both while held and while free, and a one on its bit's lane; every write while "
+            "held gave the mutex back, shown by the next read taking it again, every write "
+            "while free left it free, and every mutex this leaf took was given back",
+            self.mutexes_held,
+        )
+
         cocotb.log.info(
             "CHK-CPU-CTRL-WDT-ZERO-WRITE: a full-width write of 0 into the four "
             "`singlepulse` reset fields of WDT_TIMEOUT_RESET left the register reading 0, "
@@ -140,7 +204,11 @@ class smc_cpu_ctrl_read_only_write_test_seq(SmcCsrSeq):
             self.pulse_count_after,
         )
 
-        expected = len(targets) * _ACCESSES_PER_READ_ONLY + _ACCESSES_FOR_WDT
+        expected = (
+            len(targets) * _ACCESSES_PER_READ_ONLY
+            + _ACCESSES_FOR_WDT
+            + len(mutexes) * _ACCESSES_PER_MUTEX
+        )
         self.assert_all_reachable(expected, "CPU_CTRL_READ_ONLY_WRITE")
         assert self.read_only_registers == len(targets), (
             f"{self.read_only_registers} of {len(targets)} read-only registers written at"

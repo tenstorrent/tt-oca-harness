@@ -7,15 +7,8 @@
   'use strict';
 
   // Generate the headings rather than defining literally in the html
-  var SUMMARY_HEADINGS = [
-    'Block',
-    'Tests',
-    'Passing',
-    'Code Coverage',
-    'Branch Coverage',
-    'Expression Coverage',
-    'User Coverage',
-  ];
+  var METRIC_HEADINGS = ['Tests', 'Passing'];
+  var SUMMARY_HEADINGS = ['Block (framework, simulator)'].concat(METRIC_HEADINGS);
   var TEST_HEADINGS = ['Test', 'Category', 'Seed', 'Status', 'Duration'];
 
   // Files baked in during build, or public URLs
@@ -27,9 +20,6 @@
   // Bands shared by pass rate and every coverage column.
   var PASS_AT = 95;
   var WARN_AT = 70;
-
-  // Columns mapped from tools/dv/runlib/coverage_model.py CLOSURE_METRICS.
-  var COVERAGE_COLUMNS = ['line', 'branch', 'expression', 'user'];
 
   var GRID_LINE = '#e6e6e6';
 
@@ -53,9 +43,10 @@
   // selects one with.
   var IDENTITY = ['flow', 'framework', 'tool'];
 
-  // Match to dut_status[] flows
+  // The blocks each table declares. A block publishing nothing still gets a
+  // row, so what is in scope but unverified stays visible.
   var CHIP_ROWS = ['chip_ocah'];
-  var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'aou'];
+  var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'smu', 'aou'];
   var LINKABLE_ROWS = CHIP_ROWS.concat(BLOCK_ROWS);
 
   /**
@@ -117,15 +108,6 @@
       return;
     }
     cell(row, pct + ' %', band(pct));
-  }
-
-  /**
-   * Format a date as a minute-resolution UTC stamp, e.g. "2026-08-31 20:11 UTC".
-   * @param {!Date} date The date to format.
-   * @return {string} The formatted stamp.
-   */
-  function utcStamp(date) {
-    return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
   }
 
   /**
@@ -204,16 +186,47 @@
   }
 
   /**
-   * Produce a coverage object containing coverage data per flow.
+   * The coverage families the given series report between them. Which families
+   * exist depends on the simulator, so a page asks only about what it shows.
    * @param {!Object} summary Parsed summary.json.
-   * @return {!Object} Coverage entries keyed by flow name.
+   * @param {!Array<!Object>} entries The dut_status entries being shown.
+   * @return {!Array<string>} The family names, sorted.
    */
-  function coverageByFlow(summary) {
-    var coverage = Object.create(null);
-    (summary.results || []).forEach(function (result) {
-      if (result && result.flow) coverage[result.flow] = result.coverage;
+  function coverageFamilies(summary, entries) {
+    var seen = Object.create(null);
+    entries.forEach(function (entry) {
+      var metrics = (coverageFor(summary, entry) || {}).effective_metrics || {};
+      Object.keys(metrics).forEach(function (family) {
+        seen[family] = true;
+      });
     });
-    return coverage;
+    return Object.keys(seen).sort();
+  }
+
+  /**
+   * A coverage family as a column heading, e.g. "fsm_state" to "Fsm state".
+   * @param {string} family The family as the publisher names it.
+   * @return {string} The heading.
+   */
+  function familyHeading(family) {
+    return (family.charAt(0).toUpperCase() + family.slice(1)).replace(/_/g, ' ');
+  }
+
+  /**
+   * The coverage a summary published for one series.
+   * @param {!Object} summary Parsed summary.json.
+   * @param {!Object} entry The dut_status entry to match.
+   * @return {?Object} Its results[].coverage, or null when it has none.
+   */
+  function coverageFor(summary, entry) {
+    var result = (summary.results || []).filter(function (candidate) {
+      return matches(candidate, {
+        flow: entry.flow,
+        framework: entry.framework,
+        tool: entry.tool,
+      });
+    })[0];
+    return (result && result.coverage) || null;
   }
 
   /**
@@ -243,82 +256,130 @@
   }
 
   /**
-   * Build one row of a summary table: the block name followed by the columns
-   * named in SUMMARY_HEADINGS. Both the overview tables and the single-row
-   * table on a block page use this, so the two cannot drift apart.
-   * @param {string} name Block name rendered in the first cell.
-   * @param {?Object} dut The block's dut_status entry, or undefined when the
-   *     published data has none; every metric then reads n/a.
-   * @param {?Object} coverage The block's results[].coverage entry, if any.
-   * @param {boolean} linked Render the name as a link to its block page.
+   * Build one row of an overview table, naming the series and linking to its
+   * block page.
+   * @param {string} name Block name, used when nothing was published for it.
+   * @param {?Object} dut The series' dut_status entry, or null when the block
+   *     published none; every measurement then reads n/a.
    * @return {!HTMLTableRowElement} The populated row.
    */
-  function summaryRow(name, dut, coverage, linked) {
+  function summaryRow(name, dut) {
     var row = document.createElement('tr');
     var td = document.createElement('td');
 
-    if (linked && dut && LINKABLE_ROWS.indexOf(name) !== -1) {
+    // The block and what ran it name one series, so they share a cell rather
+    // than a column each.
+    if (dut && LINKABLE_ROWS.indexOf(name) !== -1) {
       var url = new URL('dashboard-block.html', window.location.href);
-      url.searchParams.set('flow', name);
+      addIdentity(url, dut);
       var link = document.createElement('a');
       link.href = url.href;
-      link.textContent = name;
+      link.textContent = seriesLabel(dut);
       td.appendChild(link);
     } else {
-      td.textContent = name;
+      td.textContent = dut ? seriesLabel(dut) : name;
     }
     row.appendChild(td);
 
     if (!dut) {
-      for (var i = 1; i < SUMMARY_HEADINGS.length; i++) {
+      for (var i = 1; i < SUMMARY_HEADINGS.length + 1; i++) {
         cell(row, 'n/a', 'dashboard-na');
       }
       return row;
     }
 
-    cell(row, String(dut.tests_total));
-    metricCell(row, dut.pass_rate);
-
-    var metrics = (coverage && coverage.effective_metrics) || {};
-    COVERAGE_COLUMNS.forEach(function (family) {
-      metricCell(row, metrics[family]);
-    });
-
+    metricCells(row, dut, null, null);
     return row;
   }
 
   /**
-   * Render the overview dashboard split into chip and block tables, with a
-   * timestamp of when the data was published.
-   * @param {!HTMLElement} statusEl Element carrying the timestamp, or the
-   *     reason the tables are empty.
+   * Add the measurement cells one series reports.
+   * @param {!HTMLTableRowElement} row The row to append them to.
+   * @param {!Object} dut The series' dut_status entry.
+   * @param {?Object} coverage Its results[].coverage entry, if any.
+   * @param {?Array<string>} families One cell per coverage family, or null for
+   *     the single total the publisher reports.
+   */
+  function metricCells(row, dut, coverage, families) {
+    var total = dut.tests_total;
+    if (total === null || total === undefined) {
+      cell(row, 'n/a', 'dashboard-na');
+    } else {
+      cell(row, String(total));
+    }
+    metricCell(row, dut.pass_rate);
+
+    if (!families) {
+      metricCell(row, dut.coverage_total_percent);
+      return;
+    }
+
+    var metrics = (coverage && coverage.effective_metrics) || {};
+    families.forEach(function (family) {
+      metricCell(row, metrics[family]);
+    });
+  }
+
+  /**
+   * Add a row naming a series, so one table can carry several.
+   * @param {!HTMLTableSectionElement} body The body to append the row to.
+   * @param {string} label The series name.
+   * @param {number} span The columns the table carries.
+   */
+  function headingRow(body, label, span) {
+    var row = document.createElement('tr');
+    var th = document.createElement('th');
+    th.colSpan = span;
+    th.scope = 'colgroup';
+    th.textContent = label;
+    row.appendChild(th);
+    body.appendChild(row);
+  }
+
+  /**
+   * Render the overview dashboard split into chip and block tables.
+   * @param {!HTMLElement} statusEl Element carrying the reason the tables are
+   *     empty.
    * @param {!HTMLTableSectionElement} chipRowsEl Body of the chip-level table.
    * @param {!HTMLTableSectionElement} blockRowsEl Body of the block-level table.
    */
   function renderDashboard(statusEl, chipRowsEl, blockRowsEl) {
     var fail = failWith(statusEl);
 
-    fillHead(document.getElementById('dashboard-chip-head'), SUMMARY_HEADINGS);
-    fillHead(document.getElementById('dashboard-block-head'), SUMMARY_HEADINGS);
+    // One coverage figure here, as the publisher reports it; the block page
+    // breaks it down by family.
+    var headings = SUMMARY_HEADINGS.concat(['Coverage']);
+    fillHead(document.getElementById('dashboard-chip-head'), headings);
+    fillHead(document.getElementById('dashboard-block-head'), headings);
 
     fetchJson(SUMMARY_URL)
       .then(function (summary) {
-        var duts = Object.create(null);
-        (summary.dut_status || []).forEach(function (dut) {
-          duts[dut.flow] = dut;
-        });
+        /**
+         * Fill a table, giving a block one row per series it published. A
+         * block that published none still gets a row, reading n/a.
+         * @param {!HTMLTableSectionElement} body The table body to fill.
+         * @param {!Array<string>} names The blocks that table declares.
+         */
+        function fill(body, names) {
+          names.forEach(function (name) {
+            var series = (summary.dut_status || []).filter(function (dut) {
+              return dut.flow === name;
+            });
+            if (!series.length) {
+              body.appendChild(summaryRow(name, null));
+              return;
+            }
+            series.forEach(function (dut) {
+              body.appendChild(summaryRow(name, dut));
+            });
+          });
+        }
 
-        var coverage = coverageByFlow(summary);
+        fill(chipRowsEl, CHIP_ROWS);
+        fill(blockRowsEl, BLOCK_ROWS);
 
-        CHIP_ROWS.forEach(function (name) {
-          chipRowsEl.appendChild(summaryRow(name, duts[name], coverage[name], true));
-        });
-        BLOCK_ROWS.forEach(function (name) {
-          blockRowsEl.appendChild(summaryRow(name, duts[name], coverage[name], true));
-        });
-
-        statusEl.className = 'dashboard-status';
-        statusEl.textContent = 'Data as of ' + utcStamp(new Date(summary.generated_at));
+        // Hide the now-empty banner.
+        statusEl.hidden = true;
       })
       .catch(function (error) {
         fail(error.message);
@@ -340,7 +401,8 @@
    */
   function renderBlock(statusEl, nameEl, summaryEl, testsEl, rowEl, testRowsEl) {
     var fail = failWith(statusEl);
-    var flow = new URLSearchParams(window.location.search).get('flow') || '';
+    var wanted = selector();
+    var flow = wanted.flow || '';
 
     /**
      * Round, and format seconds to more readable format.
@@ -360,15 +422,24 @@
      * @return {boolean} True when the block was found and its row rendered.
      */
     function renderSummary(summary) {
-      var dut = (summary.dut_status || []).filter(function (entry) {
-        return entry.flow === flow;
-      })[0];
-      if (!dut) return false;
+      var series = (summary.dut_status || []).filter(function (entry) {
+        return matches(entry, wanted);
+      });
+      if (!series.length) return false;
 
-      rowEl.appendChild(summaryRow(dut.flow, dut, coverageByFlow(summary)[flow], false));
+      var families = coverageFamilies(summary, series);
+      var headings = METRIC_HEADINGS.concat(families.map(familyHeading));
+      fillHead(document.getElementById('dashboard-block-summary-head'), headings);
+      series.forEach(function (dut) {
+        // The page heading names the series; only several need telling apart.
+        if (series.length > 1) headingRow(rowEl, seriesLabel(dut), headings.length);
+        var row = document.createElement('tr');
+        metricCells(row, dut, coverageFor(summary, dut), families);
+        rowEl.appendChild(row);
+      });
       summaryEl.hidden = false;
 
-      statusEl.textContent = 'Data as of ' + utcStamp(new Date(summary.generated_at));
+      statusEl.hidden = true;
       return true;
     }
 
@@ -377,56 +448,63 @@
      * @param {!Object} detail Parsed tests.json.
      */
     function renderTests(detail) {
-      var flows = detail.flows || {};
-      var tests = Object.prototype.hasOwnProperty.call(flows, flow) ? flows[flow] : [];
-      if (!tests.length) return;
+      var series = (detail.results || []).filter(function (entry) {
+        return matches(entry, wanted);
+      });
+      if (!series.length) return;
 
-      // failures first, then sort by slowest
-      tests
-        .slice()
-        .sort(function (a, b) {
-          var aFail = a.status !== 'PASS',
-            bFail = b.status !== 'PASS';
-          if (aFail !== bFail) return aFail ? -1 : 1;
-          return (b.duration_sec || 0) - (a.duration_sec || 0);
-        })
-        .forEach(function (test) {
-          var row = document.createElement('tr');
-          cell(row, test.name);
-          cell(row, test.category || '—');
-          cell(row, test.seed === undefined ? '—' : String(test.seed));
-          cell(row, test.status, test.status === 'PASS' ? 'dash-pass' : 'dash-fail');
-          cell(row, duration(test.duration_sec));
-          testRowsEl.appendChild(row);
-        });
+      series.forEach(function (entry) {
+        var tests = entry.tests || [];
+        if (!tests.length) return;
+
+        if (series.length > 1) headingRow(testRowsEl, seriesLabel(entry), TEST_HEADINGS.length);
+
+        // failures first, then sort by slowest
+        tests
+          .slice()
+          .sort(function (a, b) {
+            var aFail = a.status !== 'PASS',
+              bFail = b.status !== 'PASS';
+            if (aFail !== bFail) return aFail ? -1 : 1;
+            return (b.duration_sec || 0) - (a.duration_sec || 0);
+          })
+          .forEach(function (test) {
+            var row = document.createElement('tr');
+            cell(row, test.name);
+            cell(row, test.category || '—');
+            cell(row, test.seed === undefined ? '—' : String(test.seed));
+            cell(row, test.status, test.status === 'PASS' ? 'dash-pass' : 'dash-fail');
+            cell(row, duration(test.duration_sec));
+            testRowsEl.appendChild(row);
+          });
+      });
 
       testsEl.hidden = false;
     }
 
-    fillHead(document.getElementById('dashboard-block-summary-head'), SUMMARY_HEADINGS);
     fillHead(document.getElementById('dashboard-test-head'), TEST_HEADINGS);
 
     if (!flow) {
       fail('no block selected; reach this page from the verification dashboard');
       return;
     }
-    nameEl.textContent = flow;
-    document.title = flow + ' — Block Verification Detail';
+    nameEl.textContent = seriesLabel(wanted);
+    document.title = seriesLabel(wanted) + ' — Block Verification Detail';
 
     var historyEl = document.getElementById('dashboard-block-history');
     if (historyEl) {
       var historyUrl = new URL('dashboard-test-history.html', window.location.href);
-      historyUrl.searchParams.set('flow', flow);
+      addIdentity(historyUrl, wanted);
       var historyLink = document.createElement('a');
       historyLink.href = historyUrl.href;
-      historyLink.textContent = 'Per-test history for ' + flow + ' \u2192';
+      historyLink.textContent = 'Per-test history for ' + seriesLabel(wanted) + ' \u2192';
       historyEl.appendChild(historyLink);
     }
 
     fetchJson(SUMMARY_URL)
       .then(function (summary) {
         if (!renderSummary(summary)) {
-          fail('the published data contains no flow named "' + flow + '"');
+          fail('the published data has no series named "' + seriesLabel(wanted) + '"');
           return null;
         }
         return fetch(TESTS_URL, { cache: 'no-cache' })
@@ -542,6 +620,57 @@
     }
   }
 
+  var TREND_PALETTE = ['#103525', '#F6931E', '#937027', '#3A863D', '#C55050', '#f6c343'];
+
+  /**
+   * The flow, framework and tool naming one series, as a single string.
+   * @param {!Object} entry An entry carrying the identity fields.
+   * @return {string} The three joined, for comparison and for sorting.
+   */
+  function seriesKey(entry) {
+    return IDENTITY.map(function (field) {
+      return entry[field] || '';
+    }).join('/');
+  }
+
+  /**
+   * The distinct series the published points report.
+   * @param {!Array<!Object>} points Every point in the published history.
+   * @return {!Array<!Object>} One entry per series, ordered by name.
+   */
+  function trendSeries(points) {
+    var seen = Object.create(null);
+    points.forEach(function (point) {
+      (point.per_dut || []).forEach(function (dut) {
+        if (dut.flow) seen[seriesKey(dut)] = dut;
+      });
+    });
+    return Object.keys(seen)
+      .sort()
+      .map(function (key) {
+        return seen[key];
+      });
+  }
+
+  /**
+   * Populate one chart's series control.
+   * @param {!HTMLSelectElement} selectEl Control to fill.
+   * @param {!Array<!Object>} series Every series the history reports.
+   * @param {!Object} wanted The identity the page was opened with.
+   */
+  function fillSeries(selectEl, series, wanted) {
+    series.forEach(function (entry, index) {
+      var option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = seriesLabel(entry);
+      selectEl.appendChild(option);
+    });
+    var preferred = series.filter(function (entry) {
+      return matches(entry, wanted);
+    })[0];
+    selectEl.value = String(preferred ? series.indexOf(preferred) : 0);
+  }
+
   /**
    * Render the trend charts from the published history.
    * @param {!HTMLElement} statusEl Element carrying the range, or the reason
@@ -551,6 +680,7 @@
    */
   function renderTrends(statusEl, trendsEl, windowEl) {
     var fail = failWith(statusEl);
+    var wanted = selector();
 
     fetchJson(HISTORY_URL)
       .then(function (history) {
@@ -560,18 +690,44 @@
           return;
         }
 
-        function draw() {
-          // A hidden element has no size for the charts to measure, so the
-          // wrapper is shown before they are drawn.
-          trendsEl.hidden = false;
-          var count = parseInt(windowEl.value, 10) || 0;
-          var pts = count > 0 ? all.slice(-count) : all;
-          var labels = pts.map(function (p) {
-            return (p.generated_at || '').slice(0, 10);
-          });
+        var series = trendSeries(all);
+        if (!series.length) {
+          fail('the published history names no series');
+          return;
+        }
 
+        /**
+         * The points one series published.
+         * @param {!Object} chosen The series to plot.
+         * @return {!Array<!Object>} Its points, newest last.
+         */
+        function pointsOf(chosen) {
+          var key = seriesKey(chosen);
+          return all.filter(function (point) {
+            return (point.per_dut || []).some(function (dut) {
+              return seriesKey(dut) === key;
+            });
+          });
+        }
+
+        /**
+         * One series' coverage within a point.
+         * @param {!Object} point One history point.
+         * @param {!Object} chosen The series to read.
+         * @return {!Object} Its per_dut entry, or an empty object.
+         */
+        function coverageOf(point, chosen) {
+          var key = seriesKey(chosen);
+          return (
+            (point.per_dut || []).filter(function (dut) {
+              return seriesKey(dut) === key;
+            })[0] || {}
+          );
+        }
+
+        function drawTests(host, pts, labels) {
           lineChart(
-            document.getElementById('dashboard-trend-tests'),
+            host,
             labels,
             [
               {
@@ -592,31 +748,41 @@
             100,
             ' %'
           );
+        }
 
-          var palette = ['#103525', '#F6931E', '#937027', '#3A863D', '#C55050', '#f6c343'];
+        function drawCoverage(host, pts, labels, chosen) {
+          // The families the plotted points report, as the summary table does.
+          var families = Object.create(null);
+          pts.forEach(function (p) {
+            Object.keys(coverageOf(p, chosen).effective_metrics || {}).forEach(function (family) {
+              families[family] = true;
+            });
+          });
           lineChart(
-            document.getElementById('dashboard-trend-coverage'),
+            host,
             labels,
-            COVERAGE_COLUMNS.map(function (family, i) {
-              return {
-                name: family,
-                colour: palette[i % palette.length],
-                values: pts.map(function (p) {
-                  var dut = (p.per_dut || [])[0] || {};
-                  var metrics = dut.effective_metrics || {};
-                  return round1(metrics[family]);
-                }),
-              };
-            }),
+            Object.keys(families)
+              .sort()
+              .map(function (family, i) {
+                return {
+                  name: family,
+                  colour: TREND_PALETTE[i % TREND_PALETTE.length],
+                  values: pts.map(function (p) {
+                    return round1((coverageOf(p, chosen).effective_metrics || {})[family]);
+                  }),
+                };
+              }),
             100,
             ' %'
           );
+        }
 
+        function drawFailures(host, pts, labels) {
           var counts = pts.map(function (p) {
             return Math.max(p.failed_tests || 0, p.flaky_tests || 0);
           });
           lineChart(
-            document.getElementById('dashboard-trend-failures'),
+            host,
             labels,
             [
               {
@@ -637,14 +803,60 @@
             Math.max.apply(null, counts.concat([4])),
             ''
           );
-
-          statusEl.className = 'dashboard-status';
-          statusEl.textContent =
-            pts.length + ' runs, ' + labels[0] + ' to ' + labels[labels.length - 1] + '.';
         }
 
-        windowEl.addEventListener('change', draw);
-        draw();
+        // A hidden element has no size for the charts to measure, so the
+        // wrapper is shown before they are drawn.
+        trendsEl.hidden = false;
+
+        [
+          { host: 'dashboard-trend-tests', control: 'dashboard-series-tests', draw: drawTests },
+          {
+            host: 'dashboard-trend-coverage',
+            control: 'dashboard-series-coverage',
+            draw: drawCoverage,
+          },
+          {
+            host: 'dashboard-trend-failures',
+            control: 'dashboard-series-failures',
+            draw: drawFailures,
+          },
+        ].forEach(function (chart) {
+          var hostEl = document.getElementById(chart.host);
+          var controlEl = document.getElementById(chart.control);
+          if (!hostEl || !controlEl) return;
+          fillSeries(controlEl, series, wanted);
+
+          function redraw() {
+            var chosen = series[parseInt(controlEl.value, 10) || 0];
+            var count = parseInt(windowEl.value, 10) || 0;
+            var pts = pointsOf(chosen);
+            if (count > 0) pts = pts.slice(-count);
+            var labels = pts.map(function (p) {
+              return (p.generated_at || '').slice(0, 10);
+            });
+            chart.draw(hostEl, pts, labels, chosen);
+          }
+
+          controlEl.addEventListener('change', redraw);
+          windowEl.addEventListener('change', redraw);
+          redraw();
+        });
+
+        var stamps = all.map(function (p) {
+          return (p.generated_at || '').slice(0, 10);
+        });
+        statusEl.className = 'dashboard-status';
+        statusEl.hidden = false;
+        statusEl.textContent =
+          series.length +
+          ' series, ' +
+          all.length +
+          ' runs, ' +
+          stamps[0] +
+          ' to ' +
+          stamps[stamps.length - 1] +
+          '.';
       })
       .catch(function (error) {
         fail(error.message);

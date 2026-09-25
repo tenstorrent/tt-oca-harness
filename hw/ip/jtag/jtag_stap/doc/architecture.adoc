@@ -13,9 +13,11 @@ chiplet as the PTAP.
 === Module Hierarchy
 
 The STAP implementation consists of three main components integrated within a
-single module:
+single module (<<stap-module-hierarchy-table>>).
 
+[[stap-module-hierarchy-table]]
 [width="100%",cols="<30%,<52%,<18%",options="header"]
+.STAP module hierarchy
 |===
 |Module |Purpose |Conditional
 
@@ -45,7 +47,7 @@ When not selected, the STAP interface TMS signal is tied to the constant value
 specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
 signal.
 
-The following diagram separates the serial scan path, host TDO path, and
+<<stap-scan-and-control-paths-figure>> separates the serial scan path, host TDO path, and
 combinational control logic. Repeated signal names refer to the same signal;
 in particular, `stap_scan_in` feeds both the scan-in mux and the TDO lockup flop.
 The SIB inserts or bypasses the 3DCR while remaining in the client scan path.
@@ -58,6 +60,8 @@ security gate masks `stap_sel`, `host_tdo_o`, and `update_en` when
 independent combinational outputs derived from `stap_sel` and TAP control
 signals, not outputs of the security gate.
 
+[[stap-scan-and-control-paths-figure]]
+.STAP scan and control paths
 image::stap_module_diagram.svg["STAP scan-in mux and SIB with a 3DCR scan loop, separate falling-edge host TDO path, and security-masked control relationships",scaledwidth=100%]
 
 === 3DCR Register
@@ -67,7 +71,12 @@ loopback configuration. The register outputs feed back to the data inputs,
 allowing the register to retain its configuration across scan operations while
 still being scannable for updates.
 
+<<stap-3dcr-fields-table>> defines the three control bits retained in the STAP scan
+register.
+
+[[stap-3dcr-fields-table]]
 [width="100%",cols="6,20,9,65",options="header"]
+.STAP 3DCR fields
 |===
 |Bit |Field |Reset |Description
 
@@ -89,13 +98,15 @@ still being scannable for updates.
 
 === STAP Types
 
-The following table lists the STAPs allocated for the DTP JTAG interface. The
+<<dtp-stap-allocation-table>> lists the STAPs allocated for the DTP JTAG interface. The
 STAPs are serially chained TDI -> TDO according to their order in this table
 from top to bottom. In addition to the STAPs integrated into the DTP, the STAP
 scan chain is ported out of the DTP so that the chiplet integrator may add
 additional STAPs closer to their point of use.
 
+[[dtp-stap-allocation-table]]
 [width="100%",cols="<30%,<70%",options="header"]
+.DTP STAP allocation
 |===
 |Purpose |Description
 |STAP to Next Chiplet |This STAP forwards JTAG to the next chiplet in the SiP.
@@ -108,9 +119,11 @@ additional STAPs closer to their point of use.
 === Debug Disable
 
 The `security_disable_i` input is active-high (1 = STAP disabled). When it is
-asserted, three aspects of STAP operation are blocked:
+asserted, three aspects of STAP operation are blocked (<<stap-debug-disable-behavior-table>>).
 
+[[stap-debug-disable-behavior-table]]
 [width="100%",cols="<40%,<60%",options="header"]
+.STAP debug-disable behavior
 |===
 |Signal |Behavior when asserted
 

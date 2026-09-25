@@ -10,7 +10,10 @@
 
 This document tracks internal revisions and updates to the OCAH documentation.
 
-.Internal Revision History
+<<internal-revision-history-table>> tracks the internal documentation revisions.
+
+[[internal-revision-history-table]]
+.Internal revision history
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Version |Date |Author |Description

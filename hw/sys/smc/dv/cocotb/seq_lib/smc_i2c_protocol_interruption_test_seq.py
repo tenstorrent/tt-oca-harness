@@ -19,8 +19,10 @@ transaction and then injects the interruption from whatever slot it stopped at:
 * **Data phase** -- the target has matched by then, so each interrupted
   transaction leaves a START marker in the acquisition FIFO, and the count of
   those markers is compared against the number of transactions driven.
-* **Target enable cleared mid-byte** -- swept over delays, so the write lands
-  in different states. The instance must go idle and then recover.
+* **Target enable cleared from a held state** -- the bench stops clocking at a
+  chosen payload bit, or the target is left stretching for software, so the
+  disable lands in the same state every run rather than wherever a delay
+  happened to reach. The instance must go idle and then recover.
 * **Controller enable cleared mid-transaction** -- the same on the controller
   side, with I2C0 driving a queued format-FIFO transaction.
 
@@ -45,6 +47,7 @@ from .smc_i2c_field_masks import (
     I2C_ACQ_SIGNAL_NONE,
     I2C_ACQ_SIGNAL_START,
     I2C_CONTROLLER_EVENTS_ALL,
+    I2C_CTRL_ACK_CTRL_EN,
     I2C_CTRL_ACQ_START_STOP_EN,
     I2C_CTRL_ENABLEHOST,
     I2C_CTRL_ENABLETARGET,
@@ -53,6 +56,7 @@ from .smc_i2c_field_masks import (
     I2C_FIFO_CTRL_ACQRST,
     I2C_FIFO_CTRL_RXRST_FMTRST,
     I2C_FIFO_CTRL_TXRST,
+    I2C_STATUS_ACK_CTRL_STRETCH,
     I2C_STATUS_ACQEMPTY,
     I2C_STATUS_HOSTIDLE,
     I2C_STATUS_TARGETIDLE,
@@ -62,6 +66,7 @@ from .smc_i2c_field_masks import (
     acq_signal,
 )
 from .smc_i2c_protocol_vip import SmcI2cMasterVip
+from .smc_i2c_slot_utils import release_bus
 from .smc_i2c_target_smbus_test_seq import (
     _pack_target_id,
     _pack_timing0,
@@ -91,10 +96,12 @@ ADDR_POINTS = [("addr", k) for k in range(1, 8)]
 DATA_POINTS = [("addrack", 0)] + [("data", k) for k in range(1, 8)] + [("dataack", 0)]
 KINDS = ("stop", "restart")
 
-# Delays, in VIP bit periods, at which the target enable is cleared while a
-# byte is on the wire. Spread across the address byte, the acknowledge slot and
-# the payload byte so the write lands in different states.
-DISABLE_BIT_DELAYS = (1, 4, 8, 9, 12, 16)
+#: Where the bench stops clocking before it clears the target enable. A slot
+#: is a number of payload bits driven after the address acknowledge, so the
+#: target is parked waiting for the next bit and the disable lands in the same
+#: state every run; a delay measured from a poll of STATUS would land it in a
+#: state that depends on the run's bus traffic.
+DISABLE_PARK_SLOTS = (("EARLY", 1), ("MID", 4), ("LATE", 7))
 
 # Bounds on the DUT-side observations, in clk_smc_i cycles so they scale with
 # the randomised clock. Expiry is a failure, never a pass.
@@ -139,7 +146,7 @@ class smc_i2c_protocol_interruption_test_seq(SmcCsrSeq):
             await self.csr_write(f"I2C{idx}_WRAP_OFF", self._wrap_addr(idx), 0)
             await self.csr_write(f"I2C{idx}_CTRL_OFF", self._addr("CTRL", idx), 0)
 
-    async def _enable_target(self, idx: int) -> None:
+    async def _enable_target(self, idx: int, extra_ctrl: int = 0) -> None:
         await self.csr_write(f"I2C{idx}_WRAP_TGT", self._wrap_addr(idx), I2C_WRAP_CTRL_TARGET)
         await self._program_timing(idx)
         await self.csr_write(
@@ -151,7 +158,7 @@ class smc_i2c_protocol_interruption_test_seq(SmcCsrSeq):
         await self.csr_write(
             f"I2C{idx}_TGT_CTRL",
             self._addr("CTRL", idx),
-            I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN,
+            I2C_CTRL_ENABLETARGET | I2C_CTRL_ACQ_START_STOP_EN | extra_ctrl,
         )
 
     async def _reset_target_fifos(self, idx: int) -> None:
@@ -316,47 +323,84 @@ class smc_i2c_protocol_interruption_test_seq(SmcCsrSeq):
             starts,
         )
 
-    async def _target_disable_leg(self, vip: SmcI2cMasterVip, idx: int) -> None:
-        ctrl_addr = self._addr("CTRL", idx)
-        status_addr = self._addr("STATUS", idx)
-        recovered = 0
-        for delay_bits in DISABLE_BIT_DELAYS:
-            await self._reset_target_fifos(idx)
-            task = cocotb.start_soon(self._raw_write(vip, idx, 2))
-            for _ in range(delay_bits):
-                await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
-                if task.done():
-                    break
-            await self.csr_write(f"I2C{idx}_TGT_OFF_{delay_bits}", ctrl_addr, 0)
-            for _ in range(POLL_LIMIT):
-                if task.done():
-                    break
-                await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
-            else:
-                raise AssertionError(
-                    f"I2C{idx}: the bench controller never finished its write after the target "
-                    f"was disabled {delay_bits} bit periods in"
-                )
-            task.result()
-            status = await self.csr_read(f"I2C{idx}_TGT_OFF_ST_{delay_bits}", status_addr)
-            assert status & I2C_STATUS_TARGETIDLE, (
-                f"I2C{idx} does not report TARGETIDLE after CTRL target enable was cleared "
-                f"{delay_bits} bit periods into a write (STATUS=0x{status:08x})"
+    async def _disable_from_state(
+        self, vip: SmcI2cMasterVip, idx: int, name: str, park_bits: int
+    ) -> None:
+        """Clear the target enable while the target is parked in a named state.
+
+        ``park_bits`` bits of a payload byte are clocked and then the bench
+        stops clocking, so the target is left waiting for the next bit for as
+        long as the bench chooses. Where the disable lands is then a property
+        of the bus, not of when a poll happened to return.
+        """
+        label = f"I2C{idx}_TGT_OFF_{name}"
+        await self._reset_target_fifos(idx)
+        addr_byte = (TARGET_ADDR[idx] << 1) | 0
+        await vip.send_start()
+        for i in range(8):
+            await vip.send_bit((addr_byte >> (7 - i)) & 1)
+        ack = await vip.recv_bit()
+        assert ack == 0, f"{label}: the target did not acknowledge its address (ACK bit {ack})"
+        for i in range(park_bits):
+            await vip.send_bit((SWEEP_BYTE >> (7 - i)) & 1)
+        await self.csr_write(label, self._addr("CTRL", idx), 0)
+        await self._wait_target_idle(idx, label)
+        await release_bus(vip)
+        await self._enable_target(idx)
+        await self._clean_transaction(vip, idx, f"{label}_REC")
+
+    async def _disable_while_stretching(self, vip: SmcI2cMasterVip, idx: int) -> None:
+        """Clear the target enable while the target is stretching for software.
+
+        ACK Control Mode with its count at reset stops the target at the first
+        data byte and holds it there until software answers, so the disable
+        lands in the stretch state every run rather than wherever a delay
+        happened to reach.
+        """
+        label = f"I2C{idx}_TGT_OFF_STRETCH"
+        await self.csr_write(f"{label}_OFF", self._addr("CTRL", idx), 0)
+        await self._enable_target(idx, extra_ctrl=I2C_CTRL_ACK_CTRL_EN)
+        task = cocotb.start_soon(self._raw_write(vip, idx, 1))
+        status = 0
+        for _ in range(POLL_LIMIT):
+            status = await self.csr_read(f"{label}_ST", self._addr("STATUS", idx))
+            if status & I2C_STATUS_ACK_CTRL_STRETCH:
+                break
+            assert not task.done(), (
+                f"{label}: the write finished without the target ever stretching for the ACK "
+                f"count (STATUS=0x{status:08x})"
             )
-            await self._enable_target(idx)
-            await self._clean_transaction(vip, idx, f"I2C{idx}_TGT_OFF_REC_{delay_bits}")
-            recovered += 1
-        self.disable_recoveries[idx] = recovered
-        assert recovered == len(DISABLE_BIT_DELAYS), (
-            f"I2C{idx} recovered from {recovered} of {len(DISABLE_BIT_DELAYS)} mid-transaction "
-            f"target disables"
-        )
+            await ClockCycles(cocotb.top.clk_smc_i, BIT_SETTLE_CYCLES)
+        else:
+            raise AssertionError(
+                f"{label}: STATUS.ACK_CTRL_STRETCH never set (last 0x{status:08x})"
+            )
+        await self.csr_write(label, self._addr("CTRL", idx), 0)
+        await self._wait_target_idle(idx, label)
+        for _ in range(POLL_LIMIT):
+            if task.done():
+                break
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        if not task.done():
+            task.kill()
+        await release_bus(vip)
+        await self._enable_target(idx)
+        await self._clean_transaction(vip, idx, f"{label}_REC")
+
+    async def _target_disable_leg(self, vip: SmcI2cMasterVip, idx: int) -> None:
+        for name, park_bits in DISABLE_PARK_SLOTS:
+            await self._disable_from_state(vip, idx, name, park_bits)
+        await self._disable_while_stretching(vip, idx)
+        self.disable_recoveries[idx] = len(DISABLE_PARK_SLOTS) + 1
         cocotb.log.info(
-            "CHK-I2C%d-INTR-TARGET-DISABLE: clearing CTRL target enable at each of %d delays "
-            "spread across the address byte, the acknowledge slot and the payload byte left "
-            "the instance reporting TARGETIDLE, and it ran a clean write again after each",
+            "CHK-I2C%d-INTR-TARGET-DISABLE: clearing CTRL target enable from each of %d states "
+            "the bus itself holds the target in -- %s, and the stretch it takes when ACK "
+            "Control Mode is enabled with its count at reset -- left I2C%d reporting "
+            "TARGETIDLE, and a clean transaction ran against it afterwards each time",
             idx,
-            recovered,
+            self.disable_recoveries[idx],
+            ", ".join(f"{n} ({b} payload bits clocked)" for n, b in DISABLE_PARK_SLOTS),
+            idx,
         )
 
     async def _host_disable_leg(self, idx: int) -> None:

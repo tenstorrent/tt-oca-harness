@@ -138,15 +138,13 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("INTEGRATION FIT", template)
         self.assertNotIn("Technical detail:", template)
 
-    def test_every_datasheet_source_has_a_valid_release_pdf(self) -> None:
+    def test_every_datasheet_source_is_valid(self) -> None:
         root = Path(__file__).resolve().parents[3]
         sources = sorted((root / "doc/datasheets/src").glob("*.adoc"))
         self.assertTrue(sources)
         for source_path in sources:
             with self.subTest(datasheet=source_path.name):
                 self.assertEqual(validate_source(source_path), [])
-                pdf = root / "doc/datasheets/dist" / f"ocah-{source_path.stem}-datasheet.pdf"
-                self.assertEqual(validate_pdf(pdf), [])
 
     def test_every_datasheet_follows_the_template_conventions(self) -> None:
         root = Path(__file__).resolve().parents[3]

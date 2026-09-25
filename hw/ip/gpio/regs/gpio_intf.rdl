@@ -20,7 +20,7 @@ addrmap gpio_intf {
         field {
             sw = rw;
             hw = r;
-            desc = "Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+            desc = "Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
                     WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
                     the filter may not update before your next transaction, causing unexpected behavior.";
         } write_filter_enable[0:0] = 0x0;
@@ -28,7 +28,7 @@ addrmap gpio_intf {
         field {
             sw = rw;
             hw = r;
-            desc = "Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+            desc = "Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
                     WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
                     the filter may not update before your next transaction, causing unexpected behavior.";
         } read_filter_enable[1:1] = 0x0;
