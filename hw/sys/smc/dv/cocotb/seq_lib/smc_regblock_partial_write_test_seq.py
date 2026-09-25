@@ -23,14 +23,25 @@ field and mask here comes from the block's generated header.
   external register that `system_timer_octs.rdl` resets on any write, so a
   write must leave it reading 0. I2C0 `TARGET_NACK_COUNT` is `rclr` and holds 0
   at idle, so a read returns 0.
+* **A flush held across a partial write.** Telemetry-receiver
+  `CTRL.TELEMETRY_TX_FLUSH` is `hwclr` and clears on the ATB flush handshake,
+  AFREADY with AFVALID. With receiver 0's AFREADY held low by the bench, the flush
+  stays set, so a byte write to lane 0 must leave it set. Raising AFREADY then
+  clears it.
+* **A byte write at FCR+1.** The UART sends a write to the write-only block only
+  when its address is exactly THR or FCR (`uart_16550.sv`). A byte write at
+  FCR+1 therefore reaches the main block, where it lands on the read-only IIR
+  word. `IIR` must read the same afterwards, FIFOs still off.
 """
 
 from __future__ import annotations
 
 import cocotb
+from cocotb.triggers import ClockCycles
 
 from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_log_engine_utils import FCR_OFFSET, IIR_FIFOS_ENABLED, uart_base, uart_reg
 
 _I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
 _I2C_CTRL_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c_ctrl.h"
@@ -56,6 +67,13 @@ for _name in _I2C_EVENTS:
 LOG_FETCH_ERR = _field_mask(_LOG_H, "LOG_ENGINE__INTR_STATUS__LOG_FETCH_ERR_bm")
 assert LOG_FETCH_ERR == _field_mask(_LOG_H, "LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm")
 MISSING_LAST = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__INTR_STATUS__MISSING_LAST_bm")
+TEL_CTRL = smc_indexed_addr(
+    "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", 0
+)
+TX_FLUSH = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__CTRL__TELEMETRY_TX_FLUSH_bm")
+CTRL_PULSES = _field_mask(_TEL_H, "TELEMETRY_RECEIVER__CTRL__BUFFER_POP_bm") | _field_mask(
+    _TEL_H, "TELEMETRY_RECEIVER__CTRL__TELEMETRY_RX_FLUSH_bm"
+)
 CREDIT_EXPIRED = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CREDIT_EXPIRED_BASE_ADDR")
 
 NUM_I2C_CTRL = smc_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_NUM")
@@ -155,6 +173,32 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
 
         self.documented += 2
 
+    async def _flush_held(self) -> None:
+        dut = cocotb.top
+        lane = (TX_FLUSH.bit_length() - 1) // 8
+        assert lane != 0, "TELEMETRY_TX_FLUSH shares lane 0 with the pulse fields"
+        base = await self.csr_read("TEL_CTRL_BASE", TEL_CTRL)
+        assert not base & (TX_FLUSH | CTRL_PULSES), f"telemetry CTRL 0x{base:x} not idle"
+        dut.tb_telemetry0_afready.value = 0
+        try:
+            await self.csr_write("TEL_CTRL_FLUSH", TEL_CTRL, base | TX_FLUSH)
+            await self.csr_read("TEL_CTRL_FLUSH_HELD", TEL_CTRL, expected=base | TX_FLUSH)
+            await self.csr_write("TEL_CTRL_LANE0", TEL_CTRL, base & 0xFF, length=1)
+            await self.csr_read("TEL_CTRL_FLUSH_KEPT", TEL_CTRL, expected=base | TX_FLUSH)
+        finally:
+            dut.tb_telemetry0_afready.value = 1
+        await ClockCycles(dut.clk_smc_i, 8)
+        await self.csr_read("TEL_CTRL_FLUSH_DONE", TEL_CTRL, expected=base)
+        self.documented += 1
+
+    async def _fcr_plus_one(self) -> None:
+        iir = uart_reg(0, "IIR")
+        before = await self.csr_read("UART0_IIR_BEFORE", iir)
+        assert not before & IIR_FIFOS_ENABLED, f"UART0 IIR 0x{before:x} with FIFOs enabled"
+        await self.csr_write("UART0_FCR_PLUS_1", uart_base(0) + FCR_OFFSET + 1, 0xFF, length=1)
+        await self.csr_read("UART0_IIR_AFTER", iir, expected=before)
+        self.documented += 1
+
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
 
@@ -192,7 +236,11 @@ class smc_regblock_partial_write_test_seq(SmcCsrSeq):
         )
 
         await self._documented_writes()
+        await self._flush_held()
+        await self._fcr_plus_one()
         cocotb.log.info(
-            "CHK-REGBLOCK-DOCUMENTED-WRITE: a write reset OCTS CREDIT_EXPIRED to 0 and I2C0 "
-            "TARGET_NACK_COUNT read 0 at idle"
+            "CHK-REGBLOCK-DOCUMENTED-WRITE: a write reset OCTS CREDIT_EXPIRED to 0, I2C0 "
+            "TARGET_NACK_COUNT read 0 at idle, telemetry TX_FLUSH held across a lane-0 byte "
+            "write while AFREADY was low and cleared once it rose, and a byte write at UART0 "
+            "FCR+1 left IIR unchanged with the FIFOs off"
         )

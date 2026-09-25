@@ -21,6 +21,15 @@
 #include "smc_test.h"
 
 #define ALL_ONES 0xFFFFFFFFu
+/* read/write allowed, entry_enabled, allow_ns, allow_burst; bit 31 clear. */
+#define FILTER_LOWER_LANES \
+    ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm | \
+                FILTER_CTRL__FILTER_CONFIG__ALLOW_NS_bm | \
+                FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm))
+/* Bit 31 only: locked's lane in the upper half. */
+#define FILTER_LOCKED_LANE ((uint32_t)(FILTER_CTRL__FILTER_CONFIG__LOCKED_bm >> 32))
 
 static uint32_t held;
 
@@ -28,10 +37,11 @@ static inline void io_fence(void) {
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
-/* Store all ones to store_half; field_half must read what it read before. */
-static void hold_other_half(const char *name, uint64_t field_half, uint64_t store_half) {
+/* Store value to store_half; field_half must read what it read before. */
+static void hold_other_half_with(const char *name, uint64_t field_half, uint64_t store_half,
+                                 uint32_t value) {
     uint32_t before = read_reg(field_half);
-    write_reg(store_half, ALL_ONES);
+    write_reg(store_half, value);
     io_fence();
     uint32_t after = read_reg(field_half);
     if (after != before) {
@@ -39,6 +49,11 @@ static void hold_other_half(const char *name, uint64_t field_half, uint64_t stor
         raise_fatal_hex32_s(0, "field half changed under an unstrobed store, now ", after);
     }
     held++;
+}
+
+/* Store all ones to store_half; field_half must read what it read before. */
+static void hold_other_half(const char *name, uint64_t field_half, uint64_t store_half) {
+    hold_other_half_with(name, field_half, store_half, ALL_ONES);
 }
 
 /* The same, where store_half has no field: it must also still read 0. */
@@ -90,6 +105,47 @@ int main(void) {
                         SMC_TOP_SMC_CPU_CTRL_RESET_TIMEOUT_BASE_ADDR + 4);
         write_reg(SMC_TOP_SMC_CPU_CTRL_RESET_TIMEOUT_BASE_ADDR, reset_timeout);
         io_fence();
+        /*
+         * WDT_TIMEOUT_RESET is 32 bits wide at 0x58 and nothing is declared at
+         * 0x5C, so a store there writes no field; its singlepulse core-reset
+         * fields carry the replicated ones with their strobes clear.
+         */
+        hold_beside_empty_half("WDT_TIMEOUT_RESET",
+                               SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_RESET_BASE_ADDR,
+                               SMC_TOP_SMC_CPU_CTRL_WDT_TIMEOUT_RESET_BASE_ADDR + 4);
+
+        /*
+         * Outbound filter 14's FILTER_CONFIG keeps only locked (bit 63) in its
+         * upper half. An upper-half store with bit 31 clear writes 0 there,
+         * which woset ignores, while the lower lanes carry read/write allowed,
+         * entry_enabled, allow_ns and allow_burst with their strobes clear. A
+         * lower-half store with only bit 31 set puts a one on locked's lane with
+         * its strobe clear and writes the lower fields, entry_enabled included,
+         * to 0; the reset lower half is then written back.
+         */
+        uint64_t filter = SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(14);
+        uint32_t filter_lower = read_reg(filter);
+        hold_other_half_with("FILTER_CONFIG lower lanes", filter, filter + 4, FILTER_LOWER_LANES);
+        hold_other_half_with("FILTER_CONFIG locked lane", filter + 4, filter, FILTER_LOCKED_LANE);
+        write_reg(filter, filter_lower);
+        io_fence();
+        if (read_reg(filter) != filter_lower || read_reg(filter + 4) != 0) {
+            raise_fatal_hex32_s(0, "FILTER_CONFIG not restored: ", read_reg(filter));
+        }
+
+        /*
+         * The zeroer starts on a CTRL_STATUS write only while SIZE is non-zero,
+         * so an upper-half store with SIZE 0 starts nothing; INT_EN's lane
+         * carries a one with its strobe clear, and the zeroer stays idle.
+         */
+        if (read_reg(SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR) != 0) {
+            raise_fatal_s(0, "zeroer SIZE not 0");
+        }
+        hold_other_half_with("ZEROER CTRL_STATUS", SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR,
+                             SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR + 4, 1u);
+        if (read_reg(SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR + 4) != 0) {
+            raise_fatal_s(0, "zeroer busy after an upper-half store with SIZE 0");
+        }
         info_msg_hex32_s(0, "held beside the stored half: ", held);
 
         /*

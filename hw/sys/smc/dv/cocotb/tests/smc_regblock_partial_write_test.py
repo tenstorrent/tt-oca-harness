@@ -8,6 +8,8 @@ engine's `LOG_FETCH_ERR` are raised through `INTR_TEST`; each must survive a
 write of zero and clear on a one. Zero writes to log-engine `INTR_TEST`, OCTS
 `TIMER_START` and telemetry `INTR_STATUS` must change nothing. A write resets
 OCTS `CREDIT_EXPIRED`, and I2C0 `TARGET_NACK_COUNT` reads 0 at idle.
+Telemetry `TX_FLUSH` must hold across a lane-0 byte write while AFREADY is held
+low, and a byte write at UART0 FCR+1 must leave `IIR` unchanged.
 """
 
 from __future__ import annotations
@@ -40,4 +42,4 @@ class smc_regblock_partial_write_test(smc_base_test):
         assert seq.held == NUM_I2C_CTRL + 1, f"{seq.held} partial-write holds checked"
         assert seq.w1c_held == 2, f"{seq.w1c_held} W1C holds checked"
         assert seq.zero_writes == 3, f"{seq.zero_writes} zero writes checked"
-        assert seq.documented == 2, f"{seq.documented} documented-effect accesses checked"
+        assert seq.documented == 4, f"{seq.documented} documented-effect accesses checked"

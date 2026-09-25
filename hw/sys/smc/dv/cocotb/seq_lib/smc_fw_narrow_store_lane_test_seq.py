@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import cocotb
 
+from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_cpu_vip_utils import CPU_RESET_TIMEOUT_FORCE
 from .smc_fw_image_boot_seq import smc_fw_image_boot_seq
 from .smc_rdl_regmap import RdlReg, rdl_array, rdl_contract, rdl_register
@@ -102,6 +103,22 @@ class smc_fw_narrow_store_lane_test_seq(smc_fw_image_boot_seq):
     async def after_pass(self) -> None:
         self.checked = 0
         await self._all_targets("after PASS", after_boot=True)
+        # The image stores into both halves of outbound filter 14's FILTER_CONFIG
+        # and restores its lower half; locked must still be clear.
+        filter_reset = rdl_contract("smc_outbound_filter_ctrl/FILTER_CONFIG").reset_word
+        await self.csr_read(
+            "OB14_FILTER_CONFIG:after PASS",
+            smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", 14),
+            expected=filter_reset,
+            length=_WORD,
+        )
+        await self.csr_read(
+            "ZEROER_CTRL_STATUS:after PASS",
+            smc_addr("SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR"),
+            expected=0,
+            length=_WORD,
+        )
+        self.checked += 2
         expected = (self.attrs.reset_word & ~_LOWER) | (_LOWER & self.attrs.declared_mask)
         got = await self.csr_read(
             f"{_ATTRS}:after PASS", self.attrs.addr, expected=expected, length=_WORD
@@ -122,7 +139,9 @@ class smc_fw_narrow_store_lane_test_seq(smc_fw_image_boot_seq):
             "CHK-FW-NARROW-STORE-HELD: %d registers read over SEP_IN after PASS: the "
             "writable fields of %s held their RDL reset word (RESET_TIMEOUT the boot "
             "contract's value), each of the %d mutexes was "
-            "still free, and %s read 0x%016x (the stored half taken, the other held)",
+            "still free, outbound filter 14's FILTER_CONFIG read its reset word with locked "
+            "clear, the zeroer CTRL_STATUS read 0, and %s read 0x%016x (the stored half "
+            "taken, the other held)",
             self.checked + 1,
             ", ".join(reg.path for reg in self.held),
             len(self.mutexes),

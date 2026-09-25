@@ -10336,6 +10336,9 @@ Drive `smc_i2c_target_fast_controller_test_seq` with the instance set to 2. The 
 * The claim for each block is what a pipelined, skewed, backpressured manager is owed: every read in every group returns the value the block held, every write is answered, and the register still holds that value at the end. A front end that dropped, reordered or mis-paired an outstanding access, or mishandled W arriving alone, returns the wrong word or loses the write.
 * Three blocks need their own handling. `straps` is outside the SMC register map; `memmap.adoc` places `STRAPS_LO` at the adopter external window plus `0x5800` and `straps.rdl` makes it `sw = r`, so it is a read-only probe reached by address. `uart_16550_dl` is decoded only while `LCR.DLAB` is set, so its leg sets DLAB, probes `DLL` and restores `LCR`. `uart_16550_main_wo` has no read side -- `uart_16550.sv` routes no read to it -- so it takes writes only, of `FCR = 0`, which at reset changes nothing, and `IIR.FIFOS_ENABLED` is read afterwards to show the FIFOs never turned on.
 
+* **A read arriving on a held write.** The front end dispatches a waiting read ahead of a waiting write when the last access was a write. So a read that reaches the block in the cycle it registers AW and W holds that write for a cycle, and the next write's AW, if it is already behind, sees AWREADY low. Every block with a read side takes a pair of writes and a read with the read's arrival swept over twelve offsets. It also takes a single write and a read over the same offsets, which lines a read accept up with a write's acknowledge.
+* **Mixed groups against a held response.** Eight writes and a read against a held BREADY, and eight reads and a write against a held RREADY, queue the opposite access behind two unacknowledged ones.
+
 *Test Procedure*:
 
 Drive `smc_cpuif_handshake_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
@@ -10555,7 +10558,10 @@ SDA changing while the controller holds a pulse high is not driven here; `smc_i2
 * Six registers keep all their writable fields in the half the store does not address: `CLOCK_GATE_CONTROL`, `HANG_DET_SYS_AXI_CTRL`, `HANG_DET_SEP_AXI_CTRL`, `HANG_DET_DATA_ACCEL_CTRL`, `DEBUG_CTRL` and `RESET_TIMEOUT`. Each is stored to while every field holds its reset value, which differs from all ones, so a leak through a clear strobe would show on the read-back. In the first five, the stored half has no field and must still read 0. In `RESET_TIMEOUT` the stored half is read-only status. The boot contract leaves `timeout_mode` set before release, where a leak of ones would not show, so the image writes the reset value first and puts the boot value back afterwards.
 * The four `CPU_CTRL` `MUTEX` registers are stored to in their upper half, first while free and then while held. The RDL makes any write a release, whichever half it selects, so each store must leave the mutex free, and a read must take it after each store.
 * Alias-remap `region_attrs` region 0 is stored to in its lower half. That store takes `offset[31:12]`; `cacheable`, `valid` and `offset[55:32]` in the upper half carry ones on clear strobes and must stay 0. The region stays invalid, so the new offset remaps nothing, and the bench restores it.
-* Not driven, because the other half holds a field whose write has an effect the test cannot undo: `WDT_TIMEOUT_RESET`, which pulses core resets; the filter `FILTER_CONFIG` pair, whose `locked` bit is write-once-set; and the zeroer `INT_EN`, where any write starts a job at `DEST_ADDR`.
+* Three stores whose other half holds a field with an effect, each in a shape that writes that field harmlessly:
+** `WDT_TIMEOUT_RESET` is 32 bits at `0x58`, with nothing declared at `0x5C`. A store to `0x5C` writes no field, and its singlepulse core-reset fields carry ones with their strobes clear.
+** Outbound filter 14's `FILTER_CONFIG` keeps only `locked` (bit 63) in its upper half. An upper-half store with bit 31 clear writes 0 there, which `woset` ignores, while the lower lanes carry `read_allowed`, `write_allowed`, `entry_enabled`, `allow_ns` and `allow_burst` with their strobes clear. A lower-half store with only bit 31 set puts a one on `locked`'s lane with its strobe clear and writes the lower fields, `entry_enabled` included, to 0. The reset lower half is then written back, and the bench reads the reset word with `locked` clear after PASS.
+** The zeroer starts on a `CTRL_STATUS` write only while `SIZE` is non-zero. An upper-half store with `SIZE` 0 puts a one on `INT_EN`'s lane with its strobe clear and starts nothing: the image requires `STATUS` idle, and the bench reads `CTRL_STATUS` 0 after PASS.
 * CI: no hosted runner builds firmware, so this leaf runs on demand like the other `fw` leaves (<<smc-scheduled-holdouts>>). The image builds through `[c_build.default]` with the same path and post-process as `hello_world`, so the build needs nothing the other `fw` images do not.
 
 *Test Procedure*:
@@ -11142,6 +11148,8 @@ Drive `smc_output_remap_window_test_seq`. Each checker below is a named compare 
 * **W1C held across a zero, then cleared.** Six I2C0 `INTR_STATE` events (`RX_OVERFLOW`, `SDA_UNSTABLE`, `UNEXP_STOP`, `SMBALERT`, `CONTROLLER_RX_FIFO_ERROR`, `TARGET_RX_FIFO_ERROR`) and log-engine `INTR_STATUS.LOG_FETCH_ERR` are raised through `INTR_TEST`. Each must survive a full write of zero and clear on a write of one. Anything already latched, such as I2C0's `SMBALERT` event, which follows the SMBALERT output driven above, is cleared first.
 * **Zero into a trigger or a status.** Full writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` (`singlepulse`) and telemetry-receiver `INTR_STATUS` must leave each reading what it read before.
 * **Writes whose only effect is documented.** OCTS `CREDIT_EXPIRED` is an external register that `system_timer_octs.rdl` resets on any write, so a write must leave it reading 0. I2C0 `TARGET_NACK_COUNT` is `rclr` and holds 0 at idle, so a read returns 0.
+* **A flush held across a partial write.** Telemetry-receiver `CTRL.TELEMETRY_TX_FLUSH` is `hwclr` and clears on the ATB flush handshake, AFREADY with AFVALID. With receiver 0's AFREADY held low by the bench, the flush stays set, so a byte write to lane 0 must leave it set. Raising AFREADY then clears it.
+* **A byte write at FCR+1.** `uart_16550.sv` sends a write to the write-only block only when its address is exactly THR or FCR. A byte write at FCR+1 therefore reaches the main block, where it decodes at address 8, the read-only IIR word. `IIR` must read the same afterwards, with the FIFOs still off.
 * **Rows left, and why.** A one on a lane whose strobe is off cannot come from SEP_IN, whose master zero-fills unstrobed lanes.
 ** It cannot come from the CPU into these 32-bit blocks either. A firmware byte store of `0xFF` into the empty top byte of I2C0 `INTR_STATE` arrived at `i2c_reg` as `wdata 0xFF000000`, `wstrb 0x8`, so the path from the cluster zeroes the other lanes. The replication that reaches the 64-bit blocks (`smc_fw_narrow_store_lane_test`) does not reach the 32-bit ones. The `(data & biten)` "1 0" rows of `i2c_reg` (`INTR_STATE`, `CONTROLLER_EVENTS`, `TARGET_EVENTS`), `log_engine_reg` and `telemetry_receiver_reg` are therefore unreachable in this design.
 ** In the 64-bit blocks the firmware leaf takes the safe lanes. The rest carry a hazard:
@@ -11166,7 +11174,7 @@ Drive `smc_regblock_partial_write_test_seq`. Each checker below is a named compa
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-REGBLOCK-DOCUMENTED-WRITE` |A write reset OCTS `CREDIT_EXPIRED` to 0, and I2C0 `TARGET_NACK_COUNT` read 0 at idle
+|`CHK-REGBLOCK-DOCUMENTED-WRITE` |A write reset OCTS `CREDIT_EXPIRED` to 0; I2C0 `TARGET_NACK_COUNT` read 0 at idle; telemetry `TX_FLUSH` held across a lane-0 byte write while AFREADY was low and cleared once it rose; a byte write at UART0 FCR+1 left `IIR` unchanged
 |`CHK-REGBLOCK-PARTIAL-HOLD` |`SMBUS_EN` on the three `I2C_CTRL` instances and I2C0 `SMBUS_CTRL.SMBALERT` read back set after a byte write to another lane, and each was restored and read back
 |`CHK-REGBLOCK-W1C-HOLD` |The six I2C0 events and `LOG_FETCH_ERR`, raised through `INTR_TEST`, read back set after a write of zero and clear after a write of one
 |`CHK-REGBLOCK-ZERO-WRITE` |Writes of zero to log-engine `INTR_TEST`, OCTS `TIMER_START` and telemetry `INTR_STATUS` left each reading what it read before
@@ -11696,6 +11704,7 @@ in <<smc-deferred-disposition>>.
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in <<smc-deferred-disposition>>; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |`smc_deadspace_decode_test` measures wrap-to-live aliasing: dead offsets in seven register windows wrap onto live registers with an OKAY response |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`, so the defect has a graded measurement and the row goes red when the decode changes |Resolve the wrap-to-live aliasing decode contract (#585); the leaf then moves to its feature testlist with the `ci` tag
+|A write queued right behind the write that locks a filter reaches `filter_ctrl` after `locked = 1` |`smc_filter_lock_window_test` shows it: of two writes queued behind the locking write, the first is answered OKAY and lands, the second is refused. The leaf runs weekly in `rtl_issue` under `expect_fail` |Gate the lock select after the AW spill in `smc_internal_regs.sv:306` and `:471`, or hold the next AW until the locking write's B; the leaf then moves to its feature testlist
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |Thirteen test modules written against this bench are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in <<smc-deferred-disposition>> names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
@@ -11719,9 +11728,10 @@ in `smoke`, `hosted` or `all`. Every `[[tests]]` entry carries `expect_fail` nam
 `expect_fail_match` pinned to the assertion it raises; the weekly tier runs
 the group on its own `regress.yml` row and grades the recorded failure as
 PASS, so the row goes red (`expected_fail_passed`) the week a defect is
-fixed and the leaf moves to its feature testlist. The member is
-`smc_deadspace_decode_test` (#585); its card follows, with the other held-out
-leaves.
+fixed and the leaf moves to its feature testlist. The members are
+`smc_deadspace_decode_test` (#585) and `smc_filter_lock_window_test` (the
+FILTER_CONFIG lock window, recorded in card 261; no issue filed yet); their
+cards follow, with the other held-out leaves.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -11762,9 +11772,36 @@ Drive `smc_deadspace_decode_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing (dead offsets in seven register windows wrap onto live registers with an OKAY response) and runs weekly in `rtl_issue` under `expect_fail`, with `expect_fail_match` pinned to the `wrap_to_live` / `read_alias` assertion; the observed failure grades PASS and an observed PASS grades `expected_fail_passed`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `rtl_issue` only -- an `rtl_issue` reproducer graded as an expected failure on the weekly tier (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
 '''''
 
+[[sec-263-smc_filter_lock_window_test]]
+===== 263 `smc_filter_lock_window_test`
 
+*Source Module*: `smc_filter_lock_window_test`
 
+*BFM / Model*: ocah_axi_vip (AXI, SEP_IN)
 
+*Objective*: Writes queued right behind the write that locks a filter are refused and change nothing.
+
+*Test Coverage*:
+
+* `filter_ctrl.rdl` makes `FILTER_CONFIG.locked` (bit 63) `woset`: "Lock filter configurations. Write once register". No other field of the block carries a write enable, so the lock is enforced outside the register block. The inner demux at `smc_internal_regs.sv:306` (outbound) and `:471` (inbound) sends a write to the error slave when `locked` is set.
+* Arm leg: outbound filter 15 reads its reset word with `locked` and `entry_enabled` clear, and the locking write (reset word plus `locked`) is answered OKAY.
+* Defect leg: two `FILTER_CONFIG` writes queued in the same outstanding group directly behind the locking write, carrying `src_id` 5 and 6. Both must be refused, and `FILTER_CONFIG` must then read the reset word plus `locked`. `entry_enabled` stays clear throughout, so filter 15 filters no traffic.
+* On this RTL the first queued write is answered OKAY and lands (`FILTER_CONFIG` reads `0x8000000000053000`), and the second is refused with SLVERR. The inner demux stores its lock select with the AW in its spill register (`axi_lite_demux.sv:206-219`, `SpillAw`). The outer demux forwards the next AW as soon as the locking write's W has passed (`:250-256`, `:311-312`), so the first queued AW latches select 0 before `locked` updates.
+
+*Test Procedure*:
+
+Drive `smc_filter_lock_window_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FILTER-LOCK-WINDOW` |Both writes queued behind the locking write were refused, and `FILTER_CONFIG` read the reset word plus `locked`
+|===
+
+*Pass Criteria*: expected to fail on current RTL; enrolled in `rtl_issue` with `expect_fail`, not in `all`. The weekly tier grades the recorded failure as PASS and turns red the week the lock window closes.
+'''''
 
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
 ===== 161 `smc_occp_dual_unsecure_boot_test`
@@ -12390,7 +12427,7 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Member: `smc_deadspace_decode_test` (#585).
+Members: `smc_deadspace_decode_test` (#585) and `smc_filter_lock_window_test`.
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

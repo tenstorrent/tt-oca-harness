@@ -19,6 +19,16 @@ registers -- so on every other block they have never run:
   presents W before AW, so the front end captures W with no AW to pair it with
   -- the `awvalid && wvalid` row with AW low. `cpu_ctrl` and `zeroer_ctrl` also
   take the opposite skew, AW ahead of W, which only those two had not seen.
+* **A read arriving on a held write.** The front end dispatches a waiting read
+  ahead of a waiting write when the last access was a write, so a read that
+  reaches the block in the cycle it registers AW and W holds that write for one
+  cycle. If the next write's AW is already behind it, AWREADY is seen low. Each
+  block takes a pair of writes and a read with the read's arrival swept over
+  twelve offsets, and a single write and a read over the same offsets, which
+  lines a read accept up with a write's acknowledge.
+* **Mixed groups against a held response.** Eight writes and a read against a
+  held BREADY, and eight reads and a write against a held RREADY, queue the
+  opposite access behind two unacknowledged ones.
 * **A response held against a low ready.** `b_ready_delay` and `r_ready_delay`
   hold BREADY and RREADY low on SEP_IN, but the interconnect in front of each
   block buffers responses and keeps the block's own ready high until that
@@ -121,6 +131,16 @@ _READY_HOLD = 32
 # before the block's own ready ever drops; this is deep enough to fill both.
 _BP_DEPTH = 16
 
+# Read-arrival offsets swept against a pair of writes (and a single write). The
+# block holds a write it has registered for one cycle when a read reaches it at
+# the same time and the last access was a write; the next write's AW then finds
+# AWREADY low. Which offset lines the read up with that cycle depends on the
+# path in front of each block, so every block takes the whole range.
+_INTERLEAVE_OFFSETS = range(12)
+# Mixed groups against a held response: the opposite access queues behind two
+# unacknowledged ones.
+_MIXED_DEPTH = 8
+
 # Reads and writes in the outstanding group. Interleaved and more than two
 # deep, so the front end has one waiting on each side as it acknowledges.
 _GROUP_PAIRS = 3
@@ -215,6 +235,29 @@ class smc_cpuif_handshake_test_seq(SmcCsrSeq):
             await self._group(
                 f"{block}_rready_hold",
                 [rd(f"bp_rd{index}") for index in range(_BP_DEPTH)],
+                AxiTimingProfile(r_ready_delay=_READY_HOLD),
+            )
+
+        if reads:
+            for offset in _INTERLEAVE_OFFSETS:
+                await self._group(
+                    f"{block}_wwr{offset}",
+                    [wr(f"il_wr{offset}a"), wr(f"il_wr{offset}b"), rd(f"il_rd{offset}")],
+                    AxiTimingProfile(ar_delay=offset),
+                )
+                await self._group(
+                    f"{block}_wr{offset}",
+                    [wr(f"ack_wr{offset}"), rd(f"ack_rd{offset}")],
+                    AxiTimingProfile(ar_delay=offset),
+                )
+            await self._group(
+                f"{block}_mixed_bready_hold",
+                [wr(f"mx_wr{index}") for index in range(_MIXED_DEPTH)] + [rd("mx_rd")],
+                AxiTimingProfile(b_ready_delay=_READY_HOLD),
+            )
+            await self._group(
+                f"{block}_mixed_rready_hold",
+                [rd(f"mx_rd{index}") for index in range(_MIXED_DEPTH)] + [wr("mx_wr")],
                 AxiTimingProfile(r_ready_delay=_READY_HOLD),
             )
 

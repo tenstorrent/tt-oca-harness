@@ -24,12 +24,15 @@ from smc_base_test import smc_base_test
 # 23 blocks with a read side -- the 21 probes, straps and uart_16550_dl -- at 41
 # SEP_IN AXI accesses each: the held read, a pipelined group of three reads and
 # three writes, the W-first write, sixteen writes against a held BREADY and
-# sixteen reads against a held RREADY, and the closing read. On top of those:
+# sixteen reads against a held RREADY, and the closing read; then 78 more: twelve
+# write-write-read groups (36), twelve write-read groups (24), eight writes and a
+# read against a held BREADY (9) and eight reads and a write against a held
+# RREADY (9). On top of those:
 # the AW-first write on cpu_ctrl and zeroer_ctrl (2), the LCR read, DLAB write,
 # restore write and restore read around uart_16550_dl (4), and
 # uart_16550_main_wo's three pipelined writes, W-first write and sixteen
 # BREADY-held writes with the IIR read after them (21).
-CPUIF_HANDSHAKE_MIN_CSR_ACCESSES = 23 * 41 + 2 + 4 + 21
+CPUIF_HANDSHAKE_MIN_CSR_ACCESSES = 23 * (41 + 78) + 2 + 4 + 21
 
 
 @pyuvm.test()
