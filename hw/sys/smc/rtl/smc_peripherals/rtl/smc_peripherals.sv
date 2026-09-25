@@ -293,6 +293,7 @@ module smc_peripherals #(
   logic boot_stall_from_bp;
   logic boot_stall_combined;
   logic boot_stall_sticky;
+  logic boot_stall_sticky_n;
   logic fuse_reset_stalled_n;
 
   // Reset Unit Signals
@@ -930,7 +931,19 @@ module smc_peripherals #(
   // provide final boot stall in case needed by other blocks
   assign boot_stall_processed_o = boot_stall_sticky;
 
-  assign fuse_reset_stalled_n = fuse_reset_n & ~boot_stall_sticky;
+  prim_inv u_boot_stall_sticky_inv (
+    .in_i  (boot_stall_sticky),
+    .out_o (boot_stall_sticky_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_fuse_reset_stall_and (
+    .in0_i (fuse_reset_n),
+    .in1_i (boot_stall_sticky_n),
+    .out_o (fuse_reset_stalled_n)
+  );
+
   assign fuse_reset_n_o = fuse_reset_stalled_n;
 
 

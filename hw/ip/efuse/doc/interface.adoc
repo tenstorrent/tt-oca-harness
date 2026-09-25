@@ -238,9 +238,9 @@ endif::backend-html5[]
 
 |`is_secure_tm_blocked_o` |Output |1 |Fuse traffic blocked while secure test mode is active
 
-|`is_rma_sip_token_match_debug` |Output |6 |RMA SiP token match status code
+|`is_rma_sip_token_match_debug_o` |Output |6 |RMA SiP token match status code
 
-|`is_rma_chiplet_token_match_debug` |Output |6 |RMA chiplet token match status code
+|`is_rma_chiplet_token_match_debug_o` |Output |6 |RMA chiplet token match status code
 
 |`sec_disable_token_o` |Output |256 |Security disable token value (8 x 32-bit words)
 |=====================================================================================

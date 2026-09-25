@@ -109,7 +109,7 @@ wrapper's single target.
 |`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI boundary
 |`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
 |`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
-|`smu_alias_fcov.sv` |6 |Alias and remap manager scope at the SMU boundary
+|`smu_alias_fcov.sv` |4 |SEP-to-SMC dedicated-port routing at the SMU boundary
 |`smu_clk_fcov.sv` |3 |Clock mirrors `tb/tb_wrapper_top.sv` exposes
 |`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
 |===
