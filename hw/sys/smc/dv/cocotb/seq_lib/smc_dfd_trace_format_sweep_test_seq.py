@@ -9,14 +9,18 @@ programmed into a field comes from that field's own RDL description. The
 vendored RTL is not a source for any value this sequence programs or compares
 against.
 
-**One mode per run, and why.** The DST packet path cannot be re-run in a
-second compression mode inside one simulation. Measured twice: after a mode
-has run, the funnel reads empty and the sink has taken a full window, yet
-``Trdstcontrol.Trdstempty`` stays 0 -- the packetizer keeps a partial bank and
-nothing the register interface offers flushes it -- and a second mode
-programmed afterwards then delivers nothing to the sink at all. The only
-empty packetizer this bench can provide is the one a run starts with, so the
-sequence takes the format as a parameter and each mode gets its own leaf.
+**One mode per run.** The sequence takes the format as a parameter and each
+mode gets its own leaf, starting from the empty packetizer a run begins with.
+Clearing ``Trdstcontrol.Trdstenable`` alone, with ``Trdstactive`` held at 1,
+empties the packetizer from software; clearing both together stops the DST
+clock first and leaves a partial bank behind. Re-running a second mode after
+that flush is not measured here.
+
+The sink window registers are written through each field's own bit
+positions: the limit and pointer fields sit above two reserved bits and
+hardware writes them too, so the register's plain read-write mask leaves them
+out. The stream witness requires the write pointer field itself to move and
+stay inside the window, not only the hardware-set wrap flag.
 
 Three things have to be true at once for the XOR and VLT compressors behind
 ``debug_sig_trace_gen`` to do any work, and each has an RDL handle:
@@ -25,12 +29,17 @@ Three things have to be true at once for the XOR and VLT compressors behind
   and bit 1 as the VLT enable, and names 3 (XOR plus VLT), 1 (XOR) and 0 (no
   compression) as the supported values.
 * **A payload that changes between samples.** A compressor fed a bus that
-  holds still emits nothing. ``DEBUG_BUS_MUX.Muxselseg0..7`` chooses which
-  debug-bus segment each output lane carries: the RDL description gives a
-  select of zero the lane's own segment and each set bit one of the upper
-  segments, so rotating the selects while the trace runs changes what every
-  lane carries. A mux latches its selects only while its own id is
-  programmed, so each rotation costs one write per id.
+  holds still emits nothing. The CLA's own mux (``CDbgMuxSelLo``), the last
+  stage in front of the trace, resets to its off mode, so it is put in normal
+  debug mode first. The functional debug signals behind the DEBUG_BUS_MUX
+  array hold still in this bench, so the array is put in the identifier output
+  mode its description names, which drives known non-zero content, and the
+  identifier whose return to normal mode moves the node 0 pair 0 snapshot is
+  found by measurement. ``Muxselseg0..7`` of that mux choose which input
+  segment each output lane carries: the RDL description gives a select of zero
+  the lane's own segment and each set bit one of the upper segments. The
+  selects are rotated while the trace runs, the snapshot is read after each
+  rotation, and at least two different lane states are required.
 * **More than one packet size.** ``Trdstimpl.Trdstvendorframelength`` sets
   the frame length, which the RDL description makes the field value times 64
   bytes. The run changes it part way through, so the packet path sees two
@@ -50,12 +59,19 @@ from cocotb.triggers import ClockCycles
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dfd_trace_accumulator_fill_test_seq import (
+    DBM_MODE_NORMAL,
+    checked_mask,
+    cla_mux_normal,
     dfd_register,
     dst_register,
+    field_word,
+    find_sampled_mux,
     funnel_register,
     pack_fields,
     reg_field,
+    set_dbm,
     sink_register,
+    traced_bus,
 )
 
 # dfd_dst.rdl Trdstformat, the values the field's own description names.
@@ -96,6 +112,8 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         self.baseline = 0
         self.delivered = 0
         self.rotations: list[int] = []
+        self.lane_states: list[int] = []
+        self.sampled_mux = -1
         self.frame_lengths: list[int] = []
         self.value_checks = 0
 
@@ -115,13 +133,23 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         word = pack_fields(reg, values)
         await self._write(reg, word, label)
         readback = await self._read(reg, f"{label}_rb")
-        assert readback & reg.rw_mask == word & reg.rw_mask, (
-            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & reg.rw_mask:x} into its "
-            f"software-writable bits, reads 0x{readback & reg.rw_mask:x}"
+        mask = checked_mask(reg, values)
+        assert readback & mask == word & mask, (
+            f"{reg.path} @ 0x{reg.addr:08x} [{label}]: wrote 0x{word & mask:x} into its "
+            f"software-writable bits, reads 0x{readback & mask:x}"
         )
         self.value_checks += 1
 
     # -- bring-up ---------------------------------------------------------
+
+    async def _rotate_sampled(self, select: int, label: str) -> None:
+        """Give the sampled mux one segment select and read the lanes it now drives."""
+        values = {"Dbmmode": DBM_MODE_NORMAL, "Dbmid": self.sampled_mux}
+        values.update({f"Muxselseg{lane}": select for lane in range(8)})
+        await set_dbm(self, values, label)
+        self.rotations.append(select)
+        await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+        self.lane_states.append(await traced_bus(self, f"{label}_lanes"))
 
     async def _program_segments(self, select: int, label: str) -> None:
         """Give every debug-bus mux the same segment select, in normal debug mode."""
@@ -132,7 +160,6 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         for identity in range(1 << dbmid.width):
             values["Dbmid"] = identity
             await self._write(reg, pack_fields(reg, values), f"{label}_id{identity}")
-        self.rotations.append(select)
 
     async def _open_sink(self) -> None:
         control = sink_register("Trdstramcontrol")
@@ -146,7 +173,7 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
             ("Trdstramrplow", 0),
         ):
             reg = sink_register(name)
-            await self._write(reg, value & reg.rw_mask, "window")
+            await self._write(reg, field_word(reg, name, value), "window")
         await self._write_check(control, {"Trdstramactive": 1, "Trdstramenable": 1}, "sink")
 
     async def _set_frame_length(self, length: int) -> None:
@@ -247,8 +274,8 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         rotate_step = span // len(_SEGMENT_SELECTS)
         frame_step = span // len(_FRAME_LENGTHS)
         for value in range(span):
-            if value and value % rotate_step == 0:
-                await self._program_segments(_SEGMENT_SELECTS[value // rotate_step], f"rot{value}")
+            if value % rotate_step == 0:
+                await self._rotate_sampled(_SEGMENT_SELECTS[value // rotate_step], f"rot{value}")
             if value and value % frame_step == 0:
                 await self._set_frame_length(_FRAME_LENGTHS[value // frame_step])
             await self._write(
@@ -276,6 +303,12 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
             f"mode delivered nothing. Trdstcontrol reads "
             f"0x{await self._read(dst, 'stall'):08x} and the funnel control "
             f"0x{await self._read(funnel, 'stall'):08x}"
+        )
+        pointer = reg_field(wp, "Trdstramwplow")
+        assert 0 < word & pointer.mask <= _SINK_WINDOW_BYTES, (
+            f"DST_SINK Trdstramwplow @ 0x{wp.addr:08x} reads 0x{word:08x}: the write pointer "
+            f"field is 0x{word & pointer.mask:x}, not inside the 0x{_SINK_WINDOW_BYTES:x}-byte "
+            f"window, so what moved is not the pointer running through the window"
         )
         self.delivered = word
         self.value_checks += 1
@@ -305,20 +338,32 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
         await self._set_frame_length(_FRAME_LENGTHS[0])
         await self._start_dst()
         await self._empty_start()
-        await self._run_actions(await self._arm_cla())
+        logical_op = await self._arm_cla()
+        await cla_mux_normal(self, "clamux")
+        self.sampled_mux, _, _ = await find_sampled_mux(self, _SETTLE_CYCLES, "payload")
+        await self._run_actions(logical_op)
         await self._require_delivered()
 
         assert self.rotations == list(_SEGMENT_SELECTS), (
             f"the segment-select rotation programmed {self.rotations}, not the full set "
             f"{list(_SEGMENT_SELECTS)} the Muxselseg description names"
         )
-        self.value_checks += 1
+        distinct = sorted(set(self.lane_states))
+        assert len(distinct) >= 2, (
+            f"the node 0 pair 0 snapshot read {[hex(v) for v in self.lane_states]} across the "
+            f"segment-select rotation of mux identifier {self.sampled_mux}, one value "
+            f"throughout, so the lanes the trace samples did not change"
+        )
+        self.value_checks += 2
         cocotb.log.info(
-            "CHK-DST-FORMAT-PAYLOAD: the debug-bus mux array was walked through the segment "
-            "selects %s that the Muxselseg description names, one write per mux id per "
-            "rotation, while the trace was running, so the lanes carried different "
-            "debug-bus segments and consecutive samples differ",
+            "CHK-DST-FORMAT-PAYLOAD: with the CLA mux in normal mode and DEBUG_BUS_MUX "
+            "identifier %d measured as feeding the traced bus, its segment selects were "
+            "rotated through %s while the trace ran, and the lanes read through the node 0 "
+            "pair 0 snapshot took %d different values (%s), so consecutive samples differ",
+            self.sampled_mux,
             self.rotations,
+            len(distinct),
+            ", ".join(hex(v) for v in self.lane_states),
         )
 
         assert sorted(set(self.frame_lengths)) == sorted(set(_FRAME_LENGTHS)), (
@@ -340,6 +385,7 @@ class smc_dfd_trace_format_sweep_test_seq(SmcCsrSeq):
             dst_register("Trdstimpl"),
             cla_register("CDbgNode0Eap0"),
             cla_register("CDbgClaCtrlStatus"),
+            cla_register("CDbgMuxSelLo"),
             funnel_register("Trfunnelcontrol"),
             sink_register("Trdstramcontrol"),
             dfd_register("dfx_ctrl/DEBUG_BUS_MUX"),

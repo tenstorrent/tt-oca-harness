@@ -6,15 +6,20 @@ DV-CARD: SMCCGP0_003 ANCHOR: smc_cg_dft_reset_bringup_test
 Two clock-gating bring-up properties on the DMA and Zeroer gaters:
 
 * ``test_en_i`` bypass: with gating programmed on and both blocks idle the
-  gaters take the clocks away; ``test_en_i`` = 1 gives them back every cycle;
-  ``test_en_i`` = 0 with gating re-programmed takes them away again (A-B-A).
+  gaters take the clocks away. ``test_en_i`` is static in the functional
+  mission and changes only while the reset is asserted, so the bypass is
+  entered and left across a cold reset: with ``test_en_i`` = 1 set under
+  reset and gating programmed on after release, the clocks run every cycle;
+  with ``test_en_i`` = 0 set under a second reset and gating programmed on
+  again, the gaters take them away (A-B-A).
 * Zeroer clocks under the primary reset: while ``rst_primary_smc_clk_n`` is
-  asserted the Zeroer's gated clocks run every cycle. The cold reset also
-  returns ``CLOCK_GATE_CONTROL`` to its generated reset, where the Zeroer
-  enable is 0, and the leaf samples and records that enable inside the
-  window. An enabled gate held in reset is therefore not reachable from the
-  frontdoor on this bench, and the leaf does not claim that case: the claim
-  is the free-running clock under reset with the enable at its reset value.
+  asserted, with ``test_en_i`` = 0, the Zeroer's gated clocks run every
+  cycle. The cold reset also returns ``CLOCK_GATE_CONTROL`` to its generated
+  reset, where the Zeroer enable is 0, and the leaf samples and records that
+  enable inside the window. An enabled gate held in reset is therefore not
+  reachable from the frontdoor on this bench, and the leaf does not claim
+  that case: the claim is the free-running clock under reset with the enable
+  at its reset value.
 """
 
 from __future__ import annotations
@@ -171,74 +176,83 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "all-gated-off-observed")
 
-        # ---- S2: assert test_en_i and sample the same three gated clocks ----
+        # ---- S2: enter the bypass across a cold reset. test_en_i changes only
+        # while the reset is asserted; the reset clears CLOCK_GATE_CONTROL, so
+        # gating is programmed on again after release. ----
         cg.log_step(
             "S2",
-            "assert test_en_i; sample dma_gated_clk / zeroer_axi_gated_clk / "
-            "zeroer_reg_gated_clk for a fixed window",
+            "assert the cold reset, set test_en_i=1 under it, release, re-program gating; "
+            "sample dma_gated_clk / zeroer_axi_gated_clk / zeroer_reg_gated_clk",
+        )
+        await self._reset_op(SmcResetOp.COLD_RST_LO)
+        await self._wait_reset_state(
+            want_asserted=True, bound_smc=RESET_WAIT_BOUND_SMC, label="BYPASS_ENTER_ASSERT"
         )
         dut.tb_test_en_i.value = 1
-        # Bounded poll for the first SMC rise that samples the DMA clock
-        # enabled again, then count from there. A fixed ClockCycles settle
-        # would absorb a bypass that never takes effect and pass on sim-timing
-        # luck ([NO-BLIND-DELAY-SYNC]).
-        bypass_seen_at = await cg.wait_enabled(
-            dut,
-            "tb_dma_gated_clk",
-            timeout_smc=GATE_OFF_TIMEOUT_SMC,
-            diag_names=("tb_dma_cg_en", "tb_dma_gater_busy", "tb_test_en_i"),
+        await self._reset_op(SmcResetOp.COLD_RST_HI)
+        await self._wait_reset_state(
+            want_asserted=False, bound_smc=RESET_RECOVER_BOUND_SMC, label="BYPASS_ENTER_RELEASE"
         )
+        await self._program_cg(dma_en=True, zeroer_en=True)
+        # The window spans at least as many cycles as S1 took to see all three
+        # clocks gated off after the same programming, so a gater still inside
+        # its hysteresis cannot pass for a bypass.
+        bypass_window = dma_off_at + zaxi_off_at + zreg_off_at + IDLE_OBSERVE
         dma_edges, zaxi_edges, zreg_edges = await cg.count_enabled_triple_at_smc_rise(
             dut,
             "tb_dma_gated_clk",
             "tb_zeroer_gated_axi_clk",
             "tb_zeroer_gated_reg_clk",
-            IDLE_OBSERVE,
+            bypass_window,
         )
         # Each message names this run's gated-off observation of the same probe,
         # so a failure says which of the two states was not reached.
-        assert dma_edges == IDLE_OBSERVE, (
+        assert dma_edges == bypass_window, (
             f"DMA clock gated under test_en_i: edges={dma_edges} "
-            f"window={IDLE_OBSERVE} (this clock WAS observed gated off at smc "
+            f"window={bypass_window} (this clock WAS observed gated off at smc "
             f"cycle {dma_off_at} with test_en_i=0, so the gater works and the "
             f"bypass does not)"
         )
-        assert zaxi_edges == IDLE_OBSERVE, (
+        assert zaxi_edges == bypass_window, (
             f"Zeroer axi_clk gated under test_en_i: edges={zaxi_edges} "
-            f"window={IDLE_OBSERVE} (observed gated off at smc cycle "
+            f"window={bypass_window} (observed gated off at smc cycle "
             f"{zaxi_off_at} with test_en_i=0)"
         )
-        assert zreg_edges == IDLE_OBSERVE, (
+        assert zreg_edges == bypass_window, (
             f"Zeroer reg_clk gated under test_en_i: edges={zreg_edges} "
-            f"window={IDLE_OBSERVE} (observed gated off at smc cycle "
+            f"window={bypass_window} (observed gated off at smc cycle "
             f"{zreg_off_at} with test_en_i=0)"
         )
         dft_every = int(
-            dma_edges == IDLE_OBSERVE and zaxi_edges == IDLE_OBSERVE and zreg_edges == IDLE_OBSERVE
+            dma_edges == bypass_window
+            and zaxi_edges == bypass_window
+            and zreg_edges == bypass_window
         )
         cg.emit_chk(
             self.chk_seen,
             "CHK-DFT-BYPASS-FREE-RUN",
             "CHK-DFT-BYPASS-FREE-RUN: toggles_every_cycle="
             f"{dft_every} dma_edges={dma_edges} zeroer_axi_edges={zaxi_edges} "
-            f"zeroer_reg_edges={zreg_edges} window={IDLE_OBSERVE} test_en_i=1 "
-            f"gating_enabled=1; gated off first at smc cycles dma={dma_off_at} "
-            f"zeroer_axi={zaxi_off_at} zeroer_reg={zreg_off_at} with "
-            f"test_en_i=0, re-enabled {bypass_seen_at} smc cycle(s) after "
-            f"test_en_i=1",
+            f"zeroer_reg_edges={zreg_edges} window={bypass_window} test_en_i=1 "
+            f"(set under reset) gating_enabled=1; gated off first at smc cycles "
+            f"dma={dma_off_at} zeroer_axi={zaxi_off_at} zeroer_reg={zreg_off_at} with "
+            f"test_en_i=0",
         )
         cg.mark_fence(self.fence, "dft-bypass-free-run-observed")
 
-        # ---- S3: deassert test_en_i; assert the cold reset (reset held). The
+        # ---- S3: assert the cold reset and clear test_en_i under it. The
         # reset returns CLOCK_GATE_CONTROL to its generated reset (enables 0),
         # so the window below observes a reset-cleared gate, and says so. ----
         cg.log_step(
             "S3",
-            "deassert test_en_i; assert rst_ni (reset held); CLOCK_GATE_CONTROL returns to its "
-            "reset, Zeroer gating enable 0",
+            "assert rst_ni (reset held), clear test_en_i under it; CLOCK_GATE_CONTROL returns "
+            "to its reset, Zeroer gating enable 0",
         )
-        dut.tb_test_en_i.value = 0
+        # With test_en_i=1 the reset synchronisers take scan_rst_ni, which the
+        # bench ties high, so the cold reset reaches rst_primary_smc_clk_n only
+        # once test_en_i is cleared under it.
         await self._reset_op(SmcResetOp.COLD_RST_LO)
+        dut.tb_test_en_i.value = 0
         rst_asserted = await self._wait_reset_state(
             want_asserted=True,
             bound_smc=int(RESET_WAIT_BOUND_NS / self.cfg.smc_clk_period_ns),
@@ -288,7 +302,7 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         )
         cg.mark_fence(self.fence, "reset-override-free-run-observed")
 
-        # ---- Restore: release reset before ending the scenario ----
+        # ---- Release the reset with test_en_i=0 ----
         await self._reset_op(SmcResetOp.COLD_RST_HI)
         await self._wait_reset_state(
             want_asserted=False,
@@ -301,7 +315,7 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         # This is the one measurement in the testcase whose value no earlier
         # assert pins: a `test_en_i` input that latches high on first assertion,
         # a bypass term that never clears, or a reset override that never
-        # releases all leave these three at IDLE_OBSERVE and fail here.
+        # releases all leave these three enabled on every cycle and fail here.
         cg.log_step(
             "S5",
             "reset released, test_en_i=0, gating re-programmed: the same three clocks must re-gate",
@@ -344,16 +358,16 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
                 "bypass-released-regated-observed",
             ],
         )
-        # Measured contrast: the same three probes, equal-length windows, both
-        # polarities. The test_en_i=1 half was asserted at S2 and is carried
+        # Measured contrast: the same three probes in both polarities. The
+        # test_en_i=1 half was asserted at S2 and is carried
         # here as evidence only; the re-gate half is asserted for the first
         # time on this line.
         assert rel_dma == 0 and rel_zaxi == 0 and rel_zreg == 0, (
-            f"clock gating never resumed after test_en_i=0 and reset release: "
+            f"clock gating never resumed after test_en_i=0 was set under reset: "
             f"the same {IDLE_OBSERVE}-cycle window still samples "
             f"dma_enabled={rel_dma} zeroer_axi_enabled={rel_zaxi} "
             f"zeroer_reg_enabled={rel_zreg} (under test_en_i=1 the same probes "
-            f"read {dma_edges}/{zaxi_edges}/{zreg_edges} of {IDLE_OBSERVE}); "
+            f"read {dma_edges}/{zaxi_edges}/{zreg_edges} of {bypass_window}); "
             f"with no return to the gated state the free-run evidence above "
             f"proves nothing"
         )
@@ -372,11 +386,11 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
                 fence_times[2],
                 fence_times[3],
                 dma_edges,
-                IDLE_OBSERVE,
+                bypass_window,
                 zaxi_edges,
-                IDLE_OBSERVE,
+                bypass_window,
                 zreg_edges,
-                IDLE_OBSERVE,
+                bypass_window,
                 dma_regate_at,
                 rel_dma,
                 IDLE_OBSERVE,

@@ -16,29 +16,34 @@ controller). This leaf synchronises instead: it counts SCL rising edges and
 pulls SDA low inside the high window of a chosen one, so the edge is a control
 symbol by construction and lands in a chosen part of the bit loop.
 
-Two points are driven, which are the two slots where the line is high because
-it is released rather than driven: the acknowledge of an address nobody
-answers, and a one bit of a byte the target is returning. The read point needs
-a device that answers, so the bench EEPROM target is on the pads throughout.
+Four points are driven, one in each state where the controller holds SCL
+released: the acknowledge of an address nobody answers and a one bit of a
+byte the target is returning, where the line is high because it is released,
+and a one bit of the address the controller is sending and the
+not-acknowledge it drives at the end of a read, where the line is high
+because the controller drives it. By the SCL rise each is made on, those
+are the controller states `ClockPulseAck`, `ReadClockPulse`, `ClockPulse` and
+`HostClockPulseAck`. The read points need a device that answers, so the bench
+EEPROM target is on the pads throughout.
 
-The other two slots where the controller holds SCL released -- a bit it is
-transmitting, and the not-acknowledge it drives at the end of a read -- are
-high only because the controller is driving them. An external pull there is
-interference, which the design detects from the level alone and acts on a
-cycle before the control-symbol check, which needs the line sampled on two
-consecutive cycles; both versions of this leaf that tried those slots measured
-`SDA_INTERFERENCE` and no control symbol. They are left uncovered rather than
-claimed.
+Where the controller drives the high, the same pull is also interference,
+which the design detects from a single sample of SCL high. The control-symbol
+check needs SCL high on two consecutive samples as well as the SDA change, so
+a pull made the instant SCL rises reaches the core while only one high sample
+of SCL has, and raises interference alone. Those two points are therefore
+made a fixed delay into the high window, after both samples of SCL are high,
+and the pull still ends inside the window.
 
 The pull is released inside the same SCL high window. A longer one reaches the
-next state, where the controller is driving the line, and there the same pull
-is interference rather than a control symbol -- `SDA_INTERFERENCE`, which a
-first version of this leaf measured instead.
+next state, where the controller may be driving the line low, and there the
+same pull is interference rather than a control symbol.
 
 A clean transfer runs first, so the abandons are the difference the injection
 makes. Nothing is asserted about the transfer after an injection: on this DUT
 the next transaction from the same controller is NACKed even once the events
-are cleared, so each leg re-enables the controller from scratch instead.
+are cleared, so each leg re-enables the controller from scratch instead. An
+abandoned transfer can also leave the bench target part-way through a byte,
+so the bus is clocked back to idle and given a STOP before the next leg.
 """
 
 from __future__ import annotations
@@ -91,18 +96,26 @@ CLEAN_BYTE = 0x5A
 I2C0_INTR_STATE = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0)
 
 #: Which SCL rising edge of the transfer the edge is injected on, counted
-#: from the START. SDA is open-drain, so a pull only makes an edge where the
-#: line is already high, and it is only a control symbol where the controller
-#: is not the one holding it high -- where it is, the same pull is
-#: interference, which the design acts on a cycle earlier. That leaves the
-#: acknowledge of an address nobody answers, and a one bit of a byte the
-#: target is returning: rise 9 of a write to `ABSENT_ADDR`, and rise 30 of the
-#: read, which sits after nine rises for the address byte, nine for the offset
-#: byte, ten for the repeated start and read address, and one more for the
-#: second bit of `CLEAN_BYTE`.
+#: from the START, and how far into that high window. SDA is open-drain, so a
+#: pull only makes an edge where the line is already high:
+#:
+#: * rise 1 of a write, the first address bit, a one the controller sends;
+#: * rise 37 of the read, the not-acknowledge the controller drives after the
+#:   byte -- after nine rises for the address byte, nine for the offset, ten
+#:   for the repeated start and read address and eight for the byte;
+#: * rise 9 of a write to `ABSENT_ADDR`, the acknowledge nobody gives;
+#: * rise 30 of the read, a one bit of `CLEAN_BYTE` the target returns.
+#:
+#: The first two are driven by the controller, so they carry a delay; see the
+#: module docstring. The read abandoned mid-byte runs last: the transfer the
+#: controller makes after it starts with the offset byte in place of the
+#: address, so no slot numbered from the START is where it should be.
+DRIVEN_DELAY_NS = 60
 INJECTIONS = (
-    ("ADDR_ACK", ABSENT_ADDR, False, 9),
-    ("READ_BIT", EEPROM_ADDR, True, 30),
+    ("ADDR_BIT", EEPROM_ADDR, False, 1, DRIVEN_DELAY_NS),
+    ("READ_NACK", EEPROM_ADDR, True, 37, DRIVEN_DELAY_NS),
+    ("ADDR_ACK", ABSENT_ADDR, False, 9, 0),
+    ("READ_BIT", EEPROM_ADDR, True, 30, 0),
 )
 #: TIMING0 of the controller under test, in cycles of its peripheral clock.
 THIGH_CYCLES = 0x1A
@@ -207,7 +220,33 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
             prev = now
         raise AssertionError(f"{label}: no START appeared on the bus after the queue")
 
-    async def _inject_on_rise(self, label: str, nth: int) -> None:
+    async def _recover_bus(self, label: str) -> None:
+        """Return the bus to idle after a leg the controller abandoned.
+
+        An abandoned transfer can leave the bench target part-way through a
+        byte, holding SDA low. Clocking SCL until it lets go and then issuing a
+        STOP is the standard recovery; the next leg's START needs an idle bus.
+        """
+        assert self.injector is not None
+        half = self.injector._half_ns
+        for _ in range(18):
+            if int(cocotb.top.tb_i2c0_sda.value):
+                break
+            self.injector._pull_scl(True)
+            await Timer(half, unit="ns")
+            self.injector._pull_scl(False)
+            await Timer(half, unit="ns")
+        self.injector._pull_sda(True)
+        await Timer(half, unit="ns")
+        self.injector._pull_scl(False)
+        await Timer(half, unit="ns")
+        self.injector._pull_sda(False)
+        await Timer(4 * half, unit="ns")
+        assert self._scl() and int(cocotb.top.tb_i2c0_sda.value), (
+            f"{label}: the bus did not return to idle after the leg"
+        )
+
+    async def _inject_on_rise(self, label: str, nth: int, delay_ns: int = 0) -> None:
         """Pull SDA low inside the high window of the nth SCL rise of the transfer."""
         assert self.injector is not None
         await self._wait_start(label)
@@ -219,6 +258,8 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
             if now and not prev:
                 seen += 1
                 if seen == nth:
+                    if delay_ns:
+                        await Timer(delay_ns, unit="ns")
                     sda_before = int(cocotb.top.tb_i2c0_sda.value)
                     cocotb.log.info(
                         "%s: injecting on SCL rise %d, SDA reads %d beforehand",
@@ -266,9 +307,9 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
             "INTR_STATE.SDA_UNSTABLE clear"
         )
 
-        for label, addr7, read, nth in INJECTIONS:
+        for label, addr7, read, nth, delay_ns in INJECTIONS:
             await self._enable_host(label)
-            injector = cocotb.start_soon(self._inject_on_rise(label, nth))
+            injector = cocotb.start_soon(self._inject_on_rise(label, nth, delay_ns))
             await self._queue(label, addr7, read, EEPROM_OFFSET, CLEAN_BYTE)
             await injector
             seen = 0
@@ -284,6 +325,8 @@ class smc_i2c_controller_control_symbol_test_seq(SmcCsrSeq):
                     f"an SDA edge while SCL is high is a START or a STOP, not data"
                 )
             await self._wait_hostidle(label)
+            await self.csr_write(f"{label}_HALT_OFF", I2C0_CTRL, 0)
+            await self._recover_bus(label)
             self.hits.append((label, nth))
 
         cocotb.log.info(

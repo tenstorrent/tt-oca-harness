@@ -16,7 +16,9 @@ stretching target does.
 
 Where the hold lands decides which part of the controller's bit loop takes the
 wait -- the address byte, a payload byte, the acknowledge -- so the hold is
-swept across the transfer rather than applied once.
+swept across the transfer rather than applied once, and each point is counted
+in SCL falling edges seen on the pads rather than in nanoseconds from the
+queue, so the same points are taken on every run.
 
 Two measurements carry each leg, both produced by the DUT. The transfer takes
 at least the hold longer than the same transfer with nothing holding the line,
@@ -74,11 +76,16 @@ PAYLOAD = bytes((0x90 + i) & 0xFF for i in range(2))
 #: controller's programmed timing, so the wait is unmistakable in the transfer
 #: time, and far short of any timeout -- none is enabled.
 HOLD_NS = 20_000
-#: Where the hold starts, as a share of the clean transfer's length measured
-#: first, from the moment the transfer is queued. The spread walks it across
-#: the address byte, its acknowledge and the payload bytes rather than landing
-#: in one place; the last one is still inside the unheld transfer.
-HOLD_OFFSET_FRACTIONS = (0.07, 0.20, 0.33, 0.46, 0.60, 0.73)
+#: Which SCL low period of the transfer the hold covers, counted from the
+#: START seen on the pads. Eight falls clock the address byte and the ninth
+#: its acknowledge, so the spread walks the hold across the address byte, the
+#: acknowledge and the payload bytes. It was a set of delays measured from the
+#: queue before, which landed in a different part of the bit loop from seed to
+#: seed because the write that queues the transfer does not complete at a
+#: fixed time.
+HOLD_FALLS = (2, 5, 9, 12, 16, 20)
+#: Bound on the wait for a pad edge, in clk_smc_i cycles.
+EDGE_WAIT_CYCLES = 200_000
 #: The held transfer must be longer than the clean one by at least this much
 #: of the hold. It cannot be the whole hold, because the clean transfer's own
 #: length varies with where the controller was when the hold began.
@@ -132,22 +139,60 @@ class smc_i2c_controller_stretch_test_seq(SmcCsrSeq):
             flags = I2C_FDATA_STOP if i == len(PAYLOAD) - 1 else 0
             await self.csr_write(f"{label}_DATA{i}", I2C0_FDATA, _fdata(value, flags))
 
-    async def _hold_after(self, delay_ns: int) -> None:
-        """Hold SCL low for HOLD_NS, starting delay_ns from now."""
-        assert self.holder is not None
-        await Timer(delay_ns, unit="ns")
-        self.holder._pull_scl(True)
-        await Timer(HOLD_NS, unit="ns")
-        self.holder._pull_scl(False)
+    @staticmethod
+    def _scl() -> int:
+        raw = cocotb.top.tb_i2c0_scl.value
+        assert raw.is_resolvable, f"tb_i2c0_scl is not resolvable: {raw}"
+        return int(raw)
 
-    async def _transfer(self, label: str, offset: int, hold_delay_ns: int | None) -> float:
+    async def _wait_start(self, label: str) -> None:
+        """Wait for SDA to fall while SCL is high: the START of the transfer."""
+        sda = cocotb.top.tb_i2c0_sda
+        prev = int(sda.value)
+        for _ in range(EDGE_WAIT_CYCLES):
+            await ClockCycles(cocotb.top.clk_smc_i, 1)
+            now = int(sda.value)
+            if self._scl() and prev and not now:
+                return
+            prev = now
+        raise AssertionError(f"{label}: no START appeared on the bus after the queue")
+
+    async def _hold_from_fall(self, label: str, nth: int) -> None:
+        """Hold SCL low across the nth low period of the transfer.
+
+        The hold starts after SCL has fallen, so the line is already low and
+        the controller meets it when it tries to release: a stretch, not a
+        clock pulse cut short. Counting edges on the pads rather than waiting
+        a number of nanoseconds from the queue is what puts the hold in the
+        same part of the bit loop on every run.
+        """
+        assert self.holder is not None
+        await self._wait_start(label)
+        seen = 0
+        prev = self._scl()
+        for _ in range(EDGE_WAIT_CYCLES):
+            await ClockCycles(cocotb.top.clk_smc_i, 1)
+            now = self._scl()
+            if prev and not now:
+                seen += 1
+                if seen == nth:
+                    self.holder._pull_scl(True)
+                    await Timer(HOLD_NS, unit="ns")
+                    self.holder._pull_scl(False)
+                    return
+            prev = now
+        raise AssertionError(
+            f"{label}: only {seen} of {nth} SCL falling edges appeared before the transfer ended"
+        )
+
+    async def _transfer(self, label: str, offset: int, hold_at_fall: int | None) -> float:
         """One queued write, optionally with the clock held; returns its length."""
         self.slave.write_mem(offset, bytes(len(PAYLOAD)))
         start = get_sim_time("ns")
-        await self._queue_write(label, offset)
         task = None
-        if hold_delay_ns is not None:
-            task = cocotb.start_soon(self._hold_after(hold_delay_ns))
+        if hold_at_fall is not None:
+            task = cocotb.start_soon(self._hold_from_fall(label, hold_at_fall))
+        await self._queue_write(label, offset)
         await self._wait_hostidle(label)
         elapsed = get_sim_time("ns") - start
         if task is not None:
@@ -179,23 +224,22 @@ class smc_i2c_controller_stretch_test_seq(SmcCsrSeq):
             self.clean_ns,
         )
 
-        for i, fraction in enumerate(HOLD_OFFSET_FRACTIONS):
-            delay = int(self.clean_ns * fraction)
-            elapsed = await self._transfer(f"HELD{i}", EEPROM_OFFSET + 1 + i, delay)
+        for i, fall in enumerate(HOLD_FALLS):
+            elapsed = await self._transfer(f"HELD{i}", EEPROM_OFFSET + 1 + i, fall)
             extension = elapsed - self.clean_ns
             assert extension >= MIN_EXTENSION_NS, (
-                f"HELD{i}: a {HOLD_NS} ns hold starting {delay} ns into the transfer extended "
-                f"it by only {extension:.0f} ns against the clean {self.clean_ns:.0f} ns; the "
-                f"controller has to wait for SCL to rise before it clocks the next bit"
+                f"HELD{i}: a {HOLD_NS} ns hold across SCL low period {fall} extended the "
+                f"transfer by only {extension:.0f} ns against the clean {self.clean_ns:.0f} "
+                f"ns; the controller has to wait for SCL to rise before it clocks the next bit"
             )
-            self.held.append((delay, extension))
+            self.held.append((fall, extension))
 
         cocotb.log.info(
-            "CHK-I2C-CTRL-STRETCH-HELD: at %d points across the transfer another device held "
-            "SCL low for %d ns, and each time the controller's transfer ran at least %d ns "
-            "longer than the clean one and still delivered every byte: %s",
+            "CHK-I2C-CTRL-STRETCH-HELD: across %d chosen SCL low periods of the transfer "
+            "another device held the line for %d ns, and each time the controller's transfer "
+            "ran at least %d ns longer than the clean one and still delivered every byte: %s",
             len(self.held),
             HOLD_NS,
             MIN_EXTENSION_NS,
-            ", ".join(f"{d} ns -> +{e:.0f} ns" for d, e in self.held),
+            ", ".join(f"low period {d} -> +{e:.0f} ns" for d, e in self.held),
         )
