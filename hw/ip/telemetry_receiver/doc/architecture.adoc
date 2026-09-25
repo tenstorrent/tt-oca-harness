@@ -35,8 +35,8 @@ session integrity.
 This buffer assembles streams of 8-bit ATB data into 64-bit packets. It
 ensures data ordering, detects packet boundaries, and supports
 little-endian (LSB-first) byte alignment. Temporary storage enables
-smooth handling of irregular traffic and guarantees data integrity
-throughout packet reconstruction.
+storage of successive packets. A last-packet flag or receiver flush resets the
+assembly write pointer but does not clear the stored bytes.
 
 === Message Decoder
 
@@ -44,6 +44,14 @@ Assembled packets are parsed for the probe ID and counters in the fixed
 layout in <<telemetry-receiver-message-format>>. Each 9-bit block is
 checked for validity, and last-packet boundaries mark the end of a
 message.
+
+IMPORTANT: The decoder examines all configured counter positions, including
+positions beyond the last packet received. After a shorter message follows a
+longer one, trailing counter values and validity bits can therefore come from
+the earlier message. `CTRL.TELEMETRY_RX_FLUSH` does not remove this stale data.
+To avoid relying on those positions, producers must overwrite the complete
+configured message footprint and mark unused counter blocks invalid. Only
+reset clears the assembly storage.
 
 === Message Buffer
 
@@ -66,8 +74,12 @@ counters, and flags update atomically. Threshold or error interrupts are
 generated as needed.
 
 *Readout Phase* Telemetry is accessed by software via register reads.
-Buffer pointers advance after each access, and status or error
-conditions are monitored in real-time.
+Reads expose the oldest queued message without consuming it. Read the probe ID,
+validity bitmap, and required counters, then write `CTRL.BUFFER_POP = 1` to
+advance to the next message. A pop while empty has no effect. When a new message
+arrives while the buffer is full, hardware drops the oldest entry and advances
+the read pointer; software must drain the buffer fast enough to avoid loss or a
+change of the visible message during a multi-register read.
 
 === Control Path
 
@@ -79,7 +91,11 @@ error handling.
 accessible, providing up-to-date telemetry collection health.
 
 *Interrupt Handling* Interrupts are generated for buffer threshold
-crossings and validation errors; all can be cleared by software.
+conditions and a missing last-packet flag. `INTR_STATUS.MISSING_LAST` is sticky
+and write-one-to-clear. `INTR_STATUS.BUFFER_THRESHOLD` is read-only and reflects
+occupancy strictly greater than `CTRL.BUFFER_THRESHOLD` (or an asserted threshold
+test bit). Drain the buffer, raise the threshold, or clear the test condition to
+remove that source; writing the status bit does not acknowledge it.
 
 === Clocking and Reset
 
@@ -87,6 +103,7 @@ crossings and validation errors; all can be cleared by software.
 avoiding clock crossing complexity and easing verification.
 
 *Reset Architecture* An asynchronous reset (`rst_ni`), synchronously
-deasserted, guarantees all storage and state machines revert to known
-conditions on startup. This approach secures clean initialization and
-reliable operation from power-on forward.
+deasserted, clears the assembly storage and resets the buffer pointers. The
+message-buffer payload storage is not cleared; empty-buffer reads return zero.
+`CTRL.TELEMETRY_RX_FLUSH` discards queued messages and resets the assembly write
+pointer without clearing either payload store. It is not a data-erasure operation.

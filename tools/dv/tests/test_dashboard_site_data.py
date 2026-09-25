@@ -224,10 +224,15 @@ def expected_site_data(
     failed_tests: int = 0,
     flaky_tests: int = 0,
     coverage_status: str = "SKIP",
+    coverage_total_percent: float | None = None,
     effective_metrics: dict[str, float] | None = None,
     coverage_total_percent: float | None = None,
 ) -> dict[str, Any]:
-    """The three trimmed documents for one run of the fixture DUT."""
+    """The three trimmed documents for one run of the fixture DUT.
+
+    Every entry carries the series identity, and the block pages read one
+    ``results`` entry per series with its test rows.
+    """
     effective_metrics = {} if effective_metrics is None else effective_metrics
     return {
         "summary": {
@@ -403,6 +408,7 @@ class TrimmedSiteData(SiteDataCase):
                 pass_rate=100.0,
                 flow_pass_rate=100.0,
                 coverage_status="PASS",
+                coverage_total_percent=COVERAGE_SUMMARY["overall_percent"],
                 effective_metrics=EFFECTIVE_METRICS,
                 coverage_total_percent=COVERAGE_SUMMARY["overall_percent"],
             ),

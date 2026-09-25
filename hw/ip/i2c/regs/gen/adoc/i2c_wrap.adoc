@@ -16,44 +16,110 @@
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
-| 0x0 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_STATE,INTR_STATE>> | RW a| Interrupt Status Register
-| 0x4 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_ENABLE,INTR_ENABLE>> | RW a| Interrupt Enable Register
-| 0x8 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_TEST,INTR_TEST>> | RW a| Interrupt Test Register
-| 0xC | <<reg-{regmap-instance}-i2c_wrap-i2c-0-SMBUS_CTRL,SMBUS_CTRL>> | RW a| SMBus Control Register
-| 0x10 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-CTRL,CTRL>> | RW a| Control Register
-| 0x14 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-STATUS,STATUS>> | R a| Status Register
-| 0x18 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-RDATA,RDATA>> | R a| Controller RX FIFO Access Register (Controller Mode only)
-| 0x1C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-FDATA,FDATA>> | W a| Controller TX FIFO Access Register (Controller Mode only)
-| 0x20 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-FIFO_CTRL,FIFO_CTRL>> | W a| FIFO Control Register
-| 0x24 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_FIFO_CONFIG,HOST_FIFO_CONFIG>> | RW a| Controller FIFO Configuration Register (Controller Mode only)
-| 0x28 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_FIFO_CONFIG,TARGET_FIFO_CONFIG>> | RW a| Target FIFOs Configuration Register (Target Mode only)
-| 0x2C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_FIFO_STATUS,HOST_FIFO_STATUS>> | R a| Controller FIFOs Status Register (Controller Mode only)
-| 0x30 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_FIFO_STATUS,TARGET_FIFO_STATUS>> | R a| Target FIFOs Status Register (Target Mode only)
-| 0x34 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-OVRD,OVRD>> | RW a| Override Control Register
-| 0x38 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-VAL,VAL>> | R a| Bus Oversampled Values Register
-| 0x3C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING0,TIMING0>> | RW a| SCL LOW and HIGH Periods Register
-| 0x40 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING1,TIMING1>> | RW a| Bus Rise and Fall Times Register
-| 0x44 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING2,TIMING2>> | RW a| START Condition Setup and Hold Times Register
-| 0x48 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING3,TIMING3>> | RW a| Data Setup and Hold Times Register
-| 0x4C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING4,TIMING4>> | RW a| STOP Condition Setup Time and Bus Free Time Register
-| 0x50 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMEOUT_CTRL,TIMEOUT_CTRL>> | RW a| Timeout Control Register
-| 0x54 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_ID,TARGET_ID>> | RW a| Target ID Register (Target Mode only)
-| 0x58 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-ACQDATA,ACQDATA>> | R a| Target RX FIFO Access Register (Target Mode only)
-| 0x5C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TXDATA,TXDATA>> | W a| Target TX FIFO Access Register (Target Mode only).
-| 0x60 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_TIMEOUT_CTRL,HOST_TIMEOUT_CTRL>> | RW a| Controller Timeout Control Register
-| 0x64 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_TIMEOUT_CTRL,TARGET_TIMEOUT_CTRL>> | RW a| Target Timeout Control Register (Target Mode only)
-| 0x68 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_NACK_COUNT,TARGET_NACK_COUNT>> | RW a| Target NACK Count Register (Target Mode only)
-| 0x6C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_ACK_CTRL,TARGET_ACK_CTRL>> | RW a| Target ACK Control Register (Target Mode only)
-| 0x70 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-ACQ_FIFO_NEXT_DATA,ACQ_FIFO_NEXT_DATA>> | R a| Target RX FIFO Next Byte Register (Target Mode only)
-| 0x74 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_NACK_HANDLER_TIMEOUT,HOST_NACK_HANDLER_TIMEOUT>> | RW a| Controller NACK Timeout Register (Controller Mode only)
-| 0x78 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-CONTROLLER_EVENTS,CONTROLLER_EVENTS>> | RW a| Controller Events Register (Controller Mode only)
-| 0x7C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_EVENTS,TARGET_EVENTS>> | RW a| Target Events Register (Target Mode)
-| 0x80 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-SMBUS_STATUS,SMBUS_STATUS>> | R a| SMBus Status Register
+| 0x0 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_STATE,i2c[0].INTR_STATE>> | RW a| Interrupt Status Register
+| 0x4 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_ENABLE,i2c[0].INTR_ENABLE>> | RW a| Interrupt Enable Register
+| 0x8 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_TEST,i2c[0].INTR_TEST>> | RW a| Interrupt Test Register
+| 0xC | <<reg-{regmap-instance}-i2c_wrap-i2c-0-SMBUS_CTRL,i2c[0].SMBUS_CTRL>> | RW a| SMBus Control Register
+| 0x10 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-CTRL,i2c[0].CTRL>> | RW a| Control Register
+| 0x14 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-STATUS,i2c[0].STATUS>> | R a| Status Register
+| 0x18 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-RDATA,i2c[0].RDATA>> | R a| Controller RX FIFO Access Register (Controller Mode only)
+| 0x1C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-FDATA,i2c[0].FDATA>> | W a| Controller TX FIFO Access Register (Controller Mode only)
+| 0x20 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-FIFO_CTRL,i2c[0].FIFO_CTRL>> | W a| FIFO Control Register
+| 0x24 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_FIFO_CONFIG,i2c[0].HOST_FIFO_CONFIG>> | RW a| Controller FIFO Configuration Register (Controller Mode only)
+| 0x28 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_FIFO_CONFIG,i2c[0].TARGET_FIFO_CONFIG>> | RW a| Target FIFOs Configuration Register (Target Mode only)
+| 0x2C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_FIFO_STATUS,i2c[0].HOST_FIFO_STATUS>> | R a| Controller FIFOs Status Register (Controller Mode only)
+| 0x30 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_FIFO_STATUS,i2c[0].TARGET_FIFO_STATUS>> | R a| Target FIFOs Status Register (Target Mode only)
+| 0x34 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-OVRD,i2c[0].OVRD>> | RW a| Override Control Register
+| 0x38 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-VAL,i2c[0].VAL>> | R a| Bus Oversampled Values Register
+| 0x3C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING0,i2c[0].TIMING0>> | RW a| SCL LOW and HIGH Periods Register
+| 0x40 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING1,i2c[0].TIMING1>> | RW a| Bus Rise and Fall Times Register
+| 0x44 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING2,i2c[0].TIMING2>> | RW a| START Condition Setup and Hold Times Register
+| 0x48 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING3,i2c[0].TIMING3>> | RW a| Data Setup and Hold Times Register
+| 0x4C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING4,i2c[0].TIMING4>> | RW a| STOP Condition Setup Time and Bus Free Time Register
+| 0x50 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TIMEOUT_CTRL,i2c[0].TIMEOUT_CTRL>> | RW a| Timeout Control Register
+| 0x54 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_ID,i2c[0].TARGET_ID>> | RW a| Target ID Register (Target Mode only)
+| 0x58 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-ACQDATA,i2c[0].ACQDATA>> | R a| Target RX FIFO Access Register (Target Mode only)
+| 0x5C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TXDATA,i2c[0].TXDATA>> | W a| Target TX FIFO Access Register (Target Mode only).
+| 0x60 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_TIMEOUT_CTRL,i2c[0].HOST_TIMEOUT_CTRL>> | RW a| Controller Timeout Control Register
+| 0x64 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_TIMEOUT_CTRL,i2c[0].TARGET_TIMEOUT_CTRL>> | RW a| Target Timeout Control Register (Target Mode only)
+| 0x68 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_NACK_COUNT,i2c[0].TARGET_NACK_COUNT>> | RW a| Target NACK Count Register (Target Mode only)
+| 0x6C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_ACK_CTRL,i2c[0].TARGET_ACK_CTRL>> | RW a| Target ACK Control Register (Target Mode only)
+| 0x70 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-ACQ_FIFO_NEXT_DATA,i2c[0].ACQ_FIFO_NEXT_DATA>> | R a| Target RX FIFO Next Byte Register (Target Mode only)
+| 0x74 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_NACK_HANDLER_TIMEOUT,i2c[0].HOST_NACK_HANDLER_TIMEOUT>> | RW a| Controller NACK Timeout Register (Controller Mode only)
+| 0x78 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-CONTROLLER_EVENTS,i2c[0].CONTROLLER_EVENTS>> | RW a| Controller Events Register (Controller Mode only)
+| 0x7C | <<reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_EVENTS,i2c[0].TARGET_EVENTS>> | RW a| Target Events Register (Target Mode)
+| 0x80 | <<reg-{regmap-instance}-i2c_wrap-i2c-0-SMBUS_STATUS,i2c[0].SMBUS_STATUS>> | R a| SMBus Status Register
+| 0x200 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-INTR_STATE,i2c[1].INTR_STATE>> | RW a| Interrupt Status Register
+| 0x204 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-INTR_ENABLE,i2c[1].INTR_ENABLE>> | RW a| Interrupt Enable Register
+| 0x208 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-INTR_TEST,i2c[1].INTR_TEST>> | RW a| Interrupt Test Register
+| 0x20C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-SMBUS_CTRL,i2c[1].SMBUS_CTRL>> | RW a| SMBus Control Register
+| 0x210 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-CTRL,i2c[1].CTRL>> | RW a| Control Register
+| 0x214 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-STATUS,i2c[1].STATUS>> | R a| Status Register
+| 0x218 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-RDATA,i2c[1].RDATA>> | R a| Controller RX FIFO Access Register (Controller Mode only)
+| 0x21C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-FDATA,i2c[1].FDATA>> | W a| Controller TX FIFO Access Register (Controller Mode only)
+| 0x220 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-FIFO_CTRL,i2c[1].FIFO_CTRL>> | W a| FIFO Control Register
+| 0x224 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_FIFO_CONFIG,i2c[1].HOST_FIFO_CONFIG>> | RW a| Controller FIFO Configuration Register (Controller Mode only)
+| 0x228 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_FIFO_CONFIG,i2c[1].TARGET_FIFO_CONFIG>> | RW a| Target FIFOs Configuration Register (Target Mode only)
+| 0x22C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_FIFO_STATUS,i2c[1].HOST_FIFO_STATUS>> | R a| Controller FIFOs Status Register (Controller Mode only)
+| 0x230 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_FIFO_STATUS,i2c[1].TARGET_FIFO_STATUS>> | R a| Target FIFOs Status Register (Target Mode only)
+| 0x234 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-OVRD,i2c[1].OVRD>> | RW a| Override Control Register
+| 0x238 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-VAL,i2c[1].VAL>> | R a| Bus Oversampled Values Register
+| 0x23C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING0,i2c[1].TIMING0>> | RW a| SCL LOW and HIGH Periods Register
+| 0x240 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING1,i2c[1].TIMING1>> | RW a| Bus Rise and Fall Times Register
+| 0x244 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING2,i2c[1].TIMING2>> | RW a| START Condition Setup and Hold Times Register
+| 0x248 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING3,i2c[1].TIMING3>> | RW a| Data Setup and Hold Times Register
+| 0x24C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING4,i2c[1].TIMING4>> | RW a| STOP Condition Setup Time and Bus Free Time Register
+| 0x250 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TIMEOUT_CTRL,i2c[1].TIMEOUT_CTRL>> | RW a| Timeout Control Register
+| 0x254 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_ID,i2c[1].TARGET_ID>> | RW a| Target ID Register (Target Mode only)
+| 0x258 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-ACQDATA,i2c[1].ACQDATA>> | R a| Target RX FIFO Access Register (Target Mode only)
+| 0x25C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TXDATA,i2c[1].TXDATA>> | W a| Target TX FIFO Access Register (Target Mode only).
+| 0x260 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_TIMEOUT_CTRL,i2c[1].HOST_TIMEOUT_CTRL>> | RW a| Controller Timeout Control Register
+| 0x264 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_TIMEOUT_CTRL,i2c[1].TARGET_TIMEOUT_CTRL>> | RW a| Target Timeout Control Register (Target Mode only)
+| 0x268 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_NACK_COUNT,i2c[1].TARGET_NACK_COUNT>> | RW a| Target NACK Count Register (Target Mode only)
+| 0x26C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_ACK_CTRL,i2c[1].TARGET_ACK_CTRL>> | RW a| Target ACK Control Register (Target Mode only)
+| 0x270 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-ACQ_FIFO_NEXT_DATA,i2c[1].ACQ_FIFO_NEXT_DATA>> | R a| Target RX FIFO Next Byte Register (Target Mode only)
+| 0x274 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_NACK_HANDLER_TIMEOUT,i2c[1].HOST_NACK_HANDLER_TIMEOUT>> | RW a| Controller NACK Timeout Register (Controller Mode only)
+| 0x278 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-CONTROLLER_EVENTS,i2c[1].CONTROLLER_EVENTS>> | RW a| Controller Events Register (Controller Mode only)
+| 0x27C | <<reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_EVENTS,i2c[1].TARGET_EVENTS>> | RW a| Target Events Register (Target Mode)
+| 0x280 | <<reg-{regmap-instance}-i2c_wrap-i2c-1-SMBUS_STATUS,i2c[1].SMBUS_STATUS>> | R a| SMBus Status Register
+| 0x400 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-INTR_STATE,i2c[2].INTR_STATE>> | RW a| Interrupt Status Register
+| 0x404 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-INTR_ENABLE,i2c[2].INTR_ENABLE>> | RW a| Interrupt Enable Register
+| 0x408 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-INTR_TEST,i2c[2].INTR_TEST>> | RW a| Interrupt Test Register
+| 0x40C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-SMBUS_CTRL,i2c[2].SMBUS_CTRL>> | RW a| SMBus Control Register
+| 0x410 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-CTRL,i2c[2].CTRL>> | RW a| Control Register
+| 0x414 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-STATUS,i2c[2].STATUS>> | R a| Status Register
+| 0x418 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-RDATA,i2c[2].RDATA>> | R a| Controller RX FIFO Access Register (Controller Mode only)
+| 0x41C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-FDATA,i2c[2].FDATA>> | W a| Controller TX FIFO Access Register (Controller Mode only)
+| 0x420 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-FIFO_CTRL,i2c[2].FIFO_CTRL>> | W a| FIFO Control Register
+| 0x424 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_FIFO_CONFIG,i2c[2].HOST_FIFO_CONFIG>> | RW a| Controller FIFO Configuration Register (Controller Mode only)
+| 0x428 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_FIFO_CONFIG,i2c[2].TARGET_FIFO_CONFIG>> | RW a| Target FIFOs Configuration Register (Target Mode only)
+| 0x42C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_FIFO_STATUS,i2c[2].HOST_FIFO_STATUS>> | R a| Controller FIFOs Status Register (Controller Mode only)
+| 0x430 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_FIFO_STATUS,i2c[2].TARGET_FIFO_STATUS>> | R a| Target FIFOs Status Register (Target Mode only)
+| 0x434 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-OVRD,i2c[2].OVRD>> | RW a| Override Control Register
+| 0x438 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-VAL,i2c[2].VAL>> | R a| Bus Oversampled Values Register
+| 0x43C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING0,i2c[2].TIMING0>> | RW a| SCL LOW and HIGH Periods Register
+| 0x440 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING1,i2c[2].TIMING1>> | RW a| Bus Rise and Fall Times Register
+| 0x444 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING2,i2c[2].TIMING2>> | RW a| START Condition Setup and Hold Times Register
+| 0x448 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING3,i2c[2].TIMING3>> | RW a| Data Setup and Hold Times Register
+| 0x44C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING4,i2c[2].TIMING4>> | RW a| STOP Condition Setup Time and Bus Free Time Register
+| 0x450 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TIMEOUT_CTRL,i2c[2].TIMEOUT_CTRL>> | RW a| Timeout Control Register
+| 0x454 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_ID,i2c[2].TARGET_ID>> | RW a| Target ID Register (Target Mode only)
+| 0x458 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-ACQDATA,i2c[2].ACQDATA>> | R a| Target RX FIFO Access Register (Target Mode only)
+| 0x45C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TXDATA,i2c[2].TXDATA>> | W a| Target TX FIFO Access Register (Target Mode only).
+| 0x460 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_TIMEOUT_CTRL,i2c[2].HOST_TIMEOUT_CTRL>> | RW a| Controller Timeout Control Register
+| 0x464 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_TIMEOUT_CTRL,i2c[2].TARGET_TIMEOUT_CTRL>> | RW a| Target Timeout Control Register (Target Mode only)
+| 0x468 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_NACK_COUNT,i2c[2].TARGET_NACK_COUNT>> | RW a| Target NACK Count Register (Target Mode only)
+| 0x46C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_ACK_CTRL,i2c[2].TARGET_ACK_CTRL>> | RW a| Target ACK Control Register (Target Mode only)
+| 0x470 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-ACQ_FIFO_NEXT_DATA,i2c[2].ACQ_FIFO_NEXT_DATA>> | R a| Target RX FIFO Next Byte Register (Target Mode only)
+| 0x474 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_NACK_HANDLER_TIMEOUT,i2c[2].HOST_NACK_HANDLER_TIMEOUT>> | RW a| Controller NACK Timeout Register (Controller Mode only)
+| 0x478 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-CONTROLLER_EVENTS,i2c[2].CONTROLLER_EVENTS>> | RW a| Controller Events Register (Controller Mode only)
+| 0x47C | <<reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_EVENTS,i2c[2].TARGET_EVENTS>> | RW a| Target Events Register (Target Mode)
+| 0x480 | <<reg-{regmap-instance}-i2c_wrap-i2c-2-SMBUS_STATUS,i2c[2].SMBUS_STATUS>> | R a| SMBus Status Register
 | 0xE00 - 0xE08 | <<reg-{regmap-instance}-i2c_wrap-i2c_ctrl_regs-I2C_CTRL-0-,I2C_CTRL[3]>> | RW a| Control Register
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_STATE]
-=== INTR_STATE
+=== i2c[0].INTR_STATE
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -107,7 +173,7 @@ is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_ENABLE]
-=== INTR_ENABLE
+=== i2c[0].INTR_ENABLE
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -136,7 +202,7 @@ is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-INTR_TEST]
-=== INTR_TEST
+=== i2c[0].INTR_TEST
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -165,7 +231,7 @@ is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-SMBUS_CTRL]
-=== SMBUS_CTRL
+=== i2c[0].SMBUS_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -178,7 +244,7 @@ when the controller addresses this target.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-CTRL]
-=== CTRL
+=== i2c[0].CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -259,7 +325,7 @@ all 1's.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-STATUS]
-=== STATUS
+=== i2c[0].STATUS
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -280,7 +346,7 @@ the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-RDATA]
-=== RDATA
+=== i2c[0].RDATA
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -290,7 +356,7 @@ the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-FDATA]
-=== FDATA
+=== i2c[0].FDATA
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -318,7 +384,7 @@ target. Setting this field to 0 reads 256 bytes.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-FIFO_CTRL]
-=== FIFO_CTRL
+=== i2c[0].FIFO_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -332,7 +398,7 @@ target. Setting this field to 0 reads 256 bytes.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_FIFO_CONFIG]
-=== HOST_FIFO_CONFIG
+=== i2c[0].HOST_FIFO_CONFIG
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -346,7 +412,7 @@ is greater than this setting.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_FIFO_CONFIG]
-=== TARGET_FIFO_CONFIG
+=== i2c[0].TARGET_FIFO_CONFIG
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -360,7 +426,7 @@ less than this setting.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_FIFO_STATUS]
-=== HOST_FIFO_STATUS
+=== i2c[0].HOST_FIFO_STATUS
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -372,7 +438,7 @@ less than this setting.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_FIFO_STATUS]
-=== TARGET_FIFO_STATUS
+=== i2c[0].TARGET_FIFO_STATUS
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -384,7 +450,7 @@ less than this setting.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-OVRD]
-=== OVRD
+=== i2c[0].OVRD
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -401,7 +467,7 @@ and `SCL_VAL` fields, respectively.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-VAL]
-=== VAL
+=== i2c[0].VAL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -413,7 +479,7 @@ recent.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING0]
-=== TIMING0
+=== i2c[0].TIMING0
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -431,7 +497,7 @@ field is sized to meet the I2C Standard-mode (100 kHz)'s minimum
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING1]
-=== TIMING1
+=== i2c[0].TIMING1
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -451,7 +517,7 @@ GHz system clock.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING2]
-=== TIMING2
+=== i2c[0].TIMING2
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -469,7 +535,7 @@ details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING3]
-=== TIMING3
+=== i2c[0].TIMING3
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -487,7 +553,7 @@ requirement, assuming a 1 GHz system clock.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TIMING4]
-=== TIMING4
+=== i2c[0].TIMING4
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -505,7 +571,7 @@ minimum requirement, assuming a 1 GHz system clock.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TIMEOUT_CTRL]
-=== TIMEOUT_CTRL
+=== i2c[0].TIMEOUT_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -525,7 +591,7 @@ of this field depends on `MODE`.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_ID]
-=== TARGET_ID
+=== i2c[0].TARGET_ID
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -540,7 +606,7 @@ of this field depends on `MODE`.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-ACQDATA]
-=== ACQDATA
+=== i2c[0].ACQDATA
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -570,7 +636,7 @@ address or data byte sent by the controller.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TXDATA]
-=== TXDATA
+=== i2c[0].TXDATA
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -581,7 +647,7 @@ reads data from this FIFO during a READ transaction.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_TIMEOUT_CTRL]
-=== HOST_TIMEOUT_CTRL
+=== i2c[0].HOST_TIMEOUT_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -597,7 +663,7 @@ this behavior.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_TIMEOUT_CTRL]
-=== TARGET_TIMEOUT_CTRL
+=== i2c[0].TARGET_TIMEOUT_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -613,7 +679,7 @@ The behavior for the address byte is configurable via
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_NACK_COUNT]
-=== TARGET_NACK_COUNT
+=== i2c[0].TARGET_NACK_COUNT
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -625,7 +691,7 @@ transactions were missed when the Target RX FIFO is full.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_ACK_CTRL]
-=== TARGET_ACK_CTRL
+=== i2c[0].TARGET_ACK_CTRL
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -642,7 +708,7 @@ This control field is used to implement SMBus's mid-transfer (N)ACK responses.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-ACQ_FIFO_NEXT_DATA]
-=== ACQ_FIFO_NEXT_DATA
+=== i2c[0].ACQ_FIFO_NEXT_DATA
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -654,7 +720,7 @@ allowing software to decide whether to accept or reject it. Valid only when
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-HOST_NACK_HANDLER_TIMEOUT]
-=== HOST_NACK_HANDLER_TIMEOUT
+=== i2c[0].HOST_NACK_HANDLER_TIMEOUT
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -665,7 +731,7 @@ automatically STOP a transaction when `CONTROLLER_EVENTS.NACK` is set.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-CONTROLLER_EVENTS]
-=== CONTROLLER_EVENTS
+=== i2c[0].CONTROLLER_EVENTS
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -686,7 +752,7 @@ bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-TARGET_EVENTS]
-=== TARGET_EVENTS
+=== i2c[0].TARGET_EVENTS
 
 [cols="1,3,1,1,6", options="header"]
 |===
@@ -711,7 +777,1347 @@ interrupt. Writing `1` clears this bit.
 |===
 
 [#reg-{regmap-instance}-i2c_wrap-i2c-0-SMBUS_STATUS]
-=== SMBUS_STATUS
+=== i2c[0].SMBUS_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `SMBALERT` | R | 0x0 a| Controller Mode status: indicates that the `smbalert_ni` input is asserted.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `SMBSUS` | R | 0x0 a| Target Mode status: indicates that the `smbsus_ni` input is asserted.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-INTR_STATE]
+=== i2c[1].INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19 | `TARGET_RX_FIFO_ERROR` | RW | 0x0 a| Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
+Write `1` to clear.
+| 18 | `TARGET_TX_FIFO_ERROR` | RW | 0x0 a| Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
+Write `1` to clear.
+| 17 | `CONTROLLER_RX_FIFO_ERROR` | RW | 0x0 a| Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
+error. Write `1` to clear.
+| 16 | `CONTROLLER_TX_FIFO_ERROR` | RW | 0x0 a| Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
+error. Write `1` to clear.
+| 15 | `SMBALERT` | RW | 0x0 a| Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
+to clear.
+| 14 | `HOST_TIMEOUT` | RW | 0x0 a| Target Mode interrupt: asserted when the controller stops generating the clock
+longer than `HOST_TIMEOUT_CTRL.VAL`. Write `1` to clear.
+| 13 | `UNEXP_STOP` | RW | 0x0 a| Target Mode interrupt: asserted when the controller sends this target a STOP
+before this target NACKs. Write `1` to clear.
+| 12 | `ACQ_STRETCH` | R | 0x0 a| Target Mode interrupt: remains asserted while the target is stretching the clock
+because 1) the Target RX FIFO is full or 2) the `TARGET_ACK_CTRL.NBYTES` count
+has reached `0` (only if `CTRL.ACK_CTRL_EN = 1`).
+| 11 | `TX_THRESHOLD` | R | 0x0 a| Target Mode interrupt: remains asserted while the Target TX FIFO level is less
+than `TARGET_FIFO_CONFIG.TX_THRESH`.
+| 10 | `TX_STRETCH` | R | 0x0 a| Target Mode interrupt: remains asserted while this target is stretching the
+clock or has halted. The flags in the `TARGET_EVENTS` register explain the
+reason(s) for clock stretching/halting. Clearing the `TARGET_EVENTS` flags
+clears this interrupt.
+| 9 | `CMD_COMPLETE` | RW | 0x0 a| Controller/Target Mode interrupt: asserted when this/the controller finishes
+generating a STOP or repeated START. Write `1` to clear.
+| 8 | `SDA_UNSTABLE` | RW | 0x0 a| Controller Mode interrupt: asserted when the target fails to keep SDA stable
+during a transmission. Write `1` to clear.
+| 7 | `STRETCH_TIMEOUT` | RW | 0x0 a| Controller Mode interrupt: asserted when the target stretches the clock longer
+than `TIMEOUT_CTRL.VAL` (valid only when `TIMEOUT_CTRL.MODE = 0`). Write `1` to
+clear.
+| 6 | `SDA_INTERFERENCE` | RW | 0x0 a| Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by
+another controller. Write `1` to clear.
+| 5 | `SCL_INTERFERENCE` | RW | 0x0 a| Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by
+another controller. Write `1` to clear.
+| 4 | `CONTROLLER_HALT` | R | 0x0 a| Controller Mode interrupt: remains asserted while this controller halts. The
+flags in the `CONTROLLER_EVENTS` register explain the reason(s) for the
+halting. Clearing the `CONTROLLER_EVENTS` flags clears this interrupt.
+| 3 | `RX_OVERFLOW` | RW | 0x0 a| Controller Mode interrupt: asserted when the Controller RX FIFO overflows.
+Write `1` to clear.
+| 2 | `ACQ_THRESHOLD` | R | 0x0 a| Target Mode interrupt: remains asserted while the Target RX FIFO level is
+greater than `TARGET_FIFO_CONFIG.ACQ_THRESH`.
+| 1 | `RX_THRESHOLD` | R | 0x0 a| Controller Mode interrupt: remains asserted while the Controller RX FIFO level
+is greater than `HOST_FIFO_CONFIG.RX_THRESH`.
+| 0 | `FMT_THRESHOLD` | R | 0x0 a| Controller Mode interrupt: remains asserted while the Controller TX FIFO level
+is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-INTR_ENABLE]
+=== i2c[1].INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19 | `TARGET_RX_FIFO_ERROR` | RW | 0x0 a| Enables the `TARGET_RX_FIFO_ERROR` interrupt.
+| 18 | `TARGET_TX_FIFO_ERROR` | RW | 0x0 a| Enables the `TARGET_TX_FIFO_ERROR` interrupt.
+| 17 | `CONTROLLER_RX_FIFO_ERROR` | RW | 0x0 a| Enables the `CONTROLLER_RX_FIFO_ERROR` interrupt.
+| 16 | `CONTROLLER_TX_FIFO_ERROR` | RW | 0x0 a| Enables the `CONTROLLER_TX_FIFO_ERROR` interrupt.
+| 15 | `SMBALERT` | RW | 0x0 a| Enables the `SMBALERT` interrupt.
+| 14 | `HOST_TIMEOUT` | RW | 0x0 a| Enables the `HOST_TIMEOUT` interrupt.
+| 13 | `UNEXP_STOP` | RW | 0x0 a| Enables the `UNEXP_STOP` interrupt.
+| 12 | `ACQ_STRETCH` | RW | 0x0 a| Enables the `ACQ_STRETCH` interrupt.
+| 11 | `TX_THRESHOLD` | RW | 0x0 a| Enables the `TX_THRESHOLD` interrupt.
+| 10 | `TX_STRETCH` | RW | 0x0 a| Enables the `TX_STRETCH` interrupt.
+| 9 | `CMD_COMPLETE` | RW | 0x0 a| Enables the `CMD_COMPLETE` interrupt.
+| 8 | `SDA_UNSTABLE` | RW | 0x0 a| Enables the `SDA_UNSTABLE` interrupt.
+| 7 | `STRETCH_TIMEOUT` | RW | 0x0 a| Enables the `STRETCH_TIMEOUT` interrupt.
+| 6 | `SDA_INTERFERENCE` | RW | 0x0 a| Enables the `SDA_INTERFERENCE` interrupt.
+| 5 | `SCL_INTERFERENCE` | RW | 0x0 a| Enables the `SCL_INTERFERENCE` interrupt.
+| 4 | `CONTROLLER_HALT` | RW | 0x0 a| Enables the `CONTROLLER_HALT` interrupt.
+| 3 | `RX_OVERFLOW` | RW | 0x0 a| Enables the `RX_OVERFLOW` interrupt.
+| 2 | `ACQ_THRESHOLD` | RW | 0x0 a| Enables the `ACQ_THRESHOLD` interrupt.
+| 1 | `RX_THRESHOLD` | RW | 0x0 a| Enables the `RX_THRESHOLD` interrupt.
+| 0 | `FMT_THRESHOLD` | RW | 0x0 a| Enables the `FMT_THRESHOLD` interrupt.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-INTR_TEST]
+=== i2c[1].INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19 | `TARGET_RX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `TARGET_RX_FIFO_ERROR` interrupt.
+| 18 | `TARGET_TX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `TARGET_TX_FIFO_ERROR` interrupt.
+| 17 | `CONTROLLER_RX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `CONTROLLER_RX_FIFO_ERROR` interrupt.
+| 16 | `CONTROLLER_TX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `CONTROLLER_TX_FIFO_ERROR` interrupt.
+| 15 | `SMBALERT` | W | 0x0 a| Writing `1` forces the `SMBALERT` interrupt.
+| 14 | `HOST_TIMEOUT` | W | 0x0 a| Writing `1` forces the `HOST_TIMEOUT` interrupt.
+| 13 | `UNEXP_STOP` | W | 0x0 a| Writing `1` forces the `UNEXP_STOP` interrupt.
+| 12 | `ACQ_STRETCH` | RW | 0x0 a| Writing `1` forces the `ACQ_STRETCH` interrupt. Writing `0` releases it.
+| 11 | `TX_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `TX_THRESHOLD` interrupt. Writing `0` releases it.
+| 10 | `TX_STRETCH` | RW | 0x0 a| Writing `1` forces the `TX_STRETCH` interrupt. Writing a `0` releases it.
+| 9 | `CMD_COMPLETE` | W | 0x0 a| Writing `1` forces the `CMD_COMPLETE` interrupt.
+| 8 | `SDA_UNSTABLE` | W | 0x0 a| Writing `1` forces the `SDA_UNSTABLE` interrupt.
+| 7 | `STRETCH_TIMEOUT` | W | 0x0 a| Writing `1` forces the `STRETCH_TIMEOUT` interrupt.
+| 6 | `SDA_INTERFERENCE` | W | 0x0 a| Writing `1` forces the `SDA_INTERFERENCE` interrupt.
+| 5 | `SCL_INTERFERENCE` | W | 0x0 a| Writing `1` forces the `SCL_INTERFERENCE` interrupt.
+| 4 | `CONTROLLER_HALT` | RW | 0x0 a| Writing `1` forces the `CONTROLLER_HALT` interrupt. Writing `0` releases it.
+| 3 | `RX_OVERFLOW` | W | 0x0 a| Writing `1` forces the `RX_OVERFLOW` interrupt.
+| 2 | `ACQ_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `ACQ_THRESHOLD` interrupt. Writing `0` releases it.
+| 1 | `RX_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `RX_THRESHOLD` interrupt. Writing `0` releases it.
+| 0 | `FMT_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `FMT_THRESHOLD` interrupt. Writing `0` releases it.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-SMBUS_CTRL]
+=== i2c[1].SMBUS_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `SMBALERT` | RW | 0x0 a| Target Mode control: asserts the `smbalert_no` output. This bit clears itself
+when the controller addresses this target.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `SMBSUS` | RW | 0x0 a| Controller Mode control: asserts the `smbsus_no` output.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-CTRL]
+=== i2c[1].CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `ACQ_START_STOP_EN` | RW | 0x0 a| ACQ FIFO Start/Stop Enable (Target Mode only):
+* `0` - Start/Stop symbols are NOT written into the ACQ FIFO. The firmware
+should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
+flags to detect Start/Stop events.
+* `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
+When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
+entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+entry is written.
+| 6 | `TX_STRETCH_CTRL_EN` | RW | 0x0 a| Target mode control: enables the Software TX Stretch Control Mechanism. If this
+bit is:
+* `0` - Automatic TX Stretch: When this target receives a READ address
+byte, it only stretches the clock if the TX FIFO is empty; otherwise,
+it pops the FIFO and transmits the data byte. The target never sets
+the `TARGET_EVENTS` register flags in this mode.
+* `1` - Software TX Stretch Mode: When this target receives a READ address,
+it always stretches the clock and sets the `TARGET_EVENTS.TX_PENDING`
+flag. The software can:
+1. confirm the release and transmission of the TX FIFO data by
+writing a 1 to clear the `TARGET_EVENTS.TX_PENDING` flag; or
+2. reset the TX FIFO by writing 1 to `FIFO_CTRL.TXRST` and load in
+new data via the `TXDATA` register--useful whenthe READ address
+is targeting a different function of the target.
+In this mode, the target always sets the `TARGET_EVENTS` register
+flags.
+| 5 | `MULTI_CONTROLLER_MONITOR_EN` | RW | 0x0 a| Global control: enables the Bus Monitor. Set this bit to `1`
+only in a multi-controller environment.
+
+If a `0`->`1` transition happens while `ENABLEHOST` and `ENABLETARGET` are both
+`0`, the Bus Monitor will enable and begin in the 'Bus Busy' state. To
+transition to a 'Bus Free' state, `HOST_TIMEOUT_CTRL` must be nonzero so the
+Bus Monitor may count out idle cycles to confirm the freedom to transmit. In
+addition, the Bus Monitor will track whether the bus is free based on the
+enabled timeouts and detected STOP symbols. For Multi-Controller Mode, ensure
+`MULTI_CONTROLLER_MONITOR_EN` becomes `1` no later than `ENABLEHOST` or
+`ENABLETARGET`. This bit can be set at the same time as either or both of the
+other two, though.
+
+Note that if `MULTI_CONTROLLER_MONITOR_EN` is set after `ENABLEHOST` or
+`ENABLETARGET`, the Bus Monitor will begin in the 'Bus Free' state instead.
+This would violate the proper protocol for a controller to join a multi-controller
+environment. However, if this controller is known to be the first to join, this
+ordering will enable skipping the idle wait.
+
+When `0`, the bus monitor will report that the bus is always free, so the
+Controller FSM is never blocked from transmitting.
+| 4 | `ACK_CTRL_EN` | RW | 0x0 a| Target Mode control: enables the Software ACK Control Mechanism. If this bit is:
+* `0` - This target ACKs a data byte whenever the ACQ FIFO has space.
+* `1` - This target ACKs the first `TARGET_ACK_CTRL.NBYTES` bytes. If another
+byte arrives, this target stretches the clock and awaits software
+intervention (and asserts `STATUS.ACK_CTRL_STRETCH`). The software can
+1. accept the new byte(s) by reloading the `TARGET_ACK_CTRL.NBYTES`
+counter; or
+2. reject the new byte(s) by writing `1` to `TARGET_ACK_CTRL.NACK`
+(useful for SMBus).
+| 3 | `NACK_ADDR_AFTER_TIMEOUT` | RW | 0x0 a| Target Mode control: NACK address after timeout. If this bit is:
+* `0` - This target ACKs the address byte even if a Stretch Timeout occurs
+(useful for SMBus).
+* `1` - This target NACKs the address byte when a Stretch Timeout occurs.
+| 2 | `LLPBK` | RW | 0x0 a| Global control: enables line loop-back. In Controller Mode, the internal logic
+sees the `smbalert_ni` input as deasserted. In Target Mode, this target sends
+all received SDA data back out, and the internal logic sees received data as
+all 1's.
+| 1 | `ENABLETARGET` | RW | 0x0 a| Global control: configures this device's operating mode.
+* `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+* `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
+| 0 | `ENABLEHOST` | RW | 0x0 a| Global control: configures this device's operating mode.
+* `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+* `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-STATUS]
+=== i2c[1].STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10 | `ACK_CTRL_STRETCH` | R | 0x0 a| Target Mode status: indicates that this target is stretching the clock due to
+the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
+| 9 | `ACQEMPTY` | R | 0x1 a| Target Mode status: Target RX FIFO empty.
+| 8 | `TXEMPTY` | R | 0x1 a| Target Mode status: Target TX FIFO empty.
+| 7 | `ACQFULL` | R | 0x0 a| Target Mode status: Target RX FIFO full.
+| 6 | `TXFULL` | R | 0x0 a| Target Mode status: Target TX FIFO full.
+| 5 | `RXEMPTY` | R | 0x1 a| Controller Mode status: Controller RX FIFO empty.
+| 4 | `TARGETIDLE` | R | 0x1 a| Target Mode status: Target FSM idle.
+| 3 | `HOSTIDLE` | R | 0x1 a| Controller Mode status: Controller FSM idle.
+| 2 | `FMTEMPTY` | R | 0x1 a| Controller Mode status: Controller TX FIFO Empty.
+| 1 | `RXFULL` | R | 0x0 a| Controller Mode status: Controller RX FIFO Full.
+| 0 | `FMTFULL` | R | 0x0 a| Controller Mode status: Controller TX FIFO Full.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-RDATA]
+=== i2c[1].RDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DATA` | R | 0x0 a| Reading this register pops the Controller RX FIFO.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-FDATA]
+=== i2c[1].FDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:13 | `Reserved` | - | - a| Reserved
+| 12 | `NAKOK` | W | 0x0 a| NACK OK. When set, this controller will not care if this byte is NACKed. It
+will not halt, set the `CONTROLLER_EVENTS.NACK` flag, or assert the
+`CONTROLLER_HALT` Interrupt. This behavior is useful for protocols like Serial
+Camera Control Bus (SCCB).
+| 11 | `RCONT` | W | 0x0 a| Read continue/stop:
+* `0` — Read Stop: The controller NACKs the last data byte. Use this if this
+is the last READ in a sequence.
+* `1` — Read Continue: The controller ACKs the last data byte. Use this if
+this is an intermediate READ in a sequence.
+| 10 | `READB` | W | 0x0 a| Read/write:
+* `0` - Issue WRITE transaction
+* `1` - Issue READ transaction
+| 9 | `STOP` | W | 0x0 a| Generate a STOP condition on the bus after sending the byte.
+| 8 | `START` | W | 0x0 a| Generate a START condition on the bus before sending the byte.
+| 7:0 | `FBYTE` | W | 0x0 a| Writing to this register pushes an entry into the Controller TX FIFO. The
+meaning of this field depends on the value of the `READB` field:
+* `READB = 0` - This field is the WRITE data byte.
+* `READB = 1` - This field specifies the number of bytes to read from the
+target. Setting this field to 0 reads 256 bytes.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-FIFO_CTRL]
+=== i2c[1].FIFO_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:9 | `Reserved` | - | - a| Reserved
+| 8 | `TXRST` | W | 0x0 a| Target Mode control: writing `1` resets the Target TX FIFO.
+| 7 | `ACQRST` | W | 0x0 a| Target Mode control: writing `1` resets the Target RX FIFO.
+| 6:2 | `Reserved` | - | - a| Reserved
+| 1 | `FMTRST` | W | 0x0 a| Controller Mode control: writing `1` resets the Controller TX FIFO.
+| 0 | `RXRST` | W | 0x0 a| Controller Mode control: writing `1` resets the Controller RX FIFO.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_FIFO_CONFIG]
+=== i2c[1].HOST_FIFO_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `FMT_THRESH` | RW | 0x0 a| The `FMT_THRESH` interrupt remains asserted while the Controller TX FIFO level
+is less than this setting.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `RX_THRESH` | RW | 0x0 a| The `RX_THRESH` interrupt remains asserted while the Controller RX FIFO level
+is greater than this setting.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_FIFO_CONFIG]
+=== i2c[1].TARGET_FIFO_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `ACQ_THRESH` | RW | 0x0 a| The `ACQ_THRESH` interrupt remains asserted while the Target RX FIFO level is
+greater than this setting.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `TX_THRESH` | RW | 0x0 a| The `TX_THRESH` interrupt remains asserted while the Target TX FIFO level is
+less than this setting.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_FIFO_STATUS]
+=== i2c[1].HOST_FIFO_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `RXLVL` | R | - a| Controller RX FIFO fill level.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `FMTLVL` | R | - a| Controller TX FIFO fill level.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_FIFO_STATUS]
+=== i2c[1].TARGET_FIFO_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `ACQLVL` | R | 0x0 a| Target RX FIFO fill level.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `TXLVL` | R | 0x0 a| Target TX FIFO fill level.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-OVRD]
+=== i2c[1].OVRD
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2 | `SDAVAL` | RW | 0x0 a| Global control: SDA override value:
+* `0` - Pull the SDA line low
+* `1` - Release the SDA line
+| 1 | `SCLVAL` | RW | 0x0 a| Global control: SCL override value:
+* `0` - Pull the SCL line low
+* `1` - Release the SCL line
+| 0 | `TXOVRDEN` | RW | 0x0 a| Global control: enables control of the SDA and SCL lines through the `SDA_VAL`
+and `SCL_VAL` fields, respectively.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-VAL]
+=== i2c[1].VAL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:16 | `SDA_RX` | R | 0x0 a| Global status: contains the last 16 SDA over-sampled values. LSB is most
+recent.
+| 15:0 | `SCL_RX` | R | 0x0 a| Global status: contains the last 16 SCL over-sampled values. LSB is most
+recent.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING0]
+=== i2c[1].TIMING0
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `TLOW` | RW | 0x0 a| Global control: specifies the LOW period of SCL (`t_LOW`) in system clock
+cycles. Must be `≥ 2`. See Table 11 in the I2C Specification for more details.
+This field is sized to meet the I2C Standard-mode (100 kHz) minimum
+`t_LOW = 4.7 μs` requirement, assuming a 1 GHz system clock.
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12:0 | `THIGH` | RW | 0x0 a| Global control: specifies the HIGH period of SCL (`t_HIGH`) in system clock
+cycles. Must be `≥ 2`. See Table 11 in the I²C Specification for details. This
+field is sized to meet the I2C Standard-mode (100 kHz)'s minimum
+`t_HIGH = 4.0 μs` requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING1]
+=== i2c[1].TIMING1
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:25 | `Reserved` | - | - a| Reserved
+| 24:16 | `T_F` | RW | 0x0 a| Global control: specifies the fall time of SDA and SCL (`t_f`) in system clock
+cycles. The fall time is measured from 70% to 30% of the signal swing. See
+Table 11 in the I2C Specification for more details. This field is sized to meet
+I2C Standard-mode (100 kHz)'s maximum `t_f = 300 ns` requirement, assuming a 1
+GHz system clock.
+| 15:10 | `Reserved` | - | - a| Reserved
+| 9:0 | `T_R` | RW | 0x0 a| Global control: specifies the rise time of SDA and SCL (`t_r`) in system clock
+cycles. The rise time is measured from 30% to 70% of the signal swing. See
+Table 11 in the I2C Specification for more details. This field is sized to meet
+I2C Standard-mode (100 kHz)'s maximum `t_r = 1000 ns` requirement, assuming a 1
+GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING2]
+=== i2c[1].TIMING2
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `THD_STA` | RW | 0x0 a| Global control: specifies the setup time for a (repeated) START condition
+(`t_HD;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+`t_HD;STA = 4.0 μs` requirement, assuming a 1 GHz system clock.
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12:0 | `TSU_STA` | RW | 0x0 a| Global control: specifies the setup time for a repeated START condition
+(`t_SU;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+`t_SU;STA = 4.7 μs` requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING3]
+=== i2c[1].TIMING3
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `THD_DAT` | RW | 0x0 a| Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in
+system clock cycles. See Table 11 in the I2C Specification for details. This
+field is sized to meet the I2C Standard-mode (100 kHz)'s `t_HD;DAT = 5.0 μs`
+minimum requirement, assuming a 1 GHz system clock.
+| 15:9 | `Reserved` | - | - a| Reserved
+| 8:0 | `TSU_DAT` | RW | 0x0 a| Global control: specifies the data setup time (`t_SU;DAT`) in system clock
+cycles. See Table 11 in the I2C Specification for details. This field is sized
+to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
+requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TIMING4]
+=== i2c[1].TIMING4
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `T_BUF` | RW | 0x0 a| Global control: specifies the time between a STOP and START condition (`t_BUF`)
+in system clock cycles. See Table 11 in the I²C Specification for details. This
+field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
+requirement, assuming a 1 GHz system clock.
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12:0 | `TSU_STO` | RW | 0x0 a| Global control: specifies the setup time for a STOP condition (`t_SU;STO`) in
+system clock cycles. See Table 11 in the I²C Specification for details. This
+field is sized to meet I2C Standard-mode (100 kHz)'s `t_SU;STO = 4.0 μs`
+minimum requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TIMEOUT_CTRL]
+=== i2c[1].TIMEOUT_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `EN` | RW | 0x0 a| Timeout Enable.
+| 30 | `MODE` | RW | 0x0 a| Global control: timeout mode.
+* `0` - Stretch Timeout (Controller Mode only). If the target stretches the
+clock for more time than `TIMEOUT_CTRL.VAL`, the `STRETCH_TIMEOUT`
+interrupt will be asserted.
+* `1` - Bus Timeout. If SCL is LOW for more time than `TIMEOUT_CTRL.VAL`:
+* In Controller Mode, the `CONTROLLER_EVENTS.BUS_TIMEOUT` flag will
+be asserted, triggering the `CONTROLLER_HALT` interrupt.
+* In Target Mode, the `TARGET_EVENTS.BUS_TIMEOUT` flag will be set,
+triggering the `TX_STRETCH` interrupt.
+| 29:0 | `VAL` | RW | 0x0 a| Global control: Specifies the timeout value in system clock cycles. The meaning
+of this field depends on `MODE`.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_ID]
+=== i2c[1].TARGET_ID
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:21 | `MASK1` | RW | 0x0 a| ADDRESS1 mask.
+| 20:14 | `ADDRESS1` | RW | 0x0 a| Target Address 1. This target responds if the 7-bit address matches
+`ADDRESS1 & MASK1`. `MASK1 = 0x0` disables this address.
+| 13:7 | `MASK0` | RW | 0x0 a| ADDRESS0 mask.
+| 6:0 | `ADDRESS0` | RW | 0x0 a| Target Address 0. This target responds if the 7-bit address matches
+`ADDRESS0 & MASK0`. `MASK0 = 0x0` disables this address.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-ACQDATA]
+=== i2c[1].ACQDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10:8 | `SIGNAL` | R | 0x0 a| This field indicates if this FIFO entry represents/is associated with control
+signal(s):
+* `0x0` - The entry is an ordinary data byte that has been ACKed.
+* `0x1` - The entry is an address byte preceded by a START.
+* `0x2` - The entry is a STOP condition following ACKed data bytes.
+* `0x3` - The entry is an address byte preceded by a repeated START.
+* `0x4` - The entry is a NACKed data byte.
+* `0x5` - The entry is an address byte preceded by a (repeated) START.
+However, the data bytes that followed this address byte were
+NACKed.
+* `0x6` - Error. A transaction preceding ended abnormally, for example, due to
+an unexpected STOP condition, a Bus or Stretch Timeout, a software
+NACK, or a lost arbitration.
+
+If the FIFO does not have enough space to record a complete transaction, an
+Error (`0x6`) entry may appear alone.
+| 7:0 | `ABYTE` | R | 0x0 a| Reading this register pops the ACQ FIFO. The meaning of this field depends on
+`SIGNAL`:
+* `SIGNAL = 0x0`, `0x1`, `0x3`, `0x4`, or `0x5` - This field contains an
+address or data byte sent by the controller.
+* `SIGNAL = 0x2`, `0x6` - This field is meaningless.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TXDATA]
+=== i2c[1].TXDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DATA` | W | 0x0 a| Writing to this register pushes data into the Target TX FIFO. The controller
+reads data from this FIFO during a READ transaction.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_TIMEOUT_CTRL]
+=== i2c[1].HOST_TIMEOUT_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `Reserved` | - | - a| Reserved
+| 30:0 | `VAL` | RW | 0x0 a| Target/Monitor Mode control: controller clock generation timeout value
+specified in system clock cycles.
+* Target Mode - If the controller stops generating the clock for more time
+than this setting, this target asserts the Controller Timeout Interrupt.
+* Monitor Mode - this field is required to be nonzero for the Bus Monitor to
+transition out of the initial Busy state. Set this field to `0x0` to disable
+this behavior.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_TIMEOUT_CTRL]
+=== i2c[1].TARGET_TIMEOUT_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `EN` | RW | 0x0 a| Enable Target Timeout.
+| 30:0 | `VAL` | RW | 0x0 a| When this target has stretched the clock for more time than this setting, this
+target will NACK incoming data bytes or release the SDA line for outgoing data
+bytes. The count is cumulative over an entire transaction. In other words, this
+is SMBus's cumulative target clock extension time.
+
+The behavior for the address byte is configurable via
+`CTRL.NACK_ADDR_AFTER_TIMEOUT`.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_NACK_COUNT]
+=== i2c[1].TARGET_NACK_COUNT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `TARGET_NACK_COUNT` | RW | 0x0 a| Indicates the number of transactions NACKed by this target since the last read
+of this register, saturating at 255. This field can be used to track how many
+transactions were missed when the Target RX FIFO is full.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_ACK_CTRL]
+=== i2c[1].TARGET_ACK_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `NACK` | W | 0x0 a| When `STATUS.ACK_CTRL_STRETCH = 1`, writing `1` to this field causes this
+target to NACK all bytes of the transaction. Effective only when
+`CTRL.ACK_CTRL_EN = 1`.
+| 30:9 | `Reserved` | - | - a| Reserved
+| 8:0 | `NBYTES` | RW | 0x0 a| When `STATUS.ACK_CTRL_STRETCH = 1`, writing to this register specifies the
+number of bytes this target should ACK. The count decrements per byte ACKed.
+Effective only when `CTRL.ACK_CTRL_EN = 1`. See `CTRL.ACK_CTRL_EN` for details.
+
+This control field is used to implement SMBus's mid-transfer (N)ACK responses.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-ACQ_FIFO_NEXT_DATA]
+=== i2c[1].ACQ_FIFO_NEXT_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DATA` | R | 0x0 a| This field contains the next byte to be pushed into the Target RX FIFO,
+allowing software to decide whether to accept or reject it. Valid only when
+`STATUS.ACK_CTRL_STRETCH = 1`. See `CTRL.ACK_CTRL_EN` for details.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-HOST_NACK_HANDLER_TIMEOUT]
+=== i2c[1].HOST_NACK_HANDLER_TIMEOUT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `EN` | RW | 0x0 a| Enables Controller NACK Timeout.
+| 30:0 | `VAL` | RW | 0x0 a| Timeout value (specified in system clock cycles) for this controller Mode to
+automatically STOP a transaction when `CONTROLLER_EVENTS.NACK` is set.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-CONTROLLER_EVENTS]
+=== i2c[1].CONTROLLER_EVENTS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3 | `ARBITRATION_LOST` | RW | 0x0 a| Indicates that the controller has halted due to it losing an arbitration
+against another controller. This bit triggers the `CONTROLLER_HALT` interrupt.
+Writing `1` clears this bit.
+| 2 | `BUS_TIMEOUT` | RW | 0x0 a| Indicates that this controller has halted due to a Bus Timeout. See
+`TIMEOUT_CTRL` for details. This bit triggers the `CONTROLLER_HALT` interrupt.
+Writing `1` clears this bit.
+| 1 | `UNHANDLED_NACK_TIMEOUT` | RW | 0x0 a| Indicates that this controller has halted due to a Controller NACK Timeout. See
+`HOST_NACK_HANDLER_TIMEOUT` for details. This bit triggers the
+`CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
+| 0 | `NACK` | RW | 0x0 a| Indicates that this controller has halted due to an unexpected NACK sent by
+the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This
+bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-TARGET_EVENTS]
+=== i2c[1].TARGET_EVENTS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `STOP_DETECT` | RW | 0x0 a| Stop Detect Flag (Target Mode only). Set to 1 by hardware when a STOP is
+detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.
+| 3 | `START_DETECT` | RW | 0x0 a| Start Detect Flag (Target Mode only). Set to 1 by hardware when a START
+(or repeated START) is detected while `CTRL.ENABLETARGET = 1`. Cleared when
+software writes 1.
+| 2 | `ARBITRATION_LOST` | RW | 0x0 a| Indicates that a controller has lost arbitration, causing a READ
+transaction to end. This bit triggers the `TX_STRETCH` interrupt. Writing `1`
+clears this bit.
+| 1 | `BUS_TIMEOUT` | RW | 0x0 a| Indicates that this target has halted due a Bus Timeout terminating a READ
+transaction. See `TIMEOUT_CTRL` for details. This bit triggers the `TX_STRETCH`
+interrupt. Writing `1` clears this bit.
+| 0 | `TX_PENDING` | RW | 0x0 a| Indicates that the target is stretching the clock due to receiving a READ
+address byte and waiting for software to confirm the release of the Target
+TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See
+`CTRL.TX_STRETCH_CTRL_EN` for details. This bit triggers the `TX_STRETCH`
+interrupt. Writing `1` clears this bit.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-1-SMBUS_STATUS]
+=== i2c[1].SMBUS_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `SMBALERT` | R | 0x0 a| Controller Mode status: indicates that the `smbalert_ni` input is asserted.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `SMBSUS` | R | 0x0 a| Target Mode status: indicates that the `smbsus_ni` input is asserted.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-INTR_STATE]
+=== i2c[2].INTR_STATE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19 | `TARGET_RX_FIFO_ERROR` | RW | 0x0 a| Target Mode interrupt: asserted when the Target RX FIFO has a parity error.
+Write `1` to clear.
+| 18 | `TARGET_TX_FIFO_ERROR` | RW | 0x0 a| Target Mode interrupt: asserted when the Target TX FIFO has a parity error.
+Write `1` to clear.
+| 17 | `CONTROLLER_RX_FIFO_ERROR` | RW | 0x0 a| Controller Mode interrupt: asserted when the Controller RX FIFO has a parity
+error. Write `1` to clear.
+| 16 | `CONTROLLER_TX_FIFO_ERROR` | RW | 0x0 a| Controller Mode interrupt: asserted when the Controller TX FIFO has a parity
+error. Write `1` to clear.
+| 15 | `SMBALERT` | RW | 0x0 a| Controller Mode interrupt: asserted when `smbalert_ni` is asserted. Write `1`
+to clear.
+| 14 | `HOST_TIMEOUT` | RW | 0x0 a| Target Mode interrupt: asserted when the controller stops generating the clock
+longer than `HOST_TIMEOUT_CTRL.VAL`. Write `1` to clear.
+| 13 | `UNEXP_STOP` | RW | 0x0 a| Target Mode interrupt: asserted when the controller sends this target a STOP
+before this target NACKs. Write `1` to clear.
+| 12 | `ACQ_STRETCH` | R | 0x0 a| Target Mode interrupt: remains asserted while the target is stretching the clock
+because 1) the Target RX FIFO is full or 2) the `TARGET_ACK_CTRL.NBYTES` count
+has reached `0` (only if `CTRL.ACK_CTRL_EN = 1`).
+| 11 | `TX_THRESHOLD` | R | 0x0 a| Target Mode interrupt: remains asserted while the Target TX FIFO level is less
+than `TARGET_FIFO_CONFIG.TX_THRESH`.
+| 10 | `TX_STRETCH` | R | 0x0 a| Target Mode interrupt: remains asserted while this target is stretching the
+clock or has halted. The flags in the `TARGET_EVENTS` register explain the
+reason(s) for clock stretching/halting. Clearing the `TARGET_EVENTS` flags
+clears this interrupt.
+| 9 | `CMD_COMPLETE` | RW | 0x0 a| Controller/Target Mode interrupt: asserted when this/the controller finishes
+generating a STOP or repeated START. Write `1` to clear.
+| 8 | `SDA_UNSTABLE` | RW | 0x0 a| Controller Mode interrupt: asserted when the target fails to keep SDA stable
+during a transmission. Write `1` to clear.
+| 7 | `STRETCH_TIMEOUT` | RW | 0x0 a| Controller Mode interrupt: asserted when the target stretches the clock longer
+than `TIMEOUT_CTRL.VAL` (valid only when `TIMEOUT_CTRL.MODE = 0`). Write `1` to
+clear.
+| 6 | `SDA_INTERFERENCE` | RW | 0x0 a| Controller Mode interrupt: asserted when SDA is unexpectedly pulled LOW by
+another controller. Write `1` to clear.
+| 5 | `SCL_INTERFERENCE` | RW | 0x0 a| Controller Mode interrupt: asserted when SCL is unexpectedly pulled LOW by
+another controller. Write `1` to clear.
+| 4 | `CONTROLLER_HALT` | R | 0x0 a| Controller Mode interrupt: remains asserted while this controller halts. The
+flags in the `CONTROLLER_EVENTS` register explain the reason(s) for the
+halting. Clearing the `CONTROLLER_EVENTS` flags clears this interrupt.
+| 3 | `RX_OVERFLOW` | RW | 0x0 a| Controller Mode interrupt: asserted when the Controller RX FIFO overflows.
+Write `1` to clear.
+| 2 | `ACQ_THRESHOLD` | R | 0x0 a| Target Mode interrupt: remains asserted while the Target RX FIFO level is
+greater than `TARGET_FIFO_CONFIG.ACQ_THRESH`.
+| 1 | `RX_THRESHOLD` | R | 0x0 a| Controller Mode interrupt: remains asserted while the Controller RX FIFO level
+is greater than `HOST_FIFO_CONFIG.RX_THRESH`.
+| 0 | `FMT_THRESHOLD` | R | 0x0 a| Controller Mode interrupt: remains asserted while the Controller TX FIFO level
+is less than `HOST_FIFO_CONFIG.FMT_THRESH`.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-INTR_ENABLE]
+=== i2c[2].INTR_ENABLE
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19 | `TARGET_RX_FIFO_ERROR` | RW | 0x0 a| Enables the `TARGET_RX_FIFO_ERROR` interrupt.
+| 18 | `TARGET_TX_FIFO_ERROR` | RW | 0x0 a| Enables the `TARGET_TX_FIFO_ERROR` interrupt.
+| 17 | `CONTROLLER_RX_FIFO_ERROR` | RW | 0x0 a| Enables the `CONTROLLER_RX_FIFO_ERROR` interrupt.
+| 16 | `CONTROLLER_TX_FIFO_ERROR` | RW | 0x0 a| Enables the `CONTROLLER_TX_FIFO_ERROR` interrupt.
+| 15 | `SMBALERT` | RW | 0x0 a| Enables the `SMBALERT` interrupt.
+| 14 | `HOST_TIMEOUT` | RW | 0x0 a| Enables the `HOST_TIMEOUT` interrupt.
+| 13 | `UNEXP_STOP` | RW | 0x0 a| Enables the `UNEXP_STOP` interrupt.
+| 12 | `ACQ_STRETCH` | RW | 0x0 a| Enables the `ACQ_STRETCH` interrupt.
+| 11 | `TX_THRESHOLD` | RW | 0x0 a| Enables the `TX_THRESHOLD` interrupt.
+| 10 | `TX_STRETCH` | RW | 0x0 a| Enables the `TX_STRETCH` interrupt.
+| 9 | `CMD_COMPLETE` | RW | 0x0 a| Enables the `CMD_COMPLETE` interrupt.
+| 8 | `SDA_UNSTABLE` | RW | 0x0 a| Enables the `SDA_UNSTABLE` interrupt.
+| 7 | `STRETCH_TIMEOUT` | RW | 0x0 a| Enables the `STRETCH_TIMEOUT` interrupt.
+| 6 | `SDA_INTERFERENCE` | RW | 0x0 a| Enables the `SDA_INTERFERENCE` interrupt.
+| 5 | `SCL_INTERFERENCE` | RW | 0x0 a| Enables the `SCL_INTERFERENCE` interrupt.
+| 4 | `CONTROLLER_HALT` | RW | 0x0 a| Enables the `CONTROLLER_HALT` interrupt.
+| 3 | `RX_OVERFLOW` | RW | 0x0 a| Enables the `RX_OVERFLOW` interrupt.
+| 2 | `ACQ_THRESHOLD` | RW | 0x0 a| Enables the `ACQ_THRESHOLD` interrupt.
+| 1 | `RX_THRESHOLD` | RW | 0x0 a| Enables the `RX_THRESHOLD` interrupt.
+| 0 | `FMT_THRESHOLD` | RW | 0x0 a| Enables the `FMT_THRESHOLD` interrupt.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-INTR_TEST]
+=== i2c[2].INTR_TEST
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19 | `TARGET_RX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `TARGET_RX_FIFO_ERROR` interrupt.
+| 18 | `TARGET_TX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `TARGET_TX_FIFO_ERROR` interrupt.
+| 17 | `CONTROLLER_RX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `CONTROLLER_RX_FIFO_ERROR` interrupt.
+| 16 | `CONTROLLER_TX_FIFO_ERROR` | W | 0x0 a| Writing `1` forces the `CONTROLLER_TX_FIFO_ERROR` interrupt.
+| 15 | `SMBALERT` | W | 0x0 a| Writing `1` forces the `SMBALERT` interrupt.
+| 14 | `HOST_TIMEOUT` | W | 0x0 a| Writing `1` forces the `HOST_TIMEOUT` interrupt.
+| 13 | `UNEXP_STOP` | W | 0x0 a| Writing `1` forces the `UNEXP_STOP` interrupt.
+| 12 | `ACQ_STRETCH` | RW | 0x0 a| Writing `1` forces the `ACQ_STRETCH` interrupt. Writing `0` releases it.
+| 11 | `TX_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `TX_THRESHOLD` interrupt. Writing `0` releases it.
+| 10 | `TX_STRETCH` | RW | 0x0 a| Writing `1` forces the `TX_STRETCH` interrupt. Writing a `0` releases it.
+| 9 | `CMD_COMPLETE` | W | 0x0 a| Writing `1` forces the `CMD_COMPLETE` interrupt.
+| 8 | `SDA_UNSTABLE` | W | 0x0 a| Writing `1` forces the `SDA_UNSTABLE` interrupt.
+| 7 | `STRETCH_TIMEOUT` | W | 0x0 a| Writing `1` forces the `STRETCH_TIMEOUT` interrupt.
+| 6 | `SDA_INTERFERENCE` | W | 0x0 a| Writing `1` forces the `SDA_INTERFERENCE` interrupt.
+| 5 | `SCL_INTERFERENCE` | W | 0x0 a| Writing `1` forces the `SCL_INTERFERENCE` interrupt.
+| 4 | `CONTROLLER_HALT` | RW | 0x0 a| Writing `1` forces the `CONTROLLER_HALT` interrupt. Writing `0` releases it.
+| 3 | `RX_OVERFLOW` | W | 0x0 a| Writing `1` forces the `RX_OVERFLOW` interrupt.
+| 2 | `ACQ_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `ACQ_THRESHOLD` interrupt. Writing `0` releases it.
+| 1 | `RX_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `RX_THRESHOLD` interrupt. Writing `0` releases it.
+| 0 | `FMT_THRESHOLD` | RW | 0x0 a| Writing `1` forces the `FMT_THRESHOLD` interrupt. Writing `0` releases it.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-SMBUS_CTRL]
+=== i2c[2].SMBUS_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `SMBALERT` | RW | 0x0 a| Target Mode control: asserts the `smbalert_no` output. This bit clears itself
+when the controller addresses this target.
+| 3:1 | `Reserved` | - | - a| Reserved
+| 0 | `SMBSUS` | RW | 0x0 a| Controller Mode control: asserts the `smbsus_no` output.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-CTRL]
+=== i2c[2].CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7 | `ACQ_START_STOP_EN` | RW | 0x0 a| ACQ FIFO Start/Stop Enable (Target Mode only):
+* `0` - Start/Stop symbols are NOT written into the ACQ FIFO. The firmware
+should rely on `TARGET_EVENTS.START_DETECT` and `TARGET_EVENTS.STOP_DETECT`
+flags to detect Start/Stop events.
+* `1` - Start/Stop symbols ARE written into the ACQ FIFO (legacy behavior).
+When a START (or repeated START) is detected, an `AcqStart` or `AcqRestart`
+entry is written. When a STOP is detected, an `AcqStop` or `AcqNackStop`
+entry is written.
+| 6 | `TX_STRETCH_CTRL_EN` | RW | 0x0 a| Target mode control: enables the Software TX Stretch Control Mechanism. If this
+bit is:
+* `0` - Automatic TX Stretch: When this target receives a READ address
+byte, it only stretches the clock if the TX FIFO is empty; otherwise,
+it pops the FIFO and transmits the data byte. The target never sets
+the `TARGET_EVENTS` register flags in this mode.
+* `1` - Software TX Stretch Mode: When this target receives a READ address,
+it always stretches the clock and sets the `TARGET_EVENTS.TX_PENDING`
+flag. The software can:
+1. confirm the release and transmission of the TX FIFO data by
+writing a 1 to clear the `TARGET_EVENTS.TX_PENDING` flag; or
+2. reset the TX FIFO by writing 1 to `FIFO_CTRL.TXRST` and load in
+new data via the `TXDATA` register--useful whenthe READ address
+is targeting a different function of the target.
+In this mode, the target always sets the `TARGET_EVENTS` register
+flags.
+| 5 | `MULTI_CONTROLLER_MONITOR_EN` | RW | 0x0 a| Global control: enables the Bus Monitor. Set this bit to `1`
+only in a multi-controller environment.
+
+If a `0`->`1` transition happens while `ENABLEHOST` and `ENABLETARGET` are both
+`0`, the Bus Monitor will enable and begin in the 'Bus Busy' state. To
+transition to a 'Bus Free' state, `HOST_TIMEOUT_CTRL` must be nonzero so the
+Bus Monitor may count out idle cycles to confirm the freedom to transmit. In
+addition, the Bus Monitor will track whether the bus is free based on the
+enabled timeouts and detected STOP symbols. For Multi-Controller Mode, ensure
+`MULTI_CONTROLLER_MONITOR_EN` becomes `1` no later than `ENABLEHOST` or
+`ENABLETARGET`. This bit can be set at the same time as either or both of the
+other two, though.
+
+Note that if `MULTI_CONTROLLER_MONITOR_EN` is set after `ENABLEHOST` or
+`ENABLETARGET`, the Bus Monitor will begin in the 'Bus Free' state instead.
+This would violate the proper protocol for a controller to join a multi-controller
+environment. However, if this controller is known to be the first to join, this
+ordering will enable skipping the idle wait.
+
+When `0`, the bus monitor will report that the bus is always free, so the
+Controller FSM is never blocked from transmitting.
+| 4 | `ACK_CTRL_EN` | RW | 0x0 a| Target Mode control: enables the Software ACK Control Mechanism. If this bit is:
+* `0` - This target ACKs a data byte whenever the ACQ FIFO has space.
+* `1` - This target ACKs the first `TARGET_ACK_CTRL.NBYTES` bytes. If another
+byte arrives, this target stretches the clock and awaits software
+intervention (and asserts `STATUS.ACK_CTRL_STRETCH`). The software can
+1. accept the new byte(s) by reloading the `TARGET_ACK_CTRL.NBYTES`
+counter; or
+2. reject the new byte(s) by writing `1` to `TARGET_ACK_CTRL.NACK`
+(useful for SMBus).
+| 3 | `NACK_ADDR_AFTER_TIMEOUT` | RW | 0x0 a| Target Mode control: NACK address after timeout. If this bit is:
+* `0` - This target ACKs the address byte even if a Stretch Timeout occurs
+(useful for SMBus).
+* `1` - This target NACKs the address byte when a Stretch Timeout occurs.
+| 2 | `LLPBK` | RW | 0x0 a| Global control: enables line loop-back. In Controller Mode, the internal logic
+sees the `smbalert_ni` input as deasserted. In Target Mode, this target sends
+all received SDA data back out, and the internal logic sees received data as
+all 1's.
+| 1 | `ENABLETARGET` | RW | 0x0 a| Global control: configures this device's operating mode.
+* `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+* `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
+| 0 | `ENABLEHOST` | RW | 0x0 a| Global control: configures this device's operating mode.
+* `ENABLEHOST = 1` and `ENABLETARGET = 0` — Controller Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 1` — Target Mode
+* `ENABLEHOST = 1` and `ENABLETARGET = 1` — Hybrid Mode
+* `ENABLEHOST = 0` and `ENABLETARGET = 0` — Monitor Mode
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-STATUS]
+=== i2c[2].STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10 | `ACK_CTRL_STRETCH` | R | 0x0 a| Target Mode status: indicates that this target is stretching the clock due to
+the Software ACK Control Mechanism. See `CTRL.ACK_CTRL_EN` for details.
+| 9 | `ACQEMPTY` | R | 0x1 a| Target Mode status: Target RX FIFO empty.
+| 8 | `TXEMPTY` | R | 0x1 a| Target Mode status: Target TX FIFO empty.
+| 7 | `ACQFULL` | R | 0x0 a| Target Mode status: Target RX FIFO full.
+| 6 | `TXFULL` | R | 0x0 a| Target Mode status: Target TX FIFO full.
+| 5 | `RXEMPTY` | R | 0x1 a| Controller Mode status: Controller RX FIFO empty.
+| 4 | `TARGETIDLE` | R | 0x1 a| Target Mode status: Target FSM idle.
+| 3 | `HOSTIDLE` | R | 0x1 a| Controller Mode status: Controller FSM idle.
+| 2 | `FMTEMPTY` | R | 0x1 a| Controller Mode status: Controller TX FIFO Empty.
+| 1 | `RXFULL` | R | 0x0 a| Controller Mode status: Controller RX FIFO Full.
+| 0 | `FMTFULL` | R | 0x0 a| Controller Mode status: Controller TX FIFO Full.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-RDATA]
+=== i2c[2].RDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DATA` | R | 0x0 a| Reading this register pops the Controller RX FIFO.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-FDATA]
+=== i2c[2].FDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:13 | `Reserved` | - | - a| Reserved
+| 12 | `NAKOK` | W | 0x0 a| NACK OK. When set, this controller will not care if this byte is NACKed. It
+will not halt, set the `CONTROLLER_EVENTS.NACK` flag, or assert the
+`CONTROLLER_HALT` Interrupt. This behavior is useful for protocols like Serial
+Camera Control Bus (SCCB).
+| 11 | `RCONT` | W | 0x0 a| Read continue/stop:
+* `0` — Read Stop: The controller NACKs the last data byte. Use this if this
+is the last READ in a sequence.
+* `1` — Read Continue: The controller ACKs the last data byte. Use this if
+this is an intermediate READ in a sequence.
+| 10 | `READB` | W | 0x0 a| Read/write:
+* `0` - Issue WRITE transaction
+* `1` - Issue READ transaction
+| 9 | `STOP` | W | 0x0 a| Generate a STOP condition on the bus after sending the byte.
+| 8 | `START` | W | 0x0 a| Generate a START condition on the bus before sending the byte.
+| 7:0 | `FBYTE` | W | 0x0 a| Writing to this register pushes an entry into the Controller TX FIFO. The
+meaning of this field depends on the value of the `READB` field:
+* `READB = 0` - This field is the WRITE data byte.
+* `READB = 1` - This field specifies the number of bytes to read from the
+target. Setting this field to 0 reads 256 bytes.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-FIFO_CTRL]
+=== i2c[2].FIFO_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:9 | `Reserved` | - | - a| Reserved
+| 8 | `TXRST` | W | 0x0 a| Target Mode control: writing `1` resets the Target TX FIFO.
+| 7 | `ACQRST` | W | 0x0 a| Target Mode control: writing `1` resets the Target RX FIFO.
+| 6:2 | `Reserved` | - | - a| Reserved
+| 1 | `FMTRST` | W | 0x0 a| Controller Mode control: writing `1` resets the Controller TX FIFO.
+| 0 | `RXRST` | W | 0x0 a| Controller Mode control: writing `1` resets the Controller RX FIFO.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_FIFO_CONFIG]
+=== i2c[2].HOST_FIFO_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `FMT_THRESH` | RW | 0x0 a| The `FMT_THRESH` interrupt remains asserted while the Controller TX FIFO level
+is less than this setting.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `RX_THRESH` | RW | 0x0 a| The `RX_THRESH` interrupt remains asserted while the Controller RX FIFO level
+is greater than this setting.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_FIFO_CONFIG]
+=== i2c[2].TARGET_FIFO_CONFIG
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `ACQ_THRESH` | RW | 0x0 a| The `ACQ_THRESH` interrupt remains asserted while the Target RX FIFO level is
+greater than this setting.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `TX_THRESH` | RW | 0x0 a| The `TX_THRESH` interrupt remains asserted while the Target TX FIFO level is
+less than this setting.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_FIFO_STATUS]
+=== i2c[2].HOST_FIFO_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `RXLVL` | R | - a| Controller RX FIFO fill level.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `FMTLVL` | R | - a| Controller TX FIFO fill level.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_FIFO_STATUS]
+=== i2c[2].TARGET_FIFO_STATUS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:16 | `ACQLVL` | R | 0x0 a| Target RX FIFO fill level.
+| 15:12 | `Reserved` | - | - a| Reserved
+| 11:0 | `TXLVL` | R | 0x0 a| Target TX FIFO fill level.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-OVRD]
+=== i2c[2].OVRD
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:3 | `Reserved` | - | - a| Reserved
+| 2 | `SDAVAL` | RW | 0x0 a| Global control: SDA override value:
+* `0` - Pull the SDA line low
+* `1` - Release the SDA line
+| 1 | `SCLVAL` | RW | 0x0 a| Global control: SCL override value:
+* `0` - Pull the SCL line low
+* `1` - Release the SCL line
+| 0 | `TXOVRDEN` | RW | 0x0 a| Global control: enables control of the SDA and SCL lines through the `SDA_VAL`
+and `SCL_VAL` fields, respectively.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-VAL]
+=== i2c[2].VAL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:16 | `SDA_RX` | R | 0x0 a| Global status: contains the last 16 SDA over-sampled values. LSB is most
+recent.
+| 15:0 | `SCL_RX` | R | 0x0 a| Global status: contains the last 16 SCL over-sampled values. LSB is most
+recent.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING0]
+=== i2c[2].TIMING0
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `TLOW` | RW | 0x0 a| Global control: specifies the LOW period of SCL (`t_LOW`) in system clock
+cycles. Must be `≥ 2`. See Table 11 in the I2C Specification for more details.
+This field is sized to meet the I2C Standard-mode (100 kHz) minimum
+`t_LOW = 4.7 μs` requirement, assuming a 1 GHz system clock.
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12:0 | `THIGH` | RW | 0x0 a| Global control: specifies the HIGH period of SCL (`t_HIGH`) in system clock
+cycles. Must be `≥ 2`. See Table 11 in the I²C Specification for details. This
+field is sized to meet the I2C Standard-mode (100 kHz)'s minimum
+`t_HIGH = 4.0 μs` requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING1]
+=== i2c[2].TIMING1
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:25 | `Reserved` | - | - a| Reserved
+| 24:16 | `T_F` | RW | 0x0 a| Global control: specifies the fall time of SDA and SCL (`t_f`) in system clock
+cycles. The fall time is measured from 70% to 30% of the signal swing. See
+Table 11 in the I2C Specification for more details. This field is sized to meet
+I2C Standard-mode (100 kHz)'s maximum `t_f = 300 ns` requirement, assuming a 1
+GHz system clock.
+| 15:10 | `Reserved` | - | - a| Reserved
+| 9:0 | `T_R` | RW | 0x0 a| Global control: specifies the rise time of SDA and SCL (`t_r`) in system clock
+cycles. The rise time is measured from 30% to 70% of the signal swing. See
+Table 11 in the I2C Specification for more details. This field is sized to meet
+I2C Standard-mode (100 kHz)'s maximum `t_r = 1000 ns` requirement, assuming a 1
+GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING2]
+=== i2c[2].TIMING2
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `THD_STA` | RW | 0x0 a| Global control: specifies the setup time for a (repeated) START condition
+(`t_HD;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+`t_HD;STA = 4.0 μs` requirement, assuming a 1 GHz system clock.
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12:0 | `TSU_STA` | RW | 0x0 a| Global control: specifies the setup time for a repeated START condition
+(`t_SU;STA`) in system clock cycles. See Table 11 in the I2C Specification for
+details. This field is sized to meet I2C Standard-mode (100 kHz)'s minimum
+`t_SU;STA = 4.7 μs` requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING3]
+=== i2c[2].TIMING3
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `THD_DAT` | RW | 0x0 a| Global control: specifies the data and (N)ACK bits hold time (`t_HD;DAT`) in
+system clock cycles. See Table 11 in the I2C Specification for details. This
+field is sized to meet the I2C Standard-mode (100 kHz)'s `t_HD;DAT = 5.0 μs`
+minimum requirement, assuming a 1 GHz system clock.
+| 15:9 | `Reserved` | - | - a| Reserved
+| 8:0 | `TSU_DAT` | RW | 0x0 a| Global control: specifies the data setup time (`t_SU;DAT`) in system clock
+cycles. See Table 11 in the I2C Specification for details. This field is sized
+to meet the I2C Standard-mode (100 kHz)'s `t_SU;DAT = 250 ns` minimum
+requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TIMING4]
+=== i2c[2].TIMING4
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:29 | `Reserved` | - | - a| Reserved
+| 28:16 | `T_BUF` | RW | 0x0 a| Global control: specifies the time between a STOP and START condition (`t_BUF`)
+in system clock cycles. See Table 11 in the I²C Specification for details. This
+field is sized to meet I2C Standard-mode (100kHz)'s `t_BUF = 4.7 μs` minimum
+requirement, assuming a 1 GHz system clock.
+| 15:13 | `Reserved` | - | - a| Reserved
+| 12:0 | `TSU_STO` | RW | 0x0 a| Global control: specifies the setup time for a STOP condition (`t_SU;STO`) in
+system clock cycles. See Table 11 in the I²C Specification for details. This
+field is sized to meet I2C Standard-mode (100 kHz)'s `t_SU;STO = 4.0 μs`
+minimum requirement, assuming a 1 GHz system clock.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TIMEOUT_CTRL]
+=== i2c[2].TIMEOUT_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `EN` | RW | 0x0 a| Timeout Enable.
+| 30 | `MODE` | RW | 0x0 a| Global control: timeout mode.
+* `0` - Stretch Timeout (Controller Mode only). If the target stretches the
+clock for more time than `TIMEOUT_CTRL.VAL`, the `STRETCH_TIMEOUT`
+interrupt will be asserted.
+* `1` - Bus Timeout. If SCL is LOW for more time than `TIMEOUT_CTRL.VAL`:
+* In Controller Mode, the `CONTROLLER_EVENTS.BUS_TIMEOUT` flag will
+be asserted, triggering the `CONTROLLER_HALT` interrupt.
+* In Target Mode, the `TARGET_EVENTS.BUS_TIMEOUT` flag will be set,
+triggering the `TX_STRETCH` interrupt.
+| 29:0 | `VAL` | RW | 0x0 a| Global control: Specifies the timeout value in system clock cycles. The meaning
+of this field depends on `MODE`.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_ID]
+=== i2c[2].TARGET_ID
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:28 | `Reserved` | - | - a| Reserved
+| 27:21 | `MASK1` | RW | 0x0 a| ADDRESS1 mask.
+| 20:14 | `ADDRESS1` | RW | 0x0 a| Target Address 1. This target responds if the 7-bit address matches
+`ADDRESS1 & MASK1`. `MASK1 = 0x0` disables this address.
+| 13:7 | `MASK0` | RW | 0x0 a| ADDRESS0 mask.
+| 6:0 | `ADDRESS0` | RW | 0x0 a| Target Address 0. This target responds if the 7-bit address matches
+`ADDRESS0 & MASK0`. `MASK0 = 0x0` disables this address.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-ACQDATA]
+=== i2c[2].ACQDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:11 | `Reserved` | - | - a| Reserved
+| 10:8 | `SIGNAL` | R | 0x0 a| This field indicates if this FIFO entry represents/is associated with control
+signal(s):
+* `0x0` - The entry is an ordinary data byte that has been ACKed.
+* `0x1` - The entry is an address byte preceded by a START.
+* `0x2` - The entry is a STOP condition following ACKed data bytes.
+* `0x3` - The entry is an address byte preceded by a repeated START.
+* `0x4` - The entry is a NACKed data byte.
+* `0x5` - The entry is an address byte preceded by a (repeated) START.
+However, the data bytes that followed this address byte were
+NACKed.
+* `0x6` - Error. A transaction preceding ended abnormally, for example, due to
+an unexpected STOP condition, a Bus or Stretch Timeout, a software
+NACK, or a lost arbitration.
+
+If the FIFO does not have enough space to record a complete transaction, an
+Error (`0x6`) entry may appear alone.
+| 7:0 | `ABYTE` | R | 0x0 a| Reading this register pops the ACQ FIFO. The meaning of this field depends on
+`SIGNAL`:
+* `SIGNAL = 0x0`, `0x1`, `0x3`, `0x4`, or `0x5` - This field contains an
+address or data byte sent by the controller.
+* `SIGNAL = 0x2`, `0x6` - This field is meaningless.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TXDATA]
+=== i2c[2].TXDATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DATA` | W | 0x0 a| Writing to this register pushes data into the Target TX FIFO. The controller
+reads data from this FIFO during a READ transaction.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_TIMEOUT_CTRL]
+=== i2c[2].HOST_TIMEOUT_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `Reserved` | - | - a| Reserved
+| 30:0 | `VAL` | RW | 0x0 a| Target/Monitor Mode control: controller clock generation timeout value
+specified in system clock cycles.
+* Target Mode - If the controller stops generating the clock for more time
+than this setting, this target asserts the Controller Timeout Interrupt.
+* Monitor Mode - this field is required to be nonzero for the Bus Monitor to
+transition out of the initial Busy state. Set this field to `0x0` to disable
+this behavior.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_TIMEOUT_CTRL]
+=== i2c[2].TARGET_TIMEOUT_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `EN` | RW | 0x0 a| Enable Target Timeout.
+| 30:0 | `VAL` | RW | 0x0 a| When this target has stretched the clock for more time than this setting, this
+target will NACK incoming data bytes or release the SDA line for outgoing data
+bytes. The count is cumulative over an entire transaction. In other words, this
+is SMBus's cumulative target clock extension time.
+
+The behavior for the address byte is configurable via
+`CTRL.NACK_ADDR_AFTER_TIMEOUT`.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_NACK_COUNT]
+=== i2c[2].TARGET_NACK_COUNT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `TARGET_NACK_COUNT` | RW | 0x0 a| Indicates the number of transactions NACKed by this target since the last read
+of this register, saturating at 255. This field can be used to track how many
+transactions were missed when the Target RX FIFO is full.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_ACK_CTRL]
+=== i2c[2].TARGET_ACK_CTRL
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `NACK` | W | 0x0 a| When `STATUS.ACK_CTRL_STRETCH = 1`, writing `1` to this field causes this
+target to NACK all bytes of the transaction. Effective only when
+`CTRL.ACK_CTRL_EN = 1`.
+| 30:9 | `Reserved` | - | - a| Reserved
+| 8:0 | `NBYTES` | RW | 0x0 a| When `STATUS.ACK_CTRL_STRETCH = 1`, writing to this register specifies the
+number of bytes this target should ACK. The count decrements per byte ACKed.
+Effective only when `CTRL.ACK_CTRL_EN = 1`. See `CTRL.ACK_CTRL_EN` for details.
+
+This control field is used to implement SMBus's mid-transfer (N)ACK responses.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-ACQ_FIFO_NEXT_DATA]
+=== i2c[2].ACQ_FIFO_NEXT_DATA
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:8 | `Reserved` | - | - a| Reserved
+| 7:0 | `DATA` | R | 0x0 a| This field contains the next byte to be pushed into the Target RX FIFO,
+allowing software to decide whether to accept or reject it. Valid only when
+`STATUS.ACK_CTRL_STRETCH = 1`. See `CTRL.ACK_CTRL_EN` for details.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-HOST_NACK_HANDLER_TIMEOUT]
+=== i2c[2].HOST_NACK_HANDLER_TIMEOUT
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31 | `EN` | RW | 0x0 a| Enables Controller NACK Timeout.
+| 30:0 | `VAL` | RW | 0x0 a| Timeout value (specified in system clock cycles) for this controller Mode to
+automatically STOP a transaction when `CONTROLLER_EVENTS.NACK` is set.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-CONTROLLER_EVENTS]
+=== i2c[2].CONTROLLER_EVENTS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:4 | `Reserved` | - | - a| Reserved
+| 3 | `ARBITRATION_LOST` | RW | 0x0 a| Indicates that the controller has halted due to it losing an arbitration
+against another controller. This bit triggers the `CONTROLLER_HALT` interrupt.
+Writing `1` clears this bit.
+| 2 | `BUS_TIMEOUT` | RW | 0x0 a| Indicates that this controller has halted due to a Bus Timeout. See
+`TIMEOUT_CTRL` for details. This bit triggers the `CONTROLLER_HALT` interrupt.
+Writing `1` clears this bit.
+| 1 | `UNHANDLED_NACK_TIMEOUT` | RW | 0x0 a| Indicates that this controller has halted due to a Controller NACK Timeout. See
+`HOST_NACK_HANDLER_TIMEOUT` for details. This bit triggers the
+`CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
+| 0 | `NACK` | RW | 0x0 a| Indicates that this controller has halted due to an unexpected NACK sent by
+the target. This behavior can be disabled by writing `1` to `FDATA.NAKOK`. This
+bit triggers the `CONTROLLER_HALT` interrupt. Writing `1` clears this bit.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-TARGET_EVENTS]
+=== i2c[2].TARGET_EVENTS
+
+[cols="1,3,1,1,6", options="header"]
+|===
+| Bits | Field | Access | Reset | Description
+| 31:5 | `Reserved` | - | - a| Reserved
+| 4 | `STOP_DETECT` | RW | 0x0 a| Stop Detect Flag (Target Mode only). Set to 1 by hardware when a STOP is
+detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.
+| 3 | `START_DETECT` | RW | 0x0 a| Start Detect Flag (Target Mode only). Set to 1 by hardware when a START
+(or repeated START) is detected while `CTRL.ENABLETARGET = 1`. Cleared when
+software writes 1.
+| 2 | `ARBITRATION_LOST` | RW | 0x0 a| Indicates that a controller has lost arbitration, causing a READ
+transaction to end. This bit triggers the `TX_STRETCH` interrupt. Writing `1`
+clears this bit.
+| 1 | `BUS_TIMEOUT` | RW | 0x0 a| Indicates that this target has halted due a Bus Timeout terminating a READ
+transaction. See `TIMEOUT_CTRL` for details. This bit triggers the `TX_STRETCH`
+interrupt. Writing `1` clears this bit.
+| 0 | `TX_PENDING` | RW | 0x0 a| Indicates that the target is stretching the clock due to receiving a READ
+address byte and waiting for software to confirm the release of the Target
+TX FIFO data. Valid only if `CTRL.TX_STRETCH_CTRL_EN = 1`. See
+`CTRL.TX_STRETCH_CTRL_EN` for details. This bit triggers the `TX_STRETCH`
+interrupt. Writing `1` clears this bit.
+|===
+
+[#reg-{regmap-instance}-i2c_wrap-i2c-2-SMBUS_STATUS]
+=== i2c[2].SMBUS_STATUS
 
 [cols="1,3,1,1,6", options="header"]
 |===

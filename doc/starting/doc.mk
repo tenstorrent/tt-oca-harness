@@ -9,7 +9,6 @@ OCAH_STARTING_SRC ?= $(OCAH_STARTING_DIR)/src
 OCAH_STARTING_MODULES ?= $(OCAH_STARTING_DIR)/modules
 OCAH_STARTING_ASSETS ?= $(OCAH_STARTING_DIR)/assets
 OCAH_STARTING_BUILD ?= $(OCAH_STARTING_DIR)/_build
-OCAH_STARTING_DIST ?= $(OCAH_STARTING_DIR)/dist
 OCAH_STARTING_PLAYBOOK ?= $(OCAH_ROOT)/antora-starting-playbook.yml
 OCAH_STARTING_PDF ?= ocah-starting.pdf
 
@@ -35,14 +34,13 @@ ocah-doc-starting-html: ocah-doc-starting-setup
 ocah-doc-starting-pdf: ocah-doc-starting-setup
 	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf starting"; exit 1; }
 	@echo "Building Getting Started Guide PDF documentation (asciidoctor-pdf)"
-	@mkdir -p "$(OCAH_STARTING_BUILD)/latex" "$(OCAH_STARTING_DIST)"
+	@mkdir -p "$(OCAH_STARTING_BUILD)/latex"
 	@rm -rf "$(OCAH_STARTING_SRC)/assets" && ln -s ../assets "$(OCAH_STARTING_SRC)/assets"
 	@cd "$(OCAH_STARTING_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
 		-o "$(OCAH_STARTING_BUILD)/latex/$(OCAH_STARTING_PDF)" src/index.adoc
-	@cp "$(OCAH_STARTING_BUILD)/latex/$(OCAH_STARTING_PDF)" "$(OCAH_STARTING_DIST)/$(OCAH_STARTING_PDF)"
-	@echo "Done: $(OCAH_STARTING_DIST)/$(OCAH_STARTING_PDF)"
+	@echo "Done: $(OCAH_STARTING_BUILD)/latex/$(OCAH_STARTING_PDF)"
 
 .PHONY: ocah-doc-starting-serve
 ocah-doc-starting-serve: ocah-doc-starting-html
@@ -56,7 +54,7 @@ ocah-doc-starting-clean:
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_STARTING_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_STARTING_ASSETS)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh" --clean
-	@rm -rf "$(OCAH_STARTING_BUILD)" "$(OCAH_STARTING_DIST)"
+	@rm -rf "$(OCAH_STARTING_BUILD)"
 	@echo "Cleaned Getting Started Guide documentation build artifacts."
 
 OCAH_PHONY += \

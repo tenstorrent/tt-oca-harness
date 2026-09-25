@@ -95,7 +95,7 @@ ocah_axi_vip/
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
   interface/ocah_axi_struct_bridge.sv — places a pulp request/response struct
                                    port on an ocah_axi_if for the slave agent
-  sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
+  sva/ocah_axi_sva.sv            — AXI protocol SVA derived from ARM IHI 0022
   sva/ocah_axi_fv.sv             — the handshake, reset, burst and ordering rules in the
                                    boolean subset formal environments bind; both checkers
                                    assert or assume each side by parameter
@@ -104,7 +104,7 @@ ocah_axi_vip/
                                    agent (reactive memory-backed responder)
                                    + master agent/env (active initiator driven
                                    through ocah_axi_master_sequence)
-  cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
+  cov/ocah_axi_cov.sv            — optional-backend functional coverage
   dv/                            — simulated VIP selftests on a wire harness
                                    (master <-> fault slave: response-ID
                                    observation and corruption proofs; master
@@ -115,7 +115,7 @@ ocah_axi_vip/
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items all --cov
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip \
-                                       --framework uvm --tool vcs --items smoke --cov
+                                       --framework uvm --items smoke --cov
                                    dv/cov/config/verilator/coverage_policy.toml grades
                                    the Verilator run; the SV-UVM shape samples the
                                    covergroups
@@ -143,9 +143,8 @@ The checker, reference model, and scoreboard follow the shared contract in
 `hw/common/dv/docs/vip-checker-model.adoc`: named
 `CHK-* PASS/FAIL` evidence with a `CHECKER_SUMMARY`, expected-vs-unexpected
 non-OKAY classification via armed credits, blocked-window/no-activity checks,
-and fail-closed finalization. Protocol rules are re-implemented clean-room
-from the public AMBA AXI4 specification (ARM IHI 0022) rule descriptions;
-no third-party protocol-checker source was consulted or copied. See
+and fail-closed finalization. Protocol rules implement the public AMBA AXI4
+specification (ARM IHI 0022) rule descriptions. See
 `MANUAL.md` for the full rule and check-ID tables, the SV-UVM layer, and the
 DTP adoption pattern.
 
@@ -455,8 +454,8 @@ replay of failures.
 | Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
 | Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
 | Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle; `sva/ocah_axi_fv.sv` carries the handshake, reset, burst and ordering rules in the boolean subset a formal environment binds, each side asserted or assumed by parameter | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
-| Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --tool vcs --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
-| Simulators and protocols | Verilator, VCS, and Xcelium (cocotb selftests); VCS (SV-UVM selftests); AXI4 and AXI4-Lite | SV-UVM on Xcelium (the runner's SV-UVM flow is VCS-only); AXI-Stream; AXI5-only features |
+| Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
+| Simulators and protocols | Verilator and the optional backends reported by `run_dv.py --list`; AXI4 and AXI4-Lite | Backends outside the selected framework's allowlist; AXI-Stream; AXI5-only features |
 
 ---
 
@@ -479,8 +478,7 @@ AXI4 / AXI4-Lite master types and the passive monitor.
 
 The wrapper API does not expose backend transaction types. If you need
 fine-grained control (e.g. non-default QOS or LOCK bits) that the wrapper does
-not expose, open an issue on the OCAH tracker so the API can be extended rather
-than bypassed.
+not expose, extend the wrapper API rather than bypassing it.
 
 ## Hierarchical VIP Layout
 
@@ -489,12 +487,12 @@ This package follows the OCAH hierarchical VIP convention (see
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_axi_vip import <Class>`, never from the subfolders.
-`cov/` holds this package's framework-neutral commercial-simulator
+`cov/` holds this package's framework-neutral optional-backend
 functional-coverage model (`cov/ocah_axi_cov.sv` — plain covergroup/bind SV
-with no UVM phasing, so the cocotb commercial-sim flow compiles it and the
+with no UVM phasing, so a four-state cocotb flow compiles it and the
 UVM flow binds the same file). `interface/` holds the shared SV interfaces and
 `uvm/` the SV-UVM agents and envs. The SV-UVM
-template and the commercial-VIP plug-in contract (env-level factory
+template and the optional-backend plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`
 ("Template Contract") — the reference implementation for all OCAH SV-UVM

@@ -28,7 +28,12 @@ IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).
 
 == Configuration Parameters
 
+<<jiu-configuration-parameters-table>> lists the JTAG Interface Unit configuration
+parameters and defaults.
+
+[[jiu-configuration-parameters-table]]
 [cols="<28%,<12%,<12%,<48%",options="header"]
+.JIU configuration parameters
 |===
 |Parameter |Range |Default |Description
 

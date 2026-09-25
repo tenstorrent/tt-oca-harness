@@ -28,13 +28,18 @@ The CTN serves four purposes:
 
 == Configuration Parameters
 
+<<ctn-configuration-parameters-table>> lists the port-count and internal-trigger
+configuration parameters.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="CTN configuration parameters" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[ctn-configuration-parameters-table]]
 [cols="<28,<12,<12,<48",options="header",role="port-reference"]
+.CTN configuration parameters
 |===
 |Parameter |Range |Default |Description
 
