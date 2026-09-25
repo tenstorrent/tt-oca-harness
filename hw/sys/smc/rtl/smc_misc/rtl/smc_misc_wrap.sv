@@ -129,7 +129,7 @@ module smc_misc_wrap #(
   // 8 scratch registers that are reset by cold and warm reset
   scratch_reg u_smc_scratch_reg_cold_warm (
     .clk            (clk_i),
-    .arst_n         (rst_ni && rst_warm_ni),
+    .arst_n         (rst_warm_ni),
 
     .s_axil_awvalid (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw_valid),
     .s_axil_awaddr  (from_demux_reg_axi_lite_req[smc_misc_pkg::SCRATCH_COLD_WARM].aw.addr[scratch_reg_pkg::SCRATCH_REG_MIN_ADDR_WIDTH-1:0]),

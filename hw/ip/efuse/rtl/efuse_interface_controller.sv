@@ -150,7 +150,12 @@ module efuse_interface_controller #(
 
   // ext_boot_seq_done_i is asserted when memory repair and shadow reg override are complete, boot can proceed
   // Note: ext_boot_seq_done_i must be synchronized and set-once qualified
-  assign reset_n = fuse_sense_done && rst_ni && ext_boot_seq_done_i;
+  prim_and3 u_reset_release_and (
+    .in0_i (fuse_sense_done),
+    .in1_i (ext_boot_seq_done_i),
+    .in2_i (rst_ni),
+    .out_o (reset_n)
+  );
 
   prim_rst_sync u_reset_n_sync (
     .clk_i                  (clk_i),

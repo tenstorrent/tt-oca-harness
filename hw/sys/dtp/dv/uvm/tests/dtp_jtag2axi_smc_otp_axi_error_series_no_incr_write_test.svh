@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test — VPLAN 4.3: 3-beat
+// dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test — 3-beat
 // fixed-address series write with the fault armed on the first beat. The
 // injected response must be classified as EXPECTED (CHK-AXI-ERR-INJ), good
-// beats commit to the fixed address, and the recovery write proves no
-// stuck state (CHK-AXI-WMEM against the stimulus intent).
+// beats commit to the fixed address, and the recovery write proves no stuck
+// state (CHK-AXI-WMEM against the stimulus intent).
 
 class dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_otp_axi_error_series_no_incr_write_test)
