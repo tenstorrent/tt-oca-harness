@@ -10750,7 +10750,7 @@ The fall is clock synchronisation and must raise `INTR_STATE.SCL_INTERFERENCE`.
 ** SCL pulled low there means another device took the bus first. The transfer must still complete intact.
 ** SDA pulled low there must raise `INTR_STATE.SDA_INTERFERENCE`.
 * Every point in a transfer is placed by counting edges on the pads from the START, as in `smc_i2c_controller_scl_events_test`. Each leg disables the controller, clears its events and returns the bus to idle afterwards.
-* A repeated START set up too briefly. With `TIMING1.T_R` 0 and `TIMING2.TSU_STA` 1, the setup ends before the SCL the controller has just released is seen high, so the hold that follows starts with SCL still low. The controller must return to idle with no event; how many STARTs the bench target counts is recorded.
+* A repeated START set up too briefly. With `TIMING1.T_R` 0 and `TIMING2.TSU_STA` 1, the setup ends before the SCL the controller has just released is seen high, so the hold that follows starts with SCL still low. `TIMEOUT_CTRL` is set to stretch-timeout mode with `VAL` 0, so the setup ends with the stretch count past it. The controller must return to idle with no event; how many STARTs the bench target counts, and whether `INTR_STATE.STRETCH_TIMEOUT` is set, are recorded.
 
 *Test Procedure*:
 
