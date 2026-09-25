@@ -1318,7 +1318,7 @@ Recorded so the next pass does not re-derive them. None is a waiver.
   the private key bus. A `sep_cov_abr_mlkem_keygen_decaps_test` and a
   `sep_cov_abr_mldsa_stream_msg_test` appeared in the working tree from another
   pass while this one ran -- check those before writing anything here.
-* `extintsrc_req` / `sep_ext_interrupts_i`, ~424 bits. Top-level input,
+* `extintsrc_req_i` / `sep_ext_interrupts_i`, ~424 bits. Top-level input,
   `sep.sv:79`, into the PIC vector at `sep.sv:580`. No tie; the TB never wiggles it.
 * `dbg_req_i.w.data` / `dbg_resp_o.r.data`, 256 bits, entirely dark: the debug
   master issued no transaction at all in this regression.

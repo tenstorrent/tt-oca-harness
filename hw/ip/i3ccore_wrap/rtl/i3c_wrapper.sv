@@ -54,8 +54,8 @@ module i3c_wrapper #(
   input  logic sda_i,
   output logic scl_o,
   output logic sda_o,
-  output logic scl_oe,
-  output logic sda_oe,
+  output logic scl_oe_o,
+  output logic sda_oe_o,
 
   output logic sel_od_pp_o,
 
@@ -173,8 +173,8 @@ module i3c_wrapper #(
 
   // Open-drain pad OE derived here (core gives bus levels, not OE, in controller mode):
   // drive low only; push-pull (sel_od_pp_o) drives both.
-  assign scl_o  = 1'b0;
-  assign scl_oe = ~core_scl_o;
-  assign sda_oe = sel_od_pp_o | ~sda_o;
+  assign scl_o    = 1'b0;
+  assign scl_oe_o = ~core_scl_o;
+  assign sda_oe_o = sel_od_pp_o | ~sda_o;
 
 endmodule

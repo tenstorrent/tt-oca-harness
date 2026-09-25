@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test — VPLAN
-// 4.7: 3-beat incrementing series write through the WITH_ERROR_STATUS TDR
-// with the fault armed on the middle beat. The per-beat status/increment
-// MSB rides every shift, the injected response must be classified as
-// EXPECTED (CHK-AXI-ERR-INJ), and the recovery write proves the sticky
-// status clears (CHK-AXI-WMEM against the stimulus intent).
+// dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test — 3-beat
+// incrementing series write through the WITH_ERROR_STATUS TDR with the fault
+// armed on the middle beat. The per-beat status/increment MSB rides every
+// shift, the injected response must be classified as EXPECTED
+// (CHK-AXI-ERR-INJ), and the recovery write proves the sticky status clears
+// (CHK-AXI-WMEM against the stimulus intent).
 
 class dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test)

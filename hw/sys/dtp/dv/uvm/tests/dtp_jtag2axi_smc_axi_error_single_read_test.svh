@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_axi_error_single_read_test — VPLAN 4.2: SLVERR and
-// DECERR single-read injections on the SMC fabric port. Both injected
-// responses must be classified as EXPECTED (CHK-AXI-ERR-INJ), the errored
-// read's SINGLE_OP capture must return the RDATA of the errored beat and
-// not the preloaded word (CHK-J2A-ERR-RDATA), the recovery read must
-// return the preloaded reference data with OKAY (CHK-AXI-RDATA), and
-// completion must stay within the poll bound.
+// dtp_jtag2axi_smc_axi_error_single_read_test — SLVERR and DECERR single-read
+// injections on the SMC fabric port. Both injected responses must be
+// classified as EXPECTED (CHK-AXI-ERR-INJ), the errored read's SINGLE_OP
+// capture must return the RDATA of the errored beat and not the preloaded
+// word (CHK-J2A-ERR-RDATA), the recovery read must return the preloaded
+// reference data with OKAY (CHK-AXI-RDATA), and completion must stay within
+// the poll bound.
 
 class dtp_jtag2axi_smc_axi_error_single_read_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_error_single_read_test)
