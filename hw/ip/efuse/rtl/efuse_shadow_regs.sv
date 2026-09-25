@@ -69,8 +69,8 @@ module efuse_shadow_regs
     input  logic [5:0]                          rma_sip_token_match_i,
 
     // Fuse Command Interface - custom interface for SHIM state machine
-    output fuse_command_req_t                   fuse_command_req,  // {address, write data, access length, command, valid}
-    input  fuse_command_resp_t                  fuse_command_resp, // {read data, command status, valid}
+    output fuse_command_req_t                   fuse_command_req_o,  // {address, write data, access length, command, valid}
+    input  fuse_command_resp_t                  fuse_command_resp_i, // {read data, command status, valid}
 
     // Debug ports
     output logic                                is_write_locked_o,
@@ -297,10 +297,10 @@ module efuse_shadow_regs
           // If fuse sense is not done and security is not disabled, use the fuse command response for the LC state
           else if (!fuse_sense_done && !security_disable_i) begin
               // If the fuse command response is valid, not in error, and the response is targeting the LC state word, use the data for the LC state
-              if (fuse_command_resp.valid && !fuse_command_resp.status &&
+              if (fuse_command_resp_i.valid && !fuse_command_resp_i.status &&
                   words_received_q < efuse_word_counter_t'(NumShadowWords) &&
                   words_received_q == efuse_word_counter_t'(efuse_pkg::SHADOW_IDX_LC_STATE)) begin
-                  lc_state_raw_d = fuse_command_resp.data[LC_STATE_WIDTH-1:0];
+                  lc_state_raw_d = fuse_command_resp_i.data[LC_STATE_WIDTH-1:0];
               end else begin
                   // Keep default: lc_state_raw_d already set at line 225
                   // Aka dont change the LC state while still completing fuse sensing
@@ -366,7 +366,7 @@ module efuse_shadow_regs
         efuse_sense_state_d = efuse_sense_state_q;
         words_received_d = words_received_q;
         current_word_num_d = current_word_num_q;
-        fuse_command_req_d = fuse_command_req;
+        fuse_command_req_d = fuse_command_req_o;
 
         unique case (efuse_sense_state_q)
             StIdle: begin
@@ -396,7 +396,7 @@ module efuse_shadow_regs
             // StWait: Wait for remaining streaming responses and store data
             StWait: begin
 
-                if (fuse_command_resp.valid) begin
+                if (fuse_command_resp_i.valid) begin
                     // Check if we've received all expected words
                     if (words_received_q >= efuse_word_counter_t'(NumShadowWords - 1)) begin
                         efuse_sense_state_d = StFinished;
@@ -429,13 +429,13 @@ module efuse_shadow_regs
             efuse_sense_state_q <= StIdle;
             current_word_num_q <= '0;
             words_received_q <= efuse_word_counter_t'(0);
-            fuse_command_req <= FUSE_COMMAND_REQ_DEFAULT;
+            fuse_command_req_o <= FUSE_COMMAND_REQ_DEFAULT;
 
         end else begin
             efuse_sense_state_q <= efuse_sense_state_d;
             current_word_num_q <= current_word_num_d;
             words_received_q <= words_received_d;
-            fuse_command_req <= fuse_command_req_d;
+            fuse_command_req_o <= fuse_command_req_d;
         end
     end
 
@@ -510,7 +510,7 @@ module efuse_shadow_regs
       // load shadow registers from streaming fuse command responses - regular operation
       //////////////////////////////////////////////////////////////////////////////////
       else if ((!fuse_sense_done)&&(!security_disable_i)) begin : load_shadow_regs
-        if (fuse_command_resp.valid && (fuse_command_resp.status == 1'b0)) begin
+        if (fuse_command_resp_i.valid && (fuse_command_resp_i.status == 1'b0)) begin
           // Store the data at the current word index (before incrementing words_received)
           if (words_received_q < efuse_word_counter_t'(NumShadowWords)) begin
             if (HAS_LC_STATE &&
@@ -520,7 +520,7 @@ module efuse_shadow_regs
               shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                   CLASS1_SHADOW_RANGES,
                   shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
-                  {fuse_command_resp.data[31:2*LC_STATE_WIDTH], lc_state_diff_d};
+                  {fuse_command_resp_i.data[31:2*LC_STATE_WIDTH], lc_state_diff_d};
             end else begin
               if (efuse_pkg::shadow_range_map_contains_word(
                   CLASS1_SHADOW_RANGES,
@@ -528,12 +528,12 @@ module efuse_shadow_regs
                 shadow_efuse_values_n0_scan[efuse_pkg::class1_shadow_storage_idx(
                     CLASS1_SHADOW_RANGES,
                     shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
-                    fuse_command_resp.data;
+                    fuse_command_resp_i.data;
               end else begin
                 shadow_efuse_values[efuse_pkg::normal_shadow_storage_idx(
                     CLASS1_SHADOW_RANGES,
                     shadow_word_idx_t'(ShadowEfuseWidth'(words_received_q)))] <=
-                    fuse_command_resp.data;
+                    fuse_command_resp_i.data;
               end
             end
           end
