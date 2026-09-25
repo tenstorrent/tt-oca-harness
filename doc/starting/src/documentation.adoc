@@ -82,7 +82,7 @@ make doc-all-pdf
 
 # OR Container workflow
 scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
-scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/dist/ocah-trm.pdf
+scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/_build/latex/ocah-trm.pdf
 ```
 
 Once the documents are built they can be staged with the command below.

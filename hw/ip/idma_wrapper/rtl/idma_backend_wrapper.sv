@@ -13,6 +13,7 @@ module idma_backend_wrapper #(
   parameter int unsigned DMA_MST_MAX_TXNS = 16,
 
   parameter int unsigned M2B_FIFO_DEPTH = 0,
+  parameter int unsigned BUFFER_DEPTH = 3,  // realignment buffer depth in beats, must be >= 2
 
   parameter bit EN_R_AW_COUPLING = 1,  // recommended
 
@@ -138,7 +139,7 @@ module idma_backend_wrapper #(
         .UserWidth(AXI_USER_WIDTH),
         .AxiIdWidth(MST_ID_WIDTH),
         .NumAxInFlight(DMA_MST_MAX_TXNS),
-        .BufferDepth(3),  // depth of internal re-order buffer (recommends 3)
+        .BufferDepth(BUFFER_DEPTH),
         .TFLenWidth(TFLenWidth),
         .MemSysDepth(32'd0),  // not attached to a memory system
         .RAWCouplingAvail(EN_R_AW_COUPLING),
@@ -236,6 +237,35 @@ module idma_backend_wrapper #(
     end
   endgenerate
 
-  assign dma_backend_busy_o = (|req_valid_i) | (|be_busy);
+  // be_busy drops once the last W beat is sent, before its B returns; the snoop holds busy
+  // until every AW has its B and every AR its last R.
+  logic [NUM_MST_INTERFACES-1:0] mst_axi_active;
+
+  for (genvar i = 0; i < NUM_MST_INTERFACES; i++) begin : gen_mst_axi_snoop
+    prim_axi_snoop #(
+      .OutstandingTx(2 * DMA_MST_MAX_TXNS)
+    ) u_mst_axi_snoop (
+      .clk_i           (clk_i),
+      .rst_ni          (rst_ni),
+
+      .snoop_aw_valid_i(mst_axi_req[i].aw_valid),
+      .snoop_aw_ready_i(mst_axi_resp[i].aw_ready),
+      .snoop_w_valid_i (mst_axi_req[i].w_valid),
+      .snoop_b_valid_i (mst_axi_resp[i].b_valid),
+      .snoop_b_ready_i (mst_axi_req[i].b_ready),
+      .snoop_ar_valid_i(mst_axi_req[i].ar_valid),
+      .snoop_ar_ready_i(mst_axi_resp[i].ar_ready),
+      .snoop_r_valid_i (mst_axi_resp[i].r_valid),
+      .snoop_r_ready_i (mst_axi_req[i].r_ready),
+      .snoop_r_last_i  (mst_axi_resp[i].r.last),
+
+      .bus_active_o    (mst_axi_active[i]),
+      .complete_aw_o   (/* UNUSED */),
+      .complete_ar_o   (/* UNUSED */),
+      .req_count_q_o   (/* UNUSED */)
+    );
+  end
+
+  assign dma_backend_busy_o = (|req_valid_i) | (|be_busy) | (|mst_axi_active);
 
 endmodule

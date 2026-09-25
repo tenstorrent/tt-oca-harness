@@ -10,7 +10,6 @@ OCAH_TRM_META ?= $(OCAH_TRM_DIR)/meta
 OCAH_TRM_MODULES ?= $(OCAH_TRM_DIR)/modules
 OCAH_TRM_ASSETS ?= $(OCAH_TRM_DIR)/assets
 OCAH_TRM_BUILD ?= $(OCAH_TRM_DIR)/_build
-OCAH_TRM_DIST ?= $(OCAH_TRM_DIR)/dist
 OCAH_TRM_PLAYBOOK ?= $(OCAH_ROOT)/antora-trm-playbook.yml
 OCAH_TRM_PDF ?= ocah-trm.pdf
 OCAH_TRM_SERVE_PORT ?= 8000
@@ -65,7 +64,7 @@ ocah-doc-trm-html: ocah-doc-all-setup
 ocah-doc-trm-pdf: ocah-doc-trm-setup
 	@command -v "$(OCAH_ASCIIDOCTOR_PDF)" >/dev/null 2>&1 || { echo "error: asciidoctor-pdf not found ($(OCAH_ASCIIDOCTOR_PDF))."; echo "install asciidoctor-pdf, or run:"; echo "  ./scripts/docker-run.sh doc-pdf trm"; exit 1; }
 	@echo "Building TRM PDF documentation (asciidoctor-pdf)"
-	@mkdir -p "$(OCAH_TRM_BUILD)/latex" "$(OCAH_TRM_DIST)"
+	@mkdir -p "$(OCAH_TRM_BUILD)/latex"
 	@printf '%s\n' $(foreach path,$(OCAH_TRM_REG_MAPS),"$(path)") > "$(OCAH_TRM_BUILD)/register-maps.txt"
 	@rm -rf "$(OCAH_TRM_SRC)/assets" && ln -s ../assets "$(OCAH_TRM_SRC)/assets"
 	@cd "$(OCAH_TRM_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
@@ -76,8 +75,7 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 		-a toc -a toclevels=9 -a outlinelevels=9 \
 		$(OCAH_DOC_ASCIIDOCTOR_RELEASE_ARG) \
 		-o "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" src/index.adoc
-	@cp "$(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)" "$(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)"
-	@echo "Done: $(OCAH_TRM_DIST)/$(OCAH_TRM_PDF)"
+	@echo "Done: $(OCAH_TRM_BUILD)/latex/$(OCAH_TRM_PDF)"
 
 .PHONY: ocah-doc-trm-serve
 ocah-doc-trm-serve: ocah-doc-trm-html
@@ -91,7 +89,7 @@ ocah-doc-trm-clean:
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_TRM_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_TRM_ASSETS)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh" --clean
-	@rm -rf "$(OCAH_TRM_BUILD)" "$(OCAH_TRM_DIST)"
+	@rm -rf "$(OCAH_TRM_BUILD)"
 	@echo "Cleaned TRM documentation build artifacts."
 
 OCAH_PHONY += \
