@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-`timescale 1ps/1fs
+`timescale 1ps / 1fs
 
 //-----------------------------------------------------------------------------
 // PLL Model -- behavioral placeholder for the adopter PLL control/status
@@ -116,7 +116,7 @@ module pll_wrap
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset (1'b0)
+    .SelectOnReset(1'b0)
   ) u_sys_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_sys_mux2),
@@ -144,7 +144,7 @@ module pll_wrap
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset (1'b0)
+    .SelectOnReset(1'b0)
   ) u_periph_ag_mux (
     .clk0_i     (osc_ref),
     .clk1_i     (clk_periph_mux2),
