@@ -17,8 +17,9 @@ class smc_uart_thr_paths_test(smc_base_test):
         "CHK-UART-RBR-PARKED",
         "CHK-UART-THR-HOLD",
         "CHK-UART-THR-LANE",
+        "CHK-UART-TX-CUT",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

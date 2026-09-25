@@ -27,6 +27,11 @@ is internally connected to the receiver"):
   `FCR.RCVR_TRIGGER` together select a level, and the RDL lists codes up to
   0xB. Code 0xC is programmed with the FIFOs on; the character must be
   received intact, and what `IIR` shows is recorded.
+* **A character cut off.** The divisor is taken to 0 part-way through a
+  character, which stops the baud generator under the transmitter. What LSR
+  then shows and how much of the cut character arrives are recorded, since no
+  document says; once the divisor is restored, a following character must read
+  back intact.
 """
 
 from __future__ import annotations
@@ -73,6 +78,11 @@ WHOLE_BYTE = 0xC3
 UNREAD_BYTE = 0x96
 UNLISTED_BYTE = 0x69
 DIVISOR = 1
+#: A divisor slow enough that a character spans microseconds, and how far into
+#: one the divisor is taken away.
+SLOW_DIVISOR = 16
+CUT_AFTER_NS = 5_000
+CUT_BYTE = 0x3F
 #: Long enough for several characters at the divisor above.
 CHAR_WAIT_NS = 20_000
 POLL_LIMIT = 400
@@ -209,6 +219,41 @@ class smc_uart_thr_paths_test_seq(SmcCsrSeq):
         )
         await self.csr_write(f"{tag}_ECR_OFF", r["ecr"], 0)
 
+    async def _cut_leg(self) -> None:
+        """Take the divisor to 0 while a character is on the wire, then send another."""
+        tag = "CUT"
+        r = self.r
+        await self._setup(tag, SLOW_DIVISOR, FCR_FIFO_ENABLE)
+        await self.csr_write(f"{tag}_THR", r["rbr"], CUT_BYTE)
+        await Timer(CUT_AFTER_NS, unit="ns")
+        await self._set_divisor(f"{tag}_STOP", 0)
+        await Timer(CHAR_WAIT_NS, unit="ns")
+        stalled = await self.csr_read(f"{tag}_LSR_STALLED", r["lsr"])
+        await self._set_divisor(f"{tag}_RESUME", SLOW_DIVISOR)
+        await Timer(8 * CUT_AFTER_NS, unit="ns")
+        stray = 0
+        for _ in range(4):
+            lsr = await self.csr_read(f"{tag}_LSR_DRAIN", r["lsr"])
+            if not lsr & LSR_DR:
+                break
+            await self.csr_read(f"{tag}_RBR_DRAIN", r["rbr"])
+            stray += 1
+        await self._set_divisor(f"{tag}_FAST", DIVISOR)
+        await self.csr_write(f"{tag}_THR_NEXT", r["rbr"], WHOLE_BYTE)
+        await self._await_dr(f"{tag}_NEXT")
+        got = (await self.csr_read(f"{tag}_RBR_NEXT", r["rbr"])) & 0xFF
+        assert got == WHOLE_BYTE, (
+            f"{tag}: after the interrupted character the next one read back 0x{got:02x}, "
+            f"not 0x{WHOLE_BYTE:02x}"
+        )
+        cocotb.log.info(
+            "CHK-UART-TX-CUT: with the divisor taken to 0 part-way through a character LSR "
+            "read 0x%08x; once the divisor was restored %d character(s) arrived for it, and "
+            "the next character read back intact",
+            stalled,
+            stray,
+        )
+
     @staticmethod
     def _iir_text(iir: int) -> str:
         if iir & IIR_INTERRUPT_PENDING:
@@ -222,6 +267,7 @@ class smc_uart_thr_paths_test_seq(SmcCsrSeq):
         await self._lane_leg()
         await self._unread_leg()
         await self._unlisted_leg()
+        await self._cut_leg()
         cocotb.log.info(
             "CHK-UART-RBR-PARKED: a character left unread in RBR with the FIFOs off for four "
             "times the reception timeout read back intact (IIR showed %s), and one received "
