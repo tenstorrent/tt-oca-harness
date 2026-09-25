@@ -412,13 +412,23 @@ bwrap_run() {
   # nix-built rootfs has that binary on /usr/bin; a toolchain rootfs that does
   # not still has to see the host binary. /usr is read-only, so the file is
   # mounted under the /run tmpfs, which PATH then searches first.
+  # UV names the same binary, because `uv run` exports UV=<its own absolute
+  # path> into everything it starts and preamble.mk's `ifndef UV` prefers that
+  # over a PATH lookup: a caller running under the locked DV environment
+  # otherwise hands the sandbox a host path that is not bound here. A UV from
+  # the caller survives only where neither the rootfs nor the host has a uv to
+  # name, which is the case such a value is for.
   local host_uv="" sandbox_path="/usr/local/bin:/usr/bin:/bin"
-  if [[ ! -x "$TOOLCHAIN_ROOTFS/usr/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/usr/local/bin/uv" ]]; then
+  local uv_env=()
+  if [[ -x "$TOOLCHAIN_ROOTFS/usr/bin/uv" || -x "$TOOLCHAIN_ROOTFS/bin/uv" || -x "$TOOLCHAIN_ROOTFS/usr/local/bin/uv" ]]; then
+    uv_env=(--unsetenv UV)
+  else
     host_uv="$(command -v uv 2>/dev/null || true)"
     if [[ -n "$host_uv" ]]; then
       host_uv="$(readlink -f "$host_uv")"
       binds+=(--tmpfs /run/ocah --ro-bind "$host_uv" /run/ocah/uv)
       sandbox_path="/run/ocah:${sandbox_path}"
+      uv_env=(--setenv UV /run/ocah/uv)
     else
       echo "docker-run: warning: uv is not in the toolchain rootfs or on PATH" >&2
     fi
@@ -431,6 +441,7 @@ bwrap_run() {
   bwrap "${binds[@]}" --chdir "$workdir" \
     --setenv PATH "$sandbox_path" \
     --setenv HOME /tmp \
+    ${uv_env[@]+"${uv_env[@]}"} \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
     "$@"
