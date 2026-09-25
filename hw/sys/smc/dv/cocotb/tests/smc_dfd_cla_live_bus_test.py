@@ -5,7 +5,9 @@
 Gives the CLA a debug bus that moves between two measured states, programs the
 edge, change, transition, comparator and LFSR generators from them, drives the
 action field with the cross-trigger stretch, clock halt and counter reset on
-target enabled, and moves the node chain away from pairs whose relation holds.
+target enabled, sweeps the actions again with the lowest clock-halt mask bit
+set, takes the CLA mux through fine-grain normal mode into identifier mode, and
+moves the node chain away from pairs whose relation holds.
 """
 
 from __future__ import annotations
@@ -36,14 +38,18 @@ from smc_base_test import smc_base_test
 #     (running-action write, action write, counter target write)            199
 #   actions: stretch write + readback, 4 counter writes + readbacks, 3 CLA
 #     control writes, 3 sweeps of 64 action writes, 4 counter reads         209
+#   the halt-mask sweep: DEBUG_CTRL write + readback, 64 action writes,
+#     DEBUG_CTRL write + readback                                            68
 #   2 custom-action enables and Resync, each write + readback                 6
+#   CLA mux modes: 2 x (64 mode writes and the two-word snapshot), then
+#     64 writes back to normal mode                                         196
 #   leaving the node: one relation try (write, status read), 3 destination
 #     writes, the move write and one CurrentNode read                         7
 #   restore: 4 pairs, 4 counters, 14 named registers, 8 comparator
 #     registers, DEBUG_BUS_MUX, DEBUG_CTRL                                   32
 #                                                                         ------
-#                                                                           789
-CLA_LIVE_BUS_MIN_CSR_ACCESSES = 789
+#                                                                          1053
+CLA_LIVE_BUS_MIN_CSR_ACCESSES = 1053
 
 
 @pyuvm.test()
@@ -54,9 +60,10 @@ class smc_dfd_cla_live_bus_test(smc_base_test):
         "CHK-CLA-LIVE-ACTIONS",
         "CHK-CLA-LIVE-BUS",
         "CHK-CLA-LIVE-MATCH",
+        "CHK-CLA-LIVE-MUXMODES",
         "CHK-CLA-LIVE-NODE",
     )
-    min_evidence = 4
+    min_evidence = 5
 
     auto_protocol_vip = False
 
@@ -72,6 +79,7 @@ class smc_dfd_cla_live_bus_test(smc_base_test):
             details=(
                 f"mux {seq.sampled_mux}, states {[hex(v) for v in seq.states]}, "
                 f"{seq.action_values} action writes, counters {seq.counter_after}, "
-                f"node after move {seq.node_after_move}"
+                f"node after move {seq.node_after_move}, "
+                f"CLA mux snapshots {[hex(v) for v in seq.mux_snapshots]}"
             ),
         )

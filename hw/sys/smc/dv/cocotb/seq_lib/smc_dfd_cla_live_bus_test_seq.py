@@ -54,13 +54,20 @@ The actions are then driven with an activating pair:
 * the action field is swept once more with the CLA enabled but ``EnableEap``
   clear, so the pair's relation and actions are evaluated without the
   enable;
+* the action field is swept again with the lowest bit of
+  ``DEBUG_CTRL.xtrig_clk_halt_mask`` set, which its description makes the
+  enable for that position, and the mask is then cleared;
 * the pair's two custom-action enables are each set on its own;
 * ``CDbgClaTimestampConfig.Resync`` is set with no cross trigger arriving.
 
+The CLA mux is then put in normal mode with ``Finegraintime`` set and moved
+to its identifier mode; the snapshot has to move with each.
+
 Last, node 0's other three pairs select the first match event under a
 relation the match phase measured activating on it, with the bus left in the
-state that event follows, and all four pairs of node 0 name destination 1, so the chain moves to node 1 with node 0's pairs still
-holding, and pairs whose relation holds sit on a node that is not current.
+state that event follows, and all four pairs of node 0 name destination 1,
+so the chain moves to node 1 with node 0's pairs still holding, and pairs
+whose relation holds sit on a node that is not current.
 """
 
 from __future__ import annotations
@@ -97,6 +104,9 @@ _MATCH0_EVENT = 0x2
 _MATCH1_EVENT = 0x4
 # Bus switches under each relation value of the match-event pair.
 _LOGIC_SWITCHES = 4
+# dfx_ctrl_status.rdl DEBUG_CTRL.xtrig_clk_halt_mask: a set bit enables the
+# halt for that position; the lowest position.
+_HALT_MASK_LOWEST = 0x1
 _LOW_BYTE = 0xFF
 _WORD = (1 << 64) - 1
 
@@ -114,6 +124,7 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         self.node_after_move = -1
         self.running_action = -1
         self.logic_results: dict[tuple[int, int], bool] = {}
+        self.mux_snapshots: list[int] = []
         self.value_checks = 0
 
     # -- register helpers -------------------------------------------------
@@ -388,6 +399,13 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         await self._ctrl(1, 0, "halt_enabled")
         for sweep in range(2):
             await self._sweep_actions(logical_op, f"act{sweep}_")
+        # The same sweep with the lowest bit of the cross-trigger clock-halt mask set.
+        clk = dfd_register("dfx_ctrl/DEBUG_CTRL")
+        await self._write_check(
+            clk, {"force_clk_en": 1, "xtrig_clk_halt_mask": _HALT_MASK_LOWEST}, "halt_mask"
+        )
+        await self._sweep_actions(logical_op, "masked")
+        await self._write_check(clk, {"force_clk_en": 1}, "halt_unmask")
         for index in range(_COUNTERS):
             reg = cla_register(f"CDbgClaCounter{index}Cfg")
             counter = cla_field(reg, "Counter")
@@ -414,6 +432,28 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
                 eap, {"LogicalOp": logical_op, "DestNode": 0, field: 1}, f"{field}"
             )
         await self._write_check(cla_register("CDbgClaTimestampConfig"), {"Resync": 1}, "resync")
+
+    async def _cla_mux_modes(self) -> None:
+        """Take the CLA mux from normal mode with fine-grain time on to its identifier mode.
+
+        The mux takes a mode only under its own identifier, so each mode is
+        written once per identifier value, and the snapshot is read after each.
+        """
+        reg = cla_register("CDbgMuxSelLo")
+        dbmid = cla_field(reg, "Dbmid")
+        for mode, fine, label in (
+            (DBM_MODE_NORMAL, 1, "fine"),
+            (DBM_MODE_IDENTIFIER, 1, "ident"),
+        ):
+            for identity in range(1 << dbmid.width):
+                await self._write(
+                    reg,
+                    pack_fields(reg, {"Dbmmode": mode, "Dbmid": identity, "Finegraintime": fine}),
+                    f"{label}{identity}",
+                )
+            await ClockCycles(cocotb.top.clk_smc_i, _SETTLE_CYCLES)
+            self.mux_snapshots.append(await traced_bus(self, f"clamux_{label}"))
+        await cla_mux_normal(self, "clamux_back")
 
     async def _leave_node(self) -> None:
         op = await self._activating_op(0)
@@ -493,10 +533,11 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-CLA-LIVE-ACTIONS: with a non-zero cross-trigger stretch, clock halt enabled "
             "and every counter given a target of %d with ResetOnTarget set, the action field "
-            "was swept twice with an activating pair and once more with EnableEap clear, %d "
-            "action writes; every counter read at or below its target afterwards (%s). Action "
-            "%d was measured leaving counter 0 running, and was paired with every action value "
-            "with the counter set back to its target after each pair",
+            "was swept twice with an activating pair, once more with the lowest bit of "
+            "DEBUG_CTRL.xtrig_clk_halt_mask set and read back, and once more with EnableEap "
+            "clear, %d action writes; every counter read at or below its target afterwards "
+            "(%s). Action %d was measured leaving counter 0 running, and was paired with every "
+            "action value with the counter set back to its target after each pair",
             _COUNTER_TARGET,
             self.action_values,
             self.counter_after,
@@ -504,6 +545,22 @@ class smc_dfd_cla_live_bus_test_seq(SmcCsrSeq):
         )
 
         await self._custom_and_resync(logical_op)
+        await self._cla_mux_modes()
+        fine, ident = self.mux_snapshots
+        assert fine != self.states[1] and ident != fine, (
+            f"the node 0 pair 0 snapshot read 0x{fine:016x} with the CLA mux in normal mode and "
+            f"fine-grain time on, against 0x{self.states[1]:016x} with it off, and 0x{ident:016x} "
+            f"in identifier mode; each mode change has to move the bus"
+        )
+        self.value_checks += 1
+        cocotb.log.info(
+            "CHK-CLA-LIVE-MUXMODES: with the CLA mux in normal mode and Finegraintime set the "
+            "snapshot read 0x%016x, not the 0x%016x measured with it clear, and with the mux "
+            "then in identifier mode it read 0x%016x",
+            fine,
+            self.states[1],
+            ident,
+        )
         await self._leave_node()
         cocotb.log.info(
             "CHK-CLA-LIVE-NODE: each custom-action enable of node 0 pair 0 was set on its own "

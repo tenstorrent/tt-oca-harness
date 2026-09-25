@@ -384,6 +384,8 @@ feature rows.
 |`smc_dfd_ro_mmr_write_test` |Every read-only DFD MMR written, with the write required to be ignored.
 |`smc_dfd_mmr_lane_test` |Every DST, DST-sink and funnel MMR written one byte at a time, unmapped offsets of each block read and written, and the DFD port accessed past the RDL window.
 |`smc_dfd_cla_live_bus_test` |The CLA's signal event generators, counters and actions driven on a debug bus that moves between two measured states.
+|`smc_dfd_trace_flush_corner_test` |The DST's trace control driven through stream lengths, start/stop action loops, timestamp phases and memory-mode sink flushes.
+|`smc_dfd_trace_reset_test` |A cool reset taken while the DST is tracing, with the DFD required back at its RDL reset state.
 |`smc_dfd_dbm_mode_lock_test` |Every debug-bus mux mode programmed on every mux, then the CLA lock latched and held.
 |`smc_dfd_cla_snapshot_capture_test` |Every CLA pair driven over its whole action range on its own node, with the snapshot registers read.
 |`smc_dfd_trace_sink_concurrent_test` |The trace sink read out through its MMR port while the trace is still writing it.
@@ -4910,7 +4912,10 @@ Drive `smc_dfd_cla_snapshot_capture_test_seq`. Each checker below is a named com
 * From those two states: both edge detectors select the lowest differing bit with opposite polarities, then swapped; the change mask covers the differing bits; the transition registers describe the move between the states; the four comparators take a value between the states and a value equal to the first, under a low-byte mask and its complement; the LFSR is enabled from a non-zero seed. The bus is switched 16 times under each edge configuration.
 * The two match events whose indices the descriptions of `CDbgSignalMask0Lo` and `CDbgSignalMask1Lo` give (0x2 and 0x4) are set to follow the two states, and node 0 pair 1 selecting them is walked over every value of its relation field while the bus switches, once with the two events and once with the first event twice.
 * The action that leaves counter 0 moving after the pair's enable is cleared is found by measurement and written before every action value in turn, with the counter set back to its target after each pair. Then, with a non-zero cross-trigger stretch, both clock-halt disables cleared (the halt output does not gate the SMC's own clocks in this bench) and every counter given a target of 2 with `ResetOnTarget` set, the action field is swept twice with an activating pair and once more with `EnableEap` clear.
-* Each custom-action enable of pair 0 is set on its own, `Resync` is set with no cross trigger, and node 0's other pairs are held on the first match event while all four pairs name destination 1, so the chain moves away from pairs whose relation holds.
+* The action field is swept once more with the lowest bit of `DEBUG_CTRL.xtrig_clk_halt_mask` set, which its description makes the halt enable for that position, and the mask is cleared again.
+* Each custom-action enable of pair 0 is set on its own and `Resync` is set with no cross trigger.
+* The CLA mux is put in normal mode with `Finegraintime` set and then in identifier mode, the snapshot read after each.
+* Node 0's other pairs are held on the first match event while all four pairs name destination 1, so the chain moves away from pairs whose relation holds.
 
 *Test Procedure*:
 
@@ -4924,14 +4929,93 @@ Drive `smc_dfd_cla_live_bus_test_seq`. Each checker below is a named compare the
 |Checker |Description
 |`CHK-CLA-LIVE-BUS` |A DEBUG_BUS_MUX identifier moves the snapshot, every generator register write reads back exactly, and the snapshot shows both measured states across the switches; no feeding mux, a rejected write, or a bus that does not reach both states fails it
 |`CHK-CLA-LIVE-MATCH` |The four match-event registers read back exactly and node 0 pair 1 activates under at least one relation value with its events on the match events while the bus switches; no activation fails it
-|`CHK-CLA-LIVE-ACTIONS` |A running action is found, every stretch and counter write reads back exactly, and after the sweeps every counter reads at or below its target, as the description of `ResetOnTarget` makes it; no running action or a counter past its target fails it
+|`CHK-CLA-LIVE-ACTIONS` |A running action is found, every stretch, counter and halt-mask write reads back exactly, and after the sweeps every counter reads at or below its target, as the description of `ResetOnTarget` makes it; no running action, a rejected write or a counter past its target fails it
+|`CHK-CLA-LIVE-MUXMODES` |The snapshot with the CLA mux in normal mode and `Finegraintime` set differs from the normal-mode state measured with it clear, and the identifier-mode snapshot differs from it in turn; a mode change that leaves the bus where it was fails it
 |`CHK-CLA-LIVE-NODE` |Both custom-action enables and `Resync` read back exactly, and `CurrentNode` reads 1 within 8 polls after the move; a rejected write or a chain that stays on node 0 fails it
 |===
 
 *Known limitation*: the CLA timestamp input is tied to 0 in the SMC, so the time-match event can never fire, however the match value is programmed.
 
 
-*Pass Criteria*: `CHK-CLA-LIVE-ACTIONS`, `CHK-CLA-LIVE-BUS`, `CHK-CLA-LIVE-MATCH`, `CHK-CLA-LIVE-NODE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `CHK-CLA-LIVE-ACTIONS`, `CHK-CLA-LIVE-BUS`, `CHK-CLA-LIVE-MATCH`, `CHK-CLA-LIVE-MUXMODES`, `CHK-CLA-LIVE-NODE` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-301-smc_dfd_trace_flush_corner_test]]
+===== 301 `smc_dfd_trace_flush_corner_test`
+
+*Source Module*: `smc_dfd_trace_flush_corner_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: The DST's trace control driven through stream lengths, start/stop action loops, timestamp phases and memory-mode sink flushes, with the trace actions measured first.
+
+*Test Coverage*:
+
+* Every value of the `Action0` field of node 0 pair 0 is sorted into those that start the uncompressed trace, those that stop it and those that leave it as it is, with the sink write pointer as the witness: it moves while packets arrive.
+* `Trdstvendorstreamlength` is written in every encoding. The sink is armed twice in memory mode at one start, the second time with the limit one 64-byte line above it, then in RAM mode with that window. With the sink stopped on wrap and disabled, `Trfunneldisinput` takes bits 15:8, which its description gives the DST sources.
+* Compressed with the bus still, start/stop pairs run under every `Trdstsyncmode` value until the write pointer has advanced 64 frames of 64 bytes, the stream that stream-length encoding 0 describes. Uncompressed at the reset stream length, the trace runs 128 frames inside a 16 KB window, and the stream length drops to encoding 0 under the running trace.
+* Node 0 pair 0 starts the trace and names node 1, whose pair 0 stops it and names node 0, so the trace starts and stops on consecutive cycles.
+* With `Trdstsyncmode` 2 and `Trdstsyncmax` 0, a timestamp is due every 16 cycles; a stop action and a `Trdstenable` clear each land 32 different delays after the start.
+* With `FrameClosureMode` 1 the frame length toggles between 128 and 64 bytes 64 times under the running trace.
+* The sink is armed in memory mode with the trace running on the neutral action, then four times under each of six loops of the start, stop and neutral actions over two to four nodes, so the flush it causes reaches the DST while it traces, stops and is stopped; it is re-armed in RAM mode after each.
+
+*Test Procedure*:
+
+Drive `smc_dfd_trace_flush_corner_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DST-FLUSH-REGS` |Every stream-length encoding, the one-line limit in both sink modes and the DST-source disable bits read back exactly; a rejected write fails it
+|`CHK-DST-FLUSH-ACTIONS` |At least one `Action0` value starts the trace, at least one stops it, none does both, and one leaves a running trace running without being a start value; any of these missing fails it
+|`CHK-DST-FLUSH-STREAMS` |The start/stop pairs move the write pointer 64 frames within 1024 pairs under every sync value; the uncompressed trace advances at least 128 frames without wrapping and the write pointer keeps moving after the stream length drops; a stall, a wrap or a stop after the drop fails it
+|`CHK-DST-FLUSH-LOOP` |`CurrentNode` reads 1 once node 1 names itself and 0 once both pairs name node 0; any other node fails it
+|`CHK-DST-FLUSH-PHASES` |The closure-mode write reads back and the write pointer keeps moving after the 64 frame-length toggles; a rejected write or a stalled trace fails it
+|`CHK-DST-FLUSH-MEMARMS` |After the 25 memory-mode arms the chain reads node 0 and the start action moves the write pointer again; a chain left elsewhere or a trace that does not restart fails it
+|===
+
+*Known limitation*: the sink's memory write-out is accepted once and never again in this bench, so memory mode is only armed, never drained, and the leaf makes no claim about `Trdstempty` after a memory-mode flush.
+
+
+*Pass Criteria*: `CHK-DST-FLUSH-ACTIONS`, `CHK-DST-FLUSH-LOOP`, `CHK-DST-FLUSH-MEMARMS`, `CHK-DST-FLUSH-PHASES`, `CHK-DST-FLUSH-REGS`, `CHK-DST-FLUSH-STREAMS` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+'''''
+
+[[sec-302-smc_dfd_trace_reset_test]]
+===== 302 `smc_dfd_trace_reset_test`
+
+*Source Module*: `smc_dfd_trace_reset_test`
+
+*BFM / Model*: ocah_axi_vip (AXI), SMC reset agent
+
+*Objective*: A cool reset taken while the DST is tracing returns the DFD to its RDL reset state, and the trace starts again once the path is programmed afresh.
+
+*Test Coverage*:
+
+* The funnel, sink, DST, CLA and both debug-bus muxes are programmed away from reset, an `Action0` value that starts the uncompressed trace is found by measurement, and the write pointer has to be moving.
+* `rst_cool_ni` is driven low until `rst_primary_smc_clk_no` is observed at 0, then released until it and the warm reset return to 1 and the fuse sense completes; `hw/sys/smc/doc/clk_rst.adoc` lists the cool reset as a Primary Reset source.
+* Every field the sequence moved is read back after the reset against its RDL reset value, the sink write pointer against its reset value, and the trace path is programmed again and started from the measured action.
+
+*Test Procedure*:
+
+Drive `smc_dfd_trace_reset_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DFD-RESET-LIVE` |Every programmed field reads away from its RDL reset value and the write pointer moves before the reset; a field already at reset or a stalled trace fails it
+|`CHK-DFD-RESET-TAKEN` |The primary reset asserts within 400 `clk_ref_i` edges of the cool pin going low and it and the warm reset release within 4000 of it going high; either bound expiring fails it
+|`CHK-DFD-RESET-CLEARED` |Every programmed field of the nine registers reads its RDL reset value after the reset, and the write pointer reads its reset value and stays there; any field left programmed or a moving pointer fails it
+|`CHK-DFD-RESET-RESTART` |Programmed again, the measured start action moves the write pointer; a trace that does not restart fails it
+|===
+
+
+*Pass Criteria*: `CHK-DFD-RESET-CLEARED`, `CHK-DFD-RESET-LIVE`, `CHK-DFD-RESET-RESTART`, `CHK-DFD-RESET-TAKEN` hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 '''''
 
 ==== EFUSE
