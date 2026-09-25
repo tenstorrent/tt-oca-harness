@@ -264,7 +264,9 @@ module smu_rst_fcov #(
     // Sampled at the primary SMC reset's release edge. The block resets
     // release ahead of the primary, so every one of them reads released
     // at that edge.
-    cp_smc: coverpoint smc_rst {ignore_bins held_at_primary_release = {1'b0};}
+    cp_smc: coverpoint smc_rst {
+      ignore_bins held_at_primary_release = {1'b0};
+    }
     cp_dtp: coverpoint dtp_rst {ignore_bins held_at_primary_release = {1'b0};}
     cp_sep: coverpoint sep_rst {ignore_bins held_at_primary_release = {1'b0};}
     cp_xbar: coverpoint xbar_rst {ignore_bins held_at_primary_release = {1'b0};}

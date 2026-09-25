@@ -104,12 +104,10 @@ module smu_lc_fcov #(
     // demoted. 2'b00 and 2'b11 are not codes, and the demote register is
     // written by SEP firmware, which has not run at the primary release.
     cp_demote1: coverpoint demote1 {
-      ignore_bins not_a_code = {2'b00, 2'b11};
-      ignore_bins demoted_before_release = {2'b01};
+      ignore_bins not_a_code = {2'b00, 2'b11}; ignore_bins demoted_before_release = {2'b01};
     }
     cp_demote2: coverpoint demote2 {
-      ignore_bins not_a_code = {2'b00, 2'b11};
-      ignore_bins demoted_before_release = {2'b01};
+      ignore_bins not_a_code = {2'b00, 2'b11}; ignore_bins demoted_before_release = {2'b01};
     }
     x_demote: cross cp_demote1, cp_demote2;
   endgroup
