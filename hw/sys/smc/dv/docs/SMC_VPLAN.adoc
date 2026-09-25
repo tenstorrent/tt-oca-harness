@@ -11316,7 +11316,7 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 * Misc: 0xC000_2C00, past `NDM_RESET` ending at 0xC000_2A0C. The live register is `SCRATCH_COLD` 0.
 * GPIO padring: 0xC000_3800, past the 65th GPIO interface ending at 0xC000_3410. The live register is `DATA_CTRL` of GPIO 64.
-* Data accelerator: 0xC003_8338, past the zeroer registers ending at 0xC003_8218. The data accelerator sends it to the DMA, whose register port keeps nine address bits, so it lands at offset 0x138, past the DMA's last register, rather than on a live DMA register (issue #585 covers that aliasing). The live register is the DMA's `DST_ADDRESS_LO`.
+* Data accelerator: 0xC003_8338, past the zeroer registers ending at 0xC003_8218. The data accelerator sends every address outside its zeroer registers to the DMA (`smc_data_accelerator_wrap.sv:60`), whose register port keeps nine address bits (`:111-116`), so a tail address lands on the DMA register at its offset modulo 0x200; 0xC003_8400 and 0xC003_8800 write the DMA's `CONFIG`. This address lands at offset 0x138, past the DMA's last register. The live register is the DMA's `DST_ADDRESS_LO`.
 * For each, the live register is seeded and read back first, so a stray write can show. The unmapped write must leave the seed in place, and the unmapped read must not return it. The responses are recorded but not asserted, because no document fixes which error an unmapped offset inside a block window returns.
 
 *Test Procedure*:
