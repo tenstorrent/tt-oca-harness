@@ -37,7 +37,7 @@ from smc_occp_dual_defs import (
 POLL_CYCLES = 2000
 DEFAULT_POLL_ITERS = 4000
 PROGRESS_EVERY = 200
-REQUIRED_EVIDENCE = ("CHK-OCCP-ROM-ONLY",)
+REQUIRED_EVIDENCE = ("CHK-OCCP-SANITY",)
 
 
 def _poll_interval_ns() -> int:
@@ -67,7 +67,7 @@ def _case_name() -> str:
 
 
 @dual_test(REQUIRED_EVIDENCE)
-async def smc_occp_rom_only_test(harness: SmcDualHarness) -> None:
+async def smc_occp_sanity_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_occp_rom_only_test")
@@ -197,7 +197,7 @@ async def smc_occp_rom_only_test(harness: SmcDualHarness) -> None:
         )
 
     cocotb.log.info(
-        "CHK-OCCP-ROM-ONLY: target scratch0=%#010x, controller scratch0=%#010x; "
+        "CHK-OCCP-SANITY: target scratch0=%#010x, controller scratch0=%#010x; "
         "OCCP exchange completed. Final target POST %s",
         target_scratch0,
         ctrl_scratch0,
