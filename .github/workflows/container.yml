@@ -43,7 +43,7 @@ jobs:
   validate:
     name: Build and validate Nix image
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,8 +59,14 @@ jobs:
           git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
             submodule update --init --recursive hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 
+      - name: Prepare Nix build disk
+        run: sudo install -d -m 0755 /mnt/nix-build
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            build-dir = /mnt/nix-build
 
       - name: Log in to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
