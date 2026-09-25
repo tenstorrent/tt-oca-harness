@@ -4305,8 +4305,8 @@ Two things are worth reading before the entries:
 
 '''''
 
-[[sec-109-smu_aperture_map_walk_test]]
-===== 109 `smu_aperture_map_walk_test`
+[[sec-112-smu_aperture_map_walk_test]]
+===== 112 `smu_aperture_map_walk_test`
 
 *Source Module*: `smu_aperture_map_walk_test` (`cocotb_wrapper/tests/`)
 
@@ -4346,8 +4346,8 @@ Two things are worth reading before the entries:
 
 '''''
 
-[[sec-110-smu_axi_out_addr_len_size_test]]
-===== 110 `smu_axi_out_addr_len_size_test`
+[[sec-113-smu_axi_out_addr_len_size_test]]
+===== 113 `smu_axi_out_addr_len_size_test`
 
 *Source Module*: `smu_axi_out_addr_len_size_test` (`cocotb_wrapper/tests/`)
 
