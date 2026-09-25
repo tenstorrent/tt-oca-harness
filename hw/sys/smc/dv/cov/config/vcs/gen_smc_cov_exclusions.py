@@ -241,6 +241,11 @@ Claims examined and not held, so their points stay graded:
   absent, NTR_SINK_BLK_IDX and FUNNEL_BLK_IDX are both one, so the checks
   decode a funnel access at offsets 0x10 to 0x1C and feed the funnel its write
   enable and data. Only the SRAM-mode flag, which reads one, is held.
+* The I2C core's error-event row with SDA-unstable alone, and the eFuse guard's
+  lock rows with no operation in flight: the values hold, since arbitration
+  lost includes SDA-unstable and an idle interface points into LOCKS, but each
+  derived term follows its source in a later zero-time delta, and r17 scores
+  the rows in between.
 * An AVSBus slave acknowledge of ResourceUnavailable or BadCRC: a responder in
   the sequence library answers each subframe bit by bit with every acknowledge
   code, frame-not-valid and every CRC code.
@@ -901,8 +906,7 @@ C5 = (
     "cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked "
     "value, so they are never high together; and efuse_shadow_reg_access_control raises "
     "write_locked_o only on the arm that forwards no request, so the shadow registers never see "
-    "a forwarded write with it high. The I2C controller ORs its SDA-unstable event into "
-    "arbitration lost, and its halt input is the unmasked OR of the controller event fields that "
+    "a forwarded write with it high. The I2C controller's halt input is the unmasked OR of the controller event fields that "
     "drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a "
     "requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus "
     "readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA "
@@ -1029,8 +1033,7 @@ P29 = (
     "READ_UNLOCK save the LOCKS meta-field, which is WRITE_SET_ONLY under the all-ones index the "
     "lock lookups never lock, and an unmapped address reads a lock of zero. No address carries "
     "the write-lock or read-lock code or lock bit 3, and a set-only address is never hardware "
-    "write-locked. The program and read interfaces present address 0, inside LOCKS, while idle, "
-    "so the guard sees no lock unless an operation is in flight."
+    "write-locked."
 )
 P27 = (
     "SMC-P27-PAGE-WIDTH-BOUND: the iDMA page splitter forms page_addr_width as OffsetWidth plus "
@@ -2177,16 +2180,6 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         ),
     ],
-    "efuse_guard": [
-        (
-            P29,
-            lambda terms, vector: (
-                terms
-                in (("is_programing_i", "is_program_locked"), ("is_reading_i", "is_read_locked"))
-                and vector == "01"
-            ),
-        )
-    ],
     "efuse_interface_shim": [
         (
             C10,
@@ -2324,9 +2317,6 @@ SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
         (C5, "compare_equal", "(compare_equal && (~below_compare_int))"),
     ],
     "efuse_shadow_regs": [(C5, "write_locked", "(write_locked && (~apb_req_from_ac.pwrite))")],
-    "i2c_core": [
-        (C5, "event_sda_unstable", "(event_sda_unstable && event_controller_arbitration_lost)"),
-    ],
     "i2c_controller_fsm": [
         (C5, "unhandled_unexp_nak_i", "(unhandled_unexp_nak_i && halt_controller_i)"),
         (C5, "unhandled_nak_timeout_i", "(unhandled_nak_timeout_i && halt_controller_i)"),
