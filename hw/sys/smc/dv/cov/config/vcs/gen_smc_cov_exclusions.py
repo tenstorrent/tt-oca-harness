@@ -246,6 +246,14 @@ Claims examined and not held, so their points stay graded:
   lost includes SDA-unstable and an idle interface points into LOCKS, but each
   derived term follows its source in a later zero-time delta, and r17 scores
   the rows in between.
+* Value identities whose two sides are separate continuous assignments, scored
+  outside a clocked process: the I2C controller's halt input against its NACK
+  and NACK-timeout inputs, the log engine's pending flag against its effective
+  length, the AVSBus readback FIFO's full flag against its vacant count, the
+  iDMA N-D midend's ready and last against its valid and the frontend's valid
+  against its busy, and uart_core's baud tick over tx_enable and rx_enable.
+  Each derived side follows its source a zero-time delta later, which r17
+  showed VCS scores.
 * An AVSBus slave acknowledge of ResourceUnavailable or BadCRC: a responder in
   the sequence library answers each subframe bit by bit with every acknowledge
   code, frame-not-valid and every CRC code.
@@ -900,19 +908,17 @@ P24 = (
 )
 C5 = (
     "SMC-C5-SIGNAL-IDENTITY: the source defines one signal from another, so a row that needs "
-    "them apart cannot occur: uart_core assigns tx_enable and rx_enable the same expression, "
-    "baud_rate_divisor != 0, and forms thr_rready from a term that includes thr_rvalid; "
-    "system_timer_octs_core forms credit_gen_pulse with enable as one of its terms; "
-    "cla_arithmetic_compare derives compare_equal and below_compare_int from the same masked "
-    "value, so they are never high together; and efuse_shadow_reg_access_control raises "
-    "write_locked_o only on the arm that forwards no request, so the shadow registers never see "
-    "a forwarded write with it high. The I2C controller's halt input is the unmasked OR of the controller event fields that "
-    "drive its NACK and NACK-timeout inputs; the log engine's arbiter returns the length of a "
-    "requesting entry, and an entry requests exactly when its length is nonzero; the AVSBus "
-    "readback FIFO derives full and its vacant-slot count from the same pointers; and the iDMA "
-    "N-D midend's first stage is its request valid, which its ready, last and busy all include. "
-    "The test rewrites the dependent signal in those terms and takes a row only when that makes "
-    "it unsatisfiable."
+    "them apart cannot occur. A pair is taken only where VCS cannot score it in a zero-time "
+    "delta: either one process writes both sides, or the condition sits in a clocked process, "
+    "which samples settled values. cla_arithmetic_compare derives compare_equal and "
+    "below_compare_int in one always_comb from the same masked value, so they are never high "
+    "together; efuse_shadow_reg_access_control raises write_locked_o in the same always_comb "
+    "only on the arm that forwards no request, so the shadow registers never see a forwarded "
+    "write with it high. In clocked processes, uart_core assigns tx_enable and rx_enable the "
+    "same expression and forms thr_rready from a term that includes thr_rvalid, and "
+    "system_timer_octs_core forms credit_gen_pulse with enable as one of its terms. The test "
+    "rewrites the dependent signal in those terms and takes a row only when that makes it "
+    "unsatisfiable."
 )
 B9 = (
     "SMC-B9-SECURITY-DISABLE-TIED: a property of this bench, not of the design. The testbench "
@@ -1573,6 +1579,19 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
     ],
     "accumulator_bank": [(P10, BANK_RANGE, re.compile(r"^010$"), None)],
     "uart_core": [
+        # C5 rows scored inside clocked processes, which sample settled values.
+        (
+            C5,
+            re.compile(r"^\(\(\(!tx_enable\)\) && \(\(!rx_enable\)\)\)$"),
+            re.compile(r"^(01|10)$"),
+            ("uart_core.sv", 139, 139),
+        ),
+        (
+            C5,
+            re.compile(r"^\(thr_rready && thr_rvalid\)$"),
+            re.compile(r"^10$"),
+            ("uart_core.sv", 233, 233),
+        ),
         (
             P11,
             re.compile(r"^\((thr|rbr)_rvalid && \(\(~\^\{\1_parity, \1_rdata\}\)\)\)$"),
@@ -1613,6 +1632,17 @@ FEATURE_FACTS: "dict[str, list[tuple[str, object, object, object]]]" = {
         ),
     ],
     "mmr_req_ctrl": [(P16, re.compile(r"."), None, ("mmr_req_ctrl.sv", 167, 167))],
+    "system_timer_octs_core": [
+        (
+            C5,
+            re.compile(r"credit_gen_pulse"),
+            lambda terms, vector: (
+                any(t == "enable" and b == "0" for t, b in zip(terms, vector))
+                and any(t == "credit_gen_pulse" and b == "1" for t, b in zip(terms, vector))
+            ),
+            ("system_timer_octs_core.sv", 305, 331),
+        )
+    ],
     # An accept in the cycle a response is acked, on the write-only UART map.
     "uart_16550_main_wo_reg": [
         (
@@ -2048,31 +2078,6 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
             ),
         )
     ],
-    "log_engine": [
-        (
-            C5,
-            lambda terms, vector: (
-                any(t == "log_pending" and b == "0" for t, b in zip(terms, vector))
-                and any(
-                    (t, b)
-                    in (
-                        ("(effective_log_len != log_len_t'(0))", "1"),
-                        ("(effective_log_len == log_len_t'(0))", "0"),
-                    )
-                    for t, b in zip(terms, vector)
-                )
-            ),
-        )
-    ],
-    "idma_frontend_wrapper": [
-        (
-            C5,
-            lambda terms, vector: (
-                any(t == "((|f2m_req_valid))" and b == "1" for t, b in zip(terms, vector))
-                and any(t == "((|me_busy))" and b == "0" for t, b in zip(terms, vector))
-            ),
-        )
-    ],
     "core_logic_analyzer": [
         (
             P22,
@@ -2133,20 +2138,6 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
                     "(avs_sdata_interrupt_detect == 2'b0)",
                 )
                 and vector == "01"
-            ),
-        ),
-        (
-            C5,
-            lambda terms, vector: (
-                any(
-                    t == "((~R_avs_normal_status_F_readback_fifo_full_AVSCLK))" and b == "0"
-                    for t, b in zip(terms, vector)
-                )
-                and any(
-                    t == "((~(R_avs_fifos_status_F_readback_fifo_vacant_slots_AVSCLK < 4'h2)))"
-                    and b == "1"
-                    for t, b in zip(terms, vector)
-                )
             ),
         ),
     ],
@@ -2309,27 +2300,14 @@ ROW_PREDICATES: "dict[str, list[tuple[str, object]]]" = {
 
 # Signals the source defines from others: (class, name, what it stands for).
 SIGNAL_IDENTITIES: "dict[str, list[tuple[str, str, str]]]" = {
-    "uart_core": [
-        (C5, "rx_enable", "tx_enable"),
-        (C5, "thr_rready", "(thr_rready && thr_rvalid)"),
-    ],
     "cla_arithmetic_compare": [
         (C5, "compare_equal", "(compare_equal && (~below_compare_int))"),
     ],
     "efuse_shadow_regs": [(C5, "write_locked", "(write_locked && (~apb_req_from_ac.pwrite))")],
-    "i2c_controller_fsm": [
-        (C5, "unhandled_unexp_nak_i", "(unhandled_unexp_nak_i && halt_controller_i)"),
-        (C5, "unhandled_nak_timeout_i", "(unhandled_nak_timeout_i && halt_controller_i)"),
-    ],
-    "idma_nd_midend": [
-        (C5, "nd_req_ready_o", "(nd_req_ready_o && nd_req_valid_i)"),
-        (C5, "last", "(last && nd_req_valid_i)"),
-    ],
     "avsbus_controller": [
         (C4, "R_avs_cmd_wr_en", "(R_avs_cmd_wr_en && pwrite)"),
         (C4, "R_avs_readback_rd_en", "(R_avs_readback_rd_en && (~pwrite))"),
     ],
-    "system_timer_octs_core": [(C5, "credit_gen_pulse", "(credit_gen_pulse && enable)")],
     # smc_dfd_wrap drives every present block's clock-disable control from one net.
     "mmrs": [
         (P22, "i_dst_clk_dis_ctrl", "i_cla_clk_dis_ctrl"),
