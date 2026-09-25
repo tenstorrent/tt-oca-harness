@@ -110,6 +110,7 @@
 
 // TT-owned generic standard-cell wrappers (hw/common/ocah_prim_generic).
 // Authored by TT, but library-class by the same rule as the two blocks above.
+-module prim_and3
 -module prim_ao222
 -module prim_clock_nand2
 -module prim_flop_3sync

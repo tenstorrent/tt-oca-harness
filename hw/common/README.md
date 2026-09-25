@@ -36,7 +36,7 @@ reimplements a cell that already exists in OpenTitan `prim_generic`. When
 OpenTitan has the primitive, instantiate it.
 
 The exhaustive list of behavioral leaf cells an adopter must technology-map at
-synthesis (`not(synth)`, 26 modules across OpenTitan and `ocah_prim_generic`) lives
+synthesis (`not(synth)`, 27 modules across OpenTitan and `ocah_prim_generic`) lives
 in [`ocah_prim_generic/README.md`](ocah_prim_generic/README.md#technology-swap-inventory).
 
 ## CDC and synchronizers

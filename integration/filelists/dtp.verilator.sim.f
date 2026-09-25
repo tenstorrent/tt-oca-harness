@@ -298,6 +298,7 @@ hw/common/ocah_prim/rtl/prim_updown_counter.sv
 hw/common/ocah_prim/rtl/prim_zero_counter.sv
 hw/common/sync.sv
 // Package(tt-oca-harness) Target(all(any(dtp, entropy_source, key_manager, sep, smc, system_timer_octs, uart), not(synth)))
+hw/common/ocah_prim_generic/rtl/prim_and3.sv
 hw/common/ocah_prim_generic/rtl/prim_ao222.sv
 hw/common/ocah_prim_generic/rtl/prim_clock_nand2.sv
 hw/common/ocah_prim_generic/rtl/prim_flop_3sync.sv

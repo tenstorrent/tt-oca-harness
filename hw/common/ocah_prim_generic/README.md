@@ -6,7 +6,7 @@ flop, a negative latch, a clock NAND, a data mux and a handful of logic gates.
 
 | Path | Contents |
 |------|----------|
-| `rtl/` | 15 behavioral `prim_*.sv` cells (the OCAH half of the swap inventory below) |
+| `rtl/` | 16 behavioral `prim_*.sv` cells (the OCAH half of the swap inventory below) |
 
 Every file here is a direct tech swap. The root [`Bender.yml`](../../../Bender.yml)
 lists this directory under `not(synth)`, so simulation, lint and FPGA builds
@@ -17,7 +17,7 @@ belongs in [`../ocah_prim/`](../ocah_prim/) instead.
 
 ## Technology swap inventory
 
-These **26 modules** are the exhaustive set of behavioral `prim_*` leaf cells
+These **27 modules** are the exhaustive set of behavioral `prim_*` leaf cells
 guarded with `not(synth)` in the open tree. An adopter synthesis flow that
 passes `-t synth` must provide a one-for-one technology replacement for each
 name (same module name and ports). Nothing else in [`../ocah_prim/`](../ocah_prim/)
@@ -46,10 +46,11 @@ Vendored behavioral sources under
 - `prim_xnor2`
 - `prim_xor2`
 
-### OCAH `ocah_prim_generic` (15)
+### OCAH `ocah_prim_generic` (16)
 
 Behavioral sources under [`rtl/`](rtl/):
 
+- `prim_and3`
 - `prim_ao222`
 - `prim_clock_nand2`
 - `prim_flop_3sync`
