@@ -632,12 +632,6 @@ sources:
     files:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/och_prim/rtl/prim_apb_arb.sv
-      # prim_apb_mux_struct.sv is deliberately not listed. It sizes its localparams
-      # with $bits(req_t'(0).paddr); VCS rejects that cast-then-member-select in a
-      # parameter port list, in both V-2023.12-SP2-9 and X-2025.06, though slang and
-      # Verilator accept it. Nothing in this tree or nonfree instantiates the
-      # module, and the file is intentionally kept unpatched, so listing it here
-      # would only break every VCS flow that consumes bender's raw output.
       - hw/common/och_prim/rtl/prim_axi_addr_fixer.sv
       - hw/common/och_prim/rtl/prim_axi_id_converter.sv
       - hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
@@ -666,7 +660,6 @@ sources:
       - hw/common/och_prim/rtl/prim_pulse_signal.sv
       - hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
       - hw/common/och_prim/rtl/prim_rev_cell.sv
-      - hw/common/och_prim/rtl/prim_rom_bank_swap.sv
       - hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
       - hw/common/och_prim/rtl/prim_sync3.sv
       - hw/common/och_prim/rtl/prim_sync3_pulse.sv

@@ -574,7 +574,6 @@
 -module prim_ram_2p
 -module prim_refclk_count_w_cdc
 -module prim_rom
--module prim_rom_bank_swap
 -module prim_rst_mux2_hf_n
 -module prim_rst_sync
 -module prim_sec_anchor_buf

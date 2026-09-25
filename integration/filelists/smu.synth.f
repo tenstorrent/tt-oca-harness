@@ -874,7 +874,6 @@ hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
 hw/common/och_prim/rtl/prim_pulse_signal.sv
 hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
 hw/common/och_prim/rtl/prim_rev_cell.sv
-hw/common/och_prim/rtl/prim_rom_bank_swap.sv
 hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
 hw/common/och_prim/rtl/prim_sync3.sv
 hw/common/och_prim/rtl/prim_sync3_pulse.sv

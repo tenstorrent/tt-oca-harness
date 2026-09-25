@@ -133,14 +133,14 @@ module sync #(
 
     // Three stage synchronizer: Async set
     else if ((STAGES == 3) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:gen_tt_sync3_async_set
-      prim_sync3s #(
-        .WIDTH(WIDTH)
-      ) u_prim_sync3s (
-        .clk_i(clk_i),
-        .d_i(serial_i),
-        .set_ni(rst_ni),
-        .q_o(serial_o)
-      );
+      for (genvar i = 0; i < WIDTH; i++) begin : gen_sync3s
+        prim_flop_3sync_s u_sync3s (
+          .clk_i (clk_i),
+          .d_i   (serial_i[i]),
+          .set_ni(rst_ni),
+          .q_o   (serial_o[i])
+        );
+      end
     end
 
     //////////////////////////////////////////////////////////////////
@@ -184,14 +184,14 @@ module sync #(
 
     // Four stage synchronizer: Async set
     else if ((STAGES == 4) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:gen_tt_sync4_async_set
-      prim_sync4s #(
-        .WIDTH(WIDTH)
-      ) u_prim_sync4s (
-        .clk_i(clk_i),
-        .d_i(serial_i),
-        .set_ni(rst_ni),
-        .q_o(serial_o)
-      );
+      for (genvar i = 0; i < WIDTH; i++) begin : gen_sync4s
+        prim_flop_4sync_s u_sync4s (
+          .clk_i (clk_i),
+          .d_i   (serial_i[i]),
+          .set_ni(rst_ni),
+          .q_o   (serial_o[i])
+        );
+      end
     end
 
     else begin: gen_default

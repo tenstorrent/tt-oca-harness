@@ -71,7 +71,6 @@ OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 # formatter cannot process or reparse reliably. Slang compilation remains
 # authoritative for their syntax.
 OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
-	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/smc/dv/tb/tb_top.sv \
@@ -81,7 +80,6 @@ OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 # Lint parses these three conditional-header/integration files even though the
 # formatter's output reparse does not. Keep their lint findings visible.
 OCAH_VERIBLE_LINT_PARSER_EXCLUDES := \
-	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv
 
