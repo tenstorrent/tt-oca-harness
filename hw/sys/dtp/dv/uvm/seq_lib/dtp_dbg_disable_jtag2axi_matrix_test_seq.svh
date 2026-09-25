@@ -35,7 +35,8 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
   protected function sep_lifecycle_ctrl_pkg::dbg_disable_t bridge_mask_from_bits(
       bit [NumTargets-1:0] bits);
     sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0;
-    for (int unsigned i = 0; i < NumTargets; i++) if (bits[i]) d |= targets[i].dbg_disable_mask;
+    for (int unsigned i = 0; i < NumTargets; i++)
+    if (bits[i]) dtp_dbg_path_set(d, targets[i].dbg_path);
     return d;
   endfunction
 

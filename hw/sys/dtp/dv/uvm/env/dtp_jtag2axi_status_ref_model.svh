@@ -82,7 +82,7 @@ class dtp_jtag2axi_status_ref_model
         m_bridge.predict_capture(target, kind, t.start_time, exp);
         exp.context_s = $sformatf("%s %s bits=%0d", target.name, kind.name(), t.bit_count);
       end
-      if ((tb_vif.dbg_disable & target.dbg_disable_mask) != '0) m_bridge.gated(target.name);
+      if (dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path)) m_bridge.gated(target.name);
       else void'(m_bridge.update(target, req, t.end_time, unused));
     end
     expected_ap.write(exp);

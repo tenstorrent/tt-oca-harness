@@ -191,5 +191,15 @@ interface dtp_tb_if;
   logic [7:0]  cfg_wire_or_pull     = 8'(dtp_dv_cfg_pkg::WireOrPull);
   logic [7:0]  cfg_wire_or_assert   = 8'(dtp_dv_cfg_pkg::WireOrAssert);
   logic [7:0]  cfg_ct_dst_latency   = 8'(dtp_dv_cfg_pkg::CtDstLatency);
+  logic [7:0]  cfg_smc_axi_addr_width  = 8'(dtp_dv_cfg_pkg::SmcAxiAddrWidth);
+  logic [7:0]  cfg_smc_axi_data_width  = 8'(dtp_dv_cfg_pkg::SmcAxiDataWidth);
+  logic [7:0]  cfg_otp_axil_addr_width = 8'(dtp_dv_cfg_pkg::OtpAxilAddrWidth);
+  logic [7:0]  cfg_otp_axil_data_width = 8'(dtp_dv_cfg_pkg::OtpAxilDataWidth);
+  logic [7:0]  cfg_smc_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpRdPlDepth);
+  logic [7:0]  cfg_smc_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpWrPlDepth);
+  logic [7:0]  cfg_sep_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpRdPlDepth);
+  logic [7:0]  cfg_sep_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpWrPlDepth);
+  logic [7:0]  cfg_smc_rd_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcRdPlDepth);
+  logic [7:0]  cfg_smc_wr_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcWrPlDepth);
 
 endinterface : dtp_tb_if
