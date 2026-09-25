@@ -20,4 +20,9 @@ the Boot BL0 section of this document. We must ensure we have the
 minimum set of straps available on the SMC GPIO port which are dedicated
 to the SEP BL0 functionality.
 
+<<sep-peripheral-extension-port-figure>> shows the connection from SEP to peripherals
+shared with SMC.
+
+[[sep-peripheral-extension-port-figure]]
+.SEP peripheral extension port
 image::SEP_Peri_Ext_Port.png[SEP_Peri_Ext_Port,scaledwidth=90.0%]

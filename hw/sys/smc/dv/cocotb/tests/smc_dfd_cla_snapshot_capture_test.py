@@ -4,8 +4,9 @@
 
 Reads all 32 snapshot registers at their reset, then walks the node chain and
 drives every pair's action field over its whole declared range with a relation
-measured to activate that pair, and requires snapshot registers to leave their
-reset.
+measured to activate that pair. With the CLA mux in normal mode and the mux
+array driving identifiers, every pair's Lo snapshot has to leave its reset and
+all sixteen have to agree.
 """
 
 from __future__ import annotations
@@ -24,17 +25,18 @@ from smc_base_test import smc_base_test
 # with each discovery satisfied first time.
 #
 #   DEBUG_CTRL force_clk_en write                                             1
-#   64 mux identifiers in normal debug mode                                  64
+#   64 mux identifiers in the identifier output mode                         64
+#   64 CLA mux writes, normal debug mode                                     64
 #   32 snapshot reset reads                                                  32
 #   16 pair reset writes plus the CLA control write                          17
 #   16 pairs x (2 for the relation discovery, 64 action writes, 2 snapshot
 #     reads, the quiesce write)                                            1104
 #   3 node moves x (destination write, the CurrentNode read, the quiesce
 #     write)                                                                  9
-#   restore: 16 pairs, CLA control, DEBUG_BUS_MUX, DEBUG_CTRL                19
+#   restore: 16 pairs, CLA control, CLA mux, DEBUG_BUS_MUX, DEBUG_CTRL       20
 #                                                                         ------
-#                                                                           1246
-CLA_SNAPSHOT_MIN_CSR_ACCESSES = 1246
+#                                                                           1311
+CLA_SNAPSHOT_MIN_CSR_ACCESSES = 1311
 
 
 @pyuvm.test()
@@ -42,8 +44,8 @@ class smc_dfd_cla_snapshot_capture_test(smc_base_test):
     """Drive every pair's action field so the snapshot registers are written."""
 
     required_evidence = (
+        "CHK-CLA-SNAPSHOT-CAPTURE",
         "CHK-CLA-SNAPSHOT-DRIVE",
-        "CHK-CLA-SNAPSHOT-QUIESCENT",
         "CHK-CLA-SNAPSHOT-RESET",
     )
     min_evidence = 3

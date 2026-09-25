@@ -34,11 +34,13 @@ from smc_base_test import smc_base_test
 #     activates                                                               4
 #   64 values of the 6-bit Action0 field, each a write and one status read   128
 #   hand-off: the Trdstramwplow read that shows it off its reset              1
+#   disabled sink: control write + readback, 64 action writes, the pointer
+#     read                                                                   67
 #   restore: EAP, CLA control, Trdstcontrol, Trfunnelcontrol,
 #     Trdstramcontrol, DEBUG_BUS_MUX, DEBUG_CTRL                              7
 #                                                                         ------
-#                                                                            218
-TRACE_ACCUMULATOR_MIN_CSR_ACCESSES = 218
+#                                                                            285
+TRACE_ACCUMULATOR_MIN_CSR_ACCESSES = 285
 
 
 @pyuvm.test()
@@ -49,8 +51,9 @@ class smc_dfd_trace_accumulator_fill_test(smc_base_test):
         "CHK-DST-TRACE-ACCUMULATE",
         "CHK-DST-TRACE-BANK-HANDOFF",
         "CHK-DST-TRACE-IDLE",
+        "CHK-DST-TRACE-SINK-DISABLED",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

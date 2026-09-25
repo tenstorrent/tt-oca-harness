@@ -171,7 +171,7 @@ addrmap bounds_top {
 
     def test_doc_override_is_validated(self):
         data = collect(self.root, {"first.control": "Documented locally"})
-        control = next(reg for reg in data.regs if reg.name == "control")
+        control = next(reg for reg in data.regs if reg.path == "top.first.control")
         self.assertEqual(control.desc, "Documented locally")
         with self.assertRaisesRegex(ValueError, "matched no register"):
             collect(self.root, {"first.missing": "Stale"})

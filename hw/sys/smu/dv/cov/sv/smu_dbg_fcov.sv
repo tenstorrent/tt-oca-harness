@@ -181,7 +181,9 @@ module smu_dbg_fcov #(
     cp_fabric: coverpoint fabric;
     // sep_lifecycle_ctrl ties both OTP debug-disable terms low, so neither
     // bridge can be disabled by the lifecycle controller in this design.
-    cp_smc_otp: coverpoint smc_otp {ignore_bins tied_low = {1'b1};}
+    cp_smc_otp: coverpoint smc_otp {
+      ignore_bins tied_low = {1'b1};
+    }
     cp_sep_otp: coverpoint sep_otp {ignore_bins tied_low = {1'b1};}
     x_slice: cross cp_fabric, cp_smc_otp, cp_sep_otp;
   endgroup

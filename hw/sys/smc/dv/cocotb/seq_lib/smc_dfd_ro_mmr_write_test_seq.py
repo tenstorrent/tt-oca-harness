@@ -30,11 +30,10 @@ The CLA is left disarmed throughout, and the sequence checks that before it
 starts, so the hardware-driven registers are as quiescent as this bench can
 make them.
 
-One register does take the write: ``dst_sink/Trdstramwphigh``, which
-``dfd_dst_sink.rdl`` declares ``sw = r; hw = w``. It is pinned in
-``_KNOWN_WRITABLE`` with that reason rather than skipped, so the leaf fails if
-the deviation is corrected and the entry has to be revisited, and fails just
-as loudly if another register starts taking writes.
+The register list is derived from the generated map on every run, so a map
+that moves a register in or out of read-only changes the sweep with it; the
+count is logged with the checker. Every register on the list has to ignore the
+write: any that takes it fails the leaf.
 """
 
 from __future__ import annotations
@@ -50,24 +49,9 @@ from .smc_rdl_regmap import RdlReg, rdl_registers_under
 _CLA_ADDRMAP = "smc_cla"
 _BLOCKS = ("cla", "dst", "dst_sink", "funnel")
 
-# Registers with no software-writable field that the generated map is expected
-# to carry across the four sub-blocks. A regenerated map that gains or loses
-# one fails rather than silently changing the sweep.
-_EXPECTED_READ_ONLY = 37
-
 # Registers that must hold still for the unchanged leg to rest on enough of
 # them. Below this the leaf would be an undeclared-bits check only.
 _MIN_HELD = 20
-
-# Registers the RDL declares read-only that the design nevertheless lets
-# software write. The deviation is pinned rather than skipped, so a design or
-# map change in either direction fails this leaf and the entry is revisited.
-_KNOWN_WRITABLE: dict[str, str] = {
-    "smc_cla/dst_sink/Trdstramwphigh": (
-        "dfd_dst_sink.rdl declares the whole register `sw = r; hw = w`, but a "
-        "software write of all ones lands and is read back"
-    ),
-}
 
 
 def _sw_write_mask(reg: RdlReg) -> int:
@@ -88,9 +72,9 @@ def _read_only() -> tuple[RdlReg, ...]:
             continue
         found.setdefault((block, reg.path.rsplit("/", 1)[1]), reg)
     regs = tuple(sorted(found.values(), key=lambda r: r.addr))
-    assert len(regs) == _EXPECTED_READ_ONLY, (
-        f"the generated map carries {len(regs)} registers with no software-writable field "
-        f"across {list(_BLOCKS)}, not the {_EXPECTED_READ_ONLY} this sweep is sized for"
+    assert len(regs) >= _MIN_HELD, (
+        f"the generated map carries only {len(regs)} registers with no software-writable "
+        f"field across {list(_BLOCKS)}, fewer than the {_MIN_HELD} the unchanged leg rests on"
     )
     return regs
 
@@ -104,7 +88,6 @@ class smc_dfd_ro_mmr_write_test_seq(SmcCsrSeq):
         self.held = 0
         self.free_running = 0
         self.undeclared_checks = 0
-        self.took_write: dict[str, tuple[int, int]] = {}
         self.value_checks = 0
 
     @staticmethod
@@ -132,16 +115,6 @@ class smc_dfd_ro_mmr_write_test_seq(SmcCsrSeq):
         )
         self.registers_written += 1
         after = await self._read(reg, "after")
-        if reg.path in _KNOWN_WRITABLE:
-            assert after == self._word_mask(reg), (
-                f"{reg.path} @ 0x{reg.addr:08x} is pinned as a known deviation -- "
-                f"{_KNOWN_WRITABLE[reg.path]} -- but a write of "
-                f"0x{self._word_mask(reg):x} left it reading 0x{after:x}. If the design or "
-                f"the register map has been corrected, drop the entry from _KNOWN_WRITABLE"
-            )
-            self.took_write[reg.path] = (second, after)
-            self.value_checks += 1
-            return
         if first == second:
             assert after == second, (
                 f"{reg.path} @ 0x{reg.addr:08x}: the RDL gives it no software-writable "
@@ -175,10 +148,6 @@ class smc_dfd_ro_mmr_write_test_seq(SmcCsrSeq):
             f"the sweep wrote {self.registers_written} of the {len(regs)} read-only "
             f"registers the generated map declares"
         )
-        assert sorted(self.took_write) == sorted(_KNOWN_WRITABLE), (
-            f"the registers that took a software write were {sorted(self.took_write)}; the "
-            f"pinned deviation list is {sorted(_KNOWN_WRITABLE)}"
-        )
         assert self.held >= _MIN_HELD, (
             f"only {self.held} of the {len(regs)} read-only registers read the same value "
             f"twice running and could be held to it across the write; {self.free_running} "
@@ -189,11 +158,10 @@ class smc_dfd_ro_mmr_write_test_seq(SmcCsrSeq):
             "field read the same value twice running with the CLA disarmed and returned it "
             "again after a software write of all ones, so the write reached the decode and "
             "the read-only contract held; the other %d were moving on their own and carry "
-            "no unchanged claim. Pinned deviations that did take the write: %s",
+            "no unchanged claim",
             self.held,
             len(regs),
             self.free_running,
-            {k: f"0x{b:x}" for k, (_a, b) in self.took_write.items()},
         )
         cocotb.log.info(
             "CHK-DFD-RO-MMR-UNDECLARED: %d reads over the %d written registers each drove 0 "

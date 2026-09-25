@@ -3,56 +3,36 @@
 
 [[i2c-controller]]
 = I2C Controller
+:description: OCAH I2C wrapper. The controller core is OpenTitan I2C.
 
-== Overview
+The I2C controller is based on the
+https://opentitan.org/book/hw/ip/i2c/index.html[OpenTitan I2C] design.
+Controller and target behavior, clock stretching, arbitration, timing setup,
+and programming sequences are specified in the
+https://opentitan.org/book/hw/ip/i2c/doc/theory_of_operation.html[OpenTitan theory of operation]
+and the
+https://opentitan.org/book/hw/ip/i2c/doc/programmers_guide.html[OpenTitan programmer's guide].
 
-The OCA I2C Interface Component is a comprehensive I2C/SMBus/PMBus
-communication controller that provides full-featured support for both
-controller (master) and target (slave) operation modes. Based on
-industry standards and featuring robust error handling, configurable
-FIFOs, and extensive interrupt support, this component enables reliable
-inter-chip communication in complex system-on-chip designs.
+[[i2c-core-diagram]]
+.OpenTitan I2C core reference architecture
+image::opentitan_i2c.svg[alt="OpenTitan I2C core reference architecture",width=100%,pdfwidth=100%]
 
-== Description and Features
+<<i2c-core-diagram>> shows the upstream core.
 
-* *Multi-Protocol Support*: Full compliance with I2C Rev. 7.0, SMBus
-Rev. 3.2, and PMBus Rev. 1.4 specifications
-* *Dual Operating Modes*: Configurable as controller-only, target-only,
-controller-target, or bus monitor
-* *High-Speed Operation*: Support for Standard-mode (100 kbaud),
-Fast-mode (400 kbaud), and Fast-mode Plus (1 Mbaud)
-* *Advanced Controller Features*: Clock stretching support, automatic
-ACK control, multi-controller arbitration
-* *Flexible Target Capabilities*: Automatic clock stretching,
-programmable ACK control, broadcast transfer support
-* *Configurable FIFO Architecture*: Independent TX/RX FIFO depths for
-both controller and target modes
+== OCAH Modifications
 
-ifdef::backend-pdf[]
-:imagesdir: assets
-endif::backend-pdf[]
+* AXI4-Lite register interface in place of the OpenTitan TileLink host port.
+* Wrapper register blocks `i2c_ctrl` and `i2c_wrap` around the OpenTitan register bank.
 
-ifdef::backend-html5[]
-include::partial$i2c/doc/architecture.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::architecture.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$i2c/doc/interface.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::interface.adoc[]
-endif::backend-pdf[]
+[[i2c-wrapper-diagram]]
+.OCAH I2C wrapper and generated register interface
+image::SMC_I2C_FIG023.png[alt="OCAH I2C wrapper and generated register interface",width=100%,pdfwidth=100%]
+
+<<i2c-wrapper-diagram>> shows the OCAH wrapper around that core.
+
 ifdef::backend-html5[]
 include::partial$i2c/doc/memmap.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::memmap.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$i2c/doc/programming.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::programming.adoc[]
 endif::backend-pdf[]

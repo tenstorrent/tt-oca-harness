@@ -22,12 +22,15 @@ pair's action field over its whole declared range with a relation that
 activates the pair. Every snapshot register is read at its reset first, so a
 register that moves afterwards moved because of this stimulus.
 
-What the capture writes is the debug-signal bus itself, and that reads zero in
-this bench even with the mux array in the identifier output mode its
-description names, so no snapshot register changes value. The observation is
-therefore a deny leg, and the drive token is its live control: every pair is
-measured activating through its pair-activation status before the snapshot is
-read.
+What the capture writes is the debug-signal bus itself. The CLA's own mux
+(``CDbgMuxSelLo``), the last stage in front of the CLA, resets to its off mode
+and would hold that bus at zero, so it is put in normal debug mode; the
+DEBUG_BUS_MUX array behind it is put in the identifier output mode its
+description names, which drives known non-zero content onto a bus that then
+holds still. Every pair that acts therefore captures the same value: each
+pair's ``Lo`` snapshot has to leave its reset, and all sixteen have to agree.
+The ``Hi`` halves are not written in this configuration and have to stay at
+their reset.
 """
 
 from __future__ import annotations
@@ -37,7 +40,12 @@ from cocotb.triggers import ClockCycles
 
 from .smc_cla_regmap import cla_field, cla_register
 from .smc_csr_seq_utils import SmcCsrSeq
-from .smc_dfd_trace_accumulator_fill_test_seq import dfd_register, pack_fields, reg_field
+from .smc_dfd_trace_accumulator_fill_test_seq import (
+    cla_mux_normal,
+    dfd_register,
+    pack_fields,
+    reg_field,
+)
 
 NODES = 4
 EAPS_PER_NODE = 4
@@ -62,6 +70,8 @@ class smc_dfd_cla_snapshot_capture_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_dfd_cla_snapshot_capture_test_seq") -> None:
         super().__init__(name)
         self.captured: set[str] = set()
+        self.snap_values: dict[tuple[int, int], int] = {}
+        self.hi_values: dict[tuple[int, int], int] = {}
         self.pairs_driven = 0
         self.nodes_visited: list[int] = []
         self.value_checks = 0
@@ -156,8 +166,10 @@ class smc_dfd_cla_snapshot_capture_test_seq(SmcCsrSeq):
         self.pairs_driven += 1
         for half in ("Lo", "Hi"):
             snap = _snapshot(node, eap, half)
-            if await self._read(snap, "after") != snap.reset_word:
+            value = await self._read(snap, "after")
+            if value != snap.reset_word:
                 self.captured.add(self._short(snap))
+            (self.snap_values if half == "Lo" else self.hi_values)[(node, eap)] = value
         await self._write(reg, reg.reset_word, "quiet")
 
     async def _move_to(self, node: int, target: int, logical_op: int) -> None:
@@ -200,6 +212,10 @@ class smc_dfd_cla_snapshot_capture_test_seq(SmcCsrSeq):
 
         await self._baseline()
         await self._arm_cla()
+        # The CLA mux is clocked only once the CLA is enabled, and takes a mode
+        # only while its own identifier is the one programmed, so it is written
+        # after the arm.
+        await cla_mux_normal(self, "clamux")
 
         for node in range(NODES):
             self.nodes_visited.append(node)
@@ -228,32 +244,40 @@ class smc_dfd_cla_snapshot_capture_test_seq(SmcCsrSeq):
             NODES,
         )
 
-        # The capture is not requested by an action code: it follows the pair's
-        # relation result, which the drive phase above measured on every pair.
-        # What the capture writes is the debug-signal bus, which reads as zero
-        # here, so the registers stay at their reset and the observation is a
-        # deny leg over a stimulus the drive token proved live.
-        assert not self.captured, (
-            f"snapshot registers {sorted(self.captured)} left their RDL reset. That is the "
-            f"capture becoming observable, which it was not when this leaf was written; the "
-            f"claim below has to be rewritten to check the captured value instead of the "
-            f"absence of one"
+        # The capture follows the pair's relation result, which the drive phase
+        # measured on every pair, and the bus it samples holds one non-zero value.
+        lo_reset = _snapshot(0, 0, "Lo").reset_word
+        values = set(self.snap_values.values())
+        assert len(self.snap_values) == NODES * EAPS_PER_NODE and len(values) == 1, (
+            f"the {len(self.snap_values)} Lo snapshots read "
+            f"{sorted(hex(v) for v in values)}: the pairs captured different values of a bus "
+            f"that holds still, so at least one did not capture it"
         )
-        self.value_checks += 1
+        captured = values.pop()
+        assert captured != lo_reset, (
+            f"every Lo snapshot still reads its RDL reset 0x{lo_reset:x} after its pair acted "
+            f"with the CLA mux in normal mode and the mux array driving identifiers, so no "
+            f"capture reached the register interface"
+        )
+        stray = {k: v for k, v in self.hi_values.items() if v != _snapshot(*k, "Hi").reset_word}
+        assert not stray, (
+            f"Hi snapshots {sorted(stray)} left their RDL reset, which this configuration "
+            f"does not write"
+        )
+        self.value_checks += 3
         cocotb.log.info(
-            "CHK-CLA-SNAPSHOT-QUIESCENT: all %d debug-signal snapshot registers still read "
-            "their RDL reset after every one of the %d pairs had acted on its own node, "
-            "which the drive token above measured through the pair-activation status. The "
-            "capture follows the relation result rather than an action code, so it did "
-            "occur; what it writes is the debug-signal bus, and that reads zero in this "
-            "bench, so nothing is observable at the register interface",
-            2 * NODES * EAPS_PER_NODE,
+            "CHK-CLA-SNAPSHOT-CAPTURE: after each of the %d pairs acted on its own node, its "
+            "Lo debug-signal snapshot left its RDL reset of 0x%x and all of them read the same "
+            "value, 0x%016x, the identifier content the mux array drives onto a bus that "
+            "holds still; the Hi halves stayed at their reset",
             self.pairs_driven,
+            lo_reset,
+            captured,
         )
 
         for node in range(NODES):
             for eap in range(EAPS_PER_NODE):
                 reg = cla_register(f"CDbgNode{node}Eap{eap}")
                 await self._write(reg, reg.reset_word, "restore")
-        for reg in (cla_register("CDbgClaCtrlStatus"), mux, clk):
+        for reg in (cla_register("CDbgClaCtrlStatus"), cla_register("CDbgMuxSelLo"), mux, clk):
             await self._write(reg, reg.reset_word, "restore")

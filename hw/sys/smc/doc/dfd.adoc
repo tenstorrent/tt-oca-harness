@@ -11,21 +11,29 @@ internal activity, triggers on programmable conditions, and captures
 trace, all on-chip and without external instrumentation. Its core is a
 Core Logic Analyzer (CLA) that watches a configurable debug bus,
 evaluates programmable events, and fires actions — an interrupt, a clock
-stop, a GPIO toggle, a cross-trigger, or a trace capture — when those
-events occur. A trace subsystem timestamps the captured activity and
-streams it to memory for offline analysis.
+stop, a cross-trigger, or a trace capture — when those events occur.
+Trace storage uses the connected external sink-memory interface. Several
+capabilities of the generic DFD block are not connected in SMC, as detailed below.
+
+[[smc-dfd-diagram]]
+.DFD reference architecture
+image::SMC_DFD_FIG028.png[alt="DFD reference architecture",width=100%,pdfwidth=100%]
+
+<<smc-dfd-diagram>> shows the full `tt-dfd` block. SMC does not connect the instruction
+trace (N-Trace) input; its CLA and debug-signal trace paths provide the
+observation functions described here.
 
 Key features include:
 
 * A programmable debug bus that routes internal signals of interest to
   the analyzer under software control
 * An event engine supporting signal-match, edge, transition, ones-count,
-  any-change, time-match, and counter events
+  any-change, and counter events
 * Event-action pairing that binds detected events to system actions
 * Per-trigger snapshot of the debug bus and status flags identifying
   which pair fired
 * Cross-trigger exchange with the rest of the debug infrastructure
-* Timestamped trace streamed to memory over the fabric
+* Trace capture through the external sink-memory interface
 
 == Debug Bus
 
@@ -41,9 +49,11 @@ bus value.
 The CLA is organized as a set of nodes, each holding several event-action
 pairs (EAPs). An EAP binds one or more events, computed from the debug
 bus, to one or more actions taken when those events occur. The event
-engine evaluates several event types in parallel:
+engine evaluates several event types in parallel (<<smc-cla-event-types-table>>).
 
+[[smc-cla-event-types-table]]
 [cols="30%,70%",options="header",]
+.SMC CLA event types
 |=======================================================================
 |Event |Description
 |Signal match |Fires when the masked debug bus equals a programmed value
@@ -55,8 +65,9 @@ programmed value A to a programmed value B.
 |Ones count |Fires when the population count of a masked subset equals a
 programmed value.
 |Any change |Fires when any signal within a masked subset changes.
-|Time match |Fires when the internal time counter reaches a programmed
-value, allowing time-based triggering.
+|Time match |Unavailable in this integration. Its timestamp input is tied to
+zero. The comparator requires a nonzero match value, so the event cannot fire;
+it does not use the local CLA timestamp register.
 |Counter |Counts cycles following an event match and fires when the
 count is reached; a small pool of counters is available for measuring
 intervals or deferring an action.
@@ -74,7 +85,8 @@ An EAP can drive one or more actions:
 
 * *Debug interrupt* — raise a non-maskable interrupt to the CPU.
 * *Clock stop* — halt clocks to freeze the design for inspection.
-* *GPIO toggle* — drive an externally observable pin.
+* *GPIO toggle* — the generic block provides this action, but SMC terminates
+  it on an unused local signal; it does not drive a pad.
 * *Cross-trigger out* — signal other debug blocks that a local event
   occurred.
 * *Trace capture* — hand the event to the trace subsystem.
@@ -87,12 +99,16 @@ isolation.
 
 == Trace
 
-The trace subsystem captures, timestamps, and streams debug activity for
-offline analysis. Samples and events are encoded and packetized, merged
-through a trace network, and written to memory over the fabric by a trace
-master. A global timestamp with a synchronization mechanism places trace
-from different sources on a common time base, so captures can be aligned
-after the fact.
+The configured trace sink uses external memory request/response ports. The
+optional trace AXI master has unconnected request outputs and tied-low response
+inputs, so it cannot stream trace over the SMC fabric.
+
+SMC selects local CLA timestamp scheme 0, advanced by the wrapper's reference
+clock-derived `time_tick`. This local counter is distinct from the generic
+`i_timestamp`, reference timestamp, and OCTS timestamp inputs, all tied to zero.
+The integration does not provide the advertised global timestamp alignment
+through those inputs. In particular, the time-match event consumes the tied-off
+timestamp rather than the running CLA timestamp register.
 
 == Interrupts
 
@@ -108,6 +124,12 @@ endif::backend-pdf[]
 * *CLA debug interrupt* — the debug interrupt raised by a CLA action.
 
 == Register Map
+
+The CLA counter values and timestamp fields are software-writable. Software
+writes take priority over simultaneous hardware updates; later hardware updates
+can advance or clear them according to their configured controls. The sink's
+`trDstRamWPHigh` register likewise accepts software writes. Treat these as live
+read/write state when programming or testing them, not read-only status.
 
 The generated `smc_cla` map is the programmer view of this aperture (see
 ifdef::backend-html5[]

@@ -11,7 +11,7 @@ plain Python ints and bytes; no internal VIP types leak out.
 Primary exports
 ---------------
 OcahSpiFlash            — SPI/QSPI/OSPI NOR-flash device BFM (generic pin set).
-OcahSepSpiFlash         — SEP-specific subclass mapped to the SEP xSPI pad bundle.
+OcahSepSpiFlash         — SEP-specific subclass mapped to the SEP octal-SPI pad bundle.
 OcahSpiMasterBfm        — Mode-0 SPI controller engine for benches without a host IP.
 OcahSpiMasterSequence   — Test-facing operations over the controller engine.
 OcahSpiMonitor          — Passive monitor for SPI command/address/data sequences.
@@ -43,8 +43,8 @@ Quick-start (single SPI)
         checker.replay()
         checker.finalize()
 
-Quick-start (SEP xSPI)
------------------------
+Quick-start (SEP octal SPI)
+---------------------------
 ::
 
     from ocah_spi_vip import OcahSepSpiFlash
