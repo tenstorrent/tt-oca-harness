@@ -11778,6 +11778,7 @@ in <<smc-deferred-disposition>>.
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |`smc_deadspace_decode_test` measures wrap-to-live aliasing: dead offsets in seven register windows wrap onto live registers with an OKAY response |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`, so the defect has a graded measurement and the row goes red when the decode changes |Resolve the wrap-to-live aliasing decode contract (#585); the leaf then moves to its feature testlist with the `ci` tag
 |A write queued right behind the write that locks a filter reaches `filter_ctrl` after `locked = 1` |`smc_filter_lock_window_test` shows it: of two writes queued behind the locking write, the first is answered OKAY and lands, the second is refused. The leaf runs weekly in `rtl_issue` under `expect_fail` |Gate the lock select after the AW spill in `smc_internal_regs.sv:306` and `:471`, or hold the next AW until the locking write's B; the leaf then moves to its feature testlist
+|`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on any write with a byte enable anywhere in the register, whatever the data (`smc_cool_reset_wrap.sv:272-276`), where `reset_unit.rdl:130-135` makes the request a `sw = rw` field at bit 0 |`smc_isolate_req_smc_lane_test` shows it: a one-byte write of 0 at byte 1 clears the request. The leaf runs weekly in `rtl_issue` under `expect_fail` |Qualify the clear by bit 0's byte enable and a written 0; the leaf then moves to its feature testlist with the `ci` tag
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |Thirteen test modules written against this bench are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in <<smc-deferred-disposition>> names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
@@ -11802,9 +11803,10 @@ in `smoke`, `hosted` or `all`. Every `[[tests]]` entry carries `expect_fail` nam
 the group on its own `regress.yml` row and grades the recorded failure as
 PASS, so the row goes red (`expected_fail_passed`) the week a defect is
 fixed and the leaf moves to its feature testlist. The members are
-`smc_deadspace_decode_test` (#585) and `smc_filter_lock_window_test` (the
-FILTER_CONFIG lock window, recorded in card 261; no issue filed yet); their
-cards follow, with the other held-out leaves.
+`smc_deadspace_decode_test` (#585), `smc_filter_lock_window_test` (the
+FILTER_CONFIG lock window, recorded in card 261; no issue filed yet) and
+`smc_isolate_req_smc_lane_test` (the `ISOLATE_REQ_SMC_REG` byte-lane clear; no
+issue filed yet); their cards follow, with the other held-out leaves.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -11874,6 +11876,37 @@ Drive `smc_filter_lock_window_test_seq`. Each checker below is a named compare t
 |===
 
 *Pass Criteria*: expected to fail on current RTL; enrolled in `rtl_issue` with `expect_fail`, not in `all`. The weekly tier grades the recorded failure as PASS and turns red the week the lock window closes.
+'''''
+
+[[sec-293-smc_isolate_req_smc_lane_test]]
+===== 293 `smc_isolate_req_smc_lane_test`
+
+*Source Module*: `smc_isolate_req_smc_lane_test`
+
+*BFM / Model*: `tb_cfg_flr_pf_active` raises the request; observation on `ISOLATE_REQ_SMC_REG`
+
+*Objective*: Writes to `ISOLATE_REQ_SMC_REG` that do not clear bit 0 must leave the FLR-latched request set.
+
+*Test Coverage*:
+
+* `reset_unit.rdl:130-135` makes `isolate_req_smc_reg` a single `sw = rw` field at bit 0, set by hardware when `cfg_flr_pf_active` rises and de-asserted by software. A write that does not select its byte lane cannot change it, and a write of 1 keeps it at 1.
+* Arm leg: with the FLR counters at their reset value of 0, raising `cfg_flr_pf_active` sets the request without starting the cool-reset sequence, and bit 0 must read 1.
+* Defect leg: a one-byte write of 0 at byte 1 must leave the request reading 1, and then a write of 1 to bit 0 must leave it reading 1.
+* On this RTL the first write clears the request. `smc_cool_reset_wrap.sv:272-276` clears it on `isolate_req_smc_reg_wr_en && (|hwif_out.ISOLATE_REQ_SMC_REG.wr_biten)`, the byte enables of the whole external register, and ignores the write data.
+
+*Test Procedure*:
+
+Drive `smc_isolate_req_smc_lane_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ISOLATE-REQ-SMC-LANE` |The FLR-latched request stayed set across a one-byte write of 0 at byte 1 and a write of 1 to bit 0
+|===
+
+*Pass Criteria*: expected to fail on current RTL; enrolled in `rtl_issue` with `expect_fail`, not in `all`. The weekly tier grades the recorded failure as PASS and turns red the week the clear is qualified by bit 0's byte enable and a written 0.
 '''''
 
 [[sec-161-smc_occp_dual_unsecure_boot_test]]
@@ -12500,7 +12533,8 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 `dv-run-smc-verilator-weekly-rtl_issue`, which the dashboard does not read),
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
-Members: `smc_deadspace_decode_test` (#585) and `smc_filter_lock_window_test`.
+Members: `smc_deadspace_decode_test` (#585), `smc_filter_lock_window_test` and
+`smc_isolate_req_smc_lane_test`.
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

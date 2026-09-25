@@ -67,6 +67,19 @@ expect_fail = "FILTER_CONFIG lock: a write queued behind the locking write reach
 expect_fail_match = "writes queued behind the locking write landed on locked filter"
 
 [[tests]]
+# ISOLATE_REQ_SMC_REG clears its FLR-latched request on any write with a byte
+# enable anywhere in the register, whatever the data (smc_cool_reset_wrap.sv:272-276);
+# reset_unit.rdl:130-135 makes the request a sw=rw field at bit 0.
+name = "smc_isolate_req_smc_lane_test"
+module = "smc_isolate_req_smc_lane_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue"]
+run_modes = ["smoke"]
+expect_fail = "ISOLATE_REQ_SMC_REG: a write outside bit 0's byte lane clears the FLR-latched request"
+expect_fail_match = "cleared the FLR-latched request from a byte lane the field does not"
+
+[[tests]]
 name = "smc_prod_rom_occp_ready_test"
 module = "smc_prod_rom_occp_ready_test"
 seed = 1
@@ -124,10 +137,11 @@ run_modes = ["smoke"]
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 2
+expected_count = 3
 tests = [
     "smc_deadspace_decode_test",
     "smc_filter_lock_window_test",
+    "smc_isolate_req_smc_lane_test",
 ]
 
 [[groups]]
