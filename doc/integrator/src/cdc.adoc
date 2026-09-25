@@ -97,13 +97,14 @@ constraint, and it is reasonable to ask why such a path needs a bound at all, or
 why a single blanket bound covering every crossing in the design would not be
 enough.
 
-Because the protocol guarantees *ordering*, not *arrival*. The read side will not
-look at an entry until the write pointer has crossed, which takes `SYNC_STAGES`
-destination cycles, where `SYNC_STAGES` is the depth of the pointer
-synchronizer. Nothing in the protocol ensures the data physically arrived within
-that window; that is a timing property, and only a `max_delay` states it. Miss it
-and the consumer samples the entry's previous contents. There is no violation
-report and no metastability event, just wrong data.
+The bound is needed because the protocol guarantees *ordering*, not *arrival*.
+The read side will not look at an entry until the write pointer has crossed,
+which takes `SYNC_STAGES` destination cycles, where `SYNC_STAGES` is the depth
+of the pointer synchronizer. Nothing in the protocol ensures the data has
+physically arrived within that window; that is a timing property, and only a
+`max_delay` states it. Miss it and the consumer samples the entry's previous
+contents. There is no violation report and no metastability event, just wrong
+data.
 
 So the requirement is `data path < SYNC_STAGES * T_dst`. It is not a fixed number
 of nanoseconds: it scales with the clock that captures the crossing, and the
@@ -119,23 +120,22 @@ destination periods within one design span an order of magnitude.
 |===
 
 That is why the bound is applied per instance rather than as one global value. A
-single blanket `max_delay` has to be chosen once for the whole design: loose
-enough to be feasible on the slowest domains, it permits several times more delay
-than a fast crossing's pointer scheme tolerates; tight enough for the fastest
-domain, it over-constrains every slow crossing and burns effort closing paths
-that were never at risk. Sizing each crossing from its own capturing clock is the
-only bound that tracks the requirement.
+single blanket `max_delay` would have to be loose enough to be feasible on the
+slowest domains. But this would permit several times more delay than a fast
+crossing's pointer scheme tolerates. To ensure that fast crossings are properly
+constrained, each crossing is sized from its own capturing clock.
 
-The blanket default that the clock-group layer applies (see <<cdc-two-layers,The
-two layers>>) is deliberately on the loose side, and for slow destination domains
-it is already sufficient -- there the explicit per-instance constraint is
-redundant. It is the fast crossings that need it.
+The blanket default applied by the clock-group layer (see <<cdc-two-layers,The
+two layers>>) deliberately applies this looser constraint. For slow domains, it
+is already sufficient and an explicit per-instance constraint is redundant. It
+is the fast crossings that need a per-instance constraint.
 
 `1.0 * T_dst` is therefore conservative by a factor of two to three. It is kept
-simple deliberately, but if wide payloads such as AXI data will not close, raising
-`cdc_data_delay` to `2.0 * T_dst` stays inside a three-stage guarantee with a
-cycle to spare. An adopter whose synchronizer cells use a different depth should
-recompute from their own `SYNC_STAGES` rather than inheriting this factor.
+simple deliberately, but if wide payloads such as AXI data will not close then
+raising `cdc_data_delay` to `2.0 * T_dst` stays inside a three-stage guarantee
+with a cycle to spare. An adopter whose synchronizer cells use a different depth
+should recompute from their own `SYNC_STAGES` rather than inheriting this
+factor.
 
 Enumeration and clock resolution run once, offline, against an elaborated design,
 and their output is an explicit per-block file of constraint calls that is reviewed
