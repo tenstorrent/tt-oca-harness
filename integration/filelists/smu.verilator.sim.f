@@ -825,7 +825,7 @@ hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
-hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv
+hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
 // Package(tt-oca-harness) Target(any(dtp, sep))
 hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
@@ -1187,7 +1187,7 @@ hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
 hw/sys/sep/rtl/aes_wrapper.sv
-hw/sys/sep/rtl/sep_local_axi_xbar.sv
+hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
 hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
 hw/sys/sep/rtl/hmac_wrapper.sv
@@ -1202,7 +1202,7 @@ hw/sys/sep/rtl/sep_dma_wrap.sv
 hw/sys/sep/rtl/sep_entropy_fifo.sv
 hw/sys/sep/rtl/sep_io.sv
 hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
-hw/sys/sep/rtl/sep_local_axi_xbar_wrapper.sv
+hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_wrapper.sv
 hw/sys/sep/rtl/sep_ot_spi_wrap.sv
 hw/sys/sep/rtl/sep_isolate_rst_seq.sv
 hw/sys/sep/rtl/sep_reset_ctrl.sv
@@ -1211,7 +1211,7 @@ hw/sys/sep/rtl/sep_sram.sv
 hw/sys/sep/rtl/sep_sram_interface_shim.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv
-hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
+hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_wrapper.sv
 hw/sys/sep/rtl/sep_tcm_wrapper.sv
 hw/sys/sep/rtl/sep_wdt_wrap.sv
 vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_defines_pkg.sv

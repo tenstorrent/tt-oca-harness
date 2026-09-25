@@ -68,11 +68,11 @@ hierarchy = "smu_wrapper_uvm_top.u_smu_rst_fcov.c_cold_reset_async_assert_withou
 [[holes]]
 id = "fcov-smu-c_axi_in_bresp_exokay"
 title = "c axi in bresp exokay"
-category = "missing_stimulus"
+category = "unreachable"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+rationale = "no subordinate behind the SMU crossbar answers an exclusive access: every AXI interconnect in the SEP and SMC is built without atomics and the memory adapters tie exokay off, so EXOKAY cannot appear on ext_in"
 owner = "smu-dv"
 reviewer = "smu-dv"
 date = "2026-09-11"
@@ -86,11 +86,11 @@ hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_bresp_exokay"
 [[holes]]
 id = "fcov-smu-c_axi_in_rresp_exokay"
 title = "c axi in rresp exokay"
-category = "missing_stimulus"
+category = "unreachable"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+rationale = "no subordinate behind the SMU crossbar answers an exclusive access: every AXI interconnect in the SEP and SMC is built without atomics and the memory adapters tie exokay off, so EXOKAY cannot appear on ext_in"
 owner = "smu-dv"
 reviewer = "smu-dv"
 date = "2026-09-11"
@@ -136,42 +136,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.g_sep__DOT__c_map_sep_base_programmed"
-
-[[holes]]
-id = "fcov-smu-c_alias_base_address_remapped"
-title = "alias base address remapped"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - the point needs a SEP transfer at the alias window's first byte, SEP-view 0x4000_0000, which is SMC WDT0's first register; the SEP firmware images the all group loads use the CPU_CTRL and SRAM aliases above it (sep_smc_bringup.h). The anchor is a SEP-firmware leaf on this bench, smu_sep_bidirect_test being the nearest (SMU-ALIAS.S2:alias-base-address-remapped)"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-23"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_wrapper_uvm_top.u_smu_alias_fcov.g_sep__DOT__c_alias_base_address_remapped"
-
-[[holes]]
-id = "fcov-smu-c_alias_top_address_remapped"
-title = "alias top address remapped"
-category = "coverage_model_gap"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "the point compares the transfer address with the window's last byte, SEP-view 0x7FFF_FFFF, which only a byte-sized access can present; an aligned word access to the last word starts at 0x7FFF_FFF8 and never matches. The window's top also lies past every SMC-side mapping, so the access answers DECERR. The point wants the last-word form smc_map_fcov uses (in_win over the last eight bytes) before a leaf can be asked to walk it (SMU-ALIAS.S2:alias-top-address-remapped)"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-23"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_wrapper_uvm_top.u_smu_alias_fcov.g_sep__DOT__c_alias_top_address_remapped"
 
 [[holes]]
 id = "fcov-smu-c_map_smc_size_zero"

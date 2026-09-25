@@ -146,7 +146,10 @@ jobs:
             printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
           fi
           exit 0
+      # The Checks API post is advisory. Verilator's exit status, gated
+      # below, fails the job.
       - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
         with:
           log-file: verilator_${{ matrix.block }}.sarif
           format: sarif
@@ -187,7 +190,10 @@ jobs:
             printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
           fi
           exit 0
+      # The Checks API post is advisory. Ruff's exit status, gated below,
+      # fails the job.
       - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
         with:
           log-file: ruff.sarif
           format: sarif

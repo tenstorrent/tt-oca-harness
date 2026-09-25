@@ -120,6 +120,9 @@ stubs = [
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
+  # ocah_open_drain_bus.sv must precede tb/tb_wrapper_top.sv, which
+  # instantiates it.
+  "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
   # axi_cut (+ its spill_register deps) registers the ext_out channels at the
   # boundary, ahead of the responder in tb_wrapper_top.sv. Two things it
   # buys: the crossbar's ext_out aw_valid does not settle until late in the

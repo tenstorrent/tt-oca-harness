@@ -21,7 +21,13 @@ import cross_trigger_matrix_reg as _ctm_reg
 import cross_trigger_network_reg as _ctn_reg
 import cross_trigger_port_reg as _ctp_reg
 
-from .dtp_dv_cfg import DTP_NUM_XTRIG_CTP, DTP_NUM_XTRIG_INT_CT
+from .dtp_dv_cfg import (
+    DTP_CT_DST_LATENCY,
+    DTP_NUM_XTRIG_CTP,
+    DTP_NUM_XTRIG_INT_CT,
+    DTP_WIRE_OR_ASSERT,
+    DTP_WIRE_OR_PULL,
+)
 
 _RESERVED_FIELD_RE = re.compile(r"^(?:rsvd|reserved)(?:_\d+)?$")
 
@@ -74,10 +80,6 @@ XTRIG_CTP_STRIDE = _ctn_reg.CTP_1__REG_MAP_BASE_ADDR - _ctn_reg.CTP_0__REG_MAP_B
 XTRIG_CSR_END = XTRIG_CTP_BASE + (XTRIG_NUM_CTP * XTRIG_CTP_STRIDE)
 XTRIG_UNMAPPED_BASE = XTRIG_CSR_END
 
-# Read data the crossbar's error subordinate returns alongside DECERR on an
-# unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
-XTRIG_DECERR_DATA = 0xBADC_AB1E
-
 XTRIG_CTP_CONFIG_OFFSET = _ctp_reg.CONFIG_REG_OFFSET
 XTRIG_CTP_STATUS_OFFSET = _ctp_reg.STATUS_REG_OFFSET
 XTRIG_CTP_STRETCH_MULT_OFFSET = _ctp_reg.STRETCH_MULT_REG_OFFSET
@@ -91,6 +93,12 @@ XTRIG_CTP_STRETCH_MASK = _CTP_STRETCH["stretch_mult"]
 # CONFIG.MODE encoding (cross_trigger_port.rdl): 0 wire-OR, 1 point-to-point.
 XTRIG_CTP_MODE_WIRE_OR = 0
 XTRIG_CTP_MODE_P2P = 1
+
+# Shared-wire polarity per CONFIG.INVERT and the receive latency of a port
+# (dtp_dv_cfg, checked against dtp_dv_cfg_pkg at bring-up).
+XTRIG_WIRE_OR_PULL = DTP_WIRE_OR_PULL
+XTRIG_WIRE_OR_ASSERT = DTP_WIRE_OR_ASSERT
+XTRIG_CT_DST_LATENCY = DTP_CT_DST_LATENCY
 
 XTRIG_CTP_STATUS_BUSY = _CTP_STATUS["busy"]
 XTRIG_CTP_STATUS_REQ_OUT = _CTP_STATUS["req_out"]
@@ -229,6 +237,11 @@ class DtpXtrigCtpShadow:
     @property
     def invert_mask(self) -> int:
         return sum(1 << i for i, inv in enumerate(self.inverts) if inv)
+
+    @property
+    def wire_pull_mask(self) -> int:
+        """Rest level of every CTP's private wire: the pull of the board built for its INVERT."""
+        return sum(XTRIG_WIRE_OR_PULL[inv] << i for i, inv in enumerate(self.inverts))
 
 
 class DtpCtmRefModel:

@@ -246,7 +246,6 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | `fw` | firmware class: the fourteen CPU-boot leaves whose image `c_compile` builds |
 | `dual` | SMC_DUAL class: the three `target = "dual"` leaves, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
-| `rtl_issue` | filed-defect reproducers graded under `expect_fail`; the weekly tier's own row; not in `all` |
 | `occp_boot`, `occp_dual`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
 
 Every leaf outside `all` is defined in `testlists/holdout.toml`, which states

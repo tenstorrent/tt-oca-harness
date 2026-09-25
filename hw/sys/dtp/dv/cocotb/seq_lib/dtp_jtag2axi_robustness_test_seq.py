@@ -553,6 +553,13 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 expected,
                 context=f"mixed.bad_read.{target}",
             )
+            await self.write_target_single_expect_status(
+                target,
+                bad_addr,
+                rng.getrandbits(self.target_cfg(target).data_width),
+                expected,
+                context=f"mixed.bad_write.{target}",
+            )
             await self.read_target_single_and_check(
                 target,
                 good_addr,

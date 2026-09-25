@@ -7,13 +7,6 @@ package smu_pkg;
 
   import dtp_pkg::*;
 
-  // Full AXI address width for SEP-to-SMC paths (matches smc_pkg / sep_pkg 56-bit fabric)
-  localparam int unsigned AXI_ADDR_WIDTH = 56;
-
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_BASE = 56'h4000_0000;
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_SIZE       = 56'h4000_0000; // 1GB region for SEP-to-SMC accesses
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_ALIAS_BASE = 56'h0000_0000; // Alias to start of SMC address space
-
   localparam int unsigned XTRIG_SMC_INT_CT_LANES = 2;
   localparam int unsigned XTRIG_SMC_CLK_STOP_LANES = 1;
   localparam int unsigned XTRIG_INT_CT_MODE_WIDTH = 32;

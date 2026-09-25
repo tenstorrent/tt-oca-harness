@@ -37,9 +37,10 @@ vendor_package:
     target_dir: vendor/lowRISC/opentitan/upstream
     upstream: { git: "https://github.com/tenstorrent/tt-opentitan.git", rev: "d1ce369cb357a7a4718c75f11567742a78a7ed07" }
     include_from_upstream:
-      # Core reference figures used by the SEP documentation.
+      # Core reference figures used by the TRM.
       - "hw/ip/aes/doc/aes_block_diagram.svg"
       - "hw/ip/hmac/doc/hmac_block_diagram.svg"
+      - "hw/ip/i2c/doc/i2c_block_diagram.svg"
       - "hw/ip/kmac/doc/kmac-block-diagram.svg"
       - "hw/ip/otbn/doc/otbn_blockarch.svg"
       - "hw/ip/dma/doc/block_diagram.svg"
@@ -335,6 +336,7 @@ vendor_package:
     include_from_upstream:
       - "LICENSE"
       - "src"
+      - "doc/source/img/hc_top_level_arch.png"
     exclude_from_upstream:
       - "src/i3c_wrapper.sv"
       - "src/libs/mem"
@@ -577,7 +579,7 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
-      - hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv
+      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
   - target: any(dtp, sep)
     files:
@@ -632,6 +634,12 @@ sources:
     files:
       - hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/ocah_prim/rtl/prim_apb_arb.sv
+      # prim_apb_mux_struct.sv is deliberately not listed. It sizes its localparams
+      # with $bits(req_t'(0).paddr); VCS rejects that cast-then-member-select in a
+      # parameter port list, in both V-2023.12-SP2-9 and X-2025.06, though slang and
+      # Verilator accept it. Nothing in this tree or nonfree instantiates the
+      # module, and the file is intentionally kept unpatched, so listing it here
+      # would only break every VCS flow that consumes bender's raw output.
       - hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
       - hw/common/ocah_prim/rtl/prim_axi_id_converter.sv
       - hw/common/ocah_prim/rtl/prim_axi_id_prepend_wrap.sv
@@ -987,7 +995,7 @@ sources:
       - hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
       - hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
       - hw/sys/sep/rtl/aes_wrapper.sv
-      - hw/sys/sep/rtl/sep_local_axi_xbar.sv
+      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
       - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
       - hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
       - hw/sys/sep/rtl/hmac_wrapper.sv
@@ -1002,7 +1010,7 @@ sources:
       - hw/sys/sep/rtl/sep_entropy_fifo.sv
       - hw/sys/sep/rtl/sep_io.sv
       - hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
-      - hw/sys/sep/rtl/sep_local_axi_xbar_wrapper.sv
+      - hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_ot_spi_wrap.sv
       - hw/sys/sep/rtl/sep_isolate_rst_seq.sv
       - hw/sys/sep/rtl/sep_reset_ctrl.sv
@@ -1011,7 +1019,7 @@ sources:
       - hw/sys/sep/rtl/sep_sram_interface_shim.sv
       - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv
       - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv
-      - hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
+      - hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_wrapper.sv
       - hw/sys/sep/rtl/sep_tcm_wrapper.sv
       - hw/sys/sep/rtl/sep_wdt_wrap.sv
       # =====================================================================

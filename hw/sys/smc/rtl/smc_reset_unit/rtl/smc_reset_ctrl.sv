@@ -69,15 +69,16 @@ module smc_reset_ctrl (
   always @(posedge clk_ref_i or negedge powergood_stable) begin
     if (~powergood_stable) begin
       cold_rst_deglitch_shift_reg_n0_scan <= '0;
+      cold_rst_deglitch_to_rstbypass      <= 1'b0;
     end else begin
       cold_rst_deglitch_shift_reg_n0_scan <= {
         cold_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0], rst_cold_ni
       };
+      cold_rst_deglitch_to_rstbypass <= |{
+        cold_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0], rst_cold_ni
+      };
     end
   end
-
-  // Only pass reset once all shift registers are 0, meaning it has been in asserted for 32 cycles
-  assign cold_rst_deglitch_to_rstbypass = |cold_rst_deglitch_shift_reg_n0_scan;
 
   prim_rst_mux2_hf_n u_cold_rst_pre_extend_rstbypass (
     .rst0_ni(cold_rst_deglitch_to_rstbypass),
@@ -119,20 +120,69 @@ module smc_reset_ctrl (
   always @(posedge clk_ref_i or negedge powergood_stable) begin
     if (~powergood_stable) begin
       cool_rst_deglitch_shift_reg_n0_scan <= '0;
+      stable_cool_rst_n                   <= 1'b0;
     end else begin
       cool_rst_deglitch_shift_reg_n0_scan <= {
         cool_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0], rst_cool_from_pin_ni
       };
+      stable_cool_rst_n <= |{
+        cool_rst_deglitch_shift_reg_n0_scan[RESET_DEGLITCH_WIDTH-2:0],
+        rst_cool_from_pin_ni
+      };
     end
   end
 
-  assign stable_cool_rst_n = |cool_rst_deglitch_shift_reg_n0_scan;
-
-
   // Final reset outputs
-  wire wdt_reset_n = rst_ext_wdt_ni && ~smc_wdt_second_timeout_i;
-  assign rst_primary_no = stable_cold_rst_n && stable_cool_rst_n && rst_cool_from_flr_ni;
-  assign rst_warm_no = wdt_reset_n && rst_primary_no && fuse_reset_ni;
+  logic smc_wdt_second_timeout_n;
+  logic wdt_reset_n;
+  logic rst_primary_cold_cool_n;
+  logic rst_warm_wdt_primary_n;
+
+  prim_inv u_smc_wdt_timeout_inv (
+    .in_i  (smc_wdt_second_timeout_i),
+    .out_o (smc_wdt_second_timeout_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_smc_wdt_reset_and (
+    .in0_i (rst_ext_wdt_ni),
+    .in1_i (smc_wdt_second_timeout_n),
+    .out_o (wdt_reset_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_primary_cold_cool_and (
+    .in0_i (stable_cold_rst_n),
+    .in1_i (stable_cool_rst_n),
+    .out_o (rst_primary_cold_cool_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_primary_flr_and (
+    .in0_i (rst_primary_cold_cool_n),
+    .in1_i (rst_cool_from_flr_ni),
+    .out_o (rst_primary_no)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_warm_wdt_primary_and (
+    .in0_i (wdt_reset_n),
+    .in1_i (rst_primary_no),
+    .out_o (rst_warm_wdt_primary_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_rst_warm_fuse_and (
+    .in0_i (rst_warm_wdt_primary_n),
+    .in1_i (fuse_reset_ni),
+    .out_o (rst_warm_no)
+  );
+
   assign rst_wdt_no = wdt_reset_n;
 
   assign stable_cold_rst_no = stable_cold_rst_n;

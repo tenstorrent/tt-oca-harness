@@ -234,8 +234,8 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN2, SCRATCH_WARM[0]=WARM_PATTERN2.
         # resense() pulses rst_ni low->high and re-gates fuse-sense; the clocks keep
         # running and the cocotb-driven idle defaults persist across the pulse. Both
-        # banks' arst_n deasserts on rst_ni (cold: rst_ni; warm: rst_ni && rst_warm_ni),
-        # so both must return to the reset default.
+        # banks' arst_n asserts on cold reset (cold: rst_ni; warm: rst_warm_ni,
+        # which already includes rst_ni), so both must return to the reset default.
         # Re-arm BOTH banks first. The warm reset above cleared warm[1..7] and only
         # warm[0] was rewritten, so without this the cold-reset assertion on those
         # seven is satisfied by state the warm reset already produced and cannot

@@ -284,7 +284,8 @@ class smu_base_test(uvm_test):
         "tb_gpio0_drive_val",
         "tb_gpio_drive_en",
         "tb_gpio_drive_val",
-        "tb_xtrig_ctp_req_out_din",
+        "tb_xtrig_ctp_wire_ext_assert",
+        "tb_xtrig_ctp_wire_group",
         "tb_xtrig_ctp_req_in_din",
         "tb_xtrig_ctp_ack_in_din",
     )
@@ -295,6 +296,14 @@ class smu_base_test(uvm_test):
             handle = getattr(dut, name, None)
             if handle is not None:
                 handle.value = 0
+        # CT_Req_out wire-OR board: every private wire and the group wire rest
+        # at the pull-up of the reset-default INVERT=0, no chiplet pulling.
+        wire_pull = getattr(dut, "tb_xtrig_ctp_wire_pull", None)
+        if wire_pull is not None:
+            wire_pull.value = (1 << len(wire_pull)) - 1
+        wire_group_pull = getattr(dut, "tb_xtrig_ctp_wire_group_pull", None)
+        if wire_group_pull is not None:
+            wire_group_pull.value = 1
 
     def start_clocks(self) -> None:
         dut = cocotb.top
@@ -535,6 +544,10 @@ class smu_base_test(uvm_test):
         await self.bring_up()
         try:
             await self.run_scenario()
+            # A cover property samples a handshake at one clock and records it at
+            # the next; a scenario whose last access completes in its final cycle
+            # loses that record if the run ends in the same time step.
+            await ClockCycles(cocotb.top.clk_smu_i, 2)
             if self.use_shared_env:
                 self.env.scoreboard.prove_mapped_features()
             else:

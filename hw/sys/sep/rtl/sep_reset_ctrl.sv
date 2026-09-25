@@ -61,13 +61,21 @@ module sep_reset_ctrl (
 );
   // Internal reset signal (after JTAG override) for efuse sensing being done
   logic sep_reset_n;
+  logic sep_cpu_func_reset_n;
   // CPU reset = sep_reset_n gated with the Aggregated WDT Resets from SMC and SEP
   prim_and2 #(
     .Width(1)
   ) u_sep_cpu_rst_and (
     .in0_i (sep_reset_n),
     .in1_i (wdt_rst_ni),
-    .out_o (sep_cpu_reset_no)
+    .out_o (sep_cpu_func_reset_n)
+  );
+
+  prim_rstbypass_stdmux2 u_sep_cpu_rst_scan_bypass (
+    .rst_ni      (sep_cpu_func_reset_n),
+    .test_rst_ni (scan_rst_ni),
+    .test_mode_i (test_en_i),
+    .rst_no      (sep_cpu_reset_no)
   );
 
   // =========================================================================

@@ -10,9 +10,12 @@ and ``NUM_INT_CT`` 10; the clock-stop request count is that table's
 ``NUM_CLK_STOP_REQ``. The STAP count, the IC_RESET slice widths, the
 instruction enables, the IDCODE fields, and the version are the bench's
 choice, published by the DUT through JTAG_CAPS ("JTAG Capabilities" table,
-PTAP document) and IDCODE. ``DtpTbIf.check_dv_cfg`` compares every value in
-``DV_CFG_PARITY`` with the copy ``dtp_tb_if`` publishes from the
-SystemVerilog package, so the two tables cannot drift apart.
+PTAP document) and IDCODE; the IDCODE fields and the version differ from the
+``dtp`` parameter defaults. The JTAG2AXI bridge geometry is ``dtp_types``'s
+table, republished here so the parity check covers it.
+``DtpTbIf.check_dv_cfg`` compares every value in ``DV_CFG_PARITY`` with the
+copy ``dtp_tb_if`` publishes from the SystemVerilog package, so the two tables
+cannot drift apart.
 """
 
 from __future__ import annotations
@@ -21,9 +24,23 @@ import re
 
 import cross_trigger_network_reg as _ctn_reg
 
+from .dtp_types import (
+    DTP_OTP_AXIL_ADDR_WIDTH,
+    DTP_OTP_AXIL_DATA_WIDTH,
+    DTP_SEP_OTP_RD_PL_DEPTH,
+    DTP_SEP_OTP_WR_PL_DEPTH,
+    DTP_SMC_AXI_ADDR_WIDTH,
+    DTP_SMC_AXI_DATA_WIDTH,
+    DTP_SMC_OTP_RD_PL_DEPTH,
+    DTP_SMC_OTP_WR_PL_DEPTH,
+    DTP_SMC_RD_PL_DEPTH,
+    DTP_SMC_WR_PL_DEPTH,
+)
+
 __all__ = [
     "DTP_BSR_ENABLE",
     "DTP_CLAMP_ENABLE",
+    "DTP_CT_DST_LATENCY",
     "DTP_DEFAULT_IDCODE",
     "DTP_EXTEST_PULSE_ENABLE",
     "DTP_EXTEST_TRAIN_ENABLE",
@@ -43,11 +60,23 @@ __all__ = [
     "DTP_NUM_XTRIG_CTP",
     "DTP_NUM_XTRIG_INT_CT",
     "DTP_OCH_VER",
+    "DTP_OTP_AXIL_ADDR_WIDTH",
+    "DTP_OTP_AXIL_DATA_WIDTH",
     "DTP_RUNBIST_ENABLE",
+    "DTP_SEP_OTP_RD_PL_DEPTH",
+    "DTP_SEP_OTP_WR_PL_DEPTH",
+    "DTP_SMC_AXI_ADDR_WIDTH",
+    "DTP_SMC_AXI_DATA_WIDTH",
+    "DTP_SMC_OTP_RD_PL_DEPTH",
+    "DTP_SMC_OTP_WR_PL_DEPTH",
+    "DTP_SMC_RD_PL_DEPTH",
+    "DTP_SMC_WR_PL_DEPTH",
     "DTP_SEP_DBG_ENABLE",
     "DTP_SMC_DBG_ENABLE",
     "DTP_STAP_IO_ENABLE",
     "DTP_TMP_ENABLE",
+    "DTP_WIRE_OR_ASSERT",
+    "DTP_WIRE_OR_PULL",
     "DV_CFG_PARITY",
 ]
 
@@ -71,6 +100,17 @@ DTP_NUM_CLK_STOP_REQ = 9
 # Bit per internal port: 0 = pulse mode, where the acknowledge is unused.
 DTP_INT_CT_MODE = 0
 
+# Wire-OR shared-wire polarity per CONFIG.INVERT (cross_trigger_port.rdl):
+# INVERT=0 is an active-low wire with a pull-up, INVERT=1 an active-high wire
+# with a pull-down. A port receives a trigger when its synchronized wire moves
+# from the pull level to the asserted level.
+DTP_WIRE_OR_PULL = {0: 1, 1: 0}
+DTP_WIRE_OR_ASSERT = {0: 0, 1: 1}
+# Clock edges from the edge at which a wire-OR receive input moves to the edge
+# at which the port's ct_dst is high: the two synchronizer stages and the
+# registered ct_dst output.
+DTP_CT_DST_LATENCY = 3
+
 # JTAG interface unit and PTAP configuration.
 DTP_NUM_EXTRA_STAPS = 1
 DTP_BSR_ENABLE = 1
@@ -93,10 +133,10 @@ DTP_IC_RESET_INSTR_ENABLE = int(
     (DTP_NUM_SMC_IC_RESET + DTP_NUM_SEP_IC_RESET + DTP_NUM_EXT_IC_RESET) > 0
 )
 
-DTP_IDCODE_MFR_ID = 0x000
-DTP_IDCODE_PART_NUM = 0x0000
-DTP_IDCODE_SI_REV = 0x0
-DTP_OCH_VER = 0
+DTP_IDCODE_MFR_ID = 0x2A5
+DTP_IDCODE_PART_NUM = 0xD7B1
+DTP_IDCODE_SI_REV = 0x9
+DTP_OCH_VER = 0x5C
 # IEEE 1149.1 device identification: version, part number, manufacturer, and
 # the fixed marker bit.
 DTP_DEFAULT_IDCODE = (
@@ -115,4 +155,17 @@ DV_CFG_PARITY: dict[str, int] = {
     "cfg_num_ext_ic_reset": DTP_NUM_EXT_IC_RESET,
     "cfg_och_ver": DTP_OCH_VER,
     "cfg_idcode": DTP_DEFAULT_IDCODE,
+    "cfg_wire_or_pull": (DTP_WIRE_OR_PULL[1] << 1) | DTP_WIRE_OR_PULL[0],
+    "cfg_wire_or_assert": (DTP_WIRE_OR_ASSERT[1] << 1) | DTP_WIRE_OR_ASSERT[0],
+    "cfg_ct_dst_latency": DTP_CT_DST_LATENCY,
+    "cfg_smc_axi_addr_width": DTP_SMC_AXI_ADDR_WIDTH,
+    "cfg_smc_axi_data_width": DTP_SMC_AXI_DATA_WIDTH,
+    "cfg_otp_axil_addr_width": DTP_OTP_AXIL_ADDR_WIDTH,
+    "cfg_otp_axil_data_width": DTP_OTP_AXIL_DATA_WIDTH,
+    "cfg_smc_otp_rd_pl_depth": DTP_SMC_OTP_RD_PL_DEPTH,
+    "cfg_smc_otp_wr_pl_depth": DTP_SMC_OTP_WR_PL_DEPTH,
+    "cfg_sep_otp_rd_pl_depth": DTP_SEP_OTP_RD_PL_DEPTH,
+    "cfg_sep_otp_wr_pl_depth": DTP_SEP_OTP_WR_PL_DEPTH,
+    "cfg_smc_rd_pl_depth": DTP_SMC_RD_PL_DEPTH,
+    "cfg_smc_wr_pl_depth": DTP_SMC_WR_PL_DEPTH,
 }

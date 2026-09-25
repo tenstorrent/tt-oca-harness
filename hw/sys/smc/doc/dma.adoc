@@ -160,15 +160,15 @@ treat the remaining banks as reserved.
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Transfer Type |Description
-|Linear Transfers |Straightforward source-to-destination data movement
+|Linear Transfers |One `LENGTH`-byte copy; program `REPS_2` = 1
 
 |2D Transfers |Rectangular data blocks with configurable
 source/destination stride
 
 |Repeat Patterns |Configurable repeat count for repetitive operations
 
-|Scatter-Gather |No hardware descriptor-chain fetcher in this integration.
-Software submits separate register-programmed requests for unrelated regions
+|Scatter-Gather |Strided only: independent source and destination
+strides gather or scatter evenly spaced blocks. No descriptor-list fetcher
 |=======================================================================
 
 === Command Processing
@@ -177,6 +177,10 @@ Software programs the shared source, destination, length, stride, and
 repetition registers. Reading `NEXT_ID_0` submits that configuration to the
 2D midend, which expands the repetitions into linear backend requests.
 No memory-resident descriptor chain is fetched or interpreted.
+
+Every transfer, linear included, needs `CONF.ENABLE_ND` = 1 and `REPS_2` >= 1.
+Otherwise the midend issues no request and completes the command with an
+error.
 
 FIFO buffering between the frontend and midend ensures pipelined
 operation, while back-pressure handling absorbs system overloads without
