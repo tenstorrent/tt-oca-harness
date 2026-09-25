@@ -1049,6 +1049,7 @@ Drive `smc_avsbus_status_depth_test_seq`. Each checker below is a named compare 
 
 * DMA source-to-destination payload check through the output-fabric responder.
 * A second descriptor with LENGTH = 1 separates "the programmed length was honoured" from "a whole 64-bit beat was copied": the destination word's upper seven bytes must still read the poison this leg wrote.
+* A third descriptor with LENGTH = 32 moves four full-width beats as one burst per direction: the destination is poisoned beat by beat with bytes that differ from the source in every lane, so a burst that repeats, drops or misplaces a beat fails on the bytes, and the address-channel tally requires exactly one read burst and one write burst.
 * The SYS_OUT responder is shared, and the pass-all outbound filter this sequence programs lets other masters' traffic complete on it, so each leg's traffic is counted per address from the address-channel handshake of its own transaction rather than from the responder's global transaction counters.
 
 *Test Procedure*:
@@ -1065,7 +1066,7 @@ Drive `smc_dma_sanity_test_seq`. Each checker below is a named compare the DUT c
 |===
 
 
-*Pass Criteria*: both copies match their expected destination words, the LENGTH = 1 leg leaves the destination's upper seven bytes at the poison, and each leg addressed the SYS_OUT responder exactly once per direction. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all three copies match their expected destination bytes, the LENGTH = 1 leg leaves the destination's upper seven bytes at the poison, and each leg addressed the SYS_OUT responder exactly once per direction. Enrolled in: `all`, `hosted`.
 '''''
 
 [[sec-014-smc_octs_dual_sync_test]]
@@ -2088,6 +2089,7 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 * The pre-admit SYS_IN read is issued with the error response tolerated and its response is reported, not asserted: the specification leaves the reset state of the sixteen inbound entries to the chiplet integration, so no verdict is claimed on it.
 * The inbound filter decides each direction from its own request, with block-by-default when nothing matches, so the write and read channels of the port are driven together: four interleaved passes go out as one outstanding group, SEP_IN seeds the read sources and reads the write targets back, and the filter is observed admitting both directions in the same cycle.
 * Every inbound port of this bench carries an agent, so the "unused port tied idle" cell cannot be driven here.
+* Through the admitted entry a 2-beat and a 16-beat INCR burst of full-width beats are written into the SPM and each read back in order as one burst, and a read of the last page of `ecam_region`, a generated-map region with no block behind it, must answer DECERR, so the port carries bursts and decode errors, not only single-beat register accesses.
 
 *Test Procedure*:
 
@@ -2102,6 +2104,7 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 |`CHK-SYS-AXI-IN-WRITE` |A `sys_axi_in` write of the scratch pattern was read back exactly over SEP_IN and over `sys_axi_in`, and the scoreboard had completed exactly the expected number of SYS_IN and SEP_IN accesses
 |`CHK-SYS-AXI-IN-NOT-CLOSED` |A recorded gap, not a compare: the unused-port-tied-idle cell, with the reason -- every inbound port of this bench carries an agent and none is tied to zero. Logged unconditionally
 |`CHK-SYS-AXI-IN-PORT` |Ledger line in the leaf: the SYS_IN read value, the scratch readback and the SEP_IN access count, logged after the leaf requires both SYS_IN reads to have been captured. The compares are the sequence's and the scoreboard's
+|`CHK-SYS-AXI-IN-BURST` |The AxLEN=1 and AxLEN=15 INCR bursts written over `sys_axi_in` read back as exact scoreboard compares, and the unimplemented-region read is compared against DECERR by the sequence; the run fails if either mismatches
 |`CHK-SYS-AXI-IN-DUPLEX` |The interleaved write/read group over `sys_axi_in`: every read returned the word SEP_IN seeded and the write targets held the last pass, and the inbound filter was observed admitting both directions in at least one cycle -- both filter hits set with neither isolate -- so a run whose two channels never overlapped fails
 |===
 
@@ -2125,6 +2128,7 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 * Narrow reads return the addressed lanes of the same word, so the strobe placement is shown on both directions.
 * An AxLEN=1 INCR burst is split into consecutive single-beat accesses: the two beats land in two consecutive scratch registers, are read back individually and again as one two-beat burst read, so a beat dropped, merged or reordered fails an exact compare.
 * FIXED and WRAP multi-beat bursts: `fabric.adoc` does not state how the SEP_IN path answers a burst type it does not support, so the expectation is the DV-owned one for a refused write -- an AXI error response of either kind, never OKAY and never a wedge -- and both target registers must still hold the values the INCR burst left, so a path that errored the response while still writing is caught. The error code returned is reported, not asserted. Spec gap for the plan owner: a fabric statement fixing the response to an unsupported burst would let this leg hold an exact code.
+* A 16-beat INCR burst of full-width beats into the SPM: every beat lands at its own address, read back at both ends and as one 16-beat read, so a splitter that drops, repeats or reorders beats past the first few is caught. A 2-beat FIXED burst of full-width beats to the scratch registers carries the words they already hold, so whether the path stores or refuses it the readbacks still test the INCR result; its response is reported, not asserted.
 * Both scratch registers are restored to zero before the sequence ends.
 
 *Test Procedure*:
@@ -2139,9 +2143,10 @@ Drive `smc_sep_in_axi_shape_test_seq` on the SEP_IN AXI sequencer: seed a scratc
 |`CHK-SEP-IN-NARROW-STROBES` |The seeded word, the word after the one-byte write and the word after the two-byte write are exact scoreboard compares, as are the narrow reads of the same lanes; a strobe the fabric ignored or widened fails one of them
 |`CHK-SEP-IN-BURST-INCR` |The two beats of the AxLEN=1 INCR write are read back from their own registers and again as one AxLEN=1 read, all exact compares
 |`CHK-SEP-IN-BURST-UNSUPPORTED` |The FIXED and the WRAP burst each answered an AXI error response -- the scoreboard fails an OKAY or a timed-out access marked expect-error -- and both registers still read the values the INCR burst left; the error code is reported, not asserted
+|`CHK-SEP-IN-BURST-LONG` |The first and last beat of the AxLEN=15 INCR write are read back from their own SPM addresses and the AxLEN=15 read returns every beat in order, all as exact scoreboard compares; the response of the 8-byte FIXED burst is reported
 |===
 
-*Pass Criteria*: every narrow and burst readback matches its exact expectation, the two rejected burst types answer an error response without changing either register, and the scoreboard books at least the expected number of value compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: every narrow and burst readback matches its exact expectation, the two rejected burst types answer an error response without changing either register, the 16-beat burst reads back in order, and the scoreboard books at least the expected number of value compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
