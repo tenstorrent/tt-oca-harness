@@ -702,7 +702,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_core_enable</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_core_enable_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -711,7 +711,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_enable</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_enable_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -720,7 +720,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_en</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -729,7 +729,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_wr_en</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_wr_en_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -738,7 +738,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_addr</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_addr_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[6:0]</code></p></td>
@@ -747,7 +747,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_wdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_wdata_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
@@ -756,7 +756,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_rdata</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_uncore_rdata_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
@@ -765,7 +765,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_active</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dmi_active_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -774,7 +774,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_trace</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_trace_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_cpu_trace_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -801,7 +801,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_id_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:1]</code></p></td>
@@ -810,7 +810,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_int_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -819,7 +819,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soft_int</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soft_int_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -828,7 +828,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>extintsrc_req</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>extintsrc_req_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXTERNAL_IRQS-1:0]</code></p></td>
@@ -855,7 +855,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_req</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -864,7 +864,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_rsp</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -873,7 +873,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_boot_rom_req</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_boot_rom_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -882,7 +882,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_boot_rom_rsp</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_boot_rom_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_sram_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -954,7 +954,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_req</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -963,7 +963,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_rsp</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_imem_sram_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -972,7 +972,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_req</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -981,7 +981,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_rsp</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_crypto_pka_dmem_sram_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
