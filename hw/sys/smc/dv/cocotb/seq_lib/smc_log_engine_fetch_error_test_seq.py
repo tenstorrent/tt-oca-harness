@@ -25,6 +25,15 @@ disabled only after that clear. The vendored arbiter's `ReqStaysHighUntilGranted
 assumption forbids withdrawing an ungranted request, which disabling the
 engine or zeroing the length mid-log would do.
 
+A third leg starves the write side of its next word. The engine fetches one
+word at a time into a FIFO that runs ahead of the UART, so from local memory
+the next word is always waiting when a word's last byte leaves. Here the log
+sits in the output-fabric window, and the responder's R channel is held once
+the first fetch has returned: the engine writes that word's eight bytes and
+then waits for a word the FIFO does not have. Once all eight bytes have come
+back through the loopback, with exactly one fetch returned, the hold is
+released, and all sixteen bytes must arrive in order with no error status.
+
 The companion `LOG_WRITE_ERR` has no bus to come from: the engine's write port
 reaches only its own wrapper's UART register blocks, which answer every
 address without error. Its status is set instead through `INTR_TEST`
@@ -36,8 +45,10 @@ clear the status and drop the line.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
+from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from ._one_shot import _OneShot
 from .smc_addr_map import UART_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_log_engine_utils import (
@@ -56,6 +67,17 @@ from .smc_log_engine_utils import (
     uart_base,
     uart_reg,
 )
+from .smc_output_fabric_vip_utils import (
+    OUTBOUND0_END,
+    OUTBOUND0_FILTER_CONFIG,
+    OUTBOUND0_START,
+    OUTPUT_FABRIC_ADDR,
+    OUTPUT_FABRIC_MODEL_BASE,
+    OUTPUT_FABRIC_MODEL_REGION,
+    OUTPUT_FABRIC_MODEL_SIZE,
+    PASS_ALL_CONFIG,
+    output_responder_counts,
+)
 from .smc_regblock_field_sweep_utils import array_reg_instances
 
 WRAP = 0
@@ -72,6 +94,10 @@ REGION_SIZE = 0x100
 LOG_BYTES = 8
 POLL_LIMIT = 400
 POLL_CYCLES = 50
+#: A two-word log in the output-fabric window for the starved-fetch leg.
+STARVED_REGION = OUTPUT_FABRIC_ADDR + 0x3000
+STARVED_WORDS = (0x4847_4645_4443_4241, 0x5057_5655_5453_5251)
+WORD_BYTES = 8
 
 
 class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
@@ -196,6 +222,94 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
             "its written one cleared it and the line dropped"
         )
 
+    async def _fabric_write(self, addr: int, value: int) -> None:
+        item = SmcSysAxiItem(f"fabric_preload_0x{addr:x}")
+        item.op = SmcSysAxiOp.WRITE
+        item.addr = addr
+        item.length = WORD_BYTES
+        item.wdata = value
+        await _OneShot(item, f"fabric_preload_0x{addr:x}_os").start(
+            self.env.jtag_axi_agent.sequencer
+        )
+        assert item.resp_code == 0, f"preload of 0x{addr:08x} answered {item.resp_code}"
+
+    async def _read_byte(self, label: str) -> int:
+        for _ in range(POLL_LIMIT):
+            lsr = await self.csr_read(f"{label}_LSR", uart_reg(WRAP, "LSR"))
+            if lsr & LSR_DR:
+                return (await self.csr_read(f"{label}_RBR", uart_reg(WRAP, "RBR"))) & 0xFF
+            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+        raise AssertionError(f"{label}: no byte reached the looped-back receiver")
+
+    async def _hold_after_first_fetch(self, base_reads: int) -> None:
+        """Hold the output responder's R channel once the first fetch has returned.
+
+        The counter moves on the edge that completes the first read; the hold is
+        applied at the falling edge after it, before the engine can have issued
+        and been answered on its second fetch.
+        """
+        dut = cocotb.top
+        while True:
+            await RisingEdge(dut.clk_smc_i)
+            await ReadOnly()
+            if output_responder_counts(dut)[1] > base_reads:
+                break
+        await FallingEdge(dut.clk_smc_i)
+        dut.tb_output_axi_resp_hold.value = 1
+
+    async def _starved_leg(self) -> tuple[list[int], int]:
+        """A two-word log whose second fetch is held until the first word is out."""
+        label = "STARVED"
+        dut = cocotb.top
+        if OUTPUT_FABRIC_MODEL_REGION not in self.memory_model.regions:
+            self.memory_model.add_region(
+                OUTPUT_FABRIC_MODEL_REGION, OUTPUT_FABRIC_MODEL_BASE, OUTPUT_FABRIC_MODEL_SIZE
+            )
+        await self.csr_write(f"{label}_OUT_START", OUTBOUND0_START, 0x0, length=8)
+        await self.csr_write(f"{label}_OUT_END", OUTBOUND0_END, 0x00FF_FFFF_FFFF_FFFF, length=8)
+        await self.csr_write(f"{label}_OUT_CFG", OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8)
+        for i, word in enumerate(STARVED_WORDS):
+            await self._fabric_write(STARVED_REGION + i * WORD_BYTES, word)
+        want = [(w >> (8 * lane)) & 0xFF for w in STARVED_WORDS for lane in range(WORD_BYTES)]
+        dut.tb_output_axi_resp_hold.value = 0
+        element = array_reg_instances(LOG_CTRL_PATH, LOG_CTRL_PY, WRAP_STRIDE_SYMBOL, WRAP)[0]
+        await self._arm(label, STARVED_REGION, uart_base(WRAP) + THR_OFFSET, 0)
+        _, base_reads = output_responder_counts(dut)
+        watcher = cocotb.start_soon(self._hold_after_first_fetch(base_reads))
+        got: list[int] = []
+        try:
+            await self.csr_write(f"{label}_GO", element.addr, len(want))
+            for i in range(WORD_BYTES):
+                got.append(await self._read_byte(f"{label}_B{i}"))
+            _, held_reads = output_responder_counts(dut)
+            assert held_reads == base_reads + 1, (
+                f"{label}: {held_reads - base_reads} fetches returned while the second was to "
+                f"be held; the first word's bytes were to leave with the next word missing"
+            )
+        finally:
+            watcher.kill()
+            dut.tb_output_axi_resp_hold.value = 0
+        for i in range(WORD_BYTES, len(want)):
+            got.append(await self._read_byte(f"{label}_B{i}"))
+        remaining = len(want)
+        for _ in range(POLL_LIMIT):
+            remaining = (await self.csr_read(f"{label}_HWCLR", element.addr)) & LOG_LEN
+            if remaining == 0:
+                break
+            await ClockCycles(dut.clk_smc_i, POLL_CYCLES)
+        assert remaining == 0, f"{label}: LOG_CTRL[0] still holds {remaining} byte(s)"
+        status = await self.csr_read(f"{label}_INTR", engine_reg(WRAP, "INTR_STATUS"))
+        assert not status & (FETCH_ERR | WRITE_ERR), (
+            f"{label}: INTR_STATUS=0x{status:08x} after a log with no error"
+        )
+        assert got == want, (
+            f"{label}: the UART received {[hex(b) for b in got]}, not the log "
+            f"{[hex(b) for b in want]}"
+        )
+        await self.csr_write(f"{label}_STOP", engine_reg(WRAP, "CTRL"), 0)
+        _, end_reads = output_responder_counts(dut)
+        return got, end_reads - base_reads
+
     async def body(self) -> None:
 
         await self.wait_fuse_sense_done()
@@ -223,6 +337,17 @@ class smc_log_engine_fetch_error_test_seq(SmcCsrSeq):
             "the line dropping",
             REFUSING_ADDR,
             self.written,
+        )
+
+        got, fetches = await self._starved_leg()
+        cocotb.log.info(
+            "CHK-LOG-ENGINE-STARVED-FETCH: a %d-byte log in the output-fabric window, with the "
+            "responder holding the second fetch until the first word's %d bytes had reached "
+            "the UART, delivered every byte in order once the hold was released (%d fetches, "
+            "no error status)",
+            len(got),
+            WORD_BYTES,
+            fetches,
         )
 
         await self.csr_write("WRITE_ADDR_CLR", engine_reg(WRAP, "LOG_WRITE_ADDR"), 0)

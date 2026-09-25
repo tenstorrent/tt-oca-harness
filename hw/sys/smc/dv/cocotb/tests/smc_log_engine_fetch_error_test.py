@@ -15,9 +15,10 @@ class smc_log_engine_fetch_error_test(smc_base_test):
 
     required_evidence = (
         "CHK-LOG-ENGINE-FETCH-ERR",
+        "CHK-LOG-ENGINE-STARVED-FETCH",
         "CHK-LOG-ENGINE-WRITE-ERR-TEST",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     auto_protocol_vip = False
 
