@@ -52,7 +52,12 @@ as environment or active attack and to alert the security system of the
 degradation via alarm interrupts. Metrics can be queried by software via
 the CSRs.
 
-image::SEP_TRNG_Entropy.png[SEP_TRNG_Entropy,scaledwidth=90.0%]
+<<sep-trng-diagram>> shows the entropy source, deterministic generator, and random-data
+distribution paths.
+
+[[sep-trng-diagram]]
+.SEP TRNG and DRBG entropy distribution
+image::SEP_Trng_TopLevel_FIG011.drawio.png[alt="SEP TRNG and DRBG entropy distribution",width=100%,pdfwidth=100%]
 
 In OCAH the whitened entropy stream from the noise source is not routed
 directly to the cryptographic accelerators. Instead it seeds the DRBG,
@@ -81,8 +86,12 @@ endif::backend-pdf[]
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so
 that FIPS-aware consumers such as OTBN RND — which latches the bit and
-raises `rnd_fips_chk_fail` on a non-FIPS ack — observe the correct
-provenance of the bits they are receiving.
+raises `rnd_fips_chk_fail` on a non-FIPS ack — receive that tag.
+The CSRNG seed FIPS tag is provisionally tied to `1`, and the external
+entropy mux also sets `tuser = 1` unconditionally. These values express an
+integration assumption; they do not measure entropy quality or establish
+FIPS compliance. The entropy source and its qualification must support that
+assumption independently.
 
 The internal entropy complex uses one software-reset request,
 `SEP_RESET_CTRL.SW_RESET_N.TRNG_SW_RST_N`. It resets ESRC, CSRNG, EDN, and the
@@ -120,12 +129,14 @@ and `u_axis_edn_crypto_s3c_scan` covers staging outside the DRBG root. The
 combinational source-selection muxes are not scan assets.
 
 The noise is distributed via streaming interfaces. The stream interface is
-generic and compatible with AXI-Stream and TLUL-Stream. The following table
+generic and compatible with AXI-Stream and TLUL-Stream. <<entropy-streaming-signals-table>>
 describes the stream interface. Source is the generator of the signal. Sink is
 the consumer. The entropy streaming interface will not require address or mask
 signals.
 
+[[entropy-streaming-signals-table]]
 [cols="<20%,<20%,<20%,<40%",options="header",]
+.Entropy streaming signals
 |=======================================================================
 |Signal |Polarity |Width Range |Description
 |valid |source |1 |Active high indicates that the streaming data beat is valid.
