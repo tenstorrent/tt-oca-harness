@@ -24,6 +24,10 @@ stores behind the ATB port, and this leaf drives each past its bound:
   packets whose final packet does carry the flag must then fill the assembly
   buffer without raising it, and reach the message buffer.
 
+One beat short of that maximum, a message that has not finished must complete
+nothing and raise nothing; and a flush written while a beat is presented on the
+ATB port, then a second flush, must leave the next message intact.
+
 `CTRL.BUFFER_POP` "is effective only if `STATUS.BUFFER_EMPTY = 0`", so a pop
 written to an empty buffer must leave it empty and not disturb the message
 that arrives next.
@@ -52,7 +56,12 @@ from .smc_telemetry_atb_capture_test_seq import (
     _rx_addr,
     _tel,
 )
-from .smc_telemetry_receiver_csr_test_seq import _ATB_LAST_PACKET_BIT, _send_telemetry_packet
+from .smc_telemetry_receiver_csr_test_seq import (
+    _ATB_LAST_PACKET_BIT,
+    _NUM_BEATS_PER_PACKET,
+    _atb_write_beat,
+    _send_telemetry_packet,
+)
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 INTR_STATUS = _rx_addr("INTR_STATUS")
@@ -77,6 +86,8 @@ MAX_DEPTH = 32
 MAX_PACKETS = 16
 PROBE_ID_MASK = PROBE_ID_BM
 POLL_BOUND = 200
+#: A beat value with its top bit clear, so no beat carries the last-packet flag.
+PARTIAL_BEAT = 0x2A
 
 
 def _probe(index: int) -> int:
@@ -291,6 +302,45 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
             self.max_packets,
         )
 
+    async def _partial_and_flush_leg(self) -> None:
+        """Stop one beat short of the assembly buffer, and flush with a beat presented."""
+        await self._flush("PARTIAL")
+        await self.csr_write("PARTIAL_INTR_CLR", INTR_STATUS, INTR_MISSING_LAST)
+        beats = self.max_packets * _NUM_BEATS_PER_PACKET - 1
+        for index in range(beats):
+            await _atb_write_beat(cocotb.top, PARTIAL_BEAT, beat=index, rx=RX, atid=ATID)
+        await ClockCycles(cocotb.top.clk_smc_i, 16)
+        intr = await self.csr_read("PARTIAL_INTR", INTR_STATUS)
+        status = await self._status("PARTIAL")
+        assert not intr & INTR_MISSING_LAST and status & BUFFER_EMPTY_BM, (
+            f"with {beats} beats of an unfinished message, one short of the most a message "
+            f"can hold, INTR_STATUS=0x{intr:08x} STATUS=0x{status:08x}; nothing may complete "
+            f"and MISSING_LAST may not set"
+        )
+        atvalid = getattr(cocotb.top, f"tb_telemetry{RX}_atvalid")
+        atdata = getattr(cocotb.top, f"tb_telemetry{RX}_atdata")
+        atdata.value = 0
+        atvalid.value = 1
+        await self.csr_write("PARTIAL_FLUSH_HELD", CTRL, RX_FLUSH_BM)
+        atvalid.value = 0
+        await self._flush("PARTIAL_CLEAN")
+        await self._send(0x15)
+        await self._wait_status("PARTIAL_NEXT", BUFFER_EMPTY_BM, False)
+        got = await self.csr_read("PARTIAL_NEXT_PROBE", PROBE_ID) & PROBE_ID_BM
+        assert got == 0x15, (
+            f"after the partial message and a flush taken with a beat presented, the next "
+            f"message read back probe ID 0x{got:02x}, not 0x15"
+        )
+        await self.csr_write("PARTIAL_NEXT_POP", CTRL, BUFFER_POP_BM)
+        await self._wait_status("PARTIAL_DRAINED", BUFFER_EMPTY_BM, True)
+        cocotb.log.info(
+            "CHK-TELEMETRY-PARTIAL-FLUSH: %d beats of an unfinished message, one short of the "
+            "assembly buffer, completed nothing and raised no MISSING_LAST; a flush taken "
+            "while a beat was presented, and a second one, left the next message reading back "
+            "its own probe ID",
+            beats,
+        )
+
     async def body(self) -> None:
         original_cg = await self.csr_read("CLOCK_GATE_CONTROL_SAVE", CLOCK_GATE_CONTROL)
         ungated = original_cg & ~TELEMETRY_CG_EN
@@ -300,5 +350,6 @@ class smc_telemetry_buffer_overflow_test_seq(SmcCsrSeq):
         await self._pop_on_empty()
         await self._overflow()
         await self._missing_last()
+        await self._partial_and_flush_leg()
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, original_cg)

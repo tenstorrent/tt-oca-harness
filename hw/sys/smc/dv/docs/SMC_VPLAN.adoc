@@ -10539,6 +10539,7 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 * `INTR_STATUS.MISSING_LAST`, raised when the maximum number of packets a message can have arrives without the last-packet flag. Packets without the flag are sent one at a time until it sets, which measures that maximum. It must then clear on a written one.
 * A message of exactly that many packets, the last one flagged. It fills the assembly buffer exactly, must not raise `MISSING_LAST`, and must reach the message buffer.
 * `CTRL.BUFFER_POP` written to an empty buffer, which the RDL says has no effect. The buffer must stay empty and not full, and the next message must read back its own probe ID.
+* One beat short of the most a message can hold, an unfinished message must complete nothing and raise no `MISSING_LAST`. A flush written while a beat is presented on the ATB port, and a second flush, must leave the next message reading back its own probe ID.
 
 *Test Procedure*:
 
@@ -10548,6 +10549,7 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 . Pop everything, checking the threshold interrupt after each pop. Compare the probe IDs read back with the IDs sent.
 . Flush and send unflagged packets until `MISSING_LAST` sets; clear it.
 . Flush and send one message of that many packets with the last one flagged. Require no `MISSING_LAST` and a buffered message.
+. Flush, send one beat fewer than the assembly buffer holds without the last-packet flag, then flush with a beat held valid, flush again and send one message.
 
 *Checkers*:
 
@@ -10559,9 +10561,10 @@ Drive `smc_i3c_dxt_table_test_seq`. Each checker below is a named compare the DU
 |`CHK-TELEMETRY-BUFFER-OVERFLOW` |`BUFFER_FULL` set and stayed set through two more messages, and the drain returned exactly the depth's worth of messages as an in-order run of the IDs sent
 |`CHK-TELEMETRY-MISSING-LAST` |`MISSING_LAST` set on the first packet past the maximum a message can have, not before, and cleared on a written one
 |`CHK-TELEMETRY-FULL-MESSAGE` |A message of the maximum size with its last packet flagged reached the buffer without `MISSING_LAST`
+|`CHK-TELEMETRY-PARTIAL-FLUSH` |A message one beat short completed nothing and raised nothing, and after a flush with a beat presented the next message read back intact
 |===
 
-*Pass Criteria*: all five checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: all six checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
 
 '''''
 

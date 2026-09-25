@@ -19,10 +19,11 @@ class smc_telemetry_buffer_overflow_test(smc_base_test):
         "CHK-TELEMETRY-BUFFER-OVERFLOW",
         "CHK-TELEMETRY-FULL-MESSAGE",
         "CHK-TELEMETRY-MISSING-LAST",
+        "CHK-TELEMETRY-PARTIAL-FLUSH",
         "CHK-TELEMETRY-POP-EMPTY",
         "CHK-TELEMETRY-THRESHOLD-INTR",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 
