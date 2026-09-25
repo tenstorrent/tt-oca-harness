@@ -90,7 +90,7 @@ module zeroer #(
     .lite_req_t (zeroer_ctrl_axil_req_t),
     .lite_resp_t(zeroer_ctrl_axil_resp_t)
 
-  ) ctrl_axi_to_axilite (
+  ) u_ctrl_axi_to_axilite (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
@@ -110,6 +110,7 @@ module zeroer #(
   logic [63:0] size;
   logic        int_en;
   logic [1:0] status_swacc;
+  logic        start;
 
   logic [31:0] outstanding_reqs;
 
@@ -129,7 +130,7 @@ module zeroer #(
   always_comb begin
     zeroer_busy_o = 1'b1;
     if (cur_state == ST_IDLE) begin
-      zeroer_busy_o = status_swacc[1] | (|outstanding_reqs);
+      zeroer_busy_o = start | (|outstanding_reqs);
     end
   end
 
@@ -137,7 +138,7 @@ module zeroer #(
 
   wire axi_clk_enable = disable_cg | zeroer_busy_o | ~rst_ni;
 
-  prim_clkgater axi_clk_gater (
+  prim_clkgater u_axi_clk_gater (
     .clk_i(clk_i),
     .en_i (axi_clk_enable),
     .te_i (test_en_i),
@@ -148,7 +149,7 @@ module zeroer #(
     .OutstandingTx(1),
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
-  ) zeroer_cg (
+  ) u_zeroer_cg (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
 
@@ -177,7 +178,7 @@ module zeroer #(
   zeroer_ctrl_reg_pkg::zeroer_ctrl__in_t  hwif_in;
   zeroer_ctrl_reg_pkg::zeroer_ctrl__out_t hwif_out;
 
-  zeroer_ctrl_reg zeroer_reg (
+  zeroer_ctrl_reg u_zeroer_reg (
     .clk(reg_clk),
     .arst_n(rst_ni),
 
@@ -214,6 +215,8 @@ module zeroer #(
   assign status_swacc = {
     hwif_out.CTRL_STATUS.INT_EN.wr_swacc, hwif_out.CTRL_STATUS.STATUS.rd_swacc
   };
+
+  assign start = status_swacc[1] & (|size);
 
   // ----------
 
@@ -268,7 +271,7 @@ module zeroer #(
     unique case (cur_state)
       ST_IDLE: begin
         // when command is triggered, lock in values
-        if (status_swacc[1]) begin
+        if (start) begin
           nxt_state = ST_ISSUE_ADDR;
           nxt_dest_addr = dest_addr[AXI_ADDR_WIDTH-1:0];
           nxt_size = size;
@@ -387,8 +390,9 @@ module zeroer #(
     end
   end
 
+  // Ungated clock: axi_clk stops the cycle busy falls, so it would never sample that edge.
   logic prev_busy;
-  always_ff @(posedge axi_clk) begin
+  always_ff @(posedge clk_i) begin
     if (~rst_ni) begin
       prev_busy <= 1'b0;
       zeroer_intp_o <= 1'b0;

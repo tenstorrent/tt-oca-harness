@@ -119,8 +119,8 @@ addrmap dfd_dst_sink {
         regwidth = 32;
 
         field {
-            sw = r;
-            hw = w;
+            sw = rw;
+            hw = rw;
         } Trdstramwphigh[31:0] = 0x0;
     } Trdstramwphigh @ 0x24;
     reg {

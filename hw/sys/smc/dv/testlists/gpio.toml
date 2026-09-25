@@ -124,3 +124,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci"]
 run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_intf_regblock_sweep_test"
+module = "smc_gpio_intf_regblock_sweep_test"
+seed = 1
+timeout_sec = 3600
+tags = ["ci", "gpio"]
+run_modes = ["smoke"]

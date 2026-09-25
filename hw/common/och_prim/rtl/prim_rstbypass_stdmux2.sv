@@ -14,7 +14,7 @@ module prim_rstbypass_stdmux2 (
   output logic rst_no
 );
 
-  prim_rst_mux2_hf_n rst_bypassmux (
+  prim_rst_mux2_hf_n u_rst_bypassmux (
     .rst0_ni(rst_ni),
     .rst1_ni(test_rst_ni),
     .sel_i  (test_mode_i),

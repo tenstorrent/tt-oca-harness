@@ -11,7 +11,8 @@ This document is currently under development.
 
 == Repository
 
-To clone the repository, ensure that you have `git` installed (`sudo apt install git`), and then run the following commands:
+To clone the repository, ensure that you have `git` installed (`sudo apt install git`),
+and then run the following commands:
 
 ```bash
 git clone https://github.com/tenstorrent/tt-oca-harness.git
@@ -19,10 +20,13 @@ git clone https://github.com/tenstorrent/tt-oca-harness.git
 cd tt-oca-harness
 ```
 
-The repository's open RTL, documentation, register generation, lint, and
-containerized firmware flows do not require submodules. The production SEP boot
-manifest tooling is an optional submodule that requires separate access; do not
-use `--recursive` for the public setup path.
+The repository contains a Python environment used for scripting workflows. Some of
+these workflows are contained within submodules, meaning the Python environment requires
+the submodules to be initialised. To do this, run the following command:
+
+```bash
+git submodule update --init --recursive
+```
 
 == Toolchain access
 
@@ -41,10 +45,10 @@ ways to get these:
 
 | <<native,*Native*>>
 | Install each tool individually on the host. Gives the most control but requires
-  the most setup. The remainder of this page documents the native path; see
-  xref:dependencies.adoc[Dependencies] for version requirements.
+  the most setup. See <<native,*this section*>> for the (Ubuntu) native path and
+  refer to xref:dependencies.adoc[Dependencies] for version requirements.
 
-| <<nix-shell,*Nix dev shell*>>
+| <<nix-develop,*Nix Development Shell*>>
 | `nix develop` provides the same tool set as the container, directly on the host,
   via the Nix package manager. Available but not first-class supported — useful on
   NixOS or hosts that already have Nix installed.
@@ -73,8 +77,8 @@ management), and `git`.
 
 Install a container engine (Podman or Docker):
 
-- https://podman.io/docs/installation#ubuntu[*Podman*] (recommended)
-- https://docs.docker.com/engine/install/ubuntu/[*Docker*]
+* https://podman.io/docs/installation#ubuntu[*Podman*] (recommended)
+* https://docs.docker.com/engine/install/ubuntu/[*Docker*]
 
 If you installed Podman, also install `fuse-overlayfs` and register the Docker
 Hub registry:
@@ -95,7 +99,7 @@ built automatically on first use:
 
 ```bash
 # Open an interactive shell (builds the image if needed)
-./scripts/docker-run.sh shell
+./scripts/docker-run.sh shell # use shell-here for 1:1 paths
 
 # Run a command inside the container
 ./scripts/docker-run.sh run make dv-fw-tests TARGET=smc
@@ -109,6 +113,9 @@ To pre-build the image explicitly (e.g. before going offline):
 ```bash
 ./scripts/docker-run.sh build
 ```
+
+To bundle UV dependencies in with the container, for a fully offline system, set
+`OCAH_IMAGE_WITH_UV=true` before building
 
 [[native]]
 == Native Installation
@@ -159,15 +166,15 @@ ccache picolibc-riscv64-unknown-elf cmake
 
 Follow the instructions on the following pages for tools not packaged within Ubuntu:
 
-- https://docs.antora.org/antora/latest/install-and-run-quickstart/[*Antora*]
-- https://github.com/pulp-platform/bender[*Bender*]
-- https://github.com/chipsalliance/verible[*Verible*]
-- https://github.com/MikePopoloski/slang[*Slang*]
-- https://github.com/YosysHQ/yosys[Yosys] (Also packaged via `apt`, but newer version recommend)
--- https://github.com/povik/sv-elab[SV-Elab] (Formerly Yosys-Slang) Required to allow Yosys to synthesise SystemVerilog
-- https://surfer-project.org/[*Surfer*] (optional, alternatives available, used for wave trace debugging)
-- https://www.drawio.com/[*Drawio*] (optional, used for creating new diagrams for documentation)
-- https://github.com/wavedrom/wavedrom.github.io/releases[*Wavedrom*] (optional, used for creating new diagrams for documentation)
+* https://docs.antora.org/antora/latest/install-and-run-quickstart/[*Antora*]
+* https://github.com/pulp-platform/bender[*Bender*]
+* https://github.com/chipsalliance/verible[*Verible*]
+* https://github.com/MikePopoloski/slang[*Slang*]
+* https://github.com/YosysHQ/yosys[*Yosys*] (Also packaged via `apt`, but newer version recommend)
+** https://github.com/povik/sv-elab[*SV-Elab*] (Formerly Yosys-Slang) Required to allow Yosys to synthesise SystemVerilog
+* https://surfer-project.org/[*Surfer*] (optional, alternatives available, used for wave trace debugging)
+* https://www.drawio.com/[*Drawio*] (optional, used for creating new diagrams for documentation)
+* https://github.com/wavedrom/wavedrom.github.io/releases[*Wavedrom*] (optional, used for creating new diagrams for documentation)
 
 Enter the repository and use the following command to set up the Python environment:
 
@@ -175,8 +182,8 @@ Enter the repository and use the following command to set up the Python environm
 uv sync # or `make uv-sync`
 ```
 
-[[nix-shell]]
-== Nix dev shell (available, not first-class supported)
+[[nix-develop]]
+== Nix Development Shell (available, not first-class supported)
 
 If you have https://nixos.org/download/[Nix] installed, the dev shell provides
 the same tool set as the container directly on the host — no container engine
@@ -189,9 +196,12 @@ nix develop    # activates the dev shell; tools are then available on PATH
 With https://github.com/direnv/direnv[direnv] configured, the shell activates
 automatically on `cd` into the repo.
 
+See https://github.com/tenstorrent/tt-oca-harness/tree/main/nix[the OCA Harness Nix Readme] for
+more information on Nix integration.
+
 [NOTE]
 ====
-The Nix dev shell is not first-class supported for the initial release. It works
-well on NixOS and Linux hosts with Nix installed, but may have edge cases on
-other platforms. The container is the recommended path.
+The Nix dev shell is not first-class supported for the initial release. It has been
+deployed on NixOS and Linux hosts with Nix installed, but is not actively tested.
+MacOS builds have not been attempted. The container is the recommended path.
 ====

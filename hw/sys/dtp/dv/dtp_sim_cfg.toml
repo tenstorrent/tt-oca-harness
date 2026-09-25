@@ -38,16 +38,19 @@ common_bender_targets = [
 # DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/common/assert"]
-# Shared TB interfaces, the shared protocol SVA checkers, and the flow-shared
-# functional-coverage modules (cov/sv/): this list feeds the cocotb/Verilator
-# filelist; the [frameworks.uvm.build] sources list (which replaces this one)
-# takes the VIP interfaces and checkers from the VIP manifests and repeats the
-# DTP entries.
+# The bench configuration package, the shared TB interfaces, the shared
+# protocol SVA checkers, and the flow-shared functional-coverage modules
+# (cov/sv/): this list feeds the cocotb/Verilator filelist; the
+# [frameworks.uvm.build] sources list (which replaces this one) takes the VIP
+# interfaces and checkers from the VIP manifests and repeats the DTP entries.
 sources = [
+  "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
+  "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
   "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
@@ -64,8 +67,11 @@ python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
-  # Generated SystemRDL Python headers of the cross-trigger IP; the XTRIG CSR map
-  # in cocotb/env/dtp_xtrig_types.py imports its offsets and field masks from them.
+  # Generated SystemRDL Python headers of the cross-trigger IP: the bench
+  # configuration in cocotb/env/dtp_dv_cfg.py reads the port counts from the
+  # network map, and the XTRIG CSR map in cocotb/env/dtp_xtrig_types.py its
+  # windows, offsets, and field masks.
+  "hw/ip/cross_trigger/cross_trigger_network/regs/gen/py",
   "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/py",
   "hw/ip/cross_trigger/cross_trigger_port/regs/gen/py",
 ]
@@ -178,7 +184,8 @@ description = "DTP SV-UVM flow (VCS)"
 # visible), then `top_file` last:
 #   ocah_lib manifest -> ocah_jtag_vip manifest -> ocah_axi_vip manifest
 #   (each: evidence base -> interface -> collateral -> UVM pkg)
-#   -> dtp_tb_if, dtp_scan_if, dtp_xtrig_if -> generated CSR address maps -> dtp_env_pkg
+#   -> dtp_dv_cfg_pkg -> dtp_tb_if, dtp_scan_if, dtp_xtrig_if -> generated CSR address maps
+#   -> dtp_env_pkg
 #   -> dtp_seq_lib_pkg -> tb_top.sv
 # dtp_env_pkg compiles before dtp_seq_lib_pkg: the scenario virtual sequences run on the
 # dtp_virtual_sequencer the env package declares.
@@ -201,11 +208,14 @@ incdirs = [
   "hw/sys/dtp/dv/uvm/tests",
 ]
 sources = [
+  "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
+  "hw/sys/dtp/dv/tb/dtp_j2a_state_flags.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
+  "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
   "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",

@@ -283,7 +283,7 @@ module efuse_token_processing #(
   // Disable sec_disable_feature during A2/B1
   logic [7:0] low, high;
 
-  prim_rev_cell sep_sec_disable (
+  prim_rev_cell u_sep_sec_disable (
     .lo_o(low[7:0]),
     .hi_o(high[7:0]),
     .in_i({low[7],low[6], low[5], low[4], low[3], low[2], low[1], high[0]}),

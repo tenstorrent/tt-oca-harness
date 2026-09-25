@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH nix-built container.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage>
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes|starting|datasheets]|doc-stage>
 #   'doc-html all'  builds the real combined multi-book site (antora-playbook.yml) -- this
 #                   is what gets deployed
 #   'doc-stage'     adds PDFs + .nojekyll on top of an already-built combined site -- pure
@@ -172,6 +172,18 @@ else UIDGID="${OCAH_DOCKER_UIDGID-$(id -u):$(id -g)}"; fi
 USER_FLAGS=()
 [[ -n "$UIDGID" ]] && USER_FLAGS=(--user "$UIDGID" -e HOME=/tmp)
 
+# A linked worktree's git metadata lies outside ROOT and needs its own mount.
+GIT_ENGINE_MOUNT=()
+GIT_COMMON_DIR=
+RUN_ROOT=/work
+if [[ -f "$ROOT/.git" ]]; then
+  GIT_COMMON_DIR=$(git -C "$ROOT" rev-parse --git-common-dir)
+  [[ "$GIT_COMMON_DIR" == /* ]] || GIT_COMMON_DIR="$ROOT/$GIT_COMMON_DIR"
+  GIT_COMMON_DIR=$(realpath "$GIT_COMMON_DIR")
+  GIT_ENGINE_MOUNT=(-v "${GIT_COMMON_DIR}:${GIT_COMMON_DIR}${VOL:+:z}")
+  RUN_ROOT=$ROOT
+fi
+
 # run_image IMAGE [-it] CMD... : engine flags before the image, command after it
 run_image() {
   local image="$1"
@@ -188,7 +200,8 @@ run_image() {
     shift
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:/work${VOL}" -w /work "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -v "${ROOT}:${RUN_ROOT}${VOL}" -w "$RUN_ROOT" "$image" "$@"
 }
 
 # Run a command in an environment with a nix binary. This will run locally if it
@@ -225,9 +238,9 @@ nixos_run() {
         GIT_CONFIG_COUNT=3
         GIT_CONFIG_KEY_0=protocol.file.allow
         GIT_CONFIG_VALUE_0=always
-        "GIT_CONFIG_KEY_1=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        "GIT_CONFIG_KEY_1=url.file://${RUN_ROOT}/${MANIFEST_SUBMODULE}.insteadOf"
         GIT_CONFIG_VALUE_1=git@github.com:tenstorrent/tt-oca-manifest.git
-        "GIT_CONFIG_KEY_2=url.file:///work/${MANIFEST_SUBMODULE}.insteadOf"
+        "GIT_CONFIG_KEY_2=url.file://${RUN_ROOT}/${MANIFEST_SUBMODULE}.insteadOf"
         GIT_CONFIG_VALUE_2=ssh://git@github.com/tenstorrent/tt-oca-manifest.git
       )
     fi
@@ -272,6 +285,7 @@ build_image() {
   if [[ -n "$DOCKER_CACHE_DIR" ]]; then
     image_location="$(image_cache_tar)"
   else
+    mkdir -p local
     image_location="local/nix-container-image.tar.gz"
   fi
   nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
@@ -389,17 +403,33 @@ bwrap_run() {
   # The repo (and, under it, nonfree/) at its real path so absolute -C paths,
   # bender filelists and generated collateral all resolve unchanged.
   binds+=(--bind "$ROOT" "$ROOT")
+  [[ -z "$GIT_COMMON_DIR" ]] || binds+=(--bind "$GIT_COMMON_DIR" "$GIT_COMMON_DIR")
   local extra
   for extra in ${OCAH_BWRAP_EXTRA_BINDS:-}; do
     [[ -e "$extra" ]] && binds+=(--bind "$extra" "$extra")
   done
+  # Firmware recipes invoke `uv` by name (hw/common/dv/fw/preamble.mk). A
+  # nix-built rootfs has that binary on /usr/bin; a toolchain rootfs that does
+  # not still has to see the host binary. /usr is read-only, so the file is
+  # mounted under the /run tmpfs, which PATH then searches first.
+  local host_uv="" sandbox_path="/usr/local/bin:/usr/bin:/bin"
+  if [[ ! -x "$TOOLCHAIN_ROOTFS/usr/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/usr/local/bin/uv" ]]; then
+    host_uv="$(command -v uv 2>/dev/null || true)"
+    if [[ -n "$host_uv" ]]; then
+      host_uv="$(readlink -f "$host_uv")"
+      binds+=(--tmpfs /run/ocah --ro-bind "$host_uv" /run/ocah/uv)
+      sandbox_path="/run/ocah:${sandbox_path}"
+    else
+      echo "docker-run: warning: uv is not in the toolchain rootfs or on PATH" >&2
+    fi
+  fi
   # HOME may sit outside the bound trees; give it a writable stand-in.
   # PYTHONHOME/PYTHONPATH are dropped for the same reason PATH is replaced: the
   # sandbox runs its own interpreter, and a caller's values point at host trees
   # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
   # can import 'encodings', which the firmware post-process steps run into.
   bwrap "${binds[@]}" --chdir "$workdir" \
-    --setenv PATH /usr/local/bin:/usr/bin:/bin \
+    --setenv PATH "$sandbox_path" \
     --setenv HOME /tmp \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
@@ -446,7 +476,8 @@ run_image_1to1() {
     shift
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
-    "${net_flags[@]}" "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
+    "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
 doc_product_paths() {
@@ -457,8 +488,9 @@ doc_product_paths() {
   appnotes) echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
   starting) echo "doc/starting antora-starting-playbook.yml ocah-doc-starting-setup ocah-doc-starting-pdf" ;;
   home) echo "doc/home antora-home-playbook.yml ocah-doc-home-setup" ;;
+  datasheets) echo "doc/datasheets - ocah-doc-datasheets-setup ocah-doc-datasheets-pdf" ;;
   *)
-    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home or starting)" >&2
+    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home, starting or datasheets)" >&2
     exit 1
     ;;
   esac
@@ -491,6 +523,10 @@ doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=() kroki_args=()
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
+  if [[ "$product" == datasheets ]]; then
+    echo "error: datasheets are standalone PDFs; use: ./scripts/docker-run.sh doc-pdf datasheets" >&2
+    exit 1
+  fi
   doc_setup "$product"
   if [ "$product" = trm ]; then
     for companion in home integrator programmer appnotes starting; do
@@ -529,7 +565,7 @@ doc_html_all() {
 doc_pdf() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target
   read -r basedir playbook setup_target pdf_target < <(doc_product_paths "$product")
-  run_image "$IMAGE" env \
+  run env \
     OCAH_DOC_REGEN_REGS=0 \
     OCAH_DOC_RELEASE="${OCAH_DOC_RELEASE:-1}" \
     make "$pdf_target"
@@ -542,11 +578,12 @@ doc_pdf() {
 # Run this AFTER `doc-html all` and `doc-pdf trm`/`doc-pdf integrator`.
 doc_stage() {
   local ghpages_dir="${OCAH_GHPAGES_DIR:-doc/_build/html_antora}"
-  local trm_dist="${OCAH_TRM_DIST:-doc/trm/dist}" trm_pdf="${OCAH_TRM_PDF:-ocah-trm.pdf}"
-  local integrator_dist="${OCAH_INTEGRATOR_DIST:-doc/integrator/dist}" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
-  local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
-  local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
-  local starting_dist="${OCAH_STARTING_DIST:-doc/starting/dist}" starting_pdf="${OCAH_STARTING_PDF:-ocah-starting.pdf}"
+  local trm_pdf_dir="${OCAH_TRM_BUILD:-doc/trm/_build}/latex" trm_pdf="${OCAH_TRM_PDF:-ocah-trm.pdf}"
+  local integrator_pdf_dir="${OCAH_INTEGRATOR_BUILD:-doc/integrator/_build}/latex" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
+  local programmer_pdf_dir="${OCAH_PROGRAMMER_BUILD:-doc/programmer/_build}/latex" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
+  local appnotes_pdf_dir="${OCAH_APPNOTES_BUILD:-doc/appnotes/_build}/latex" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
+  local starting_pdf_dir="${OCAH_STARTING_BUILD:-doc/starting/_build}/latex" starting_pdf="${OCAH_STARTING_PDF:-ocah-starting.pdf}"
+  local datasheets_build="${OCAH_DATASHEETS_BUILD:-doc/datasheets/_build}"
 
   if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
     echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -557,35 +594,41 @@ doc_stage() {
   mkdir -p "$ROOT/$ghpages_dir/downloads"
   touch "$ROOT/$ghpages_dir/.nojekyll"
 
-  if [[ -f "$ROOT/$trm_dist/$trm_pdf" ]]; then
-    cp "$ROOT/$trm_dist/$trm_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$trm_pdf_dir/$trm_pdf" ]]; then
+    cp "$ROOT/$trm_pdf_dir/$trm_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: TRM PDF not found at $trm_dist/$trm_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf trm)"
+    echo "warning: TRM PDF not found at $trm_pdf_dir/$trm_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf trm)"
   fi
 
-  if [[ -f "$ROOT/$integrator_dist/$integrator_pdf" ]]; then
-    cp "$ROOT/$integrator_dist/$integrator_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$integrator_pdf_dir/$integrator_pdf" ]]; then
+    cp "$ROOT/$integrator_pdf_dir/$integrator_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Integrator Guide PDF not found at $integrator_dist/$integrator_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf integrator)"
+    echo "warning: Integrator Guide PDF not found at $integrator_pdf_dir/$integrator_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf integrator)"
   fi
 
-  if [[ -f "$ROOT/$programmer_dist/$programmer_pdf" ]]; then
-    cp "$ROOT/$programmer_dist/$programmer_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$programmer_pdf_dir/$programmer_pdf" ]]; then
+    cp "$ROOT/$programmer_pdf_dir/$programmer_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Programmer's Guide PDF not found at $programmer_dist/$programmer_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf programmer)"
+    echo "warning: Programmer's Guide PDF not found at $programmer_pdf_dir/$programmer_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf programmer)"
   fi
 
-  if [[ -f "$ROOT/$appnotes_dist/$appnotes_pdf" ]]; then
-    cp "$ROOT/$appnotes_dist/$appnotes_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$appnotes_pdf_dir/$appnotes_pdf" ]]; then
+    cp "$ROOT/$appnotes_pdf_dir/$appnotes_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Application Notes PDF not found at $appnotes_dist/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
+    echo "warning: Application Notes PDF not found at $appnotes_pdf_dir/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
   fi
 
-  if [[ -f "$ROOT/$starting_dist/$starting_pdf" ]]; then
-    cp "$ROOT/$starting_dist/$starting_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$starting_pdf_dir/$starting_pdf" ]]; then
+    cp "$ROOT/$starting_pdf_dir/$starting_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Getting Started PDF not found at $starting_dist/$starting_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf starting)"
+    echo "warning: Getting Started PDF not found at $starting_pdf_dir/$starting_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf starting)"
   fi
+
+  local datasheet_pdf
+  for datasheet_pdf in "$ROOT/$datasheets_build"/ocah-*-datasheet.pdf; do
+    [[ -f "$datasheet_pdf" ]] || continue
+    cp "$datasheet_pdf" "$ROOT/$ghpages_dir/downloads/"
+  done
 
   doc_stage_dashboard_data "$ROOT/$ghpages_dir"
 

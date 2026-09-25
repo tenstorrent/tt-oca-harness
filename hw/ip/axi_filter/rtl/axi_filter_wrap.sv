@@ -146,7 +146,7 @@ module axi_filter_wrap #(
         .SrcIdWidth          (SrcIdWidth),
         .GroupIdWidth        (GroupIdWidth),
         .DataBusWidthLog2    (DbusWidthLog2)
-      ) write_traffic_filter (
+      ) u_write_traffic_filter (
         .cfg_allow_traffic_type_i (filters[f].write_allowed),
         .cfg_start_addr_i         (filters[f].start_addr),
         .cfg_end_addr_i           (filters[f].end_addr),
@@ -173,7 +173,7 @@ module axi_filter_wrap #(
         .SrcIdWidth          (SrcIdWidth),
         .GroupIdWidth        (GroupIdWidth),
         .DataBusWidthLog2    (DbusWidthLog2)
-      ) read_traffic_filter (
+      ) u_read_traffic_filter (
         .cfg_allow_traffic_type_i (filters[f].read_allowed),
         .cfg_start_addr_i         (filters[f].start_addr),
         .cfg_end_addr_i           (filters[f].end_addr),
@@ -203,7 +203,7 @@ module axi_filter_wrap #(
   lzc #(
     .WIDTH (NumFilters),
     .MODE  (1'b0)  // Count leading zeros to find the index of the first filter that contains the request address
-  ) write_filter_hit_lzc (
+  ) u_write_filter_hit_lzc (
     .in_i    (write_filter_hit),
     .cnt_o   (write_filter_hit_idx),
     .empty_o (no_write_filter_matches)
@@ -213,7 +213,7 @@ module axi_filter_wrap #(
   lzc #(
     .WIDTH (NumFilters),
     .MODE  (1'b0)  // Count leading zeros to find the index of the first filter that contains the request address
-  ) read_filter_hit_lzc (
+  ) u_read_filter_hit_lzc (
     .in_i    (read_filter_hit),
     .cnt_o   (read_filter_hit_idx),
     .empty_o (no_read_filter_matches)
@@ -256,7 +256,7 @@ module axi_filter_wrap #(
     .SpillB      (FlopRespEn),
     .SpillAr     (FlopReqEn),
     .SpillR      (FlopRespEn)
-  ) axi_demux (
+  ) u_axi_demux (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
     .test_i          (test_en_i),
@@ -276,7 +276,7 @@ module axi_filter_wrap #(
     .Resp       (axi_pkg::RESP_DECERR),
     .ATOPs      (1'b0),
     .MaxTrans   (ErrSlvMaxTrans)
-  ) axi_err_slv (
+  ) u_axi_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[key-manager-km-firmware]]
-== Key Manager (KM) Firmware
+= Firmware
 
 This section is the developer reference for the KM ROM firmware that runs
 on the PicoRV32 and services SEP requests. It documents the SEP-facing
@@ -69,10 +69,17 @@ zero within the message or payload shown. In the message layouts, `n` is
 
 All command messages use the following container format.
 
-.Command Message
+<<key-manager-command-message-format-figure>> shows the command header, payload words,
+and checksum placement.
+
+[[key-manager-command-message-format-figure]]
+.Key Manager command-message format
 image::km_packet_command_message.svg["Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: COMMAND_ID; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32.",width=544]
 
-.Message Field Description
+<<key-manager-command-message-fields-table>> defines the command container fields.
+
+[[key-manager-command-message-fields-table]]
+.Key Manager command-message fields
 [cols="<22%,<78%",options="header"]
 |===
 | Field | Description
@@ -86,7 +93,10 @@ image::km_packet_command_message.svg["Word 0: bits 31 to 24: HEADER_CRC8; bits 2
 
 The rest of this section describes all valid commands and their payloads.
 
-.KM Command Summary
+<<key-manager-command-summary-table>> lists the command IDs and their functions.
+
+[[key-manager-command-summary-table]]
+.Key Manager command summary
 [cols="^10%,<40%,<50%",options="header"]
 |===
 | ID | Command | Purpose
@@ -123,7 +133,11 @@ This command has no payload.
 This command has a `RESP_CMD` response with a return code of _success_,
 and a return argument containing the version of the hardware.
 
-.RESP_CMD _Success_ Return Argument
+<<key-manager-hardware-version-response-figure>> shows the hardware-version fields
+returned on success.
+
+[[key-manager-hardware-version-response-figure]]
+.Key Manager hardware-version response
 image::km_packet_hw_version.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: HW_MAJOR_REV; bits 15 to 8: HW_MINOR_REV; bits 7 to 0: HW_PATCH_REV.",width=544]
 
 [[km-cmd-rom-ver]]
@@ -142,7 +156,11 @@ This command has no payload.
 This command has a `RESP_CMD` response with a return code of _success_,
 and a return argument containing the version of the ROM firmware.
 
-.RESP_CMD _Success_ Return Argument
+<<key-manager-rom-version-response-figure>> shows the ROM-version fields returned on
+success.
+
+[[key-manager-rom-version-response-figure]]
+.Key Manager ROM-version response
 image::km_packet_rom_version.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: ROM_MAJOR_REV; bits 15 to 8: ROM_MINOR_REV; bits 7 to 0: ROM_PATCH_REV.",width=544]
 
 [[km-cmd-sram-ver]]
@@ -172,7 +190,11 @@ If SRAM firmware is loaded and executing, this command has a `RESP_CMD`
 response with a return code of _success_, and a return argument
 containing the version of the SRAM firmware.
 
-.RESP_CMD _Success_ Return Argument
+<<key-manager-sram-version-response-figure>> shows the SRAM firmware-version fields
+returned on success.
+
+[[key-manager-sram-version-response-figure]]
+.Key Manager SRAM-version response
 image::km_packet_sram_version.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: SRAM_MAJOR_REV; bits 15 to 8: SRAM_MINOR_REV; bits 7 to 0: SRAM_PATCH_REV.",width=544]
 
 [[km-cmd-stat]]
@@ -191,11 +213,18 @@ This command has no payload.
 This command has a `RESP_CMD` response with a return code of _success_,
 and a return argument containing the KM status information.
 
-.RESP_CMD _Success_ Return Argument
+<<key-manager-status-response-figure>> shows the status word returned by CMD_STAT.
+
+[[key-manager-status-response-figure]]
+.Key Manager status response
 image::km_packet_status.svg["Word 0: bits 31 to 0: KM_STATUS.",width=544]
 
-.KM_STATUS Payload
-[cols="^15%,<25%,<60%",options="header"]
+<<key-manager-status-fields-table>> defines the recoverable-fault flag and reserved
+status bits.
+
+[[key-manager-status-fields-table]]
+.Key Manager status fields
+[cols="^15%,<25%,<60%",options="header,unbreakable"]
 |===
 | Bit | Name | Description
 | `0` | `recov_fault` | The value of the `RECOVERABLE_ERR` register bit. Set to 1 if the KM is waiting for the SEP to acknowledge a recoverable fault.
@@ -299,10 +328,18 @@ for sending its own ready message to the SEP.
 
 *Payload*
 
-.CMD_SRAM_LOAD_EXEC Payload
+<<key-manager-sram-load-command-payload-figure>> shows the image-size word sent with
+CMD_SRAM_LOAD_EXEC.
+
+[[key-manager-sram-load-command-payload-figure]]
+.Key Manager SRAM-load command payload
 image::km_packet_sram_load_exec.svg["Word 0: bits 31 to 16: RESERVED; bits 15 to 0: FW_WORDS.",width=544]
 
-.CMD_SRAM_LOAD_EXEC Payload Fields
+<<key-manager-sram-load-payload-fields-table>> defines the firmware word count and
+reserved bits.
+
+[[key-manager-sram-load-payload-fields-table]]
+.Key Manager SRAM-load payload fields
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Field | Name | Description
@@ -313,9 +350,10 @@ image::km_packet_sram_load_exec.svg["Word 0: bits 31 to 16: RESERVED; bits 15 to
 *Image Frame*
 
 After receiving the `RESP_CMD` confirmation, the SEP sends exactly one
-mailbox frame with the following structure:
+mailbox frame with the following structure (<<key-manager-sram-image-frame-table>>).
 
-.CMD_SRAM_LOAD_EXEC Image Frame (sent by SEP after confirmation)
+[[key-manager-sram-image-frame-table]]
+.Key Manager SRAM image frame
 [cols="^25%,<75%",options="header"]
 |===
 | Word | Content
@@ -375,10 +413,18 @@ Requests a freshly generated random key.
 The size of the requested key in multiples of 32-bit words (equal to
 `REQ_SIZE+1`), as well as the valid destinations for the key.
 
-.Command Payload
+<<key-generation-command-payload-figure>> shows the requested size and
+destination-policy words for CMD_KEY_GENERATE.
+
+[[key-generation-command-payload-figure]]
+.Key-generation command payload
 image::km_packet_key_generate_payload.svg["Word 0: bits 31 to 7: RESERVED; bits 6 to 0: REQ_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID.",width=544]
 
-.DEST_VALID Payload
+<<key-generation-destination-policy-table>> defines the permitted-destination bits for a
+generated key.
+
+[[key-generation-destination-policy-table]]
+.Key-generation destination policy
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Bit | Name | Description
@@ -411,7 +457,11 @@ of the generated key, including its handle, its size, and its valid
 destinations. The granted size must always be equivalent to the requested
 size.
 
-.RESP_CMD _Success_ Return Argument
+<<key-generation-success-response-figure>> shows the generated key handle, size, and
+destination policy returned on success.
+
+[[key-generation-success-response-figure]]
+.Key-generation success response
 image::km_packet_key_result.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-key-revoke]]
@@ -426,7 +476,10 @@ handle.
 
 The handle for the key to invalidate.
 
-.Command Payload
+<<key-revoke-command-payload-figure>> shows the key handle sent with CMD_KEY_REVOKE.
+
+[[key-revoke-command-payload-figure]]
+.Key-revoke command payload
 image::km_packet_key_handle.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE.",width=544]
 
 *Response*
@@ -443,7 +496,10 @@ If the request is granted, this command has a `RESP_CMD` response with a
 return code of _success_, and a return argument containing the handle of
 the revoked key.
 
-.RESP_CMD _Success_ Return Argument
+<<key-revoke-success-response-figure>> shows the revoked key handle returned on success.
+
+[[key-revoke-success-response-figure]]
+.Key-revoke success response
 image::km_packet_key_handle.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-key-transfer]]
@@ -461,10 +517,18 @@ destination-policy bitmask stored for the key handle in the key registry.
 The handle of the key to transfer in the KPV and the bitmask of the
 destination crypto engines.
 
-.Command Payload
+<<key-transfer-command-payload-figure>> shows the key handle and requested
+destination-engine mask.
+
+[[key-transfer-command-payload-figure]]
+.Key-transfer command payload
 image::km_packet_key_transfer_payload.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE.",width=544]
 
-.DEST_ENGINE Payload
+<<key-transfer-requested-engines-table>> defines the destination-engine bits in the
+transfer request.
+
+[[key-transfer-requested-engines-table]]
+.Key-transfer requested engines
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Bit | Name | Description
@@ -493,10 +557,18 @@ If the request is granted, this command has a `RESP_CMD` response with a
 return code of _success_, and a return argument containing the key handle
 and a bitfield of the crypto engines to which the key was transferred.
 
-.RESP_CMD _Success_ Return Argument
+<<key-transfer-success-response-figure>> shows the key handle and completed-engine mask
+returned on success.
+
+[[key-transfer-success-response-figure]]
+.Key-transfer success response
 image::km_packet_key_transfer_result.svg["Word 0: bits 31 to 16: RESERVED; bits 15 to 8: DEST_ENGINE; bits 7 to 0: KEY_HANDLE.",width=544]
 
-.DEST_ENGINE Payload
+<<key-transfer-completed-engines-table>> defines the destination-engine bits in the
+transfer response.
+
+[[key-transfer-completed-engines-table]]
+.Key-transfer completed engines
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Bit | Name | Description
@@ -523,10 +595,18 @@ number of engines may be selected.
 
 A bitfield indicating the crypto engines to purge.
 
-.Command Payload
+<<key-purge-command-payload-figure>> shows the engine mask sent with the key-purge
+request.
+
+[[key-purge-command-payload-figure]]
+.Key-purge command payload
 image::km_packet_engine_mask.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE.",width=544]
 
-.DEST_ENGINE Payload
+<<key-purge-requested-engines-table>> defines the bits selecting the engines whose key
+registers are to be purged.
+
+[[key-purge-requested-engines-table]]
+.Key-purge requested engines
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Bit | Name | Description
@@ -554,10 +634,18 @@ If the request is granted, this command has a `RESP_CMD` response with a
 return code of _success_, and a return argument indicating the crypto
 engines that were purged.
 
-.RESP_CMD _Success_ Return Argument
+<<key-purge-success-response-figure>> shows the engine mask returned after a successful
+purge.
+
+[[key-purge-success-response-figure]]
+.Key-purge success response
 image::km_packet_engine_mask.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE.",width=544]
 
-.DEST_ENGINE Payload
+<<key-purge-completed-engines-table>> defines the bits reporting which engines were
+purged.
+
+[[key-purge-completed-engines-table]]
+.Key-purge completed engines
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Bit | Name | Description
@@ -585,10 +673,18 @@ The SEP must provide the key size in multiples of 32-bit words (where the
 key size is `KEY_SIZE+1`) and the valid destinations for the key,
 followed by the key material itself.
 
-.Command Payload
+<<key-load-command-payload-figure>> shows the size, destination policy, and key words
+sent with CMD_KEY_LOAD.
+
+[[key-load-command-payload-figure]]
+.Key-load command payload
 image::km_packet_key_load_payload.svg["Word 0: bits 31 to 7: RESERVED; bits 6 to 0: KEY_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID. Word 2: bits 31 to 0: KEY_DATA[0]. Intermediate words omitted. Word KEY_SIZE + 2: bits 31 to 0: KEY_DATA[KEY_SIZE].",width=544]
 
-.DEST_VALID Payload
+<<key-load-destination-policy-table>> defines the permitted-destination bits for a
+loaded key.
+
+[[key-load-destination-policy-table]]
+.Key-load destination policy
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Bit | Name | Description
@@ -616,6 +712,10 @@ The return argument is the fixed header-word index of the offending field
 (`0` for `KEY_SIZE` / length, `1` for `DEST_VALID`), not an arbitrary
 `KEY_DATA` position.
 
+<<cmd-key-load-validation-order-table>> lists the validation checks in order and the
+error returned at each failure.
+
+[[cmd-key-load-validation-order-table]]
 .CMD_KEY_LOAD Validation Order
 [cols="^10%,<55%,^20%,^15%",options="header"]
 |===
@@ -649,7 +749,11 @@ requested size, and the returned handle is usable by every other
 key-management command with no distinction from a `CMD_KEY_GENERATE`
 handle.
 
-.RESP_CMD _Success_ Return Argument
+<<key-load-success-response-figure>> shows the loaded key handle, size, and destination
+policy returned on success.
+
+[[key-load-success-response-figure]]
+.Key-load success response
 image::km_packet_key_result.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-abr-sk-transfer]]
@@ -674,10 +778,18 @@ key-management command.
 
 The valid crypto engine destinations for the captured key.
 
-.Command Payload
+<<adams-bridge-shared-key-capture-payload-figure>> shows the destination policy supplied
+for the captured shared key.
+
+[[adams-bridge-shared-key-capture-payload-figure]]
+.Adams Bridge shared-key capture payload
 image::km_packet_destination_mask.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID.",width=544]
 
-.DEST_VALID Payload
+<<adams-bridge-shared-key-destination-policy-table>> defines the permitted destinations
+for the captured shared key.
+
+[[adams-bridge-shared-key-destination-policy-table]]
+.Adams Bridge shared-key destination policy
 [cols="^15%,<25%,<60%",options="header"]
 |===
 | Bit | Name | Description
@@ -704,7 +816,11 @@ response is also returned if the KPV cannot allocate a slot for the key.
 If the request is granted, the command returns `RESP_CMD` _success_ with a
 return argument containing the handle of the newly stored key.
 
-.RESP_CMD _Success_ Return Argument
+<<adams-bridge-shared-key-capture-response-figure>> shows the newly allocated key handle
+returned on success.
+
+[[adams-bridge-shared-key-capture-response-figure]]
+.Adams Bridge shared-key capture response
 image::km_packet_key_handle.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-otp-read-lock-cold]]
@@ -735,10 +851,18 @@ The command takes exactly one payload word. A frame carrying no payload
 word returns _invalid_len_ rather than _invalid_arg_, because the length
 check precedes any inspection of the argument.
 
-.Command Payload
+<<otp-cold-read-lock-command-payload-figure>> shows the lock bits sent with
+CMD_OTP_READ_LOCK_COLD.
+
+[[otp-cold-read-lock-command-payload-figure]]
+.OTP cold-read-lock command payload
 image::km_packet_otp_read_locks.svg["Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC.",width=544]
 
-.LOCK_BITS Field Encoding
+<<otp-cold-read-lock-bit-encoding-table>> maps each payload bit to the OTP field whose
+reads it locks.
+
+[[otp-cold-read-lock-bit-encoding-table]]
+.OTP cold-read-lock bit encoding
 [cols="^10%,<20%,<70%",options="header"]
 |===
 | Bit | Field | Description
@@ -767,13 +891,21 @@ On success the command applies the lock bits (triple-write convention)
 and returns `RESP_CMD` _success_ with `return_arg` = the resulting
 `OTP_READ_LOCK_COLD` register value after the write.
 
-.RESP_CMD _Success_ Return Argument
+<<otp-cold-read-lock-success-response-figure>> shows the resulting lock-register value
+returned on success.
+
+[[otp-cold-read-lock-success-response-figure]]
+.OTP cold-read-lock success response
 image::km_packet_otp_read_locks.svg["Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC.",width=544]
 
 [[km-firmware-response-message-reference]]
 == Response Message Reference
 
-.Response Message
+<<key-manager-response-message-format-figure>> shows the response header, payload, and
+checksum placement.
+
+[[key-manager-response-message-format-figure]]
+.Key Manager response-message format
 image::km_packet_response_message.svg["Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: RESPONSE_ID; bits 7 to 0: RESP_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32.",width=544]
 
 The KM sends response messages to the SEP using the exact same basic
@@ -783,7 +915,11 @@ The sequence numbers of response messages do not correspond to the
 sequence numbers of command messages. There is also no direct
 relationship between command IDs and response IDs.
 
-.KM Response Summary
+<<key-manager-response-summary-table>> lists the response IDs and the events that
+generate them.
+
+[[key-manager-response-summary-table]]
+.Key Manager response summary
 [cols="^10%,<40%,<50%",options="header"]
 |===
 | ID | Response | Trigger
@@ -807,10 +943,18 @@ direct commands from the SEP with this response.
 The sequence number from the source command, the source command ID, a
 signed 8-bit return code, and an optional argument.
 
-.Response Payload
+<<key-manager-command-response-payload-figure>> shows the source command, return code,
+and optional return argument.
+
+[[key-manager-command-response-payload-figure]]
+.Key Manager command-response payload
 image::km_packet_response_payload.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: COMMAND_ID. Word 2: bits 31 to 8: RESERVED; bits 7 to 0: RETURN_CODE. Word 3: bits 31 to 0: RETURN_ARG (optional).",width=544]
 
-.Return Codes
+<<key-manager-command-return-codes-table>> defines the command result codes and their
+return arguments.
+
+[[key-manager-command-return-codes-table]]
+.Key Manager command return codes
 [cols="^10%,<18%,<52%,<20%",options="header"]
 |===
 | Code | Name | Description | Argument Value
@@ -876,10 +1020,18 @@ A signed 8-bit code indicating the cause of the fault, sign-extended to the
 full payload word. Only `[7:0]` is meaningful; because every code is negative,
 `[31:8]` reads as all ones rather than zero.
 
-.Response Payload
+<<key-manager-recoverable-fault-payload-figure>> shows the sign-extended
+recoverable-fault code.
+
+[[key-manager-recoverable-fault-payload-figure]]
+.Key Manager recoverable-fault payload
 image::km_packet_fault_code.svg["Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE.",width=544]
 
-.Fault Codes
+<<key-manager-recoverable-fault-codes-table>> lists the recoverable faults reported to
+the SEP host.
+
+[[key-manager-recoverable-fault-codes-table]]
+.Key Manager recoverable-fault codes
 [cols="^12%,<28%,<60%",options="header"]
 |===
 | Code | Name | Description
@@ -904,10 +1056,18 @@ A signed 8-bit code indicating the cause of the fault, sign-extended to the
 full payload word. Only `[7:0]` is meaningful; because every code is negative,
 `[31:8]` reads as all ones rather than zero.
 
-.Response Payload
+<<key-manager-unrecoverable-fault-payload-figure>> shows the sign-extended
+unrecoverable-fault code.
+
+[[key-manager-unrecoverable-fault-payload-figure]]
+.Key Manager unrecoverable-fault payload
 image::km_packet_fault_code.svg["Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE.",width=544]
 
-.Fault Codes
+<<key-manager-unrecoverable-fault-codes-table>> lists the unrecoverable faults reported
+to the SEP host.
+
+[[key-manager-unrecoverable-fault-codes-table]]
+.Key Manager unrecoverable-fault codes
 [cols="^12%,<28%,<60%",options="header"]
 |===
 | Code | Name | Description
@@ -2092,6 +2252,10 @@ structure into the HMAC message verbatim. Structure fields use the
 PicoRV32 in-memory byte representation; only the surrounding counter and
 output-length fields are big-endian.
 
+<<kdf-fixed-input-layout-table>> defines the byte layout of the fixed input mixed into
+key derivation.
+
+[[kdf-fixed-input-layout-table]]
 .KDF Fixed Input Layout
 [cols="^15%,<25%,<60%",options="header"]
 |===
@@ -2160,6 +2324,9 @@ and engine behavior.
 
 Compute the CRC-8/ROHC for a given block of data.
 
+<<crc-8-rohc-parameters-table>> specifies the CRC-8 parameters used for message headers.
+
+[[crc-8-rohc-parameters-table]]
 .CRC-8/ROHC Parameters
 [cols="<40%,<60%",options="header"]
 |===
@@ -2181,6 +2348,10 @@ from least significant byte to most significant byte.
 
 Compute the CRC-32C (Castagnoli) for a given block of data.
 
+<<crc-32c-parameters-table>> specifies the CRC-32C parameters used for payload
+integrity.
+
+[[crc-32c-parameters-table]]
 .CRC-32C Parameters
 [cols="<40%,<60%",options="header"]
 |===

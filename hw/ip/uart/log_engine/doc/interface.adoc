@@ -9,7 +9,12 @@ access, memory fetching, and UART communication.
 
 === Configuration Parameters
 
+<<log-engine-configuration-parameters-table>> lists the log-entry and bus-dimension
+parameters.
+
+[[log-engine-configuration-parameters-table]]
 [width="100%",cols="30%,20%,50%",options="header",]
+.Log-engine configuration parameters
 |=====================================================================================
 |Parameter |Default |Description
 |NUM_LOG_ENTRIES |16 |Number of independent log entries
@@ -26,7 +31,11 @@ of 16)
 
 === Global Interface
 
-.Global Interface Signals
+<<log-engine-global-interface-signals-table>> defines the log-engine clock and reset
+interface.
+
+[[log-engine-global-interface-signals-table]]
+.Log-engine Global Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -43,7 +52,11 @@ to initial state.
 The DMA interface provides flow control coordination with the UART
 transmitter.
 
-.DMA Interface Signals
+<<log-engine-dma-interface-signals-table>> defines the UART-ready handshake used by the
+log engine.
+
+[[log-engine-dma-interface-signals-table]]
+.Log-engine DMA Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description
@@ -64,7 +77,11 @@ characters
 
 The interrupt interface provides error signaling to the system.
 
-.Interrupt Interface Signals
+<<log-engine-interrupt-interface-signals-table>> defines the log-engine interrupt
+output.
+
+[[log-engine-interrupt-interface-signals-table]]
+.Log-engine Interrupt Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
 |=====================================================================================
 |Signal Name |Width |Direction |Active |Description

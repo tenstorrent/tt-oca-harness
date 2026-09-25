@@ -282,9 +282,15 @@ def result_from_fragment(
 ) -> StageResult:
     """A leaf ``result.json`` read back as the :class:`StageResult` that wrote it.
 
-    A build's fragment names no item, and its result carries none either.
+    A build's fragment names no item, and its result carries none either. The fragment
+    records the build that produced the leaf once, under ``target_build``; the result keeps
+    it in its metadata, where the coordinator reads it.
     """
-    metadata = payload.get("metadata")
+    recorded_metadata = payload.get("metadata")
+    metadata = dict(recorded_metadata) if isinstance(recorded_metadata, dict) else None
+    target_build = payload.get("target_build")
+    if isinstance(target_build, dict):
+        metadata = {**(metadata or {}), "target_build": dict(target_build)}
     recorded = payload.get("item", item)
     return StageResult(
         stage=stage,
@@ -299,7 +305,7 @@ def result_from_fragment(
         failure_buckets=list(payload.get("failure_buckets") or []),
         reason=str(payload.get("reason", "")),
         parser=payload.get("parser"),
-        metadata=dict(metadata) if isinstance(metadata, dict) else None,
+        metadata=metadata,
         target=payload.get("target"),
         formal=payload.get("formal"),
     )

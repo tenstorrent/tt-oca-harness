@@ -4,11 +4,37 @@
 schema_version = 1
 
 [[tests]]
+name = "smc_i3c_private_write_test"
+module = "smc_i3c_private_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "i3c"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_i3c_to_fabric_test"
 module = "smc_i3c_to_fabric_test"
 seed = 1
 timeout_sec = 1800
 tags = ["i3c_decode"]
+run_modes = ["smoke"]
+
+[[tests]]
+# DAT write/read and DCT reads on all six I3C instances through the CSR window.
+name = "smc_i3c_dxt_table_test"
+module = "smc_i3c_dxt_table_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Outbound words through both copies of the M-mode and hypervisor remap windows.
+name = "smc_output_remap_window_test"
+module = "smc_output_remap_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -60,6 +86,70 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_filter_config_field_sweep_test"
+module = "smc_filter_config_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_filter_region_span_test"
+module = "smc_filter_region_span_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_decouple_rw_test"
+module = "smc_dma_decouple_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_data_ctrl_field_test"
+module = "smc_gpio_data_ctrl_field_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_region_attrs_test"
+module = "smc_alias_remap_region_attrs_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpuif_handshake_test"
+module = "smc_cpuif_handshake_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpuif_wrong_direction_test"
+module = "smc_cpuif_wrong_direction_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpuif_external_stall_test"
+module = "smc_cpuif_external_stall_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_filter_field_sweep_test"
 module = "smc_filter_field_sweep_test"
 seed = 1
@@ -73,6 +163,14 @@ module = "smc_xvisor_remap_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_decode_hole_test"
+module = "smc_decode_hole_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -102,6 +200,14 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_sep_in_axi_shape_test"
 module = "smc_sep_in_axi_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_jtag_axi_shape_test"
+module = "smc_jtag_axi_shape_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "fabric"]

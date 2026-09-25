@@ -500,6 +500,11 @@
 // Consumer: cocotb/env/smc_cpu_trace_monitor.py.
 `SMC_TB_OUT(logic, tb_cpu_core_reset_n)
 `SMC_TB_OUT(logic, tb_cpu_trace_valid)
+// The same retire valid and PC without the core-reset mask, for the leaf that
+// orders the first retire against the core reset release: a retire the mask
+// would hide is exactly what that leaf has to be able to see.
+`SMC_TB_OUT(logic, tb_cpu_trace_valid_unmasked)
+`SMC_TB_OUT(logic [57:0], tb_cpu_trace_pc_unmasked)
 `SMC_TB_OUT(logic [57:0], tb_cpu_trace_pc)
 `SMC_TB_OUT(logic [31:0], tb_cpu_trace_insn)
 `SMC_TB_OUT(logic, tb_cpu_trace_exc)

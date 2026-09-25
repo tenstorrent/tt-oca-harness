@@ -21,7 +21,7 @@ Complete system initialization for multi-timer synchronization:
 // Release reset to all timers simultaneously
 
 // Configure PRIMARY timer
-write32(primary_base + 0x04, 0x0A05); // CTRL: CREDIT_VAL=10, PULSE_WIDTH=5
+write32(primary_base + 0x04, 0x0001050A); // CTRL: STEP=1, PULSE_WIDTH=5, CREDIT_VAL=10
 write32(primary_base + 0x0C, preset_lo); // TIMER_PRESET_LO
 write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI
 ----
@@ -30,7 +30,7 @@ write32(primary_base + 0x10, preset_hi); // TIMER_PRESET_HI
 [source,sourceCode,c]
 ----
 for (int i = 0; i < num_secondary; i++) {
-    write32(secondary_base[i] + 0x04, 0x0A05); // Same CTRL settings
+    write32(secondary_base[i] + 0x04, 0x0001050A); // Same CTRL settings
     write32(secondary_base[i] + 0x0C, preset_lo); // Same preset
     write32(secondary_base[i] + 0x10, preset_hi); // Same preset
 }
@@ -217,13 +217,17 @@ multi-chiplet systems.
 
 === Reset Values and Power-On Behavior
 
+<<octs-register-reset-values-and-power-on-behavior-table>> lists the register reset
+values and their boot-time implications.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
 ++++
 endif::backend-html5[]
 
-.*Register Reset Values and Power-On Behavior*
+[[octs-register-reset-values-and-power-on-behavior-table]]
+.OCTS Register Reset Values and Power-On Behavior
 [cols="32,20,48",options="header",role="port-reference"]
 |=======================================================================
 |Register |Reset Value |Notes
@@ -258,5 +262,5 @@ include::partial$system_timer_octs/regs/gen/html/system_timer_octs.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/system_timer_octs.adoc[]
+include::../regs/gen/adoc/system_timer_octs.adoc[leveloffset=+2]
 endif::backend-pdf[]

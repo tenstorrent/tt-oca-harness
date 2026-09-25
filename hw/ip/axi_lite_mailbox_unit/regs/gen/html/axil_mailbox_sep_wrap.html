@@ -7,32 +7,182 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: axil_mailbox_sep_wrap</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#WRITE_DATA">WRITE_DATA</a></td><td>W</td><td>-</td></tr>
-<tr><td>0x8</td><td><a href="#READ_DATA">READ_DATA</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x10</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#ERROR_FLAGS">ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x20</td><td><a href="#WIRQT">WIRQT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x28</td><td><a href="#RIRQT">RIRQT</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x30</td><td><a href="#IRQS">IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
-<tr><td>0x38</td><td><a href="#IRQEN">IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
-<tr><td>0x40</td><td><a href="#IRQP">IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
-<tr><td>0x48</td><td><a href="#CTRL">CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x0</td><td><a href="#outbound_mailbox_0.WRITE_DATA">outbound_mailbox_0.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x8</td><td><a href="#outbound_mailbox_0.READ_DATA">outbound_mailbox_0.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x10</td><td><a href="#outbound_mailbox_0.STATUS">outbound_mailbox_0.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x18</td><td><a href="#outbound_mailbox_0.ERROR_FLAGS">outbound_mailbox_0.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x20</td><td><a href="#outbound_mailbox_0.WIRQT">outbound_mailbox_0.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x28</td><td><a href="#outbound_mailbox_0.RIRQT">outbound_mailbox_0.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x30</td><td><a href="#outbound_mailbox_0.IRQS">outbound_mailbox_0.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x38</td><td><a href="#outbound_mailbox_0.IRQEN">outbound_mailbox_0.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x40</td><td><a href="#outbound_mailbox_0.IRQP">outbound_mailbox_0.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x48</td><td><a href="#outbound_mailbox_0.CTRL">outbound_mailbox_0.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x800</td><td><a href="#inbound_mailbox_0.WRITE_DATA">inbound_mailbox_0.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x808</td><td><a href="#inbound_mailbox_0.READ_DATA">inbound_mailbox_0.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x810</td><td><a href="#inbound_mailbox_0.STATUS">inbound_mailbox_0.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x818</td><td><a href="#inbound_mailbox_0.ERROR_FLAGS">inbound_mailbox_0.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x820</td><td><a href="#inbound_mailbox_0.WIRQT">inbound_mailbox_0.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x828</td><td><a href="#inbound_mailbox_0.RIRQT">inbound_mailbox_0.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x830</td><td><a href="#inbound_mailbox_0.IRQS">inbound_mailbox_0.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x838</td><td><a href="#inbound_mailbox_0.IRQEN">inbound_mailbox_0.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x840</td><td><a href="#inbound_mailbox_0.IRQP">inbound_mailbox_0.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x848</td><td><a href="#inbound_mailbox_0.CTRL">inbound_mailbox_0.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x1000</td><td><a href="#outbound_mailbox_1.WRITE_DATA">outbound_mailbox_1.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x1008</td><td><a href="#outbound_mailbox_1.READ_DATA">outbound_mailbox_1.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1010</td><td><a href="#outbound_mailbox_1.STATUS">outbound_mailbox_1.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1018</td><td><a href="#outbound_mailbox_1.ERROR_FLAGS">outbound_mailbox_1.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1020</td><td><a href="#outbound_mailbox_1.WIRQT">outbound_mailbox_1.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1028</td><td><a href="#outbound_mailbox_1.RIRQT">outbound_mailbox_1.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1030</td><td><a href="#outbound_mailbox_1.IRQS">outbound_mailbox_1.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x1038</td><td><a href="#outbound_mailbox_1.IRQEN">outbound_mailbox_1.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x1040</td><td><a href="#outbound_mailbox_1.IRQP">outbound_mailbox_1.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x1048</td><td><a href="#outbound_mailbox_1.CTRL">outbound_mailbox_1.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x1800</td><td><a href="#inbound_mailbox_1.WRITE_DATA">inbound_mailbox_1.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x1808</td><td><a href="#inbound_mailbox_1.READ_DATA">inbound_mailbox_1.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1810</td><td><a href="#inbound_mailbox_1.STATUS">inbound_mailbox_1.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1818</td><td><a href="#inbound_mailbox_1.ERROR_FLAGS">inbound_mailbox_1.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1820</td><td><a href="#inbound_mailbox_1.WIRQT">inbound_mailbox_1.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1828</td><td><a href="#inbound_mailbox_1.RIRQT">inbound_mailbox_1.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1830</td><td><a href="#inbound_mailbox_1.IRQS">inbound_mailbox_1.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x1838</td><td><a href="#inbound_mailbox_1.IRQEN">inbound_mailbox_1.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x1840</td><td><a href="#inbound_mailbox_1.IRQP">inbound_mailbox_1.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x1848</td><td><a href="#inbound_mailbox_1.CTRL">inbound_mailbox_1.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x2000</td><td><a href="#outbound_mailbox_2.WRITE_DATA">outbound_mailbox_2.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x2008</td><td><a href="#outbound_mailbox_2.READ_DATA">outbound_mailbox_2.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2010</td><td><a href="#outbound_mailbox_2.STATUS">outbound_mailbox_2.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2018</td><td><a href="#outbound_mailbox_2.ERROR_FLAGS">outbound_mailbox_2.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2020</td><td><a href="#outbound_mailbox_2.WIRQT">outbound_mailbox_2.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2028</td><td><a href="#outbound_mailbox_2.RIRQT">outbound_mailbox_2.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2030</td><td><a href="#outbound_mailbox_2.IRQS">outbound_mailbox_2.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x2038</td><td><a href="#outbound_mailbox_2.IRQEN">outbound_mailbox_2.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x2040</td><td><a href="#outbound_mailbox_2.IRQP">outbound_mailbox_2.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x2048</td><td><a href="#outbound_mailbox_2.CTRL">outbound_mailbox_2.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x2800</td><td><a href="#inbound_mailbox_2.WRITE_DATA">inbound_mailbox_2.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x2808</td><td><a href="#inbound_mailbox_2.READ_DATA">inbound_mailbox_2.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2810</td><td><a href="#inbound_mailbox_2.STATUS">inbound_mailbox_2.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2818</td><td><a href="#inbound_mailbox_2.ERROR_FLAGS">inbound_mailbox_2.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2820</td><td><a href="#inbound_mailbox_2.WIRQT">inbound_mailbox_2.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2828</td><td><a href="#inbound_mailbox_2.RIRQT">inbound_mailbox_2.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x2830</td><td><a href="#inbound_mailbox_2.IRQS">inbound_mailbox_2.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x2838</td><td><a href="#inbound_mailbox_2.IRQEN">inbound_mailbox_2.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x2840</td><td><a href="#inbound_mailbox_2.IRQP">inbound_mailbox_2.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x2848</td><td><a href="#inbound_mailbox_2.CTRL">inbound_mailbox_2.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x3000</td><td><a href="#outbound_mailbox_3.WRITE_DATA">outbound_mailbox_3.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x3008</td><td><a href="#outbound_mailbox_3.READ_DATA">outbound_mailbox_3.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3010</td><td><a href="#outbound_mailbox_3.STATUS">outbound_mailbox_3.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3018</td><td><a href="#outbound_mailbox_3.ERROR_FLAGS">outbound_mailbox_3.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3020</td><td><a href="#outbound_mailbox_3.WIRQT">outbound_mailbox_3.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3028</td><td><a href="#outbound_mailbox_3.RIRQT">outbound_mailbox_3.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3030</td><td><a href="#outbound_mailbox_3.IRQS">outbound_mailbox_3.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x3038</td><td><a href="#outbound_mailbox_3.IRQEN">outbound_mailbox_3.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x3040</td><td><a href="#outbound_mailbox_3.IRQP">outbound_mailbox_3.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x3048</td><td><a href="#outbound_mailbox_3.CTRL">outbound_mailbox_3.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x3800</td><td><a href="#inbound_mailbox_3.WRITE_DATA">inbound_mailbox_3.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x3808</td><td><a href="#inbound_mailbox_3.READ_DATA">inbound_mailbox_3.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3810</td><td><a href="#inbound_mailbox_3.STATUS">inbound_mailbox_3.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3818</td><td><a href="#inbound_mailbox_3.ERROR_FLAGS">inbound_mailbox_3.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3820</td><td><a href="#inbound_mailbox_3.WIRQT">inbound_mailbox_3.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3828</td><td><a href="#inbound_mailbox_3.RIRQT">inbound_mailbox_3.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x3830</td><td><a href="#inbound_mailbox_3.IRQS">inbound_mailbox_3.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x3838</td><td><a href="#inbound_mailbox_3.IRQEN">inbound_mailbox_3.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x3840</td><td><a href="#inbound_mailbox_3.IRQP">inbound_mailbox_3.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x3848</td><td><a href="#inbound_mailbox_3.CTRL">inbound_mailbox_3.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4000</td><td><a href="#outbound_mailbox_4.WRITE_DATA">outbound_mailbox_4.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4008</td><td><a href="#outbound_mailbox_4.READ_DATA">outbound_mailbox_4.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4010</td><td><a href="#outbound_mailbox_4.STATUS">outbound_mailbox_4.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4018</td><td><a href="#outbound_mailbox_4.ERROR_FLAGS">outbound_mailbox_4.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4020</td><td><a href="#outbound_mailbox_4.WIRQT">outbound_mailbox_4.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4028</td><td><a href="#outbound_mailbox_4.RIRQT">outbound_mailbox_4.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4030</td><td><a href="#outbound_mailbox_4.IRQS">outbound_mailbox_4.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x4038</td><td><a href="#outbound_mailbox_4.IRQEN">outbound_mailbox_4.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x4040</td><td><a href="#outbound_mailbox_4.IRQP">outbound_mailbox_4.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x4048</td><td><a href="#outbound_mailbox_4.CTRL">outbound_mailbox_4.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4800</td><td><a href="#inbound_mailbox_4.WRITE_DATA">inbound_mailbox_4.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x4808</td><td><a href="#inbound_mailbox_4.READ_DATA">inbound_mailbox_4.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4810</td><td><a href="#inbound_mailbox_4.STATUS">inbound_mailbox_4.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4818</td><td><a href="#inbound_mailbox_4.ERROR_FLAGS">inbound_mailbox_4.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x4820</td><td><a href="#inbound_mailbox_4.WIRQT">inbound_mailbox_4.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4828</td><td><a href="#inbound_mailbox_4.RIRQT">inbound_mailbox_4.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x4830</td><td><a href="#inbound_mailbox_4.IRQS">inbound_mailbox_4.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x4838</td><td><a href="#inbound_mailbox_4.IRQEN">inbound_mailbox_4.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x4840</td><td><a href="#inbound_mailbox_4.IRQP">inbound_mailbox_4.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x4848</td><td><a href="#inbound_mailbox_4.CTRL">inbound_mailbox_4.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x5000</td><td><a href="#outbound_mailbox_5.WRITE_DATA">outbound_mailbox_5.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x5008</td><td><a href="#outbound_mailbox_5.READ_DATA">outbound_mailbox_5.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x5010</td><td><a href="#outbound_mailbox_5.STATUS">outbound_mailbox_5.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x5018</td><td><a href="#outbound_mailbox_5.ERROR_FLAGS">outbound_mailbox_5.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x5020</td><td><a href="#outbound_mailbox_5.WIRQT">outbound_mailbox_5.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x5028</td><td><a href="#outbound_mailbox_5.RIRQT">outbound_mailbox_5.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x5030</td><td><a href="#outbound_mailbox_5.IRQS">outbound_mailbox_5.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x5038</td><td><a href="#outbound_mailbox_5.IRQEN">outbound_mailbox_5.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x5040</td><td><a href="#outbound_mailbox_5.IRQP">outbound_mailbox_5.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x5048</td><td><a href="#outbound_mailbox_5.CTRL">outbound_mailbox_5.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x5800</td><td><a href="#inbound_mailbox_5.WRITE_DATA">inbound_mailbox_5.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x5808</td><td><a href="#inbound_mailbox_5.READ_DATA">inbound_mailbox_5.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x5810</td><td><a href="#inbound_mailbox_5.STATUS">inbound_mailbox_5.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x5818</td><td><a href="#inbound_mailbox_5.ERROR_FLAGS">inbound_mailbox_5.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x5820</td><td><a href="#inbound_mailbox_5.WIRQT">inbound_mailbox_5.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x5828</td><td><a href="#inbound_mailbox_5.RIRQT">inbound_mailbox_5.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x5830</td><td><a href="#inbound_mailbox_5.IRQS">inbound_mailbox_5.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x5838</td><td><a href="#inbound_mailbox_5.IRQEN">inbound_mailbox_5.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x5840</td><td><a href="#inbound_mailbox_5.IRQP">inbound_mailbox_5.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x5848</td><td><a href="#inbound_mailbox_5.CTRL">inbound_mailbox_5.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x6000</td><td><a href="#outbound_mailbox_6.WRITE_DATA">outbound_mailbox_6.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x6008</td><td><a href="#outbound_mailbox_6.READ_DATA">outbound_mailbox_6.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x6010</td><td><a href="#outbound_mailbox_6.STATUS">outbound_mailbox_6.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x6018</td><td><a href="#outbound_mailbox_6.ERROR_FLAGS">outbound_mailbox_6.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x6020</td><td><a href="#outbound_mailbox_6.WIRQT">outbound_mailbox_6.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x6028</td><td><a href="#outbound_mailbox_6.RIRQT">outbound_mailbox_6.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x6030</td><td><a href="#outbound_mailbox_6.IRQS">outbound_mailbox_6.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x6038</td><td><a href="#outbound_mailbox_6.IRQEN">outbound_mailbox_6.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x6040</td><td><a href="#outbound_mailbox_6.IRQP">outbound_mailbox_6.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x6048</td><td><a href="#outbound_mailbox_6.CTRL">outbound_mailbox_6.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x6800</td><td><a href="#inbound_mailbox_6.WRITE_DATA">inbound_mailbox_6.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x6808</td><td><a href="#inbound_mailbox_6.READ_DATA">inbound_mailbox_6.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x6810</td><td><a href="#inbound_mailbox_6.STATUS">inbound_mailbox_6.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x6818</td><td><a href="#inbound_mailbox_6.ERROR_FLAGS">inbound_mailbox_6.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x6820</td><td><a href="#inbound_mailbox_6.WIRQT">inbound_mailbox_6.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x6828</td><td><a href="#inbound_mailbox_6.RIRQT">inbound_mailbox_6.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x6830</td><td><a href="#inbound_mailbox_6.IRQS">inbound_mailbox_6.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x6838</td><td><a href="#inbound_mailbox_6.IRQEN">inbound_mailbox_6.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x6840</td><td><a href="#inbound_mailbox_6.IRQP">inbound_mailbox_6.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x6848</td><td><a href="#inbound_mailbox_6.CTRL">inbound_mailbox_6.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x7000</td><td><a href="#outbound_mailbox_7.WRITE_DATA">outbound_mailbox_7.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x7008</td><td><a href="#outbound_mailbox_7.READ_DATA">outbound_mailbox_7.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x7010</td><td><a href="#outbound_mailbox_7.STATUS">outbound_mailbox_7.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x7018</td><td><a href="#outbound_mailbox_7.ERROR_FLAGS">outbound_mailbox_7.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x7020</td><td><a href="#outbound_mailbox_7.WIRQT">outbound_mailbox_7.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x7028</td><td><a href="#outbound_mailbox_7.RIRQT">outbound_mailbox_7.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x7030</td><td><a href="#outbound_mailbox_7.IRQS">outbound_mailbox_7.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x7038</td><td><a href="#outbound_mailbox_7.IRQEN">outbound_mailbox_7.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x7040</td><td><a href="#outbound_mailbox_7.IRQP">outbound_mailbox_7.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x7048</td><td><a href="#outbound_mailbox_7.CTRL">outbound_mailbox_7.CTRL</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x7800</td><td><a href="#inbound_mailbox_7.WRITE_DATA">inbound_mailbox_7.WRITE_DATA</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x7808</td><td><a href="#inbound_mailbox_7.READ_DATA">inbound_mailbox_7.READ_DATA</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x7810</td><td><a href="#inbound_mailbox_7.STATUS">inbound_mailbox_7.STATUS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x7818</td><td><a href="#inbound_mailbox_7.ERROR_FLAGS">inbound_mailbox_7.ERROR_FLAGS</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x7820</td><td><a href="#inbound_mailbox_7.WIRQT">inbound_mailbox_7.WIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x7828</td><td><a href="#inbound_mailbox_7.RIRQT">inbound_mailbox_7.RIRQT</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x7830</td><td><a href="#inbound_mailbox_7.IRQS">inbound_mailbox_7.IRQS</a></td><td>RW</td><td>This register is used to read and clear interrupt requests, regardless of IRQEN register and whether the interrupt is enabled or disabled.</td></tr>
+<tr><td>0x7838</td><td><a href="#inbound_mailbox_7.IRQEN">inbound_mailbox_7.IRQEN</a></td><td>RW</td><td>This register is used to enable and disable which interrupts are sent to the CPU.</td></tr>
+<tr><td>0x7840</td><td><a href="#inbound_mailbox_7.IRQP">inbound_mailbox_7.IRQP</a></td><td>R</td><td>This register is used to read the current status of the interrupts sent to the CPU.</td></tr>
+<tr><td>0x7848</td><td><a href="#inbound_mailbox_7.CTRL">inbound_mailbox_7.CTRL</a></td><td>W</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
-<h3 id="WRITE_DATA">WRITE_DATA</h3>
+<p><strong>Register Details:</strong></p>
+<h3 id="outbound_mailbox_0.WRITE_DATA">outbound_mailbox_0.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
-<h3 id="READ_DATA">READ_DATA</h3>
+<h3 id="outbound_mailbox_0.READ_DATA">outbound_mailbox_0.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
-<h3 id="STATUS">STATUS</h3>
+<h3 id="outbound_mailbox_0.STATUS">outbound_mailbox_0.STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -41,26 +191,26 @@
 <tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
 <tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
 </table>
-<h3 id="ERROR_FLAGS">ERROR_FLAGS</h3>
+<h3 id="outbound_mailbox_0.ERROR_FLAGS">outbound_mailbox_0.ERROR_FLAGS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
 <tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
-<h3 id="WIRQT">WIRQT</h3>
+<h3 id="outbound_mailbox_0.WIRQT">outbound_mailbox_0.WIRQT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
 </table>
-<h3 id="RIRQT">RIRQT</h3>
+<h3 id="outbound_mailbox_0.RIRQT">outbound_mailbox_0.RIRQT</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
 </table>
-<h3 id="IRQS">IRQS</h3>
+<h3 id="outbound_mailbox_0.IRQS">outbound_mailbox_0.IRQS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -68,7 +218,7 @@
 <tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 <tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
-<h3 id="IRQEN">IRQEN</h3>
+<h3 id="outbound_mailbox_0.IRQEN">outbound_mailbox_0.IRQEN</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -76,7 +226,7 @@
 <tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
 <tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
 </table>
-<h3 id="IRQP">IRQP</h3>
+<h3 id="outbound_mailbox_0.IRQP">outbound_mailbox_0.IRQP</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -84,7 +234,1042 @@
 <tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
 <tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
 </table>
-<h3 id="CTRL">CTRL</h3>
+<h3 id="outbound_mailbox_0.CTRL">outbound_mailbox_0.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.WRITE_DATA">inbound_mailbox_0.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.READ_DATA">inbound_mailbox_0.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.STATUS">inbound_mailbox_0.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.ERROR_FLAGS">inbound_mailbox_0.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.WIRQT">inbound_mailbox_0.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.RIRQT">inbound_mailbox_0.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.IRQS">inbound_mailbox_0.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.IRQEN">inbound_mailbox_0.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.IRQP">inbound_mailbox_0.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_0.CTRL">inbound_mailbox_0.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.WRITE_DATA">outbound_mailbox_1.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.READ_DATA">outbound_mailbox_1.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.STATUS">outbound_mailbox_1.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.ERROR_FLAGS">outbound_mailbox_1.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.WIRQT">outbound_mailbox_1.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.RIRQT">outbound_mailbox_1.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.IRQS">outbound_mailbox_1.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.IRQEN">outbound_mailbox_1.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.IRQP">outbound_mailbox_1.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="outbound_mailbox_1.CTRL">outbound_mailbox_1.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.WRITE_DATA">inbound_mailbox_1.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.READ_DATA">inbound_mailbox_1.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.STATUS">inbound_mailbox_1.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.ERROR_FLAGS">inbound_mailbox_1.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.WIRQT">inbound_mailbox_1.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.RIRQT">inbound_mailbox_1.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.IRQS">inbound_mailbox_1.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.IRQEN">inbound_mailbox_1.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.IRQP">inbound_mailbox_1.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_1.CTRL">inbound_mailbox_1.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.WRITE_DATA">outbound_mailbox_2.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.READ_DATA">outbound_mailbox_2.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.STATUS">outbound_mailbox_2.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.ERROR_FLAGS">outbound_mailbox_2.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.WIRQT">outbound_mailbox_2.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.RIRQT">outbound_mailbox_2.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.IRQS">outbound_mailbox_2.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.IRQEN">outbound_mailbox_2.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.IRQP">outbound_mailbox_2.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="outbound_mailbox_2.CTRL">outbound_mailbox_2.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.WRITE_DATA">inbound_mailbox_2.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.READ_DATA">inbound_mailbox_2.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.STATUS">inbound_mailbox_2.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.ERROR_FLAGS">inbound_mailbox_2.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.WIRQT">inbound_mailbox_2.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.RIRQT">inbound_mailbox_2.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.IRQS">inbound_mailbox_2.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.IRQEN">inbound_mailbox_2.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.IRQP">inbound_mailbox_2.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_2.CTRL">inbound_mailbox_2.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.WRITE_DATA">outbound_mailbox_3.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.READ_DATA">outbound_mailbox_3.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.STATUS">outbound_mailbox_3.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.ERROR_FLAGS">outbound_mailbox_3.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.WIRQT">outbound_mailbox_3.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.RIRQT">outbound_mailbox_3.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.IRQS">outbound_mailbox_3.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.IRQEN">outbound_mailbox_3.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.IRQP">outbound_mailbox_3.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="outbound_mailbox_3.CTRL">outbound_mailbox_3.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.WRITE_DATA">inbound_mailbox_3.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.READ_DATA">inbound_mailbox_3.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.STATUS">inbound_mailbox_3.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.ERROR_FLAGS">inbound_mailbox_3.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.WIRQT">inbound_mailbox_3.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.RIRQT">inbound_mailbox_3.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.IRQS">inbound_mailbox_3.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.IRQEN">inbound_mailbox_3.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.IRQP">inbound_mailbox_3.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_3.CTRL">inbound_mailbox_3.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.WRITE_DATA">outbound_mailbox_4.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.READ_DATA">outbound_mailbox_4.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.STATUS">outbound_mailbox_4.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.ERROR_FLAGS">outbound_mailbox_4.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.WIRQT">outbound_mailbox_4.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.RIRQT">outbound_mailbox_4.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.IRQS">outbound_mailbox_4.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.IRQEN">outbound_mailbox_4.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.IRQP">outbound_mailbox_4.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="outbound_mailbox_4.CTRL">outbound_mailbox_4.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.WRITE_DATA">inbound_mailbox_4.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.READ_DATA">inbound_mailbox_4.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.STATUS">inbound_mailbox_4.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.ERROR_FLAGS">inbound_mailbox_4.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.WIRQT">inbound_mailbox_4.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.RIRQT">inbound_mailbox_4.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.IRQS">inbound_mailbox_4.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.IRQEN">inbound_mailbox_4.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.IRQP">inbound_mailbox_4.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_4.CTRL">inbound_mailbox_4.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.WRITE_DATA">outbound_mailbox_5.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.READ_DATA">outbound_mailbox_5.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.STATUS">outbound_mailbox_5.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.ERROR_FLAGS">outbound_mailbox_5.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.WIRQT">outbound_mailbox_5.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.RIRQT">outbound_mailbox_5.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.IRQS">outbound_mailbox_5.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.IRQEN">outbound_mailbox_5.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.IRQP">outbound_mailbox_5.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="outbound_mailbox_5.CTRL">outbound_mailbox_5.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.WRITE_DATA">inbound_mailbox_5.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.READ_DATA">inbound_mailbox_5.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.STATUS">inbound_mailbox_5.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.ERROR_FLAGS">inbound_mailbox_5.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.WIRQT">inbound_mailbox_5.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.RIRQT">inbound_mailbox_5.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.IRQS">inbound_mailbox_5.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.IRQEN">inbound_mailbox_5.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.IRQP">inbound_mailbox_5.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_5.CTRL">inbound_mailbox_5.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.WRITE_DATA">outbound_mailbox_6.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.READ_DATA">outbound_mailbox_6.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.STATUS">outbound_mailbox_6.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.ERROR_FLAGS">outbound_mailbox_6.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.WIRQT">outbound_mailbox_6.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.RIRQT">outbound_mailbox_6.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.IRQS">outbound_mailbox_6.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.IRQEN">outbound_mailbox_6.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.IRQP">outbound_mailbox_6.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="outbound_mailbox_6.CTRL">outbound_mailbox_6.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.WRITE_DATA">inbound_mailbox_6.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.READ_DATA">inbound_mailbox_6.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.STATUS">inbound_mailbox_6.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.ERROR_FLAGS">inbound_mailbox_6.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.WIRQT">inbound_mailbox_6.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.RIRQT">inbound_mailbox_6.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.IRQS">inbound_mailbox_6.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.IRQEN">inbound_mailbox_6.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.IRQP">inbound_mailbox_6.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_6.CTRL">inbound_mailbox_6.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.WRITE_DATA">outbound_mailbox_7.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.READ_DATA">outbound_mailbox_7.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.STATUS">outbound_mailbox_7.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.ERROR_FLAGS">outbound_mailbox_7.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.WIRQT">outbound_mailbox_7.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.RIRQT">outbound_mailbox_7.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.IRQS">outbound_mailbox_7.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.IRQEN">outbound_mailbox_7.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.IRQP">outbound_mailbox_7.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="outbound_mailbox_7.CTRL">outbound_mailbox_7.CTRL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.WRITE_DATA">inbound_mailbox_7.WRITE_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.READ_DATA">inbound_mailbox_7.READ_DATA</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.STATUS">inbound_mailbox_7.STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>read_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, read fifo level is higher than threshold set in RIRQT</td></tr>
+<tr><td>2</td><td>write_level_above_thresh</td><td>R</td><td>0x0</td><td>If set, write fifo level is higher than threshold set in WIRQT</td></tr>
+<tr><td>1</td><td>full</td><td>R</td><td>0x0</td><td>0: Space is available to write, 1: Space is not available to write</td></tr>
+<tr><td>0</td><td>empty</td><td>R</td><td>0x1</td><td>0: Data is available to read, 1: Data is not available to read</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.ERROR_FLAGS">inbound_mailbox_7.ERROR_FLAGS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.WIRQT">inbound_mailbox_7.WIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>wirqt</td><td>RW</td><td>0x0</td><td>When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.RIRQT">inbound_mailbox_7.RIRQT</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>rirqt</td><td>RW</td><td>0x0</td><td>When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.IRQS">inbound_mailbox_7.IRQS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.IRQEN">inbound_mailbox_7.IRQEN</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>[0]: Error IRQ disabled<br>[1]: Error IRQ enabled</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>[0]: Read threshold IRQ disabled<br>[1]: Read threshold IRQ enabled</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>[0]: Write threshold IRQ disabled<br>[1]: Write threshold IRQ enabled</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.IRQP">inbound_mailbox_7.IRQP</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>2</td><td>eirq</td><td>R</td><td>0x0</td><td>[0]: No error IRQ pending<br>[1]: Error IRQ pending</td></tr>
+<tr><td>1</td><td>rtirq</td><td>R</td><td>0x0</td><td>[0]: No read threshold IRQ pending<br>[1]: Read threshold IRQ pending</td></tr>
+<tr><td>0</td><td>wtirq</td><td>R</td><td>0x0</td><td>[0]: No write threshold IRQ pending<br>[1]: Write threshold IRQ pending</td></tr>
+</table>
+<h3 id="inbound_mailbox_7.CTRL">inbound_mailbox_7.CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>

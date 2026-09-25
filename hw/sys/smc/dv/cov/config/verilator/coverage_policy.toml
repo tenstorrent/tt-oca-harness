@@ -24,16 +24,30 @@
 # The scoped number is "the SMC DUT minus the CPU cluster, the I3C core, the
 # lowRISC prims and TB code" -- not "SMC coverage". Quote it that way.
 #
-# No [[thresholds]] are set here. SMC_FCOV.adoc ("SMC coverage targets and
-# closure policy") puts the numeric
-# target at "none until an owner signs a measured number", and a floor written
-# from a local run would be that signature. One is set from a measured weekly
-# `--cov` database, by the SMC DV owner, together with
-# `max_unclassified_points`. The effective percentage is still reported: every
-# accepted hole below leaves the denominator until its `expires` date, after
-# which it grades as open again.
+# Public gate is the `user` family: every `cov/sv` point is hit or classified.
+# `max_unclassified_points = 0` on that row fails a new unclassified user hole.
+# line / branch / expression floors are regression guards only and do not set
+# that knob: those families still have unclassified vendor and generated-CPU
+# points that `smc_cov_scope.vlt` cannot drop.
 #
-# The holes below were measured from `--dut smc --items hosted --cov`.
+# The coverage set is `--items hosted fw`: the package regression `all`
+# less the three `dual` leaves, which elaborate a second build target that
+# the coverage merge cannot combine with `default` (SEP names its coverage
+# set the same way, `all` less `rom_fw`). `hosted` alone is the
+# toolchain-free CI tier; the fw leaves carry the PLIC, I2C, UART and OCTS
+# stimulus that no hosted leaf drives.
+#
+# Floors: line 78.0 / branch 75.9 / expression 69.0 were set from the
+# hosted measurement (Verilator 5.050, 168 leaves: line 78.0977,
+# branch 75.9964, expression 69.0966) and stay as regression guards; the
+# `hosted fw` measurement (192 leaves) read line 97.50, branch
+# 89.07, expression 86.46 and user 407 of 467. The `[[holes]]` below are
+# the points that measurement left unhit; two PLIC points the hosted
+# measurement had waived are hit by smc_fw_plic_claim_test and carry no
+# row. This file carries 56 accepted user rows (every `expected_matches`
+# is 1); the four rows added for the `hosted fw` set classify what that
+# measurement left unhit and unclassified beside the map points taken
+# from the generated map.
 #
 # Hole categories in this file:
 #   missing_stimulus  no enrolled test drives the condition; the rationale
@@ -41,12 +55,43 @@
 #   needs_review      the cell is blocked by an open spec finding (SF-nnn in
 #                     SMC_SPEC_REVIEW); the point stays on the implemented
 #                     behaviour and takes no credit until it is answered.
+#   unreachable       no stimulus this bench can present can satisfy the
+#                     point (the rationale names the blocking path).
 # Selectors are exact hierarchies with expected_matches = 1; a point that
 # starts firing makes the grade fail loudly, which is intended.
 
 schema_version = 1
 dut = "smc"
 scope_epoch = "smc-fcov-v1"
+
+[[thresholds]]
+id = "smc-user-effective"
+tool = "verilator"
+metric_family = "user"
+population = "effective"
+minimum_percent = 100.0
+max_unclassified_points = 0
+
+[[thresholds]]
+id = "smc-line-effective"
+tool = "verilator"
+metric_family = "line"
+population = "effective"
+minimum_percent = 78.0
+
+[[thresholds]]
+id = "smc-branch-effective"
+tool = "verilator"
+metric_family = "branch"
+population = "effective"
+minimum_percent = 75.9
+
+[[thresholds]]
+id = "smc-expression-effective"
+tool = "verilator"
+metric_family = "expression"
+population = "effective"
+minimum_percent = 69.0
 
 [[holes]]
 id = "fcov-smc-c_clk_periph_stalled_window"
@@ -145,7 +190,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in hosted (SMC-CLA-ACTION.S6:custom-action-output-driven)"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-CLA-ACTION.S6:custom-action-output-driven)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -325,7 +370,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in hosted (SMC-PERIPH-PARAM.S5:per-instance-default-matches-map)"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-PERIPH-PARAM.S5:per-instance-default-matches-map)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -379,7 +424,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "blocked with the four PLIC points: ext_interrupts_i[1] held asserted with cpu_interrupts[1] observed high at the synchroniser leaves PLIC pending_2 at 0 for 256 clk_smc_i cycles; ext_interrupts_i[2] and above are tied off in the tb (SMC-INT-PLICID.S1:arbitrary-bit-plus-one)"
+rationale = "blocked with the PLIC claim points: ext_interrupts_i[1] held asserted with cpu_interrupts[1] observed high at the synchroniser leaves PLIC pending_2 at 0 for 256 clk_smc_i cycles; ext_interrupts_i[2] and above are tied off in the tb (SMC-INT-PLICID.S1:arbitrary-bit-plus-one)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -397,7 +442,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "blocked with the four PLIC points: ext_interrupts_i[0] held asserted with cpu_interrupts[0] observed high at the synchroniser leaves PLIC pending_1 at 0 for 256 clk_smc_i cycles, so the gateway side needs the firmware route smc_fw_plic_claim_test, which hosted cannot run (SMC-INT-PLICID.S1:bit0-source1)"
+rationale = "blocked with the PLIC claim points: ext_interrupts_i[0] held asserted with cpu_interrupts[0] observed high at the synchroniser leaves PLIC pending_1 at 0 for 256 clk_smc_i cycles, so the gateway side needs a firmware route; smc_fw_plic_claim_test is in the coverage set and does not raise this source (SMC-INT-PLICID.S1:bit0-source1)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -415,7 +460,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "blocked with the four PLIC points: the zeroer completion interrupt is armed and the operation completes, and PLIC pending_324 stays 0 for 512 clk_smc_i cycles afterwards, so the gateway side needs the firmware route smc_fw_plic_claim_test, which hosted cannot run (SMC-INT-PLICID.S1:bit323-source324)"
+rationale = "blocked with the PLIC claim points: the zeroer completion interrupt is armed and the operation completes, and PLIC pending_324 stays 0 for 512 clk_smc_i cycles afterwards, so the gateway side needs a firmware route; smc_fw_plic_claim_test is in the coverage set and does not raise this source (SMC-INT-PLICID.S1:bit323-source324)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -427,31 +472,13 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_int_fcov.c_bit323_source324"
 
 [[holes]]
-id = "fcov-smc-c_claim_returns_highest_priority"
-title = "c claim returns highest priority"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: anchor smc_fw_plic_claim_test is not in hosted; no hosted test reads the claim register (SMC-PLIC-CLAIM.S1:claim-returns-highest-priority)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_int_fcov.c_claim_returns_highest_priority"
-
-[[holes]]
 id = "fcov-smc-c_claim_returns_zero_when_none_pending"
 title = "c claim returns zero when none pending"
 category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: anchor smc_fw_plic_claim_test is not in hosted; no hosted test reads the claim register (SMC-PLIC-CLAIM.S1:claim-returns-zero-when-none-pending)"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: anchor smc_fw_plic_claim_test is in the coverage set and reads the claim register only with a source pending; no test reads it while nothing is pending (SMC-PLIC-CLAIM.S1:claim-returns-zero-when-none-pending)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -461,24 +488,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_int_fcov.c_claim_returns_zero_when_none_pending"
-
-[[holes]]
-id = "fcov-smc-c_delivery_after_full_initialization"
-title = "c delivery after full initialization"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: anchor smc_fw_plic_claim_test is not in hosted; no hosted test programs PLIC enables/threshold (SMC-PLIC-INIT.S2:delivery-after-full-initialization)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_int_fcov.c_delivery_after_full_initialization"
 
 [[holes]]
 id = "fcov-smc-c_cla_top_decodes"
@@ -595,7 +604,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in hosted (SMC-PERIPH-PARAM.S3:i3c-count-6)"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-PERIPH-PARAM.S3:i3c-count-6)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -919,7 +928,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in hosted (SMC-CLK-PERIPH.S1:i3c-on-clk-periph)"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-CLK-PERIPH.S1:i3c-on-clk-periph)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -991,7 +1000,7 @@ category = "missing_stimulus"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in hosted (SMC-RST-PRIMARY.S2:fabric-held-in-primary-reset)"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-RST-PRIMARY.S2:fabric-held-in-primary-reset)"
 owner = "smc-dv"
 reviewer = "smc-dv"
 date = "2026-09-11"
@@ -1019,3 +1028,75 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_zeroer_fcov.c_data_phase_beat_count_matches_addresses"
+
+[[holes]]
+id = "fcov-smc-c_locks_cleared_access_permitted"
+title = "locks cleared access permitted"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero while a read or program completes, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half; the same image blocks c_write_unlocked_field_updated (SMC-EFUSE-LOCKS.S1:locks-cleared-access-permitted)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_locks_cleared_access_permitted"
+
+[[holes]]
+id = "fcov-smc-c_read_unlocked_field_returned"
+title = "read unlocked field returned"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero while a read completes with a non-zero word, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half; the same image blocks c_write_unlocked_field_updated (SMC-EFUSE-LOCKS.S3:read-unlocked-field-returned)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_read_unlocked_field_returned"
+
+[[holes]]
+id = "fcov-smc-c_efuse_jtag_bresp_slverr"
+title = "efuse jtag bresp slverr"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "unreachable from this bench boundary: smc_efuse_wrapper demuxes the eFuse JTAG AXI-Lite port between the eFuse interface controller and the lifecycle filter's error slave. The controller's PeakRDL regblock has no address or access check (efuse_interface_ctrl_reg.sv: decoded_err, cpuif_wr_err and readback_err hold zero), so it answers OKAY; the error slave answers DECERR, which c_efuse_jtag_bresp_decerr records. No responder on the port produces SLVERR (SMC-EFUSE-JTAG.S2:bresp-slverr)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_bresp_slverr"
+
+[[holes]]
+id = "fcov-smc-c_efuse_jtag_rresp_slverr"
+title = "efuse jtag rresp slverr"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "unreachable from this bench boundary: smc_efuse_wrapper demuxes the eFuse JTAG AXI-Lite port between the eFuse interface controller and the lifecycle filter's error slave. The controller's PeakRDL regblock has no address or access check (efuse_interface_ctrl_reg.sv: decoded_err, cpuif_wr_err and readback_err hold zero), so it answers OKAY; the error slave answers DECERR, which c_efuse_jtag_rresp_decerr records. No responder on the port produces SLVERR (SMC-EFUSE-JTAG.S2:rresp-slverr)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+date = "2026-09-23"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_rresp_slverr"

@@ -28,6 +28,8 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - '.github/workflows/doc.yml'
+  # Publishers outside this repository dispatch the workflow on main after
+  # pushing dashboard data, so the site reflects their latest run.
   workflow_dispatch:
   # Republish after each dashboard data publication so the verification
   # dashboard reflects the latest nightly.
@@ -41,9 +43,6 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      # Consumed by ocah_stage_dashboard_data (doc/doc.mk).
-      OCAH_DASHBOARD_DATA_DIR: ${{ github.workspace }}/dashboard-data/latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,14 +53,6 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
           git submodule update --init --recursive
-
-      - name: Checkout dashboard data branch
-        uses: actions/checkout@v4
-        # Docs should still build even if data branch is ever empty
-        continue-on-error: true
-        with:
-          ref: dv-dashboard-data
-          path: dashboard-data
 
       - name: Setup system dependencies
         run: |
@@ -105,12 +96,16 @@ jobs:
         run: |
           make ocah-doc-trm-pdf
           make ocah-doc-integrator-pdf
+          make ocah-doc-programmer-pdf
+          make ocah-doc-datasheets-pdf
         continue-on-error: true
 
-      # Only a successful dashboard run redeploys.
+      # A push to main, a dispatch on main, or a successful dashboard run
+      # deploys.
       - name: Deploy to GitHub Pages
         if: >-
           (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
           (github.event_name == 'workflow_run' &&
            github.event.workflow_run.conclusion == 'success')
         run: |

@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-cross_trigger_port]
+== Address Map: cross_trigger_port
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CONFIG | RW a| Cross Trigger Port Configuration
-| 0x4 | STATUS | R a| Cross Trigger Port Status
-| 0x8 | STRETCH_MULT | RW a| Pulse Stretch Multiplier
+| 0x0 | <<reg-{regmap-instance}-cross_trigger_port-CONFIG,CONFIG>> | RW a| Cross Trigger Port Configuration
+| 0x4 | <<reg-{regmap-instance}-cross_trigger_port-STATUS,STATUS>> | R a| Cross Trigger Port Status
+| 0x8 | <<reg-{regmap-instance}-cross_trigger_port-STRETCH_MULT,STRETCH_MULT>> | RW a| Pulse Stretch Multiplier
 |===
 
+[#reg-{regmap-instance}-cross_trigger_port-CONFIG]
+=== CONFIG
+
 [cols="1,3,1,1,6", options="header"]
-.CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -20,8 +26,10 @@
 | 0 | `MODE` | RW | 0x0 a| Selects the operating mode of the CTP. 0 - Wire-OR, 1 - Point-to-Point
 |===
 
+[#reg-{regmap-instance}-cross_trigger_port-STATUS]
+=== STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -33,8 +41,10 @@
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
 
+[#reg-{regmap-instance}-cross_trigger_port-STRETCH_MULT]
+=== STRETCH_MULT
+
 [cols="1,3,1,1,6", options="header"]
-.STRETCH_MULT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved

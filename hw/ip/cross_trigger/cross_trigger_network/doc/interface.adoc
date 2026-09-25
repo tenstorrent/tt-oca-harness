@@ -5,10 +5,9 @@
 
 === Cross Trigger Port (CTP)
 
-The following diagram and table illustrate the logical behavior and signal
-interface of a CTP module:
-
-image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
+<<ctn-cross-trigger-signal-interface-table>> lists the CTP signals and their mode-dependent behavior.
+For the module diagram and signalling modes, see
+<<cross-trigger-network-architecture,CTN Architecture>>.
 
 ifdef::backend-html5[]
 ++++
@@ -16,7 +15,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+[[ctn-cross-trigger-signal-interface-table]]
 [cols="<30,<12,<58",options="header",role="port-reference"]
+.CTN cross-trigger signal interface
 |=======================================================================
 |Name |Direction |Description
 |mode |input |Indicates the operational mode of the CTP. 0 for wire-OR

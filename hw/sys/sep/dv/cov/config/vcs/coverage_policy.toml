@@ -16,7 +16,7 @@
 
 schema_version = 1
 dut = "sep"
-scope_epoch = "sep-code-cov-v2"
+scope_epoch = "sep-code-cov-v2b"
 
 # Report-page pruning only. `urg -hier` drops rows from the report but scores
 # the whole database regardless, so this entry keeps the pages aligned with the
@@ -52,5 +52,35 @@ args = ["-elfile", "{path}"]
 tool = "vcs"
 role = "exclude"
 path = "sep_ext_trng_payload_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Kept ACTIVE alongside the ownership scope in sep_cov_scope.hier. Most of the
+# modules these waivers name are now out of scope, and a waiver on an
+# uninstrumented module is simply inert -- but not all of them are: the two
+# INSTANCE blocks on sep_uvm_top...u_sep_dma_wrap target TT-owned logic that
+# stays graded. Commenting the file out would silently drop those.
+#
+# Structurally unreachable fabric and OpenTitan logic. Every entry is forced by
+# a tie, a parameter or an unconnected port in RTL, and each ANNOTATION names
+# the file:line. Stimulus gaps are NOT in this file: a hole a test can close
+# stays in the denominator. Checksums come from
+# `urg -dump full_exclusions <metric>` on the merged vdb, never by hand.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_unreachable_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# OTBN instruction-set scope. This is an ownership decision, not an
+# unreachability claim: SEP drives OTBN through its CSR and memory interfaces
+# and does not execute the full BN.* instruction set, which lowRISC's own OTBN
+# DV covers. Kept in its own file so the structural waivers above are not read
+# as covering it. Drop this entry if SEP ever claims the OTBN ISA.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_otbn_isa_scope_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]

@@ -96,10 +96,9 @@ DTP_IR_EXTEST = dtp_ir_opcode("EXTEST")
 DTP_IR_SAMPLE_PRELOAD = dtp_ir_opcode("SAMPLE_PRELOAD")
 DTP_IR_TAP_3DCR = dtp_ir_opcode("TAP_3DCR")
 
-# SEP=0 SMU STAP chain: gen_stap_io + gen_stap_smc_dbg + extra[0] (no SEP STAP).
-# DTP TB STAP_ORDER includes "sep"; SMU cannot import env.dtp_scan_ref_model
-# (python_root env/ is SMU). Packing matches dtp_scan_base_test_seq.select_stap.
-SMU_STAP_ORDER = ("io", "smc", "extra0")
+# TAP_3DCR field widths (hw/sys/dtp/doc/jtag.adoc "STAP Secondary Scan Path";
+# jtag_ptap architecture "3DCR"). The wrapper's STAP chain order and the
+# scan-word packers over it live in smu_boundary_regs.
 PTAP_3DCR_WIDTH = 2
 STAP_3DCR_WIDTH = 3
 
@@ -109,43 +108,9 @@ def ptap_3dcr_value(*, config_hold: int, select: int) -> int:
     return (config_hold & 0x1) | ((select & 0x1) << 1)
 
 
-def stap_sib_pattern(name: str, enabled: int = 1) -> int:
-    idx = SMU_STAP_ORDER.index(name)
-    return (enabled & 0x1) << (len(SMU_STAP_ORDER) - 1 - idx)
-
-
 def stap_3dcr_payload(*, config_hold: int, stap_sel: int, tms_hold: int) -> int:
     """LSB-first STAP 3DCR: config_hold, stap_sel, tms_hold."""
     return (config_hold & 0x1) | ((stap_sel & 0x1) << 1) | ((tms_hold & 0x1) << 2)
-
-
-def stap_3dcr_scan_word(
-    name: str,
-    *,
-    config_hold: int,
-    stap_sel: int,
-    tms_hold: int,
-    close_sib: int = 0,
-) -> tuple[int, int]:
-    """SIB bits then 3-bit 3DCR; width = len(SMU_STAP_ORDER) + STAP_3DCR_WIDTH."""
-    payload = stap_3dcr_payload(config_hold=config_hold, stap_sel=stap_sel, tms_hold=tms_hold)
-    value = (close_sib & 0x1) << (len(SMU_STAP_ORDER) - 1 - SMU_STAP_ORDER.index(name))
-    value |= payload << len(SMU_STAP_ORDER)
-    return value, len(SMU_STAP_ORDER) + STAP_3DCR_WIDTH
-
-
-def ptap_prefixed(
-    stap_word: int, stap_width: int, *, config_hold: int = 1, select: int = 1
-) -> tuple[int, int]:
-    """Prefix PTAP 3DCR bits so TAP_3DCR DR shifts do not clear stap_select.
-
-    Scan order is TDI -> 2-bit PTAP 3DCR -> STAP SIB chain. LSB-first, so
-    the PTAP field lives in the MSBs of the combined word.
-    """
-    ptap = ptap_3dcr_value(config_hold=config_hold, select=select)
-    return (ptap << stap_width) | (stap_word & ((1 << stap_width) - 1)), (
-        PTAP_3DCR_WIDTH + stap_width
-    )
 
 
 DTP_IR_SMC_AXI_SINGLE_OP = dtp_ir_opcode("SMC_AXI_SINGLE_OP")
@@ -187,12 +152,12 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
 # elaborates one port.
 SMU_IC_RESET_NUM_SMC_PORTS = 68
-# doc/integrator/src/smu.adoc "SEP slice (TDI to TDO)": the ports the SEP
-# slice carries at SEP=1, in scan order from TDI (abr_jtag_rst_n) to the
-# external slice (km_jtag_rst_n). The same document's "IC_RESET TDR
-# Structure" table gives the slice 8 ports at SEP=1 and 0 otherwise, so the
-# count is this tuple's length. A port added to the SEP slice moves every
-# SMC port index up by one.
+# doc/integrator/src/smu.adoc "IC_RESET TDR Structure": the SEP slice is
+# 8 ports at SEP=1 and 0 otherwise. The named tuple is the stimulus list
+# (scan order from TDI), not the source of that width: a port added only
+# to the tuple must fail this check rather than silently move every SMC
+# index and the golden length together.
+SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1 = 8
 SMU_IC_RESET_SEP_PORTS = (
     "abr_jtag_rst_n",
     "trng_jtag_rst_n",
@@ -203,7 +168,12 @@ SMU_IC_RESET_SEP_PORTS = (
     "otbn_jtag_rst_n",
     "km_jtag_rst_n",
 )
-SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = len(SMU_IC_RESET_SEP_PORTS)
+if len(SMU_IC_RESET_SEP_PORTS) != SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1:
+    raise RuntimeError(
+        "SMU_IC_RESET_SEP_PORTS must list the Integrator Guide SEP slice "
+        f"({SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1} ports at SEP=1)"
+    )
+SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1
 
 
 def _smu_ic_reset_sep_ports() -> int:

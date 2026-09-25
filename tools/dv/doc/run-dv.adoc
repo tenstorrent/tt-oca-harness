@@ -1360,10 +1360,11 @@ item at `<run>/stages/regress/jobs/build-<stage>-<target>.json`, rendered
 through `build_submit_argv` when the executor has one and `submit_argv`
 otherwise, with the resources of the command line, the stage's `resources`
 table, `build_defaults`, then `defaults`. The worker runs the stage with the
-job's core request as its build concurrency and writes the build's result
-under `<run>/stages/regress/builds/<task>/`; the coordinator collects it into
-the run like an in-process build, so the leaves' manifests carry the same
-`target_build`. Every target builds at once and the leaves are submitted only
+job's core request as its build concurrency, which leaves the model's
+fingerprint unchanged, and writes the build's result under
+`<run>/stages/regress/builds/<task>/`; the coordinator collects it into the
+run like an in-process build, so the leaves' manifests carry the same
+`target_build` and find the model where it names it. Every target builds at once and the leaves are submitted only
 once the builds have ended. A build that fails, times out or is lost blocks
 its target: every planned leaf of that target grades `ERROR` with a
 `dependency_blocked` failure bucket naming the build stage and target and a
@@ -1881,8 +1882,11 @@ rebuilds the model on the next run.
   directory through the cocotb runner on every simulator, and removes a
   firmware template's declared outputs before `c_compile` runs so an
   incremental build tool cannot keep stale objects.
-* `build_jobs` and `cflags`, with the `[build.<tool>]` knobs, shape the build
-  command and enter the fingerprint through the arguments they add.
+* `cflags` and the `[build.<tool>]` knobs shape the build command and enter
+  the fingerprint through the arguments they add. `build_jobs` shapes the
+  command alone: a cluster build job takes its job count from its core
+  request while the coordinator takes `--build-jobs`, and both must name one
+  model directory.
 
 The shared profile leaves `cache_enabled` off, so one directory per target
 and tool is rebuilt in place when its inputs change.
@@ -2300,10 +2304,13 @@ A leaf that passes after a failed attempt is recorded as flaky.
 run-level `result.json`; both carry the run `status` and `exit_code`. Its
 `jobs` list holds one record per attempt: `stage`, `item`, `target`, `seed`,
 `attempt`, `status`, `return_code`, `reason`, `duration_sec`, `started_at`,
-`ended_at`, `log`, `artifacts`, `failure_buckets`, `parser`, `metadata`, and
-`result_json`, the per-attempt `<test>/seed_<seed>/attempt_<n>/result.json`. Attempts of one
-`(item, seed, target)` leaf are grouped, and the highest attempt is the
-leaf's final result.
+`ended_at`, `log`, `failure_buckets`, `metadata` (the seed, the attempt,
+whether it is a wave-debug rerun, and on a cluster executor the `scheduler`
+job id and state), and `result_json`, the per-attempt
+`<test>/seed_<seed>/attempt_<n>/result.json` that holds the attempt's
+artifacts, parser evidence, and build, coverage, and provenance metadata.
+Attempts of one `(item, seed, target)` leaf are grouped, and the highest
+attempt is the leaf's final result.
 
 * `failed_tests` lists every leaf whose final attempt is `FAIL`, `ERROR`,
   `TIMEOUT`, or `UNKNOWN`, with `attempt_count`, every attempt's summary, the
@@ -2444,7 +2451,8 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 default tool; tools that need a license, and frameworks that no open-source
 tool serves, are marked `(licensed)`. A DUT with a formal config adds a `fv`
 row with the formal tool set; a site-named formal config that is absent
-shows as `unavailable`. The per-DUT detail view adds the `license` and
+shows as `unavailable`. An `alias_of` name from `duts.toml` gets one
+`alias of <dut>` row. The per-DUT detail view adds the `license` and
 `runnability` fields from the merged config; `--mode formal` selects the
 formal view.
 
@@ -2689,7 +2697,14 @@ keys, or authentication data.
 
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
-tool versions, and per-stage details. It is the authoritative run result.
+tool versions, and per-stage details. It is the authoritative run result,
+and the key set of every file below is pinned by the tests the interfaces
+page names. A run-level stage such as `hdl_compile` or `cov_report` carries
+its full record in `stages`. A leaf's entry carries its identity, status, timing, log,
+failure buckets, the `metadata` named above for a regression job, the job
+log of a cluster run under `artifacts.executor_log`, and `result_json`, the
+path of the leaf record that holds its artifacts, parser evidence, and build,
+coverage, and provenance metadata.
 
 The `tests` summary counts the recorded leaves (`total`, `passing`,
 `failing`, `skipped`) and records whether the run finished: `leaves_planned`
@@ -2716,8 +2731,8 @@ under `site` in the same two files (<<runner-site-layer>>).
 A cocotb or VCS sim leaf ends its per-test log with one `PROVENANCE` line
 naming the commit, branch, dirty flag, build fingerprint and, where the flow
 has one, the filelist and its digest. The same facts are recorded under
-`provenance` in the leaf's stage record, so a log and its `result.json` name
-the same build.
+`metadata.provenance` in the leaf's `result.json`, so a log and its result
+record name the same build.
 
 Every `+key=value` simulator argument whose value is an existing regular file
 (firmware, ROM, eFuse and shadow-register images such as `+rom_hex`,
@@ -2746,17 +2761,17 @@ status `UNKNOWN`, so automation cannot mistake an incomplete run for a pass.
 It is replaced atomically after every completed leaf. An explicit `--result`
 copy follows the same lifecycle.
 
-The additive `progress` object records a stable identity for every planned leaf
-(`id`, stage, item, target, and seed) and partitions those identities into
-`completed`, `active`, `missing`, and `interrupted` lists with matching counts.
-Its `state`, `sequence`, and `updated_at` fields distinguish successive
-snapshots. A running checkpoint uses `active`; a handled interruption moves
-those identities to `interrupted`. On a cluster executor every `active` or
-`interrupted` leaf also lists its scheduler `jobs`: the task id, attempt,
-whether it is a wave-debug rerun, the executor and driver, the job id, and
-the submission time, and after an interruption `cancel_confirmed`. A
-coordinator that dies without running its handler therefore leaves the ids
-of its live jobs in its last checkpoint.
+The additive `progress` object counts the planned leaves (`expected_count`,
+`completed_count`, `active_count`, `missing_count`, and `interrupted_count`)
+and lists the identity (`id`, stage, item, target, and seed) of every leaf
+without a recorded result, under `active`, `missing`, and `interrupted`; a
+recorded leaf is its own `result.json` in the run tree. The `state`, `sequence`, and
+`updated_at` fields distinguish successive snapshots. A running checkpoint
+uses `active`; a handled interruption moves those identities to
+`interrupted`. On a cluster executor every `active` or `interrupted` leaf
+also lists its scheduler `jobs` as task id and job id, so a coordinator that
+dies without running its handler leaves the ids of its live jobs in its last
+checkpoint.
 
 SIGINT and SIGTERM produce an `ERROR` checkpoint with an `interruption` object
 that records the received signal and reason. External supervisors may use
@@ -2764,12 +2779,12 @@ SIGTERM for either cancellation or a wall-clock timeout, so the runner records
 the signal rather than guessing which policy sent it. The first signal stops
 new submissions, cancels every attempt in flight, and waits up to the
 executor's cancel grace for the scheduler to confirm each stop; a second
-signal ends that wait, and every signal received is listed under
-`interruption.signals`. `interruption.cancellation` records the executor and
-driver, the number of attempts asked to stop and the number confirmed, the
-unconfirmed attempts with their item, seed, target, attempt, and job id, the
-grace applied, whether the wait was cut short, and the path of the
-`cancel-unconfirmed.json` record when one was written. If termination
+signal ends that wait. When a stop goes unconfirmed,
+`interruption.cancellation` records the number of attempts asked to stop
+(`requested`), the number confirmed (`confirmed`), and the job ids without a
+confirmed stop (`unconfirmed`); the executor's
+`jobs/cancel-unconfirmed.json` names each of those jobs with its task, its
+last state, and the scheduler's reply. If termination
 prevents the final handler from running, the most recent atomic `UNKNOWN`
 checkpoint still preserves all completed leaves. Normal completion replaces
 all checkpoint-only fields with the ordinary final aggregate.
@@ -2929,17 +2944,18 @@ the run directory, so a copied or downloaded tree describes itself:
 raw overall figure; `threshold` and `threshold_met`; `metrics`, the
 parser's per-family figures overlaid with the effective percentage of every
 family that has point records; `raw_metrics` and `effective_metrics` per
-family; `policy_thresholds`; `holes_summary`; `comparison_key`,
+family; `policy_thresholds`; the `holes_summary` counts; `comparison_key`,
 `scope_fingerprint`, and `policy_fingerprint`; `target` and
-`build_fingerprint`; the tool version and supported metrics; the input list;
-and the paths of the files below.
+`build_fingerprint`; the tool version and supported metrics; and the paths
+of the files below.
 
 |`cov/coverage.json`
 |`2`
 |The merge manifest (<<runner-coverage-inputs>>) and, once the report has
 run, the grade: `status`, `metrics`, `overall_percent`, `threshold`,
-`threshold_met`, `policy_thresholds`, `holes_summary`, the fingerprints, and
-the merge and report return codes, with `artifacts.report_raw` when the
+`threshold_met`, `policy_thresholds`, the `holes_summary` counts, the
+fingerprints, and the merge and report return codes, with
+`artifacts.report_raw` when the
 report ran without its exclusion inputs as well. A combined run's manifest
 lists the runs as its inputs (`selection_source` of `run_dirs`) and carries
 the `combine` block (<<runner-cov-combine>>).
@@ -2951,9 +2967,9 @@ the `combine` block (<<runner-cov-combine>>).
 outcome per rule that applies to the run's tool and target, with
 `actual_percent`, `unclassified_points`, and `met`),
 `metrics`, `holes_summary` (`open`, `accepted`, `unclassified`, counts by
-metric, category, disposition, and status, and up to 100 sample holes),
-`comparison_key`, `scope_fingerprint`, `policy_fingerprint`, and the artifact
-paths.
+metric, category, disposition, and status, and up to 100 sample holes, which
+this file alone carries), `comparison_key`, `scope_fingerprint`,
+`policy_fingerprint`, and the artifact paths.
 
 |`cov/report/coverage-details.json`
 |`1`
@@ -3056,7 +3072,7 @@ so it is not a tier and no pull request runs it.
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
 DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the IP-level
 benches' `all` groups (the three `cross_trigger` benches, the four UART-family
-benches, `system_timer_octs` and `scrambler`). No coverage.
+benches, `system_timer_octs`, `scrambler` and `axi_lite_to_ahb`). No coverage.
 Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
@@ -3067,7 +3083,10 @@ row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
 and the IP-level benches' `all` groups. A second SMC row
 (`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
 `expect_fail` (<<runner-expected-failures>>), so the row is green while the
-filed defects stand and red the week one is fixed. `--sim-jobs` follows the
+filed defects stand and red the week one is fixed. A second `axi_lite_to_ahb`
+row (`label: sva_live`) runs the converter's SVA negative control, whose one
+leaf carries `expect_fail` and fails only when an assertion fires, so the row
+is green only while the assertions are compiled in. `--sim-jobs` follows the
 runner core count. The coverage regression runs on the licensed simulator
 flow outside hosted CI; the coverage-instrumented Verilator models of DTP,
 SEP, and SMU do not fit a hosted job.
@@ -3145,7 +3164,8 @@ symlink.
 |`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
 `cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
 `uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
-`system_timer_octs`, `scrambler` + Verilator (regression tiers only)
+`system_timer_octs`, `scrambler`, `axi_lite_to_ahb` + Verilator (regression
+tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
@@ -3201,7 +3221,9 @@ joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
 — no CI edit. Every entry carries `mode` (`sim` or `formal`) and
 `available`; a formal view whose site-named config is absent is listed with
 `available: false`, its `path`, and a `reason`, so a formal job selects
-`.duts[] | select(.mode == "formal" and .available)`. `--list --dut <dut>
+`.duts[] | select(.mode == "formal" and .available)`. An `alias_of` name
+adds no entry, so a matrix never selects one DUT twice; each entry lists
+the names that select its DUT under `aliases`. `--list --dut <dut>
 --json` additionally carries the per-scenario binding matrix
 (`tests.<name>.bindings`) and per-framework implemented counts for
 dashboards. `--validate-configs` validates every framework view a DUT

@@ -17,6 +17,7 @@ module idma_wrapper #(
 
   parameter  int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, otherwise dma ctrl read bus will stall on cmd start
   parameter  int unsigned M2B_FIFO_DEPTH = 0,
+  parameter  int unsigned BUFFER_DEPTH = 3,  // realignment buffer depth in beats, must be >= 2
 
   parameter  bit EN_R_AW_COUPLING = 1,  // recommended
 
@@ -121,7 +122,7 @@ module idma_wrapper #(
     .OutstandingTx(CTRL_OUTSTANDING_TX),
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
-  ) frontend_cg (
+  ) u_frontend_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 
@@ -147,7 +148,7 @@ module idma_wrapper #(
 
   prim_clk_gater_hysteresis #(
     .HYST_WIDTH(CG_HYSTERESIS_W)
-  ) request_maneger_cg (
+  ) u_request_maneger_cg (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .busy_i(dma_busy),      // when dma busy, enable the clock
@@ -194,7 +195,7 @@ module idma_wrapper #(
     .CTRL_DATA_WIDTH(AXI_DATA_WIDTH),
     .CTRL_ID_WIDTH(CTRL_ID_WIDTH),
     .CTRL_USER_WIDTH(AXI_USER_WIDTH)
-  ) idma_frontend_wrapper (
+  ) u_idma_frontend_wrapper (
     .clk_i(frontend_clock),
     .rst_ni(rst_ni),
     .test_en_i(test_en_i),
@@ -223,7 +224,7 @@ module idma_wrapper #(
     .NUM_MST_INTERFACES(NUM_MST_INTERFACES),
     .req_t(idma_req_t),
     .resp_t(idma_resp_t)
-  ) idma_request_manager_wrapper (
+  ) u_idma_request_manager_wrapper (
     .clk_i(local_clock),
     .rst_ni(rst_ni),
     .test_en_i(test_en_i),
@@ -253,6 +254,7 @@ module idma_wrapper #(
     .NUM_MST_INTERFACES(NUM_MST_INTERFACES),
     .DMA_MST_MAX_TXNS(DMA_MST_MAX_TXNS),
     .M2B_FIFO_DEPTH(M2B_FIFO_DEPTH),
+    .BUFFER_DEPTH(BUFFER_DEPTH),
     .EN_R_AW_COUPLING(EN_R_AW_COUPLING),
     .BYPASS_DMA_MST_FLOPS(BYPASS_DMA_MST_FLOPS),
     .TFLenWidth(TFLenWidth),
@@ -265,7 +267,7 @@ module idma_wrapper #(
     .AXI_USER_WIDTH(AXI_USER_WIDTH),
     .MST_ID_WIDTH(MST_ID_WIDTH),
     .BACKEND_INT_ID_WIDTH(BACKEND_INT_ID_WIDTH)
-  ) idma_backend_wrapper (
+  ) u_idma_backend_wrapper (
     .clk_i(local_clock),
     .rst_ni(rst_ni),
     .test_en_i(test_en_i),

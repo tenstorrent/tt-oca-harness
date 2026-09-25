@@ -32,18 +32,18 @@ its checker-gated Python ledger (`env/dtp_fcov.py`).
 
 === Coverage Goals
 
-The signoff target is one figure for every applicable metric: at least 98
+The coverage target is one figure for every applicable metric: at least 98
 percent of the points that remain after the accepted waivers and scope
 exclusions of the coverage policy file (the runner's `effective`
-population), per metric family, over the candidate commit's `all`
-regression, with the DUT instance as the scope for the code-coverage
-families. A hole below that line closes through a test, a design or model
-fix, or a reviewed waiver (<<dtp-fcov-closure>>); the raw figure, which no
-waiver moves, is reported beside the effective one.
+population), per metric family, over the `all` regression, with the DUT
+instance as the scope for the code-coverage families. A hole below that line
+closes through a test, a design or model fix, or a reviewed waiver
+(<<dtp-fcov-closure>>); the raw figure, which no waiver moves, is reported
+beside the effective one.
 
 [cols="1,1,2,2",options="header",]
 |===
-|Metric |Signoff target |Public evidence path (Verilator) |Commercial evidence path (VCS)
+|Metric |Target |Public evidence path (Verilator) |Commercial evidence path (VCS)
 |Functional coverage |98% effective |The `user` family: the `cover property` points of the `cov/sv/` modules, merged over the weekly `all` regression and graded by the policy file |The same points as cover properties plus the covergroup bins, in the merged database of the cocotb and SV-UVM `all` runs
 |Line and branch coverage |98% effective, scoped to the DUT instance |`--coverage-line`, reported beside the functional figure |`-cm line+branch` in the merged database
 |Condition and expression coverage |98% effective, scoped to the DUT instance |`--coverage-expr` |`-cm cond`
@@ -79,7 +79,7 @@ covergroups are unaffected by the scope file.
 |Capability TDRs |`caps_tdr_cg` |`dtp_debug_tdr_fcov` (`c_caps_*`)
 |STAP / 3DCR |`stap_3dcr_cg` |`dtp_scan_fcov` (`c_stap_*`, `c_3dcr_*`)
 |iJTAG SIBs |`ijtag_sib_cg` |`dtp_scan_fcov` (`c_sib_*`, `c_instrument_*`)
-|Cross-trigger CTP |`ctp_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
+|Cross-trigger CTP |`ctp_cg`, `ctp_wire_or_rx_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
 |Cross-trigger CTM |`ctm_cg` |`dtp_xtrig_fcov` (`c_ctm_*`)
 |Debug-disable gating |`dbg_disable_cg` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests, mirrored by `dtp_scan_fcov` field-value points
 |===
@@ -300,6 +300,18 @@ capture events.
 |P2P state |idle, request phase, acknowledge phase, reset recovery
 |===
 
+==== `ctp_wire_or_rx_cg`
+
+*Description*: Covers the wire-OR receive of the CTP ports: a port in wire-OR
+mode delivering a trigger from its shared wire.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|Sense |normal (INVERT=0, the wire pulled low), inverted (INVERT=1, the wire pulled high)
+|Listeners |one port, a shared wire (two or more ports delivering in the same cycle)
+|===
+
 ==== `ctm_cg`
 
 *Description*: Covers CTM source-to-destination routing.
@@ -364,12 +376,13 @@ Sampling rules:
 === Closure Policy
 
 Coverage closes against the policy file, not against a rerun: every
-uncovered point of the candidate regression is either fired by a new or
+uncovered point of the `all` regression is either fired by a new or
 extended scenario, held open by a defect that a tracker item owns, or removed
 from the effective denominator by a reviewed waiver. The rules below bind
 the DTP policy file; the runner's schema and grading behavior are in
 `tools/dv/doc/run-dv.adoc`.
 
+[[dtp-fcov-evidence-paths]]
 ==== Evidence paths
 
 * **Public path.** The weekly `all` regression at three seeds with `--cov`
@@ -458,13 +471,13 @@ the entry's status returning to `open` or the entry being removed, when:
 
 The compatibility threshold (`--fail-under`, else
 `[coverage.<tool>].fail_under`) grades the tool's raw figure and no waiver
-moves it. The signoff gate is one `pass:[[[thresholds]]]` rule per applicable
+moves it. The threshold gate is one `pass:[[[thresholds]]]` rule per applicable
 metric family in the policy file of each path: on Verilator with
 `population = "effective"` and the DUT instance as its `scope`, on VCS over
 the family total of the compile-time scope, at 98 percent for the
 code-coverage families and 100 percent for assertion and functional
-coverage. The hosted weekly publishes the figures without a threshold, so
-the gate runs on the qualification regression and on every `--waive`
+coverage. The hosted weekly publishes the figures without a threshold; the gate
+runs on a regression graded with the policy file and on every `--waive`
 re-grade of its run tree.
 
 [[dtp-fcov-unreachability-list]]
@@ -472,33 +485,30 @@ re-grade of its run tree.
 
 `cov/config/vcs/dtp_unreachable.el` is the URG exclusion list of the
 code-coverage points that a formal unreachability analysis proves no stimulus
-reaches in the bench's environment: the DTP at its parameter defaults, the
+reaches in the bench's environment: the DTP at the bench configuration, the
 DFT ports at their functional values, the boundary-scan and extended STAP
 chains looped back, and every other input free, the resets included. The
-analysis starts from the merged database of the qualification regression
-(<<dtp-fcov-evidence-paths>>), so it targets the points that regression left
-uncovered, and it runs in the checkout that produced that database, because
-the formal model and the seed must describe one RTL. The analysis is the
-`dtp_cov_vcf` item of the runner's formal mode in the companion's DTP formal
-configuration; a reader without the companion runs their own unreachability
-tool over the same database with the same environment and writes the same
-URG exclusion format.
+analysis starts from the merged database of the commercial-path `all`
+regression (<<dtp-fcov-evidence-paths>>), so it targets the points that
+regression left uncovered, and it runs in the checkout that produced that
+database, because the formal model and the seed must describe one RTL. The
+analysis is the `dtp_cov_vcf` item of the runner's formal mode in the
+companion's DTP formal configuration; a reader without the companion runs
+their own unreachability tool over the same database with the same
+environment and writes the same URG exclusion format.
 
 The `pass:[[[native_files]]]` entry of `cov/config/vcs/coverage_policy.toml`
-that names the list pins the file's SHA-256, and a comment beside it records
-the commit the analysis ran at, the date and the reviewer. The runner refuses
-the policy when the file and the pinned digest differ, so a regenerated list
-takes a new review. URG applies no entry whose module or instance checksum
-differs from the design it reports on, so an RTL change under an excluded
-scope drops that scope's exclusions on its own.
+that names the list pins the file's SHA-256. The runner refuses the policy
+when the file and the pinned digest differ, so a regenerated list takes a new
+entry. URG applies no entry whose module or instance checksum differs from
+the design it reports on, so an RTL change under an excluded scope drops that
+scope's exclusions on its own.
 
-Regeneration rule: the list is regenerated from the candidate's qualification
-regression before every candidate, and re-checked after any change to the
-DTP RTL file set with the analysis's check mode over the accepted list, which
-fails when an excluded point has become reachable. A regenerated list takes
-design review before its entry changes: the review reads the list against the
-hole inventory of the closure issues and accepts no entry the inventory
-classes as reachable by stimulus.
+Regeneration rule: the list is regenerated from the merged database of a
+fresh `all` regression after any change to the DTP RTL file set, and the
+analysis's check mode over the accepted list fails when an excluded point has
+become reachable. A regenerated list takes design review before its entry
+changes, and the review accepts no entry that stimulus can reach.
 
 === VPLAN to FCOV Traceability
 
@@ -518,7 +528,7 @@ classes as reachable by stimulus.
 |`dtp_scan_dbg_disable_matrix_test` |`dbg_disable_cg` scan-side cells (8 fields)
 |`dtp_jtag2axi_dbg_disable_matrix_test` |`dbg_disable_cg` bridge cells (3 fields)
 |`dbg_disable` group |Complete 22-cell `dbg_disable_cg` closure
-|CTP / CTM scenarios |`ctp_cg`, `ctm_cg`
+|CTP / CTM scenarios |`ctp_cg`, `ctp_wire_or_rx_cg`, `ctm_cg`
 |===
 
 === Collection Strategy
@@ -529,7 +539,7 @@ classes as reachable by stimulus.
 |Verilator open-source CI |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
 |Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`)
 |Verilator metric set |`[coverage.verilator]` in `dtp_sim_cfg.toml` instruments line, expression, and `user` coverage and leaves toggle out; the weekly regression merges every leaf and seed into one report
-|Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer); both frameworks collect through the runner — `run_dv.py --cov --tool vcs` for cocotb, `run_dv.py --framework uvm --cov` for SV-UVM — with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report for signoff
+|Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer); both frameworks collect through the runner — `run_dv.py --cov --tool vcs` for cocotb, `run_dv.py --framework uvm --cov` for SV-UVM — with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`); the two frameworks' merged databases are combined with `run_dv.py --dut dtp --cov-combine <cocotb-run> <uvm-run>` into one DUT-scoped report
 |Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage, scoped to the DUT instance
 |Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire
 |===

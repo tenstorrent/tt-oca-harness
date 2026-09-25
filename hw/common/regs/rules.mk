@@ -29,10 +29,8 @@ ocah_reg_stamp_after = $(if $(filter 1,$(OCAH_REG_DEFER_STAMP)),, && $(OCAH_REG_
 ocah_reg_run_cheader  = "$(OCAH_REG_PEAKRDL)" c-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)" -o "$(3)" --bitfields $(4) --type-style lexical $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
 ocah_reg_run_regblock = "$(OCAH_REG_PEAKRDL)" regblock $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(2)"$(if $(strip $(6)), --rename "$(strip $(6))") -o "$(3)" --cpuif "$(call ocah_reg_cpu_if,$(1))" $(call ocah_reg_regblock_opts,$(1)) --default-reset "$(OCAH_REG_DEFAULT_RESET)" --module-name "$(4)_reg" --package-name "$(4)_reg_pkg" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(5)"
 # AsciiDoc register docs are emitted directly from RDL by a custom generator that
-# produces a compact summary table + per-register field tables (table captions,
-# no per-register headings). This replaces the old peakrdl-markdown -> pandoc
-# path, which created a heading/TOC entry per register and exploded the PDF page
-# count. $(2) = input RDL, $(3) = output adoc, $(4) = log.
+# produces a linked summary table and per-register headings with field tables.
+# $(2) = input RDL, $(3) = output adoc, $(4) = log.
 ocah_reg_run_adoc     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdladoc.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --config "$(call ocah_reg_memory_map_config,$(1))" "$(call ocah_reg_rdl,$(1))" "$(call ocah_reg_memory_map_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map.log"
 ocah_reg_run_html     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlhtml.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"

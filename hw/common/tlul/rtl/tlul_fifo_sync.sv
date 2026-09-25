@@ -33,7 +33,7 @@ module tlul_fifo_sync #(
     .Width(REQFIFO_WIDTH),
     .Pass(ReqPass),
     .Depth(ReqDepth)
-  ) reqfifo (
+  ) u_reqfifo (
     .clk_i,
     .rst_ni,
     .clr_i         (1'b0          ),
@@ -72,7 +72,7 @@ module tlul_fifo_sync #(
     .Width(RSPFIFO_WIDTH),
     .Pass(RspPass),
     .Depth(RspDepth)
-  ) rspfifo (
+  ) u_rspfifo (
     .clk_i,
     .rst_ni,
     .clr_i         (1'b0          ),

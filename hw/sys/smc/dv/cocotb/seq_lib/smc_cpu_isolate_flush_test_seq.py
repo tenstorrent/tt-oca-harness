@@ -73,6 +73,10 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
         self.contracts: set[str] = set()
         self.pending_axi_events: list[object] = []
 
+    def _record(self, contract: str, check_id: str, detail: str) -> None:
+        self.contracts.add(contract)
+        cocotb.log.info("%s: %s", check_id, detail)
+
     @staticmethod
     def _value(signal, label: str) -> int:
         value = signal.value
@@ -369,7 +373,11 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
         await self._wait_eq("tb_cpu_reset_timeout", 1, STATE_BOUND, "RESET_TIMEOUT fired")
         await self._wait_eq("tb_cpu_reset_applied", 1, STATE_BOUND, "forced reset applied")
         await self._wait_eq("tb_cpu_uncore_reset_n", 0, STATE_BOUND, "uncore reset asserted")
-        self.contracts.add("forced_reset")
+        self._record(
+            "forced_reset",
+            "CHK-CPU-ISO-FLUSH-FORCED-RESET",
+            "RESET_TIMEOUT force-mode applied the CPU reset",
+        )
         return request_task
 
     async def _wait_forced_drain(self, isolate_name: str, flush_name: str) -> None:
@@ -382,7 +390,11 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
             STABLE_WINDOW_CYCLES,
             "RESET_TIMEOUT held through the active reset request",
         )
-        self.contracts.add("drained_while_blocked")
+        self._record(
+            "drained_while_blocked",
+            "CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED",
+            "isolate reports drained while the original traffic is still held",
+        )
 
     async def _release_reset(self, reset_ctrl: int) -> None:
         await self.csr_write("RESET_CTRL_RELEASE", RESET_CTRL, reset_ctrl, length=8)
@@ -404,7 +416,11 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
             expected=data,
             length=8,
         )
-        self.contracts.add("l2_write_recovered")
+        self._record(
+            "l2_write_recovered",
+            "CHK-CPU-ISO-FLUSH-L2-WRITE-RECOVERED",
+            "post-reset L2 write and readback completed",
+        )
 
     async def _probe_l2_read(self, expected: int) -> None:
         axi = self.env.sys_axi_agent.driver.axi
@@ -418,11 +434,19 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
         assert result.data == expected, (
             f"L2 recovery read returned 0x{result.data:016x}, expected 0x{expected:016x}"
         )
-        self.contracts.add("l2_read_recovered")
+        self._record(
+            "l2_read_recovered",
+            "CHK-CPU-ISO-FLUSH-L2-READ-RECOVERED",
+            "post-reset L2 read returned the expected word",
+        )
 
     async def _probe_front_port(self) -> None:
         await self.csr_read("FRONT_PORT_RECOVERY", RECOVERY_PROBE_ADDR, length=8)
-        self.contracts.add("front_port_recovered")
+        self._record(
+            "front_port_recovered",
+            "CHK-CPU-ISO-FLUSH-FRONT-PORT-RECOVERED",
+            "SEP_IN front-port read completed after isolate release",
+        )
 
 
 class smc_cpu_l2_read_wedge_test_seq(_CpuIsolateFlushSeq):
@@ -442,6 +466,16 @@ class smc_cpu_l2_read_wedge_test_seq(_CpuIsolateFlushSeq):
             L2_READ_RECOVERY_DATA,
             length=8,
         )
+        # The wedge reads scratchpad words nothing has written. A four-state
+        # simulator returns X for them, and the L2 does not complete a read
+        # whose data is X, so the response the wedge parks never appears.
+        for word in range(WEDGE_READS * WEDGE_BYTES // 8):
+            await self.csr_write(
+                "L2_WEDGE_READ_PRELOAD",
+                WEDGE_READ_BASE + word * 8,
+                L2_READ_RECOVERY_DATA ^ word,
+                length=8,
+            )
 
         dut.tb_sep_axi_r_drop.value = 0
         dut.tb_sys_axi_r_drop.value = 0
@@ -514,13 +548,21 @@ class smc_cpu_l2_read_wedge_test_seq(_CpuIsolateFlushSeq):
             dut.tb_sep_axi_r_drop.value = 0
             dut.tb_sys_axi_r_drop.value = 0
             assert self._value(dut.tb_cpu_l2_pending_ar, "tb_cpu_l2_pending_ar") == 0
-            self.contracts.add("stale_read_responses_discarded")
+            self._record(
+                "stale_read_responses_discarded",
+                "CHK-CPU-ISO-FLUSH-STALE-R-DISCARDED",
+                "stale SEP_IN and SYS_IN R beats dropped; L2 pending AR is 0",
+            )
 
             await self._release_reset(reset_ctrl)
             await self._wait_eq("tb_cpu_l2_flush_active", 0, STATE_BOUND, "L2 flush window closed")
             await self._wait_eq("tb_cpu_l2_isolated", 0, STATE_BOUND, "L2 isolate reopened")
             await self._probe_l2_read(L2_READ_RECOVERY_DATA)
-            self.contracts.add("cluster_reopened")
+            self._record(
+                "cluster_reopened",
+                "CHK-CPU-ISO-FLUSH-CLUSTER-REOPENED",
+                "L2 isolate released and a fresh transfer completed",
+            )
             await self.csr_write("RESET_TIMEOUT_CLEAR", RESET_TIMEOUT, 0, length=8)
         finally:
             dut.tb_sep_axi_r_hold.value = 0
@@ -598,7 +640,11 @@ class smc_cpu_l2_write_wedge_test_seq(_CpuIsolateFlushSeq):
             await self._wait_eq("tb_cpu_reset_timeout", 1, STATE_BOUND, "RESET_TIMEOUT fired")
             await self._wait_eq("tb_cpu_reset_applied", 1, STATE_BOUND, "forced reset applied")
             await self._wait_eq("tb_cpu_uncore_reset_n", 0, STATE_BOUND, "uncore reset asserted")
-            self.contracts.add("forced_reset")
+            self._record(
+                "forced_reset",
+                "CHK-CPU-ISO-FLUSH-FORCED-RESET",
+                "RESET_TIMEOUT force-mode applied the CPU reset",
+            )
 
             await self._wait_forced_drain("tb_cpu_l2_isolated", "tb_cpu_l2_flush_active")
             await self._wait_eq(
@@ -622,13 +668,21 @@ class smc_cpu_l2_write_wedge_test_seq(_CpuIsolateFlushSeq):
                 STABLE_WINDOW_CYCLES,
                 "late L2 write beats absorbed",
             )
-            self.contracts.add("late_write_beats_absorbed")
+            self._record(
+                "late_write_beats_absorbed",
+                "CHK-CPU-ISO-FLUSH-LATE-W-ABSORBED",
+                "late L2 W beats left the pending W count at 0",
+            )
 
             await self._release_reset(reset_ctrl)
             await self._wait_eq("tb_cpu_l2_flush_active", 0, STATE_BOUND, "L2 flush window closed")
             await self._wait_eq("tb_cpu_l2_isolated", 0, STATE_BOUND, "L2 isolate reopened")
             await self._probe_l2_write(L2_WRITE_RECOVERY_DATA)
-            self.contracts.add("cluster_reopened")
+            self._record(
+                "cluster_reopened",
+                "CHK-CPU-ISO-FLUSH-CLUSTER-REOPENED",
+                "L2 isolate released and a fresh transfer completed",
+            )
             await self.csr_write("RESET_TIMEOUT_CLEAR", RESET_TIMEOUT, 0, length=8)
         finally:
             w_channel.clear_pause_generator()
@@ -763,7 +817,11 @@ class _CpuMmioWedgeSeq(_CpuIsolateFlushSeq):
                 STABLE_WINDOW_CYCLES,
                 "flushed MMIO pending count",
             )
-            self.contracts.add("stale_response_absorbed")
+            self._record(
+                "stale_response_absorbed",
+                "CHK-CPU-ISO-FLUSH-STALE-RESP-ABSORBED",
+                "released SYS_OUT response absorbed; MMIO isolate still held",
+            )
 
             phase2_before = self._value(
                 getattr(dut, self.output_count_name),
@@ -791,7 +849,11 @@ class _CpuMmioWedgeSeq(_CpuIsolateFlushSeq):
                     f"phase-2 external write stored 0x{observed:016x}, "
                     f"expected 0x{MMIO_RECOVERY_WRITE_DATA:016x}"
                 )
-            self.contracts.add("firmware_recovered")
+            self._record(
+                "firmware_recovered",
+                "CHK-CPU-ISO-FLUSH-FW-RECOVERED",
+                "firmware completed exactly one post-reset external access",
+            )
 
             await self._probe_front_port()
             await self.csr_write("RESET_TIMEOUT_CLEAR", RESET_TIMEOUT, 0, length=8)

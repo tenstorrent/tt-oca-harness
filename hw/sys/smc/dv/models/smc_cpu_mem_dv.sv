@@ -109,8 +109,8 @@ module smc_cpu_mem_dv
   always @(posedge clk_i) begin
     ecc_poke_en_q <= ecc_poke_en_i;
     if (ecc_poke_en_i && !ecc_poke_en_q) begin
-      u_mems.gen_scratch_rams[0].mem.mem.mem[ecc_poke_entry_i][1:0] <=
-                u_mems.gen_scratch_rams[0].mem.mem.mem[ecc_poke_entry_i][1:0]
+      u_mems.gen_scratch_rams[0].u_mem.u_mem.mem[ecc_poke_entry_i][1:0] <=
+                u_mems.gen_scratch_rams[0].u_mem.u_mem.mem[ecc_poke_entry_i][1:0]
                 ^ ecc_poke_mask_i;
       $display("[smc_cpu_mem_dv] ECC poke: bank0 entry %0d ^= 2'b%b", ecc_poke_entry_i,
                ecc_poke_mask_i);
@@ -195,7 +195,7 @@ module smc_cpu_mem_dv
       rom_fd = $fopen(rom_path, "r");
       if (rom_fd != 0) begin
         $fclose(rom_fd);
-        $readmemh(rom_path, u_mems.rom_mem.mem.mem);
+        $readmemh(rom_path, u_mems.u_rom_mem.u_mem.mem);
         $display("[smc_cpu_mem_dv] backdoor ROM %s", rom_path);
       end else begin
         $display("[smc_cpu_mem_dv] WARN: missing ROM %s", rom_path);
@@ -216,6 +216,15 @@ module smc_cpu_mem_dv
       logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] scan_word;
       logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] linear_mem [0:MAX_LINEAR_WORDS-1];
 
+      // A four-state simulator leaves every entry X until something writes
+      // it, and a sub-word store merges that X into the codeword, so a reader
+      // of the entry sees X where Verilator's randomised array gives it a
+      // value. The all-zero word is a valid codeword; every entry starts as
+      // one, including the three quarters above the image staging cap.
+      for (int unsigned e = 0; e < SCRATCH_WORDS; e++) begin
+        u_mems.gen_scratch_rams[bank].u_mem.u_mem.mem[e] = '0;
+      end
+
       #0.2;
       if ($value$plusargs("smc_scratch_ram_hex=%s", scratch_path)) begin
         scratch_fd = $fopen(scratch_path, "r");
@@ -231,7 +240,7 @@ module smc_cpu_mem_dv
             bank_i   = int'(smc_scratch_map_pkg::smc_scratch_bank(unsigned'(offset_i)));
             entry_i  = int'(smc_scratch_map_pkg::smc_scratch_entry(unsigned'(offset_i)));
             if (bank_i == bank && entry_i < int'(SCRATCH_WORDS) && linear_mem[word_i] !== 'x) begin
-              u_mems.gen_scratch_rams[bank].mem.mem.mem[entry_i] = linear_mem[word_i];
+              u_mems.gen_scratch_rams[bank].u_mem.u_mem.mem[entry_i] = linear_mem[word_i];
               if (linear_mem[word_i] != '0) begin
                 loaded_words++;
               end

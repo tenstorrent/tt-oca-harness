@@ -20,7 +20,7 @@ section of the Cross-Trigger Network page.
 [[dtp-port-reference]]
 == Port Reference
 
-The table below lists all DTP top-level ports. The port table is shared with
+<<dtp-port-declaration-table>> lists all DTP top-level ports. The port table is shared with
 the Integrator Guide.
 
 ifdef::backend-html5[]

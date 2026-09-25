@@ -9,12 +9,14 @@
 <h2>Address Map: misc_wrap</h2>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>scratch_cold.SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
+<li><strong>scratch_cold_warm.SCRATCH[8]</strong>: 8 registers, base 0x80, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0 - 0x1C</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x0 - 0x1C</td><td><a href="#scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x80 - 0x9C</td><td><a href="#scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x100</td><td><a href="#VERSION_LO">VERSION_LO</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x104</td><td><a href="#VERSION_HI">VERSION_HI</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x108</td><td><a href="#CHIP_ID">CHIP_ID</a></td><td>R</td><td>-</td></tr>
@@ -23,8 +25,13 @@
 <tr><td>0x204</td><td><a href="#NDMRESET_PROCESS">NDMRESET_PROCESS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x208</td><td><a href="#NDMRESET_CLUSTER_COUNT">NDMRESET_CLUSTER_COUNT</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
-<h3 id="SCRATCH_8_">SCRATCH[8]</h3>
+<p><strong>Register Details:</strong></p>
+<h3 id="scratch_cold.SCRATCH_8_">scratch_cold.SCRATCH[8]</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>
+</table>
+<h3 id="scratch_cold_warm.SCRATCH_8_">scratch_cold_warm.SCRATCH[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Scratch register</td></tr>

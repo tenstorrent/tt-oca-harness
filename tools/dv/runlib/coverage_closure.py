@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from .coverage import parse_coverage_report, write_json
-from .coverage_model import CoverageDetails
+from .coverage_model import CoverageDetails, holes_summary_counts
 from .coverage_parsers import parse_coverage_details
 from .coverage_policy import CoveragePolicy, apply_coverage_policy
 from .models import ConfigError
@@ -243,7 +243,7 @@ def grade_coverage_run(
     manifest["comparison_key"] = details.comparison_key
     manifest["scope_fingerprint"] = details.scope_fingerprint
     manifest["policy_fingerprint"] = details.policy_fingerprint
-    manifest["holes_summary"] = holes_summary
+    manifest["holes_summary"] = holes_summary_counts(holes_summary)
     manifest["report_return_code"] = 0
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, dict):
