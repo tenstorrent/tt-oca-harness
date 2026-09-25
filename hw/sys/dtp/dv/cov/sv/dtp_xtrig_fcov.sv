@@ -34,7 +34,6 @@ module dtp_xtrig_fcov (
   input wire [15:0] ctp_req_out_dout_en_i,
   input wire [15:0] ctp_req_out_din_en_i,
   input wire [15:0] ctp_ct_dst_i,
-  input wire [15:0] ctp_req_in_din_i,
   input wire [15:0] ctp_ack_in_din_i
 );
 
@@ -69,6 +68,21 @@ module dtp_xtrig_fcov (
   wire ctp_config_write = ctp_csr_write && (ctp_csr_off == 4'h0);
   wire ctp_stretch_write = ctp_csr_write && (ctp_csr_off == 4'h8);
 
+  // CONFIG.INVERT per CTP, from the CONFIG writes (reset value 0).
+  logic [NumCtp-1:0] ctp_invert_q;
+  wire [31:0] ctp_csr_idx = (awaddr_q - CtpBase) / CtpStride;
+  always_ff @(posedge clk_i) begin
+    if (in_reset) ctp_invert_q <= '0;
+    else if (ctp_config_write) ctp_invert_q[ctp_csr_idx] <= axil_wdata_i[1];
+  end
+
+  // A CTP asserting its CT_Req_out (CONFIG.INVERT, cross_trigger_port.rdl): in
+  // wire-OR mode, where the pad input is enabled, the port drives its wire only
+  // while asserting; in point-to-point mode it drives the request level, high
+  // unless inverted.
+  wire [15:0] ctp_out_asserted = (ctp_req_out_din_en_i & ctp_req_out_dout_en_i)
+      | (~ctp_req_out_din_en_i & ctp_req_out_dout_en_i & (ctp_req_out_dout_i ^ ctp_invert_q));
+
   // ------------------------------------------------------------------
   // ctp_cg — mode, inversion, stretch classes, and P2P phases.
   // ------------------------------------------------------------------
@@ -90,8 +104,7 @@ module dtp_xtrig_fcov (
   `OCAH_FCOV_COVER(c_ctp_stretch_mid, ctp_stretch_mid_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ctp_stretch_max, ctp_stretch_max_e, clk_i, in_reset)
 
-  wire [15:0] ctp_req_out_active = ctp_req_out_dout_i & ctp_req_out_dout_en_i;
-  wire any_req_out = |ctp_req_out_active;
+  wire any_req_out = |(ctp_out_asserted & ~ctp_req_out_din_en_i);
   wire any_ack_in = |ctp_ack_in_din_i;
   logic had_req_out_q, csr_reset_pending_q;
   always_ff @(posedge clk_i) begin
@@ -124,21 +137,20 @@ module dtp_xtrig_fcov (
 
   // ------------------------------------------------------------------
   // ctm_cg — source/destination types, fanout classes, and the per-port
-  // index bins. Source events: an external CTP request arriving
-  // (ctp_req_in_din rise) or an internal CT request (ctm_dst_req rise).
-  // Destination events: the matrix driving a CTP output (req_out rise) or
-  // an internal CT (ctm_src_req rise).
+  // index bins. Source events: a CTP delivering a trigger into the matrix
+  // (ct_dst rise, either mode) or an internal CT request (ctm_dst_req rise).
+  // Destination events: a CTP starting to assert its CT_Req_out or an
+  // internal CT request from the matrix (ctm_src_req rise).
   // ------------------------------------------------------------------
-  logic [15:0] ctp_req_in_q, ctp_req_out_q;
+  logic [15:0] ctp_out_asserted_q;
   logic [9:0] ctm_dst_req_q, ctm_src_req_q;
   always_ff @(posedge clk_i) begin
-    ctp_req_in_q <= ctp_req_in_din_i;
-    ctp_req_out_q <= ctp_req_out_active;
+    ctp_out_asserted_q <= ctp_out_asserted;
     ctm_dst_req_q <= ctm_dst_req_i;
     ctm_src_req_q <= ctm_src_req_i;
   end
-  wire [15:0] ctp_src_rise = ctp_req_in_din_i & ~ctp_req_in_q;
-  wire [15:0] ctp_dst_rise = ctp_req_out_active & ~ctp_req_out_q;
+  wire [15:0] ctp_src_rise = ctp_ct_dst_i & ~ctp_ct_dst_q;
+  wire [15:0] ctp_dst_rise = ctp_out_asserted & ~ctp_out_asserted_q;
   wire [9:0] int_src_rise = ctm_dst_req_i & ~ctm_dst_req_q;
   wire [9:0] int_dst_rise = ctm_src_req_i & ~ctm_src_req_q;
 
@@ -154,7 +166,7 @@ module dtp_xtrig_fcov (
   // Fanout classes: destinations active simultaneously; "none" is a source
   // event whose window closes with no destination response.
   wire [5:0] dest_active_count =
-      6'($countones(ctp_req_out_active)) + 6'($countones(ctm_src_req_i));
+      6'($countones(ctp_out_asserted)) + 6'($countones(ctm_src_req_i));
   logic [6:0] src_window_q;
   logic dest_seen_q;
   wire any_source_rise = ctm_source_ctp_e || ctm_source_internal_e;
@@ -355,7 +367,7 @@ module dtp_xtrig_fcov (
   wire [31:0] ctm_csr_off = awaddr_q - CtmBase;
   wire ctm_select_write = w_hs && aw_seen_q && (ctm_csr_off < 32'(CtmPorts * CtmStride))
       && ((ctm_csr_off % CtmStride) == 0);
-  wire [CtmPorts-1:0] route_src_rise = {int_src_rise, ctp_src_rise | ctp_wire_or_rx_rise};
+  wire [CtmPorts-1:0] route_src_rise = {int_src_rise, ctp_src_rise};
   wire [CtmPorts-1:0] route_dst_rise = {int_dst_rise, ctp_dst_rise};
   logic [CtmPorts-1:0] ctm_select_q[CtmPorts];
   logic [5:0] route_src_age_q[CtmPorts];
