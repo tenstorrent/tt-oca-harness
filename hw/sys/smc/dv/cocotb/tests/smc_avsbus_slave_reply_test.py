@@ -23,10 +23,11 @@ class smc_avsbus_slave_reply_test(smc_base_test):
         "CHK-AVS-SLAVE-NUMERATOR",
         "CHK-AVS-SLAVE-RB-OVERFLOW",
         "CHK-AVS-SLAVE-READBACK",
+        "CHK-AVS-SLAVE-RESYNC-BUSY",
         "CHK-AVS-SLAVE-RETRY-CODES",
         "CHK-AVS-SLAVE-STALL",
     )
-    min_evidence = 11
+    min_evidence = 12
 
     auto_protocol_vip = False
 

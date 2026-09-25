@@ -58,6 +58,9 @@ Reply shapes and what each leg requires:
 * **The duty-cycle numerator alone**: the divider defaults are written as real
   values, then only the numerator changes, to a quarter and back, and the
   clock at the pad has to follow.
+* **A resync requested while busy**: a slave resync is forced while commands
+  are still going out and more are queued behind it, and with the replies
+  drained as they come every command must be answered intact. `AVS_READBACK` read with the FIFO empty must then be refused.
 * **Three FIFO interrupts, one at a time**: with both FIFOs full and one
   `AVS_CMD` write more, which is refused, `READBACK_FIFO_FULL`,
   `CMD_FIFO_FULL` and `CMD_FIFO_OVERFLOW` are all set. The AVSBus interrupt
@@ -170,6 +173,8 @@ IRQ_SETTLE_CYCLES = 40
 #: Commands queued behind a full readback FIFO.
 STALL_EXTRA = 2
 STALL_WAIT_CYCLES = 3000
+#: Commands queued before the forced resync, so frames are on the wire when it lands.
+BUSY_COMMANDS = 4
 #: How long sdata is held low with the bus idle to signal a slave interrupt.
 SLAVE_INT_CYCLES = 2000
 
@@ -812,6 +817,57 @@ class smc_avsbus_slave_reply_test_seq(SmcCsrSeq):
         assert rose > start, f"{label}: the AVS clock did not run"
         return high / (rose - start)
 
+    async def _resync_busy_leg(self) -> None:
+        """Request a slave resync while commands are still going out."""
+        assert self.driver is not None
+        label = "RESYNC_BUSY"
+        await self._set_retries(label, 0)
+        good = self._word("GOOD")
+        count = 2 * BUSY_COMMANDS
+        self._send(*([good] * count))
+        masters = len(self.driver.masters)
+        for index in range(BUSY_COMMANDS):
+            await self.csr_write(f"{label}_CMD{index}", AVS_CMD, CMD_A)
+        cfg1 = await self.csr_read(f"{label}_CFG1", AVS_CFG_1)
+        await self.csr_write(f"{label}_FORCE", AVS_CFG_1, cfg1 | FORCE_RESYNC_BM)
+        for index in range(BUSY_COMMANDS, count):
+            await self.csr_write(f"{label}_MORE{index}", AVS_CMD, CMD_B)
+        got = [await self._pop(f"{label}_DRAIN{index}") for index in range(count)]
+        await self._await_idle(label)
+        assert all(w & READBACK_FIELDS == good & READBACK_FIELDS for w in got), (
+            f"{label}: the replies drained were {[hex(w) for w in got]}"
+        )
+        assert len(self.driver.masters) - masters == count, (
+            f"{label}: {len(self.driver.masters) - masters} master subframes for {count} commands"
+        )
+        empty = await self._readback_refused(f"{label}_EMPTY")
+        assert empty != 0, (
+            f"{label}: AVS_READBACK read with the FIFO empty was answered OKAY; the block "
+            f"refuses it"
+        )
+        cocotb.log.info(
+            "CHK-AVS-SLAVE-RESYNC-BUSY: a slave resync forced while %d commands were still "
+            "going out, with %d more queued behind it and the replies drained as they came, "
+            "left all %d commands answered intact; AVS_READBACK read empty was then refused "
+            "(response %d)",
+            BUSY_COMMANDS,
+            BUSY_COMMANDS,
+            count,
+            empty,
+        )
+
+    async def _readback_refused(self, label: str) -> int:
+        item = SmcSysAxiItem(f"rd_{label}")
+        item.op = SmcSysAxiOp.READ
+        item.addr = AVS_READBACK_REG
+        item.length = 4
+        item.allow_error = True
+        await self.start_item(item)
+        await self.finish_item(item)
+        self.accesses += 1
+        assert item.resp_code is not None, f"{label}: the read got no response"
+        return item.resp_code
+
     async def body(self) -> None:
         self.cfg0 = await self.csr_read("AVS_CFG_0_SAVE", AVS_CFG_0)
         await self.csr_write("MASK_ALL", AVS_INTERRUPT_MASK, MASK_ALL)
@@ -882,6 +938,7 @@ class smc_avsbus_slave_reply_test_seq(SmcCsrSeq):
         await self._interrupt_launch_leg()
         await self._mask_leg()
         await self._overflow_leg()
+        await self._resync_busy_leg()
         await self._numerator_leg()
         self.driver.stop()
         await self.csr_write("AVS_CFG_0_RESTORE", AVS_CFG_0, self.cfg0)
