@@ -194,17 +194,15 @@ endif::backend-pdf[]
 [[smc-i3c-registers]]
 == I3C Controller Registers
 
-The generated I3C register map describes the current register specification.
-I3C integration verification remains a work in progress.
-
+The SMC I3C controller is the
+https://github.com/chipsalliance/i3c-core[CHIPS Alliance i3c-core],
+with an OCAH AXI4-Lite wrapper. Integration verification remains a work in
+progress. The register map is on the
 ifdef::backend-html5[]
-++++
-include::ip:partial$i3ccore_wrap/regs/gen/html/oca_i3c_wrap.html[]
-++++
+xref:ip:i3ccore_wrap/doc/index.adoc[I3C] page.
 endif::backend-html5[]
-
 ifdef::backend-pdf[]
-include::../../../ip/i3ccore_wrap/regs/gen/adoc/oca_i3c_wrap.adoc[leveloffset=+1]
+<<i3c-controller,I3C>> page.
 endif::backend-pdf[]
 
 == Component-Specific Register Documentation

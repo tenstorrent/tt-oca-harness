@@ -9,7 +9,8 @@
 The OCA I3C Core Controller is a comprehensive MIPI I3C/I2C communication
 controller providing full HCI (Host Controller Interface) v1.2 compliant
 operation with support for both controller (master) and target (slave) modes.
-Based on the CHIPS Alliance i3c-core with extensive OCA enhancements, this
+Based on the https://github.com/chipsalliance/i3c-core[CHIPS Alliance i3c-core]
+with an OCAH AXI4-Lite wrapper, this
 controller enables high-speed inter-chip communication with advanced features
 including In-Band Interrupts, Common Command Codes, and device recovery.
 
