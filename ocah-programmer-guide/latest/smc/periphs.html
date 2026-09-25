@@ -276,6 +276,14 @@ controller supporting both controller and target modes.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/i3ccore_wrap/doc/index.html" class="xref page">I3C</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance i3c-core with an
+OCAH AXI4-Lite wrapper. Integration verification remains a work in
+progress.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive voltage scaling communication controller for managing voltage
 rails and power conditions.</p></td>
@@ -297,14 +305,6 @@ multi-chiplet systems.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="memmap.html#smc-i3c-registers" class="xref page">I3C</a></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller for enhanced serial
-communication. The generated register map is provided; integration
-verification remains a work in progress.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reset control and synchronization, deals with SMC resets (core, primary),
 subsystem (chiplet) resets, and the cool reset sequence.</p></td>
@@ -322,51 +322,8 @@ subsystem (chiplet) resets, and the cool reset sequence.</p></td>
 </div>
 </div>
 <div class="sect1">
-<h2 id="smc-peripheral-integration"><a class="anchor" href="#smc-peripheral-integration"></a><a class="link" href="#smc-peripheral-integration">1. Peripheral Integration</a></h2>
+<h2 id="uart-and-log-engine-wrapper-registers"><a class="anchor" href="#uart-and-log-engine-wrapper-registers"></a><a class="link" href="#uart-and-log-engine-wrapper-registers">1. UART and Log Engine Wrapper Registers</a></h2>
 <div class="sectionbody">
-<div class="paragraph">
-<p>The wrapper diagrams in this section show the SMC integration and interrupt
-connections. The individual IP sections describe the internal controller behavior.</p>
-</div>
-<div class="paragraph">
-<p><a href="#smc-mailbox-diagram">SMC mailbox architecture and interrupt routing</a> shows the SMC mailbox wrapper and its interrupt connections.</p>
-</div>
-<div id="smc-mailbox-diagram" class="imageblock">
-<div class="content">
-<img src="_images/SMC_AXILMailbox_FIG027.png" alt="SMC mailbox architecture and interrupt routing" width="100%">
-</div>
-<div class="title">Figure 1. SMC mailbox architecture and interrupt routing</div>
-</div>
-<div class="paragraph">
-<p><a href="#smc-i3c-diagram">SMC I3C wrapper and controller interfaces</a> shows the I3C wrapper and controller interfaces.</p>
-</div>
-<div id="smc-i3c-diagram" class="imageblock">
-<div class="content">
-<img src="_images/SMC_I3C_FIG024.png" alt="SMC I3C wrapper and controller interfaces" width="100%">
-</div>
-<div class="title">Figure 2. SMC I3C wrapper and controller interfaces</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="uart-and-log-engine-wrapper-registers"><a class="anchor" href="#uart-and-log-engine-wrapper-registers"></a><a class="link" href="#uart-and-log-engine-wrapper-registers">2. UART and Log Engine Wrapper Registers</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The UART wrapper is shown in <a href="#smc-uart-wrapper-diagram">SMC UART wrapper</a>; <a href="#smc-log-engine-diagram">SMC UART log-engine wrapper and data paths</a>
-shows the log-engine wrapper and its memory-to-UART data paths.</p>
-</div>
-<div id="smc-uart-wrapper-diagram" class="imageblock">
-<div class="content">
-<img src="_images/UART_Wrap_FIG025-1.png" alt="SMC UART wrapper" width="100%">
-</div>
-<div class="title">Figure 3. SMC UART wrapper</div>
-</div>
-<div id="smc-log-engine-diagram" class="imageblock">
-<div class="content">
-<img src="_images/UART_Log_Engine_Wrap_FIG025-2.png" alt="SMC UART log-engine wrapper and data paths" width="100%">
-</div>
-<div class="title">Figure 4. SMC UART log-engine wrapper and data paths</div>
-</div>
 <div class="paragraph">
 <p>The wrapper maps include the UART and log-engine control registers and their
 composed register banks. Offsets are relative to each wrapper&#8217;s base address.</p>
@@ -1317,7 +1274,7 @@ composed register banks. Offsets are relative to each wrapper&#8217;s base addre
 </div>
 </div>
 <div class="sect1">
-<h2 id="peripheral-parameter-settings"><a class="anchor" href="#peripheral-parameter-settings"></a><a class="link" href="#peripheral-parameter-settings">3. Peripheral Parameter Settings</a></h2>
+<h2 id="peripheral-parameter-settings"><a class="anchor" href="#peripheral-parameter-settings"></a><a class="link" href="#peripheral-parameter-settings">2. Peripheral Parameter Settings</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The SMC sets peripheral parameters at instantiation from <code>smc_config_pkg</code>,
