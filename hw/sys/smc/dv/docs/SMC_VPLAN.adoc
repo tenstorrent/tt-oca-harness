@@ -11156,6 +11156,39 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-286-smc_octs_primary_start_test]]
+===== 286 `smc_octs_primary_start_test`
+
+*Source Module*: `smc_octs_primary_start_test`
+
+*BFM / Model*: none; the bench strap stays at PRIMARY; observation on `STATUS` and `TIMER_COUNT`
+
+*Objective*: Start a PRIMARY OCTS timer that has never run. Every other OCTS leaf starts the timer only after a secondary phase has already enabled it.
+
+*Test Coverage*:
+
+* `CTRL` is written while the timer is idle, first with a credit value of 1 and then with the setting it runs on: `CREDIT_VAL` 0xFF and `PULSE_WIDTH` 0xF0, which keeps the RDL's rule that the credit value exceed the pulse width. `STATUS.RUNNING` must read clear.
+* `TIMER_PRESET` is 0. After `TIMER_START`, `STATUS.RUNNING` must set and `TIMER_COUNT` must advance.
+* `TIMER_START` "asserts the sync_load signal", a pulse `PULSE_WIDTH` cycles long. A second start written while that pulse is still out must reload the preset. The count read right after it must be below the count read twice after the first start.
+
+*Test Procedure*:
+
+[arabic]
+. Check `STATUS` is PRIMARY and idle, program `CTRL` twice and the preset to 0.
+. Write `TIMER_START`, read the count twice, write `TIMER_START` again, read it, wait, and read it again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OCTS-PRIMARY-START` |A never-run PRIMARY timer started from 0 with `RUNNING` set, and a second start during its sync pulse reloaded the count
+|===
+
+*Pass Criteria*: the checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
