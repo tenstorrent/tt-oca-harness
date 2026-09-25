@@ -11355,6 +11355,40 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-289-smc_hang_detector_disable_test]]
+===== 289 `smc_hang_detector_disable_test`
+
+*Source Module*: `smc_hang_detector_disable_test`
+
+*BFM / Model*: `tb_sep_axi_r_hold` holds a SEP_IN read at its R channel; the JTAG AXI master carries the control writes made during the stall; observation on `tb_axi_hang_irq_sep`
+
+*Objective*: Clear the SEP hang detector's `enable` while the detector has fired, and drive `irq_test` with `enable` clear. The other hang detector leaves clear `enable` only while the detector is quiet, and drive `irq_test` only with `enable` set.
+
+*Test Coverage*:
+
+* `HANG_DET_CTRL.enable`: "When 0, it is held at 0 and irq_o is forced low." With threshold 0x10 and a read held, the SEP interrupt fires. `enable` is then cleared with `irq_en` kept, and the interrupt has to read low at once and stay low for four thresholds while the read is still held.
+* `irq_test` is "Gated by enable and irq_en". With `irq_en` and `irq_test` set and `enable` clear, the interrupt has to stay low for four thresholds. Setting `enable` as well has to raise it, and clearing the control has to drop it.
+
+*Test Procedure*:
+
+[arabic]
+. Disarm the SYS and DATA detectors. Program the SEP threshold to 0x10 and arm the detector.
+. Hold a SEP_IN read. Wait for the SEP interrupt, write `irq_en` alone through JTAG, read it back, and require the interrupt low throughout the watch window. Release the read.
+. Write `irq_en | irq_test` and require the interrupt low. Write `enable | irq_en | irq_test` and require it high, then clear the control and require it low.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-HANG-DISABLE-FIRED` |Clearing `enable` on a fired SEP detector, with the read still held, dropped its interrupt and kept it low
+|`CHK-HANG-TEST-GATED` |`irq_test` with `enable` clear left the interrupt low, and setting `enable` raised it
+|===
+
+*Pass Criteria*: both checkers hold after their compares and every sequence assert holds. Enrolled in: `all`, `hosted`.
+
+'''''
+
 [[smc-formal-plan]]
 === Formal Verification Plan
 
