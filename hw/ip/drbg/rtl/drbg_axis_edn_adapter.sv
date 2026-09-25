@@ -178,6 +178,8 @@ module drbg_axis_edn_adapter
       end
     end
 
+    // Every use of edn_req_i is gated by ep_live, so a client reset that
+    // follows its cancel cannot reach a flop in this rst_ni domain.
     assign ep_live[i]        = !ep_flush[i] && !ep_flush_q[i];
     assign ep_flush_start[i] = ep_flush[i] && !ep_flush_q[i];
 
@@ -211,7 +213,7 @@ module drbg_axis_edn_adapter
       .clk_i            (clk_i),
       .rst_ni           (rst_ni),
       .enable_i         (!ep_flush[i]),
-      .req_i            (edn_req_i[i].edn_req),
+      .req_i            (edn_req_i[i].edn_req && ep_live[i]),
       .ack_o            (ep_ack[i]),
       .fifo_not_empty_i (ep_rvalid[i]),
       .fifo_pop_o       (ep_pop[i]),

@@ -46,6 +46,15 @@ The sequenced resets are ANDed with `sep_reset_n`, which holds every IP in reset
 until eFuse sensing completes during boot. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.
 
+An OTBN, AES, or KMAC reset also cancels that engine's endpoints in the shared
+crypto EDN adapter. The cancel begins once the engine's paths report isolated,
+one cycle before its reset asserts, and holds until reset releases, so EDN
+continues to serve the engine while its transactions drain. A word already
+committed to the engine but not yet acknowledged is discarded; it is never
+delivered to another client. Requests and staged words of the other EDN clients
+are unaffected. A JTAG override bypasses this cancellation along with the
+isolation sequencing.
+
 [[sep-trng-reset]]
 == Resetting the TRNG
 
