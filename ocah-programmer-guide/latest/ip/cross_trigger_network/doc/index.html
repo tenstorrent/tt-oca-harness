@@ -333,8 +333,9 @@ In point-to-point mode the request is held high until the receiver
 acknowledges the request. In wire-OR mode, this signal drives the
 output-enable port of the I/O pad for duration defined by a pulse stretching
 module, and the pad output is driven static-low. Also in wire-OR mode the I/O
-pad input signal must be inverted, as the pad signal itself is an open-drain
-active-low signal.<br></p>
+pad input connects to the CTP without inversion. The shared wire is an
+open-drain active-low signal, and the CTP receives a cross trigger on its
+falling (assertion) edge.<br></p>
 </li>
 <li>
 <p><strong>CT_Ack_in</strong> - The cross trigger acknowledge input signal. Exclusive to
@@ -645,6 +646,12 @@ inverted before use: <code>MODE_WIRE_OR = ~INT_CT_MODE[i]</code>. This means
 Point-to-Point mode.</p>
 </div>
 <div class="paragraph">
+<p>The internal wire-OR request from a CLA is active-high, while the CTP core
+receives a wire-OR cross trigger on the falling edge of an idle-high wire. The
+network therefore inverts <code>ctm_dst_req_i[i]</code> before <code>ct_req_out_din</code>, so an
+internal CTP receives a cross trigger on the rising edge of the CLA request.</p>
+</div>
+<div class="paragraph">
 <p><strong>Wire-OR Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):</strong></p>
 </div>
 <div class="paragraph">
@@ -671,7 +678,7 @@ connections in wire-OR mode.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_req_out_din</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">← <code>ctm_dst_req_i[i]</code> (stretched pulse from CLA)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">← <code>~ctm_dst_req_i[i]</code> (stretched pulse from CLA, inverted)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">All other signals</p></td>
@@ -955,8 +962,9 @@ In wire-OR mode it is held static-low.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_din</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the
-<em>CT_Req_out</em> pad. In wire-OR mode this signal triggers a pulse on
-<em>ct_dst</em> after synchronization. In peer-to-peer mode it is unused.</p></td>
+<em>CT_Req_out</em> pad. In wire-OR mode the assertion edge of this signal
+triggers a pulse on <em>ct_dst</em> after synchronization. In peer-to-peer mode
+it is unused.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_in_din_en</p></td>
