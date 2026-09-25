@@ -71,11 +71,11 @@ module sep_reset_ctrl (
     .out_o (sep_cpu_func_reset_n)
   );
 
-  prim_rstbypass_stdmux2 u_sep_cpu_rst_scan_bypass (
-    .rst_ni      (sep_cpu_func_reset_n),
-    .test_rst_ni (scan_rst_ni),
-    .test_mode_i (test_en_i),
-    .rst_no      (sep_cpu_reset_no)
+  prim_rst_mux2_hf_n u_sep_cpu_rst_scan_bypass (
+    .rst0_ni(sep_cpu_func_reset_n),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_cpu_reset_no)
   );
 
   // =========================================================================
