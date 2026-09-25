@@ -17,12 +17,18 @@ https://opentitan.org/book/hw/ip/i2c/doc/programmers_guide.html[OpenTitan progra
 .OpenTitan I2C core reference architecture
 image::opentitan_i2c.svg[alt="OpenTitan I2C core reference architecture",width=100%,pdfwidth=100%]
 
-<<i2c-core-diagram>> shows the upstream core. The OCAH wrapper is described below.
+<<i2c-core-diagram>> shows the upstream core.
 
 == OCAH Modifications
 
 * AXI4-Lite register interface in place of the OpenTitan TileLink host port.
 * Wrapper register blocks `i2c_ctrl` and `i2c_wrap` around the OpenTitan register bank.
+
+[[i2c-wrapper-diagram]]
+.OCAH I2C wrapper and generated register interface
+image::SMC_I2C_FIG023.png[alt="OCAH I2C wrapper and generated register interface",width=100%,pdfwidth=100%]
+
+<<i2c-wrapper-diagram>> shows the OCAH wrapper around that core.
 
 ifdef::backend-html5[]
 include::partial$i2c/doc/memmap.adoc[]
