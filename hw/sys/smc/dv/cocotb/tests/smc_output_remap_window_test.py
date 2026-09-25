@@ -5,8 +5,9 @@
 Programs M-mode remap entries 0 and 1 and hypervisor entry 0. It then writes
 and reads a word through each window's LOCAL_BASE and GLOBAL_BASE copy, and one
 address past the hypervisor window. Each word must land in SYS_OUT memory where
-`output_remap.rdl` puts it, and read back through the same window. The entries
-are restored.
+`output_remap.rdl` puts it, and read back through the same window. Outbound
+filter entries that match the M-mode source ID must allow the M-mode words and
+must not catch the hypervisor words. The entries are restored.
 """
 
 from __future__ import annotations

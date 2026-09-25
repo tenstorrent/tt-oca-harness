@@ -25,11 +25,24 @@ nowhere else:
 * the address past the hypervisor window passes through unremapped;
 * a read through the same window returns the word.
 
+**Source-ID matching in the outbound filter.** `fabric.adoc` ("SMC Source ID by
+Traffic Path") has traffic through the M-mode remap carry `MMODE_ID` and
+traffic through the hypervisor remap carry `OTHER_ID`. The document names the
+values; `smc_pkg.sv` defines them, and the leaf reads `MMODE_ID` from there.
+
+While the words go out, outbound filter entry 0 allows reads and writes to the
+M-mode targets for source `MMODE_ID`. Entry 1 matches the hypervisor target for
+the same source and allows nothing. The hypervisor words carry `OTHER_ID`, so
+entry 1 must not match them: if source-ID matching were ignored, entry 1 would
+deny them and those legs would fail. Both entries are restored to their RDL
+reset.
+
 The remap entries are restored to their reset afterwards.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -37,8 +50,17 @@ import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
-from .smc_addr_map import GLOBAL_BASE_RESET, LOCAL_BASE_RESET, REGION_SIZE_RESET, smc_addr
+from .smc_addr_map import (
+    _REPO,
+    GLOBAL_BASE_RESET,
+    LOCAL_BASE_RESET,
+    REGION_SIZE_RESET,
+    _field_mask,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_rdl_regmap import rdl_contract
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -75,6 +97,54 @@ _ENTRIES = (
 )
 
 _WORD = 8
+
+_SMC_PKG = Path(__file__).resolve().parents[6] / "hw" / "sys" / "smc" / "rtl" / "smc_pkg.sv"
+
+
+def _pkg_user(name: str) -> int:
+    match = re.search(rf"{name}\s*=\s*smc_axi_user_t'\('?h?([0-9A-Fa-f]+)\)", _SMC_PKG.read_text())
+    assert match, f"{name} not found in {_SMC_PKG}"
+    text = match.group(0)
+    return int(match.group(1), 16 if "'h" in text else 10)
+
+
+MMODE_ID = _pkg_user("MMODE_SRC_ID")
+OTHER_ID = _pkg_user("OTHERS_SRC_ID")
+assert MMODE_ID != 0 and MMODE_ID != OTHER_ID, "entry 0 needs a non-wildcard M-mode source ID"
+
+_FILTER_H = _REPO / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+
+
+def _filter(field: str) -> int:
+    return _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{field.upper()}_bm")
+
+
+def _filter_bp(field: str) -> int:
+    return _field_mask(_FILTER_H, f"FILTER_CTRL__FILTER_CONFIG__{field.upper()}_bp")
+
+
+_FILTER_BASE = (
+    _filter("entry_enabled")
+    | _filter("allow_burst")
+    | (3 << _filter_bp("data_bus_width"))
+    | (MMODE_ID << _filter_bp("src_id"))
+)
+# (entry, start, end, config)
+_FILTER_ENTRIES = (
+    (
+        0,
+        _MMODE0_TARGET,
+        _MMODE1_TARGET + _SLOT - 1,
+        _FILTER_BASE | _filter("read_allowed") | _filter("write_allowed"),
+    ),
+    (1, _XVISOR0_TARGET, _XVISOR0_TARGET + _SLOT - 1, _FILTER_BASE),
+)
+
+
+def _outbound(reg: str, entry: int) -> int:
+    return smc_indexed_addr(f"SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_{reg}_BASE_ADDR", entry)
+
+
 _SENTINEL = 0x5A5A_5A5A_5A5A_5A5A
 
 
@@ -165,6 +235,30 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             await self.csr_write(f"{label}_ATTRS", addr, value, length=_WORD)
             await self.csr_read(f"{label}_ATTRS_RB", addr, expected=value, length=_WORD)
 
+        resets = {}
+        for reg in ("FILTER_CONFIG", "START_ADDR", "END_ADDR"):
+            resets[reg] = rdl_contract(f"smc_outbound_filter_ctrl/{reg}").reset_word
+        for entry, start, end, config in _FILTER_ENTRIES:
+            await self.csr_read(
+                f"OB{entry}_CONFIG_RESET",
+                _outbound("FILTER_CONFIG", entry),
+                expected=resets["FILTER_CONFIG"],
+                length=_WORD,
+            )
+            await self.csr_write(
+                f"OB{entry}_START", _outbound("START_ADDR", entry), start, length=_WORD
+            )
+            await self.csr_write(f"OB{entry}_END", _outbound("END_ADDR", entry), end, length=_WORD)
+            await self.csr_write(
+                f"OB{entry}_CONFIG", _outbound("FILTER_CONFIG", entry), config, length=_WORD
+            )
+            await self.csr_read(
+                f"OB{entry}_CONFIG_RB",
+                _outbound("FILTER_CONFIG", entry),
+                expected=config,
+                length=_WORD,
+            )
+
         for index, (label, addr, target) in enumerate(_LEGS):
             word = 0xC0DE_0000_0000_0000 | (index << 40) | (addr & 0xFFFF_FFFF)
             responder.write_int(target, _SENTINEL, _WORD)
@@ -192,6 +286,18 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 "[%s] 0x%x -> SYS_OUT 0x%x: written, landed and read back", label, addr, target
             )
 
+        for entry, _start, _end, _config in _FILTER_ENTRIES:
+            for reg in ("FILTER_CONFIG", "START_ADDR", "END_ADDR"):
+                await self.csr_write(
+                    f"OB{entry}_{reg}_RESTORE", _outbound(reg, entry), resets[reg], length=_WORD
+                )
+                await self.csr_read(
+                    f"OB{entry}_{reg}_RESTORE_RB",
+                    _outbound(reg, entry),
+                    expected=resets[reg],
+                    length=_WORD,
+                )
+
         for label, addr, _value in _ENTRIES:
             await self.csr_write(
                 f"{label}_ATTRS_RESTORE",
@@ -211,7 +317,11 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             "hypervisor windows at their LOCAL_BASE and GLOBAL_BASE copies and past the "
             "hypervisor window; each landed in SYS_OUT memory at the address the "
             "programmed entry predicts (%s), left the unremapped address alone, and read "
-            "back through the same window",
+            "back through the same window; outbound filter entries matching source 0x%x "
+            "(M-mode) allowed the M-mode words and did not catch the hypervisor words, which "
+            "carry source 0x%x",
             self.legs_checked,
             ", ".join(f"0x{a:x}->0x{t:x}" for _l, a, t in _LEGS),
+            MMODE_ID,
+            OTHER_ID,
         )
