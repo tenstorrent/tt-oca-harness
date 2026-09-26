@@ -66,8 +66,6 @@ filelist = "hw/sys/smc/dv/build/smc_dut_compile.f"
 bender_filelist = "hw/sys/smc/dv/build/smc_bender.f"
 work_dir = "hw/sys/smc/dv/build"
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",

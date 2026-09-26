@@ -20,6 +20,7 @@ package:
     - "Kai Qin <kqin@tenstorrent.com>"
     - "Paul Scheidt <pscheidt@tenstorrent.com>"
     - "Adam Taback <ataback@tenstorrent.com>"
+    - "Grace Chang <gchang@tenstorrent.com>"
 
 # Path dependencies on the vendored trees (transitive pins in Bender.local).
 dependencies:
@@ -410,8 +411,6 @@ sources:
       - hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
-      - hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
   - target: any(sep, entropy_source)
@@ -419,9 +418,7 @@ sources:
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_addrmap_pkg.sv
   - target: smc
     files:
-      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_addrmap_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_addrmap_pkg.sv
-      - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
@@ -463,13 +460,8 @@ sources:
   - target: smc
     files:
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
-  - target: sep
-    files:
-      - hw/sys/sep/dv/models/regs/gen/sv/sep_external_addrmap_pkg.sv
   - target: smc
     files:
-      - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
-      - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
       - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
@@ -489,15 +481,13 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/ip/drbg/rtl/drbg_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
-      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
   - target: any(dtp, sep, smc)
     files:
       - hw/ip/efuse/rtl/efuse_pkg.sv
@@ -507,11 +497,8 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_source_pkg.sv
   - target: smc
     files:
-      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_reg_pkg.sv
-      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg_pkg.sv
       - hw/ip/gpio/rtl/gpio_pkg.sv
-      - hw/ip/gpio/rtl/gpio_shim_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_reg_pkg.sv
       - hw/ip/i2c/rtl/i2c_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg_pkg.sv
@@ -593,12 +580,10 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg_pkg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/ndm_reset_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/rtl/smc_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
@@ -623,7 +608,7 @@ sources:
   - target: any(sep, axi_lite_to_ahb)
     files:
       - hw/common/axi/axi_lite_to_ahb.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
@@ -711,7 +696,7 @@ sources:
       - hw/common/ocah_prim_generic/rtl/prim_or2.sv
       - hw/common/ocah_prim_generic/rtl/prim_or4.sv
       - hw/common/ocah_prim_generic/rtl/prim_stdmux2.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/common/tlul/rtl/tlul_adapter_host.sv
       - hw/common/tlul/rtl/tlul_adapter_reg.sv
@@ -761,7 +746,7 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/ip/drbg/rtl/drbg.sv
       - hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv
@@ -770,14 +755,10 @@ sources:
       - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/dv/models/efuse_bank_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
-      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
       - hw/ip/efuse/rtl/efuse_guard.sv
       - hw/ip/efuse/rtl/efuse_interface_controller.sv
-      - hw/ip/efuse/rtl/efuse_interface_shim.sv
-      - hw/ip/efuse/dv/models/efuse_bank_model.sv
       - hw/ip/efuse/rtl/efuse_program_interface.sv
       - hw/ip/efuse/rtl/efuse_read_interface.sv
       - hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
@@ -809,13 +790,9 @@ sources:
       - hw/ip/entropy_source/rtl/gf_muladd.sv
   - target: smc
     files:
-      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_reg.sv
-      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
       - hw/ip/gpio/rtl/gpio.sv
       - hw/ip/gpio/rtl/gpio_filter.sv
-      - hw/ip/gpio/dv/models/gpio_model.sv
-      - hw/ip/gpio/rtl/gpio_shim.sv
       - hw/ip/i2c/regs/gen/sv/i2c_reg.sv
       - hw/ip/i2c/rtl/i2c.sv
       - hw/ip/i2c/rtl/i2c_bus_monitor.sv
@@ -1240,12 +1217,10 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/ndm_reset_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv
@@ -1562,8 +1537,36 @@ sources:
       - hw/sys/smu/rtl/smu.sv
       - hw/sys/smu/rtl/smu_axi_xbar.sv
   # Reference wrappers are additive to their corresponding subsystem targets.
+  - target: any(sep_wrapper, smc_wrapper, smu_wrapper)
+    files:
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg.sv
+      - hw/ip/efuse/rtl/efuse_interface_shim.sv
+      - hw/ip/efuse/dv/models/efuse_bank_model.sv
+  - target: any(sep_wrapper, smu_wrapper)
+    files:
+      - hw/sys/sep/dv/models/regs/gen/sv/sep_external_addrmap_pkg.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg_pkg.sv
+      - hw/ip/gpio/rtl/gpio_shim_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
+      - hw/ip/gpio/dv/models/gpio_model.sv
+      - hw/ip/gpio/rtl/gpio_shim.sv
+      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/common/ocah_prim/rtl/prim_pad_shim.sv
       - hw/sys/smc/dv/models/axil_okay_slv.sv
       - hw/sys/smc/dv/models/pll_wrap.sv

@@ -31,8 +31,6 @@ work_dir = "hw/ip/i3ccore_wrap/dv/build"
 # register_interface_l1 supplies the prim packages the register-interface RAM
 # needs; without it prim_ram_1p_adv_ext.sv fails to elaborate.
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",

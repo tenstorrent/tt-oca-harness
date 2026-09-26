@@ -6402,7 +6402,7 @@ e. Program a second point-to-point route on a disjoint source and destination wi
 * Randomized CTM routes restricted to internal CLA sources targeting external CTP destinations
 * Random single-bit and multi-bit `CT_DST_SELECT` masks and random trigger timing within the CLA-to-CTP class: each iteration draws a pulse width of 2 to 8 system clocks and an idle lead of 0 to 3
 * Selected CTP destinations match the random configuration; non-selected stay quiet
-* Coverage of diverse CLA-source x CTP-destination route combinations
+* Every CLA-source x CTP-destination route driven within one test: the iterations walk a seeded order of the routes, starting each from the first route not yet driven
 
 *Test Procedure*:
 
@@ -6424,7 +6424,7 @@ e. Sample the CLA source x CTP destination cross of `ctm_route_cg` for every rou
 |`ctm_rand_cla_to_ctp_nospur_chk` |No non-selected CTP destination toggles
 |===
 
-*Pass Criteria*: Every random CLA-to-CTP configuration routes correctly to its selected CTP destinations with no spurious activity, with zero scoreboard/reference-model errors; the regression closes the CLA source x CTP destination cross of `ctm_route_cg`.
+*Pass Criteria*: Every random CLA-to-CTP configuration routes correctly to its selected CTP destinations with no spurious activity, with zero scoreboard/reference-model errors; every seed closes the CLA source x CTP destination cross of `ctm_route_cg`.
 
 '''''
 
@@ -6440,7 +6440,7 @@ e. Sample the CLA source x CTP destination cross of `ctm_route_cg` for every rou
 * Randomized CTM routes restricted to external CTP sources targeting internal CLA destinations
 * Random single-bit and multi-bit `CT_DST_SELECT` masks and random trigger timing within the CTP-to-CLA class: each iteration draws a pulse width of 2 to 8 system clocks and an idle lead of 0 to 3
 * Selected CLA destinations match the random configuration; non-selected stay quiet
-* Coverage of diverse CTP-source x CLA-destination route combinations
+* Every CTP-source x CLA-destination route driven within one test: the iterations walk a seeded order of the routes, starting each from the first route not yet driven
 
 *Test Procedure*:
 
@@ -6462,7 +6462,7 @@ e. Sample the CTP source x CLA destination cross of `ctm_route_cg` for every rou
 |`ctm_rand_ctp_to_cla_nospur_chk` |No non-selected CLA destination toggles
 |===
 
-*Pass Criteria*: Every random CTP-to-CLA configuration routes correctly to its selected CLA destinations with no spurious activity, with zero scoreboard/reference-model errors; the regression closes the CTP source x CLA destination cross of `ctm_route_cg`.
+*Pass Criteria*: Every random CTP-to-CLA configuration routes correctly to its selected CLA destinations with no spurious activity, with zero scoreboard/reference-model errors; every seed closes the CTP source x CLA destination cross of `ctm_route_cg`.
 
 '''''
 
