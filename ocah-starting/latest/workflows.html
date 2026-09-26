@@ -381,10 +381,10 @@ RDL sources. The flow lives in <code>hw/common/regs/</code> (discovery, classifi
 <div class="sectionbody">
 <div class="paragraph">
 <p>Per-subsystem DV firmware libraries (runtime <strong>drivers</strong>, not tests) are built via
-<code>make dv-fw-libs [TARGET=key_manager|sep|smc]</code> (alias of <code>ocah-dv-fw-libs</code>). Each
+<code>make dv-fw-libs [TARGET=sep|smc]</code> (alias of <code>ocah-dv-fw-libs</code>). Each
 subsystem owns a <code>fw.mk</code> + <code>toolchain.mk</code> under <code>hw/{ip,sys}/&lt;name&gt;/dv/fw/</code> and builds
-as an independent recursive sub-make so the target CPUs (PicoRV32/KM, VeeR EL2/SEP,
-Rocket/SMC) never share ISA/ABI/libc flag state.</p>
+as an independent recursive sub-make so the target CPUs (VeeR EL2/SEP, Rocket/SMC)
+never share ISA/ABI/libc flag state.</p>
 </div>
 <div class="paragraph">
 <p>The RISC-V toolchain is provided by the project container or selected via
@@ -405,7 +405,7 @@ make dv-fw-tests TARGET=smc TEST=version_id   # one test</code></pre>
 <div class="paragraph">
 <p>Each subsystem&#8217;s tests link against one of that subsystem&#8217;s <strong>link modes</strong> —
 memory targets discovered from <code>link/modes/*.ld</code> (e.g. SMC: <code>sram</code>, <code>rom</code>; SEP:
-<code>tcm</code>; KM: <code>vrom</code>) — and output artifacts fold the mode into their name
+<code>tcm</code>) — and output artifacts fold the mode into their name
 (<code>&lt;test&gt;.&lt;mode&gt;.elf</code>, e.g. <code>version_id.sram.elf</code>). A test uses its subsystem&#8217;s
 default mode unless it overrides <code>FW_TEST_MODE_&lt;test&gt;</code>; see <code>hw/common/dv/fw/compile.mk</code>
 for the full mechanism.</p>
@@ -579,44 +579,32 @@ make -C hw/sys/sep/bootrom/prod oca-images</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="km-boot-rom"><a class="anchor" href="#km-boot-rom"></a><a class="link" href="#km-boot-rom">3.4. KM boot ROM</a></h3>
+<h3 id="km-application-rom"><a class="anchor" href="#km-application-rom"></a><a class="link" href="#km-application-rom">3.4. KM application ROM</a></h3>
 <div class="paragraph">
-<p>The Key Manager (KM) subsystem (PicoRV32) has no dedicated <code>bootrom/</code> directory.
-Its ROM firmware lives in the DV firmware tree at <code>hw/ip/key_manager/dv/fw/</code> and is built by the same shared engine (<code>compile.mk</code>) used for DV tests.</p>
+<p>The Key Manager (KM) subsystem (PicoRV32) runs its firmware from ROM.
+That firmware is not only a boot loader: it is the KM runtime, serving the SEP mailbox, until the SEP loads alternative firmware into KM SRAM and hands over to it.
+It therefore lives in <code>hw/ip/key_manager/approm/prod/</code> rather than a <code>bootrom/</code> directory, and builds with a self-contained <code>Makefile</code> there.</p>
 </div>
 <div class="paragraph">
-<p>Two link modes are discovered from <code>hw/ip/key_manager/dv/fw/link/modes/</code>:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>vrom</code> (default for test images) — the ROM carries only the interrupt-vector sections (<code>.text.reset</code>, <code>.text.irq_vec</code>, <code>.text.irq_handler</code>); the rest of the code runs from a side-loaded Virtual ROM (VROM).</p>
-</li>
-<li>
-<p><code>rom</code> — the entire image runs from ROM with no VROM.
-The production entry point (<code>production/rom_main</code>) and all <code>sep_images/</code> entries always use this mode.</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p>The production entry point is <code>production/rom_main/rom_main.c</code>.
-It runs forever serving the KM mailbox and is not enumerated by the test regression (only <code>tests/test_*</code> directories are).
-The SEP UVM testbench loads all KM ROM images via <code>+KM_ROM_HEX_FILE</code>.</p>
+<p>The entry point is <code>src/rom_main.c</code>.
+The whole image — vectors, code, constants and the <code>.data</code> load image — links into the 16 KB ROM through <code>link/km_production.ld</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Build the production ROM entry (uses the standard DV firmware dispatcher):
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
-make dv-fw-tests TARGET=key_manager TEST=rom_main</code></pre>
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Build the application ROM; without RISCV_TOOLCHAIN it builds in the toolchain container
+make -C hw/ip/key_manager/approm/prod
+
+# Boot and unrecoverable-fault SRAM wipes disabled, in a separate build directory
+make -C hw/ip/key_manager/approm/prod KM_BOOT_WIPE=0 KM_UNREC_WIPE=0 BUILD_DIR=build/nowipe</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Outputs land under <code>hw/ip/key_manager/dv/fw/build/tests/rom_main/</code>:</p>
+<p>Outputs land under <code>hw/ip/key_manager/approm/prod/build/</code> (or <code>BUILD_DIR</code>):</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>rom_main.rom.elf</code> — linked ELF.</p>
+<p><code>rom_main.elf</code> — linked ELF, with <code>rom_main.map</code> and <code>rom_main.dis</code> beside it.</p>
 </li>
 <li>
 <p><code>rom_main.rom.hex</code> — address-zero-based Verilog hex for the ROM responder.</p>
@@ -625,9 +613,12 @@ make dv-fw-tests TARGET=key_manager TEST=rom_main</code></pre>
 <p><code>rom_main.rom.parhex</code> — parity-annotated hex (used by the KM RTL&#8217;s ROM model).</p>
 </li>
 <li>
-<p><code>rom_main.rom.sym</code> / <code>rom_main.sym</code> — symbol tables (the bare <code>rom_main.sym</code> lets the SEP UVM resolve firmware symbols from the <code>rom</code>-mode image).</p>
+<p><code>rom_main.sym</code> — symbol table, from which testbenches resolve firmware symbols.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>SEP DV builds its own wipe-disabled copy through <code>hw/sys/sep/dv/cocotb/tests/km_fw</code> (<code>make rom_main</code>), which <code>run_dv.py</code> drives for tests that declare <code>mode = "km_rom_main"</code>.</p>
 </div>
 </div>
 </div>

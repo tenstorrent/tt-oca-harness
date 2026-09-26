@@ -5612,7 +5612,8 @@ IRQ stack depths and deepest paths:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">python3 scripts/km_stack_analyze.py build/tests/rom_main/rom_main.rom.elf \
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">cd hw/ip/key_manager/approm/prod
+python3 scripts/km_stack_analyze.py build/rom_main.elf \
   --objdump riscv64-unknown-elf-objdump --root main --limit 0x600</code></pre>
 </div>
 </div>
