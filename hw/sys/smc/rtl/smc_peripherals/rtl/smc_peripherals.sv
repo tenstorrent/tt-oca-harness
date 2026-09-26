@@ -636,15 +636,11 @@ module smc_peripherals #(
   /////////////
 
   // Protect against truncation from casts
-  `OCAH_OT_ASSERT_INIT(
-      PadringGpioSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::ADDR_WIDTH))
   `OCAH_OT_ASSERT_INIT(PadringGpioBaseFits_A, smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0
                        ) < (64'd1 << gpio_pkg::ADDR_WIDTH))
 
   smc_padring #(
     .MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
-    .ADDRESS_MAP_SIZE_PER_GPIO  (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
     .GPIO_INTF_BASE_ADDR        (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
   ) u_smc_padring (
     .clk_i                      (clk_smc_i),

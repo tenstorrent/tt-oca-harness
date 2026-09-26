@@ -687,27 +687,8 @@ module smc_base #(
   // Data Accelerator Wrap //
   ///////////////////////////
 
-  // Assertions to protect against truncation on casts
-  `OCAH_OT_ASSERT_INIT(
-      DmaCtrlBaseFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
-  `OCAH_OT_ASSERT_INIT(
-      DmaCtrlSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
-  `OCAH_OT_ASSERT_INIT(
-      ZeroerCtrlBaseFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
-  `OCAH_OT_ASSERT_INIT(
-      ZeroerCtrlSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE < (64'd1 << smc_pkg::SMC_LOCAL_ADDR_WIDTH))
-
   // Contains DMA and Zeroer
-  smc_data_accelerator_wrap #(
-    .DMA_CTRL_REG_MAP_BASE_ADDR         (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_BASE_ADDR)),
-    .DMA_CTRL_REG_MAP_SIZE              (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_DMA_CTRL_SIZE)),
-    .ZEROER_CTRL_REG_MAP_BASE_ADDR      (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_BASE_ADDR)),
-    .ZEROER_CTRL_REG_MAP_SIZE           (smc_pkg::SMC_LOCAL_ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_ZEROER_CTRL_SIZE))
-  ) u_smc_data_accelerator_wrap (
+  smc_data_accelerator_wrap u_smc_data_accelerator_wrap (
     .clk_i                              (clk_smc_i),
     .rst_ni                             (rst_primary_smc_clk_ni),
     .test_en_i                          (test_en_i),

@@ -5,8 +5,8 @@
 // Hold shared DRBG wrapper parameters, enums, and interface typedefs.
 //
 // Defines the wrapper-local defaults, 64-bit and 32-bit AXI-Lite typedefs used by the CSR
-// bridge chain, AXI-Stream typedefs used by the entropy and EDN output paths, and
-// provisional FIPS policy constants isolated in this package.
+// bridge chain, AXI-Stream typedefs used by the entropy and EDN output paths, and the
+// provisional CSRNG seed FIPS policy.
 
 package drbg_pkg;
 
@@ -31,8 +31,6 @@ package drbg_pkg;
 
   // Current feature-release CSRNG seed FIPS policy.
   localparam logic DRBG_CSRNG_SEED_FIPS_PROVISIONAL = 1'b1;
-  // Current feature-release EDN external stream FIPS policy.
-  localparam logic DRBG_IGNORE_EDN_FIPS_PROVISIONAL = 1'b1;
 
   // =========================================================================
   // AXI-Lite Type Definitions

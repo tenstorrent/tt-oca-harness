@@ -9,20 +9,6 @@
 // any other address to the DMA; the master mux prepends a source bit to the transfer IDs.
 
 module smc_data_accelerator_wrap #(
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,  // Unused; the control
-                                                                                     // demux decodes the DMA
-                                                                                     // window from
-                                                                                     // smc_top_addrmap_pkg.
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,  // Unused; the DMA window
-                                                                                // size also comes from
-                                                                                // smc_top_addrmap_pkg.
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,  // Unused; the
-                                                                                        // zeroer window base
-                                                                                        // comes from
-                                                                                        // smc_top_addrmap_pkg.
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0,  // Unused; the zeroer
-                                                                                   // window size comes from
-                                                                                   // smc_top_addrmap_pkg.
   parameter int unsigned DMA_BUFFER_DEPTH = 16  // DMA buffer depth in beats.
 ) (
   input  logic                                             clk_i,  // SMC core clock.

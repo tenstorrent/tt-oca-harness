@@ -25,14 +25,10 @@ module gpio
                                                             // and when no source owns the input
                                                             // enable.
 
-  parameter bit [ADDR_WIDTH-1:0] GPIO_INTF_REG_MAP_BASE_ADDR = 0, // Interface register-map base;
-                                                                  // unused.
-  parameter bit [ADDR_WIDTH-1:0] GPIO_INTF_REG_MAP_SIZE      = 0, // Interface register-map size in
+  parameter bit [ADDR_WIDTH-1:0] GPIO_INTF_REG_MAP_SIZE      = 0  // Interface register-map size in
                                                                   // bytes; its clog2 is the address
                                                                   // width passed to the register
                                                                   // block.
-  parameter bit [ADDR_WIDTH-1:0] ADDRESS_MAP_SIZE_PER_GPIO   = 0 // Byte span allocated per GPIO;
-                                                                 // unused.
 ) (
   input logic clk_i,                                        // System clock, rising-edge triggered.
   input logic rst_primary_ni,                               // Primary async reset, active-low.

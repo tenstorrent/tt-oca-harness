@@ -269,7 +269,6 @@ module smc_internal_regs #(
   localparam int unsigned AXIL_OUTSTANDING_TX = smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans;
 
   // DFD config from the DFT/DFD CSR block
-  logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable;
   smc_pkg::dfd_enable_t                   dfd_enables;
   tt_dbm_pkg::DbgMuxSelMmr_s          dbg_mux_sel_csr;
 
@@ -1026,7 +1025,6 @@ module smc_internal_regs #(
     .mbist_done_i           (mbist_done_i),
     .mbist_pass_i           (mbist_pass_i),
     .mbist_abort_i          (mbist_abort_i),
-    .debug_chiplet_enable_o (debug_chiplet_enable),
     .dfd_enables_o          (dfd_enables),
     .dbg_mux_sel_csr_o      (dbg_mux_sel_csr)
   );

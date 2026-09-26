@@ -5,14 +5,7 @@
 // Hold TileLink Uncached Lightweight types, opcodes, and integrity widths.
 //
 // Define the A/D opcodes, packed channel structs and their default values, integrity and
-// reserved-user widths, helpers that extract and compute command and data integrity, and
-// an ArbiterImpl selection that no module in this tree reads.
-//
-// ArbiterImpl may be PPC or BINTREE. Both are functionally equivalent, but timing and
-// area differ:
-//
-// - PPC can be smaller when timing is not critical.
-// - BINTREE is favorable under timing pressure, and on FPGA for both area and timing.
+// reserved-user widths, and helpers that extract and compute command and data integrity.
 //
 // Two constants give the data returned on a TL-UL error; responders return each with
 // matching data integrity:
@@ -21,14 +14,6 @@
 // - DataWhenError is returned for any access that is not an instruction fetch.
 
 package tlul_pkg;
-  // this can be either PPC or BINTREE
-  // there is no functional difference, but timing and area behavior is different
-  // between the two instances. PPC can result in smaller implementations when timing
-  // is not critical, whereas BINTREE is favorable when timing pressure is high (but this
-  // may also result in a larger implementation). on FPGA targets, BINTREE is favorable
-  // both in terms of area and timing.
-  parameter ArbiterImpl = "PPC";
-
   typedef enum logic [2:0] {
     PutFullData    = 3'h 0,
     PutPartialData = 3'h 1,

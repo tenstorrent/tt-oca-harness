@@ -14,14 +14,6 @@ module smc_padring #(
                                                                            // transactions of the
                                                                            // demux and of each
                                                                            // gpio interface.
-  parameter bit [gpio_pkg::ADDR_WIDTH-1:0] ADDRESS_MAP_SIZE_PER_GPIO = 32'h00000010,  // Per-GPIO step, in
-                                                                                      // bytes, of the base
-                                                                                      // address passed to
-                                                                                      // each gpio instance,
-                                                                                      // which does not use
-                                                                                      // it; the demux
-                                                                                      // decodes a fixed
-                                                                                      // 16-byte stride.
   parameter bit [gpio_pkg::ADDR_WIDTH-1:0] GPIO_INTF_BASE_ADDR       = 32'h00000000  // Base address of the
                                                                                      // first GPIO interface;
                                                                                      // the demux decodes
@@ -556,9 +548,7 @@ module smc_padring #(
       .MAX_TRANS                  (MAX_TRANS),
       .INPUT_BY_DEFAULT           (INPUT_BY_DEFAULT),
 
-      .GPIO_INTF_REG_MAP_BASE_ADDR(GPIO_INTF_BASE_ADDR + (i * ADDRESS_MAP_SIZE_PER_GPIO)),
-      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
-      .ADDRESS_MAP_SIZE_PER_GPIO  (ADDRESS_MAP_SIZE_PER_GPIO)
+      .GPIO_INTF_REG_MAP_SIZE     (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE))
     ) u_gpio_interface (
       .clk_i                  (clk_i),
       .rst_primary_ni         (rst_primary_ni),
