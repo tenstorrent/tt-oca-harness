@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_otp_axi_error_single_write_test — VPLAN 4.1: SLVERR and
-// DECERR single-write injections on the SMC OTP AXI-Lite port. Both injected
+// dtp_jtag2axi_smc_otp_axi_error_single_write_test — SLVERR and DECERR
+// single-write injections on the SMC OTP AXI-Lite port. Both injected
 // responses must be classified as EXPECTED (CHK-AXI-ERR-INJ), every
-// front-door write's strobes must match the stimulus wstrb, the failed
-// write commits nothing, recovery-write memory must equal the stimulus
-// intent (CHK-AXI-WMEM), and completion must stay within the poll bound.
+// front-door write's strobes must match the stimulus wstrb, the failed write
+// commits nothing, recovery-write memory must equal the stimulus intent
+// (CHK-AXI-WMEM), and completion must stay within the poll bound.
 
 class dtp_jtag2axi_smc_otp_axi_error_single_write_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_otp_axi_error_single_write_test)

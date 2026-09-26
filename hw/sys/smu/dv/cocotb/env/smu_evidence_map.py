@@ -97,6 +97,47 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "responder holds the word and the B response returns OKAY",
         ),
     ],
+    "smu_aperture_map_walk_test": [
+        (
+            "CHK-SMCMAP-WALK-PORT",
+            "CHK-SMCMAP-WALK-PORT",
+            "every programmed GLOBAL_BASE and REGION_SIZE reaches smc_global_base_o and "
+            "smc_region_size_o and reads back over JTAG2AXI",
+        ),
+        (
+            "CHK-SMCMAP-WALK-INSIDE",
+            "CHK-SMCMAP-WALK-INSIDE",
+            "at every setting the rebased VERSION_LO read returns its RDL reset value and "
+            "the rebased SCRATCH_COLD write reads back, all OKAY",
+        ),
+        (
+            "CHK-SMCMAP-WALK-EDGE",
+            "CHK-SMCMAP-WALK-EDGE",
+            "at every setting the first address of the window reaches the SMC once and the word "
+            "below and the address past it do not and return DECERR",
+        ),
+        (
+            "CHK-SMCMAP-RESTORE",
+            "CHK-SMCMAP-RESTORE",
+            "GLOBAL_BASE and REGION_SIZE written back to LOCAL_BASE and the RDL reset "
+            "reach the ports and read back",
+        ),
+    ],
+    "smu_axi_out_addr_len_size_test": [
+        (
+            "CHK-AXIOUT-SIZE",
+            "CHK-AXIOUT-SIZE",
+            "each JTAG2AXI write and read of 1, 2, 4 and 8 bytes at two 56-bit addresses "
+            "crosses smu_axi_out once with its address, AxSIZE, AxLEN 0 and INCR, and the "
+            "bytes land and read back",
+        ),
+        (
+            "CHK-AXIOUT-LEN",
+            "CHK-AXIOUT-LEN",
+            "a 2 KiB iDMA copy crosses smu_axi_out as INCR bursts covering the block both "
+            "ways, the longest at AxLEN 255, and the destination holds the source",
+        ),
+    ],
     "smu_axi_in_burst_outstanding_test": [
         (
             "CHK-AXIIN-DEPTH",
@@ -1017,7 +1058,30 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-CTM-SRC",
             "routing lane 0's destination into the CTM port of the first "
             "SMU-exposed internal lane raises xtrig_ctm_src_req_o[0], and a "
-            "wire-OR edge on lane 2's request-out data input does the same",
+            "wire-OR pull of lane 2's shared wire routes the same way, the "
+            "pulse following the pull rather than the release",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-IDLE",
+            "CHK-SMU-CTP-WIRE-IDLE",
+            "with every CT_Req_out wire resting at its pull after reset, no "
+            "wire-OR lane's ct_dst rises and the wire-mismatch flag is 0",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-RX",
+            "CHK-SMU-CTP-WIRE-RX",
+            "a chiplet pull of lane 2's private wire raises tb_xtrig_ctp_ct_dst[2] "
+            "exactly CT_DST_LATENCY clocks after the wire is first seen asserted, "
+            "once, and the release raises nothing further",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-SHARED",
+            "CHK-SMU-CTP-WIRE-SHARED",
+            "three wire-OR lanes on one group wire: one chiplet pull reaches "
+            "every member's ct_dst once at the same latency and leaves every "
+            "non-member lane quiet; two members pulled in overlapping windows "
+            "still reach every member exactly once and leave every non-member "
+            "lane quiet",
         ),
     ],
     "smu_xtrig_ctm_illegal_phase_test": [

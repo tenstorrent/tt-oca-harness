@@ -989,7 +989,7 @@ non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
 
-The `jtag_id` input
+The `jtag_id_i` input
 must be tied to an appropriate constant in the top-level integration. A
 `rst_vec_i` port exists on `tb_top.sv` for DV reset vector injection; it is not
 present on `sep.sv` itself and requires no integration tie-off.

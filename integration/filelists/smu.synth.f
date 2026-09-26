@@ -343,7 +343,6 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_sec_anchor_flop.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_decode.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_alert_sender.sv
-vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv
@@ -652,8 +651,8 @@ vendor/tenstorrent/tt-hw-debug/upstream/rtl/dst_wrapper.sv
 vendor/tenstorrent/tt-hw-debug/upstream/rtl/tnif_wrapper.sv
 vendor/tenstorrent/tt-hw-debug/upstream/rtl/top/dfd_top_cla_dst_apb.sv
 // Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
-hw/common/och_prim/rtl/prim_jtag_pkg.sv
-hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
+hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
+hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
 // Package(tt-oca-harness) Target(smc)
 hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
 // Package(tt-oca-harness) Target(sep)
@@ -803,7 +802,7 @@ hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg_pkg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg_pkg.sv
-hw/sys/sep/rtl/sep_local_axi_xbar_pkg.sv
+hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_pkg.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_pkg.sv
 // Package(tt-oca-harness) Target(any(dtp, sep))
 hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
@@ -842,61 +841,53 @@ hw/common/axi/axi_lite_to_ahb.sv
 // Package(tt-oca-harness) Target(sep)
 hw/common/axi/axi_lite_to_tlul.sv
 hw/common/axi/tlul_to_axi_lite.sv
+// Package(tt-oca-harness) Target(any(axi_hang_detector, dtp, key_manager, sep, smc, system_timer_octs, uart))
+hw/common/ocah_prim/rtl/prim_axi_snoop.sv
 // Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
-hw/common/och_prim/rtl/prim_ag_clk_mux.sv
-hw/common/och_prim/rtl/prim_apb_arb.sv
-hw/common/och_prim/rtl/prim_axi_addr_fixer.sv
-hw/common/och_prim/rtl/prim_axi_id_converter.sv
-hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
-hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
-hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-hw/common/och_prim/rtl/prim_axi_snoop.sv
-hw/common/och_prim/rtl/prim_axi_user_override.sv
-hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-hw/common/och_prim/rtl/prim_axil_err_slv.sv
-hw/common/och_prim/rtl/prim_axil_prot_filter.sv
-hw/common/och_prim/rtl/prim_bin2gray.sv
-hw/common/och_prim/rtl/prim_carry_select_adder.sv
-hw/common/och_prim/rtl/prim_cg_req.sv
-hw/common/och_prim/rtl/prim_clk_counter.sv
-hw/common/och_prim/rtl/prim_clk_counter_fifo_sync.sv
-hw/common/och_prim/rtl/prim_clk_gater_hysteresis.sv
-hw/common/och_prim/rtl/prim_clkmux4.sv
-hw/common/och_prim/rtl/prim_diff_decode_multi.sv
-hw/common/och_prim/rtl/prim_diff_encode_multi.sv
-hw/common/och_prim/rtl/prim_fair_rr_arb.sv
-hw/common/och_prim/rtl/prim_fifo_sync_parity.sv
-hw/common/och_prim/rtl/prim_gray2bin.sv
-hw/common/och_prim/rtl/prim_jtag_scan_reg.sv
-hw/common/och_prim/rtl/prim_jtag_sib_mux_post.sv
-hw/common/och_prim/rtl/prim_jtag_sib_mux_pre.sv
-hw/common/och_prim/rtl/prim_pipe_stages.sv
-hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
-hw/common/och_prim/rtl/prim_pulse_signal.sv
-hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
-hw/common/och_prim/rtl/prim_rom_bank_swap.sv
-hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
-hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
-hw/common/och_prim/rtl/prim_sync2.sv
-hw/common/och_prim/rtl/prim_sync2r.sv
-hw/common/och_prim/rtl/prim_sync3.sv
-hw/common/och_prim/rtl/prim_sync3_pulse.sv
-hw/common/och_prim/rtl/prim_sync3r.sv
-hw/common/och_prim/rtl/prim_sync4.sv
-hw/common/och_prim/rtl/prim_sync4r.sv
-hw/common/och_prim/rtl/prim_sync_data_autohs.sv
-hw/common/och_prim/rtl/prim_sync_randomized_delay.sv
-hw/common/och_prim/rtl/prim_sync_reset.sv
-hw/common/och_prim/rtl/prim_updown_counter.sv
-hw/common/och_prim/rtl/prim_zero_counter.sv
-hw/common/och_prim_generic/rtl/prim_and3.sv
-hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
-hw/common/och_prim_generic/rtl/prim_clock_or2.sv
-hw/common/och_prim_generic/rtl/prim_rev_cell.sv
+hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
+hw/common/ocah_prim/rtl/prim_apb_arb.sv
+hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
+hw/common/ocah_prim/rtl/prim_axi_id_converter.sv
+hw/common/ocah_prim/rtl/prim_axi_id_prepend_wrap.sv
+hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
+hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
+hw/common/ocah_prim/rtl/prim_axi_user_override.sv
+hw/common/ocah_prim/rtl/prim_axil_addr_fixer.sv
+hw/common/ocah_prim/rtl/prim_axil_prot_filter.sv
+hw/common/ocah_prim/rtl/prim_bin2gray.sv
+hw/common/ocah_prim/rtl/prim_carry_select_adder.sv
+hw/common/ocah_prim/rtl/prim_cg_req.sv
+hw/common/ocah_prim/rtl/prim_clk_counter.sv
+hw/common/ocah_prim/rtl/prim_clk_counter_fifo_sync.sv
+hw/common/ocah_prim/rtl/prim_clk_gater_hysteresis.sv
+hw/common/ocah_prim/rtl/prim_clkmux4.sv
+hw/common/ocah_prim/rtl/prim_diff_decode_multi.sv
+hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv
+hw/common/ocah_prim/rtl/prim_fair_rr_arb.sv
+hw/common/ocah_prim/rtl/prim_fifo_sync_parity.sv
+hw/common/ocah_prim/rtl/prim_gray2bin.sv
+hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv
+hw/common/ocah_prim/rtl/prim_jtag_sib_mux_post.sv
+hw/common/ocah_prim/rtl/prim_jtag_sib_mux_pre.sv
+hw/common/ocah_prim/rtl/prim_pipe_stages.sv
+hw/common/ocah_prim/rtl/prim_prog_clk_div_posedge.sv
+hw/common/ocah_prim/rtl/prim_pulse_signal.sv
+hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv
+hw/common/ocah_prim/rtl/prim_rev_cell.sv
+hw/common/ocah_prim/rtl/prim_rst_mux2_hf_n.sv
+hw/common/ocah_prim/rtl/prim_sync3.sv
+hw/common/ocah_prim/rtl/prim_sync3_pulse.sv
+hw/common/ocah_prim/rtl/prim_sync3r.sv
+hw/common/ocah_prim/rtl/prim_sync4.sv
+hw/common/ocah_prim/rtl/prim_sync4r.sv
+hw/common/ocah_prim/rtl/prim_sync_data_autohs.sv
+hw/common/ocah_prim/rtl/prim_sync_reset.sv
+hw/common/ocah_prim/rtl/prim_updown_counter.sv
+hw/common/ocah_prim/rtl/prim_zero_counter.sv
 hw/common/sync.sv
 // Package(tt-oca-harness) Target(any(key_manager, sep, smc))
-hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
-hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
+hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv
+hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv
 // Package(tt-oca-harness) Target(synth)
 hw/common/defs/ocah_vendor_defines.svh
 // Package(tt-oca-harness) Target(sep)
@@ -925,7 +916,7 @@ hw/ip/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
 hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
 hw/ip/axi_filter/rtl/axi_filter_wrap.sv
 hw/ip/axi_filter/rtl/traffic_filter.sv
-// Package(tt-oca-harness) Target(smc)
+// Package(tt-oca-harness) Target(any(axi_hang_detector, smc))
 hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
 // Package(tt-oca-harness) Target(any(sep, smc))
 hw/ip/axi_lite_mailbox_unit/rtl/axi_lite_mailbox_unit.sv
@@ -1159,7 +1150,7 @@ hw/sys/sep/regs/gen/sv/blocks/sep_lifecycle_ctrl_reg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_reset_ctrl_reg.sv
 hw/sys/sep/regs/gen/sv/blocks/sep_scratch_reg.sv
 hw/sys/sep/rtl/aes_wrapper.sv
-hw/sys/sep/rtl/sep_local_axi_xbar.sv
+hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv
 hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar.sv
 hw/sys/sep/rtl/efuse/sep_efuse_wrapper.sv
 hw/sys/sep/rtl/hmac_wrapper.sv
@@ -1174,7 +1165,7 @@ hw/sys/sep/rtl/sep_dma_wrap.sv
 hw/sys/sep/rtl/sep_entropy_fifo.sv
 hw/sys/sep/rtl/sep_io.sv
 hw/sys/sep/rtl/sep_lifecycle_ctrl.sv
-hw/sys/sep/rtl/sep_local_axi_xbar_wrapper.sv
+hw/sys/sep/rtl/crossbars/sep_local_axi_xbar_wrapper.sv
 hw/sys/sep/rtl/sep_ot_spi_wrap.sv
 hw/sys/sep/rtl/sep_isolate_rst_seq.sv
 hw/sys/sep/rtl/sep_reset_ctrl.sv
@@ -1183,7 +1174,7 @@ hw/sys/sep/rtl/sep_sram.sv
 hw/sys/sep/rtl/sep_sram_interface_shim.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_csr.sv
 hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals.sv
-hw/sys/sep/rtl/sep_system_peripherals/rtl/sep_system_peripherals_xbar_wrapper.sv
+hw/sys/sep/rtl/crossbars/sep_system_peripherals_xbar_wrapper.sv
 hw/sys/sep/rtl/sep_tcm_wrapper.sv
 hw/sys/sep/rtl/sep_wdt_wrap.sv
 vendor/chipsalliance/caliptra-rtl/upstream/src/keyvault/rtl/kv_defines_pkg.sv

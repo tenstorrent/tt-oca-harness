@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_otp_axi_error_security_gating_test — VPLAN 4.9: two
-// assert/release passes of the smc_otp_jtag2axi lifecycle disable with an
-// error-path write attempted while gated. The gated attempt (injection
-// NOT expected-armed) must produce zero request activity
-// across the attempt and after release (CHK-AXI-GATE-*, delayed-replay
-// catch); each release restores normal error-path operation (armed DECERR
-// EXPECTED via CHK-AXI-ERR-INJ) plus an OKAY recovery write.
+// dtp_jtag2axi_smc_otp_axi_error_security_gating_test — two assert/release
+// passes of the smc_otp_jtag2axi lifecycle disable with an error-path write
+// attempted while gated. The gated attempt (injection NOT expected-armed)
+// must produce zero request activity across the attempt and after release
+// (CHK-AXI-GATE-*, delayed-replay catch); each release restores normal
+// error-path operation (armed DECERR EXPECTED via CHK-AXI-ERR-INJ) plus an
+// OKAY recovery write.
 
 class dtp_jtag2axi_smc_otp_axi_error_security_gating_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_otp_axi_error_security_gating_test)

@@ -427,10 +427,10 @@ module avsbus_controller #(
 
 
   // AVS bus clock gate:
-  prim_clkgater u_avs_bus_clkgate (
+  prim_clock_gating u_avs_bus_clkgate (
     .clk_i (avs_clk),
     .en_i  (avs_clk_enable),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(avs_clock_o)
   );
 
@@ -458,18 +458,18 @@ module avsbus_controller #(
   assign prediv_mux_sel = R_avs_cfg_1_F_avs_clock_select[1] & ~test_en_i;
 
   // apb_clk clock gate:
-  prim_clkgater u_apbclk_clkgate (
+  prim_clock_gating u_apbclk_clkgate (
     .clk_i (clk_reg_i),
     .en_i  (~R_avs_cfg_1_F_turn_off_all_premux_clocks),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(apb_clk_gated)
   );
 
   // refclk clock gate:
-  prim_clkgater u_refclk_clkgate (
+  prim_clock_gating u_refclk_clkgate (
     .clk_i (clk_ref_i),
     .en_i  (~R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(refclk_gated)
   );
 

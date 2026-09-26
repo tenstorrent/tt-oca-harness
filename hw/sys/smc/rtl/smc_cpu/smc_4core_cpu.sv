@@ -111,10 +111,10 @@ module smc_4core_cpu (
     end
   end
 
-  prim_clkgater u_debug_clock_gate (
+  prim_clock_gating u_debug_clock_gate (
     .clk_i    (clk_i),
     .en_i     (clock_en),
-    .te_i     (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o    (gated_debug_clock)
   );
 
@@ -234,10 +234,53 @@ module smc_4core_cpu (
 
   // Core Reset Logic (Wait until init_mem_complete is asserted)
 
+  logic rst_uncore;
+  logic rst_debug;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] int_rst_core;
   logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] int_rst_core_n;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] mem_init_core_reset_n;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_n;
   logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_req;
 
-  assign int_rst_core_n = {smc_4core_cpu_pkg::NUM_CPU_CORES{init_mem_complete}} & rst_core_ni & ~hart_reset_req;
+  prim_inv u_uncore_reset_inv (
+    .in_i  (rst_uncore_ni),
+    .out_o (rst_uncore)
+  );
+
+  prim_inv u_debug_reset_inv (
+    .in_i  (rst_debug_ni),
+    .out_o (rst_debug)
+  );
+
+  prim_and2 #(
+    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+  ) u_mem_init_core_reset_and (
+    .in0_i ({smc_4core_cpu_pkg::NUM_CPU_CORES{init_mem_complete}}),
+    .in1_i (rst_core_ni),
+    .out_o (mem_init_core_reset_n)
+  );
+
+  for (genvar core = 0; core < smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin : gen_hart_reset_inv
+    prim_inv u_hart_reset_inv (
+      .in_i  (hart_reset_req[core]),
+      .out_o (hart_reset_n[core])
+    );
+  end
+
+  prim_and2 #(
+    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+  ) u_hart_core_reset_and (
+    .in0_i (mem_init_core_reset_n),
+    .in1_i (hart_reset_n),
+    .out_o (int_rst_core_n)
+  );
+
+  for (genvar core = 0; core < smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin : gen_core_reset_inv
+    prim_inv u_core_reset_inv (
+      .in_i  (int_rst_core_n[core]),
+      .out_o (int_rst_core[core])
+    );
+  end
 
   // ----------
   // Instantiate DigitalTop
@@ -264,15 +307,15 @@ module smc_4core_cpu (
 
     // Clock and reset domains
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_reset(~rst_uncore_ni),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_reset(rst_uncore),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_3_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_3_reset(~int_rst_core_n[3]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_3_reset(int_rst_core[3]),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_2_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_2_reset(~int_rst_core_n[2]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_2_reset(int_rst_core[2]),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_1_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_1_reset(~int_rst_core_n[1]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_1_reset(int_rst_core[1]),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_0_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_0_reset(~int_rst_core_n[0]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_0_reset(int_rst_core[0]),
 
     // Clock outputs
     .auto_cbus_fixedClockNode_anon_out_clock(), // unused
@@ -285,24 +328,24 @@ module smc_4core_cpu (
     .resetctrl_hartResetReq_2 (hart_reset_req[2]),
     .resetctrl_hartResetReq_1 (hart_reset_req[1]),
     .resetctrl_hartResetReq_0 (hart_reset_req[0]),
-    .resetctrl_hartIsInReset_3(~int_rst_core_n[3]),
-    .resetctrl_hartIsInReset_2(~int_rst_core_n[2]),
-    .resetctrl_hartIsInReset_1(~int_rst_core_n[1]),
-    .resetctrl_hartIsInReset_0(~int_rst_core_n[0]),
+    .resetctrl_hartIsInReset_3(int_rst_core[3]),
+    .resetctrl_hartIsInReset_2(int_rst_core[2]),
+    .resetctrl_hartIsInReset_1(int_rst_core[1]),
+    .resetctrl_hartIsInReset_0(int_rst_core[0]),
 
     // WDT reset control
-    .wdt_0_corerst(~int_rst_core_n[0]),
+    .wdt_0_corerst(int_rst_core[0]),
     .wdt_0_rst    (wdt_reset_raw[0]),
-    .wdt_1_corerst(~int_rst_core_n[1]),
+    .wdt_1_corerst(int_rst_core[1]),
     .wdt_1_rst    (wdt_reset_raw[1]),
-    .wdt_2_corerst(~int_rst_core_n[2]),
+    .wdt_2_corerst(int_rst_core[2]),
     .wdt_2_rst    (wdt_reset_raw[2]),
-    .wdt_3_corerst(~int_rst_core_n[3]),
+    .wdt_3_corerst(int_rst_core[3]),
     .wdt_3_rst    (wdt_reset_raw[3]),
 
     // Debug interface
     .debug_clock(gated_debug_clock),
-    .debug_reset(~rst_debug_ni),
+    .debug_reset(rst_debug),
     .debug_dmactive(debug_dmactive),
     .debug_dmactiveAck(debug_dmactiveAck),
 

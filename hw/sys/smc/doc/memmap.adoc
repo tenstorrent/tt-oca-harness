@@ -45,6 +45,17 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
+A unit's `Size` is the aperture reserved for it; its `Decoded Extent` is the
+part of that aperture which decodes. The fabric refuses an address that falls
+between unit apertures, or past a unit's decoded extent; such an access never
+reaches a unit.
+
+Inside the decoded extent, an offset that owns no register is accepted by the
+unit: reads return zero and writes are discarded, both with an OKAY response.
+Software gets no indication that it addressed nothing. Such an offset cannot
+alias a live register, because register decode is an exact address match rather
+than a range — not because the access is refused.
+
 == Detailed Address Map
 
 The component-level assignments are generated in the preceding table. This

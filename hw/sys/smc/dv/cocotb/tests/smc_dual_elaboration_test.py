@@ -78,10 +78,17 @@ def _check_i3c_counter_indexing(dut) -> None:
 
 @dual_test(REQUIRED_EVIDENCE)
 async def smc_dual_elaboration_test(harness: SmcDualHarness) -> None:
-    _check_i3c_counter_indexing(cocotb.top)
     dut = harness.dut
 
     await harness.bring_up()
+
+    # After bring_up, which is where the [BUILD-MODEL-IDENTITY] guard runs. The
+    # ports read below exist only on the dual model, so probing them first
+    # turns a run against another target's model into an AttributeError naming
+    # one port instead of the guard's account of which model answered.
+    # tb_i3c_channel_id_N is a continuous assign from a localparam
+    # (tb_top.sv), so it reads the same here as it did at time zero.
+    _check_i3c_counter_indexing(cocotb.top)
 
     # Both instances present and powered. powergood_stable is the output of a
     # 32-deep clk_ref_i sync chain off powergood_i (smc_reset_ctrl.sv), so wait
