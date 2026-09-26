@@ -34,10 +34,6 @@ module smc_dfx_ctrl_status_wrap (
   input  logic                                mbist_abort_i,  // Memory BIST was aborted;
                                                               // reported in STATUS_SMU.
 
-  output logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable_o,  // DEBUG_CTRL
-                                                                      // chiplet_enable field;
-                                                                      // left unconnected in
-                                                                      // smc_internal_regs.
   output smc_pkg::dfd_enable_t                dfd_enables_o,  // DEBUG_CTRL clock-gate,
                                                               // force-clock, GPIO, DTB,
                                                               // cross-trigger halt mask and
@@ -91,8 +87,6 @@ module smc_dfx_ctrl_status_wrap (
   );
 
   // DFD config fields from the DEBUG_CTRL / DEBUG_BUS_MUX registers.
-  assign debug_chiplet_enable_o = dfx_csr_hwif_out.DEBUG_CTRL.chiplet_enable.value;
-
   assign dfd_enables_o.dfd_cg_en = dfx_csr_hwif_out.DEBUG_CTRL.cg_en.value;
   assign dfd_enables_o.dfd_force_clk_en = dfx_csr_hwif_out.DEBUG_CTRL.force_clk_en.value;
   assign dfd_enables_o.dfd_gpio_en = dfx_csr_hwif_out.DEBUG_CTRL.gpio_en.value;
