@@ -114,18 +114,6 @@ is shared with the host; `/dev` and `/proc` are fresh. `PATH` is
 the rootfs has no `uv`, the host `uv` binary is mounted at `/run/ocah/uv` and
 `/run/ocah` is prepended to `PATH`.
 
-`UV` names the sandbox's own uv. When the rootfs has uv, the caller's `UV` is
-dropped and `PATH` supplies the binary. When the rootfs does not, `UV` is
-`/run/ocah/uv`, the host binary mounted there. The caller's `UV` stays only
-when neither the rootfs nor the host has a uv. `VIRTUAL_ENV`, `PYTHONHOME`
-and `PYTHONPATH` are not passed in. uv's project environment, cache and
-managed interpreters are set to `local/bwrap-venv`, `local/bwrap-uv-cache`
-and `local/bwrap-uv-python` in the checkout. The sandbox's Python is the
-rootfs's, not the host's, so a `uv run --locked` against the repo's `.venv`
-would replace the host environment; and the sandbox's `HOME` is the shared
-host `/tmp`, where uv would otherwise store, and pick up, other accounts'
-interpreters.
-
 To extract a rootfs from the container image:
 
 ```bash

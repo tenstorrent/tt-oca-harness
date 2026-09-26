@@ -37,13 +37,7 @@
 #                               primary group for rootless podman (see below)
 #      OCAH_TOOLCHAIN_ROOTFS   rootfs extracted from the nix container image;
 #                               when set (and bwrap is present) `run`/`run-here`
-#                               use bubblewrap instead of podman/docker (see below).
-#                               UV names the sandbox uv: unset when the rootfs
-#                               has one, or /run/ocah/uv when the host binary is
-#                               bound there. VIRTUAL_ENV, PYTHONHOME and
-#                               PYTHONPATH are dropped. uv's project environment,
-#                               cache and interpreters stay under local/, not the
-#                               repo's .venv or the shared /tmp
+#                               use bubblewrap instead of podman/docker (see below)
 #      OCAH_BWRAP_EXTRA_BINDS  extra host paths to bind into the bwrap sandbox
 #                               (space-separated; each bound at its own path)
 set -euo pipefail
@@ -418,45 +412,27 @@ bwrap_run() {
   # nix-built rootfs has that binary on /usr/bin; a toolchain rootfs that does
   # not still has to see the host binary. /usr is read-only, so the file is
   # mounted under the /run tmpfs, which PATH then searches first.
-  # preamble.mk keeps an inherited UV, so UV names that same binary: unset
-  # when the rootfs provides it, and set to /run/ocah/uv when the host binary
-  # is the one mounted there. A caller UV remains only when neither has a uv.
   local host_uv="" sandbox_path="/usr/local/bin:/usr/bin:/bin"
-  local uv_env=()
-  if [[ -x "$TOOLCHAIN_ROOTFS/usr/bin/uv" || -x "$TOOLCHAIN_ROOTFS/bin/uv" || -x "$TOOLCHAIN_ROOTFS/usr/local/bin/uv" ]]; then
-    uv_env=(--unsetenv UV)
-  else
+  if [[ ! -x "$TOOLCHAIN_ROOTFS/usr/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/bin/uv" && ! -x "$TOOLCHAIN_ROOTFS/usr/local/bin/uv" ]]; then
     host_uv="$(command -v uv 2>/dev/null || true)"
     if [[ -n "$host_uv" ]]; then
       host_uv="$(readlink -f "$host_uv")"
       binds+=(--tmpfs /run/ocah --ro-bind "$host_uv" /run/ocah/uv)
       sandbox_path="/run/ocah:${sandbox_path}"
-      uv_env=(--setenv UV /run/ocah/uv)
     else
       echo "docker-run: warning: uv is not in the toolchain rootfs or on PATH" >&2
     fi
   fi
   # HOME may sit outside the bound trees; give it a writable stand-in.
-  # PYTHONHOME, PYTHONPATH and VIRTUAL_ENV are dropped for the same reason
-  # PATH is replaced: the sandbox runs its own interpreter, and a caller's
-  # values point at host trees that are not bound here. A leaked PYTHONHOME
-  # makes python3 abort before it can import 'encodings'.
-  #
-  # uv's project environment, cache and managed interpreters live under the
-  # checkout's local/ rather than in the repo's .venv and under HOME. The sandbox
-  # interpreter is not the host's, so `uv run --locked` pointed at the host .venv
-  # would replace it; and HOME is the shared host /tmp, where uv would otherwise
-  # store, and pick up, other accounts' interpreters.
+  # PYTHONHOME/PYTHONPATH are dropped for the same reason PATH is replaced: the
+  # sandbox runs its own interpreter, and a caller's values point at host trees
+  # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
+  # can import 'encodings', which the firmware post-process steps run into.
   bwrap "${binds[@]}" --chdir "$workdir" \
     --setenv PATH "$sandbox_path" \
     --setenv HOME /tmp \
-    --setenv UV_PROJECT_ENVIRONMENT "$ROOT/local/bwrap-venv" \
-    --setenv UV_CACHE_DIR "$ROOT/local/bwrap-uv-cache" \
-    --setenv UV_PYTHON_INSTALL_DIR "$ROOT/local/bwrap-uv-python" \
-    ${uv_env[@]+"${uv_env[@]}"} \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
-    --unsetenv VIRTUAL_ENV \
     "$@"
 }
 
