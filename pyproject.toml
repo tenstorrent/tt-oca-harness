@@ -28,6 +28,7 @@ dependencies = [
   "semantic-version>=2.10.0",
   "shellcheck-py==0.11.0.1",  # wraps the shellcheck binary; see shfmt-py below for the formatter half
   "shfmt-py==4.1.0",  # wraps the shfmt binary; no lint rules of its own, pairs with shellcheck-py
+  "svdoc==0.3.0",  # RTL Modules Reference: module, parameter, and port tables
   "systemrdl-compiler>=1.32.2",
   "tclint==0.4.2",
   "tomllint==0.3.6",  # syntax-only: catches malformed DV testlist/sim-config TOML, no style rules

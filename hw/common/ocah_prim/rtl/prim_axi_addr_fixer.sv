@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXI Address Fixer
+// Widen or truncate AXI AW and AR addresses between two struct interfaces.
 //
-//--------------------------------------------------
+// Pass every other AXI channel field through unchanged.
+// INPUT_ADDR_W and OUTPUT_ADDR_W set whether the path zero-pads the upper address bits or
+// drops them. The module is purely combinational.
+
 module prim_axi_addr_fixer #(
-  parameter int unsigned INPUT_ADDR_W  = 64,
-  parameter int unsigned OUTPUT_ADDR_W = 64,
+  parameter int unsigned INPUT_ADDR_W  = 64,  // Address width on the input AXI side.
+  parameter int unsigned OUTPUT_ADDR_W = 64,  // Address width on the output AXI side.
 
-  parameter type input_axi_req_t = logic,
-  parameter type input_axi_resp_t = logic,
-  parameter type output_axi_req_t = logic,
-  parameter type output_axi_resp_t = logic
+  parameter type input_axi_req_t = logic,  // Input-side AXI request struct.
+  parameter type input_axi_resp_t = logic,  // Input-side AXI response struct.
+  parameter type output_axi_req_t = logic,  // Output-side AXI request struct.
+  parameter type output_axi_resp_t = logic  // Output-side AXI response struct.
 ) (
-  // AXI Input Interface
-  input  input_axi_req_t  axi_in_req_i,
-  output input_axi_resp_t axi_in_resp_o,
+  input  input_axi_req_t  axi_in_req_i,  // Upstream AXI request.
+  output input_axi_resp_t axi_in_resp_o,  // Upstream AXI response.
 
-  // AXI Output Interface
-  output output_axi_req_t  axi_out_req_o,
-  input  output_axi_resp_t axi_out_resp_i
+  output output_axi_req_t  axi_out_req_o,  // Downstream AXI request with fixed address.
+  input  output_axi_resp_t axi_out_resp_i  // Downstream AXI response.
 );
 
   // If addresses are the same, then we don't need to do anything

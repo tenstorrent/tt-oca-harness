@@ -1,27 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Zero counter
+// Count leading or trailing zeros in in_i.
 //
-//--------------------------------------------------
+// COUNT_LEADING of 1 counts leading zeros; 0 counts trailing zeros.
+// empty_o is high when every bit of in_i is zero.
+// CNT_WIDTH is clog2(WIDTH) and must not be overwritten.
 
 module prim_zero_counter #(
-  /// The width of the input vector.
-  parameter int unsigned WIDTH = 2,
-  /// COUNT_LEADING selection: 0 -> trailing zero, 1 -> leading zero
-  parameter bit          COUNT_LEADING  = 1'b0,
-  /// Dependent parameter. Do **not** change!
-  ///
-  /// Width of the output signal with the zero count.
-  localparam int unsigned CNT_WIDTH = WIDTH > 1 ? $clog2(WIDTH) : 1
+  parameter int unsigned WIDTH = 2,  // Width of the input vector.
+  parameter bit          COUNT_LEADING  = 1'b0,  // 0 counts trailing zeros; 1 counts leading zeros.
+  localparam int unsigned CNT_WIDTH = WIDTH > 1 ? $clog2(WIDTH) : 1  // Width of count_o; dependent, do not change.
 ) (
-  /// Input vector to be counted.
-  input  logic [WIDTH-1:0]     in_i,
-  /// Count of the leading / trailing zeros.
-  output logic [CNT_WIDTH-1:0] count_o,
-  /// Counter is empty: Asserted if all bits in in_i are zero.
-  output logic                 empty_o
+  input  logic [WIDTH-1:0]     in_i,  // Vector whose zeros are counted.
+  output logic [CNT_WIDTH-1:0] count_o,  // Leading or trailing zero count.
+  output logic                 empty_o  // High when every bit of in_i is zero.
 );
 
   `include "ocah_assert.svh"

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Package of Common JTAG Elements
+// Declare shared JTAG TAP and scan-control struct types for the prim_jtag_* cells.
 //
-//--------------------------------------------------
+// jtag_tap_ctrl_t carries TMS, TRST_n, and TCK for the TAP.
+// jtag_scan_ctrl_t bundles TCK, select, capture/shift/update enables, resets, runbist, and
+// the Test-Logic-Reset and Run-Test/Idle state flags.
+
 package prim_jtag_pkg;
 
   // JTAG TAP control interface

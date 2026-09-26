@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Multi-bit Differential Encoder
+// Encode Width bits onto differential {diff_n, diff_p} pairs.
 //
-//--------------------------------------------------
+// Pack data_o as {diff_n[W-1:0], diff_p[W-1:0]} for each bit of data_i.
+// OutputFlop registers the pairs on clk_i when set; rst_ni resets each registered pair to the
+// encoding of 0, diff_p low and diff_n high. Without OutputFlop the encode is combinational.
 
 module prim_diff_encode_multi #(
-  parameter int unsigned Width = 4,
-  parameter bit OutputFlop = 1'b0
+  parameter int unsigned Width = 4,  // Number of bits to encode.
+  parameter bit OutputFlop = 1'b0  // Registers data_o on clk_i when set.
 ) (
-  input  logic             clk_i,
-  input  logic             rst_ni,
-  input  logic [Width-1:0]   data_i,
-  output logic [2*Width-1:0] data_o   // {diff_n[W-1:0], diff_p[W-1:0]}
+  input  logic             clk_i,  // Encode clock when OutputFlop is set.
+  input  logic             rst_ni,  // Async reset, active-low; used only when OutputFlop is set.
+  input  logic [Width-1:0]   data_i,  // Single-ended bits to encode.
+  output logic [2*Width-1:0] data_o  // Packed {diff_n[W-1:0], diff_p[W-1:0]}.
 );
 
   `include "prim_assert.sv"

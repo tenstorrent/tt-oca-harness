@@ -1,30 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// JTAG Scan Register
+// Capture, shift, and update a JTAG scan register under scan_ctrl_i.
 //
-//--------------------------------------------------
+// While select is high, capture data_in_i or shift toward the LSB on the rising edge of TCK,
+// and load the update register on the falling edge when update_en is high.
+// LOCKUP retimes scan_out_o through a falling-edge TCK flop (lockup stage).
+// USE_CHRST resets from chrst_n inside scan_ctrl_i instead of rst_n for TMP-controlled
+// reset. Only the update register is reset; the shift register is not.
+// scan_out_o is the serial LSB of the shift flops.
 
 module prim_jtag_scan_reg
     import prim_jtag_pkg::*;
 
     `include "prim_assert.sv"
 #(
-    parameter bit                LOCKUP = 0,     // Adds a lockup latch to the output of the scan register
-                                 USE_CHRST = 0,  // Use the chrst_n signal for TMP controlled reset instead of rst_n
-    parameter int unsigned       WIDTH = 1,
-    parameter logic [WIDTH-1:0]  RESET_VAL = '0,
+    parameter bit                LOCKUP = 0,  // Adds a falling-edge TCK lockup flop on scan_out_o.
+                                 USE_CHRST = 0,  // Resets from chrst_n for TMP-controlled reset instead of rst_n.
+    parameter int unsigned       WIDTH = 1,  // Parallel data width.
+    parameter logic [WIDTH-1:0]  RESET_VAL = '0,  // Value loaded into the update register on reset.
 
-    parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t
+    parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t  // Scan-control struct type.
 ) (
     /* verilator lint_off UNUSEDSIGNAL */
-    input  jtag_scan_ctrl_t   scan_ctrl_i,
+    input  jtag_scan_ctrl_t   scan_ctrl_i,  // TCK, select, capture/shift/update strobes and resets.
     /* verilator lint_on UNUSEDSIGNAL */
-    input  logic              scan_in_i,
-    output logic              scan_out_o,
-    input  logic [WIDTH-1:0]  data_in_i,
-    output logic [WIDTH-1:0]  data_out_o
+    input  logic              scan_in_i,  // Serial scan input; enters at the MSB.
+    output logic              scan_out_o,  // Serial scan output.
+    input  logic [WIDTH-1:0]  data_in_i,  // Parallel capture data.
+    output logic [WIDTH-1:0]  data_out_o  // Parallel update data, held in the update register.
 );
 
     `OCAH_OT_ASSERT_STATIC_LINT_ERROR(WidthGtZero_A, WIDTH > 0)

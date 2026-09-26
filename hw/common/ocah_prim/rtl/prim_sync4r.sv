@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 4-stage Resettable Synchronizer
+// Synchronize each bit of d_i into clk_i through a four-flop resettable chain.
 //
-//--------------------------------------------------
+// Each bit uses its own prim_flop_4sync_r cell. Under SIMULATION, prim_cdc_rand_delay
+// randomizes when a change on d_i reaches the first stage to model CDC uncertainty;
+// synthesis connects d_i to the cells directly.
+// rst_ni clears every stage to 0 asynchronously.
+
 module prim_sync4r #(
-  parameter int unsigned WIDTH = 1
+  parameter int unsigned WIDTH = 1  // Number of independent bits synchronized.
 ) (
-  input  logic             clk_i,
-  input  logic [WIDTH-1:0] d_i,
-  input  logic             rst_ni,
-  output logic [WIDTH-1:0] q_o
+  input  logic             clk_i,   // Destination clock.
+  input  logic [WIDTH-1:0] d_i,     // Asynchronous bits, each resolved independently.
+  input  logic             rst_ni,  // Active-low asynchronous reset.
+  output logic [WIDTH-1:0] q_o      // Synchronized bits in the clk_i domain.
 );
 
   logic [WIDTH-1:0] d_del;

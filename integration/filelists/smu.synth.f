@@ -1119,7 +1119,6 @@ hw/ip/scrambler/rtl/scrambler_4096x32.sv
 hw/ip/scrambler/rtl/scrambler_512x32.sv
 hw/ip/scrambler/rtl/scrambler_8192x32.sv
 hw/ip/scrambler/rtl/scrambler_addr_tweak.sv
-hw/ip/scrambler/rtl/scrambler_rotator.sv
 // Package(tt-oca-harness) Target(any(smc, system_timer_octs))
 hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg.sv
 hw/ip/system_timer_octs/rtl/system_timer_octs.sv

@@ -6,250 +6,39 @@
 
 === Configuration Parameters
 
-<<efuse-configuration-parameters-table>> lists the OTP capacity and word-dimension
-parameters.
+The OTP has a total storage capacity of 3 KB, organized as 768 words of 32 bits.
 
-[[efuse-configuration-parameters-table]]
-[width="100%",cols="30%,20%,50%",options="header",]
-.eFuse configuration parameters
-|===================================================
-|Parameter |Default |Description
-|OTP_SIZE |3KB |Total OTP storage capacity
-|WORD_WIDTH |32 bits |OTP word width
-|NUM_WORDS |768 |Total number of OTP words
-|===================================================
-
-=== Signal Interfaces
-
-=== Clock and Reset
-
-<<efuse-clock-and-reset-signals-table>> defines the controller clock and reset
-interface.
-
-[[efuse-clock-and-reset-signals-table]]
-[width="100%",cols="24%,14%,8%,54%",options="header",]
-.eFuse clock and reset signals
-|==========================================================
-|Signal Name |Direction |Width |Description
-|`clk_i` |Input |1 |System clock input
-|`rst_ni` |Input |1 |Active-low asynchronous reset
-|==========================================================
+ifdef::backend-html5[]
+The parameters and ports of `efuse_interface_controller` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/efuse/efuse_interface_controller.adoc[efuse_interface_controller].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `efuse_interface_controller` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 === Main AXI4-Lite Interfaces
 
-The eFuse controller provides two AXI4-Lite interfaces for register
-access:
-
-=== SMC Interface (Functional Access)
-
-<<efuse-functional-access-interface-table>> lists the AXI4-Lite request and response
-ports for functional access.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="eFuse SMC Interface (Functional Access)" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[efuse-functional-access-interface-table]]
-[.port-reference.port-reference-wide]
-[width="100%",cols="30%,12%,28%,30%",options="header",]
-.eFuse functional-access interface
-|==================================================================================
-|Signal Name |Direction |Type |Description
-|`axil_req_i` |Input |`efuse_axil_req_t` |AXI4-Lite request from SMC
-|`axil_resp_o` |Output |`efuse_axil_resp_t` |AXI4-Lite response to SMC
-|==================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-=== JTAG Interface (Debug Access)
-
-<<efuse-jtag-access-interface-table>> lists the AXI4-Lite request and response ports for
-debug access.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="eFuse JTAG Interface (Debug Access)" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[efuse-jtag-access-interface-table]]
-[.port-reference.port-reference-wide]
-[width="100%",cols="30%,12%,28%,30%",options="header",]
-.eFuse JTAG-access interface
-|=====================================================================================
-|Signal Name |Direction |Type |Description
-|`axil_jtag_req_i` |Input |`efuse_axil_req_t` |AXI4-Lite request from
-JTAG
-
-|`axil_jtag_resp_o` |Output |`efuse_axil_resp_t` |AXI4-Lite response to
-JTAG
-|=====================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
+The eFuse controller provides two AXI4-Lite interfaces for register access: functional
+access from the SMC and debug access from JTAG.
 
 === Fuse Bank Control Interface
 
-APB interface for communicating with the eFuse bank model:
-
-<<efuse-bank-control-interface-table>> defines the APB connection to the fuse-bank
-control registers.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Bank Control Interface" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[efuse-bank-control-interface-table]]
-[.port-reference.port-reference-wide]
-[width="100%",cols="30%,12%,28%,30%",options="header",]
-.eFuse bank-control interface
-|=====================================================================================
-|Signal Name |Direction |Type |Description
-|`fuse_bank_ctrl_req_o` |Output |`efuse_apb_req_t` |APB request to eFuse
-bank
-
-|`fuse_bank_ctrl_resp_i` |Input |`efuse_apb_resp_t` |APB response from
-eFuse bank
-|=====================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
+AXI4-Lite interface to the fuse bank control registers in the SHIM, carried on
+`fuse_bank_ctrl_req_o` and `fuse_bank_ctrl_resp_i` of types `efuse_axil_req_t` and
+`efuse_axil_resp_t`. The controller forwards accesses outside its own address windows on
+this interface.
 
 === Fuse Command Interface
 
-Custom interface for SHIM state machine communication:
-
-<<efuse-command-interface-table>> defines the command request and response connection to
-the fuse shim.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Command Interface" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[efuse-command-interface-table]]
-[.port-reference.port-reference-wide]
-[width="100%",cols="30%,12%,28%,30%",options="header",]
-.eFuse command interface
-|=====================================================================================
-|Signal Name |Direction |Type |Description
-|`fuse_command_req_o` |Output |`fuse_command_req_t` |Command request to
-SHIM
-
-|`fuse_command_resp_i` |Input |`fuse_command_resp_t` |Command response
-from SHIM
-|=====================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
+Custom interface for SHIM state machine communication.
 
 === Security and Control Signals
 
-<<efuse-security-and-control-signals-table>> defines the lifecycle and security-control
-inputs.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="eFuse Security and Control Signals" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[efuse-security-and-control-signals-table]]
-[.port-reference.port-reference-wide]
-[width="100%",cols="28%,12%,25%,35%",options="header",]
-.eFuse security and control signals
-|=====================================================================================
-|Signal Name |Direction |Width |Description
-|`lc_state_i` |Input |4 |Life cycle state from SEP
-
-|`secure_tm_i` |Input |1 |Secure test mode enable
-
-|`test_en_i` |Input |1 |Test enable signal
-
-|`security_disable_i` |Input |1 |Security disable override
-
-|`efuse_field_map_i` |Input |`rule_t [EFUSE_FIELDS-1:0]` |Field access
-control rules
-
-|`fuse_sense_done_o` |Output |1 |Shadow register loading complete
-
-|`security_disable_o` |Output |1 |Security disable status
-
-|`shadow_regs_o` |Output |`efuse_map_t` |Shadow register contents
-|=====================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-=== Debug and Status Signals
-
-<<efuse-debug-and-status-signals-table>> defines the lock-status and debug outputs.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="eFuse Debug and Status Signals" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[efuse-debug-and-status-signals-table]]
-[.port-reference.port-reference-wide]
-[width="100%",cols="42%,12%,8%,38%",options="header",]
-.eFuse debug and status signals
-|=====================================================================================
-|Signal Name |Direction |Width |Description
-|`is_write_locked_shadow_regs_o` |Output |1 |Shadow register CSRs are write locked
-
-|`is_read_locked_shadow_regs_o` |Output |1 |Shadow register CSRs are read locked
-
-|`is_program_locked_o` |Output |1 |eFuse program operations are locked
-
-|`is_read_locked_o` |Output |1 |eFuse read operations are locked
-
-|`is_write_setup_only_o` |Output |1 |Field is in write set-only mode (bits may be set, not cleared)
-
-|`is_lc_state_access_o` |Output |1 |Access is gated by the current lifecycle state
-
-|`is_read_timeout_debug_o` |Output |1 |A read command timed out waiting on the SHIM/bank
-
-|`is_program_timeout_debug_o` |Output |1 |A program command timed out waiting on the SHIM/bank
-
-|`is_efuse_req_err_o` |Output |1 |A request was blocked/errored by the eFuse guard
-
-|`is_secure_tm_blocked_o` |Output |1 |Fuse traffic blocked while secure test mode is active
-
-|`is_rma_sip_token_match_debug_o` |Output |6 |RMA SiP token match status code
-
-|`is_rma_chiplet_token_match_debug_o` |Output |6 |RMA chiplet token match status code
-
-|`sec_disable_token_o` |Output |256 |Security disable token value (8 x 32-bit words)
-|=====================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
+The controller has no lifecycle-state input port. When `HAS_LC_STATE` is set, it takes the
+lifecycle state from the fuses: during fuse sensing it loads the low `LC_STATE_WIDTH` bits
+of shadow word `efuse_pkg::SHADOW_IDX_LC_STATE` and stores them differentially encoded in
+the shadow map. The shadow word index is fixed in `efuse_pkg`. `LC_STATE_BIT_POSITION` is
+used only by the guard, which derives the RMA SiP and chiplet token bit addresses from it as
+`LC_STATE_BIT_POSITION + 1` and `LC_STATE_BIT_POSITION + 2`.
 
 === Fuse Command Protocol
 

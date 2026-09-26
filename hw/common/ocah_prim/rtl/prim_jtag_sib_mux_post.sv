@@ -1,26 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// JTAG SIB with MUX After SR Register
+// Insert a JTAG SIB that muxes the host chain after the local scan register.
 //
-//--------------------------------------------------
+// The chain runs from client_scan_in_i through the one-bit SIB register, then, while the SIB
+// is open, out on host_scan_out_o and back on host_scan_in_i to client_scan_out_o.
+// security_disable_i forces the SIB closed, blocks updates of the SIB bit, and gates the
+// host capture, shift and update enables.
+// SAFE_SELECT adds a falling-edge TCK flop, reset by rst_n, on SIB enable to avoid a race on
+// the host update_en.
+// LOCKUP passes through to the nested scan register.
+
 module prim_jtag_sib_mux_post
   import prim_jtag_pkg::*;
 #(
-  parameter bit  LOCKUP = 0,       // Adds a lockup latch to the output of the scan register
-  parameter bit  SAFE_SELECT = 0,  // Adds an additional flop stage to the SIB enable output to avoid a race on the host update_en.
+  parameter bit  LOCKUP = 0,  // Adds a falling-edge TCK lockup flop on the SIB register's scan
+                              // output.
+  parameter bit  SAFE_SELECT = 0,  // Flops SIB enable to avoid a race on the host update_en.
 
-  parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t
+  parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t  // Scan-control struct type.
 ) (
-  input  jtag_scan_ctrl_t  client_scan_ctrl_i,
-  input  logic             client_scan_in_i,
-  output logic             client_scan_out_o,
-  input  logic             security_disable_i,
+  input  jtag_scan_ctrl_t  client_scan_ctrl_i,  // Client-side scan control.
+  input  logic             client_scan_in_i,  // Client serial scan in; feeds the SIB register.
+  output logic             client_scan_out_o,  // host_scan_in_i while the SIB is open, else the SIB
+                                               // bit.
+  input  logic             security_disable_i,  // Forces the SIB closed when high.
 
-  output jtag_scan_ctrl_t  host_scan_ctrl_o,
-  input  logic             host_scan_in_i,
-  output logic             host_scan_out_o
+  output jtag_scan_ctrl_t  host_scan_ctrl_o,  // Client control with capture, shift and update gated
+                                              // by the client select and security_disable_i, and
+                                              // select also gated by the SIB enable.
+  input  logic             host_scan_in_i,  // Serial return from the host segment.
+  output logic             host_scan_out_o  // SIB bit toward the host segment; low while
+                                            // security_disable_i is high.
 );
 
   jtag_scan_ctrl_t scan_reg_scan_ctrl;

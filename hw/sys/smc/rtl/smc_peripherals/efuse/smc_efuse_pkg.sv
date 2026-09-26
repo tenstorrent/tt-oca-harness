@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/*************************************************************************
-*
-* SMC Efuse Package
-*
-*
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
- */
+// Declare types and constants for the SMC eFuse map.
+//
+// Sizes the 8192-bit fuse array as 256 32-bit words and defines efuse_map_t, the
+// shadow-register layout of the SMC eFuse map, together with the fuse command types.
+// Builds EfuseFieldMap, the per-field lock rules and address ranges, and the Class 1
+// shadow range that covers the LOCKS field. Used by smc_efuse_wrapper and by the SMC
+// ports that carry the shadow registers and fuse commands.
 
 package smc_efuse_pkg;
   import smc_top_addrmap_pkg::*;
@@ -123,11 +121,11 @@ package smc_efuse_pkg;
   `include "efuse_typedef.svh"
 
   // NumFuseWordWidth MAX is 32 bits
-  localparam int unsigned NumEfuseBits = 8 * 1024;  // 8192 bits
+  localparam int unsigned NumEfuseBits = 8 * 1024;  // 8192 bits.
   localparam int unsigned NumFuseWordWidth = 32;
 
-  localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity
-  localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes
+  localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity.
+  localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes.
 
   localparam int unsigned NumFuseBitsWidth = $clog2(
       NumEfuseBits

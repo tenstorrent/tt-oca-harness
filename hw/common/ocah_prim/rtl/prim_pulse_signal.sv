@@ -1,24 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Pulse Signal
+// Shape pulse_in_i with programmable pre- and post-wait counts.
 //
-//--------------------------------------------------
+// pulse_start_i samples pulse_in_i and starts a sequence: drive the sampled level for
+// pre_pulse_wait_i + 1 cycles, assert pulse_out_o for post_pulse_wait_i cycles, then drive it
+// deasserted for one cycle and return to idle. A new pulse_start_i during the sequence
+// reloads the count of the current phase.
+// IS_ACTIVE_HIGH sets the polarity of pulse_out_o.
+// pulse_done_o is high while idle and low for the whole sequence; pulse_out_o sits at its
+// asserted level while idle, so use it only while pulse_done_o is low.
+
 module prim_pulse_signal #(
-  parameter int COUNT_WIDTH = 16,
-  parameter bit IS_ACTIVE_HIGH = 0  // set whether the pulse is active high
+  parameter int COUNT_WIDTH = 16,  // Width of the wait counters.
+  parameter bit IS_ACTIVE_HIGH = 0  // 1 makes pulse_out_o active-high; 0 makes it active-low.
 ) (
-  input  logic                        clk_i,
-  input  logic                        rst_ni,
+  input  logic                        clk_i,  // Pulse clock.
+  input  logic                        rst_ni,  // Active-low reset, sampled synchronously.
 
-  input  logic                        pulse_start_i,
-  input  logic      [COUNT_WIDTH-1:0] pre_pulse_wait_i,
-  input  logic      [COUNT_WIDTH-1:0] post_pulse_wait_i,
+  input  logic                        pulse_start_i,  // Arms a shaped pulse sequence.
+  input  logic      [COUNT_WIDTH-1:0] pre_pulse_wait_i,  // Cycles, minus one, of the sampled
+                                                         // pulse_in_i level before pulse_out_o
+                                                         // asserts.
+  input  logic      [COUNT_WIDTH-1:0] post_pulse_wait_i,  // Cycles pulse_out_o stays asserted.
 
-  input  logic                        pulse_in_i,
-  output logic                        pulse_out_o,
-  output logic                        pulse_done_o
+  input  logic                        pulse_in_i,  // Level sampled on pulse_start_i and driven
+                                                   // during the pre-pulse wait.
+  output logic                        pulse_out_o,  // Shaped pulse output; valid while pulse_done_o
+                                                    // is low.
+  output logic                        pulse_done_o  // High while idle; low while a sequence runs.
 
 );
 

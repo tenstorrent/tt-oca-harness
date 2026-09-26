@@ -605,6 +605,7 @@ statement has the companion's own documentation.
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
+| SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |

@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 4-input Clock Multiplexer
+// Select one of four clocks with clksel_i.
 //
-//--------------------------------------------------
+// Drive clk_o with clk_i[clksel_i] combinatorially.
+// Keep clksel_i glitch-free; the mux itself does not hazard-qualify the select.
+
 module prim_clkmux4 (
-  input logic [3:0] clk_i,
-  input logic [1:0] clksel_i,
-  output logic clk_o
+  input logic [3:0] clk_i,  // Four clock inputs.
+  input logic [1:0] clksel_i,  // Selects which clk_i bit drives clk_o.
+  output logic clk_o  // Selected clock.
 );
 
   wire [1:0] clk_mux_0;

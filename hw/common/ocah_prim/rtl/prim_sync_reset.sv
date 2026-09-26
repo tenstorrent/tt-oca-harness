@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Reset Synchronizer
+// Stretch and synchronize an async active-low reset into clk_i.
 //
-//--------------------------------------------------
-module prim_sync_reset #(
-  parameter int unsigned WIDTH = 16  // Reset width in clock cycles
-) (
-  input logic clk_i,
-  input logic rst_ni,  // asynchronous reset input, active low
-  input logic test_mode_i,  // test mode, active high
-  input logic scan_rst_ni,  //scan reset to be used in test mode
+// sync_rst_no asserts asynchronously with rst_ni and deasserts after WIDTH clk_i cycles of
+// rst_ni deasserted, through a chain of metastability-hardened flops.
+// test_mode_i, active-high, swaps scan_rst_ni onto the hazard-free bypass mux.
+// sync_rst_no is the synchronized active-low reset output.
 
-  output logic sync_rst_no  // synchronized reset output, active low
+module prim_sync_reset #(
+  parameter int unsigned WIDTH = 16  // Synchronizer stages; clk_i cycles from rst_ni deasserting to
+                                     // sync_rst_no deasserting.
+) (
+  input logic clk_i,  // Destination clock.
+  input logic rst_ni,  // Async reset to synchronize, active-low.
+  input logic test_mode_i,  // Test mode, active-high; selects scan_rst_ni.
+  input logic scan_rst_ni,  // Scan reset used in test mode, active-low.
+
+  output logic sync_rst_no  // Synchronized reset output, active-low.
 
 );
 

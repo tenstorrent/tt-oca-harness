@@ -65,19 +65,6 @@ input logic rst_ni,      // Active-low asynchronous reset
 input logic test_en_i    // Test enable for DFT
 ----
 
-<<mailbox-control-signal-descriptions-table>> defines the clock, reset, and test
-controls.
-
-[[mailbox-control-signal-descriptions-table]]
-.Mailbox Control Signal Descriptions
-[width="100%",cols="20%,80%",options="header",]
-|=====================================================================
-|Signal |Description
-|`clk_i` |Primary system clock for all mailbox logic and AXI interface
-|`rst_ni` |Asynchronous reset (active low), resets all mailbox state
-|`test_en_i` |Test enable for design-for-test (DFT) functionality
-|=====================================================================
-
 === Timing Characteristics
 
 <<mailbox-timing-characteristics-table>> summarises latency, throughput, and

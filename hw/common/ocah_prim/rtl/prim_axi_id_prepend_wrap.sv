@@ -1,27 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXI ID Prepend Wrapper
+// Zero-extend AW and AR IDs from AxiInIdWidth to AxiOutIdWidth on struct AXI ports.
 //
-//--------------------------------------------------
+// Truncate response IDs back to the upstream width.
+// Pass every non-ID channel field through unchanged; the module is purely combinational.
+// AxiOutIdWidth must be at least AxiInIdWidth, checked by a simulation assertion at time zero.
 
 module prim_axi_id_prepend_wrap #(
-  parameter int unsigned AxiInIdWidth  = 6,
-  parameter int unsigned AxiOutIdWidth = 8,
-  parameter int unsigned AxiDataWidth  = 32,
-  parameter int unsigned AxiAddrWidth  = 32,
-  parameter int unsigned AxiUserWidth  = 8,
+  parameter int unsigned AxiInIdWidth  = 6,  // Upstream AXI ID width.
+  parameter int unsigned AxiOutIdWidth = 8,  // Downstream AXI ID width after prepend.
+  parameter int unsigned AxiDataWidth  = 32,  // Data-channel width of both ports; declared but not
+                                              // used.
+  parameter int unsigned AxiAddrWidth  = 32,  // Address width of both ports; declared but not used.
+  parameter int unsigned AxiUserWidth  = 8,  // User-signal width of both ports; declared but not
+                                             // used.
 
-  parameter type axi_in_req_t   = logic,
-  parameter type axi_in_resp_t  = logic,
-  parameter type axi_out_req_t  = logic,
-  parameter type axi_out_resp_t = logic
+  parameter type axi_in_req_t   = logic,  // Upstream request struct.
+  parameter type axi_in_resp_t  = logic,  // Upstream response struct.
+  parameter type axi_out_req_t  = logic,  // Downstream request struct.
+  parameter type axi_out_resp_t = logic  // Downstream response struct.
 ) (
-  input axi_in_req_t axi_in_req_i,
-  output axi_in_resp_t axi_in_resp_o,
-  output axi_out_req_t axi_out_req_o,
-  input axi_out_resp_t axi_out_resp_i
+  input axi_in_req_t axi_in_req_i,  // Upstream AXI request.
+  output axi_in_resp_t axi_in_resp_o,  // Upstream AXI response.
+  output axi_out_req_t axi_out_req_o,  // Downstream AXI request with wider IDs.
+  input axi_out_resp_t axi_out_resp_i  // Downstream AXI response.
 );
 
   `include "ocah_assert.svh"

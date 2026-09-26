@@ -13,22 +13,35 @@
 
 // Antonio Pullini <pullinia@iis.ee.ethz.ch>
 
-// -------------------------------------------------------------
-// This is a multi-width multi-stage configurable synchronizer
-// - This has been modified from pulp to use prim cells
-// -------------------------------------------------------------
+// Synchronize WIDTH bits into clk_i through a configurable 2-, 3-, or 4-flop chain.
+//
+// Derived from the PULP synchronizer and built from prim synchronizer cells. STAGES selects
+// the chain length, and the reset parameters select the cell:
+//
+// - USE_NON_RST_FF set: a non-reset chain.
+// - USE_ASYNC_RST_FF clear: a non-reset chain whose input is forced to ResetValue while
+//   rst_ni is low, which gives a synchronous reset that reaches serial_o after STAGES
+//   clk_i cycles.
+// - USE_ASYNC_RST_FF set and ResetValue 0: an asynchronous-clear chain.
+// - USE_ASYNC_RST_FF set and ResetValue nonzero: an asynchronous-set chain. With STAGES 2
+//   the chain resets to ResetValue; with STAGES 3 or 4 every bit sets to 1.
+//
+// Any other STAGES value falls back to a 2-flop chain with the synchronous reset.
 
 module sync #(
-    parameter int unsigned WIDTH = 1,
-    parameter int unsigned STAGES = 3,
-    parameter int unsigned ResetValue = 0,
-    parameter bit USE_ASYNC_RST_FF = 1'b1,  // 0: Synchronous reset FF, 1: Asynchronous reset FF
-    parameter bit USE_NON_RST_FF = 1'b0     // 0: Non Reset FF, 1:Set/Clr FF based on ResetValue
+    parameter int unsigned WIDTH = 1,       // Number of independent bits synchronized.
+    parameter int unsigned STAGES = 3,      // Chain length: 2, 3, or 4 flops.
+    parameter int unsigned ResetValue = 0,  // Reset value of serial_o; nonzero selects the
+                                            // set cells under asynchronous reset.
+    parameter bit USE_ASYNC_RST_FF = 1'b1,  // 0: synchronous reset, 1: asynchronous reset.
+    parameter bit USE_NON_RST_FF = 1'b0     // 1: non-reset FF; overrides USE_ASYNC_RST_FF.
+                                            // 0: reset FF per the other parameters.
 ) (
-    input  logic clk_i,
-    input  logic rst_ni,
-    input  logic [WIDTH-1:0] serial_i,
-    output logic [WIDTH-1:0] serial_o
+    input  logic clk_i,                     // Destination clock.
+    input  logic rst_ni,                    // Active-low reset; see USE_ASYNC_RST_FF. Unused
+                                            // when USE_NON_RST_FF is set and STAGES is 2 to 4.
+    input  logic [WIDTH-1:0] serial_i,      // Asynchronous input bits.
+    output logic [WIDTH-1:0] serial_o       // Synchronized bits in the clk_i domain.
 );
 
    (* dont_touch = "true" *)

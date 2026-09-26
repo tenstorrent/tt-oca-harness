@@ -1,56 +1,60 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXI-Lite to APB Single Bridge
+// Bridge one AXI-Lite manager to a single APB subordinate.
 //
-//--------------------------------------------------
+// Complete addresses outside [ADDR_START, ADDR_END) with a decode error on AXI-Lite.
+// PipelineRequest and PipelineResponse insert skid registers on the request and response
+// paths.
+// Hold only one APB transfer in flight at a time.
+
 module prim_axi_lite_to_apb_single #(
-  parameter bit PipelineRequest      = 1'b0,   // Pipeline request path
-  parameter bit PipelineResponse     = 1'b0,   // Pipeline response path
-  parameter int unsigned AXI_DATA_WIDTH = 32,
-  parameter int unsigned AXI_ADDR_WIDTH = 32,
+  parameter bit PipelineRequest      = 1'b0,  // Skid-registers the AXI-Lite to APB request path.
+  parameter bit PipelineResponse     = 1'b0,  // Skid-registers the APB to AXI-Lite response path.
+  parameter int unsigned AXI_DATA_WIDTH = 32,  // Shared data width.
+  parameter int unsigned AXI_ADDR_WIDTH = 32,  // Shared address width.
 
-  parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,
-  parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,
+  parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,  // Inclusive APB decode base.
+  parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,  // Exclusive APB decode limit.
 
-  localparam type addr_t = logic [AXI_ADDR_WIDTH-1:0],
-  localparam type data_t = logic [AXI_DATA_WIDTH-1:0],
-  localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]
+  localparam type addr_t = logic [AXI_ADDR_WIDTH-1:0],  // Address type alias.
+  localparam type data_t = logic [AXI_DATA_WIDTH-1:0],  // Data type alias.
+  localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]  // Strobe type alias.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,  // Clock shared by the AXI-Lite and APB sides of the bridge.
+  input logic rst_ni,  // Async reset, active-low.
 
-  input  logic            axi_lite_awvalid_i,
-  input  addr_t           axi_lite_awaddr_i,
-  input  axi_pkg::prot_t  axi_lite_awprot_i,
-  output logic            axi_lite_awready_o,
-  input  logic            axi_lite_wvalid_i,
-  input  data_t           axi_lite_wdata_i,
-  input  strb_t           axi_lite_wstrb_i,
-  output logic            axi_lite_wready_o,
-  output logic            axi_lite_bvalid_o,
-  output axi_pkg::resp_t  axi_lite_bresp_o,
-  input  logic            axi_lite_bready_i,
-  input  logic            axi_lite_arvalid_i,
-  input  addr_t           axi_lite_araddr_i,
-  input  axi_pkg::prot_t  axi_lite_arprot_i,
-  output logic            axi_lite_arready_o,
-  output logic            axi_lite_rvalid_o,
-  output data_t           axi_lite_rdata_o,
-  output axi_pkg::resp_t  axi_lite_rresp_o,
-  input  logic            axi_lite_rready_i,
+  input  logic            axi_lite_awvalid_i,  // Write-address valid from the AXI-Lite manager.
+  input  addr_t           axi_lite_awaddr_i,  // Write byte address, decoded against [ADDR_START,
+                                              // ADDR_END).
+  input  axi_pkg::prot_t  axi_lite_awprot_i,  // Write protection attributes, forwarded to pprot_o.
+  output logic            axi_lite_awready_o,  // Write-address ready to the AXI-Lite manager.
+  input  logic            axi_lite_wvalid_i,  // Write-data valid from the AXI-Lite manager.
+  input  data_t           axi_lite_wdata_i,  // Write data, forwarded to pwdata_o.
+  input  strb_t           axi_lite_wstrb_i,  // Write byte strobes, forwarded to pstrb_o.
+  output logic            axi_lite_wready_o,  // Write-data ready to the AXI-Lite manager.
+  output logic            axi_lite_bvalid_o,  // Write-response valid to the AXI-Lite manager.
+  output axi_pkg::resp_t  axi_lite_bresp_o,  // Write response; SLVERR on pslverr_i, DECERR outside the decode range.
+  input  logic            axi_lite_bready_i,  // Write-response ready from the AXI-Lite manager.
+  input  logic            axi_lite_arvalid_i,  // Read-address valid from the AXI-Lite manager.
+  input  addr_t           axi_lite_araddr_i,  // Read byte address, decoded against [ADDR_START, ADDR_END).
+  input  axi_pkg::prot_t  axi_lite_arprot_i,  // Read protection attributes, forwarded to pprot_o.
+  output logic            axi_lite_arready_o,  // Read-address ready to the AXI-Lite manager.
+  output logic            axi_lite_rvalid_o,  // Read-data valid to the AXI-Lite manager.
+  output data_t           axi_lite_rdata_o,  // Read data returned from prdata_i.
+  output axi_pkg::resp_t  axi_lite_rresp_o,  // Read response; SLVERR on pslverr_i, DECERR outside the decode range.
+  input  logic            axi_lite_rready_i,  // Read-data ready from the AXI-Lite manager.
 
-  output logic       psel_o,
-  output logic       penable_o,
-  output logic       pwrite_o,
-  output addr_t      paddr_o,
-  output data_t      pwdata_o,
-  output strb_t      pstrb_o,
-  output logic [2:0] pprot_o,
-  input  logic       pready_i,
-  input  logic       pslverr_i,
-  input  data_t      prdata_i
+  output logic       psel_o,  // APB PSEL.
+  output logic       penable_o,  // APB PENABLE.
+  output logic       pwrite_o,  // APB PWRITE.
+  output addr_t      paddr_o,  // APB PADDR.
+  output data_t      pwdata_o,  // APB PWDATA.
+  output strb_t      pstrb_o,  // APB PSTRB.
+  output logic [2:0] pprot_o,  // APB PPROT.
+  input  logic       pready_i,  // APB PREADY.
+  input  logic       pslverr_i,  // APB PSLVERR.
+  input  data_t      prdata_i  // APB PRDATA.
 );
 
   localparam int unsigned EXTENDED_ADDR_WIDTH = AXI_ADDR_WIDTH + 1;

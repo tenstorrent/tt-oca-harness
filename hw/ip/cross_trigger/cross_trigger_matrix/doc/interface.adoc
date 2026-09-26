@@ -5,34 +5,14 @@
 
 === Signal Interface
 
-These are the ports of `cross_trigger_matrix`. Packed control and bus types remain
-bundles at the module boundary; their members are not separate scalar ports.
-
-<<ctm-signal-interface-table>> lists the CTM ports and bundled register interface.
+Packed control and bus types remain bundles at the `cross_trigger_matrix` module
+boundary; their members are not separate scalar ports.
 
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="CTM signal interface" tabindex="0">
-++++
+The parameters and ports of `cross_trigger_matrix` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_matrix/cross_trigger_matrix.adoc[cross_trigger_matrix].
 endif::backend-html5[]
-
-[[ctm-signal-interface-table]]
-[cols="<30,<14,<25,<31",options="header",role="port-reference"]
-.CTM signal interface
-|===
-|Signal |Direction |Type / dimensions |Description
-|`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.
-|`rst_ni` |Input |`logic` |Active-low asynchronous system reset.
-|`axil_req_i` |Input |`axil_req_t` |AXI-Lite CSR request.
-|`axil_resp_o` |Output |`axil_resp_t` |AXI-Lite CSR response.
-|`ct_dst_i` |Input |`logic [NUM_CT_DST-1:0]` |Trigger inputs to the routing matrix.
-|`ct_src_o` |Output |`logic [NUM_CT_SRC-1:0]` |Routed trigger outputs from the matrix.
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_matrix` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 `NUM_CT_SRC` and `NUM_CT_DST` come from the generated register package.

@@ -663,6 +663,9 @@ connections, and control signals. Refer to the detailed SMC documentation for in
 signal descriptions and timing requirements.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/smc/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -805,6 +808,9 @@ CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
 the dedicated DTP documentation in `hw/sys/dtp/doc/` for internal design details.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/dtp/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -1001,6 +1007,9 @@ macros, AXI bus connections, cryptographic subsystem, eFuse, lifecycle,
 SPI host, and mailbox. The following table defines all SEP top-level ports.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/sep/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -1154,41 +1163,16 @@ endif::backend-pdf[]
 
 === SMU Default Parameters
 
-The SMU exposes a set of configurable parameters that control DTP JTAG features,
-identification, cross trigger, and pipeline depths. The table below lists each
-parameter with its default value.
+The DTP JTAG features, identification, cross trigger, and pipeline depths are
+fields of the `Cfg` parameter, of type `smu_pkg::smu_cfg_t` with default
+`smu_pkg::DefaultCfg`.
 
-[cols="<30%,<15%,<55%",options="header"]
-|===
-|Parameter |Value |Description
-
-|`JTAG_BSR_ENABLE` |1 |Boundary scan enabled
-|`JTAG_EXTEST_TRAIN_ENABLE` |1 |EXTEST_TRAIN instruction enabled
-|`JTAG_EXTEST_PULSE_ENABLE` |1 |EXTEST_PULSE instruction enabled
-|`JTAG_INTEST_ENABLE` |1 |INTEST instruction enabled
-|`JTAG_CLAMP_ENABLE` |1 |CLAMP instruction enabled
-|`JTAG_HIGHZ_ENABLE` |1 |HIGHZ instruction enabled
-|`JTAG_RUNBIST_ENABLE` |1 |RUNBIST instruction enabled
-|`JTAG_TMP_ENABLE` |1 |TMP controller enabled
-|`JTAG_IC_RESET_ENABLE` |1 |Enables the external IC_RESET TDR slice (SMU drives this into the DTP's `JTAG_IC_RESET_EXT_ENABLE`). SMC and SEP slices are enabled unconditionally by the SMU.
-|`JTAG_SMC_DBG_ENABLE` |1 |SMC debug interface enabled
-|`JTAG_STAP_IO_ENABLE` |1 |I/O STAP enabled
-|`JTAG_NUM_EXTRA_STAPS` |1 |Number of additional STAPs
-|`JTAG_IDCODE_MFR_ID` |`11'h000` |Manufacturer ID
-|`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
-|`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |OCAH IP version
-|`XTRIG_NUM_CTP` |16 |External cross-trigger ports
-|`XTRIG_NUM_INT_CT` |8 |SMU-exposed internal CT lanes (DTP count adds the SMC reservation)
-|`XTRIG_NUM_CLK_STOP_REQ` |8 |SMU-exposed clock-stop requests (DTP count adds the SMC reservation)
-|`XTRIG_INT_CT_MODE` |`32'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack); low `XTRIG_NUM_INT_CT` bits are consumed
-|`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
-|`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
-|`SMC_RD_PL_DEPTH` |`2'h3` |SMC fabric read pipeline depth
-|`SMC_WR_PL_DEPTH` |`2'h3` |SMC fabric write pipeline depth
-|`SEP_ABR_SRAM_LATENCY` |`1` |ABR 1R1W registered-read latency, in clocks
-|`SEP_ABR_MASKING_EN` |`1` |Adams Bridge 2-share DOM masking
-|===
+ifdef::backend-html5[]
+The parameters of `smu` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/sys/smu/smu.adoc[smu].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `smu` are listed in the HTML edition of the Technical Reference Manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 SEP-related DTP configuration is not exposed as an SMU config-struct field.
 The SMU derives SEP debug/STAP enablement from the module parameter `SEP` and
@@ -1311,7 +1295,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |OCAH IP version
+|`JTAG_OCH_VER` |`8'h00` |Yes |DTP IP major version
 |===
 
 ==== Cross Trigger Parameters
@@ -1320,7 +1304,7 @@ Type parameters are set internally based on SMC package types.
 |===
 |Parameter |SMU Default |DTP Internal |Pass-through |Notes
 
-|`XTRIG_NUM_CTP` |16 |16 |Yes |External CTP count
+|`XTRIG_NUM_CTP` |16 |Cfg |Yes |External CTP count
 |`XTRIG_NUM_INT_CT` |8 |Cfg + `XTRIG_SMC_INT_CT_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
 |`XTRIG_NUM_CLK_STOP_REQ` |8 |Cfg + `XTRIG_SMC_CLK_STOP_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
 |`XTRIG_INT_CT_MODE` |32 bits, low 8 consumed |DTP width |Yes |SMC-reserved DTP mode bits are 0 (pulse-sync)
@@ -1357,10 +1341,12 @@ for integrator configuration.
 |`jtag_scan_ctrl_t` |`prim_jtag_pkg::jtag_scan_ctrl_t` |JTAG scan control struct
 |`smc_jtag_axi_req_t` |`smc_pkg::smc_jtag_56_64_2_12_axi_req_t` |SMC debug AXI request
 |`smc_jtag_axi_resp_t` |`smc_pkg::smc_jtag_56_64_2_12_axi_resp_t` |SMC debug AXI response
-|`smc_otp_axil_req_t` |`smc_efuse_pkg::efuse_axil_req_t` |SMC OTP AXI-Lite request
-|`smc_otp_axil_resp_t` |`smc_efuse_pkg::efuse_axil_resp_t` |SMC OTP AXI-Lite response
-|`sep_otp_axil_req_t` |`smc_efuse_pkg::efuse_axil_req_t` |SEP OTP AXI-Lite request (error slave when `SEP=0`)
-|`sep_otp_axil_resp_t` |`smc_efuse_pkg::efuse_axil_resp_t` |SEP OTP AXI-Lite response (error slave when `SEP=0`)
+|`ic_reset_smc_t` |`smc_pkg::jtag_smc_reset_ctrl_t` |SMC IC_RESET TDR slice
+|`ic_reset_sep_t` |`sep_pkg::jtag_sep_reset_ctrl_t` |SEP IC_RESET TDR slice
+|`smc_otp_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |SMC OTP AXI-Lite request
+|`smc_otp_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |SMC OTP AXI-Lite response
+|`sep_otp_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |SEP OTP AXI-Lite request (error slave when `SEP=0`)
+|`sep_otp_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |SEP OTP AXI-Lite response (error slave when `SEP=0`)
 |`xtrig_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |Cross trigger CSR request
 |`xtrig_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |Cross trigger CSR response
 |===
@@ -2036,6 +2022,9 @@ ports including clock, reset, JTAG, cross trigger, SMC-originated interfaces
 with `sep_` are only active when the module parameter `SEP=1`.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/smu/doc/port_table.adoc[]
 endif::backend-html5[]
 

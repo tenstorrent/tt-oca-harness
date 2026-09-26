@@ -5,38 +5,14 @@
 
 === Signal Interface
 
-These are the ports of `jtag_stap`. Packed control and bus types remain
-bundles at the module boundary; their members are not separate scalar ports.
-
-<<stap-signal-interface-table>> lists the STAP ports and bundled scan-control
-interfaces.
+Packed control and bus types remain bundles at the `jtag_stap` boundary; their
+members are not separate scalar ports.
 
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="STAP signal interface" tabindex="0">
-++++
+The parameters and ports of `jtag_stap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_stap/jtag_stap.adoc[jtag_stap].
 endif::backend-html5[]
-
-[[stap-signal-interface-table]]
-[cols="<30,<14,<25,<31",options="header",role="port-reference"]
-.STAP signal interface
-|===
-|Signal |Direction |Type / dimensions |Description
-|`client_scan_ctrl_i` |Input |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
-|`client_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
-|`client_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
-|`client_tap_ctrl_i` |Input |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
-|`security_disable_i` |Input |`logic` |Active-high disable of this STAP.
-|`host_tap_ctrl_o` |Output |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
-|`host_tdo_oen_o` |Output |`logic` |TDO output enable for the named TAP interface.
-|`host_tdo_o` |Output |`logic` |Serial data output to the named TAP interface.
-|`host_tdi_i` |Input |`logic` |Serial data input from the named TAP interface.
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters and ports of `jtag_stap` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 === Timing Requirements

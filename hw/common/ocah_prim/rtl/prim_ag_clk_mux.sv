@@ -1,20 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AG Clock Mux
+// Mux clk0_i and clk1_i onto clk_o without glitches.
 //
-//--------------------------------------------------
+// Synchronize sel_i into each source domain, gate the deselected clock off before enabling
+// the other, and combine the gated clocks onto clk_o.
+// SelectOnReset chooses which clock is enabled while reset is asserted: 0 selects clk0_i
+// during reset, 1 selects clk1_i.
+// test_en_i forces both clock gates open, so clk_o is the OR of clk0_i and clk1_i.
+
 module prim_ag_clk_mux #(
-  parameter bit SelectOnReset = 1'b0  // Which clock is selected on reset (0 -> clk0, 1 -> clk1)
+  parameter bit SelectOnReset = 1'b0  // 0 selects clk0_i during reset; 1 selects clk1_i.
 ) (
-  input  logic clk0_i,
-  input  logic clk1_i,
-  input  logic rst_clk0_ni,
-  input  logic rst_clk1_ni,
-  input  logic test_en_i,
-  input  logic sel_i,
-  output logic clk_o
+  input  logic clk0_i,  // First clock source.
+  input  logic clk1_i,  // Second clock source.
+  input  logic rst_clk0_ni,  // Async active-low reset in the clk0_i domain.
+  input  logic rst_clk1_ni,  // Async active-low reset in the clk1_i domain.
+  input  logic test_en_i,  // Scan/test enable; forces both clock gates open.
+  input  logic sel_i,  // Selects clk1_i when high, clk0_i when low; asynchronous,
+                       // synchronized into each clock domain through four flops.
+  output logic clk_o  // Glitch-free muxed clock.
 );
 
   `include "prim_assert.sv"

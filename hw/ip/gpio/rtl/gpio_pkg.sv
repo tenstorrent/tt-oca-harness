@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// GPIO typedefs and parameters
+// Hold GPIO AXI-Lite typedefs and shared parameters.
+//
+// Defines the 32-bit address and data widths and the AXI-Lite request/response structs used
+// by gpio, gpio_filter and gpio_shim.
 
 package gpio_pkg;
 

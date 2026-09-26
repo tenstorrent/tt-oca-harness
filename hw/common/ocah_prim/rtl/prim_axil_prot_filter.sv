@@ -1,41 +1,41 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXIL Access Control Filter
+// Block AXI-Lite accesses whose AxPROT fails a programmable requirement.
 //
-//--------------------------------------------------
+// write_filter_enable_i and read_filter_enable_i arm the AW and AR checks against
+// awprot_requirement_i and arprot_requirement_i; an access passes only on an exact match.
+// Complete failing writes or reads locally with DECERR, reads returning 'hBADCAB1E sized to
+// DATA_WIDTH, and do not forward them to the subordinate.
+// MAX_TRANS bounds outstanding filtered traffic.
 
 module prim_axil_prot_filter #(
-  parameter int unsigned ADDR_WIDTH = 32,
-  parameter int unsigned DATA_WIDTH = 32,
-  parameter int unsigned MAX_TRANS = 32,
+  parameter int unsigned ADDR_WIDTH = 32,  // AXI-Lite address width.
+  parameter int unsigned DATA_WIDTH = 32,  // AXI-Lite data width.
+  parameter int unsigned MAX_TRANS = 32,  // Outstanding transactions tracked by the filter.
 
-  parameter type axil_req_t     = logic,
-  parameter type axil_resp_t    = logic,
-  parameter type axil_aw_chan_t = logic,
-  parameter type axil_w_chan_t  = logic,
-  parameter type axil_b_chan_t  = logic,
-  parameter type axil_ar_chan_t = logic,
-  parameter type axil_r_chan_t  = logic
+  parameter type axil_req_t     = logic,  // AXI-Lite request struct.
+  parameter type axil_resp_t    = logic,  // AXI-Lite response struct.
+  parameter type axil_aw_chan_t = logic,  // AW channel type.
+  parameter type axil_w_chan_t  = logic,  // W channel type.
+  parameter type axil_b_chan_t  = logic,  // B channel type.
+  parameter type axil_ar_chan_t = logic,  // AR channel type.
+  parameter type axil_r_chan_t  = logic  // R channel type.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,  // AXI-Lite clock.
+  input logic rst_ni,  // Async reset, active-low.
+  input logic test_en_i,  // DFT/test enable for the internal AXI-Lite demux.
 
-  // Filter Configuration
-  input logic       write_filter_enable_i,
-  input logic       read_filter_enable_i,
-  input logic [2:0] awprot_requirement_i,
-  input logic [2:0] arprot_requirement_i,
+  input logic       write_filter_enable_i,  // Enables AWPROT filtering.
+  input logic       read_filter_enable_i,  // Enables ARPROT filtering.
+  input logic [2:0] awprot_requirement_i,  // Required AWPROT when write filter is on.
+  input logic [2:0] arprot_requirement_i,  // Required ARPROT when read filter is on.
 
-  // AXI4-Lite Register Interface -- from Manager
-  input  axil_req_t  axil_req_i,
-  output axil_resp_t axil_resp_o,
+  input  axil_req_t  axil_req_i,  // Unfiltered request from the manager.
+  output axil_resp_t axil_resp_o,  // Response toward the manager.
 
-  // AXI4-Lite Register Interface -- to Subordinate
-  output axil_req_t  filtered_axil_req_o,
-  input  axil_resp_t filtered_axil_resp_i
+  output axil_req_t  filtered_axil_req_o,  // Request toward the subordinate after filtering.
+  input  axil_resp_t filtered_axil_resp_i  // Response from the subordinate.
 );
 
   //==========================================================================

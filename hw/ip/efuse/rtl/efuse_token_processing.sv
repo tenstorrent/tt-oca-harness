@@ -1,44 +1,81 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Token Processing
+// Hash the RMA tokens and the security-disable token written through the MMR window and
+// compare them against the RMA digests in the shadow map and against SEP_SEC_DISABLE_TOKEN.
 //
-//-----------------------------------------------------------------------------
+// Drives triple-redundant digest compares and publishes rma_sip/chiplet_token_match and
+// security_disable_o. The RMA compares wait for fuse_sense_done_i; the security-disable
+// compare does not. shadow_regs_o withholds the shadow map until sensing completes or
+// security disable is set.
+//
+// Encodings:
+//
+// - SEP_SEC_DISABLE_TOKEN is the rev-cell default of the expected security-disable digest.
+// - TOKEN_MATCH_CODE is the success encoding.
+// - LC_STATE_INVALID encodes an invalid lifecycle value.
+//
+// Status outputs:
+//
+// - token_match_fault_o flags redundancy disagreement.
+// - sec_disable_token_o exports the security-disable token written through the MMR window.
 
 module efuse_token_processing #(
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0,
-  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0,  // Expected SHA-256 digest of the
+                                                         // security-disable token, built from rev
+                                                         // cells so a metal-only ECO can change it.
+  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // Comparator match code that asserts
+                                                       // security disable; must equal the
+                                                       // comparator's fixed 6'b010101 match code.
 
-  parameter int unsigned LC_STATE_WIDTH = 4,
-  localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),
+  parameter int unsigned LC_STATE_WIDTH = 4,  // Lifecycle-state field width.
+  localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),  // Differentially encoded lifecycle state driven on shadow_regs_o while the map is withheld.
 
-  parameter type efuse_apb_req_t = logic,
-  parameter type efuse_apb_resp_t = logic,
+  parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
+  parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
-  parameter type efuse_map_t = logic
+  parameter type efuse_map_t = logic    // Shadow eFuse map type.
 ) (
-  input  logic                     clk_i,
-  input  logic                     rst_ni,
+  input  logic                     clk_i,  // System clock.
+  input  logic                     rst_ni,  // Active-low reset: asynchronous for the MMR registers,
+                                            // synchronous for the match and fault flops; the token
+                                            // words are not reset.
 
-  input  logic                     test_en_i,
+  input  logic                     test_en_i,  // DFT test enable; freezes the retained token
+                                               // digests.
 
-  input  logic                     fuse_sense_done_i,
+  input  logic                     fuse_sense_done_i,  // Shadow loading from the fuses complete;
+                                                       // enables the RMA token compares and
+                                                       // releases shadow_regs_o.
 
-  input  efuse_apb_req_t           apb_req_i,
-  output efuse_apb_resp_t          apb_resp_o,
+  input  efuse_apb_req_t           apb_req_i,  // APB request for the MMR window: token words, start
+                                               // bits, match status, and fault status; only
+                                               // paddr[6:0] is decoded.
+  output efuse_apb_resp_t          apb_resp_o,  // APB response from the MMR window.
 
-  output logic[5:0]                rma_sip_token_match_q_o,
-  output logic[5:0]                rma_chiplet_token_match_q_o,
+  output logic[5:0]                rma_sip_token_match_q_o,  // Registered RMA SiP token comparator
+                                                             // code; equals TOKEN_MATCH_CODE on a
+                                                             // match.
+  output logic[5:0]                rma_chiplet_token_match_q_o,  // Registered RMA chiplet token
+                                                                 // comparator code; equals
+                                                                 // TOKEN_MATCH_CODE on a match.
 
-  output logic [7:0][31:0]         sec_disable_token_o,
+  output logic [7:0][31:0]         sec_disable_token_o,  // Security-disable token as written
+                                                         // through the MMR, for test access.
 
-  output logic                     security_disable_o,
+  output logic                     security_disable_o,  // High when the security-disable token
+                                                        // digest matches and the rev-cell feature
+                                                        // enable is set; combinational from the
+                                                        // comparator.
 
-  output logic                     token_match_fault_o,
+  output logic                     token_match_fault_o,  // Comparator redundancy fault on any
+                                                         // token; sticky until reset.
 
-  input  efuse_map_t               shadow_regs_i,
-  output efuse_map_t               shadow_regs_o
+  input  efuse_map_t               shadow_regs_i,  // Shadow eFuse map; supplies the expected RMA
+                                                   // token digests.
+  output efuse_map_t               shadow_regs_o  // Shadow eFuse map once fuse sensing completes or
+                                                  // security disable is active; zero with an
+                                                  // invalid lifecycle state before then.
 );
 
   ///////////////////////////////////////////////

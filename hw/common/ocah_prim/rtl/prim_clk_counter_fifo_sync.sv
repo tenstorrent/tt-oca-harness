@@ -1,24 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Clock Counter FIFO Sync
+// Measure clk_i against a reference window and return the count through a CDC FIFO.
 //
-//--------------------------------------------------
-module prim_clk_counter_fifo_sync #(
-  parameter int unsigned CLOCK_COUNTER_WIDTH = 64
-) (
-  input  logic                            ref_clk_i,
-  input  logic                            ref_clk_rst_ni,
-  input  logic                            ref_clk_done_i,
-  input  logic                            tile_rst_ni,
-  input  logic                            ss_clk_i,
-  input  logic                            ss_rst_ni,
+// End the reference window on ref_clk_done_i in the ref_clk_i domain.
+// Arm a measurement with clk_count_en_i. Each change of the counter's valid flag pushes the
+// flag and count through a one-entry async FIFO, and clk_count_valid_o and clk_counts_o
+// hold the last pair received on ss_clk_i.
+// tile_rst_ni resets the clk_i-side counter, either reset clears the FIFO, and ss_rst_ni
+// clears the ss_clk_i output registers.
 
-  input  logic                            clk_count_en_i,
-  input  logic                            clk_i,
-  output logic                            clk_count_valid_o,
-  output logic [CLOCK_COUNTER_WIDTH-1:0]  clk_counts_o
+module prim_clk_counter_fifo_sync #(
+  parameter int unsigned CLOCK_COUNTER_WIDTH = 64  // Returned count width.
+) (
+  input  logic                            ref_clk_i,  // Reference clock.
+  input  logic                            ref_clk_rst_ni,  // Active-low reset for the
+                                                           // ref_clk_i-side logic.
+  input  logic                            ref_clk_done_i,  // Single-cycle pulse on ref_clk_i that
+                                                           // ends the window.
+  input  logic                            tile_rst_ni,  // Active-low reset for the clk_i side;
+                                                        // synchronized to clk_i.
+  input  logic                            ss_clk_i,  // Read-side clock of the CDC FIFO and output
+                                                     // clock.
+  input  logic                            ss_rst_ni,  // Active-low reset for the ss_clk_i side;
+                                                      // clears the outputs synchronously.
+
+  input  logic                            clk_count_en_i,  // Arms a count; in the ref_clk_i domain.
+  input  logic                            clk_i,  // Clock under measurement.
+  output logic                            clk_count_valid_o,  // ss_clk_i copy of the counter's
+                                                              // valid flag, updated with
+                                                              // clk_counts_o.
+  output logic [CLOCK_COUNTER_WIDTH-1:0]  clk_counts_o  // Measured count after CDC, registered on
+                                                        // ss_clk_i.
 );
 
   logic [CLOCK_COUNTER_WIDTH-1:0] clock_count;

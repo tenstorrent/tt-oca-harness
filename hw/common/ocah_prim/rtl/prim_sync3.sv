@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 3-stage Synchronizer
+// Synchronize each bit of d_i into clk_i through a three-flop chain.
 //
-//--------------------------------------------------
+// Each bit uses its own prim_flop_3sync cell. Under SIMULATION, prim_cdc_rand_delay
+// randomizes when a change on d_i reaches the first stage to model CDC uncertainty;
+// synthesis connects d_i to the cells directly.
+
 module prim_sync3 #(
-  parameter int unsigned WIDTH = 1
+  parameter int unsigned WIDTH = 1  // Number of independent bits synchronized.
 ) (
-  input  logic             clk_i,
-  input  logic [WIDTH-1:0] d_i,
-  output logic [WIDTH-1:0] q_o
+  input  logic             clk_i,   // Destination clock.
+  input  logic [WIDTH-1:0] d_i,     // Asynchronous bits, each resolved independently.
+  output logic [WIDTH-1:0] q_o      // Synchronized bits in the clk_i domain.
 );
 
   logic [WIDTH-1:0] d_del;

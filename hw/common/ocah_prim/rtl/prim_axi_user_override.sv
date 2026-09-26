@@ -1,118 +1,131 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXI User Override
+// Pass an AXI port through while forcing AW, AR, and W user fields to AxiUserOverride.
 //
-//--------------------------------------------------
+// Wire every other channel field straight across; the module is purely combinational.
+// Pass response user fields through unchanged.
+// AxiUserWidth must cover the override value; wider values are truncated.
+// prim_axi_user_override_struct provides the same function on request and response
+// structs and checks the struct field widths with simulation assertions at time zero.
 
 module prim_axi_user_override #(
-  parameter  int unsigned AxiAddrWidth = 64,
-  parameter  int unsigned AxiDataWidth = 64,
-  parameter  int unsigned AxiIdWidth   = 1,
-  parameter  int unsigned AxiUserWidth = 1,
+  parameter  int unsigned AxiAddrWidth = 64,  // AXI address width.
+  parameter  int unsigned AxiDataWidth = 64,  // Width of W and R data on both ports; sets the
+                                              // strobe width.
+  parameter  int unsigned AxiIdWidth   = 1,  // Width of the AW, AR, B and R IDs, identical on both
+                                             // ports.
+  parameter  int unsigned AxiUserWidth = 1,  // Width of every user field on both ports; must hold
+                                             // AxiUserOverride.
 
-  parameter  int unsigned AxiUserOverride = 0,
+  parameter  int unsigned AxiUserOverride = 0,  // Constant written onto outbound AW/AR/W user
+                                                // fields.
 
-  localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,
+  localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,  // Write-strobe width from AxiDataWidth.
 
-  localparam type addr_t  = logic [AxiAddrWidth-1:0],
-  localparam type data_t  = logic [AxiDataWidth-1:0],
-  localparam type id_t    = logic [AxiIdWidth-1:0],
-  localparam type strb_t  = logic [AxiStrbWidth-1:0],
-  localparam type user_t  = logic [AxiUserWidth-1:0]
+  localparam type addr_t  = logic [AxiAddrWidth-1:0],  // Address type alias.
+  localparam type data_t  = logic [AxiDataWidth-1:0],  // Data type alias.
+  localparam type id_t    = logic [AxiIdWidth-1:0],  // ID type alias.
+  localparam type strb_t  = logic [AxiStrbWidth-1:0],  // Strobe type alias.
+  localparam type user_t  = logic [AxiUserWidth-1:0]  // User type alias.
 ) (
-  input  logic             axi_in_awvalid_i,
-  input  id_t              axi_in_awid_i,
-  input  addr_t            axi_in_awaddr_i,
-  input  axi_pkg::len_t    axi_in_awlen_i,
-  input  axi_pkg::size_t   axi_in_awsize_i,
-  input  axi_pkg::burst_t  axi_in_awburst_i,
-  input  logic             axi_in_awlock_i,
-  input  axi_pkg::cache_t  axi_in_awcache_i,
-  input  axi_pkg::prot_t   axi_in_awprot_i,
-  input  axi_pkg::qos_t    axi_in_awqos_i,
-  input  axi_pkg::region_t axi_in_awregion_i,
-  input  axi_pkg::atop_t   axi_in_awatop_i,
-  input  user_t            axi_in_awuser_i,
-  output logic             axi_in_awready_o,
-  input  logic             axi_in_wvalid_i,
-  input  data_t            axi_in_wdata_i,
-  input  strb_t            axi_in_wstrb_i,
-  input  logic             axi_in_wlast_i,
-  input  user_t            axi_in_wuser_i,
-  output logic             axi_in_wready_o,
-  output logic             axi_in_bvalid_o,
-  output id_t              axi_in_bid_o,
-  output axi_pkg::resp_t   axi_in_bresp_o,
-  output user_t            axi_in_buser_o,
-  input  logic             axi_in_bready_i,
-  input  logic             axi_in_arvalid_i,
-  input  id_t              axi_in_arid_i,
-  input  addr_t            axi_in_araddr_i,
-  input  axi_pkg::len_t    axi_in_arlen_i,
-  input  axi_pkg::size_t   axi_in_arsize_i,
-  input  axi_pkg::burst_t  axi_in_arburst_i,
-  input  logic             axi_in_arlock_i,
-  input  axi_pkg::cache_t  axi_in_arcache_i,
-  input  axi_pkg::prot_t   axi_in_arprot_i,
-  input  axi_pkg::qos_t    axi_in_arqos_i,
-  input  axi_pkg::region_t axi_in_arregion_i,
-  input  user_t            axi_in_aruser_i,
-  output logic             axi_in_arready_o,
-  output logic             axi_in_rvalid_o,
-  output id_t              axi_in_rid_o,
-  output data_t            axi_in_rdata_o,
-  output axi_pkg::resp_t   axi_in_rresp_o,
-  output logic             axi_in_rlast_o,
-  output user_t            axi_in_ruser_o,
-  input  logic             axi_in_rready_i,
+  input  logic             axi_in_awvalid_i,  // Forwarded unchanged to axi_out_awvalid_o.
+  input  id_t              axi_in_awid_i,  // Forwarded unchanged to axi_out_awid_o.
+  input  addr_t            axi_in_awaddr_i,  // Forwarded unchanged to axi_out_awaddr_o.
+  input  axi_pkg::len_t    axi_in_awlen_i,  // Forwarded unchanged to axi_out_awlen_o.
+  input  axi_pkg::size_t   axi_in_awsize_i,  // Forwarded unchanged to axi_out_awsize_o.
+  input  axi_pkg::burst_t  axi_in_awburst_i,  // Forwarded unchanged to axi_out_awburst_o.
+  input  logic             axi_in_awlock_i,  // Forwarded unchanged to axi_out_awlock_o.
+  input  axi_pkg::cache_t  axi_in_awcache_i,  // Forwarded unchanged to axi_out_awcache_o.
+  input  axi_pkg::prot_t   axi_in_awprot_i,  // Forwarded unchanged to axi_out_awprot_o.
+  input  axi_pkg::qos_t    axi_in_awqos_i,  // Forwarded unchanged to axi_out_awqos_o.
+  input  axi_pkg::region_t axi_in_awregion_i,  // Forwarded unchanged to axi_out_awregion_o.
+  input  axi_pkg::atop_t   axi_in_awatop_i,  // Forwarded unchanged to axi_out_awatop_o.
+  input  user_t            axi_in_awuser_i,  // Not used; axi_out_awuser_o carries AxiUserOverride
+                                             // instead.
+  output logic             axi_in_awready_o,  // Driven unchanged from axi_out_awready_i.
+  input  logic             axi_in_wvalid_i,  // Forwarded unchanged to axi_out_wvalid_o.
+  input  data_t            axi_in_wdata_i,  // Forwarded unchanged to axi_out_wdata_o.
+  input  strb_t            axi_in_wstrb_i,  // Forwarded unchanged to axi_out_wstrb_o.
+  input  logic             axi_in_wlast_i,  // Forwarded unchanged to axi_out_wlast_o.
+  input  user_t            axi_in_wuser_i,  // Not used; axi_out_wuser_o carries AxiUserOverride
+                                            // instead.
+  output logic             axi_in_wready_o,  // Driven unchanged from axi_out_wready_i.
+  output logic             axi_in_bvalid_o,  // Driven unchanged from axi_out_bvalid_i.
+  output id_t              axi_in_bid_o,  // Driven unchanged from axi_out_bid_i.
+  output axi_pkg::resp_t   axi_in_bresp_o,  // Driven unchanged from axi_out_bresp_i.
+  output user_t            axi_in_buser_o,  // Driven unchanged from axi_out_buser_i.
+  input  logic             axi_in_bready_i,  // Forwarded unchanged to axi_out_bready_o.
+  input  logic             axi_in_arvalid_i,  // Forwarded unchanged to axi_out_arvalid_o.
+  input  id_t              axi_in_arid_i,  // Forwarded unchanged to axi_out_arid_o.
+  input  addr_t            axi_in_araddr_i,  // Forwarded unchanged to axi_out_araddr_o.
+  input  axi_pkg::len_t    axi_in_arlen_i,  // Forwarded unchanged to axi_out_arlen_o.
+  input  axi_pkg::size_t   axi_in_arsize_i,  // Forwarded unchanged to axi_out_arsize_o.
+  input  axi_pkg::burst_t  axi_in_arburst_i,  // Forwarded unchanged to axi_out_arburst_o.
+  input  logic             axi_in_arlock_i,  // Forwarded unchanged to axi_out_arlock_o.
+  input  axi_pkg::cache_t  axi_in_arcache_i,  // Forwarded unchanged to axi_out_arcache_o.
+  input  axi_pkg::prot_t   axi_in_arprot_i,  // Forwarded unchanged to axi_out_arprot_o.
+  input  axi_pkg::qos_t    axi_in_arqos_i,  // Forwarded unchanged to axi_out_arqos_o.
+  input  axi_pkg::region_t axi_in_arregion_i,  // Forwarded unchanged to axi_out_arregion_o.
+  input  user_t            axi_in_aruser_i,  // Not used; axi_out_aruser_o carries AxiUserOverride
+                                             // instead.
+  output logic             axi_in_arready_o,  // Driven unchanged from axi_out_arready_i.
+  output logic             axi_in_rvalid_o,  // Driven unchanged from axi_out_rvalid_i.
+  output id_t              axi_in_rid_o,  // Driven unchanged from axi_out_rid_i.
+  output data_t            axi_in_rdata_o,  // Driven unchanged from axi_out_rdata_i.
+  output axi_pkg::resp_t   axi_in_rresp_o,  // Driven unchanged from axi_out_rresp_i.
+  output logic             axi_in_rlast_o,  // Driven unchanged from axi_out_rlast_i.
+  output user_t            axi_in_ruser_o,  // Driven unchanged from axi_out_ruser_i.
+  input  logic             axi_in_rready_i,  // Forwarded unchanged to axi_out_rready_o.
 
-  output logic             axi_out_awvalid_o,
-  output id_t              axi_out_awid_o,
-  output addr_t            axi_out_awaddr_o,
-  output axi_pkg::len_t    axi_out_awlen_o,
-  output axi_pkg::size_t   axi_out_awsize_o,
-  output axi_pkg::burst_t  axi_out_awburst_o,
-  output logic             axi_out_awlock_o,
-  output axi_pkg::cache_t  axi_out_awcache_o,
-  output axi_pkg::prot_t   axi_out_awprot_o,
-  output axi_pkg::qos_t    axi_out_awqos_o,
-  output axi_pkg::region_t axi_out_awregion_o,
-  output axi_pkg::atop_t   axi_out_awatop_o,
-  output user_t            axi_out_awuser_o,
-  input  logic             axi_out_awready_i,
-  output logic             axi_out_wvalid_o,
-  output data_t            axi_out_wdata_o,
-  output strb_t            axi_out_wstrb_o,
-  output logic             axi_out_wlast_o,
-  output user_t            axi_out_wuser_o,
-  input  logic             axi_out_wready_i,
-  input  logic             axi_out_bvalid_i,
-  input  id_t              axi_out_bid_i,
-  input  axi_pkg::resp_t   axi_out_bresp_i,
-  input  user_t            axi_out_buser_i,
-  output logic             axi_out_bready_o,
-  output logic             axi_out_arvalid_o,
-  output id_t              axi_out_arid_o,
-  output addr_t            axi_out_araddr_o,
-  output axi_pkg::len_t    axi_out_arlen_o,
-  output axi_pkg::size_t   axi_out_arsize_o,
-  output axi_pkg::burst_t  axi_out_arburst_o,
-  output logic             axi_out_arlock_o,
-  output axi_pkg::cache_t  axi_out_arcache_o,
-  output axi_pkg::prot_t   axi_out_arprot_o,
-  output axi_pkg::qos_t    axi_out_arqos_o,
-  output axi_pkg::region_t axi_out_arregion_o,
-  output user_t            axi_out_aruser_o,
-  input  logic             axi_out_arready_i,
-  input  logic             axi_out_rvalid_i,
-  input  id_t              axi_out_rid_i,
-  input  data_t            axi_out_rdata_i,
-  input  axi_pkg::resp_t   axi_out_rresp_i,
-  input  logic             axi_out_rlast_i,
-  input  user_t            axi_out_ruser_i,
-  output logic             axi_out_rready_o
+  output logic             axi_out_awvalid_o,  // Driven unchanged from axi_in_awvalid_i.
+  output id_t              axi_out_awid_o,  // Driven unchanged from axi_in_awid_i.
+  output addr_t            axi_out_awaddr_o,  // Driven unchanged from axi_in_awaddr_i.
+  output axi_pkg::len_t    axi_out_awlen_o,  // Driven unchanged from axi_in_awlen_i.
+  output axi_pkg::size_t   axi_out_awsize_o,  // Driven unchanged from axi_in_awsize_i.
+  output axi_pkg::burst_t  axi_out_awburst_o,  // Driven unchanged from axi_in_awburst_i.
+  output logic             axi_out_awlock_o,  // Driven unchanged from axi_in_awlock_i.
+  output axi_pkg::cache_t  axi_out_awcache_o,  // Driven unchanged from axi_in_awcache_i.
+  output axi_pkg::prot_t   axi_out_awprot_o,  // Driven unchanged from axi_in_awprot_i.
+  output axi_pkg::qos_t    axi_out_awqos_o,  // Driven unchanged from axi_in_awqos_i.
+  output axi_pkg::region_t axi_out_awregion_o,  // Driven unchanged from axi_in_awregion_i.
+  output axi_pkg::atop_t   axi_out_awatop_o,  // Driven unchanged from axi_in_awatop_i.
+  output user_t            axi_out_awuser_o,  // Driven with AxiUserOverride in place of
+                                              // axi_in_awuser_i.
+  input  logic             axi_out_awready_i,  // Forwarded unchanged to axi_in_awready_o.
+  output logic             axi_out_wvalid_o,  // Driven unchanged from axi_in_wvalid_i.
+  output data_t            axi_out_wdata_o,  // Driven unchanged from axi_in_wdata_i.
+  output strb_t            axi_out_wstrb_o,  // Driven unchanged from axi_in_wstrb_i.
+  output logic             axi_out_wlast_o,  // Driven unchanged from axi_in_wlast_i.
+  output user_t            axi_out_wuser_o,  // Driven with AxiUserOverride in place of
+                                             // axi_in_wuser_i.
+  input  logic             axi_out_wready_i,  // Forwarded unchanged to axi_in_wready_o.
+  input  logic             axi_out_bvalid_i,  // Forwarded unchanged to axi_in_bvalid_o.
+  input  id_t              axi_out_bid_i,  // Forwarded unchanged to axi_in_bid_o.
+  input  axi_pkg::resp_t   axi_out_bresp_i,  // Forwarded unchanged to axi_in_bresp_o.
+  input  user_t            axi_out_buser_i,  // Forwarded unchanged to axi_in_buser_o.
+  output logic             axi_out_bready_o,  // Driven unchanged from axi_in_bready_i.
+  output logic             axi_out_arvalid_o,  // Driven unchanged from axi_in_arvalid_i.
+  output id_t              axi_out_arid_o,  // Driven unchanged from axi_in_arid_i.
+  output addr_t            axi_out_araddr_o,  // Driven unchanged from axi_in_araddr_i.
+  output axi_pkg::len_t    axi_out_arlen_o,  // Driven unchanged from axi_in_arlen_i.
+  output axi_pkg::size_t   axi_out_arsize_o,  // Driven unchanged from axi_in_arsize_i.
+  output axi_pkg::burst_t  axi_out_arburst_o,  // Driven unchanged from axi_in_arburst_i.
+  output logic             axi_out_arlock_o,  // Driven unchanged from axi_in_arlock_i.
+  output axi_pkg::cache_t  axi_out_arcache_o,  // Driven unchanged from axi_in_arcache_i.
+  output axi_pkg::prot_t   axi_out_arprot_o,  // Driven unchanged from axi_in_arprot_i.
+  output axi_pkg::qos_t    axi_out_arqos_o,  // Driven unchanged from axi_in_arqos_i.
+  output axi_pkg::region_t axi_out_arregion_o,  // Driven unchanged from axi_in_arregion_i.
+  output user_t            axi_out_aruser_o,  // Driven with AxiUserOverride in place of
+                                              // axi_in_aruser_i.
+  input  logic             axi_out_arready_i,  // Forwarded unchanged to axi_in_arready_o.
+  input  logic             axi_out_rvalid_i,  // Forwarded unchanged to axi_in_rvalid_o.
+  input  id_t              axi_out_rid_i,  // Forwarded unchanged to axi_in_rid_o.
+  input  data_t            axi_out_rdata_i,  // Forwarded unchanged to axi_in_rdata_o.
+  input  axi_pkg::resp_t   axi_out_rresp_i,  // Forwarded unchanged to axi_in_rresp_o.
+  input  logic             axi_out_rlast_i,  // Forwarded unchanged to axi_in_rlast_o.
+  input  user_t            axi_out_ruser_i,  // Forwarded unchanged to axi_in_ruser_o.
+  output logic             axi_out_rready_o  // Driven unchanged from axi_in_rready_i.
 );
 
   assign axi_out_awvalid_o  = axi_in_awvalid_i;
@@ -166,23 +179,32 @@ module prim_axi_user_override #(
 endmodule
 
 module prim_axi_user_override_struct #(
-  parameter  int unsigned AxiAddrWidth = 64,
-  parameter  int unsigned AxiDataWidth = 64,
-  parameter  int unsigned AxiIdWidth   = 1,
-  parameter  int unsigned AxiUserWidth = 1,
+  parameter  int unsigned AxiAddrWidth = 64,  // Width of the AW and AR addresses, checked against
+                                              // the request struct.
+  parameter  int unsigned AxiDataWidth = 64,  // Width of W and R data, checked against both
+                                              // structs.
+  parameter  int unsigned AxiIdWidth   = 1,  // Width of the AW, AR, B and R IDs, checked against
+                                             // both structs.
+  parameter  int unsigned AxiUserWidth = 1,  // Width of every user field; must hold
+                                             // AxiUserOverride.
 
-  parameter  int unsigned AxiUserOverride = 0,
+  parameter  int unsigned AxiUserOverride = 0,  // Constant driven onto the outbound AW, AR and W
+                                                // user fields.
 
-  localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,
+  localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,  // Expected W strobe width, one bit per
+                                                            // data byte.
 
-  parameter type axi_req_t = logic,
-  parameter type axi_resp_t = logic,
-  localparam type user_t = logic [AxiUserWidth-1:0]
+  parameter type axi_req_t = logic,  // AXI request struct shared by the inbound and outbound ports.
+  parameter type axi_resp_t = logic,  // AXI response struct shared by the inbound and outbound
+                                      // ports.
+  localparam type user_t = logic [AxiUserWidth-1:0]  // Cast type for the override value.
 ) (
-  input axi_req_t axi_in_req_i,
-  output axi_resp_t axi_in_resp_o,
-  output axi_req_t axi_out_req_o,
-  input axi_resp_t axi_out_resp_i
+  input axi_req_t axi_in_req_i,  // Upstream AXI request whose AW, AR and W user fields are
+                                 // replaced.
+  output axi_resp_t axi_in_resp_o,  // Upstream AXI response, passed through unchanged.
+  output axi_req_t axi_out_req_o,  // Downstream AXI request carrying AxiUserOverride in its request
+                                   // user fields.
+  input axi_resp_t axi_out_resp_i  // Downstream AXI response, including B and R user fields.
 );
 
   assign axi_out_req_o.aw_valid  = axi_in_req_i.aw_valid;

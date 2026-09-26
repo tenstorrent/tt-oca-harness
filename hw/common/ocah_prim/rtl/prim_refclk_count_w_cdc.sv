@@ -1,24 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Reference clock counter with CDC
+// Count on refclk_i and synchronize the value into out_clk_i.
 //
-//--------------------------------------------------
+// cnt_en_i enables counting; cnt_update_i, in the out_clk_i domain, sends
+// cnt_update_value_i through a one-entry async FIFO and the counter loads it on refclk_i.
+// An update that arrives while counting is disabled is discarded, and a second update
+// written before the first has crossed is dropped.
+// REF_COUNT_WIDTH defaults to 54, about five years at 100 MHz.
+// prst_ni is the async reset for the reference domain; it is also synchronized into
+// out_clk_i for the FIFO write side.
+// Split the counter into parallel chunks for timing.
+// count_o crosses into out_clk_i in Gray code through a three-flop synchronizer.
+
 module prim_refclk_count_w_cdc #(
-  parameter int unsigned REF_COUNT_WIDTH = 54,  // ~5 years at 100MHz
+  parameter int unsigned REF_COUNT_WIDTH = 54,  // Reference counter width; ~5 years at 100 MHz when
+                                                // 54.
 
-  localparam type ref_count_t = logic [REF_COUNT_WIDTH-1:0]
+  localparam type ref_count_t = logic [REF_COUNT_WIDTH-1:0]  // Counter type alias.
 ) (
-  input logic refclk_i,
-  input logic prst_ni,
-  input logic out_clk_i,
+  input logic refclk_i,  // Reference clock.
+  input logic prst_ni,  // Async reset in the reference domain, active-low.
+  input logic out_clk_i,  // Destination clock for the CDC'd count and clock of cnt_update_i.
 
-  input logic cnt_en_i,
-  input logic cnt_update_i,
-  input ref_count_t cnt_update_value_i,
+  input logic cnt_en_i,  // Enables counting on refclk_i; asynchronous, synchronized into refclk_i.
+  input logic cnt_update_i,  // Single-cycle update strobe in the out_clk_i domain.
+  input ref_count_t cnt_update_value_i,  // Value loaded when cnt_update_i is high; out_clk_i
+                                         // domain.
 
-  output ref_count_t count_o
+  output ref_count_t count_o  // Count synchronized into out_clk_i.
 );
 
   // for timing purposes, split bin count into chunks

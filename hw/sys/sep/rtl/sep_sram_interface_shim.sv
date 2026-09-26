@@ -1,31 +1,39 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------
-// SEP SRAM Interface Shim
+// Forward the SEP SRAM memory_interface struct onto an SRAM macro.
 //
-//------------------------------------------------
+// SRAM_ADDR_WIDTH defaults to 10 (1K 64-bit entries). Forwards read/write requests onto
+// macro_* pins and returns macro_rdata_i when macro_rvalid_i.
+// Every request is granted at once. Reads complete on macro_rvalid_i; writes are
+// acknowledged with rvalid one cycle after the request.
 
 module sep_sram_interface_shim
   import sep_pkg::*;
 #(
-  parameter int unsigned SRAM_ADDR_WIDTH = 10  // Default to 1K entries (10 bits)
+  parameter int unsigned SRAM_ADDR_WIDTH = 10  // SRAM address width; default 10 for 1K entries.
 ) (
-  input  logic                        clk_i,
-  input  logic                        rst_ni,
+  input  logic                        clk_i,  // System clock.
+  input  logic                        rst_ni,  // Active-low reset.
 
-  // Memory Interface (from memory_interface module)
-  input  sep_sram_req_t               mem_req_i,
-  output sep_sram_rsp_t               mem_rsp_o,
+  input  sep_sram_req_t               mem_req_i,  // Memory request from the SEP memory_interface;
+                                                  // byte address, 64-bit data.
+  output sep_sram_rsp_t               mem_rsp_o,  // Memory response: gnt always high, rvalid from
+                                                  // macro_rvalid_i for reads and one cycle after
+                                                  // the request for writes.
 
-  // Macro Interface (to SRAM primitive)
-  output logic                        macro_req_o,
-  output logic                        macro_write_o,
-  output logic [SRAM_ADDR_WIDTH-1:0]  macro_addr_o,
-  output logic [SEP_MEM_DATA_WIDTH-1:0] macro_wdata_o,
-  output logic [SEP_MEM_DATA_WIDTH-1:0] macro_wmask_o,
-  input  logic [SEP_MEM_DATA_WIDTH-1:0] macro_rdata_i,
-  input  logic                        macro_rvalid_i
+  output logic                        macro_req_o,  // Request to the SRAM macro, for reads and
+                                                    // writes.
+  output logic                        macro_write_o,  // Write enable qualifying macro_req_o; low
+                                                      // for reads.
+  output logic [SRAM_ADDR_WIDTH-1:0]  macro_addr_o,  // SRAM word address: the request byte address
+                                                     // divided by eight.
+  output logic [SEP_MEM_DATA_WIDTH-1:0] macro_wdata_o,  // Write data to the SRAM macro.
+  output logic [SEP_MEM_DATA_WIDTH-1:0] macro_wmask_o,  // Bit write mask, each request byte strobe
+                                                        // expanded to eight bits.
+  input  logic [SEP_MEM_DATA_WIDTH-1:0] macro_rdata_i,  // Read data from the SRAM macro; valid with
+                                                        // macro_rvalid_i.
+  input  logic                        macro_rvalid_i  // Read-data valid from the SRAM macro.
 );
 
   // Generate write response (SRAM macro only generates rvalid for reads)

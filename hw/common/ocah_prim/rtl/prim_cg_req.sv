@@ -1,25 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Clock Gating Request
+// Drive Q-Channel qreq_no from qactive_i, qaccept_ni, and qdeny_i.
 //
-//--------------------------------------------------
+// qreq_no is the active-low quiescence request: it follows qactive_i, so it falls, asking
+// for the clock to stop, once the device is idle.
+// After a deny, hold qreq_no high (request withdrawn) for DenyDelay cycles before it
+// follows qactive_i again; an accept clears the hold.
+// HysteresisW sizes the deny-hold counter.
 
 module prim_cg_req #(
-  parameter int unsigned DenyDelay = 1,
+  parameter int unsigned DenyDelay = 1,  // Cycles to hold after a deny before reasserting.
 
-  // Derived parameters
-  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)
+  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)  // Deny-hold counter width; derived. Too narrow to hold DenyDelay when DenyDelay is a power of two above 1.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,  // Q-Channel clock.
+  input  logic rst_ni,  // Async reset, active-low.
 
-  // Power management interface
-  input  logic qactive_i,
-  input  logic qaccept_ni,
-  input  logic qdeny_i,
-  output logic qreq_no
+  input  logic qactive_i,  // Device wants the clock.
+  input  logic qaccept_ni,  // Device accepted the quiescence request, active-low.
+  input  logic qdeny_i,  // Device denied the quiescence request; starts the deny hold.
+  output logic qreq_no  // Quiescence request to the device, active-low; low asks for
+                        // the clock to stop.
 );
 
   `include "prim_assert.sv"

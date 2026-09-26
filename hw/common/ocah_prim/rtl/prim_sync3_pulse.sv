@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 3-stage Synchronizer Pulse
+// Pulse dst_pulse_o once for each src_pulse_i across a clock-domain crossing.
 //
-//--------------------------------------------------
+// Toggle a level on src_clk_i and edge-detect it on dst_clk_i after a 3-flop sync.
+// src_rst_ni clears the source toggle state and, synchronized into dst_clk_i, the
+// destination synchronizer.
+// Each high cycle of src_pulse_i flips the toggle, so the input must be a single-cycle pulse.
+// Two source pulses closer together than the destination can resolve cancel each other and
+// produce no dst_pulse_o.
+
 module prim_sync3_pulse (
-  input  logic src_clk_i,
-  input  logic src_pulse_i,
-  input  logic src_rst_ni,
-  input  logic dst_clk_i,
-  output logic dst_pulse_o
+  input  logic src_clk_i,  // Source clock.
+  input  logic src_pulse_i,  // Source-domain pulse to forward; high for one src_clk_i cycle.
+  input  logic src_rst_ni,  // Active-low reset, sampled synchronously on src_clk_i and
+                            // synchronized into dst_clk_i for the destination side.
+  input  logic dst_clk_i,  // Destination clock.
+  output logic dst_pulse_o  // One-cycle pulse on dst_clk_i.
 );
 
   wire toggle;
@@ -32,10 +38,10 @@ module prim_sync3_pulse (
 endmodule
 
 module prim_sync3_pulse_src (
-  input  logic src_clk_i,
-  input  logic src_pulse_i,
-  input  logic src_rst_ni,
-  output logic toggle_o
+  input  logic src_clk_i,  // Source clock.
+  input  logic src_pulse_i,  // Each cycle it is high flips toggle_o.
+  input  logic src_rst_ni,  // Active-low reset, sampled synchronously; clears toggle_o.
+  output logic toggle_o  // Registered level on src_clk_i that changes once per pulse cycle.
 );
 
   always_ff @(posedge src_clk_i) begin
@@ -49,10 +55,13 @@ module prim_sync3_pulse_src (
 endmodule
 
 module prim_sync3_pulse_dest (
-  input  logic dst_clk_i,
-  input  logic src_rst_ni,
-  input  logic toggle_i,
-  output logic dst_pulse_o
+  input  logic dst_clk_i,  // Destination clock.
+  input  logic src_rst_ni,  // Source-domain active-low reset; synchronized into dst_clk_i
+                            // through three stages, it clears the synchronizer and holds
+                            // dst_pulse_o low.
+  input  logic toggle_i,  // Source toggle level, asynchronous to dst_clk_i.
+  output logic dst_pulse_o  // One-cycle pulse on dst_clk_i for each synchronized change of
+                            // toggle_i.
 );
 
   wire toggle_synced;

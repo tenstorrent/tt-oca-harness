@@ -1,74 +1,60 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Fair Round Robin arbiter
+// Arbitrate NumIn requesters round-robin through a combinational binary tree.
 //
-//--------------------------------------------------
+// request_o, data_o, index_o and grant_o are combinational; only the round-robin pointer
+// and the optional lock state are registered. With NumIn of 1 the module is a pass-through.
+// Select the arbitration behaviour with these parameters:
+//
+// - FairArb moves the pointer to the next requesting input after each grant, spreading
+//   grants evenly across inputs.
+// - LockIn holds a winner until grant_i completes.
+// - ExtPrio replaces the internal RR counter with rr_priority_i so multiple arbiters can
+//   share rotating priorities in lock-step; tie rr_priority_i to '0 for static priority,
+//   lowest index first. FairArb and LockIn apply only when ExtPrio is 0.
+// - AxiVldRdy treats request/grant as AXI-style valid/ready, so upstream valid must not
+//   depend on ready; it reduces arbiter delay and area.
 
 module prim_fair_rr_arb #(
-  /// Number of inputs to be arbitrated.
-  parameter int unsigned NumIn      = 64,
-  /// Data width of the payload in bits. Not needed if `DataType` is overwritten.
-  parameter int unsigned DataWidth  = 32,
-  /// Data type of the payload, can be overwritten with custom type. Only use of `DataWidth`.
-  parameter type         DataType   = logic [DataWidth-1:0],
-  /// The `ExtPrio` option allows to override the internal round robin counter via the
-  /// `rr_priority_i` signal. This can be useful in case multiple arbiters need to have
-  /// rotating priorities that are operating in lock-step. If static priority arbitration
-  /// is needed, just connect `rr_priority_i` to '0.
-  ///
-  /// Set to 1'b1 to enable.
-  parameter bit          ExtPrio    = 1'b0,
-  /// If `AxiVldRdy` is set, the req/gnt signals are compliant with the AXI style vld/rdy
-  /// handshake. Namely, upstream vld (req) must not depend on rdy (gnt), as it can be deasserted
-  /// again even though vld is asserted. Enabling `AxiVldRdy` leads to a reduction of arbiter
-  /// delay and area.
-  ///
-  /// Set to `1'b1` to treat req/gnt as vld/rdy.
-  parameter bit          AxiVldRdy  = 1'b0,
-  /// The `LockIn` option prevents the arbiter from changing the arbitration
-  /// decision when the arbiter is disabled. I.e., the index of the first request
-  /// that wins the arbitration will be locked in case the destination is not
-  /// able to grant the request in the same cycle.
-  ///
-  /// Set to `1'b1` to enable.
-  parameter bit          LockIn     = 1'b0,
-  /// When set, ensures that throughput gets distributed evenly between all inputs.
-  ///
-  /// Set to `1'b0` to disable.
-  parameter bit          FairArb    = 1'b1,
-  /// Dependent parameter, do **not** overwrite.
-  /// Width of the arbitration priority signal and the arbitrated index.
-  /// Dependent parameter, do **not** overwrite.
-  /// Type for defining the arbitration priority and arbitrated index signal.
-  localparam int unsigned IdxWidth   = (NumIn > 32'd1) ? unsigned'($clog2(NumIn)) : 32'd1,
-  parameter type         idx_t      = logic [IdxWidth-1:0]
+  parameter int unsigned NumIn      = 64,  // Number of inputs to arbitrate.
+  parameter int unsigned DataWidth  = 32,  // Payload width in bits; unused when DataType is
+                                           // overridden.
+  parameter type         DataType   = logic [DataWidth-1:0],  // Payload type; defaults to logic
+                                                              // [DataWidth-1:0].
+  parameter bit          ExtPrio    = 1'b0,  // 1 overrides the internal RR counter with
+                                             // rr_priority_i. Share rr_priority_i across arbiters
+                                             // for lock-step rotation; tie to '0 for static
+                                             // priority.
+  parameter bit          AxiVldRdy  = 1'b0,  // 1 treats request/grant as AXI valid/ready: upstream
+                                             // valid must not depend on ready, and grant_o may
+                                             // assert on the selected input without its request;
+                                             // reduces arbiter delay and area.
+  parameter bit          LockIn     = 1'b0,  // 1 freezes the request vector, and so the winning
+                                             // index, while request_o is high and grant_i is low;
+                                             // ignored when ExtPrio is 1.
+  parameter bit          FairArb    = 1'b1,  // 1 spreads throughput evenly across inputs; 0
+                                             // advances the pointer by one per grant. Ignored when
+                                             // ExtPrio is 1.
+  localparam int unsigned IdxWidth   = (NumIn > 32'd1) ? unsigned'($clog2(NumIn)) : 32'd1,  // Dependent width of priority and index; do not overwrite.
+  parameter type         idx_t      = logic [IdxWidth-1:0]  // Type for arbitration priority and
+                                                            // granted index; do not overwrite
+                                                            // IdxWidth behind it.
 ) (
-  /// Clock, positive edge triggered.
-  input  logic                clk_i,
-  /// Asynchronous reset, active low.
-  input  logic                rst_ni,
-  /// Clears the arbiter state. Only used if `ExtPrio` is `1'b0` or `LockIn` is `1'b1`.
-  input  logic                flush_i,
-  /// External round-robin priority. Only used if `ExtPrio` is `1'b1.`
-  input  idx_t                rr_priority_i,
-  /// Input requests arbitration.
-  input  logic    [NumIn-1:0] request_i,
+  input  logic                clk_i,  // Clock, positive-edge triggered.
+  input  logic                rst_ni,  // Active-low reset, sampled synchronously.
+  input  logic                flush_i,  // Synchronously clears the RR pointer and, with LockIn, the
+                                        // lock state; no effect when ExtPrio is 1.
+  input  idx_t                rr_priority_i,  // External RR priority; used only when ExtPrio is 1.
+  input  logic    [NumIn-1:0] request_i,  // Per-port arbitration requests.
   /* verilator lint_off UNOPTFLAT */
-  /// Input request is granted.
-  output logic    [NumIn-1:0] grant_o,
+  output logic    [NumIn-1:0] grant_o,  // Per-port grants.
   /* verilator lint_on UNOPTFLAT */
-  /// Input data for arbitration.
-  input  DataType [NumIn-1:0] data_i,
-  /// Output request is valid.
-  output logic                request_o,
-  /// Output request is granted.
-  input  logic                grant_i,
-  /// Output data.
-  output DataType             data_o,
-  /// Index from which input the data came from.
-  output idx_t                index_o
+  input  DataType [NumIn-1:0] data_i,  // Per-port payloads.
+  output logic                request_o,  // Winning request toward the destination.
+  input  logic                grant_i,  // Destination grant for the winner.
+  output DataType             data_o,  // Winning payload.
+  output idx_t                index_o  // Index of the winning input; valid while request_o is high.
 );
 
   `include "ocah_assert.svh"

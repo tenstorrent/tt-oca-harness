@@ -1,49 +1,74 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// GPIO Controller
+// Drive one GPIO pad from AXI-Lite registers with an LSIO override path.
 //
-//-----------------------------------------------------------------------------
-
+// AXI-Lite accesses pass a gpio_filter AxPROT check before reaching the gpio_intf register
+// block.
+// lsio_interface_select_i steers pad direction and data between register control and the
+// LSIO plane. Each of core2pad data, output enable and input enable is owned, in priority
+// order, by the LSIO pin select, the register override, then the DATA_CTRL.lsio_select
+// software select; DATA_CTRL.lsio_disable blocks both LSIO selects.
+// The pad input is synchronized into clk_i by prim_sync3r for the register readback and the
+// interrupt, which DATA_CTRL.interrupt_type selects as active-high level, active-low level,
+// rising edge or falling edge.
+// GPIO control-register access for the pad ring lives elsewhere; this block handles its
+// own interface registers only.
+// core2pad_* and pad2core_* are the pad-facing request wires.
 
 module gpio
   import gpio_pkg::*;
 #(
-  parameter int unsigned MAX_TRANS = 32,
-  parameter bit INPUT_BY_DEFAULT = 1'b1,
+  parameter int unsigned MAX_TRANS = 32,                    // Maximum open transactions per channel
+                                                            // in the filter demux.
+  parameter bit INPUT_BY_DEFAULT = 1'b1,                    // pad2core_en_o value during cold reset
+                                                            // and when no source owns the input
+                                                            // enable.
 
-  parameter bit [ADDR_WIDTH-1:0] GPIO_INTF_REG_MAP_BASE_ADDR = 0,
-  parameter bit [ADDR_WIDTH-1:0] GPIO_INTF_REG_MAP_SIZE      = 0,
-  parameter bit [ADDR_WIDTH-1:0] ADDRESS_MAP_SIZE_PER_GPIO   = 0
+  parameter bit [ADDR_WIDTH-1:0] GPIO_INTF_REG_MAP_SIZE      = 0  // Interface register-map size in
+                                                                  // bytes; its clog2 is the address
+                                                                  // width passed to the register
+                                                                  // block.
 ) (
-  // Global Interface
-  input logic clk_i,
-  input logic rst_primary_ni,
-  input logic rst_cold_ni,
-  input logic test_en_i,
+  input logic clk_i,                                        // System clock, rising-edge triggered.
+  input logic rst_primary_ni,                               // Primary async reset, active-low.
+                                                            // Assert asynchronously; deassert
+                                                            // synchronously to clk_i. Resets the
+                                                            // filter, registers, synchronizer and
+                                                            // interrupt state.
+  input logic rst_cold_ni,                                  // Cold reset, active-low, applied
+                                                            // combinationally: while low the output
+                                                            // is disabled, pad2core_en_o is
+                                                            // INPUT_BY_DEFAULT and pad2core_i
+                                                            // passes to lsio_pad2core_data_o.
+  input logic test_en_i,                                    // DFT test enable, active-high; drives
+                                                            // the filter demux test input.
 
-  // AXI4-Lite Register Interface
-  input  gpio_axil_req_t  axil_req_i,
-  output gpio_axil_resp_t axil_resp_o,
+  input  gpio_axil_req_t  axil_req_i,                       // AXI-Lite CSR request.
+                                                            // 32-bit address and data.
+  output gpio_axil_resp_t axil_resp_o,                      // AXI-Lite CSR response.
 
-  // Note: GPIO control register access is now handled separately in smc_padring_ext.sv
-  // This gpio_intf module only handles its own interface registers
+  input  logic lsio_interface_select_i,                     // Active-high LSIO pad-control select;
+                                                            // highest priority unless
+                                                            // DATA_CTRL.lsio_disable is set.
+  input  logic lsio_core2pad_en_ni,                         // LSIO core-to-pad enable, active-low.
+  input  logic lsio_core2pad_data_i,                        // LSIO core-to-pad data.
+  input  logic lsio_pad2core_en_ni,                         // LSIO pad-to-core enable, active-low.
+  output logic lsio_pad2core_data_o,                        // Unsynchronized pad2core_i while an
+                                                            // LSIO select is active or in cold
+                                                            // reset; low otherwise.
 
-  // LSIO Interface
-  input  logic lsio_interface_select_i,
-  input  logic lsio_core2pad_en_ni,
-  input  logic lsio_core2pad_data_i,
-  input  logic lsio_pad2core_en_ni,
-  output logic lsio_pad2core_data_o,
+  output logic interrupt_o,                                 // GPIO interrupt, active-high,
+                                                            // registered in clk_i and gated by
+                                                            // DATA_CTRL.interrupt_enable; a
+                                                            // one-cycle pulse in the edge modes.
 
-  output logic interrupt_o,
-
-  // GPIO Request/Response
-  output wire core2pad_o,
-  output wire core2pad_en_o,
-  input  wire pad2core_i,
-  output wire pad2core_en_o
+  output wire core2pad_o,                                   // Core-to-pad data.
+  output wire core2pad_en_o,                                // Core-to-pad output enable,
+                                                            // active-high.
+  input  wire pad2core_i,                                   // Pad-to-core data.
+  output wire pad2core_en_o                                 // Pad-to-core input enable,
+                                                            // active-high.
 );
 
   localparam int unsigned GPIO_INTF_ADDR_WIDTH = $clog2(GPIO_INTF_REG_MAP_SIZE);

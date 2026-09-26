@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Replace the Chipyard inferred-reset shift-register black box.
+//
+// Substitutes an OCAH synchronizer for the generated inferred reset primitive.
+// Three flops synchronize io_d into the local clock domain; reset clears them asynchronously
+// and also forces io_q low combinationally.
+
 module OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0 (
-  input  clock,
-  input  reset,
-  input  io_d,
-  output io_q
+  input  clock,                         // Destination clock for the three synchronizer flops.
+  input  reset,                         // Active-high reset; asynchronously clears the synchronizer
+                                        // flops and forces io_q low.
+  input  io_d,                          // Data bit to synchronize into the clock domain.
+  output io_q                           // Synchronized data bit, held low while reset is high.
 );
 
   wire io_rstbypass, io_rst_synced, reset_n;

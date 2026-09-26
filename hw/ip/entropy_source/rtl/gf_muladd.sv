@@ -1,22 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file gf_muladd.sv
- * @brief Galois Field GF(2^8) multiply-adder for AES applications.
- *
- * @details This module computes Y = (a * b) + c in GF(2^8) under the AES
- *          primitive polynomial x^8 + x^4 + x^3 + x + 1 (0x11b). The
- *          multiplication is unrolled into a shift-and-XOR sequence of
- *          partial products, eliminating any feedback loops for improved
- *          throughput.
- */
+// Compute Y = (a * b) + c in GF(2^8) under the AES polynomial 0x11b.
+//
+// Multiplication unrolls into a shift-and-XOR sequence of partial products with no
+// feedback loops.
+// Used by the BIW extractor to mix per-lane entropy bytes.
 
 module gf_muladd (
-  input       logic [7:0] a_i,
-  input       logic [7:0] b_i,
-  input       logic [7:0] c_i,
-  output      logic [7:0] y_o
+  input       logic [7:0] a_i,          // Multiplicand in GF(2^8).
+  input       logic [7:0] b_i,          // Multiplier in GF(2^8).
+  input       logic [7:0] c_i,          // Addend, XORed onto the product.
+  output      logic [7:0] y_o           // Result a_i * b_i + c_i in GF(2^8).
 );
 
   /////////////////////
