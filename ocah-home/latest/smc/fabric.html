@@ -224,11 +224,23 @@ management, traffic filtering, and security enforcement mechanisms.</p>
 <h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The fabric supports the following configuration parameters to tune
-performance and area (<a href="#smc-fabric-configuration-parameters-table">SMC Fabric Configuration Parameters</a>).</p>
+<p>The fabric modules take parameters for the number of inbound and outbound
+filter entries, filter pipelining, the outstanding-transaction limit of the
+output fabric remap path, alias address remap enablement, and the M-mode and
+Xvisor remap region bases.</p>
+</div>
+<div class="paragraph">
+<p>The parameters of <code>smc_fabric</code> are listed in <a href="../../../ocah-docs/latest/rtl-modules-reference/sys/smc/smc_fabric.html" class="xref page">smc_fabric</a>.</p>
+</div>
+<div class="paragraph">
+<p>The parameters of <code>smc_output_fabric</code> are listed in <a href="../../../ocah-docs/latest/rtl-modules-reference/sys/smc/smc_output_fabric.html" class="xref page">smc_output_fabric</a>.</p>
+</div>
+<div class="paragraph">
+<p>Further outstanding-transaction limits are fixed by package constants rather
+than module parameters (<a href="#smc-fabric-configuration-parameters-table">SMC Fabric Transaction Limits</a>).</p>
 </div>
 <table id="smc-fabric-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. SMC Fabric Configuration Parameters</caption>
+<caption class="title">Table 1. SMC Fabric Transaction Limits</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -236,105 +248,54 @@ performance and area (<a href="#smc-fabric-configuration-parameters-table">SMC F
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Default</th>
+<th class="tableblock halign-left valign-top">Constant</th>
+<th class="tableblock halign-left valign-top">Value</th>
 <th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>AXI4 Network Parameters</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>AXI4 Network</strong></p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MaxTrans</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::FABRIC_MAX_TRANS</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding transactions per AXI ID in output
-fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding transactions per
+AXI ID bucket in the fabric demultiplexers and traffic filters</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_INFLIGHT_IDS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum number of in-flight transaction IDs for ID
-remapping</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FABRIC_MAX_TRANS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::ERR_SLV_MAX_TRANS</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding transactions per AXI ID in
-fabric crossbars</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding transactions for
+each error subordinate, across all IDs</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ERR_SLV_MAX_TRANS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding transactions for error slave
-(across all IDs)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NumFilters</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of inbound and outbound traffic filter instances</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FilterReqPipelineEnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable request path pipelining in filters
-(timing vs. latency trade-off)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FilterRspPipelineEnable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable response path pipelining in filters
-(timing vs. latency trade-off)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>AXI4-Lite Network Parameters</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>AXI4-Lite Network</strong></p></td>
 <td class="tableblock halign-left valign-top"></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_MAX_WRITE_TXNS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding write transactions in local
-fabric crossbar</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum
+outstanding transactions each manager connected to the local fabric
+AXI4-Lite crossbar can have in flight</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI_MAX_READ_TXNS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding read transactions in local
-fabric crossbar</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Address Remap Parameters</strong></p></td>
-<td class="tableblock halign-left valign-top"></td>
-<td class="tableblock halign-left valign-top"></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MmodeBaseAddr</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x100_0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Base address for M-mode remapped region
-(relative to SMC base)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">XvisorBaseAddr</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x180_0000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Base address for Xvisor remapped region
-(relative to SMC base)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NoRemap</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Disable address remapping when set (reduces area)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum
+outstanding transactions each subordinate connected to the local fabric
+AXI4-Lite crossbar can have in flight</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>These parameters control fabric throughput, buffering depth, and feature
-enablement. The AXI4 network parameters (MaxTrans, FABRIC_MAX_TRANS)
-define the pipeline depth for high-performance traffic, while AXI4-Lite
-parameters (AXI_MAX_WRITE_TXNS, AXI_MAX_READ_TXNS) control outstanding
-transactions to peripherals.</p>
+<p>These limits set the buffering depth of the fabric. The AXI4 limits bound
+the outstanding high-performance traffic, while the AXI4-Lite limits bound
+outstanding transactions to peripherals and configuration registers.</p>
 </div>
 </div>
 </div>

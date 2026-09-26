@@ -604,43 +604,13 @@ system clock.</p>
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
 <div class="paragraph">
-<p><a href="#octs-configuration-parameters-table">OCTS configuration parameters</a> lists the timer configuration parameters and
-defaults.</p>
+<p>The parameters and ports of <code>system_timer_octs</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/system_timer_octs/system_timer_octs.html" class="xref page">system_timer_octs</a>.</p>
 </div>
-<div class="port-reference-scroll" role="region" aria-label="OCTS configuration parameters" tabindex="0">
-<table id="octs-configuration-parameters-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 3. OCTS configuration parameters</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 16%;">
-<col style="width: 54%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BUS_PROTOCOL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register interface protocol (AXI4-Lite or
-APB4)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ADDR_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address bus width (8-bit effective)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DATA_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data bus width</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>The timer configuration is described in terms of a register interface
+protocol, <code>BUS_PROTOCOL</code> (AXI4-Lite or APB4, default AXI4-Lite), an address
+bus width, <code>ADDR_WIDTH</code> (default 32, 8 bits effective), and a data bus
+width, <code>DATA_WIDTH</code> (default 32).</p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -657,171 +627,16 @@ via the <code>is_primary_i</code> input signal, not through a compile-time param
 </div>
 </div>
 <div class="sect2">
-<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.2. Global Interface</a></h3>
+<h3 id="test-interface"><a class="anchor" href="#test-interface"></a><a class="link" href="#test-interface">4.2. Test Interface</a></h3>
 <div class="paragraph">
-<p><a href="#octs-global-interface-signals-table">OCTS Global Interface Signals</a> defines the timer clock, reset, and global
-interface signals.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="OCTS global interface signals" tabindex="0">
-<table id="octs-global-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 4. OCTS Global Interface Signals</caption>
-<colgroup>
-<col style="width: 28%;">
-<col style="width: 9%;">
-<col style="width: 13%;">
-<col style="width: 10%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rising</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock. All logic operates
-synchronously to this clock. Frequency determines timer resolution and
-synchronization timing.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System reset. Asynchronous assertion and
-synchronous deassertion. Resets all counters, state machines, and
-registers to initial values.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_primary_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Runtime mode selection: 1=PRIMARY
-(master timer that generates synchronization pulses), 0=SECONDARY (slave
-timer that receives synchronization pulses). This signal determines timer
-behavior, register visibility, and synchronization signal direction.</p></td>
-</tr>
-</tbody>
-</table>
+<p>The test controls are <code>test_en_i</code>, an active-high test enable for
+manufacturing test mode and debug access, and <code>scan_rst_ni</code>, an active-low
+scan reset that gives the scan chain independent reset control for
+manufacturing test and ATPG.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="test-interface"><a class="anchor" href="#test-interface"></a><a class="link" href="#test-interface">4.3. Test Interface</a></h3>
-<div class="paragraph">
-<p><a href="#octs-test-interface-signals-table">OCTS Test Interface Signals</a> defines the timer test controls.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="OCTS test interface signals" tabindex="0">
-<table id="octs-test-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 5. OCTS Test Interface Signals</caption>
-<colgroup>
-<col style="width: 28%;">
-<col style="width: 9%;">
-<col style="width: 13%;">
-<col style="width: 10%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable signal for manufacturing test
-mode and debug access.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scan_rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan reset for manufacturing test.
-Provides independent reset control for scan chain operation and ATPG
-support.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">4.4. OCTS Synchronization Interface</a></h3>
-<div class="paragraph">
-<p><a href="#octs-synchronization-interface-signals-table">OCTS Synchronization Interface Signals</a> defines the synchronization inputs and
-outputs.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="OCTS synchronization interface signals" tabindex="0">
-<table id="octs-synchronization-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 6. OCTS Synchronization Interface Signals</caption>
-<colgroup>
-<col style="width: 28%;">
-<col style="width: 9%;">
-<col style="width: 13%;">
-<col style="width: 10%;">
-<col style="width: 40%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_sync_load_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronization load pulse input.
-Triggers coordinated timer initialization from the preset value.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_cnt_credit_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Credit pulse input. Provides
-periodic credit replenishment for SECONDARY timer synchronization.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_sync_load_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Synchronization load pulse
-output. Generated by the PRIMARY timer for system-wide initialization.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_cnt_credit_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Credit pulse output. Generated
-by the PRIMARY timer for maintaining synchronization of SECONDARY
-timers.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
+<h3 id="octs-synchronization-interface"><a class="anchor" href="#octs-synchronization-interface"></a><a class="link" href="#octs-synchronization-interface">4.3. OCTS Synchronization Interface</a></h3>
 <div class="paragraph">
 <p>When operating in PRIMARY mode, the timer generates synchronization
 pulses: <code>timer_sync_load_o</code> is asserted when the START register is
@@ -835,45 +650,10 @@ inactive.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="timer-counter-interface"><a class="anchor" href="#timer-counter-interface"></a><a class="link" href="#timer-counter-interface">4.5. Timer Counter Interface</a></h3>
+<h3 id="timer-counter-interface"><a class="anchor" href="#timer-counter-interface"></a><a class="link" href="#timer-counter-interface">4.4. Timer Counter Interface</a></h3>
 <div class="paragraph">
-<p><a href="#octs-timer-counter-interface-signals-table">OCTS Timer Counter Interface Signals</a> defines the counter-step and
-counter-value interfaces.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="OCTS timer counter interface signals" tabindex="0">
-<table id="octs-timer-counter-interface-signals-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 7. OCTS Timer Counter Interface Signals</caption>
-<colgroup>
-<col style="width: 28%;">
-<col style="width: 9%;">
-<col style="width: 13%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_cnt_step_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Timer count step value (used in SECONDARY
-mode) determines the increment per clock cycle.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_count_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Real-time 64-bit timer value available to
-the system.</p></td>
-</tr>
-</tbody>
-</table>
+<p>The step input, <code>timer_cnt_step_i</code>, is an 8-bit value used in SECONDARY
+mode.</p>
 </div>
 <div class="paragraph">
 <p>For SECONDARY timers, the step input (<code>timer_cnt_step_i</code>) enables
@@ -891,7 +671,7 @@ COUNT_HI registers.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="timing-specifications"><a class="anchor" href="#timing-specifications"></a><a class="link" href="#timing-specifications">4.6. Timing Specifications</a></h3>
+<h3 id="timing-specifications"><a class="anchor" href="#timing-specifications"></a><a class="link" href="#timing-specifications">4.5. Timing Specifications</a></h3>
 <div class="paragraph">
 <p>All input signals are required to meet setup and hold times with respect
 to the rising edge of clk_i.</p>
@@ -902,7 +682,7 @@ signal group.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
 <table id="octs-timing-requirements-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 8. OCTS Timing Requirements</caption>
+<caption class="title">Table 3. OCTS Timing Requirements</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -969,7 +749,7 @@ logic maintaining the width of each transmitted pulse.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="reset-behavior-and-initialization"><a class="anchor" href="#reset-behavior-and-initialization"></a><a class="link" href="#reset-behavior-and-initialization">4.7. Reset Behavior and Initialization</a></h3>
+<h3 id="reset-behavior-and-initialization"><a class="anchor" href="#reset-behavior-and-initialization"></a><a class="link" href="#reset-behavior-and-initialization">4.6. Reset Behavior and Initialization</a></h3>
 <div class="paragraph">
 <p>When reset is asserted asynchronously (<code>rst_ni</code>), all outputs
 immediately transition to safe, inactive states. The timer count is
@@ -1001,7 +781,7 @@ these signals.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="integration-guidelines"><a class="anchor" href="#integration-guidelines"></a><a class="link" href="#integration-guidelines">4.8. Integration Guidelines</a></h3>
+<h3 id="integration-guidelines"><a class="anchor" href="#integration-guidelines"></a><a class="link" href="#integration-guidelines">4.7. Integration Guidelines</a></h3>
 <div class="paragraph">
 <p>For multi-chiplet integration, the PRIMARY timer should be placed
 centrally to achieve the most efficient signal distribution and minimize
@@ -1304,7 +1084,7 @@ values and their boot-time implications.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="OCTS register reset values" tabindex="0">
 <table id="octs-register-reset-values-and-power-on-behavior-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 9. OCTS Register Reset Values and Power-On Behavior</caption>
+<caption class="title">Table 4. OCTS Register Reset Values and Power-On Behavior</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 20%;">

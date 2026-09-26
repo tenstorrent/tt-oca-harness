@@ -252,58 +252,8 @@ the two FIFOs that carry data between its two apertures.</p>
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">3.1. Configuration Parameters</a></h3>
 <div class="paragraph">
-<p><a href="#mailbox-configuration-parameters-table">Mailbox configuration parameters</a> lists the mailbox-count, aperture, and
-data-width parameters.</p>
+<p>The parameters and ports of <code>axi_lite_mailbox_unit</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/axi_lite_mailbox_unit/axi_lite_mailbox_unit.html" class="xref page">axi_lite_mailbox_unit</a>.</p>
 </div>
-<table id="mailbox-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Mailbox configuration parameters</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 15%;">
-<col style="width: 60%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_MAILBOXES</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2 (max: 32)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scales from point-to-point to
-multi-processor coordination</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 entries</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Depth of each internal message FIFO</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_TRANS</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding AXI4-Lite transactions per demux port</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_BASE_ADDR</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Base address the aperture decode is relative to</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ADDR_WIDTH</code> / <code>DATA_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 / 64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite slave port widths</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_SIZE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x800 (2KB)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register space per mailbox for control and
-status</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 <div class="sect2">
 <h3 id="address-space"><a class="anchor" href="#address-space"></a><a class="link" href="#address-space">3.2. Address Space</a></h3>
@@ -393,41 +343,8 @@ and interrupt output.</p>
 <div class="sect2">
 <h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">3.6. Clock and Reset</a></h3>
 <div class="paragraph">
-<p>The mailbox uses a single clock domain for integration reliability (<a href="#mailbox-clock-and-reset-table">Mailbox clock and reset</a>).</p>
+<p>The mailbox uses a single clock domain for integration reliability.</p>
 </div>
-<table id="mailbox-clock-and-reset-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Mailbox clock and reset</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 30%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Single clock</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Unifies functional logic and AXI4-Lite interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous, active-low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset, initializes all
-mailbox state</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DFT support</p></td>
-</tr>
-</tbody>
-</table>
 <div class="paragraph">
 <p>No internal clock domain crossings eliminates CDC complexity. Single
 clock domain simplifies timing analysis and integration verification.</p>
@@ -460,7 +377,7 @@ transmission or buffer availability.</p>
 <p><a href="#mailbox-interrupt-sources-table">Mailbox interrupt sources</a> reports the interrupt sources.</p>
 </div>
 <table id="mailbox-interrupt-sources-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Mailbox interrupt sources</caption>
+<caption class="title">Table 1. Mailbox interrupt sources</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -521,7 +438,7 @@ the <code>axi_req_t</code>/<code>axi_resp_t</code> parameters, together with the
 characteristics.</p>
 </div>
 <table id="mailbox-interface-characteristics-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Mailbox Interface Characteristics</caption>
+<caption class="title">Table 2. Mailbox Interface Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -569,7 +486,7 @@ output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o</code></pre>
 of mailbox interrupts.</p>
 </div>
 <table id="mailbox-interrupt-characteristics-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. Mailbox Interrupt Characteristics</caption>
+<caption class="title">Table 3. Mailbox Interrupt Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -606,37 +523,6 @@ input logic rst_ni,      // Active-low asynchronous reset
 input logic test_en_i    // Test enable for DFT</code></pre>
 </div>
 </div>
-<div class="paragraph">
-<p><a href="#mailbox-control-signal-descriptions-table">Mailbox Control Signal Descriptions</a> defines the clock, reset, and test
-controls.</p>
-</div>
-<table id="mailbox-control-signal-descriptions-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. Mailbox Control Signal Descriptions</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 80%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Primary system clock for all mailbox logic and AXI interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous reset (active low), resets all mailbox state</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable for design-for-test (DFT) functionality</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 <div class="sect2">
 <h3 id="timing-characteristics"><a class="anchor" href="#timing-characteristics"></a><a class="link" href="#timing-characteristics">4.4. Timing Characteristics</a></h3>
@@ -645,7 +531,7 @@ controls.</p>
 outstanding-transaction capacity.</p>
 </div>
 <table id="mailbox-timing-characteristics-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. Mailbox timing characteristics</caption>
+<caption class="title">Table 4. Mailbox timing characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -679,7 +565,7 @@ outstanding-transaction capacity.</p>
 conditions are handled.</p>
 </div>
 <table id="mailbox-error-handling-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. Mailbox error handling</caption>
+<caption class="title">Table 5. Mailbox error handling</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -734,7 +620,7 @@ the clearing read is retained</p></td>
 system-integration requirements.</p>
 </div>
 <table id="mailbox-integration-requirements-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Mailbox integration requirements</caption>
+<caption class="title">Table 6. Mailbox integration requirements</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -778,7 +664,7 @@ apertures (32 pairs). The SMC and SEP wrapper layouts are generated from
 their SystemRDL compositions:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. SMC Mailbox Aperture Layout</caption>
+<caption class="title">Table 7. SMC Mailbox Aperture Layout</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 16.6666%;">
@@ -1313,7 +1199,7 @@ their SystemRDL compositions:</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. SEP Mailbox Aperture Layout</caption>
+<caption class="title">Table 8. SEP Mailbox Aperture Layout</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 16.6666%;">

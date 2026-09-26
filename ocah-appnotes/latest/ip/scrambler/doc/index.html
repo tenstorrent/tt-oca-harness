@@ -207,46 +207,8 @@ register contents into the local key register.</p>
 <p>The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.</p>
 </div>
 <div class="paragraph">
-<p><a href="#sram-scrambler-parameters-table">SRAM scrambler parameters</a> lists the address width, data width, and byte-wise
-permutation parameters.</p>
+<p>The parameters and ports of <code>scrambler</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/scrambler/scrambler.html" class="xref page">scrambler</a>.</p>
 </div>
-<table id="sram-scrambler-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. SRAM scrambler parameters</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 45%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ADDR_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address width of the target SRAM. Determines which address scramble function is selected (6 through 13). Values outside this range fall through to a pass-through assignment.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data width. Only 32-bit operation is supported.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BYTE_WISE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Selects the permutation mode. When 0, a single 32-bit permutation (<code>perm32</code>) is applied to the full word. When 1, four independent 8-bit permutations (<code>perm8</code>) are applied to each byte lane.</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 <div class="sect1">
@@ -255,77 +217,6 @@ permutation parameters.</p>
 <div class="paragraph">
 <p>The scrambler is purely combinational. It has no clock or reset ports.</p>
 </div>
-<div class="paragraph">
-<p><a href="#sram-scrambler-ports-table">SRAM scrambler ports</a> lists the combinational address, data, key, and enable
-interfaces.</p>
-</div>
-<table id="sram-scrambler-ports-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. SRAM scrambler ports</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 10%;">
-<col style="width: 20%;">
-<col style="width: 45%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Port</th>
-<th class="tableblock halign-left valign-top">Dir</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">in</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ADDR_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Memory address input.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>byte_mask_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">in</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH/8</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Byte mask. Reserved for future per-byte-lane gating; currently unused.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambler_key_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">in</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scrambling key provided by the Key Manager CSR block.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambled_addr_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ADDR_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scrambled address output sent to the SRAM macro.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>write_data_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">in</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Plaintext write data from the CPU.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambled_write_data_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scrambled write data to be stored in the SRAM macro.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scrambled_read_data_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">in</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scrambled data read back from the SRAM macro.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>read_data_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">out</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Descrambled read data returned to the CPU.</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 <div class="sect1">
@@ -343,7 +234,7 @@ reduced block size i.e. word length.</p>
 <p>The data path implements the PRESENT 4-bit S-box (<code>sbox4</code>) from <code>scrambler_pkg</code>. Eight parallel S-box instances process the 32-bit word one nibble at a time. The S-box mapping is shown in <a href="#sram-scrambler-s-box-table">SRAM scrambler S-box</a>.</p>
 </div>
 <table id="sram-scrambler-s-box-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. SRAM scrambler S-box</caption>
+<caption class="title">Table 1. SRAM scrambler S-box</caption>
 <colgroup>
 <col style="width: 5.8823%;">
 <col style="width: 5.8823%;">
@@ -417,7 +308,7 @@ reduced block size i.e. word length.</p>
 their output positions.</p>
 </div>
 <table id="sram-scrambler-permutation-for-bits-31-to-16-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. SRAM scrambler permutation for bits 31 to 16</caption>
+<caption class="title">Table 2. SRAM scrambler permutation for bits 31 to 16</caption>
 <colgroup>
 <col style="width: 5.8823%;">
 <col style="width: 5.8823%;">
@@ -485,7 +376,7 @@ their output positions.</p>
 their output positions.</p>
 </div>
 <table id="sram-scrambler-permutation-for-bits-15-to-0-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. SRAM scrambler permutation for bits 15 to 0</caption>
+<caption class="title">Table 3. SRAM scrambler permutation for bits 15 to 0</caption>
 <colgroup>
 <col style="width: 5.8823%;">
 <col style="width: 5.8823%;">
@@ -629,7 +520,7 @@ bits, truncating any excess bits.</p>
 <p>The <code>scrambler_addr_tweak</code> submodule implements this expansion. For power-of-two-aligned widths (8 and 16), the address is replicated exactly to fill 32 bits. For non-power-of-two widths, the address is concatenated three times and the upper portion of the third copy is truncated to produce exactly 32 bits. <a href="#sram-scrambler-address-expansion-table">SRAM scrambler address expansion</a> lists the expansion formula used for each supported width.</p>
 </div>
 <table id="sram-scrambler-address-expansion-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. SRAM scrambler address expansion</caption>
+<caption class="title">Table 4. SRAM scrambler address expansion</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 85%;">
@@ -700,7 +591,7 @@ address</em>, only scrambling.</p>
 at each address width.</p>
 </div>
 <table id="sram-scrambler-address-lanes-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. SRAM scrambler address lanes</caption>
+<caption class="title">Table 5. SRAM scrambler address lanes</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 35%;">
@@ -790,7 +681,7 @@ at each address width.</p>
 depth and address-scramble function.</p>
 </div>
 <table id="sram-scrambler-module-variants-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. SRAM scrambler module variants</caption>
+<caption class="title">Table 6. SRAM scrambler module variants</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">

@@ -1075,6 +1075,10 @@ table defines all SMC top-level ports including clocks, resets, AXI interfaces, 
 connections, and control signals. Refer to the detailed SMC documentation for internal
 signal descriptions and timing requirements.</p>
 </div>
+<div class="paragraph">
+<p>The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port&#8217;s connection and tie-off default.</p>
+</div>
 <div class="port-reference-scroll" role="region" aria-label="SMC port reference" tabindex="0">
 <table class="tableblock frame-all grid-all stretch port-reference port-reference-wide small">
 <caption class="title">Table 6. SMC Port Declaration</caption>
@@ -2865,6 +2869,10 @@ CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
 the dedicated DTP documentation in <code>hw/sys/dtp/doc/</code> for internal design details.</p>
 </div>
 <div class="paragraph">
+<p>The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port&#8217;s connection and tie-off default.</p>
+</div>
+<div class="paragraph">
 <p><em>Legend: Where no Default entry is shown in Description / Default, the original port reference specifies N/A — those ports have no integrator-supplied default; connect as directed by Description.</em></p>
 </div>
 <div class="paragraph">
@@ -3742,6 +3750,10 @@ present on <code>sep.sv</code> itself and requires no integration tie-off.</p>
 <p>The SEP exposes interfaces for clocks, resets, JTAG debug, CPU control, memory
 macros, AXI bus connections, cryptographic subsystem, eFuse, lifecycle,
 SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
+</div>
+<div class="paragraph">
+<p>The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port&#8217;s connection and tie-off default.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="SEP port reference" tabindex="0">
 <table class="tableblock frame-all grid-all stretch port-reference port-reference-wide small">
@@ -4743,156 +4755,13 @@ address maps.</p>
 <div class="sect2">
 <h3 id="smu-default-parameters"><a class="anchor" href="#smu-default-parameters"></a><a class="link" href="#smu-default-parameters">7.4. SMU Default Parameters</a></h3>
 <div class="paragraph">
-<p>The SMU exposes a set of configurable parameters that control DTP JTAG features,
-identification, cross trigger, and pipeline depths. The table below lists each
-parameter with its default value.</p>
+<p>The DTP JTAG features, identification, cross trigger, and pipeline depths are
+fields of the <code>Cfg</code> parameter, of type <code>smu_pkg::smu_cfg_t</code> with default
+<code>smu_pkg::DefaultCfg</code>.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 15%;">
-<col style="width: 55%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Value</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_BSR_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary scan enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_EXTEST_TRAIN_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EXTEST_TRAIN instruction enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_EXTEST_PULSE_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EXTEST_PULSE instruction enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_INTEST_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">INTEST instruction enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_CLAMP_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLAMP instruction enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_HIGHZ_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">HIGHZ instruction enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_RUNBIST_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RUNBIST instruction enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_TMP_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TMP controller enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_IC_RESET_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the external IC_RESET TDR slice (SMU drives this into the DTP&#8217;s <code>JTAG_IC_RESET_EXT_ENABLE</code>). SMC and SEP slices are enabled unconditionally by the SMU.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_SMC_DBG_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug interface enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_STAP_IO_ENABLE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP enabled</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_NUM_EXTRA_STAPS</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of additional STAPs</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_IDCODE_MFR_ID</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>11&#8217;h000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Manufacturer ID</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_IDCODE_PART_NUM</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>16&#8217;h0000</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Part number</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_IDCODE_SI_REV</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>4&#8217;h0</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Silicon revision</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_OCH_VER</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>8&#8217;h00</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH IP version</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_CTP</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External cross-trigger ports</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_INT_CT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU-exposed internal CT lanes (DTP count adds the SMC reservation)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_CLK_STOP_REQ</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMU-exposed clock-stop requests (DTP count adds the SMC reservation)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_INT_CT_MODE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>32&#8217;h00</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Internal CT protocol mode bits (0=pulse sync, 1=req/ack); low <code>XTRIG_NUM_INT_CT</code> bits are consumed</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_OTP_RD_PL_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP read pipeline depth</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_OTP_WR_PL_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP write pipeline depth</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_RD_PL_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric read pipeline depth</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_WR_PL_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>2&#8217;h3</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric write pipeline depth</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_ABR_SRAM_LATENCY</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ABR 1R1W registered-read latency, in clocks</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_ABR_MASKING_EN</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge 2-share DOM masking</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>The parameters of <code>smu</code> are listed in <a href="../../ocah-docs/latest/rtl-modules-reference/sys/smu/smu.html" class="xref page">smu</a>.</p>
+</div>
 <div class="paragraph">
 <p>SEP-related DTP configuration is not exposed as an SMU config-struct field.
 The SMU derives SEP debug/STAP enablement from the module parameter <code>SEP</code> and
@@ -5229,7 +5098,7 @@ Type parameters are set internally based on SMC package types.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>JTAG_OCH_VER</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>8&#8217;h00</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH IP version</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP IP major version</p></td>
 </tr>
 </tbody>
 </table>
@@ -5257,7 +5126,7 @@ Type parameters are set internally based on SMC package types.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>XTRIG_NUM_CTP</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cfg</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Yes</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External CTP count</p></td>
 </tr>
@@ -5388,23 +5257,33 @@ for integrator configuration.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug AXI response</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_smc_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::jtag_smc_reset_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC IC_RESET TDR slice</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_sep_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_pkg::jtag_sep_reset_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP IC_RESET TDR slice</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_otp_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_efuse_pkg::efuse_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP AXI-Lite request</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_otp_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_efuse_pkg::efuse_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP AXI-Lite response</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_efuse_pkg::efuse_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP AXI-Lite request (error slave when <code>SEP=0</code>)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_efuse_pkg::efuse_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP AXI-Lite response (error slave when <code>SEP=0</code>)</p></td>
 </tr>
 <tr>
@@ -7685,6 +7564,10 @@ ports including clock, reset, JTAG, cross trigger, SMC-originated interfaces
 (AXI, GPIO, eFuse, PLL, PVT, memory), and SEP passthrough interfaces
 (memory macros, eFuse, crypto SRAM, SPI, AXI extension). Ports prefixed
 with <code>sep_</code> are only active when the module parameter <code>SEP=1</code>.</p>
+</div>
+<div class="paragraph">
+<p>The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port&#8217;s connection and tie-off default.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
 <caption class="title">Table 10. SMU Port Declaration</caption>

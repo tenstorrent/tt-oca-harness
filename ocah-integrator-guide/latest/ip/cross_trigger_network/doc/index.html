@@ -241,53 +241,11 @@ produce the registered <code>stop_clks_o</code> output.</p>
 <h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#ctn-configuration-parameters-table">CTN configuration parameters</a> lists the port-count and internal-trigger
-configuration parameters.</p>
+<p>The CTN is configured through its external and internal port counts, the number of
+clock-stop request inputs, and the protocol of each internal CTP.</p>
 </div>
-<div class="port-reference-scroll" role="region" aria-label="CTN configuration parameters" tabindex="0">
-<table id="ctn-configuration-parameters-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 1. CTN configuration parameters</caption>
-<colgroup>
-<col style="width: 28%;">
-<col style="width: 12%;">
-<col style="width: 12%;">
-<col style="width: 48%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Range</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_CTP</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1–32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of external Cross Trigger Ports.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_INT_CT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0–32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of internal cross triggers.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>NUM_CLK_STOP_REQ</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1–32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of clock-stop request inputs (<code>xtrig_clk_stop_req_i</code> width).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INT_CT_MODE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">bit vector</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>'0</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Operating mode per internal CTP: 0 = pulse/wire-OR, 1 = handshake/P2P.</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>The parameters of <code>cross_trigger_network</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.html" class="xref page">cross_trigger_network</a>.</p>
 </div>
 <div class="paragraph">
 <p>The DTP passes these counts through as <code>XTRIG_NUM_CTP</code>, <code>XTRIG_NUM_INT_CT</code>, and
@@ -512,7 +470,7 @@ transactions to the CTM and external CTPs based on address decoding.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="CTN address map" tabindex="0">
 <table id="ctn-address-allocation-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 2. CTN address allocation</caption>
+<caption class="title">Table 1. CTN address allocation</caption>
 <colgroup>
 <col style="width: 18%;">
 <col style="width: 25%;">
@@ -586,7 +544,7 @@ connections used for external and internal CTPs.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="External and internal CTP comparison" tabindex="0">
 <table id="external-and-internal-ctp-comparison-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 3. External and internal CTP comparison</caption>
+<caption class="title">Table 2. External and internal CTP comparison</caption>
 <colgroup>
 <col style="width: 22%;">
 <col style="width: 39%;">
@@ -657,7 +615,7 @@ connections in wire-OR mode.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="Internal CTP wire-OR signal mapping" tabindex="0">
 <table id="internal-ctp-wire-or-connections-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 4. Internal CTP wire-OR connections</caption>
+<caption class="title">Table 3. Internal CTP wire-OR connections</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 68%;">
@@ -693,7 +651,7 @@ connections in point-to-point mode.</p>
 </div>
 <div class="port-reference-scroll" role="region" aria-label="Internal CTP point-to-point signal mapping" tabindex="0">
 <table id="internal-ctp-point-to-point-connections-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 5. Internal CTP point-to-point connections</caption>
+<caption class="title">Table 4. Internal CTP point-to-point connections</caption>
 <colgroup>
 <col style="width: 32%;">
 <col style="width: 68%;">
@@ -766,50 +724,11 @@ cross-trigger network.</p>
 <p>The <code>ctn_clock_stop_ctrl</code> module aggregates clock stop requests from multiple
 sources using a two-stage OR-tree architecture. The module separates CLA-only
 status from the combined functional halt signal to support independent JTAG
-visibility and chiplet clock gating control.</p>
+visibility and chiplet clock gating control. The CTN sizes its request input
+with its own <code>NUM_CLK_STOP_REQ</code> parameter, which defaults to 9.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctn-clock-stop-signals-table">CTN clock-stop signals</a> identifies the clock-stop requests, enables, and status
-signals.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="CTN clock stop signals" tabindex="0">
-<table id="ctn-clock-stop-signals-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 6. CTN clock-stop signals</caption>
-<colgroup>
-<col style="width: 28%;">
-<col style="width: 27%;">
-<col style="width: 45%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_stop_req_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_CLK_STOP_REQ (default=9)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop requests from individual CLAs or other on-chip sources</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_clock_stop_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Direct clock stop from JTAG DEBUG_CONTROL register</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cla_clock_stop_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLA requests only (OR-reduction of <code>clk_stop_req_i</code>), fed back to JTAG for DEBUG_CONTROL status readback</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stop_clks_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Registered functional halt (JTAG OR CLA requests), drives chiplet clock gating</p></td>
-</tr>
-</tbody>
-</table>
+<p>The parameters and ports of <code>ctn_clock_stop_ctrl</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/cross_trigger_network/ctn_clock_stop_ctrl.html" class="xref page">ctn_clock_stop_ctrl</a>.</p>
 </div>
 <div class="paragraph">
 <p>The aggregation logic operates as follows:</p>
@@ -845,7 +764,7 @@ stops.</p>
 and clock-stop connections.</p>
 </div>
 <table id="ctn-matrix-port-indices-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. CTN matrix port indices</caption>
+<caption class="title">Table 5. CTN matrix port indices</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -880,133 +799,17 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 <div class="sect2">
 <h3 id="cross-trigger-network-interface"><a class="anchor" href="#cross-trigger-network-interface"></a><a class="link" href="#cross-trigger-network-interface">4.1. Cross Trigger Port (CTP)</a></h3>
 <div class="paragraph">
-<p><a href="#ctn-cross-trigger-signal-interface-table">CTN cross-trigger signal interface</a> lists the CTP signals and their mode-dependent behavior.
-For the module diagram and signalling modes, see
+<p>For the module diagram and signalling modes, see
 <a href="#cross-trigger-network-architecture">CTN Architecture</a>.</p>
 </div>
-<div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port interface" tabindex="0">
-<table id="ctn-cross-trigger-signal-interface-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 8. CTN cross-trigger signal interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 12%;">
-<col style="width: 58%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">mode</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Indicates the operational mode of the CTP. 0 for wire-OR
-and 1 for peer-to-peer. The value at reset should be 0.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_src</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core-side cross trigger input pulse.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_dst</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Core-side cross trigger output pulse.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">busy</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Optional signal indicating that an outgoing cross trigger
-pulse transfer is in progress.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">reset</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Resets the outgoing peer-to-peer handshake logic.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">stretch_mult[N-1:0]</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configures the pulse duration of the pulse
-stretcher module for wire-OR mode.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_dout_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the output driver for the
-<em>CT_Req_out</em> pad. In wire-OR mode this signal is enabled by a cross
-trigger pulse from the pulse stretcher. In peer-to-peer mode it is
-always enabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_din_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the
-<em>CT_Req_out</em> pad. In wire-OR mode this signal is enabled and in
-peer-to-peer mode it is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_dout</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The output data to drive on the <em>CT_Req_out</em>
-pad. In peer-to-peer mode the pulse capture latch controls this signal.
-In wire-OR mode it is held static-low.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_out_din</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the
-<em>CT_Req_out</em> pad. In wire-OR mode the assertion edge of this signal
-triggers a pulse on <em>ct_dst</em> after synchronization. In peer-to-peer mode
-it is unused.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_in_din_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the <em>CT_Req_in</em>
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_req_in_din</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the <em>CT_Req_in</em>
-pad. In peer-to-peer mode this signal triggers a pulse on <em>ct_dst</em> after
-synchronization. In wire-OR mode it is unused.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_in_din_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the input buffer for the <em>CT_Ack_in</em>
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_in_din</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The input data that is driven on the <em>CT_Ack_in</em>
-pad. This signal clears the cross trigger request output in peer-to-peer
-mode. In wire-OR mode it is unused.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_out_dout_en</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enables the output driver for the
-<em>CT_Ack_out</em> pad. In peer-to-peer mode this signal is enabled and in
-wire-OR mode it is disabled.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ct_ack_out_dout</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The output data to drive on the <em>CT_Ack_out</em>
-pad. In peer-to-peer mode the <em>ct_req_in</em> pulse synchronizer controls
-this signal. In wire-OR mode it is unused.</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>Each CTP is built on <code>cross_trigger_port_core</code>. Its operating mode resets to
+wire-OR: the CSR MODE field of an external CTP resets to 0, which selects
+wire-OR, and 1 selects peer-to-peer. <code>INT_CT_MODE</code> sets the mode of each
+internal CTP.</p>
+</div>
+<div class="paragraph">
+<p>The parameters and ports of <code>cross_trigger_port_core</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port_core.html" class="xref page">cross_trigger_port_core</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1032,54 +835,7 @@ these cross trigger sources.</p>
 <div class="sect2">
 <h3 id="cross-trigger-network-module-interface"><a class="anchor" href="#cross-trigger-network-module-interface"></a><a class="link" href="#cross-trigger-network-module-interface">4.3. Cross Trigger Network Module Interface</a></h3>
 <div class="paragraph">
-<p>The top-level <code>cross_trigger_network</code> module has the following interface:</p>
-</div>
-<div class="paragraph">
-<p><strong>Parameters</strong></p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><code>NUM_CTP</code>, <code>NUM_INT_CT</code>, <code>NUM_CLK_STOP_REQ</code> - External CTP, internal CT, and
-clock-stop request counts (defaults 16, 10, 9)</p>
-</li>
-<li>
-<p><code>INT_CT_MODE</code> - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 =
-P2P)</p>
-</li>
-<li>
-<p><code>axil_req_t</code>, <code>axil_resp_t</code> - AXI-Lite request/response types</p>
-</li>
-</ul>
-</div>
-<div class="paragraph">
-<p><strong>Ports</strong></p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">// Global
-input  logic clk_i
-input  logic rst_ni
-
-// AXI-Lite CSR Interface
-input  axil_req_t  axil_req_i
-output axil_resp_t axil_resp_o
-
-// Clock Stop Interface
-input  logic [NUM_CLK_STOP_REQ-1:0] clk_stop_req_i
-input  logic jtag_clock_stop_i
-output logic stop_clks_o
-output logic cla_clock_stop_o
-
-// Internal Cross Trigger Interface (to CLAs)
-output logic [NUM_INT_CT-1:0] ctm_src_req_o
-input  logic [NUM_INT_CT-1:0] ctm_src_ack_i
-input  logic [NUM_INT_CT-1:0] ctm_dst_req_i
-output logic [NUM_INT_CT-1:0] ctm_dst_ack_o
-
-// External CTP GPIO Interface (per CTP)
-// CT_Req_out, CT_Req_in, CT_Ack_in, CT_Ack_out signals</code></pre>
-</div>
+<p>The parameters and ports of <code>cross_trigger_network</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.html" class="xref page">cross_trigger_network</a>.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1112,7 +868,7 @@ Trigger Port (CTP) registers into a unified address space. Its generated map
 keeps the CTP instance count and stride with the allocated apertures:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Cross Trigger Network Address Map</caption>
+<caption class="title">Table 6. Cross Trigger Network Address Map</caption>
 <colgroup>
 <col style="width: 12.5%;">
 <col style="width: 12.5%;">

@@ -234,7 +234,7 @@ integration.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Control Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite (9-bit address space, 64-bit data width)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 (9-bit address, 64-bit data, 8-bit ID), converted to 32-bit register accesses</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Interface</p></td>
@@ -295,86 +295,15 @@ control plane and data plane operations.</p>
 <h2 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">2. Configuration Parameters</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#smc-dma-configuration-parameters-table">SMC DMA Configuration Parameters</a> lists the DMA frontend and backend
-configuration parameters.</p>
+<p>The parameters of <code>idma_wrapper</code> are listed in <a href="../../../ocah-docs/latest/rtl-modules-reference/ip/idma_wrapper/idma_wrapper.html" class="xref page">idma_wrapper</a>.</p>
 </div>
-<table id="smc-dma-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. SMC DMA Configuration Parameters</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 15%;">
-<col style="width: 55%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_CTRL_INTERFACES</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of independent control/register
-interfaces (must be ≥ 1)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_CTRL_STREAMS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of control streams per interface (must be ≥
-1, maximum 16). SMC fixes this at 1; see <a href="#dma-stream-support">Stream Support</a></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_MST_INTERFACES</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of independent AXI master interfaces
-(must be ≥ 1)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DMA_MST_MAX_TXNS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding AXI transactions per master
-interface</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">F2M_FIFO_DEPTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Frontend-to-midend FIFO depth (minimum 1 to avoid
-stalls)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">M2B_FIFO_DEPTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Midend-to-backend FIFO depth (0 = passthrough, no
-FIFO)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">EN_R_AW_COUPLING</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Enable read/write address coupling (recommended
-for performance)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BYPASS_DMA_CTRL_FLOPS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass register cut stages on control
-interface (timing optimization)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BYPASS_DMA_MST_FLOPS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Bypass register cut stages on master interface
-(timing optimization)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CG_HYSTERESIS_W</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock gating hysteresis width in bits (6-bit = 0-63
-cycle delay)</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>SMC instantiates <code>idma_wrapper</code> with one control port, one stream (see
+<a href="#dma-stream-support">Stream Support</a>), and one master port, up to 32 outstanding master
+transactions, a 4-entry frontend-to-midend FIFO, no manager-to-backend FIFO, a
+16-beat realignment buffer, R-AW coupling enabled, both register slices kept, and
+a 6-bit clock-gating hysteresis.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -390,7 +319,7 @@ processing, and transfer descriptor handling.</p>
 <p><a href="#smc-dma-frontend-control-interface-table">SMC DMA Frontend Control Interface</a> describes the frontend control interface.</p>
 </div>
 <table id="smc-dma-frontend-control-interface-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. SMC DMA Frontend Control Interface</caption>
+<caption class="title">Table 2. SMC DMA Frontend Control Interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -404,7 +333,7 @@ processing, and transfer descriptor handling.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Register Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite (9-bit address, 64-bit data)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 (9-bit address, 64-bit data), converted to 32-bit register accesses</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Control Interfaces</p></td>
@@ -476,7 +405,7 @@ treat the remaining banks as reserved.</p>
 <p><a href="#smc-dma-transfer-capabilities-table">SMC DMA Transfer Capabilities</a> describes the transfer descriptor support.</p>
 </div>
 <table id="smc-dma-transfer-capabilities-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. SMC DMA Transfer Capabilities</caption>
+<caption class="title">Table 3. SMC DMA Transfer Capabilities</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -584,7 +513,7 @@ iDMA.</p>
 <p><a href="#smc-dma-axi4-master-characteristics-table">SMC DMA AXI4 Master Characteristics</a> describes the AXI master interface.</p>
 </div>
 <table id="smc-dma-axi4-master-characteristics-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. SMC DMA AXI4 Master Characteristics</caption>
+<caption class="title">Table 4. SMC DMA AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -606,16 +535,17 @@ iDMA.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ID Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4-bit external (3-bit internal to iDMA backend)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4-bit on the SMC fabric. The DMA master port is 3-bit, and the
+SMC mux that merges the DMA and the zeroer adds 1 bit. The backend&#8217;s separate
+read and write managers use 2-bit IDs</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Outstanding Transactions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable maximum (default 16 via
-DMA_MST_MAX_TXNS)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Up to 32 (SMC sets DMA_MST_MAX_TXNS to 32)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Buffer Depth</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Internal re-order buffer depth of 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16-beat realignment buffer</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">R/AW Coupling</p></td>
@@ -645,7 +575,7 @@ access</p></td>
 DMA backend.</p>
 </div>
 <table id="smc-dma-transfer-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. SMC DMA Transfer Parameters</caption>
+<caption class="title">Table 5. SMC DMA Transfer Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -659,15 +589,18 @@ DMA backend.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Source Address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit source address with byte-level granularity</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Byte address in a 64-bit register pair; the DMA uses the
+low 56 bits</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Destination Address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit destination address with full range support</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Byte address in a 64-bit register pair; the DMA uses
+the low 56 bits</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Transfer Size</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit transfer size supporting large transfers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Length in bytes in a 64-bit register pair; the DMA uses the
+low 56 bits. Zero-length transfers are rejected</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Alignment Handling</p></td>
@@ -675,15 +608,18 @@ DMA backend.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Source Stride</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit source stride for 2D transfer patterns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Source stride for 2D transfer patterns in a 64-bit register
+pair; the DMA uses the low 56 bits</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Destination Stride</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit destination stride configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Destination stride for 2D transfer patterns in a 64-bit
+register pair; the DMA uses the low 56 bits</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Repeat Count</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable repeat count for pattern transfers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Repetition count in a 64-bit register pair; the DMA uses the
+low 32 bits</p></td>
 </tr>
 </tbody>
 </table>
@@ -695,7 +631,7 @@ DMA backend.</p>
 backend.</p>
 </div>
 <table id="smc-dma-status-monitoring-and-control-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. SMC DMA Status Monitoring and Control</caption>
+<caption class="title">Table 6. SMC DMA Status Monitoring and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -754,7 +690,7 @@ name <code>BUSY</code> must not be interpreted as per-channel backend activity.<
 optimizations.</p>
 </div>
 <table id="smc-dma-performance-features-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. SMC DMA Performance Features</caption>
+<caption class="title">Table 7. SMC DMA Performance Features</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -777,8 +713,8 @@ boundaries</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Outstanding Transactions</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Up to 16 concurrent AXI transactions
-(configurable via DMA_MST_MAX_TXNS)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Up to 32 concurrent AXI transactions
+(DMA_MST_MAX_TXNS)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Pipeline Efficiency</p></td>
@@ -791,8 +727,8 @@ multiple master interfaces</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">FIFO Buffering</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Frontend-to-midend FIFO (F2M_FIFO_DEPTH=4), optional
-midend-to-backend FIFO (M2B_FIFO_DEPTH)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Frontend-to-midend FIFO (F2M_FIFO_DEPTH=4); the optional
+manager-to-backend FIFO is absent in SMC (M2B_FIFO_DEPTH=0)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">R/AW Coupling</p></td>
@@ -806,7 +742,7 @@ controller optimization</p></td>
 and controls.</p>
 </div>
 <table id="smc-dma-clock-gating-configuration-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. SMC DMA Clock Gating Configuration</caption>
+<caption class="title">Table 8. SMC DMA Clock Gating Configuration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -820,8 +756,9 @@ and controls.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Clock Gating Implementation</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Single prim_clk_gater_hysteresis gates
-clock to frontend, request manager, and backend</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Two gated clocks: an AXI-snooping gate
+(axi_cg_snoop) clocks the frontend, and a prim_clk_gater_hysteresis clocks
+the request manager and backend</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Hysteresis Width</p></td>
@@ -829,7 +766,9 @@ clock to frontend, request manager, and backend</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Activity Detection</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Clock enabled when frontend wakeup or backend busy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The request manager and backend clock runs while the
+frontend or backend is busy. The frontend clock also runs while the control
+port has an AXI transaction outstanding</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Gating Control</p></td>
@@ -856,7 +795,7 @@ through hardware execution.</p>
 <div class="sect2">
 <h3 id="request-path"><a class="anchor" href="#request-path"></a><a class="link" href="#request-path">6.1. Request Path</a></h3>
 <div class="paragraph">
-<p>Transfer requests enter through AXI4-Lite control interfaces, where the
+<p>Transfer requests enter through AXI4 control interfaces, where the
 frontend receives configuration and commands from software. The frontend
 processes these N-dimensional transfer descriptors, converting complex
 2D patterns into linear iDMA requests. The request manager sits between

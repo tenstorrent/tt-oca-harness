@@ -231,273 +231,18 @@ allowing for logging capabilities.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-parameters"><a class="anchor" href="#sec-parameters"></a><a class="link" href="#sec-parameters">3. Parameters</a></h2>
+<h2 id="sec-parameters"><a class="anchor" href="#sec-parameters"></a><a class="link" href="#sec-parameters">3. Parameters and Ports</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The table below lists the design&#8217;s overridable parameters.</p>
+<p>The parameters and ports of <code>uart_log_engine_wrap</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/uart_log_engine_wrap/uart_log_engine_wrap.html" class="xref page">uart_log_engine_wrap</a>.</p>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Parameters</caption>
-<colgroup>
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 50.0002%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Default Value</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UART_TX_FIFO_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>32</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Transmitter FIFO depth. Must be a
-power of 2 between 4 and 4096 (inclusive).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>UART_RX_FIFO_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>32</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Receiver FIFO depth. Must be a
-power of 2 between 4 and 4096 (inclusive).</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GEN_LOG_ENGINE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bit</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1&#8217;b1</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Instantiates a Log Engine.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LOG_ENGINE_FIFO_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>64</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">FIFO depth for the log engine. Must be
-a power of 2 greater than or equal to 16.</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p><code>LOG_ENGINE_FIFO_DEPTH</code> must be a power of 2 greater than or equal to 16.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-input-and-output-ports"><a class="anchor" href="#sec-input-and-output-ports"></a><a class="link" href="#sec-input-and-output-ports">4. Input and Output Ports</a></h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>The table below lists the design&#8217;s input and output ports.</p>
-</div>
-<table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Input and Output Ports</caption>
-<colgroup>
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Port Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>Global Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rising</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System reset. Asynchronous assertion and synchronous
-deassertion.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>APB4 or AXI4-Lite CSR interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status register (CSR) address.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input/Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status register (CSR) data.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>AXI4-Lite Log Fetch Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read Address</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Log fetch address.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read Data</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Log fetch data.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>Control Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_en_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART enable signal.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>UART Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_rx_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART receive port. Asynchronous.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_tx_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART transmit port.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>UART Modem Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_cts_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Clear to send. Asynchronous.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_dsr_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Data set ready. Asynchronous.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_ri_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Ring indicator. Asynchronous.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_dcd_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Data carrier detect. Asynchronous.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_rts_no</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Request to send.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_dtr_no</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Data terminal ready.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_out1_no</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART General-purpose output 1.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_out2_no</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART General-purpose output 2.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>UART DMA Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_rxrdy_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART Received character(s) ready to be read.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_txrdy_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Transmitter ready to accept new characters.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>UART Error Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_err_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART FIFO parity error. This is NOT related to the
-parity of the received character.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top" colspan="5"><p class="tableblock"><strong><em>Interrupt Interface</em></strong></p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_irq_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART interrupt request.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>log_engine_irq_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Log engine interrupt request.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect1">
-<h2 id="sec-registers"><a class="anchor" href="#sec-registers"></a><a class="link" href="#sec-registers">5. Registers</a></h2>
+<h2 id="sec-registers"><a class="anchor" href="#sec-registers"></a><a class="link" href="#sec-registers">4. Registers</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The tables below describe the register map and each register in detail.</p>
@@ -700,7 +445,7 @@ parity of the received character.</p></td>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-interrupts"><a class="anchor" href="#sec-interrupts"></a><a class="link" href="#sec-interrupts">6. Interrupts</a></h2>
+<h2 id="sec-interrupts"><a class="anchor" href="#sec-interrupts"></a><a class="link" href="#sec-interrupts">5. Interrupts</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>TODO</p>
@@ -708,7 +453,7 @@ parity of the received character.</p></td>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-programmers-guide"><a class="anchor" href="#sec-programmers-guide"></a><a class="link" href="#sec-programmers-guide">7. Programmer&#8217;s Guide</a></h2>
+<h2 id="sec-programmers-guide"><a class="anchor" href="#sec-programmers-guide"></a><a class="link" href="#sec-programmers-guide">6. Programmer&#8217;s Guide</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>TODO</p>

@@ -231,52 +231,12 @@ Generator.</p>
 <h2 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1. Parameters</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#drbg-parameters-table">DRBG parameters</a> lists the seed FIFO, endpoint-count, and endpoint FIFO
-parameters.</p>
+<p>The DRBG is configured through its seed FIFO depth, its AXI-Stream and native EDN
+endpoint counts, and the depth of each AXI-Stream endpoint FIFO.</p>
 </div>
-<table id="drbg-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. DRBG parameters</caption>
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 15%;">
-<col style="width: 15%;">
-<col style="width: 45%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEED_FIFO_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Depth of the seed FIFO in <code>drbg_csrng_seed_adapter</code>. Holds packed seeds awaiting CSRNG consumption.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EDN_ENDPOINT_COUNT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of EDN output endpoints. Each endpoint produces an independent AXI-Stream of random data.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EDN_NATIVE_ENDPOINT_COUNT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of native EDN req/rsp endpoints. Each exposes a raw <code>edn_pkg</code> bundle that bypasses AXI-Stream buffering.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ENDPOINT_FIFO_DEPTH</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>int unsigned</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Depth of the per-endpoint FIFO in <code>drbg_edn_axis_adapter</code>.</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>The parameters of <code>drbg</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/drbg/drbg.html" class="xref page">drbg</a>.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -290,7 +250,7 @@ parameters.</p>
 and control interfaces.</p>
 </div>
 <table id="drbg-external-interfaces-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. DRBG external interfaces</caption>
+<caption class="title">Table 1. DRBG external interfaces</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">

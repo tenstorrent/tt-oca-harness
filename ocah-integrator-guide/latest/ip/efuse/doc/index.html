@@ -920,447 +920,47 @@ where sensitive RMA tokens must be protected during manufacturing test flows.</p
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
 <div class="paragraph">
-<p><a href="#efuse-configuration-parameters-table">eFuse configuration parameters</a> lists the OTP capacity and word-dimension
-parameters.</p>
+<p>The OTP has a total storage capacity of 3 KB, organized as 768 words of 32 bits.</p>
 </div>
-<table id="efuse-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. eFuse configuration parameters</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 20%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP_SIZE</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">3KB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Total OTP storage capacity</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">WORD_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 bits</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OTP word width</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_WORDS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">768</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Total number of OTP words</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">4.2. Signal Interfaces</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">4.3. Clock and Reset</a></h3>
 <div class="paragraph">
-<p><a href="#efuse-clock-and-reset-signals-table">eFuse clock and reset signals</a> defines the controller clock and reset
-interface.</p>
-</div>
-<table id="efuse-clock-and-reset-signals-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. eFuse clock and reset signals</caption>
-<colgroup>
-<col style="width: 24%;">
-<col style="width: 14%;">
-<col style="width: 8%;">
-<col style="width: 54%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock input</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous reset</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">4.4. Main AXI4-Lite Interfaces</a></h3>
-<div class="paragraph">
-<p>The eFuse controller provides two AXI4-Lite interfaces for register
-access:</p>
+<p>The parameters and ports of <code>efuse_interface_controller</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/efuse/efuse_interface_controller.html" class="xref page">efuse_interface_controller</a>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="smc-interface-functional-access"><a class="anchor" href="#smc-interface-functional-access"></a><a class="link" href="#smc-interface-functional-access">4.5. SMC Interface (Functional Access)</a></h3>
+<h3 id="main-axi4-lite-interfaces"><a class="anchor" href="#main-axi4-lite-interfaces"></a><a class="link" href="#main-axi4-lite-interfaces">4.2. Main AXI4-Lite Interfaces</a></h3>
 <div class="paragraph">
-<p><a href="#efuse-functional-access-interface-table">eFuse functional-access interface</a> lists the AXI4-Lite request and response
-ports for functional access.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="eFuse SMC Interface (Functional Access)" tabindex="0">
-<table id="efuse-functional-access-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 13. eFuse functional-access interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 12%;">
-<col style="width: 28%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite request from SMC</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite response to SMC</p></td>
-</tr>
-</tbody>
-</table>
+<p>The eFuse controller provides two AXI4-Lite interfaces for register access: functional
+access from the SMC and debug access from JTAG.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="jtag-interface-debug-access"><a class="anchor" href="#jtag-interface-debug-access"></a><a class="link" href="#jtag-interface-debug-access">4.6. JTAG Interface (Debug Access)</a></h3>
+<h3 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">4.3. Fuse Bank Control Interface</a></h3>
 <div class="paragraph">
-<p><a href="#efuse-jtag-access-interface-table">eFuse JTAG-access interface</a> lists the AXI4-Lite request and response ports for
-debug access.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="eFuse JTAG Interface (Debug Access)" tabindex="0">
-<table id="efuse-jtag-access-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 14. eFuse JTAG-access interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 12%;">
-<col style="width: 28%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_jtag_req_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite request from
-JTAG</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_jtag_resp_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite response to
-JTAG</p></td>
-</tr>
-</tbody>
-</table>
+<p>AXI4-Lite interface to the fuse bank control registers in the SHIM, carried on
+<code>fuse_bank_ctrl_req_o</code> and <code>fuse_bank_ctrl_resp_i</code> of types <code>efuse_axil_req_t</code> and
+<code>efuse_axil_resp_t</code>. The controller forwards accesses outside its own address windows on
+this interface.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="fuse-bank-control-interface"><a class="anchor" href="#fuse-bank-control-interface"></a><a class="link" href="#fuse-bank-control-interface">4.7. Fuse Bank Control Interface</a></h3>
+<h3 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">4.4. Fuse Command Interface</a></h3>
 <div class="paragraph">
-<p>APB interface for communicating with the eFuse bank model:</p>
-</div>
-<div class="paragraph">
-<p><a href="#efuse-bank-control-interface-table">eFuse bank-control interface</a> defines the APB connection to the fuse-bank
-control registers.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Bank Control Interface" tabindex="0">
-<table id="efuse-bank-control-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 15. eFuse bank-control interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 12%;">
-<col style="width: 28%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_bank_ctrl_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_apb_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB request to eFuse
-bank</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_bank_ctrl_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_apb_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB response from
-eFuse bank</p></td>
-</tr>
-</tbody>
-</table>
+<p>Custom interface for SHIM state machine communication.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="fuse-command-interface"><a class="anchor" href="#fuse-command-interface"></a><a class="link" href="#fuse-command-interface">4.8. Fuse Command Interface</a></h3>
+<h3 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">4.5. Security and Control Signals</a></h3>
 <div class="paragraph">
-<p>Custom interface for SHIM state machine communication:</p>
-</div>
-<div class="paragraph">
-<p><a href="#efuse-command-interface-table">eFuse command interface</a> defines the command request and response connection to
-the fuse shim.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="eFuse Fuse Command Interface" tabindex="0">
-<table id="efuse-command-interface-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 16. eFuse command interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 12%;">
-<col style="width: 28%;">
-<col style="width: 30%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_req_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command request to
-SHIM</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_resp_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_command_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Command response
-from SHIM</p></td>
-</tr>
-</tbody>
-</table>
+<p>The controller has no lifecycle-state input port. When <code>HAS_LC_STATE</code> is set, it takes the
+lifecycle state from the fuses: during fuse sensing it loads the low <code>LC_STATE_WIDTH</code> bits
+of shadow word <code>efuse_pkg::SHADOW_IDX_LC_STATE</code> and stores them differentially encoded in
+the shadow map. The shadow word index is fixed in <code>efuse_pkg</code>. <code>LC_STATE_BIT_POSITION</code> is
+used only by the guard, which derives the RMA SiP and chiplet token bit addresses from it as
+<code>LC_STATE_BIT_POSITION + 1</code> and <code>LC_STATE_BIT_POSITION + 2</code>.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="security-and-control-signals"><a class="anchor" href="#security-and-control-signals"></a><a class="link" href="#security-and-control-signals">4.9. Security and Control Signals</a></h3>
-<div class="paragraph">
-<p><a href="#efuse-security-and-control-signals-table">eFuse security and control signals</a> defines the lifecycle and security-control
-inputs.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="eFuse Security and Control Signals" tabindex="0">
-<table id="efuse-security-and-control-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 17. eFuse security and control signals</caption>
-<colgroup>
-<col style="width: 28%;">
-<col style="width: 12%;">
-<col style="width: 25%;">
-<col style="width: 35%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Life cycle state from SEP</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>secure_tm_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Secure test mode enable</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Test enable signal</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>security_disable_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security disable override</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_field_map_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rule_t [EFUSE_FIELDS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Field access
-control rules</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_sense_done_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register loading complete</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>security_disable_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security disable status</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shadow_regs_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_map_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register contents</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="debug-and-status-signals"><a class="anchor" href="#debug-and-status-signals"></a><a class="link" href="#debug-and-status-signals">4.10. Debug and Status Signals</a></h3>
-<div class="paragraph">
-<p><a href="#efuse-debug-and-status-signals-table">eFuse debug and status signals</a> defines the lock-status and debug outputs.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="eFuse Debug and Status Signals" tabindex="0">
-<table id="efuse-debug-and-status-signals-table" class="tableblock frame-all grid-all stretch port-reference port-reference-wide">
-<caption class="title">Table 18. eFuse debug and status signals</caption>
-<colgroup>
-<col style="width: 42%;">
-<col style="width: 12%;">
-<col style="width: 8%;">
-<col style="width: 38%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_write_locked_shadow_regs_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register CSRs are write locked</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_read_locked_shadow_regs_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Shadow register CSRs are read locked</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_program_locked_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse program operations are locked</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_read_locked_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse read operations are locked</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_write_setup_only_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Field is in write set-only mode (bits may be set, not cleared)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_lc_state_access_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Access is gated by the current lifecycle state</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_read_timeout_debug_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A read command timed out waiting on the SHIM/bank</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_program_timeout_debug_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A program command timed out waiting on the SHIM/bank</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_efuse_req_err_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">A request was blocked/errored by the eFuse guard</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_secure_tm_blocked_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse traffic blocked while secure test mode is active</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_rma_sip_token_match_debug_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RMA SiP token match status code</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>is_rma_chiplet_token_match_debug_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RMA chiplet token match status code</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sec_disable_token_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security disable token value (8 x 32-bit words)</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="fuse-command-protocol"><a class="anchor" href="#fuse-command-protocol"></a><a class="link" href="#fuse-command-protocol">4.11. Fuse Command Protocol</a></h3>
+<h3 id="fuse-command-protocol"><a class="anchor" href="#fuse-command-protocol"></a><a class="link" href="#fuse-command-protocol">4.6. Fuse Command Protocol</a></h3>
 <div class="paragraph">
 <p>Custom command interface between controller and SHIM:</p>
 </div>
@@ -1421,7 +1021,7 @@ tables below compose those integration-specific views from their canonical
 SystemRDL roots.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. SEP eFuse Placement</caption>
+<caption class="title">Table 11. SEP eFuse Placement</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 16.6666%;">
@@ -1468,7 +1068,7 @@ SystemRDL roots.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. SMC eFuse Placement</caption>
+<caption class="title">Table 12. SMC eFuse Placement</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -1503,7 +1103,7 @@ SystemRDL roots.</p>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. Key Manager eFuse Pass-Through</caption>
+<caption class="title">Table 13. Key Manager eFuse Pass-Through</caption>
 <colgroup>
 <col style="width: 16.6666%;">
 <col style="width: 16.6666%;">

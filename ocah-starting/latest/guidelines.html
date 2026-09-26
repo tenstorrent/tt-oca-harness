@@ -498,21 +498,101 @@ computational elements</p>
 <div class="sect2">
 <h3 id="rtl-code-comments"><a class="anchor" href="#rtl-code-comments"></a><a class="link" href="#rtl-code-comments">4.4. RTL Code Comments</a></h3>
 <div class="paragraph">
-<p>Include a description of the purpose and overall function of the module
-in the header.</p>
+<p>Every hand-maintained module, interface, and package uses the same <code>//</code>
+header, after the SPDX lines. Generated register RTL and
+<code>vendor/<strong>/upstream/</strong></code> stay as their generator or upstream left them.</p>
 </div>
 <div class="paragraph">
-<p>RTL code comments may be redundant or add little value to the code.
-Keep comments in the RTL as minimal as possible and, where possible,
-make the code self explanatory.</p>
+<p>The header is two parts. The first line is one imperative sentence: the RTL
+job of this module. One blank <code>//</code> line follows, then the behavior the
+declarations do not carry: resets, clock domains, ordering, and constraints
+an integrator or reviewer would otherwise have to rediscover. Keep it
+concise, but keep every fact. The same paragraphs are the text at the top of
+that module&#8217;s page in RTL Modules Reference.</p>
 </div>
 <div class="paragraph">
-<p>Do not add a comment which describes the functionality of the code
-where the code is clear.</p>
+<p>Every parameter, input, and output has a <code>//</code> clause that starts on the
+same line as the declaration. The clause is that item&#8217;s role in this
+module. Polarity, clock domain, or synchronizer behavior goes in the clause
+when the name does not already say it. The clause does not say "input" or
+"output", and it does not restate the type or the default. A clause that
+needs more than one line continues on the next <code>//</code> lines, each starting at
+or right of the clause&#8217;s <code>//</code>.</p>
 </div>
 <div class="paragraph">
-<p>If there is a tricky bit of code with some nuance, add a comment describing
-the overall goal or strategy of the code.</p>
+<p>No other <code>//</code> line sits between two parameters or two ports. A group banner
+in the gap is published as part of the previous item. A blank line may
+separate groups. Section banners stay in the body, below the port list.</p>
+</div>
+<div class="paragraph">
+<p>Write each comment so it reads on its own, without the diff or the
+surrounding discussion. A comment that records why a change was made
+belongs in the commit message.</p>
+</div>
+<div class="paragraph">
+<p>Do not use <code>// File:</code>, <code>// Module:</code>, <code>// Author:</code>, <code>@file</code>, <code>@brief</code>,
+<code>@param</code>, <code>@author</code>, or a <code>/** */</code> file header.</p>
+</div>
+<div class="paragraph">
+<p>Body comments stay sparse. Do not restate a line the code already makes
+obvious. Comment a constraint, an ordering, or a hardware behavior a reader
+would otherwise have to rediscover.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">// Condition the cold and warm resets for the Key Manager.
+//
+// Synchronize cold_rst_ni onto rst_cold_aasd_no, which resets every flop in
+// this block. Assert rst_warm_sync_no on warm_rst_ni, soft_rst_ni, or a cold
+// reset, and hold it for MIN_RESET_CYCLES. scanmode_i bypasses both outputs.
+
+module km_reset_conditioner #(
+  parameter int unsigned MIN_RESET_CYCLES = 10  // Warm-reset hold, in clk_i cycles.
+) (
+  input  logic clk_i,             // Clock for the warm-hold counter.
+  input  logic cold_rst_ni,       // Active-low. Async assert, sync deassert.
+                                  // Resets every flop in the block.
+  output logic rst_warm_sync_no   // Active-low warm reset, held MIN_RESET_CYCLES.
+);</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This header is the one to reject. The banner repeats the filename, and each
+<code>@param</code> repeats a name the declaration already has:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">// File: km_reset_conditioner.sv
+// Author: example
+/**
+ * @file km_reset_conditioner.sv
+ * @brief Reset conditioner.
+ * @param MIN_RESET_CYCLES Minimum hold.
+ * @param clk_i Clock.
+ */</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Check files with:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">python3 tools/doc/check_sv_comments.py hw/ip/key_manager/rtl/*.sv</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>make lint-sv-comments</code> checks every source the RTL Modules Reference
+documents, except the generated CPU RTL, and is the <code>lint-sv-comments</code> CI job.</p>
+</div>
+<div class="paragraph">
+<p>The checker covers every module in a file. It fails when the two-part <code>//</code>
+block is missing, when a parameter or port has no same-line <code>//</code> clause, when
+a <code>//</code> line that is not a continuation sits between two of those
+declarations, when a clause only restates the declared name, repeats a
+literal default, is a single word, or repeats another clause of the same
+module word for word, or when a banned banner or tag is present. A group
+label such as "Debug outputs." shared by several ports is such a repeat:
+give each port its own clause.</p>
 </div>
 </div>
 </div>

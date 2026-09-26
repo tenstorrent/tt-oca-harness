@@ -249,46 +249,8 @@ selection, host TDO, and 3DCR updates are blocked.</p>
 physical topologies, particularly die-boundary crossings.</p>
 </div>
 <div class="paragraph">
-<p><a href="#stap-configuration-parameters-table">STAP configuration parameters</a> lists the three STAP timing parameters and their
-defaults.</p>
+<p>The parameters of <code>jtag_stap</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/jtag_stap/jtag_stap.html" class="xref page">jtag_stap</a>.</p>
 </div>
-<table id="stap-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. STAP configuration parameters</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Type</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SCAN_IN_PIPE</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a pipeline stage to the client interface scan input for timing closure.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TDI_LOCKUP</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a lockup latch to the STAP TDI input for die-boundary crossings.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SCAN_OUT_LOCKUP</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">bit</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a lockup latch to the STAP scan output for extended chain timing.</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 <div class="sect1">
@@ -309,7 +271,7 @@ chiplet as the PTAP.</p>
 single module (<a href="#stap-module-hierarchy-table">STAP module hierarchy</a>).</p>
 </div>
 <table id="stap-module-hierarchy-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. STAP module hierarchy</caption>
+<caption class="title">Table 1. STAP module hierarchy</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 52%;">
@@ -390,7 +352,7 @@ still being scannable for updates.</p>
 register.</p>
 </div>
 <table id="stap-3dcr-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. STAP 3DCR fields</caption>
+<caption class="title">Table 2. STAP 3DCR fields</caption>
 <colgroup>
 <col style="width: 6%;">
 <col style="width: 20%;">
@@ -437,7 +399,7 @@ scan chain is ported out of the DTP so that the chiplet integrator may add
 additional STAPs closer to their point of use.</p>
 </div>
 <table id="dtp-stap-allocation-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. DTP STAP allocation</caption>
+<caption class="title">Table 3. DTP STAP allocation</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -479,7 +441,7 @@ additional STAPs closer to their point of use.</p>
 asserted, three aspects of STAP operation are blocked (<a href="#stap-debug-disable-behavior-table">STAP debug-disable behavior</a>).</p>
 </div>
 <table id="stap-debug-disable-behavior-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. STAP debug-disable behavior</caption>
+<caption class="title">Table 4. STAP debug-disable behavior</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -557,87 +519,11 @@ chain to provide additional output timing margin.</p>
 <div class="sect2">
 <h3 id="stap-interface"><a class="anchor" href="#stap-interface"></a><a class="link" href="#stap-interface">4.1. Signal Interface</a></h3>
 <div class="paragraph">
-<p>These are the ports of <code>jtag_stap</code>. Packed control and bus types remain
-bundles at the module boundary; their members are not separate scalar ports.</p>
+<p>Packed control and bus types remain bundles at the <code>jtag_stap</code> boundary; their
+members are not separate scalar ports.</p>
 </div>
 <div class="paragraph">
-<p><a href="#stap-signal-interface-table">STAP signal interface</a> lists the STAP ports and bundled scan-control
-interfaces.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="STAP signal interface" tabindex="0">
-<table id="stap-signal-interface-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 6. STAP signal interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 14%;">
-<col style="width: 25%;">
-<col style="width: 31%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Type / dimensions</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>client_scan_ctrl_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_scan_ctrl_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan-control bundle: clock, resets, selection, capture, shift, and update.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>client_scan_in_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan data entering this module from the named interface.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>client_scan_out_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Scan data leaving this module at the named interface.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>client_tap_ctrl_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TAP-control bundle: TCK, TMS, and active-low TRST.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>security_disable_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable of this STAP.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>host_tap_ctrl_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TAP-control bundle: TCK, TMS, and active-low TRST.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>host_tdo_oen_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TDO output enable for the named TAP interface.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>host_tdo_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Serial data output to the named TAP interface.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>host_tdi_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Serial data input from the named TAP interface.</p></td>
-</tr>
-</tbody>
-</table>
+<p>The parameters and ports of <code>jtag_stap</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/jtag_stap/jtag_stap.html" class="xref page">jtag_stap</a>.</p>
 </div>
 </div>
 <div class="sect2">

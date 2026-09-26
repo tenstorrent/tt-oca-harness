@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>smc_peripherals :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-docs" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../index.html">Documentation Overview</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../list-of-figures.html">List of Figures</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../list-of-tables.html">List of Tables</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../architecture.html">OCAH Architecture &amp; Design</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../overview.html">Platform Overview</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../memory_map.html">OCAH Memory Map</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../power_domains.html">Power Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../clock_domains.html">Clock Domains</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../reset.html">Reset</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../architecture.html#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">OCAH Platform Components</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smu/index.html">System Management Unit (SMU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/index.html">Security Processor (SEP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/introduction.html">Introduction</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/threat_model.html">Threat Model</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/attack_countermeasures.html">Attack Countermeasures</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/overview.html">Hardware Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/fabric.html">SEP Interconnect</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/cpu.html">CPU Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/crypto.html">Cryptographic Subsystem</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/trng.html">TRNG and DRBG</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/entropy_source/doc/index.html">Entropy Source</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/aes.html">AES Cipher</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/hmac.html">HMAC-SHA2</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/kmac.html">KMAC-SHA3</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/adams_bridge.html">Adams Bridge (ABR)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otbn.html">OTBN PKA Public Key Accelerator</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../ip/key_manager/doc/index.html">Key Manager</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/key_manager/doc/index.html#key-manager-architecture">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="6">
+    <a class="nav-link" href="../../../ip/key_manager/doc/index.html#key-manager-km-firmware">Firmware</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../sep/periphs.html">Fuse Controller and Lifecycle Controller</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/otp_fuse_controller.html">OTP Fuse Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/peripheral_subsystem.html">Peripheral Subsystem</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/spi.html">Serial Peripheral Interface (SPI)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/watchdog.html">Watchdog Timer (WDT)</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/reset_controller.html">SEP Reset Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/token_processing.html">Token Processing</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/security_disable.html">Security Disable</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../sep/lifecycle_controller.html">Life Cycle Controller</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/test_mode.html">Test Mode Entry</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../sep/memory_map.html">Memory Map and Registers</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/index.html">System Management Controller (SMC)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/overview.html">Overview</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/clk_rst.html">Clock and Reset Management</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../smc/periphs.html">Peripherals</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/axi_lite_mailbox_unit/doc/index.html">Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/system_timer_octs/doc/index.html">System Timer OCTS</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/efuse/doc/index.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/uart_16550/doc/index.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/log_engine/doc/index.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/i2c/doc/index.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/i3ccore_wrap/doc/index.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/avsbus_controller/doc/index.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/gpio/doc/index.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/telemetry_receiver/doc/index.html">Telemetry Receiver</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/cpu.html">CPU and Memory System</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/interrupts.html">Interrupts</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/rom.html">Boot ROM</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/fabric.html">Fabric</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/dma.html">Direct Memory Access Engine</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/dfd.html">Design-for-Debug and CLA</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/scan_protection.html">eFuse Scan Protection</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../smc/memmap.html">Memory Map</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../dtp/index.html">Debug &amp; Test Ports (DTP)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/overview.html">Architecture and Access Paths</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/jtag.html">JTAG Operation</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../ip/jtag_intf_unit/doc/index.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../ip/jtag_ptap/doc/index.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../ip/jtag_stap/doc/index.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../ip/cross_trigger_matrix/doc/index.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/clock_stop.html">Clock Stop / Reset</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../dtp/reference.html">Configuration and Reference</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../smn.placeholder.html">System Management Network (SMN)</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou.html">AXI-over-UCIe Bridge (AoU)</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-overview.html">Overview and Features</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-architecture.html">Architecture</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-interrupts-errors.html">Interrupts and Errors</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../../aou-ppa-appendices.html">PPA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../aou-appendices.html">Appendices</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../aou-referenced-documents.html">Appendix B. Referenced Documents</a>
+  </li>
+  <li class="nav-item" data-depth="4">
+    <a class="nav-link" href="../../../aou-software-operation.html">Appendix C. Software Operation</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html">RTL Modules Reference</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#ip">IP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/avsbus_controller.html">AVSBus Controller</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_alias_remap.html">AXI Alias Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_filter.html">AXI Filter</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_hang_detector.html">AXI Hang Detector</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_lite_mailbox_unit.html">AXI-Lite Mailbox</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/axi_window_remap.html">AXI Window Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/drbg.html">DRBG</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/efuse.html">eFuse</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/entropy_source.html">Entropy Source</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/gpio.html">GPIO</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/i2c.html">I2C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/i3ccore_wrap.html">I3C</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/idma_wrapper.html">iDMA</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/key_manager.html">Key Manager</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/memory_interface.html">Memory Interface</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/output_remap.html">Output Remap</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/scrambler.html">Scrambler</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/system_timer_octs.html">System Timer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/telemetry_receiver.html">Telemetry Receiver</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/zeroer.html">Zeroer</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/cross_trigger_matrix.html">Cross-Trigger Matrix</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/cross_trigger_network.html">Cross-Trigger Network</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/cross_trigger_port.html">Cross-Trigger Port</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag2axi.html">JTAG to AXI</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag_intf_unit.html">JTAG Interface Unit</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag_ptap.html">JTAG PTAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/jtag_stap.html">JTAG STAP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/log_engine.html">Log Engine</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/uart_16550.html">UART 16550</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/uart_log_engine_wrap.html">UART Log Engine Wrapper</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../ip/uart_wrap.html">UART Wrapper</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#subsystems">Subsystems</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../sep.html">SEP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smc.html">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../dtp.html">DTP</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../smu.html">SMU</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../aou.html">AXI-over-UCIe</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../../rtl-modules-reference.html#common">Common</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../common/ocah_prim.html">ocah_prim</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../common/ocah_prim_generic.html">ocah_prim_generic</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../common/tlul.html">TL-UL</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../ip-reference.html">IP Reference</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <a class="nav-link" href="../../../dashboard.html">Verification Dashboard</a>
+  </li>
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <span class="nav-text">Appendices</span>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../../referenced-documents.html">Referenced Documents</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Technical Reference Manual latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="../../../index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
+    <li><a href="smc_peripherals.html">smc_peripherals</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="5">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">smc_peripherals</h1>
+<p>Aggregate SMC peripherals, eFuse, and pad-facing I/O.</p><p>Instantiates the peripheral CSR crossbar and its clock-domain crossings, the padring and GPIOs, UART, I2C, I3C, telemetry receivers, AVSBus controller, eFuse wrapper, system timer, misc registers and the SMC reset unit. The SPI controller is outside this module: its signals only pass through the padring to the SPI pads. Returns UART/GPIO interrupts, the gated I3C clock, and debug buses.</p><p>EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque smc_external window. Each peripheral clock-gate enable stops its clock when high.</p>
+<div class="ocah-reg-html">
+<h2>Parameters</h2>
+<table id="trm-table-1">
+<caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
+<tr><td><code>MAX_TRANS</code></td><td><code>int unsigned</code></td><td><code>2</code></td><td>Maximum outstanding transactions of the padring GPIO demux and of each GPIO interface.</td></tr>
+<tr><td><code>EFUSE_SHIM_SIZE</code></td><td><code>int unsigned</code></td><td><code>&#x27;h44</code></td><td>Vendor eFuse shim CSR block carved off the base of the smc_external window; literal because the open smc_external map is opaque. Passed to the peripheral crossbar.</td></tr>
+</table>
+<h2>Ports</h2>
+<table id="trm-table-2">
+<caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
+<tr><td><code>clk_ref_i</code></td><td>input</td><td><code>logic</code></td><td>Reference clock for the reset unit, the AVSBus controller and the peripheral CDC.</td></tr>
+<tr><td><code>clk_smc_i</code></td><td>input</td><td><code>logic</code></td><td>SMC core clock for the peripheral crossbar and the SMC-clock peripherals.</td></tr>
+<tr><td><code>clk_periph_i</code></td><td>input</td><td><code>logic</code></td><td>Peripheral clock for the UART, I2C, I3C and AVSBus register interfaces.</td></tr>
+<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test-mode enable, active-high; bypasses the peripheral clock gates and selects the scan reset.</td></tr>
+<tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>DFT scan reset, active-low, used in place of functional resets while test_en_i is high.</td></tr>
+<tr><td><code>clk_telemetry_i</code></td><td>input</td><td><code>logic</code></td><td>Telemetry clock, gated by tel_cg_en_i before it reaches the telemetry receivers.</td></tr>
+<tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>Telemetry-domain reset, active-low, passed to the telemetry receivers without synchronization.</td></tr>
+<tr><td><code>i3c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I3C peripheral clock when high; synchronized to the peripheral clock.</td></tr>
+<tr><td><code>avs_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the AVSBus controller peripheral and reference clocks when high.</td></tr>
+<tr><td><code>i2c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I2C peripheral clock when high.</td></tr>
+<tr><td><code>uart_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the UART peripheral clock when high.</td></tr>
+<tr><td><code>tel_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the telemetry receivers&#x27; gated SMC and telemetry clocks when high.</td></tr>
+<tr><td><code>axil_peripherals_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>Request from the local crossbar into the peripheral crossbar.</td></tr>
+<tr><td><code>axil_peripherals_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response to the local crossbar.</td></tr>
+<tr><td><code>axil_log_engine_req_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_56_64_req_t</code></td><td>Log-engine fetch request from the UART, moved onto the SMC clock.</td></tr>
+<tr><td><code>axil_log_engine_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_56_64_resp_t</code></td><td>Log-engine fetch response on the SMC clock.</td></tr>
+<tr><td><code>axil_dtp_csr_req_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>DTP CSR request with its address rebased to zero at the DTP control window.</td></tr>
+<tr><td><code>axil_dtp_csr_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>DTP CSR response.</td></tr>
+<tr><td><code>smc_external_req_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>Request for the part of the smc_external window above the eFuse shim carve-out.</td></tr>
+<tr><td><code>smc_external_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response from the smc_external window.</td></tr>
+<tr><td><code>axil_smc_otp_jtag_req_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>JTAG request into the eFuse wrapper, filtered by lifecycle state.</td></tr>
+<tr><td><code>axil_smc_otp_jtag_resp_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response to the JTAG eFuse access path.</td></tr>
+<tr><td><code>lsio_interface_select_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>LSIO select per pad from the padring, high where a peripheral function claims the pad.</td></tr>
+<tr><td><code>pad2core_i</code></td><td>input</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Value received from each GPIO pad.</td></tr>
+<tr><td><code>core2pad_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Value driven onto each GPIO pad.</td></tr>
+<tr><td><code>pad2core_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Input enable of each GPIO pad.</td></tr>
+<tr><td><code>core2pad_en_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Output enable of each GPIO pad.</td></tr>
+<tr><td><code>spi_enable_i</code></td><td>input</td><td><code>logic</code></td><td>Hands the SPI pads to the external SPI host, active-high.</td></tr>
+<tr><td><code>spi_clk_i</code></td><td>input</td><td><code>logic</code></td><td>Serial clock from the external SPI host, driven onto the SPI clock pad.</td></tr>
+<tr><td><code>spi_txd_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Transmit data from the external SPI host, one bit per data pad.</td></tr>
+<tr><td><code>spi_cs_n_i</code></td><td>input</td><td><code>logic</code></td><td>Chip select from the external SPI host, active-low.</td></tr>
+<tr><td><code>spi_cs_oe_n_i</code></td><td>input</td><td><code>logic</code></td><td>Output enable for the chip-select pad, active-low.</td></tr>
+<tr><td><code>spi_cs_ie_n_i</code></td><td>input</td><td><code>logic</code></td><td>Input enable for the chip-select pad, active-low.</td></tr>
+<tr><td><code>spi_clk_ie_n_i</code></td><td>input</td><td><code>logic</code></td><td>Input enable for the SPI clock pad, active-low.</td></tr>
+<tr><td><code>spi_clk_oe_n_i</code></td><td>input</td><td><code>logic</code></td><td>Output enable for the SPI clock pad, active-low.</td></tr>
+<tr><td><code>spi_dqs_ie_n_i</code></td><td>input</td><td><code>logic</code></td><td>Input enable for the data-strobe pad, active-low.</td></tr>
+<tr><td><code>spi_dqs_oe_n_i</code></td><td>input</td><td><code>logic</code></td><td>Output enable for the data-strobe pad, active-low; the pad drives zero when enabled.</td></tr>
+<tr><td><code>spi_dq_ie_n_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Input enables for the data pads, active-low, one bit per data pad.</td></tr>
+<tr><td><code>spi_dq_oe_n_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>Output enables for the data pads, active-low, one bit per data pad.</td></tr>
+<tr><td><code>spi_rxd_o</code></td><td>output</td><td><code>logic [7:0]</code></td><td>Receive data sampled from the data pads, to the external SPI host.</td></tr>
+<tr><td><code>spi_rxds_o</code></td><td>output</td><td><code>logic</code></td><td>Read data strobe sampled from the data-strobe pad, used in DDR mode.</td></tr>
+<tr><td><code>spi_mem_rebar_oepad_i</code></td><td>input</td><td><code>logic</code></td><td>Output enable for the SPI DQS loopback pad, active-high.</td></tr>
+<tr><td><code>spi_mem_rebar_opad_i</code></td><td>input</td><td><code>logic</code></td><td>Data driven onto the SPI DQS loopback pad.</td></tr>
+<tr><td><code>spi_mem_rebar_iepad_i</code></td><td>input</td><td><code>logic</code></td><td>Input enable for the SPI DQS loopback pad, active-high.</td></tr>
+<tr><td><code>spi_mem_rebar_ipad_o</code></td><td>output</td><td><code>logic</code></td><td>Value sampled from the SPI DQS loopback pad.</td></tr>
+<tr><td><code>telemetry_atdata_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB trace data per telemetry receiver.</td></tr>
+<tr><td><code>telemetry_atid_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB trace source ID per receiver.</td></tr>
+<tr><td><code>telemetry_atready_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB ready from each receiver.</td></tr>
+<tr><td><code>telemetry_atvalid_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB data valid per receiver.</td></tr>
+<tr><td><code>telemetry_afvalid_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB flush request from each receiver.</td></tr>
+<tr><td><code>telemetry_afready_i</code></td><td>input</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB flush acknowledge per receiver.</td></tr>
+<tr><td><code>lc_state_i</code></td><td>input</td><td><code>logic [2*smc_pkg::LC_STATE_WIDTH-1:0]</code></td><td>Differentially encoded lifecycle state, used by the eFuse JTAG access filter and reported in chip_config.</td></tr>
+<tr><td><code>lc_sigint_err_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error from the differential decode of lc_state_i, active-high.</td></tr>
+<tr><td><code>chiplet_is_primary_i</code></td><td>input</td><td><code>logic</code></td><td>Makes the system timer drive the timer sync pads when high and follow them when low.</td></tr>
+<tr><td><code>timer_count_o</code></td><td>output</td><td><code>logic [63:0]</code></td><td>Live 64-bit system timer count.</td></tr>
+<tr><td><code>system_timer_octs_credits_debug_o</code></td><td>output</td><td><code>logic [8:0]</code></td><td>Current system timer credit count.</td></tr>
+<tr><td><code>system_timer_octs_credits_left_debug_o</code></td><td>output</td><td><code>logic</code></td><td>High while system timer credits remain.</td></tr>
+<tr><td><code>fuse_bank_ctrl_req_o</code></td><td>output</td><td><code>smc_pkg::smc_axil_32_32_req_t</code></td><td>Request to the vendor eFuse shim CSRs.</td></tr>
+<tr><td><code>fuse_bank_ctrl_resp_i</code></td><td>input</td><td><code>smc_pkg::smc_axil_32_32_resp_t</code></td><td>Response from the vendor eFuse shim CSRs.</td></tr>
+<tr><td><code>boot_stall_jtag_ovrd_i</code></td><td>input</td><td><code>logic</code></td><td>Replaces the boot-stall pad value with boot_stall_jtag_val_i when high.</td></tr>
+<tr><td><code>boot_stall_jtag_val_i</code></td><td>input</td><td><code>logic</code></td><td>Boot-stall value used while the JTAG override is set.</td></tr>
+<tr><td><code>boot_stall_processed_o</code></td><td>output</td><td><code>logic</code></td><td>Boot stall synchronized to the SMC clock and made sticky: once low it stays low until the next primary reset; while high it holds fuse_reset_n_o low.</td></tr>
+<tr><td><code>efuse_shim_command_req_o</code></td><td>output</td><td><code>smc_efuse_pkg::fuse_command_req_t</code></td><td>Fuse sense and program command request to the shim state machine.</td></tr>
+<tr><td><code>efuse_shim_command_resp_i</code></td><td>input</td><td><code>smc_efuse_pkg::fuse_command_resp_t</code></td><td>Fuse command response from the shim state machine.</td></tr>
+<tr><td><code>ext_boot_seq_done_i</code></td><td>input</td><td><code>logic</code></td><td>External boot sequence done, active-high; the eFuse wrapper holds its released reset until it is set.</td></tr>
+<tr><td><code>sep_security_disable_i</code></td><td>input</td><td><code>logic</code></td><td>Security disable from the SEP eFuse controller, active-high; skips automatic fuse sensing and releases the shadow registers without it.</td></tr>
+<tr><td><code>fuse_reset_n_o</code></td><td>output</td><td><code>logic</code></td><td>Efuse Released Reset. Fuse sensing done &amp;&amp; external boot sequence done (includes memory repair and shadow reg override being complete) - the rest of SMC can now boot. Held low while the boot stall is set.</td></tr>
+<tr><td><code>fuse_reset_n_delayed_o</code></td><td>output</td><td><code>logic</code></td><td>fuse_reset_n_o after 16 SMC clock pipe stages reset by the primary reset.</td></tr>
+<tr><td><code>fuse_sense_done_o</code></td><td>output</td><td><code>logic</code></td><td>Fuse sensing done. High once shadow-register loading from the fuses completes.</td></tr>
+<tr><td><code>shadow_regs_o</code></td><td>output</td><td><code>smc_efuse_pkg::efuse_map_t</code></td><td>eFuse shadow-register contents; zero until fuse sensing completes unless sep_security_disable_i is set.</td></tr>
+<tr><td><code>ndmreset_request_i</code></td><td>input</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0]</code></td><td>Asynchronous NDM reset request from each external CPU cluster; synchronized to the SMC clock and raised as a peripheral interrupt.</td></tr>
+<tr><td><code>ndmreset_process_o</code></td><td>output</td><td><code>logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0]</code></td><td>Firmware response to each cluster&#x27;s NDM reset request, from the NDMRESET_PROCESS register.</td></tr>
+<tr><td><code>powergood_i</code></td><td>input</td><td><code>logic</code></td><td>Powergood, active-high; while low the reset unit holds the cold, primary and warm resets.</td></tr>
+<tr><td><code>rst_cold_ni</code></td><td>input</td><td><code>logic</code></td><td>Cold reset, active-low, deglitched and extended in the reset unit.</td></tr>
+<tr><td><code>rst_cool_ni</code></td><td>input</td><td><code>logic</code></td><td>Cool reset from the pin, active-low, deglitched in the reset unit into the primary reset.</td></tr>
+<tr><td><code>rst_cold_stable_ref_clk_no</code></td><td>output</td><td><code>logic</code></td><td>De-glitched and extended cold reset, active-low, synchronized to the reference clock.</td></tr>
+<tr><td><code>powergood_stable_o</code></td><td>output</td><td><code>logic</code></td><td>Powergood from the reset unit: falls with powergood_i and rises 32 reference clock cycles after it.</td></tr>
+<tr><td><code>rst_ext_wdt_ni</code></td><td>input</td><td><code>logic</code></td><td>SEP watchdog reset, active-low; drives the watchdog reset in the reset unit and, once synchronized, a peripheral interrupt.</td></tr>
+<tr><td><code>smc_wdt_first_timeout_i</code></td><td>input</td><td><code>logic</code></td><td>First-stage SMC watchdog timeout, passed to the reset unit.</td></tr>
+<tr><td><code>smc_wdt_second_timeout_i</code></td><td>input</td><td><code>logic</code></td><td>Second-stage SMC watchdog timeout; asserts the watchdog reset in the reset unit.</td></tr>
+<tr><td><code>cfg_flr_pf_active_i</code></td><td>input</td><td><code>logic</code></td><td>PCIe function-level reset request, active-high; starts the reset unit&#x27;s isolation and cool reset sequence.</td></tr>
+<tr><td><code>isolate_req_o</code></td><td>output</td><td><code>logic [31:0]</code></td><td>Per-subsystem isolation requests from the reset unit, raised by its registers, the isolate pin or the function-level reset sequence.</td></tr>
+<tr><td><code>skip_mem_repair_o</code></td><td>output</td><td><code>logic</code></td><td>Asserted during a function-level reset to skip memory repair and MBIST.</td></tr>
+<tr><td><code>ss_reset_complete_i</code></td><td>input</td><td><code>logic [31:0]</code></td><td>Per-subsystem reset complete acknowledgments, synchronized to the SMC clock in the reset unit.</td></tr>
+<tr><td><code>ss_config_o</code></td><td>output</td><td><code>logic [31:0]</code></td><td>Per-subsystem configuration bits written through the reset-unit SS_CONFIG register; cleared by primary reset.</td></tr>
+<tr><td><code>ss_reset_ctrl_o</code></td><td>output</td><td><code>smc_reset_unit_pkg::reset_ctrl_t</code></td><td>Per-subsystem cold and warm resets, hold controls and force-to-reference-clock select; the resets are not synchronized to the subsystem clock.</td></tr>
+<tr><td><code>rst_primary_ref_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Primary reset (cold, cool and function-level reset combined), active-low, synchronized to the reference clock.</td></tr>
+<tr><td><code>rst_primary_smc_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Primary reset, active-low, synchronized to the SMC clock; resets the peripheral crossbar and SMC-clock peripherals.</td></tr>
+<tr><td><code>rst_warm_smc_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Warm reset (primary, watchdog and fuse reset combined), active-low, synchronized to the SMC clock.</td></tr>
+<tr><td><code>rst_wdt_smc_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Watchdog reset from the SEP watchdog or the second-stage SMC watchdog timeout, active-low, synchronized to the SMC clock.</td></tr>
+<tr><td><code>rst_primary_periph_clk_no</code></td><td>output</td><td><code>logic</code></td><td>Primary reset, active-low, synchronized to the peripheral clock.</td></tr>
+<tr><td><code>sync_irq_o</code></td><td>output</td><td><code>logic</code></td><td>Global sync bit set by software through the reset-unit SYNC_REG register.</td></tr>
+<tr><td><code>jtag_reset_ctrl_i</code></td><td>input</td><td><code>smc_pkg::jtag_smc_reset_ctrl_t</code></td><td>JTAG override selects and values for the fuse, cold, cool, warm and per-subsystem resets, in the TCK domain.</td></tr>
+<tr><td><code>sep_mailbox_interrupts_i</code></td><td>input</td><td><code>logic [7:0]</code></td><td>SEP mailbox interrupts, placed on peripheral interrupt bits 7:0.</td></tr>
+<tr><td><code>axi_hang_irq_i</code></td><td>input</td><td><code>logic</code></td><td>OR of the smc_base AXI hang detectors, placed on peripheral interrupt bit 30.</td></tr>
+<tr><td><code>peripheral_interrupts_o</code></td><td>output</td><td><code>logic [31:0]</code></td><td>Peripheral interrupt vector to the SMC interrupt controller: SEP mailbox, telemetry, NDM reset, I3C, UART, AVSBus, I2C, SEP watchdog, eFuse locked-field, GPIO and AXI hang sources.</td></tr>
+<tr><td><code>gpio_interrupt_o</code></td><td>output</td><td><code>logic [smc_pkg::NUM_GPIO_WRAPS-1:0]</code></td><td>Per-GPIO interrupt from the padring, on the SMC clock.</td></tr>
+<tr><td><code>uart_interrupt_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_UART-1:0]</code></td><td>Per-UART interrupt on the peripheral clock, without the error and log-engine sources.</td></tr>
+<tr><td><code>i3c_dat_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Read data from each I3C device address table memory.</td></tr>
+<tr><td><code>i3c_dat_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Request to each I3C device address table memory.</td></tr>
+<tr><td><code>i3c_dct_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Read data from each I3C device characteristics table memory.</td></tr>
+<tr><td><code>i3c_dct_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Request to each I3C device characteristics table memory.</td></tr>
+<tr><td><code>i3c_rlt_mem_src_i</code></td><td>input</td><td><code>i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Read data from each I3C reverse-lookup table memory.</td></tr>
+<tr><td><code>i3c_rlt_mem_sink_o</code></td><td>output</td><td><code>i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]</code></td><td>Request to each I3C reverse-lookup table memory.</td></tr>
+<tr><td><code>gated_clk_periph_i3c_o</code></td><td>output</td><td><code>logic</code></td><td>Gated I3C peripheral clock (same domain as i3ccore_wrapper).</td></tr>
+<tr><td><code>avsbus_cur_state_debug_o</code></td><td>output</td><td><code>logic [16:0]</code></td><td>AVSBus controller state, synchronized to the SMC clock.</td></tr>
+<tr><td><code>telemetry_debug_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0]</code></td><td>telemetry receiver debug (4 bits per; see telemetry_receiver.sv for field definitions).</td></tr>
+<tr><td><code>i2c_debug_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_I2C-1:0][3:0]</code></td><td>I2C debug (4 bits per I2C; see i2c_core.sv for field definitions).</td></tr>
+<tr><td><code>efuse_debug_o</code></td><td>output</td><td><code>logic [9:0]</code></td><td>eFuse controller status for the SMC debug bus: shadow-register write and read locks, program and read locks, write-setup-only, LC-state access, read and program timeouts, request error and secure-test-mode block, from bit 0 upward.</td></tr>
+</table>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../../_/js/register-sections.js"></script>
+<script src="../../../../../_/js/toc-collapse.js"></script>
+<script src="../../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../../_/js/a11y-patches.js"></script>
+<script src="../../../../../_/js/vendor/viewer.min.js"></script>
+<script src="../../../../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../../../../_/js/site.js" data-ui-root-path="../../../../../_"></script>
+<script async src="../../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../../.." data-snippet-length="100" data-stylesheet="../../../../../_/css/search.css"></script>
+<script async src="../../../../../search-index.js"></script>
+  </body>
+</html>

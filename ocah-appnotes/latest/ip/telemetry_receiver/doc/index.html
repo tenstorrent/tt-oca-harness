@@ -413,57 +413,14 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.</p>
 <div class="sect2">
 <h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
 <div class="paragraph">
-<p><a href="#telemetry-receiver-configuration-parameters-table">Telemetry receiver configuration parameters</a> lists the telemetry buffer
-dimensions and configuration parameters.</p>
+<p>The parameters and ports of <code>telemetry_receiver</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.html" class="xref page">telemetry_receiver</a>.</p>
 </div>
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver configuration parameters" tabindex="0">
-<table id="telemetry-receiver-configuration-parameters-table" class="tableblock frame-all grid-all stretch telemetry-table">
-<caption class="title">Table 2. Telemetry receiver configuration parameters</caption>
-<colgroup>
-<col style="width: 32%;">
-<col style="width: 12%;">
-<col style="width: 56%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_BUFFERS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of telemetry buffers (dual-buffer architecture)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">BUFFER_DEPTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Depth of each telemetry buffer (entries)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ATB_DATA_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ATB interface data width (bits)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PACKET_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry packet width (bits)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ADDR_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Register address width (bits)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DATA_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data bus width (bits)</p></td>
-</tr>
-</tbody>
-</table>
+<div class="paragraph">
+<p>The telemetry buffer dimensions are described as <code>NUM_BUFFERS</code> (default
+2, a dual-buffer architecture), <code>BUFFER_DEPTH</code> (default 16 entries per
+buffer), <code>ATB_DATA_WIDTH</code> (default 8 bits), <code>PACKET_WIDTH</code> (default 64
+bits), <code>ADDR_WIDTH</code> (default 32-bit register address) and <code>DATA_WIDTH</code>
+(default 32-bit data bus).</p>
 </div>
 </div>
 <div class="sect2">
@@ -475,49 +432,6 @@ dimensions and configuration parameters.</p>
 <div class="paragraph">
 <p>The global interface provides fundamental clock and reset signals
 required for basic operation.</p>
-</div>
-<div class="paragraph">
-<p><a href="#telemetry-receiver-global-interface-signals-table">Telemetry receiver Global Interface Signals</a> defines the receiver clock and
-reset interface.</p>
-</div>
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver global signals" tabindex="0">
-<table id="telemetry-receiver-global-interface-signals-table" class="tableblock frame-all grid-all stretch telemetry-table">
-<caption class="title">Table 3. Telemetry receiver Global Interface Signals</caption>
-<colgroup>
-<col style="width: 18%;">
-<col style="width: 10%;">
-<col style="width: 16%;">
-<col style="width: 12%;">
-<col style="width: 44%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rising</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock input. All synchronous
-operations are performed on the rising edge.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System reset input. Asynchronous assertion,
-synchronous deassertion.</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 <div class="sect2">
@@ -546,67 +460,6 @@ reset deassertion</p>
 <div class="paragraph">
 <p>The ATB (Advanced Trace Bus) interface receives telemetry data using standard
 ATB protocol.</p>
-</div>
-<div class="paragraph">
-<p><a href="#telemetry-receiver-atb-interface-signals-table">Telemetry receiver ATB Interface Signals</a> defines the incoming ATB data and
-handshake signals.</p>
-</div>
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver ATB signals" tabindex="0">
-<table id="telemetry-receiver-atb-interface-signals-table" class="tableblock frame-all grid-all stretch telemetry-table">
-<caption class="title">Table 4. Telemetry receiver ATB Interface Signals</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 16%;">
-<col style="width: 54%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>atdata_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry data input (8-bit data beats)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>atid_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ATB ID field (trace source identification)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>atvalid_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ATB valid signal (data valid indication)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>atready_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ATB ready signal (receiver ready indication)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>afvalid_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush valid (flush request indication)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>afready_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush ready (flush acknowledgment)</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 <div class="sect2">
@@ -641,37 +494,6 @@ back-pressure</p>
 <div class="paragraph">
 <p>The interrupt interface provides a single interrupt output for event
 notification.</p>
-</div>
-<div class="paragraph">
-<p><a href="#telemetry-receiver-interrupt-interface-signals-table">Telemetry receiver Interrupt Interface Signals</a> defines the telemetry interrupt
-output.</p>
-</div>
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver interrupt signals" tabindex="0">
-<table id="telemetry-receiver-interrupt-interface-signals-table" class="tableblock frame-all grid-all stretch telemetry-table">
-<caption class="title">Table 5. Telemetry receiver Interrupt Interface Signals</caption>
-<colgroup>
-<col style="width: 20%;">
-<col style="width: 10%;">
-<col style="width: 16%;">
-<col style="width: 54%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>irq_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt request output (active high)</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 <div class="sect2">

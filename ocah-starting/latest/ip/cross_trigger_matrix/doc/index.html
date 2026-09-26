@@ -410,68 +410,11 @@ ct_src_o port assignment and CTM routing configuration registers.</p>
 <div class="sect2">
 <h3 id="ctm-interface"><a class="anchor" href="#ctm-interface"></a><a class="link" href="#ctm-interface">3.1. Signal Interface</a></h3>
 <div class="paragraph">
-<p>These are the ports of <code>cross_trigger_matrix</code>. Packed control and bus types remain
-bundles at the module boundary; their members are not separate scalar ports.</p>
+<p>Packed control and bus types remain bundles at the <code>cross_trigger_matrix</code> module
+boundary; their members are not separate scalar ports.</p>
 </div>
 <div class="paragraph">
-<p><a href="#ctm-signal-interface-table">CTM signal interface</a> lists the CTM ports and bundled register interface.</p>
-</div>
-<div class="port-reference-scroll" role="region" aria-label="CTM signal interface" tabindex="0">
-<table id="ctm-signal-interface-table" class="tableblock frame-all grid-all stretch port-reference">
-<caption class="title">Table 4. CTM signal interface</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 14%;">
-<col style="width: 25%;">
-<col style="width: 31%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Type / dimensions</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock for the bus and synchronous logic.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Active-low asynchronous system reset.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_req_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite CSR request.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_resp_t</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-Lite CSR response.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_dst_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic [NUM_CT_DST-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Trigger inputs to the routing matrix.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ct_src_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic [NUM_CT_SRC-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Routed trigger outputs from the matrix.</p></td>
-</tr>
-</tbody>
-</table>
+<p>The parameters and ports of <code>cross_trigger_matrix</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/cross_trigger_matrix/cross_trigger_matrix.html" class="xref page">cross_trigger_matrix</a>.</p>
 </div>
 <div class="paragraph">
 <p><code>NUM_CT_SRC</code> and <code>NUM_CT_DST</code> come from the generated register package.

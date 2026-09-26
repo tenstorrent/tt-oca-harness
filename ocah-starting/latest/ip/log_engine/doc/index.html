@@ -451,142 +451,21 @@ reliability at increased logic cost.</p>
 <p>The OCA Log Engine provides multiple AXI4-Lite interfaces for register
 access, memory fetching, and UART communication.</p>
 </div>
-<div class="sect2">
-<h3 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">4.1. Configuration Parameters</a></h3>
 <div class="paragraph">
-<p><a href="#log-engine-configuration-parameters-table">Log-engine configuration parameters</a> lists the log-entry and bus-dimension
-parameters.</p>
+<p>The engine serves 16 independent log entries, set by <code>NUM_LOG_ENTRIES</code> in <code>log_engine_pkg</code>.</p>
 </div>
-<table id="log-engine-configuration-parameters-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. Log-engine configuration parameters</caption>
-<colgroup>
-<col style="width: 30%;">
-<col style="width: 20%;">
-<col style="width: 50%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Parameter</th>
-<th class="tableblock halign-left valign-top">Default</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_LOG_ENTRIES</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Number of independent log entries</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">MAX_LOG_SIZE</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum log region size (must be multiple
-of 16)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ADDR_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Address bus width for log region</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DATA_WIDTH</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Data bus width</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="sect2">
-<h3 id="signal-interfaces"><a class="anchor" href="#signal-interfaces"></a><a class="link" href="#signal-interfaces">4.2. Signal Interfaces</a></h3>
-
-</div>
-<div class="sect2">
-<h3 id="global-interface"><a class="anchor" href="#global-interface"></a><a class="link" href="#global-interface">4.3. Global Interface</a></h3>
 <div class="paragraph">
-<p><a href="#log-engine-global-interface-signals-table">Log-engine Global Interface Signals</a> defines the log-engine clock and reset
-interface.</p>
-</div>
-<table id="log-engine-global-interface-signals-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. Log-engine Global Interface Signals</caption>
-<colgroup>
-<col style="width: 15%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 55%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Rising</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System clock. All interfaces operate
-synchronously to this clock.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_ni</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Low</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System reset. Asynchronous assertion and
-synchronous deassertion. Resets all state machines, counters, and FIFO
-to initial state.</p></td>
-</tr>
-</tbody>
-</table>
+<p>The parameters and ports of <code>log_engine</code> are listed in <a href="../../../../../ocah-docs/latest/rtl-modules-reference/ip/log_engine/log_engine.html" class="xref page">log_engine</a>.</p>
 </div>
 <div class="sect2">
-<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">4.4. DMA Interface</a></h3>
+<h3 id="dma-interface"><a class="anchor" href="#dma-interface"></a><a class="link" href="#dma-interface">4.1. DMA Interface</a></h3>
 <div class="paragraph">
 <p>The DMA interface provides flow control coordination with the UART
 transmitter.</p>
 </div>
-<div class="paragraph">
-<p><a href="#log-engine-dma-interface-signals-table">Log-engine DMA Interface Signals</a> defines the UART-ready handshake used by the
-log engine.</p>
-</div>
-<table id="log-engine-dma-interface-signals-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Log-engine DMA Interface Signals</caption>
-<colgroup>
-<col style="width: 15%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 55%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_tx_ready_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UART ready to accept character(s)
-for transmission. Used as flow control to prevent UART FIFO overflow.</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 <div class="sect2">
-<h3 id="flow-control-operation"><a class="anchor" href="#flow-control-operation"></a><a class="link" href="#flow-control-operation">4.5. Flow Control Operation:</a></h3>
+<h3 id="flow-control-operation"><a class="anchor" href="#flow-control-operation"></a><a class="link" href="#flow-control-operation">4.2. Flow Control Operation:</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -605,46 +484,13 @@ characters</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.6. Interrupt Interface</a></h3>
+<h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.3. Interrupt Interface</a></h3>
 <div class="paragraph">
 <p>The interrupt interface provides error signaling to the system.</p>
 </div>
-<div class="paragraph">
-<p><a href="#log-engine-interrupt-interface-signals-table">Log-engine Interrupt Interface Signals</a> defines the log-engine interrupt
-output.</p>
-</div>
-<table id="log-engine-interrupt-interface-signals-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Log-engine Interrupt Interface Signals</caption>
-<colgroup>
-<col style="width: 15%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 10%;">
-<col style="width: 55%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal Name</th>
-<th class="tableblock halign-left valign-top">Width</th>
-<th class="tableblock halign-left valign-top">Direction</th>
-<th class="tableblock halign-left valign-top">Active</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>irq_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">High</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt request. Asserted when any enabled
-interrupt condition occurs.</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 <div class="sect2">
-<h3 id="interrupt-sources"><a class="anchor" href="#interrupt-sources"></a><a class="link" href="#interrupt-sources">4.7. Interrupt Sources:</a></h3>
+<h3 id="interrupt-sources"><a class="anchor" href="#interrupt-sources"></a><a class="link" href="#interrupt-sources">4.4. Interrupt Sources:</a></h3>
 <div class="ulist">
 <ul>
 <li>
