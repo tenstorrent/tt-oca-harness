@@ -663,6 +663,9 @@ connections, and control signals. Refer to the detailed SMC documentation for in
 signal descriptions and timing requirements.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/smc/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -805,6 +808,9 @@ CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
 the dedicated DTP documentation in `hw/sys/dtp/doc/` for internal design details.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/dtp/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -1001,6 +1007,9 @@ macros, AXI bus connections, cryptographic subsystem, eFuse, lifecycle,
 SPI host, and mailbox. The following table defines all SEP top-level ports.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/sep/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -2036,6 +2045,9 @@ ports including clock, reset, JTAG, cross trigger, SMC-originated interfaces
 with `sep_` are only active when the module parameter `SEP=1`.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/smu/doc/port_table.adoc[]
 endif::backend-html5[]
 

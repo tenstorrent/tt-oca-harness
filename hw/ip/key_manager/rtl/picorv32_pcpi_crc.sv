@@ -2,22 +2,24 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file picorv32_pcpi_crc.sv
- * @brief PCPI front-end for Key Manager CRC custom instructions.
- */
+// PicoRV32 PCPI front-end that decodes KM CRC custom instructions.
+//
+// Recognizes custom-0 opcodes with the CRC funct7/funct3 encodings, latches
+// rs1/rs2 as CRC state and data, and drives km_crc_engine until completion.
+// pcpi_wait_o stalls the CPU while busy; pcpi_ready_o and pcpi_wr_o present
+// the engine result on pcpi_rd_o for one cycle.
 
 module picorv32_pcpi_crc (
-  input  logic        clk_i,
-  input  logic        rst_ni,
-  input  logic        pcpi_valid_i,
-  input  logic [31:0] pcpi_insn_i,
-  input  logic [31:0] pcpi_rs1_i,
-  input  logic [31:0] pcpi_rs2_i,
-  output logic        pcpi_wr_o,
-  output logic [31:0] pcpi_rd_o,
-  output logic        pcpi_wait_o,
-  output logic        pcpi_ready_o
+  input  logic        clk_i,         // System clock
+  input  logic        rst_ni,        // Active-low reset
+  input  logic        pcpi_valid_i,  // PicoRV32 presents a candidate instruction
+  input  logic [31:0] pcpi_insn_i,   // Instruction word under decode
+  input  logic [31:0] pcpi_rs1_i,    // rs1 value used as CRC state / seed
+  input  logic [31:0] pcpi_rs2_i,    // rs2 value used as CRC data
+  output logic        pcpi_wr_o,     // Write-back enable for pcpi_rd_o
+  output logic [31:0] pcpi_rd_o,     // CRC result returned to the CPU
+  output logic        pcpi_wait_o,   // Stall request while the CRC engine runs
+  output logic        pcpi_ready_o   // One-cycle ready pulse with a valid result
 );
 
   `include "prim_assert.sv"

@@ -1,55 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file km_kpv_eraser.sv
- * @brief KPV per-slot erase controller.
- *
- * @details Drives a hardware erase of a single KPV key slot when its CTRL
- *          erase bit is asserted.  An FSM walks the 16 words of the selected
- *          slot, emitting a logical {slot, word} address and a pseudo-random
- *          data word sourced from a maximal-length LFSR (prim_lfsr, GAL_XOR).
- *          The parent (km_kpv) routes these through the shared KPV scrambler
- *          and into the key register file, so the slot is overwritten with
- *          scrambled random data.  When the last word is written a one-cycle
- *          erase_done pulse is emitted so the parent can clear the slot CTRL
- *          register (including the self-clearing erase bit and the lock bits).
- *
- *          Multiple pending erase requests are serviced sequentially, lowest
- *          slot index first.  Erase is intentionally not gated by the slot
- *          lock_write/lock_use bits.
- *
- *          The LFSR is seeded to all-ones on cold reset only (no warm reset);
- *          the exact seed value is not security-relevant.
- *
- * @param NUM_SLOTS       Number of key slots (default 64).
- * @param WORDS_PER_SLOT  Words per slot (default 16).
- * @param DATA_WIDTH      Key-data word width; also sizes the LFSR (default 32).
- */
+// KPV per-slot erase controller that overwrites one key slot with LFSR data.
+//
+// An FSM walks WORDS_PER_SLOT words of the selected slot, emitting a logical
+// {slot, word} address and a maximal-length Galois LFSR data word for the
+// parent to scramble into the key regfile. Pending erases are serviced
+// lowest-index first and are not gated by lock bits; erase_done_o pulses for
+// one cycle when the last word of a slot is written. The LFSR seeds to
+// all-ones on cold reset only.
 
 module km_kpv_eraser #(
-  parameter int unsigned NUM_SLOTS      = 64,
-  parameter int unsigned WORDS_PER_SLOT = 16,
-  parameter int unsigned DATA_WIDTH     = 32
+  parameter int unsigned NUM_SLOTS      = 64,  // Number of key slots
+  parameter int unsigned WORDS_PER_SLOT = 16,  // Words per key slot
+  parameter int unsigned DATA_WIDTH     = 32   // Key-data and LFSR width
 ) (
-  input  logic                 clk_i,
-  input  logic                 cold_rst_ni,   // Cold reset (AASD); seeds LFSR all-ones
-
-  // Per-slot erase requests (CTRL[i].erase.value)
-  input  logic [NUM_SLOTS-1:0] erase_req_i,
-
-  // Register-file write stream (logical address; parent applies scrambler)
-  output logic                          wr_en_o,
-  output logic [$clog2(NUM_SLOTS)-1:0]  wr_slot_o,
-  output logic [$clog2(WORDS_PER_SLOT)-1:0] wr_word_o,
-  output logic [DATA_WIDTH-1:0]         wr_data_o,
-
-  // One-cycle pulse per slot when its erase completes (last word written)
-  output logic [NUM_SLOTS-1:0]      erase_done_o,
-
-  // High while an erase is in progress (parent gives this priority on the
-  // shared scrambler / regfile write port)
-  output logic                      busy_o
+  input  logic                              clk_i,        // System clock
+  input  logic                              cold_rst_ni,  // Cold reset (AASD); seeds LFSR all-ones
+  input  logic [NUM_SLOTS-1:0]              erase_req_i,  // Per-slot erase requests from CTRL.erase
+  output logic                              wr_en_o,      // Regfile write enable for erase stream
+  output logic [$clog2(NUM_SLOTS)-1:0]      wr_slot_o,    // Logical slot index being erased
+  output logic [$clog2(WORDS_PER_SLOT)-1:0] wr_word_o,    // Word index within the active slot
+  output logic [DATA_WIDTH-1:0]             wr_data_o,    // Pseudo-random erase data from LFSR
+  output logic [NUM_SLOTS-1:0]              erase_done_o, // One-cycle pulse when a slot erase finishes
+  output logic                              busy_o        // High while an erase owns the write port
 );
 
   localparam int unsigned SLOT_W = $clog2(NUM_SLOTS);

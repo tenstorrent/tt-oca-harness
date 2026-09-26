@@ -2,52 +2,27 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file km_reset_conditioner.sv
- * @brief Dual-output reset conditioner: cold (AASD) and warm (synchronous).
- *
- * @details Produces two clean, glitch-free, active-low resets for the Key
- *          Manager subsystem:
- *
- *          Cold path (rst_cold_aasd_no):
- *            - Source: cold_rst_ni only.
- *            - Synchronization: async-assert/sync-deassert via prim_rst_sync.
- *            - Resets the entire KM (AASD).
- *
- *          Warm path (rst_warm_sync_no):
- *            - Synchronous sources: warm_rst_ni (external pulse) or soft_rst_ni
- *              (KMCSR software trigger); both assumed synchronous to clk_i.
- *            - Cold source: rst_cold_aasd_no is the async reset of the warm
- *              counter flop, so any cold-reset event immediately asserts
- *              rst_warm_sync_no and clears all warm-reset-only state.
- *            - Pulse extension: minimum MIN_RESET_CYCLES hold time.
- *            - Resets the PicoRV32 CPU, KPV lock bits, KMCSR warm subset, and
- *              DRBG sampler CSRs.
- *
- *          DFT: scan_rst_ni / scanmode_i bypass both output paths consistently.
- *
- * @param MIN_RESET_CYCLES  Minimum warm reset hold time in clock cycles (default 10).
- */
+// Cold and warm reset conditioner for the Key Manager.
+//
+// cold_rst_ni is synchronized and drives rst_cold_aasd_no, which resets
+// every flop in this block. warm_rst_ni and soft_rst_ni are synchronous
+// to clk_i; either one, or a cold reset, asserts rst_warm_sync_no and
+// holds it for MIN_RESET_CYCLES. scanmode_i bypasses both outputs.
 
 module km_reset_conditioner
   import prim_mubi_pkg::*;
 #(
-  // Minimum reset hold time in clock cycles
-  parameter int unsigned MIN_RESET_CYCLES = 10
+  parameter int unsigned MIN_RESET_CYCLES = 10  // Minimum warm-reset hold time in clk_i cycles
 ) (
-  // Clock
-  input  logic clk_i,
+  input  logic   clk_i,             // System clock
+  input  logic   cold_rst_ni,       // Async cold reset, active-low
+  input  logic   soft_rst_ni,       // Soft reset from KMCSR, active-low, sync to clk_i
+  input  logic   warm_rst_ni,       // Warm reset from integrator, active-low, sync to clk_i
+  input  logic   scan_rst_ni,       // DFT scan reset, active-low
+  input  mubi4_t scanmode_i,        // MuBi4True selects scan_rst_ni on both outputs
 
-  // Reset inputs
-  input  logic   cold_rst_ni,   // Async cold reset (active-low, from external system)
-  input  logic   soft_rst_ni,   // Soft reset (active-low, from KMCSR; sync to clk_i)
-  input  logic   warm_rst_ni,   // Warm reset pulse (active-low, from integrator; sync to clk_i)
-  input  logic   scan_rst_ni,   // Scan reset (active-low, for DFT)
-  input  mubi4_t scanmode_i,    // Scan mode (MuBi4True enables scan override)
-
-  // Reset outputs
-  output logic        rst_cold_aasd_no,  // Cold reset: async-assert / sync-deassert (AASD)
-  output logic        rst_warm_sync_no   // Warm reset: fully synchronous
+  output logic   rst_cold_aasd_no,  // Cold reset, async-assert / sync-deassert
+  output logic   rst_warm_sync_no   // Warm reset, fully synchronous to clk_i
 );
 
   `include "prim_assert.sv"
@@ -56,7 +31,7 @@ module km_reset_conditioner
   // Local Parameters
   //=========================================================================
 
-  /** @brief Counter width sized to hold MIN_RESET_CYCLES. */
+  // Counter width sized to hold MIN_RESET_CYCLES.
   localparam int unsigned COUNT_WIDTH = $clog2(MIN_RESET_CYCLES + 1);
 
   //=========================================================================

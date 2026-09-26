@@ -519,6 +519,26 @@ doc_stage_dashboard_data() {
   OCAH_ROOT="$ROOT" bash "${ROOT}/tools/doc/stage_dashboard_data.sh" "$1"
 }
 
+# Write the TRM RTL Modules Reference into the tree doc_setup just staged.
+# The container that runs setup does not have svdoc, and the PDF build does
+# not include these pages. The host python that can import svdoc does.
+rtl_modules_reference() {
+  local py="${ROOT}/.venv/bin/python3"
+  if [ ! -x "$py" ] || ! "$py" -c 'import svdoc' >/dev/null 2>&1; then
+    py=python3
+  fi
+  if ! "$py" -c 'import svdoc' >/dev/null 2>&1; then
+    echo "error: python3 cannot import svdoc." >&2
+    echo "install it (uv sync, or pip install svdoc) in the python that runs the doc build." >&2
+    exit 1
+  fi
+  "$py" "${ROOT}/tools/doc/rtl_modules_reference.py" \
+    --root "${ROOT}" \
+    --pages "${ROOT}/doc/trm/modules/ROOT/pages" \
+    --partials "${ROOT}/doc/trm/modules/ROOT/partials/rtl-modules" \
+    --nav "${ROOT}/doc/trm/modules/ROOT/nav.adoc"
+}
+
 doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=() kroki_args=()
@@ -532,6 +552,7 @@ doc_html() {
     for companion in home integrator programmer appnotes starting; do
       doc_setup "$companion"
     done
+    rtl_modules_reference
   fi
   doc_release_enabled && release_args=(--attribute release)
   [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]] && kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
@@ -557,6 +578,7 @@ doc_html_all() {
   doc_setup appnotes
   doc_setup home
   doc_setup starting
+  rtl_modules_reference
   run "${net_args[@]}" env \
     SITE_SEARCH_PROVIDER=lunr \
     antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" antora-playbook.yml
