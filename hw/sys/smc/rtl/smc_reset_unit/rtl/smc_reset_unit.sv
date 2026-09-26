@@ -154,8 +154,8 @@ module smc_reset_unit (
     .clk_i                           (clk_smc_i),
     .rst_primary_ni                  (rst_primary_smc_clk_no),
 
-    .hwif_in                         (hwif_in_subsys),
-    .hwif_out                        (hwif_out),
+    .hwif_in_o                       (hwif_in_subsys),
+    .hwif_out_i                      (hwif_out),
 
     .ss_reset_complete_i             (ss_reset_complete_i),
     .ss_config_o                     (ss_config_o),
@@ -172,8 +172,8 @@ module smc_reset_unit (
     .clk_smc_i              (clk_smc_i),
     .rst_cold_smc_ni        (rst_cold_smc_n),
 
-    .hwif_in                (hwif_in_cool),
-    .hwif_out               (hwif_out),
+    .hwif_in_o              (hwif_in_cool),
+    .hwif_out_i             (hwif_out),
 
     .isolate_req_pin_i      (isolate_req_pin_i),
     .cfg_flr_pf_active_i    (cfg_flr_pf_active_i),

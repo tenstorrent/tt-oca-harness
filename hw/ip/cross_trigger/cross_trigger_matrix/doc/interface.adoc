@@ -54,4 +54,4 @@ The CTM has the following data ports:
 
 The CTM depends on the following components:
 
-* `hw/common/och_prim` - Primitive cells
+* `hw/common/ocah_prim` - Primitive cells

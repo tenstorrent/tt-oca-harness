@@ -25,6 +25,8 @@ class dtp_jtag2axi_backpressure_aw_before_w_test extends dtp_jtag2axi_robustness
 
   virtual function void add_required_axi_ids(ref string ids[$]);
     super.add_required_axi_ids(ids);
+    ids.push_back("CHK-J2A-STALL-FSM");
+    ids.push_back("CHK-J2A-STALL-BUSY");
     ids.push_back("CHK-AXI-WADDR");
     ids.push_back("CHK-AXI-WDATA");
     ids.push_back("CHK-AXI-STRB");

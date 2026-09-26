@@ -359,7 +359,7 @@ Whatever the testbench, these hold:
 
 | Path | Contents |
 |---|---|
-| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
+| `hw/common/` | Shared RTL and infrastructure: `ocah_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |

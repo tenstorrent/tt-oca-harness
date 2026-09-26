@@ -138,6 +138,11 @@ module smu_wrapper_uvm_top (
   // carries a different source id.
   output logic [11:0] sep_xbar_in_aw_user_o,
   output logic [55:0] sep_xbar_in_aw_addr_o,
+  // Crossbar -> SMC inbound AR and AW. A DECERR on ext_in comes either from
+  // the crossbar's decode miss or from the SMC inbound filter; only the first
+  // leaves these counts where they were.
+  output logic [31:0] smc_xbar_in_ar_count_o,
+  output logic [31:0] smc_xbar_in_aw_count_o,
   // SEP AP / STEE output-remap region-0 offsets, as the remap datapath sees
   // them. sep_smu_remap programs these write-only and cannot read them back,
   // so the golden comparison has to happen here.
@@ -393,14 +398,23 @@ module smu_wrapper_uvm_top (
   input  wire  logic tb_secure_tm_req,
   output logic       tb_secure_tm,
   // Cross-trigger port pads. The DTP is the pad controller on all four
-  // groups, so the bench is the padring on the data inputs and watches the
-  // data and enable outputs.
-  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_din,
+  // groups. CT_Req_out sits on an ocah_open_drain_bus shared wire, a private
+  // wire per pad or the group wire the pads in tb_xtrig_ctp_wire_group
+  // share, resting at the board pull for the port's INVERT sense; the bench
+  // pulls the wire from a chiplet driver instead of driving the pad. The
+  // other three pad groups keep the direct data-input drive.
+  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_wire_pull,
+  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_wire_ext_assert,
+  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_wire_group,
+  input  wire  logic tb_xtrig_ctp_wire_group_pull,
   input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_din,
   input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_din,
   output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_dout,
   output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_dout_en,
   output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_din_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_din,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_wire_mismatch,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ct_dst,
   output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_dout,
   output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_dout_en,
   output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_din_en,
@@ -635,6 +649,12 @@ module smu_wrapper_uvm_top (
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_in_dout_en_w, ctp_req_in_din_en_w;
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_en_w, ctp_ack_in_din_en_w;
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_out_dout_en_w, ctp_ack_out_din_en_w;
+  // CT_Req_out shared-wire model: the wire each pad's DUT input sees, a
+  // private ocah_open_drain_bus per pad and one shared by the pads in
+  // tb_xtrig_ctp_wire_group.
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_out_din_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_wire_private_w, ctp_wire_private_mismatch_w;
+  logic ctp_wire_group_wire_w, ctp_wire_group_mismatch_w;
   logic [31:0] jtag_ptap_state_w;
   logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
   logic tb_axil_external_active;
@@ -724,6 +744,42 @@ module smu_wrapper_uvm_top (
   assign tb_xtrig_ctp_req_out_dout    = ctp_req_out_dout_w;
   assign tb_xtrig_ctp_req_out_dout_en = ctp_req_out_dout_en_w;
   assign tb_xtrig_ctp_req_out_din_en  = ctp_req_out_din_en_w;
+
+  // CT_Req_out shared wires. A chiplet driver pulls towards the level
+  // opposite its wire's pull; a pad in the group leaves its private wire.
+  for (genvar ctp = 0; ctp < dtp_pkg::DEFAULT_NUM_CTP; ctp++) begin : gen_xtrig_ctp_wire
+    ocah_open_drain_bus #(
+      .NumDrivers(2)
+    ) u_wire (
+      .pull_i     (tb_xtrig_ctp_wire_pull[ctp]),
+      .dout_i     ({~tb_xtrig_ctp_wire_pull[ctp], ctp_req_out_dout_w[ctp]}),
+      .dout_en_i  ({tb_xtrig_ctp_wire_ext_assert[ctp], ctp_req_out_dout_en_w[ctp]}
+                   & {2{~tb_xtrig_ctp_wire_group[ctp]}}),
+      .wire_o     (ctp_wire_private_w[ctp]),
+      .mismatch_o (ctp_wire_private_mismatch_w[ctp])
+    );
+    assign ctp_req_out_din_w[ctp] = tb_xtrig_ctp_wire_group[ctp]
+        ? ctp_wire_group_wire_w : ctp_wire_private_w[ctp];
+    assign tb_xtrig_ctp_wire_mismatch[ctp] = tb_xtrig_ctp_wire_group[ctp]
+        ? ctp_wire_group_mismatch_w : ctp_wire_private_mismatch_w[ctp];
+    assign tb_xtrig_ctp_ct_dst[ctp] =
+        u_dut.u_smu.u_dtp.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.ct_dst_o;
+  end
+
+  ocah_open_drain_bus #(
+    .NumDrivers(2 * dtp_pkg::DEFAULT_NUM_CTP)
+  ) u_xtrig_ctp_group_wire (
+    .pull_i     (tb_xtrig_ctp_wire_group_pull),
+    .dout_i     ({{dtp_pkg::DEFAULT_NUM_CTP{~tb_xtrig_ctp_wire_group_pull}},
+                  ctp_req_out_dout_w}),
+    .dout_en_i  ({tb_xtrig_ctp_wire_ext_assert & tb_xtrig_ctp_wire_group,
+                  ctp_req_out_dout_en_w & tb_xtrig_ctp_wire_group}),
+    .wire_o     (ctp_wire_group_wire_w),
+    .mismatch_o (ctp_wire_group_mismatch_w)
+  );
+
+  assign tb_xtrig_ctp_req_out_din = ctp_req_out_din_w;
+
   assign tb_xtrig_ctp_req_in_dout     = ctp_req_in_dout_w;
   assign tb_xtrig_ctp_req_in_dout_en  = ctp_req_in_dout_en_w;
   assign tb_xtrig_ctp_req_in_din_en   = ctp_req_in_din_en_w;
@@ -1204,7 +1260,15 @@ module smu_wrapper_uvm_top (
       sep_xbar_in_aw_count_o <= '0;
       sep_xbar_in_aw_user_o  <= '0;
       sep_xbar_in_aw_addr_o  <= '0;
+      smc_xbar_in_ar_count_o <= '0;
+      smc_xbar_in_aw_count_o <= '0;
     end else begin
+      if (u_dut.u_smu.xbar_to_smc_req.ar_valid && u_dut.u_smu.xbar_to_smc_resp.ar_ready) begin
+        smc_xbar_in_ar_count_o <= smc_xbar_in_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.xbar_to_smc_req.aw_valid && u_dut.u_smu.xbar_to_smc_resp.aw_ready) begin
+        smc_xbar_in_aw_count_o <= smc_xbar_in_aw_count_o + 32'd1;
+      end
       if (u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid &&
                 u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready) begin
         sep_smn_out_aw_count_o <= sep_smn_out_aw_count_o + 32'd1;
@@ -1549,7 +1613,7 @@ module smu_wrapper_uvm_top (
 
     .xtrig_ctp_req_out_dout_o (ctp_req_out_dout_w),
     .xtrig_ctp_req_out_dout_en_o (ctp_req_out_dout_en_w),
-    .xtrig_ctp_req_out_din_i (tb_xtrig_ctp_req_out_din),
+    .xtrig_ctp_req_out_din_i (ctp_req_out_din_w),
     .xtrig_ctp_req_out_din_en_o (ctp_req_out_din_en_w),
     .xtrig_ctp_req_in_dout_o (ctp_req_in_dout_w),
     .xtrig_ctp_req_in_dout_en_o (ctp_req_in_dout_en_w),
@@ -1884,13 +1948,12 @@ module smu_wrapper_uvm_top (
     .dbg_disable_sep_otp_i       (u_dut.u_smu.sep_dbg_disable.sep_otp_jtag2axi)
   );
 
-  // The SEP-to-SMC alias remap port and the crossbar SEP initiator port are
+  // The SEP-to-SMC dedicated port and the crossbar SEP initiator port are
   // inside the SEP=1 generate branch, so the no-SEP profile ties the alias
   // observation nets off and the points stay unhit there.
   logic alias_awvalid_w, alias_awready_w, alias_arvalid_w, alias_arready_w;
   logic alias_bvalid_w, alias_bready_w, alias_rvalid_w, alias_rready_w, alias_rlast_w;
   logic [55:0] alias_awaddr_w, alias_araddr_w;
-  logic [55:0] alias_remapped_awaddr_w, alias_remapped_araddr_w;
   logic xbar_sep_out_awvalid_w, xbar_sep_out_awready_w;
   logic xbar_sep_out_arvalid_w, xbar_sep_out_arready_w;
   logic [55:0] xbar_sep_out_awaddr_w, xbar_sep_out_araddr_w;
@@ -1906,8 +1969,6 @@ module smu_wrapper_uvm_top (
   assign alias_rvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r_valid;
   assign alias_rready_w = u_dut.u_smu.sep_ext_to_smc_axi_req.r_ready;
   assign alias_rlast_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r.last;
-  assign alias_remapped_awaddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.aw.addr);
-  assign alias_remapped_araddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.ar.addr);
   assign xbar_sep_out_awvalid_w = u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid;
   assign xbar_sep_out_awready_w = u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready;
   assign xbar_sep_out_awaddr_w = 56'(u_dut.u_smu.gen_sep.sep_out_xbar_req.aw.addr);
@@ -1921,6 +1982,8 @@ module smu_wrapper_uvm_top (
   ) u_smu_alias_fcov (
     .clk_smu_i                 (clk_smu_i),
     .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),
+    .smc_global_base_i         (56'(u_dut.u_smu.smc_global_base_o)),
+    .smc_region_size_i         (u_dut.u_smu.smc_region_size_o),
     .alias_awvalid_i           (alias_awvalid_w),
     .alias_awready_i           (alias_awready_w),
     .alias_awaddr_i            (alias_awaddr_w),
@@ -1932,8 +1995,6 @@ module smu_wrapper_uvm_top (
     .alias_rvalid_i            (alias_rvalid_w),
     .alias_rready_i            (alias_rready_w),
     .alias_rlast_i             (alias_rlast_w),
-    .alias_remapped_awaddr_i   (alias_remapped_awaddr_w),
-    .alias_remapped_araddr_i   (alias_remapped_araddr_w),
     .xbar_sep_out_awvalid_i    (xbar_sep_out_awvalid_w),
     .xbar_sep_out_awready_i    (xbar_sep_out_awready_w),
     .xbar_sep_out_awaddr_i     (xbar_sep_out_awaddr_w),

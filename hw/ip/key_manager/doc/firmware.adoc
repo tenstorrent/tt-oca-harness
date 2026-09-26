@@ -1437,7 +1437,8 @@ IRQ stack depths and deepest paths:
 
 [source,bash]
 ----
-python3 scripts/km_stack_analyze.py build/tests/rom_main/rom_main.rom.elf \
+cd hw/ip/key_manager/approm/prod
+python3 scripts/km_stack_analyze.py build/rom_main.elf \
   --objdump riscv64-unknown-elf-objdump --root main --limit 0x600
 ----
 
