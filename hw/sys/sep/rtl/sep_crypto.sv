@@ -1,188 +1,156 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP Cryptographic Subsystem
+// Integrate SEP cryptographic accelerators, Key Manager, eFuse, lifecycle, and entropy
+// paths.
+//
+// Hosts OTBN, AES, HMAC, KMAC, Adams Bridge, Key Manager, lifecycle, and TRNG consumers
+// behind the local-crossbar slave and isolation handshake with sep_reset_ctrl.
+// The native EDN client for sep_entropy_fifo is served by u_axis_edn_pool_s3c_scan from
+// the muxed pool AXI-Stream leg so the pool draws from either the internal DRBG or the
+// external TRNG. trng_entropy_clear_o clears the fabric entropy pool while the internal
+// TRNG reset is active.
+// SEP_SEC_DISABLE_TOKEN is replaced at synthesis with the netlist-embedded token digest.
+// External TRNG AXI-Lite/Stream and eFuse shim interfaces leave for sep_ip_integration.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module sep_crypto #(
-  parameter bit LATCHED_MEM_RDATA = 1'b1,
-  parameter bit MASKING_EN = 1'b1,
-  parameter int unsigned SRAM_LATENCY = 1,
-  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
-  // During synthesis, to be replaced with the actual token digest embedded in the netlist
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
+  parameter bit LATCHED_MEM_RDATA = 1'b1,     // 1 if memory macros latch read data for look-ahead.
+  parameter bit MASKING_EN = 1'b1,            // Enable 2-share DOM masking.
+  parameter int unsigned SRAM_LATENCY = 1,    // SRAM read latency in cycles.
+  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports.
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token digest; replace at synthesis.
 ) (
-  input logic                           clk_i,
-  input logic                           rst_ni,
+  input logic                           clk_i,  // System clock.
+  input logic                           rst_ni,  // Active-low reset.
 
-  // Ring-oscillator sample clock for entropy_source
-  input logic                           entropy_rosc_sample_clk_i,
+  input logic                           entropy_rosc_sample_clk_i,  // Ring-oscillator sample clock for entropy_source.
 
-  // OTP debug AXI-Lite manager interface
-  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager interface.
+  output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,  // AXIL SEP OTP JTAG response.
 
-  // Full AXI4 slave from local crossbar
-  input  sep_pkg::sep_32_64_6_12_axi_req_t        sep_crypto_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t       sep_crypto_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t        sep_crypto_axi_req_i,  // Full AXI4 slave from local crossbar.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t       sep_crypto_axi_resp_o,  // SEP crypto AXI response.
 
-  // eFuse shim CSR leg, split out of the sep_external crossbar window
-  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t        efuse_shim_axi_req_i,  // eFuse shim CSR leg, split out of the sep_external crossbar window.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t       efuse_shim_axi_resp_o,  // efuse shim AXI response.
 
-  // Entropy source interrupt
-  output logic                               entropy_source_irq_o,
+  output logic                               entropy_source_irq_o,  // Entropy source interrupt.
 
-  // External TRNG AXI-Lite passthrough (to sep_ip_integration)
-  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,
-  input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,
+  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // External TRNG AXI-Lite passthrough (to sep_ip_integration).
+  input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,  // ext TRNG AXIL response.
 
-  // External TRNG AXI-Stream inputs (from sep_ip_integration)
-  input  sep_crypto_pkg::ext_trng_axis_req_t  ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
-  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
+  input  sep_crypto_pkg::ext_trng_axis_req_t  ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-Stream inputs (from sep_ip_integration).
+  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],  // ext TRNG AXIS response.
 
-  // Native EDN client of the SEP entropy-pool FIFO (sep_entropy_fifo) that
-  // refills the pool. Served by u_axis_edn_pool_s3c_scan from the muxed pool AXI-Stream
-  // leg, so the pool draws from either the internal DRBG or the external TRNG.
-  input  edn_pkg::edn_req_t                  entropy_pool_edn_req_i,
-  output edn_pkg::edn_rsp_t                  entropy_pool_edn_rsp_o,
-  // Clears the fabric entropy pool while the internal TRNG reset is active.
-  output logic                               trng_entropy_clear_o,
+  input  edn_pkg::edn_req_t                  entropy_pool_edn_req_i,  // Native EDN client of the SEP entropy-pool FIFO (sep_entropy_fifo) that
+                                                                      // refills the pool. Served by u_axis_edn_pool_s3c_scan from the muxed pool AXI-Stream
+                                                                      // leg, so the pool draws from either the internal DRBG or the external TRNG.
+  output edn_pkg::edn_rsp_t                  entropy_pool_edn_rsp_o,  // entropy pool EDN response.
+  output logic                               trng_entropy_clear_o,  // Clears the fabric entropy pool while the internal TRNG reset is active.
 
-  // Efuse Interface to SHIM CSR
-  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
-  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,
-  // Efuse Command Interface - custom interface for SHIM
-  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,
-  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,
+  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,  // Efuse Interface to SHIM CSR.
+  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,  // efuse bank ctrl response.
+  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,  // Efuse Command Interface - custom interface for SHIM.
+  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,  // efuse shim command response.
 
-  // DFT
-  input logic                                test_en_i,
-  input logic                                scan_rst_ni,
+  input logic                                test_en_i,  // DFT test-enable (scan-enable).
+  input logic                                scan_rst_ni,  // DFT scan reset, active-low; bypasses the reset synchronizer.
 
-  // Efuse release reset
-  input logic                                sep_reset_ni,
-  // Efuse intermediate reset
-  output logic           sep_intermediate_reset_no,
-  // Efuse signals
-  input  logic                              secure_tm_req_i,
-  input  logic                               ext_boot_seq_done_i,
-  output logic                               security_disable_o,       // To SMC
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
-  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
-  output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
-  output logic                               sep_fuse_dft_disable_o,   // To DFT insertion
-  output logic                               smc_fuse_dft_disable_o,   // To DFT insertion
-  output logic                               lc_sigint_err_o,
-  output sep_efuse_pkg::efuse_map_t      shadow_regs_o,
-  output logic                               fuse_sense_done_o,
-  output logic                               secure_tm_o,
+  input logic                                sep_reset_ni,  // SEP reset.
+  output logic           sep_intermediate_reset_no,  // SEP intermediate reset.
+  input  logic                              secure_tm_req_i,  // secure tm request.
+  input  logic                               ext_boot_seq_done_i,  // ext boot seq done.
+  output logic                               security_disable_o,  // To SMC.
+  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,  // To SMC.
+  output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,  // feat ctrl.
+  output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP.
+  output logic                               sep_fuse_dft_disable_o,  // To DFT insertion.
+  output logic                               smc_fuse_dft_disable_o,  // To DFT insertion.
+  output logic                               lc_sigint_err_o,  // LC sigint err.
+  output sep_efuse_pkg::efuse_map_t      shadow_regs_o,  // shadow regs.
+  output logic                               fuse_sense_done_o,  // fuse sense done.
+  output logic                               secure_tm_o,  // secure tm.
 
-  //=========================================================================
-  // Key Manager Interfaces (exposed from sep_crypto)
-  //=========================================================================
+  output km_intf_pkg::km_rom_mem_req_t       km_rom_mem_req_o,  // Key Manager Interfaces (exposed from sep_crypto)
+                                                                // KM ROM memory interface (hard macro at integration level).
+  input  km_intf_pkg::km_rom_mem_rsp_t       km_rom_mem_rsp_i,  // KM ROM mem response.
 
-  // KM ROM memory interface (hard macro at integration level)
-  output km_intf_pkg::km_rom_mem_req_t       km_rom_mem_req_o,
-  input  km_intf_pkg::km_rom_mem_rsp_t       km_rom_mem_rsp_i,
+  output km_intf_pkg::km_sram_mem_req_t      km_sram_mem_req_o,  // KM SRAM memory interface (hard macro at integration level).
+  input  km_intf_pkg::km_sram_mem_rsp_t      km_sram_mem_rsp_i,  // KM SRAM mem response.
 
-  // KM SRAM memory interface (hard macro at integration level)
-  output km_intf_pkg::km_sram_mem_req_t      km_sram_mem_req_o,
-  input  km_intf_pkg::km_sram_mem_rsp_t      km_sram_mem_rsp_i,
+  output logic                               km_mbox_irq_to_sep_o,  // KM Mailbox interrupt to SEP host.
 
-  // KM Mailbox interrupt to SEP host
-  output logic                               km_mbox_irq_to_sep_o,
+  output logic                               km_unrecoverable_err_o,  // KM error signals.
+  output logic                               km_recoverable_err_o,  // KM recoverable err.
 
-  // KM error signals
-  output logic                               km_unrecoverable_err_o,
-  output logic                               km_recoverable_err_o,
+  input  sep_pkg::sep_crypto_isolate_t       isolate_req_i,  // Isolation handshake with sep_reset_ctrl.
+  output sep_pkg::sep_crypto_isolate_t       isolated_o,  // isolated.
+  input  sep_pkg::sep_sw_rst_t               gated_rst_ni,  // Isolation-sequenced software resets from sep_reset_ctrl (active-low).
 
-  // Isolation handshake with sep_reset_ctrl
-  input  sep_pkg::sep_crypto_isolate_t       isolate_req_i,
-  output sep_pkg::sep_crypto_isolate_t       isolated_o,
-  // Isolation-sequenced software resets from sep_reset_ctrl (active-low)
-  input  sep_pkg::sep_sw_rst_t               gated_rst_ni,
+  output logic [1:0]                         lcc_demote_state_1_o,  // To SMC.
 
-  output logic [1:0]                         lcc_demote_state_1_o, // To SMC
+  output logic [1:0]                         lcc_demote_state_2_o,  // To SMC.
 
-  output logic [1:0]                         lcc_demote_state_2_o, // To SMC
+  input  logic [EXT_TRNG_NUM_AXIS-1:0]       ext_trng_src_sel_i,  // External TRNG source selection (from sep_cpu_ctrl via sep_system_csr).
+  input  logic                               km_wipe_state_i,  // Key Manager emergency wipe control (from sep_cpu_ctrl via sep_system_csr).
 
-  // External TRNG source selection (from sep_cpu_ctrl via sep_system_csr)
-  input  logic [EXT_TRNG_NUM_AXIS-1:0]       ext_trng_src_sel_i,
-  // Key Manager emergency wipe control (from sep_cpu_ctrl via sep_system_csr)
-  input  logic                               km_wipe_state_i,
-  //=========================================================================
-  // Crypto Subsystem Interrupts (exposed to SEP PIC)
-  //=========================================================================
+  output logic                               intr_hmac_done_o,  // Crypto Subsystem Interrupts (exposed to SEP PIC)
+                                                                // HMAC interrupts.
+  output logic                               intr_hmac_fifo_empty_o,  // intr HMAC FIFO empty.
+  output logic                               intr_hmac_err_o,  // intr HMAC err.
 
-  // HMAC interrupts
-  output logic                               intr_hmac_done_o,
-  output logic                               intr_hmac_fifo_empty_o,
-  output logic                               intr_hmac_err_o,
+  output logic                               intr_kmac_done_o,  // KMAC interrupts.
+  output logic                               intr_kmac_fifo_empty_o,  // intr KMAC FIFO empty.
+  output logic                               intr_kmac_err_o,  // intr KMAC err.
 
-  // KMAC interrupts
-  output logic                               intr_kmac_done_o,
-  output logic                               intr_kmac_fifo_empty_o,
-  output logic                               intr_kmac_err_o,
+  output logic                               intr_cs_cmd_req_done_o,  // CSRNG interrupts.
+  output logic                               intr_cs_entropy_req_o,  // intr cs entropy request.
+  output logic                               intr_cs_hw_inst_exc_o,  // intr cs hw inst exc.
+  output logic                               intr_cs_fatal_err_o,  // intr cs fatal err.
 
-  // CSRNG interrupts
-  output logic                               intr_cs_cmd_req_done_o,
-  output logic                               intr_cs_entropy_req_o,
-  output logic                               intr_cs_hw_inst_exc_o,
-  output logic                               intr_cs_fatal_err_o,
+  output logic                               intr_edn_cmd_req_done_o,  // EDN interrupts.
+  output logic                               intr_edn_fatal_err_o,  // intr EDN fatal err.
 
-  // EDN interrupts
-  output logic                               intr_edn_cmd_req_done_o,
-  output logic                               intr_edn_fatal_err_o,
+  output logic                               intr_otbn_done_o,  // OTBN interrupt.
 
-  // OTBN interrupt
-  output logic                               intr_otbn_done_o,
+  output logic                               intr_abr_error_o,  // Adams Bridge (PQC) interrupts. Held low when the engine is compiled out.
+  output logic                               intr_abr_notif_o,  // intr ABR notif.
 
-  // Adams Bridge (PQC) interrupts. Held low when the engine is compiled out.
-  output logic                               intr_abr_error_o,
-  output logic                               intr_abr_notif_o,
+  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t      sep_crypto_pka_imem_sram_req_o,  // OTBN external SRAM interfaces.
+  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t      sep_crypto_pka_imem_sram_rsp_i,  // SEP crypto PKA IMEM SRAM response.
+  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t      sep_crypto_pka_dmem_sram_req_o,  // SEP crypto PKA DMEM SRAM request.
+  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t      sep_crypto_pka_dmem_sram_rsp_i,  // SEP crypto PKA DMEM SRAM response.
 
-  // OTBN external SRAM interfaces
-  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t      sep_crypto_pka_imem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t      sep_crypto_pka_imem_sram_rsp_i,
-  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t      sep_crypto_pka_dmem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t      sep_crypto_pka_dmem_sram_rsp_i,
+  output sep_crypto_pkg::abr_mem_req_t                       abr_mem_req_o,  // Adams Bridge (PQC) external SRAM interface -- behavioral/tech macros live in
+                                                                             // sep_ip_integration (tech-macro home). Packed struct req/rsp (OTBN pattern).
+  input  sep_crypto_pkg::abr_mem_rsp_t                       abr_mem_rsp_i,  // ABR mem response.
 
-  // Adams Bridge (PQC) external SRAM interface -- behavioral/tech macros live in
-  // sep_ip_integration (tech-macro home). Packed struct req/rsp (OTBN pattern).
-  output sep_crypto_pkg::abr_mem_req_t                       abr_mem_req_o,
-  input  sep_crypto_pkg::abr_mem_rsp_t                       abr_mem_rsp_i,
+  output logic                               crypto_alert_o,  // Aggregated crypto alert (OR of all OpenTitan alert channels).
 
-  // Aggregated crypto alert (OR of all OpenTitan alert channels)
-  output logic                               crypto_alert_o,
+  output logic [9:0]                         sep_efuse_debug_o,  // SEP efuse debug.
+  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,  // SEP efuse token match sip debug.
+  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,  // SEP efuse token match chiplet debug.
 
-  // Debug signals
-  output logic [9:0]                         sep_efuse_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
+  output logic                               locked_field_access_interrupt_o,  // Locked Field Access Interrupt.
 
-  // Locked Field Access Interrupt
-  output logic                               locked_field_access_interrupt_o,
+  output logic                               token_match_fault_o,  // Token Comparator Redundancy Fault Interrupt.
 
-  // Token Comparator Redundancy Fault Interrupt
-  output logic                               token_match_fault_o,
-
-  // Per-block register bridge faults (sticky, held until the matching clear).
-  // Aggregated onto one PIC source in sep.sv; see sep_pkg::periph_bus_err_e.
-  output logic                               aes_bus_err_o,
-  output logic                               hmac_bus_err_o,
-  output logic                               kmac_bus_err_o,
-  output logic                               otbn_bus_err_o,
-  output logic                               csrng_bus_err_o,
-  output logic                               edn_bus_err_o,
-  input  logic                               aes_bus_err_clr_i,
-  input  logic                               hmac_bus_err_clr_i,
-  input  logic                               kmac_bus_err_clr_i,
-  input  logic                               otbn_bus_err_clr_i,
-  input  logic                               csrng_bus_err_clr_i,
-  input  logic                               edn_bus_err_clr_i
+  output logic                               aes_bus_err_o,  // Per-block register bridge faults (sticky, held until the matching clear)
+                                                             // Aggregated onto one PIC source in sep.sv; see sep_pkg::periph_bus_err_e.
+  output logic                               hmac_bus_err_o,  // HMAC bus err.
+  output logic                               kmac_bus_err_o,  // KMAC bus err.
+  output logic                               otbn_bus_err_o,  // OTBN bus err.
+  output logic                               csrng_bus_err_o,  // csrng bus err.
+  output logic                               edn_bus_err_o,  // EDN bus err.
+  input  logic                               aes_bus_err_clr_i,  // AES bus err clr.
+  input  logic                               hmac_bus_err_clr_i,  // HMAC bus err clr.
+  input  logic                               kmac_bus_err_clr_i,  // KMAC bus err clr.
+  input  logic                               otbn_bus_err_clr_i,  // OTBN bus err clr.
+  input  logic                               csrng_bus_err_clr_i,  // csrng bus err clr.
+  input  logic                               edn_bus_err_clr_i  // EDN bus err clr.
 );
 
   /////////////////////////

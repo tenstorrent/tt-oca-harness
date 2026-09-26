@@ -1,48 +1,49 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Run the OCTS credit-based primary/secondary timer counter.
+//
+// Primary emits sync and credit; secondary consumes them and may step by
+// timer_cnt_step_i.
+// Register ports are bus-agnostic.
+// credit_expired_o counts secondary underruns and clears on credit_expired_clr_i.
+// timer_cnt_step_i and credit_expired_* apply in secondary mode only.
+
 module system_timer_octs_core
     import system_timer_octs_pkg::*;
 
     `include "prim_assert.sv"
 (
-    input  logic                  clk_i,
-    input  logic                  rst_ni,
+    input  logic                  clk_i,                    // System clock.
+    input  logic                  rst_ni,                   // Async reset, active-low.
 
-    // Primary/Secondary mode select (runtime signal)
-    input  logic                  is_primary_i,
+    input  logic                  is_primary_i,             // Runtime primary/secondary mode select.
 
-    // Register interface - agnostic of bus type
-    input  logic                  reg_start_i,
-    input  logic [7:0]            reg_credit_val_i,
-    input  logic [DATA_WIDTH-1:0] reg_preset_lo_i,
-    input  logic [DATA_WIDTH-1:0] reg_preset_hi_i,
-    input  logic [7:0]            reg_pulse_width_i,
+    input  logic                  reg_start_i,              // Software start.
+    input  logic [7:0]            reg_credit_val_i,         // Credits granted per sync.
+    input  logic [DATA_WIDTH-1:0] reg_preset_lo_i,          // Preset count low half.
+    input  logic [DATA_WIDTH-1:0] reg_preset_hi_i,          // Preset count high half.
+    input  logic [7:0]            reg_pulse_width_i,        // Sync/credit pulse width.
 
-    output logic                  reg_mode_o,
-    output logic                  reg_running_o,
-    output logic [DATA_WIDTH-1:0] reg_count_lo_o,
-    output logic [DATA_WIDTH-1:0] reg_count_hi_o,
+    output logic                  reg_mode_o,               // Reports primary/secondary mode.
+    output logic                  reg_running_o,            // Timer is running.
+    output logic [DATA_WIDTH-1:0] reg_count_lo_o,           // Count low half.
+    output logic [DATA_WIDTH-1:0] reg_count_hi_o,           // Count high half.
 
-    // OCTS synchronization signals
-    input  logic                  timer_sync_load_i,
-    input  logic                  timer_cnt_credit_i,
-    output logic                  timer_sync_load_o,
-    output logic                  timer_cnt_credit_o,
+    input  logic                  timer_sync_load_i,        // Inbound sync-load pulse.
+    input  logic                  timer_cnt_credit_i,       // Inbound credit pulse.
+    output logic                  timer_sync_load_o,        // Outbound sync-load pulse.
+    output logic                  timer_cnt_credit_o,       // Outbound credit pulse.
 
-    // System Timer Counter signal (SECONDARY only)
-    input  logic [7:0]            timer_cnt_step_i,
+    input  logic [7:0]            timer_cnt_step_i,         // Secondary step per credit.
 
-    // Credit expired counter (SECONDARY only)
-    input  logic                  credit_expired_clr_i,
-    output logic [31:0]           credit_expired_o,
+    input  logic                  credit_expired_clr_i,     // Clear the credit-expired counter.
+    output logic [31:0]           credit_expired_o,         // Secondary credit-underrun count.
 
-    // Timer outputs
-    output logic [63:0]           timer_count_o,
+    output logic [63:0]           timer_count_o,            // Live 64-bit timer count.
 
-    // Debug output
-    output logic [8:0]            cur_credits_debug_o,
-    output logic                  credits_left_debug_o
+    output logic [8:0]            cur_credits_debug_o,      // Current credit count.
+    output logic                  credits_left_debug_o      // Credits remain nonzero.
 );
 
     /////////////////////////

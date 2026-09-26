@@ -1,74 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// UART Wrapper
+// Map NUM_UARTS 16550 instances behind one AXI-Lite port.
 //
-//-----------------------------------------------------------------------------
+// Decodes UART_REG_MAP_* windows onto each uart_16550 and fans IRQ, serial, and modem
+// pins.
+// uart_en_o and uart_err_o aggregate per-instance enable and error status.
 
 module uart_wrap #(
-  parameter int unsigned        NUM_UARTS             = 4,
-  parameter int unsigned        UART_TX_FIFO_DEPTH    = 32,
-  parameter int unsigned        UART_RX_FIFO_DEPTH    = 32,
-  parameter bit [NUM_UARTS-1:0] GEN_LOG_ENGINES       = {NUM_UARTS{1'b1}},
-  parameter int unsigned        LOG_ENGINE_FIFO_DEPTH = 4,
+  parameter int unsigned        NUM_UARTS             = 4,  // UART instance count.
+  parameter int unsigned        UART_TX_FIFO_DEPTH    = 32,  // Per-UART TX FIFO depth.
+  parameter int unsigned        UART_RX_FIFO_DEPTH    = 32,  // Per-UART RX FIFO depth.
+  parameter bit [NUM_UARTS-1:0] GEN_LOG_ENGINES       = {NUM_UARTS{1'b1}},  // B1.
+  parameter int unsigned        LOG_ENGINE_FIFO_DEPTH = 4,  // Log-engine FIFO depth.
 
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR = 0,
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      = 0,
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_SPACING              = 0,
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_BASE_ADDR = 0,  // Wrap window 0 base.
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_0__REG_MAP_SIZE      = 0,  // Wrap window 0 size.
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_WRAP_SPACING              = 0,  // Stride between wrap windows.
 
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_REG_MAP_BASE_ADDR = 0,
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_REG_MAP_SIZE      = 0,
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,
-  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0,
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_REG_MAP_BASE_ADDR = 0,  // First UART register-map base.
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_REG_MAP_SIZE      = 0,  // Per-UART register-map size.
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Log-engine register-map base.
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Log-engine register-map size.
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Log-engine CTRL base.
+  parameter bit [uart_wrap_pkg::REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0,  // Log-engine CTRL size.
 
-  localparam int unsigned NUM_REG_MAPS = NUM_UARTS + 1, // +1 for error slave
-  localparam type uart_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],
-  localparam uart_wrap_reg_map_select_t UNDEFINED_REG_MAP =
+  localparam int unsigned NUM_REG_MAPS = NUM_UARTS + 1,  // +1 for error slave.
+  localparam type uart_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],  // UART-wrap window select type.
+  localparam uart_wrap_reg_map_select_t UNDEFINED_REG_MAP =  // Unmapped address sink select.
         uart_wrap_reg_map_select_t'(NUM_REG_MAPS - 1)
 ) (
-  // Global Interface
-  input  logic                                 clk_i,
-  input  logic                                 rst_ni,
+  input  logic                                 clk_i,  // System clock.
+  input  logic                                 rst_ni,  // Active-low reset.
 
-  // AXI4-Lite Register Interface
-  input  uart_wrap_pkg::csr_axil_req_t                        csr_axil_req_i,
-  output uart_wrap_pkg::csr_axil_resp_t                       csr_axil_resp_o,
+  input  uart_wrap_pkg::csr_axil_req_t                        csr_axil_req_i,  // Csr AXI-Lite req (AXI4-Lite Register Interface).
+  output uart_wrap_pkg::csr_axil_resp_t                       csr_axil_resp_o,  // Csr AXI-Lite resp.
 
-  // AXI4-Lite Log fetch Interface
-  output log_engine_pkg::log_fetch_axil_req_t  log_fetch_axil_req_o,
-  input  log_engine_pkg::log_fetch_axil_resp_t log_fetch_axil_resp_i,
+  output log_engine_pkg::log_fetch_axil_req_t  log_fetch_axil_req_o,  // Log fetch AXI-Lite req (AXI4-Lite Log fetch Interface).
+  input  log_engine_pkg::log_fetch_axil_resp_t log_fetch_axil_resp_i,  // Log fetch AXI-Lite resp.
 
-  // Control Interface
-  output logic [NUM_UARTS-1:0]                 uart_en_o,
+  output logic [NUM_UARTS-1:0]                 uart_en_o,  // Uart en (Control Interface).
 
-  // UART Interface
-  input  logic [NUM_UARTS-1:0]                 uart_rx_i,
-  output logic [NUM_UARTS-1:0]                 uart_tx_o,
+  input  logic [NUM_UARTS-1:0]                 uart_rx_i,  // Uart rx (UART Interface).
+  output logic [NUM_UARTS-1:0]                 uart_tx_o,  // Uart tx.
 
-  // UART Modem Interface
-  input  logic [NUM_UARTS-1:0]                 uart_cts_ni,
-  input  logic [NUM_UARTS-1:0]                 uart_dsr_ni,
-  input  logic [NUM_UARTS-1:0]                 uart_ri_ni,
-  input  logic [NUM_UARTS-1:0]                 uart_dcd_ni,
+  input  logic [NUM_UARTS-1:0]                 uart_cts_ni,  // uart cts, active-low (UART Modem Interface).
+  input  logic [NUM_UARTS-1:0]                 uart_dsr_ni,  // uart dsr, active-low.
+  input  logic [NUM_UARTS-1:0]                 uart_ri_ni,  // uart ri, active-low.
+  input  logic [NUM_UARTS-1:0]                 uart_dcd_ni,  // uart dcd, active-low.
 
-  output logic [NUM_UARTS-1:0]                 uart_rts_no,
-  output logic [NUM_UARTS-1:0]                 uart_dtr_no,
-  output logic [NUM_UARTS-1:0]                 uart_out1_no,
-  output logic [NUM_UARTS-1:0]                 uart_out2_no,
+  output logic [NUM_UARTS-1:0]                 uart_rts_no,  // uart rts, active-low.
+  output logic [NUM_UARTS-1:0]                 uart_dtr_no,  // uart dtr, active-low.
+  output logic [NUM_UARTS-1:0]                 uart_out1_no,  // uart out1, active-low.
+  output logic [NUM_UARTS-1:0]                 uart_out2_no,  // uart out2, active-low.
 
-  // UART DMA Interface
-  output logic [NUM_UARTS-1:0]                 uart_rxrdy_o,
-  output logic [NUM_UARTS-1:0]                 uart_txrdy_o,
+  output logic [NUM_UARTS-1:0]                 uart_rxrdy_o,  // Uart rxrdy (UART DMA Interface).
+  output logic [NUM_UARTS-1:0]                 uart_txrdy_o,  // Uart txrdy.
 
-  // UART Error Interface
-  output logic [NUM_UARTS-1:0]                 uart_err_o,
+  output logic [NUM_UARTS-1:0]                 uart_err_o,  // Uart err (UART Error Interface).
 
-  // Interrupt Interface
-  output logic [NUM_UARTS-1:0]                 uart_irq_o,
-  output logic [NUM_UARTS-1:0]                 log_engine_irq_o
+  output logic [NUM_UARTS-1:0]                 uart_irq_o,  // Uart irq (Interrupt Interface).
+  output logic [NUM_UARTS-1:0]                 log_engine_irq_o  // Log engine irq.
 );
 
   `include "axi/assign.svh"

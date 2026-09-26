@@ -2,61 +2,106 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// Key Manager CSR wrapper around the PeakRDL km_csr_reg block.
+// Wrap the PeakRDL-generated km_csr_reg block with the Key Manager control/status
+// (KMCSR) hardware logic.
 //
-// Aggregates sticky IRQ sources with per-source enables into km_irq_o, enforces
-// write-once scrambler lock (locked reads return zero), captures differentially
-// encoded OTP data with secure-test isolation, and generates soft_rst_o on a
-// magic-code write. cold_rst_ni (AASD) resets scrambler lock/key/enable, VUART
-// edge detect, and the regblock; warm_rst_ni clears soft_rst_q, the CPUIF, and
-// warm-tagged fields including IRQ, SRAM lock/exec, and testbench registers.
+// Custom logic around the register block:
+//
+// - IRQ aggregation: combines the sticky interrupt sources (parity errors, bus errors,
+//   DRBG error, wipe, execute and ROM access violations) with per-source enable masking
+//   into the single CPU interrupt km_irq_o.
+// - Scrambler lock: write-once lock for the SCRAMBLER_KEY and SCRAMBLER_CTRL registers;
+//   reads return zero when locked.
+// - OTP data capture and read-through: OTP register values reflect the captured
+//   differential values, with UID/CLASS_KEY isolation in secure test mode.
+// - Soft reset: magic-code-guarded reset generation.
+// - Virtual UART and test protocol register plumbing.
+//
+// Reset domains:
+//
+// - cold_rst_ni (AASD) resets the SRAM scrambler lock/key/enable (SCRAMBLER_CTRL.lock,
+//   SCRAMBLER_KEY), the VUART edge detect, and the entire regblock via arst_n. Cold reset
+//   always implies warm reset.
+// - warm_rst_ni (synchronous) resets soft_rst_q and the regblock CPUIF plus all
+//   warm-tagged fields via WARM_RST_N: IRQ_STATUS/IRQ_ENABLE/IRQ_SET, SOFT_RST_CODE,
+//   RECOVERABLE_ERR, SRAM_LOCK (write-lock bits), the SRAM_LOCK violation bits,
+//   SRAM_EXEC_MODE (execute-permission whitelist mode), IRQ_ENTRY_ADDR/IRQ_ENTRY_LOCK,
+//   and the firmware test-bench registers. Warm reset breaks the soft reset trigger loop
+//   and quiesces the AXI CPUIF state machine.
 
 module km_csr
   import km_intf_pkg::*;
   import km_csr_reg_pkg::*;
   import axi_pkg::*;
 #(
-  parameter type axil_req_t  = km_axil_req_t,   // AXI-Lite request struct type
-  parameter type axil_resp_t = km_axil_resp_t   // AXI-Lite response struct type
+  parameter type axil_req_t  = km_axil_req_t,  // AXI-Lite request struct type.
+  parameter type axil_resp_t = km_axil_resp_t  // AXI-Lite response struct type.
 ) (
-  input  logic         clk_i,                              // System clock
-  input  logic         cold_rst_ni,                        // Cold reset (AASD)
-  input  logic         warm_rst_ni,                        // Warm reset, synchronous, from km_reset_conditioner
-  input  axil_req_t    axil_req_i,                         // AXI-Lite slave request from the crossbar
-  output axil_resp_t   axil_resp_o,                        // AXI-Lite slave response to the crossbar
-  input  logic         rom_parity_err_i,                   // ROM parity error pulse
-  input  logic         sram_parity_err_i,                  // SRAM parity error pulse
-  input  logic         rom_write_err_i,                    // ROM write-attempt pulse
-  input  logic         axi_slverr_i,                       // AXI SLVERR pulse
-  input  logic         axi_decerr_i,                       // AXI DECERR pulse
-  input  logic         drbg_err_i,                         // DRBG sampler error pulse
-  input  logic         wipe_state_i,                       // Wipe-state rising edge sets IRQ
-  output logic [31:0]  scrambler_key_o,                    // Scrambler key (zero when locked)
-  output logic         scrambler_enable_o,                 // Scrambler enable
-  output logic         scrambler_lock_o,                   // Scrambler lock status
-  output logic [31:0]  sram_lock_bits_o,                   // Write-lock bits to the SRAM interface (W1S)
-  input  logic [31:0]  sram_write_lock_violation_region_i, // One-hot locked-write violation from SRAM
-  output logic         sram_exec_mode_o,                   // 0=ROM-only whitelist, 1=write-locked-SRAM whitelist
-  input  logic         exec_violation_i,                   // Execute-whitelist violation pulse from the CPU
-  input  logic         rom_access_violation_i,             // ROM lockout violation pulse from the CPU
-  output logic         km_irq_o,                           // Aggregated CPU interrupt
-  output logic [31:0]  irq_entry_addr_o,                   // Programmable IRQ entry PC for PicoRV32
-  output logic         soft_rst_o,                         // Soft-reset request to the conditioner, active-low
-  output logic         recoverable_err_o,                  // Recoverable error event
-  output logic [7:0]   vuart_tx_data_o,                    // Virtual UART TX byte
-  output logic         vuart_tx_valid_o,                   // Virtual UART TX valid strobe
-  input  logic [7:0]   vuart_rx_data_i,                    // Virtual UART RX byte from the testbench
-  input  logic         vuart_rx_valid_i,                   // Virtual UART RX valid
-  output logic [31:0]  tb_result_o,                        // Firmware test result (0=fail, 1=pass)
-  output logic [31:0]  tb_signature_o,                     // Firmware test completion signature
-  output logic [31:0]  tb_errcode_o,                       // Firmware error code
-  output logic [31:0]  tb_subtest_o,                       // Current subtest number
-  output logic [31:0]  tb_cmd_o,                           // Command from firmware
-  output logic [31:0]  tb_cmd_arg_o,                       // Command argument from firmware
-  input  logic [31:0]  tb_cmd_next_i,                      // Testbench write that can clear the command
-  input  logic [31:0]  tb_cmd_status_i,                    // Command status from the testbench
-  input  logic [31:0]  tb_cmd_result_i,                    // Command result from the testbench
-  input  km_otp_data_t otp_data_i                          // Differentially encoded SEP OTP data
+  input  logic clk_i,        // System clock.
+  input  logic cold_rst_ni,  // Cold reset: async-assert/sync-deassert (AASD).
+  input  logic warm_rst_ni,  // Warm reset: fully synchronous (from km_reset_conditioner).
+
+  input  axil_req_t axil_req_i,    // AXI4-Lite slave request from the crossbar.
+  output axil_resp_t axil_resp_o,  // AXI4-Lite slave response to the crossbar.
+
+  input  logic   rom_parity_err_i,   // IRQ event: ROM parity error (pulse).
+  input  logic   sram_parity_err_i,  // IRQ event: SRAM parity error (pulse).
+  input  logic   rom_write_err_i,    // IRQ event: ROM write attempt detected (pulse).
+  input  logic   axi_slverr_i,       // IRQ event: AXI SLVERR error (pulse).
+  input  logic   axi_decerr_i,       // IRQ event: AXI DECERR error (pulse).
+  input  logic   drbg_err_i,         // IRQ event: DRBG sampler error (pulse).
+  input  logic   wipe_state_i,       // IRQ event: wipe state (rising edge sets IRQ).
+
+  output logic [31:0] scrambler_key_o,     // Scrambler key (0 when locked).
+  output logic        scrambler_enable_o,  // Scrambler enable.
+  output logic        scrambler_lock_o,    // Scrambler lock status.
+
+  output logic [31:0] sram_lock_bits_o,                    // Write-1-only SRAM write-lock
+                                                           // bits to the SRAM interface;
+                                                           // bit[i]=1 locks region i.
+  input  logic [31:0] sram_write_lock_violation_region_i,  // SRAM write-lock violation from
+                                                           // the SRAM interface: one-hot
+                                                           // region that had an attempted
+                                                           // write while locked.
+
+  output logic        sram_exec_mode_o,   // SRAM execute-permission mode to the CPU wrapper:
+                                          // 0=ROM-only whitelist, 1=write-locked-SRAM
+                                          // whitelist.
+  input  logic   exec_violation_i,        // Execute-permission whitelist violation from the
+                                          // CPU wrapper: pulse when a fetch is outside the
+                                          // whitelist.
+  input  logic   rom_access_violation_i,  // ROM lockout violation from the CPU wrapper: pulse
+                                          // on a ROM fetch or read after lockout engages.
+
+  output logic        km_irq_o,  // Aggregated IRQ output to the CPU.
+
+  output logic [31:0] irq_entry_addr_o,  // Programmable IRQ entry address to the CPU wrapper
+                                         // (PicoRV32).
+
+  output logic        soft_rst_o,  // Soft reset output to the conditioner, active-low.
+
+  output logic        recoverable_err_o,  // Error condition output: recoverable error event.
+
+  output logic [7:0]  vuart_tx_data_o,   // Virtual UART TX byte data; firmware writes the
+                                         // byte and the testbench captures it.
+  output logic        vuart_tx_valid_o,  // Virtual UART TX data valid strobe (pulse).
+  input  logic [7:0] vuart_rx_data_i,    // Virtual UART RX byte; the testbench writes it and
+                                         // firmware reads it.
+  input  logic   vuart_rx_valid_i,       // Virtual UART RX data valid.
+
+  output logic [31:0] tb_result_o,      // Test protocol, firmware to testbench: test result
+                                        // (0=fail, 1=pass).
+  output logic [31:0] tb_signature_o,   // Test protocol: test completion signature.
+  output logic [31:0] tb_errcode_o,     // Test protocol: error code.
+  output logic [31:0] tb_subtest_o,     // Test protocol: current subtest number.
+  output logic [31:0] tb_cmd_o,         // Test protocol: command from firmware.
+  output logic [31:0] tb_cmd_arg_o,     // Test protocol: command argument from firmware.
+  input  logic [31:0] tb_cmd_next_i,    // Test protocol, testbench to firmware: the testbench
+                                        // can write this to clear the command.
+  input  logic [31:0] tb_cmd_status_i,  // Test protocol: command status from the testbench.
+  input  logic [31:0] tb_cmd_result_i,  // Test protocol: command result from the testbench.
+
+  input  km_otp_data_t otp_data_i  // Differentially encoded SEP OTP data.
 );
 
   `include "ocah_assert.svh"

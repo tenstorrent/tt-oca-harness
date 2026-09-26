@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC peripheral AXI-Lite crossbar.
-// Address rules derive from smc_top_addrmap_pkg; EFUSE_SHIM_SIZE partitions
-// the external window between the eFuse shim and external target.
+// Route the SMC peripheral AXI-Lite CSR crossbar.
+//
+// Steers one AXI-Lite initiator to peripheral CSR targets including the eFuse shim
+// window.
+// Address rules derive from smc_top_addrmap_pkg; EFUSE_SHIM_SIZE partitions the external
+// window between the eFuse shim and the external target.
+// EFUSE_SHIM_SIZE is the vendor eFuse shim CSR block carved off the base of the
+// smc_external window and is threaded from smc_peripherals.sv.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -12,72 +17,55 @@ module smc_periph_axi_lite_xbar
   import axi_pkg::*;
   import smc_periph_axi_lite_xbar_pkg::*;
 #(
-  // Vendor eFuse shim CSR block carved off the base of the smc_external window;
-  // Threaded from smc_peripherals.sv.
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h44
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
+                                                 // the base of the smc_external window;.
+                                                 // Threaded from smc_peripherals.sv.
 )
 (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_i,
+  input  logic clk_i,                   // Clock.
+  input  logic rst_ni,                  // Reset.
+  input  logic test_i,                  // Test.
 
-  // ===========================================================================
-  // Initiator Ports
-  // ===========================================================================
-  // periph_in (AXI4_LITE, 32-bit)
-  input  axi_lite32_req_t  periph_in_req_i,
-  output axi_lite32_resp_t periph_in_resp_o,
+  input  axi_lite32_req_t  periph_in_req_i,  // periph_in (AXI4_LITE, 32-bit) request.
+  output axi_lite32_resp_t periph_in_resp_o,  // periph_in (AXI4_LITE, 32-bit) response.
 
-  // ===========================================================================
-  // Target Ports
-  // ===========================================================================
-  // reset_unit (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  reset_unit_req_o,
-  input  axi_lite32_resp_t reset_unit_resp_i,
+  output axi_lite32_req_t  reset_unit_req_o,  // reset_unit (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t reset_unit_resp_i,  // reset_unit (AXI4_LITE, 32-bit) response.
 
-  // misc (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  misc_req_o,
-  input  axi_lite32_resp_t misc_resp_i,
+  output axi_lite32_req_t  misc_req_o,  // misc (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t misc_resp_i,  // misc (AXI4_LITE, 32-bit) response.
 
-  // gpio (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  gpio_req_o,
-  input  axi_lite32_resp_t gpio_resp_i,
+  output axi_lite32_req_t  gpio_req_o,  // gpio (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t gpio_resp_i,  // gpio (AXI4_LITE, 32-bit) response.
 
-  // apb2avsbus (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  apb2avsbus_req_o,
-  input  axi_lite32_resp_t apb2avsbus_resp_i,
+  output axi_lite32_req_t  apb2avsbus_req_o,  // apb2avsbus (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t apb2avsbus_resp_i,  // apb2avsbus (AXI4_LITE, 32-bit) response.
 
-  // i2c (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  i2c_req_o,
-  input  axi_lite32_resp_t i2c_resp_i,
+  output axi_lite32_req_t  i2c_req_o,   // i2c (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t i2c_resp_i,  // i2c (AXI4_LITE, 32-bit) response.
 
-  // uart (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  uart_req_o,
-  input  axi_lite32_resp_t uart_resp_i,
+  output axi_lite32_req_t  uart_req_o,  // uart (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t uart_resp_i,  // uart (AXI4_LITE, 32-bit) response.
 
-  // efuse (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  efuse_req_o,
-  input  axi_lite32_resp_t efuse_resp_i,
+  output axi_lite32_req_t  efuse_req_o,  // efuse (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t efuse_resp_i,  // efuse (AXI4_LITE, 32-bit) response.
 
-  // telemetry (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  telemetry_req_o,
-  input  axi_lite32_resp_t telemetry_resp_i,
+  output axi_lite32_req_t  telemetry_req_o,  // telemetry (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t telemetry_resp_i,  // telemetry (AXI4_LITE, 32-bit) response.
 
-  // system_timer_octs (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  system_timer_octs_req_o,
-  input  axi_lite32_resp_t system_timer_octs_resp_i,
+  output axi_lite32_req_t  system_timer_octs_req_o,  // system_timer_octs (AXI4_LITE,
+                                                     // 32-bit) request.
+  input  axi_lite32_resp_t system_timer_octs_resp_i,  // system_timer_octs (AXI4_LITE,
+                                                      // 32-bit) response.
 
-  // dtp_csr (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  dtp_csr_req_o,
-  input  axi_lite32_resp_t dtp_csr_resp_i,
+  output axi_lite32_req_t  dtp_csr_req_o,  // dtp_csr (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t dtp_csr_resp_i,  // dtp_csr (AXI4_LITE, 32-bit) response.
 
-  // i3c (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  i3c_req_o,
-  input  axi_lite32_resp_t i3c_resp_i,
+  output axi_lite32_req_t  i3c_req_o,   // i3c (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t i3c_resp_i,  // i3c (AXI4_LITE, 32-bit) response.
 
-  // external (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  external_req_o,
-  input  axi_lite32_resp_t external_resp_i
+  output axi_lite32_req_t  external_req_o,  // external (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t external_resp_i  // external (AXI4_LITE, 32-bit) response.
 
 );
 

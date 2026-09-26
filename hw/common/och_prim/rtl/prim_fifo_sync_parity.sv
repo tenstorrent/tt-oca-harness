@@ -1,41 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Synchronous FIFO with Parity
+// Store WIDTH-bit beats in a synchronous FIFO with optional pass-through and pointer hardening.
 //
-//--------------------------------------------------
+// Pass forwards a write into an empty FIFO in the same cycle when set.
+// OutputZeroIfEmpty forces rdata_o to zero when the FIFO is empty.
+// Secure replaces pointer math with prim_count and reports faults on err_o; NeverClears
+// documents that clr_i stays low.
 
-// This include isn't really needed by code in prim_fifo_sync.sv! But it ensures that we always
-// evaluate the contents of prim_fifo_assert.svh if we happen to include this file, avoiding a
-// problem where we might include a FIFO but not use any of the assertions that this file defines.
+// Evaluate prim_fifo_assert.svh whenever this file is included, even when the FIFO
+// assertions are otherwise unused, so including the FIFO still pulls in that assert header.
 
 module prim_fifo_sync_parity #(
-  parameter int unsigned Width       = 16,
-  parameter bit Pass                 = 1'b1, // if == 1 allow requests to pass through empty FIFO
-  parameter int unsigned Depth       = 4,
-  parameter bit OutputZeroIfEmpty    = 1'b1, // if == 1 always output 0 when FIFO is empty
-  parameter bit NeverClears          = 1'b0, // if set, the clr_i port is never high
-  parameter bit Secure               = 1'b0, // use prim count for pointers
-  // derived parameter
-  localparam int          DepthW     = prim_util_pkg::vbits(Depth+1)
+  parameter int unsigned Width       = 16,  // Datapath width.
+  parameter bit Pass                 = 1'b1,  // 1 allows a write to pass through an empty FIFO in the same cycle.
+  parameter int unsigned Depth       = 4,  // Storage depth.
+  parameter bit OutputZeroIfEmpty    = 1'b1,  // 1 forces rdata_o to 0 when the FIFO is empty.
+  parameter bit NeverClears          = 1'b0,  // Documents that clr_i stays low.
+  parameter bit Secure               = 1'b0,  // Uses prim_count for pointers.
+  localparam int          DepthW     = prim_util_pkg::vbits(Depth+1)  // Width of depth_o; derived.
 ) (
-  input                   clk_i,
-  input                   rst_ni,
-  // synchronous clear / flush port
-  input                   clr_i,
-  // write port
-  input                   wvalid_i,
-  output                  wready_o,
-  input   [Width-1:0]     wdata_i,
-  // read port
-  output                  rvalid_o,
-  input                   rready_i,
-  output  [Width-1:0]     rdata_o,
-  // occupancy
-  output                  full_o,
-  output  [DepthW-1:0]    depth_o,
-  output                  err_o
+  input                   clk_i,  // FIFO clock.
+  input                   rst_ni,  // Async reset, active-low.
+  input                   clr_i,  // Synchronous clear / flush.
+  input                   wvalid_i,  // Write valid.
+  output                  wready_o,  // Write ready.
+  input   [Width-1:0]     wdata_i,  // Write data.
+  output                  rvalid_o,  // Read valid.
+  input                   rready_i,  // Read ready.
+  output  [Width-1:0]     rdata_o,  // Read data.
+  output                  full_o,  // FIFO full.
+  output  [DepthW-1:0]    depth_o,  // Current occupancy.
+  output                  err_o  // Pointer integrity fault when Secure.
 );
 
   `include "prim_assert.sv"

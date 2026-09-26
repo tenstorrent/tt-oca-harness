@@ -1,85 +1,84 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Shadow Regs
+// Mirror sensed fuse bits in a shadow file and serve the MAP APB window under lock controls.
 //
-//-----------------------------------------------------------------------------
+// Loads from the macro through fuse commands after sense, then serves APB reads/writes.
+// CLASS1_SHADOW_RANGES and SECRET_SHADOW_RANGES gate visibility; secure_tm_i masks secret
+// hardware outputs.
+// TOKEN_MATCH_CODE and RMA token match inputs participate in lifecycle-related updates.
+// fuse_sense_done_o marks initial sense complete for token processing;
+// locked_field_access_interrupt_o reports locked-field APB hits.
 
 `include "prim_assert.sv"
 
 module efuse_shadow_regs
 #(
-    parameter int unsigned FUSE_MAP_REG_MAP_BASE_ADDR = 32'h0,
+    parameter int unsigned FUSE_MAP_REG_MAP_BASE_ADDR = 32'h0,  // H0.
 
-    parameter int unsigned SHADOW_REG_BITS = 24576,
-    parameter int unsigned SHADOW_REG_BYTES = SHADOW_REG_BITS / 8,
-    parameter int unsigned SHADOW_REG_WORD_WIDTH = 32,
-    parameter int unsigned EFUSE_FIELDS = 1,
-    parameter int unsigned REG_ADDR_WIDTH = 12,
+    parameter int unsigned SHADOW_REG_BITS = 24576,  // Shadow register file size in bits.
+    parameter int unsigned SHADOW_REG_BYTES = SHADOW_REG_BITS / 8,  // Shadow register file size in bits.
+    parameter int unsigned SHADOW_REG_WORD_WIDTH = 32,  // Shadow word width in bits.
+    parameter int unsigned EFUSE_FIELDS = 1,  // eFuse field-map entry count.
+    parameter int unsigned REG_ADDR_WIDTH = 12,  // Register address width.
 
-    parameter bit HAS_LC_STATE = 1'b0,
-    parameter efuse_pkg::shadow_word_range_map_t CLASS1_SHADOW_RANGES = '0,
-    // Class 1a device secrets, masked on the hardware output under secure_tm.
-    parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,
+    parameter bit HAS_LC_STATE = 1'b0,  // B0.
+    parameter efuse_pkg::shadow_word_range_map_t CLASS1_SHADOW_RANGES = '0,  // Class-1 shadow word ranges.
+    parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,  // Secret shadow ranges masked under secure_tm.
 
-    parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,
+    parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // B010101.
 
-    parameter type addr_t = logic,
-    parameter type data_t = logic,
-    parameter type efuse_apb_req_t  = logic,
-    parameter type efuse_apb_resp_t = logic,
+    parameter type addr_t = logic,      // Address type.
+    parameter type data_t = logic,      // Data type.
+    parameter type efuse_apb_req_t  = logic,  // eFuse APB request type.
+    parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
-    parameter type efuse_addr_t = logic,
-    parameter type efuse_data_t = logic,
-    parameter type efuse_word_counter_t = logic,
-    parameter type fuse_command_req_t = logic,
-    parameter type fuse_command_resp_t = logic,
+    parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+    parameter type efuse_data_t = logic,  // Fuse data-word type.
+    parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+    parameter type fuse_command_req_t = logic,  // Fuse-command request type.
+    parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
-    parameter type efuse_map_t = logic,
+    parameter type efuse_map_t = logic,  // Shadow eFuse map type.
 
-    parameter int unsigned LC_STATE_WIDTH = 4,
+    parameter int unsigned LC_STATE_WIDTH = 4,  // Lifecycle-state field width.
 
-    localparam int unsigned NumShadowWords = SHADOW_REG_BITS / SHADOW_REG_WORD_WIDTH,
-    localparam int unsigned ShadowEfuseWidth = $clog2(NumShadowWords)
+    localparam int unsigned NumShadowWords = SHADOW_REG_BITS / SHADOW_REG_WORD_WIDTH,  // Shadow word width in bits.
+    localparam int unsigned ShadowEfuseWidth = $clog2(NumShadowWords)  // Shadow file word count.
 ) (
 
-    input  logic                                clk_i,
-    input  logic                                rst_ni,
-    input  logic                                test_en_i,
-    input  logic                                security_disable_i,
-    input  logic                                secure_tm_i,
+    input  logic                                clk_i,  // System clock.
+    input  logic                                rst_ni,  // Active-low reset.
+    input  logic                                test_en_i,  // DFT test enable.
+    input  logic                                security_disable_i,  // Active-high bridge/security disable.
+    input  logic                                secure_tm_i,  // Secure tm.
 
-    input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,
+    input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Efuse field map.
 
-    // APB Register Interface
-    input  logic [REG_ADDR_WIDTH-1:0]           apb_req_paddr_i,
-    input  logic [2:0]                          apb_req_pprot_i,
-    input  logic                                apb_req_psel_i,
-    input  logic                                apb_req_penable_i,
-    input  logic                                apb_req_pwrite_i,
-    input  logic [31:0]                         apb_req_pwdata_i,
-    input  logic [3:0]                          apb_req_pstrb_i,
+    input  logic [REG_ADDR_WIDTH-1:0]           apb_req_paddr_i,  // Apb req paddr (APB Register Interface).
+    input  logic [2:0]                          apb_req_pprot_i,  // Apb req pprot.
+    input  logic                                apb_req_psel_i,  // Apb req psel.
+    input  logic                                apb_req_penable_i,  // Apb req penable.
+    input  logic                                apb_req_pwrite_i,  // Apb req pwrite.
+    input  logic [31:0]                         apb_req_pwdata_i,  // Apb req pwdata.
+    input  logic [3:0]                          apb_req_pstrb_i,  // Apb req pstrb.
 
-    output efuse_apb_resp_t                     apb_resp_o,
+    output efuse_apb_resp_t                     apb_resp_o,  // Apb resp.
 
-    output logic                                fuse_sense_done_o,
-    output efuse_map_t                          shadow_efuse_o,
-    input  logic [5:0]                          rma_chiplet_token_match_i,
-    input  logic [5:0]                          rma_sip_token_match_i,
+    output logic                                fuse_sense_done_o,  // Fuse sense done.
+    output efuse_map_t                          shadow_efuse_o,  // Shadow efuse.
+    input  logic [5:0]                          rma_chiplet_token_match_i,  // Rma chiplet token match.
+    input  logic [5:0]                          rma_sip_token_match_i,  // Rma sip token match.
 
-    // Fuse Command Interface - custom interface for SHIM state machine
-    output fuse_command_req_t                   fuse_command_req_o,  // {address, write data, access length, command, valid}
-    input  fuse_command_resp_t                  fuse_command_resp_i, // {read data, command status, valid}
+    output fuse_command_req_t                   fuse_command_req_o,  // {address, write data, access length, command, valid}.
+    input  fuse_command_resp_t                  fuse_command_resp_i,  // {read data, command status, valid}.
 
-    // Debug ports
-    output logic                                is_write_locked_o,
-    output logic                                is_write_setup_only_o,
-    output logic                                is_lc_state_access_o,
-    output logic                                is_read_locked_o,
+    output logic                                is_write_locked_o,  // Is write locked.
+    output logic                                is_write_setup_only_o,  // Is write setup only.
+    output logic                                is_lc_state_access_o,  // Is lc state access.
+    output logic                                is_read_locked_o,  // Is read locked.
 
-    // Locked Field Access Interrupt
-    output logic                                locked_field_access_interrupt_o
+    output logic                                locked_field_access_interrupt_o  // Locked field access interrupt.
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;

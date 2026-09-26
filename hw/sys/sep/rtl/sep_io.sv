@@ -1,28 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP System IO
+// Demux SEP IO register AXI onto SPI and an error slave.
+//
+// NUM_COMPONENTS sizes the IO fabric. NUM_SLAVES is NUM_COMPONENTS + 1 for the error
+// slave.
+// sep_io_spi_req_o / sep_io_spi_rsp_i carry the SPI pad request/response struct.
 
 `include "axi/assign.svh"
 
 module sep_io #(
-  parameter  int unsigned NUM_COMPONENTS = 1,
-  localparam int unsigned NUM_SLAVES     = NUM_COMPONENTS + 1 // +1 for error slave
+  parameter  int unsigned NUM_COMPONENTS = 1,  // Number of IO fabric components.
+  localparam int unsigned NUM_SLAVES     = NUM_COMPONENTS + 1  // IO fabric slaves including the error slave.
 ) (
-  // Global Interface
-  input  logic                      clk_i,
-  input  logic                      rst_ni,
+  input  logic                      clk_i,    // System clock.
+  input  logic                      rst_ni,   // Active-low reset.
 
-  // Test/Scan Interface
-  input  logic                      test_en_i,
+  input  logic                      test_en_i,  // DFT test-enable (scan-enable).
 
-  // Full AXI4 slave from local crossbar (register access)
-  input  sep_pkg::sep_32_64_6_12_axi_req_t  sep_io_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t sep_io_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t  sep_io_axi_req_i,  // Full AXI4 slave from local crossbar (register access).
+  output sep_pkg::sep_32_64_6_12_axi_resp_t sep_io_axi_resp_o,  // SEP io AXI response.
 
-  // SPI
-  output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
-  input  sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp_i
+  output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,  // SEP io SPI request.
+  input  sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp_i  // SEP io SPI response.
 );
 
   /////////////////////////

@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Carry Select Adder
+// Add a_i and b_i with a carry-select datapath split into NUM_CHUNKS.
 //
-//--------------------------------------------------
+// Compute each chunk for carry-in 0 and 1, then select on the prior carry.
+// Drive c_o with the final carry out of the MSB chunk.
+// DATA_WIDTH must divide evenly across NUM_CHUNKS.
+
 module prim_carry_select_adder #(
-  parameter int unsigned DATA_WIDTH = 64,
-  parameter int unsigned NUM_CHUNKS = 2
+  parameter int unsigned DATA_WIDTH = 64,  // Operand width.
+  parameter int unsigned NUM_CHUNKS = 2  // Number of carry-select chunks.
 ) (
-  input  logic [DATA_WIDTH-1:0] a_i,
-  input  logic [DATA_WIDTH-1:0] b_i,
-  output logic [DATA_WIDTH-1:0] sum_o,
-  output logic                  c_o
+  input  logic [DATA_WIDTH-1:0] a_i,  // Addend A.
+  input  logic [DATA_WIDTH-1:0] b_i,  // Addend B.
+  output logic [DATA_WIDTH-1:0] sum_o,  // Sum result.
+  output logic                  c_o  // Carry out.
 );
 
   localparam int unsigned CHUNK_WIDTH = DATA_WIDTH / NUM_CHUNKS;

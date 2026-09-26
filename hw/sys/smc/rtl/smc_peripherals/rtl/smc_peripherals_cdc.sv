@@ -1,110 +1,144 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//----------------------------------------------------------
-// SMC Peripherals CDC
+// Cross SMC and peripheral clock domains for peripheral control and status.
 //
-// Clock domain crossing module for SMC peripherals.
-// Centralizes all CDC crossings related to peripheral subsystems
-// (SMCCLK, PERIPHERALCLK, REFCLK, TELEMETRYCLK).
-//
-//----------------------------------------------------------
+// Synchronizes peripheral control and status between the SMC and peripheral clocks.
+// Keeps pad-side and CSR-side resets coherent across those domains.
 
 module smc_peripherals_cdc #(
-  parameter int unsigned SYNC_STAGES = 3  // 2 for sync2, 3 for sync3
+  parameter int unsigned SYNC_STAGES = 3  // 2 for sync2, 3 for sync3.
 ) (
-  // Clock inputs
-  input  logic clk_smc_i,
-  input  logic clk_periph_i,
-  input  logic clk_ref_i,
-  input  logic clk_telemetry_i,
+  input  logic clk_smc_i,               // Clock inputs.
+  input  logic clk_periph_i,            // Clock inputs.
+  input  logic clk_ref_i,               // Clock inputs.
+  input  logic clk_telemetry_i,         // Clock inputs.
 
-  // Reset inputs
-  input  logic rst_smc_clk_ni,
-  input  logic rst_periph_clk_ni,
+  input  logic rst_smc_clk_ni,          // Reset inputs.
+  input  logic rst_periph_clk_ni,       // Reset inputs.
 
-  // AVSBus AXI-Lite CDC (SMC -> Periph)
-  input  smc_pkg::smc_axil_32_32_req_t  axil_avsbus_req_smc_clk_i,
-  output smc_pkg::smc_axil_32_32_resp_t axil_avsbus_resp_smc_clk_o,
-  output smc_pkg::smc_axil_32_32_req_t  axil_avsbus_req_periph_clk_o,
-  input  smc_pkg::smc_axil_32_32_resp_t axil_avsbus_resp_periph_clk_i,
+  input  smc_pkg::smc_axil_32_32_req_t  axil_avsbus_req_smc_clk_i,  // AVSBus AXI-Lite CDC
+                                                                    // (SMC -> Periph).
+  output smc_pkg::smc_axil_32_32_resp_t axil_avsbus_resp_smc_clk_o,  // AVSBus AXI-Lite CDC
+                                                                     // (SMC -> Periph).
+  output smc_pkg::smc_axil_32_32_req_t  axil_avsbus_req_periph_clk_o,  // AVSBus AXI-Lite CDC
+                                                                       // (SMC -> Periph).
+  input  smc_pkg::smc_axil_32_32_resp_t axil_avsbus_resp_periph_clk_i,  // AVSBus AXI-Lite CDC
+                                                                        // (SMC -> Periph).
 
-  // I2C AXI-Lite CDC (SMC -> Periph)
-  input  smc_pkg::smc_axil_32_32_req_t  axil_i2c_req_smc_clk_i,
-  output smc_pkg::smc_axil_32_32_resp_t axil_i2c_resp_smc_clk_o,
-  output smc_pkg::smc_axil_32_32_req_t  axil_i2c_req_periph_clk_o,
-  input  smc_pkg::smc_axil_32_32_resp_t axil_i2c_resp_periph_clk_i,
+  input  smc_pkg::smc_axil_32_32_req_t  axil_i2c_req_smc_clk_i,  // I2C AXI-Lite CDC (SMC
+                                                                 // -> Periph).
+  output smc_pkg::smc_axil_32_32_resp_t axil_i2c_resp_smc_clk_o,  // I2C AXI-Lite CDC (SMC
+                                                                  // -> Periph).
+  output smc_pkg::smc_axil_32_32_req_t  axil_i2c_req_periph_clk_o,  // I2C AXI-Lite CDC
+                                                                    // (SMC -> Periph).
+  input  smc_pkg::smc_axil_32_32_resp_t axil_i2c_resp_periph_clk_i,  // I2C AXI-Lite CDC
+                                                                     // (SMC -> Periph).
 
-  // I2C Interrupts CDC (Periph -> SMC)
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_smc_clk_o,
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_periph_clk_i,
-  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_smc_clk_o,
-  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_periph_clk_i,
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_smc_clk_o,  // I2C Interrupts CDC
+                                                                    // (Periph -> SMC).
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_enable_periph_clk_i,  // I2C Interrupts CDC
+                                                                       // (Periph -> SMC).
+  output logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_smc_clk_o,  // I2C Interrupts CDC
+                                                                  // (Periph -> SMC).
+  input  logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_periph_clk_i,  // I2C Interrupts CDC
+                                                                     // (Periph -> SMC).
 
-  // I2C Debug Bus CDC (Periph -> SMC). Visibility-only path consumed by the
-  // SMC debug bus mux. Per-bit sync is acceptable; coherency across bits is
-  // not required for debug observation.
-  input  logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_periph_clk_i,
-  output logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_smc_clk_o,
+  input  logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_periph_clk_i,  // I2C Debug Bus CDC
+                                                                           // (Periph -> SMC).
+                                                                           // Visibility-only path
+                                                                           // consumed by the SMC
+                                                                           // debug bus mux.
+                                                                           // Per-bit sync is
+                                                                           // acceptable;
+                                                                           // coherency across
+                                                                           // bits is not required
+                                                                           // for debug
+                                                                           // observation.
+  output logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_smc_clk_o,  // I2C Debug Bus CDC
+                                                                        // (Periph -> SMC).
+                                                                        // Visibility-only path
+                                                                        // consumed by the SMC
+                                                                        // debug bus mux.
+                                                                        // Per-bit sync is
+                                                                        // acceptable;
+                                                                        // coherency across
+                                                                        // bits is not required
+                                                                        // for debug
+                                                                        // observation.
 
-  // UART AXI-Lite CDC (SMC -> Periph)
-  input  smc_pkg::smc_axil_32_32_req_t  axil_uart_req_smc_clk_i,
-  output smc_pkg::smc_axil_32_32_resp_t axil_uart_resp_smc_clk_o,
-  output smc_pkg::smc_axil_32_32_req_t  axil_uart_req_periph_clk_o,
-  input  smc_pkg::smc_axil_32_32_resp_t axil_uart_resp_periph_clk_i,
+  input  smc_pkg::smc_axil_32_32_req_t  axil_uart_req_smc_clk_i,  // UART AXI-Lite CDC
+                                                                  // (SMC -> Periph).
+  output smc_pkg::smc_axil_32_32_resp_t axil_uart_resp_smc_clk_o,  // UART AXI-Lite CDC
+                                                                   // (SMC -> Periph).
+  output smc_pkg::smc_axil_32_32_req_t  axil_uart_req_periph_clk_o,  // UART AXI-Lite CDC
+                                                                     // (SMC -> Periph).
+  input  smc_pkg::smc_axil_32_32_resp_t axil_uart_resp_periph_clk_i,  // UART AXI-Lite CDC
+                                                                      // (SMC -> Periph).
 
-  // Log Engine AXI-Lite CDC (Periph -> SMC)
-  output smc_pkg::smc_axil_56_64_req_t  axil_log_engine_req_smc_clk_o,
-  input  smc_pkg::smc_axil_56_64_resp_t axil_log_engine_resp_smc_clk_i,
-  input  smc_pkg::smc_axil_56_64_req_t  axil_log_engine_req_periph_clk_i,
-  output smc_pkg::smc_axil_56_64_resp_t axil_log_engine_resp_periph_clk_o,
+  output smc_pkg::smc_axil_56_64_req_t  axil_log_engine_req_smc_clk_o,  // Log Engine AXI-Lite
+                                                                        // CDC (Periph -> SMC).
+  input  smc_pkg::smc_axil_56_64_resp_t axil_log_engine_resp_smc_clk_i,  // Log Engine AXI-Lite
+                                                                         // CDC (Periph -> SMC).
+  input  smc_pkg::smc_axil_56_64_req_t  axil_log_engine_req_periph_clk_i,  // Log Engine AXI-Lite
+                                                                           // CDC (Periph -> SMC).
+  output smc_pkg::smc_axil_56_64_resp_t axil_log_engine_resp_periph_clk_o,  // Log Engine AXI-Lite
+                                                                            // CDC (Periph -> SMC).
 
-  // UART Interrupts CDC (Periph -> SMC)
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_enable_smc_clk_o,
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_periph_clk_i,
+  output logic [smc_config_pkg::NUM_UART-1:0] uart_enable_smc_clk_o,  // UART Interrupts CDC
+                                                                      // (Periph -> SMC).
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_enable_periph_clk_i,  // UART Interrupts CDC
+                                                                         // (Periph -> SMC).
 
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_irq_combined_smc_clk_o,
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_err_periph_clk_i,
-  input  logic [smc_config_pkg::NUM_UART-1:0] uart_irq_periph_clk_i,
-  input  logic [smc_config_pkg::NUM_UART-1:0] log_engine_irq_periph_clk_i,
+  output logic [smc_config_pkg::NUM_UART-1:0] uart_irq_combined_smc_clk_o,  // Uart irq combined
+                                                                            // smc clk.
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_err_periph_clk_i,  // Uart err periph clk.
+  input  logic [smc_config_pkg::NUM_UART-1:0] uart_irq_periph_clk_i,  // Uart irq periph clk.
+  input  logic [smc_config_pkg::NUM_UART-1:0] log_engine_irq_periph_clk_i,  // Log engine irq
+                                                                            // periph clk.
 
-  // I3C AXI-Lite CDC (SMC -> Periph)
-  input  smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_smc_clk_i,
-  output smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_smc_clk_o,
-  output smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_periph_clk_o,
-  input  smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_periph_clk_i,
+  input  smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_smc_clk_i,  // I3C AXI-Lite CDC (SMC
+                                                                 // -> Periph).
+  output smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_smc_clk_o,  // I3C AXI-Lite CDC (SMC
+                                                                  // -> Periph).
+  output smc_pkg::smc_axil_32_32_req_t  axil_i3c_req_periph_clk_o,  // I3C AXI-Lite CDC
+                                                                    // (SMC -> Periph).
+  input  smc_pkg::smc_axil_32_32_resp_t axil_i3c_resp_periph_clk_i,  // I3C AXI-Lite CDC
+                                                                     // (SMC -> Periph).
 
-  // I3C Interrupts CDC (Periph -> SMC)
-  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_irqs_smc_clk_o,
-  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_irqs_periph_clk_i,
+  output logic [smc_config_pkg::NUM_I3C-1:0] i3c_irqs_smc_clk_o,  // I3C Interrupts CDC
+                                                                  // (Periph -> SMC).
+  input  logic [smc_config_pkg::NUM_I3C-1:0] i3c_irqs_periph_clk_i,  // I3C Interrupts CDC
+                                                                     // (Periph -> SMC).
 
-  // AVSBus Interrupt CDC (Periph -> SMC)
-  input  logic avsbus_irq_periph_clk_i,
-  output logic avsbus_irq_smc_clk_o,
+  input  logic avsbus_irq_periph_clk_i,  // AVSBus Interrupt CDC (Periph -> SMC).
+  output logic avsbus_irq_smc_clk_o,    // AVSBus Interrupt CDC (Periph -> SMC).
 
-  // Clock gate enable CDC (SMC clk -> Periph clk)
-  input  logic i2c_cg_en_smc_clk_i,
-  output logic i2c_cg_en_periph_clk_o,
-  input  logic uart_cg_en_smc_clk_i,
-  output logic uart_cg_en_periph_clk_o,
-  input  logic avs_cg_en_smc_clk_i,
-  output logic avs_cg_en_periph_clk_o,
-  input  logic i3c_cg_en_smc_clk_i,
-  output logic i3c_cg_en_periph_clk_o,
+  input  logic i2c_cg_en_smc_clk_i,     // Clock gate enable CDC (SMC clk -> Periph clk).
+  output logic i2c_cg_en_periph_clk_o,  // Clock gate enable CDC (SMC clk -> Periph clk).
+  input  logic uart_cg_en_smc_clk_i,    // Clock gate enable CDC (SMC clk -> Periph clk).
+  output logic uart_cg_en_periph_clk_o,  // Clock gate enable CDC (SMC clk -> Periph clk).
+  input  logic avs_cg_en_smc_clk_i,     // Clock gate enable CDC (SMC clk -> Periph clk).
+  output logic avs_cg_en_periph_clk_o,  // Clock gate enable CDC (SMC clk -> Periph clk).
+  input  logic i3c_cg_en_smc_clk_i,     // Clock gate enable CDC (SMC clk -> Periph clk).
+  output logic i3c_cg_en_periph_clk_o,  // Clock gate enable CDC (SMC clk -> Periph clk).
 
-  // Clock gate enable CDC (SMC clk -> Ref clk)
-  output logic avs_cg_en_ref_clk_o,
+  output logic avs_cg_en_ref_clk_o,     // Clock gate enable CDC (SMC clk -> Ref clk).
 
-  // Clock gate enable CDC (SMC clk -> Telemetry clk)
-  input  logic tel_cg_en_smc_clk_i,
-  output logic tel_cg_en_telemetry_clk_o,
+  input  logic tel_cg_en_smc_clk_i,     // Clock gate enable CDC (SMC clk -> Telemetry
+                                        // clk).
+  output logic tel_cg_en_telemetry_clk_o,  // Clock gate enable CDC (SMC clk -> Telemetry
+                                           // clk).
 
-  // NDM Reset Request CDC (top level input -> SMC clk)
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_smc_clk_o,
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // NDM Reset Request
+                                                                            // CDC (top level input
+                                                                            // -> SMC clk).
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_smc_clk_o,  // NDM Reset Request
+                                                                                    // CDC (top level input
+                                                                                    // -> SMC clk).
 
-  input  logic [16:0] avsbus_cur_state_debug_i,
-  output logic [16:0] avsbus_cur_state_debug_o
+  input  logic [16:0] avsbus_cur_state_debug_i,  // Avsbus cur state debug.
+  output logic [16:0] avsbus_cur_state_debug_o  // Avsbus cur state debug.
 );
 
   ///////////////////////

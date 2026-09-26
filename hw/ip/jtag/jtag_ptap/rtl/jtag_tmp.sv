@@ -1,34 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG Test Mode Persistence (TMP) Controller
+// Track IEEE 1149.1 test-mode persistence for clamp hold and release.
 //
-//-----------------------------------------------------------------------------
+// Enters and leaves persistence-on from CLAMP_HOLD, CLAMP_RELEASE, and BYPASS instruction
+// selects.
+// bypass_escape_enable_i from the status TDR allows BYPASS to leave persistence-on.
+// update_ir_i marks IR updates; test_logic_reset_i marks Test-Logic-Reset entry.
+// persistence_mode_o is 1 for Persistence-On and 0 for Persistence-Off.
 
 module jtag_tmp
   import prim_jtag_pkg::*;
   import jtag_tmp_pkg::*;
 (
-  // TAP control interface
-  input  jtag_tap_ctrl_t  tap_ctrl_i,
+  input  jtag_tap_ctrl_t  tap_ctrl_i,   // JTAG TAP control (tms, trst_n, tck).
 
-  // IR update signal (from TAP controller)
-  input  logic             update_ir_i,
+  input  logic             update_ir_i,  // Update ir.
 
-  // Test logic reset (from TAP controller state)
-  input  logic             test_logic_reset_i,
+  input  logic             test_logic_reset_i,  // Test logic reset (Test logic reset (from TAP controller state)).
 
-  // Centralized instruction decoding inputs (from instruction register)
-  input  logic             clamp_hold_selected_i,      // CLAMP_HOLD instruction selected
-  input  logic             clamp_release_selected_i,   // CLAMP_RELEASE instruction selected
-  input  logic             bypass_selected_i,          // BYPASS instruction selected
+  input  logic             clamp_hold_selected_i,  // CLAMP_HOLD instruction selected.
+  input  logic             clamp_release_selected_i,  // CLAMP_RELEASE instruction selected.
+  input  logic             bypass_selected_i,  // BYPASS instruction selected.
 
-  // TMP controller status outputs
-  output logic             persistence_mode_o,     // 1 = Persistence-On, 0 = Persistence-Off
+  output logic             persistence_mode_o,  // 1 = Persistence-On, 0 = Persistence-Off.
 
-  // TMP status register input
-  input  logic             bypass_escape_enable_i // Bypass escape enable input from status register
+  input  logic             bypass_escape_enable_i  // Bypass escape enable from status register.
 );
   // Tie off unused fields to satisfy lint
   logic unused_tap;

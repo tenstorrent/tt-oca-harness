@@ -1,33 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// AXI Window Remap
+// Remap AXI addresses inside one alias window onto a target base.
 //
-// Generic single-window address translation: conditionally remaps addresses
-// in a specified window to a target region. Addresses outside the window pass
-// through unchanged. Used for both local-alias and global-to-local remapping.
+// Addresses in [local_alias_base_i, local_alias_base_i + region_size_i) rewrite to
+// target_base_i plus the offset; all others pass through unchanged. All window parameters
+// are runtime inputs. The remap supports both local-alias and global-to-local remapping.
 //
-// Example: If local_alias_base=0xC000_0000, target_base=0x1000_0000, region_size=0x50000
-//   - Address 0xC000_1234 -> remapped to 0x1000_1234
-//   - Address 0x2000_0000 -> unchanged (outside alias region)
+// For example, local_alias_base 0xC000_0000, target_base 0x1000_0000 and region_size
+// 0x50000 map 0xC000_1234 to 0x1000_1234 and leave 0x2000_0000 unchanged.
 
 module axi_window_remap #(
-  parameter type axi_req_t  = logic,
-  parameter type axi_resp_t = logic,
-  parameter int unsigned AXI_ADDR_WIDTH = 32
+  parameter type axi_req_t  = logic,                        // AXI request type.
+  parameter type axi_resp_t = logic,                        // AXI response type.
+  parameter int unsigned AXI_ADDR_WIDTH = 32                // AXI address width.
 ) (
-  // Slave side (from CPU)
-  input  axi_req_t                   slv_req_i,
-  output axi_resp_t                  slv_resp_o,
+  input  axi_req_t                   slv_req_i,             // Slave-side AXI request (from CPU).
+  output axi_resp_t                  slv_resp_o,            // Slave-side AXI response.
 
-  // Master side (to fabric)
-  output axi_req_t                   mst_req_o,
-  input  axi_resp_t                  mst_resp_i,
+  output axi_req_t                   mst_req_o,             // Master-side AXI request (to fabric).
+  input  axi_resp_t                  mst_resp_i,            // Master-side AXI response.
 
-  // Configuration - all runtime inputs for flexibility
-  input  logic [AXI_ADDR_WIDTH-1:0]  local_alias_base_i,  // Start of alias region (e.g., 0xC000_0000)
-  input  logic [AXI_ADDR_WIDTH-1:0]  region_size_i,       // Size of alias region
-  input  logic [AXI_ADDR_WIDTH-1:0]  target_base_i        // Where to remap to (e.g., 0x1000_0000)
+  input  logic [AXI_ADDR_WIDTH-1:0]  local_alias_base_i,    // Start of the alias region (e.g. 0xC000_0000).
+  input  logic [AXI_ADDR_WIDTH-1:0]  region_size_i,         // Size of the alias region.
+  input  logic [AXI_ADDR_WIDTH-1:0]  target_base_i          // Remap destination base (e.g. 0x1000_0000).
 );
 
   // Calculate region bounds and adjustment

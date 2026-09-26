@@ -196,26 +196,32 @@ Every hand-maintained module, interface, and package uses the same `//`
 header, after the SPDX lines. Generated register RTL and
 `vendor/**/upstream/**` stay as their generator or upstream left them.
 
-The header is two parts. The first line is one present-tense sentence: the
-RTL job of this module. It does not repeat the IP chapter. One blank `//`
-line follows, then two to four sentences of behavior the declarations do
-not carry. The same paragraph is the text at the top of that module's page
-in RTL Modules Reference.
+The header is two parts. The first line is one imperative sentence: the RTL
+job of this module. It does not repeat the IP chapter. One blank `//` line
+follows, then the behavior the declarations do not carry: resets, clock
+domains, ordering, and constraints an integrator or reviewer would
+otherwise have to rediscover. Keep it concise, but keep every fact. The
+same paragraphs are the text at the top of that module's page in RTL
+Modules Reference.
 
-Every parameter, input, and output has one `//` clause on the same line as
-the declaration. The clause is that item's role in this module. Polarity,
-clock domain, or synchronizer behavior goes in the clause when the name
-does not already say it. The clause does not say "input" or "output", and
-it does not restate the type or the default.
+Every parameter, input, and output has a `//` clause that starts on the
+same line as the declaration. The clause is that item's role in this
+module. Polarity, clock domain, or synchronizer behavior goes in the clause
+when the name does not already say it. The clause does not say "input" or
+"output", and it does not restate the type or the default. A clause that
+needs more than one line continues on the next `//` lines, each starting at
+or right of the clause's `//`.
 
-No `//` line sits between two parameters or two ports. svdoc stores the
-first `//` after a declaration onto that declaration, so a banner in the
-gap is published on the previous item. A blank line may separate groups.
-Section banners stay in the body, below the port list.
+No other `//` line sits between two parameters or two ports. A group banner
+in the gap is published as part of the previous item. A blank line may
+separate groups. Section banners stay in the body, below the port list.
+
+Write each comment so it reads on its own, without the diff or the
+surrounding discussion. A comment that records why a change was made
+belongs in the commit message.
 
 Do not use `// File:`, `// Module:`, `// Author:`, `@file`, `@brief`,
-`@param`, `@author`, or a `/** */` file header. A comment that records why
-a change was made belongs in the commit message.
+`@param`, `@author`, or a `/** */` file header.
 
 Body comments stay sparse. Do not restate a line the code already makes
 obvious. Comment a constraint, an ordering, or a hardware behavior a reader
@@ -223,19 +229,19 @@ would otherwise have to rediscover.
 
 [source,systemverilog]
 ----
-// Cold and warm reset conditioner for the Key Manager.
+// Condition the cold and warm resets for the Key Manager.
 //
-// cold_rst_ni is synchronized and drives rst_cold_aasd_no, which resets
-// every flop in this block. warm_rst_ni and soft_rst_ni are synchronous
-// to clk_i; either one, or a cold reset, asserts rst_warm_sync_no and
-// holds it for MIN_RESET_CYCLES. scanmode_i bypasses both outputs.
+// Synchronize cold_rst_ni onto rst_cold_aasd_no, which resets every flop in
+// this block. Assert rst_warm_sync_no on warm_rst_ni, soft_rst_ni, or a cold
+// reset, and hold it for MIN_RESET_CYCLES. scanmode_i bypasses both outputs.
 
 module km_reset_conditioner #(
-  parameter int unsigned MIN_RESET_CYCLES = 10 // Warm-reset hold, in clk_i cycles.
+  parameter int unsigned MIN_RESET_CYCLES = 10  // Warm-reset hold, in clk_i cycles.
 ) (
-  input  logic clk_i,        // Clock for the warm-hold counter.
-  input  logic cold_rst_ni,  // Active-low. Async assert, sync deassert. Resets the whole block.
-  output logic rst_warm_sync_no  // Active-low warm reset, held MIN_RESET_CYCLES.
+  input  logic clk_i,             // Clock for the warm-hold counter.
+  input  logic cold_rst_ni,       // Active-low. Async assert, sync deassert.
+                                  // Resets every flop in the block.
+  output logic rst_warm_sync_no   // Active-low warm reset, held MIN_RESET_CYCLES.
 );
 ----
 
@@ -262,5 +268,6 @@ python3 tools/doc/check_sv_comments.py hw/ip/key_manager/rtl/*.sv
 ----
 
 The checker fails when the two-part `//` block is missing, when a parameter
-or port has no same-line `//` clause, when a `//` line sits between two of
-those declarations, or when a banned banner or tag is present.
+or port has no same-line `//` clause, when a `//` line that is not a
+continuation sits between two of those declarations, or when a banned
+banner or tag is present.

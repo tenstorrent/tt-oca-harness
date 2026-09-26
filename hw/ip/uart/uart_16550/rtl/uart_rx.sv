@@ -1,38 +1,37 @@
-//-----------------------------------------------------------------------------
-// UART 16550 Receiver
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Sample rx_i at 16× baud and assemble a UART receive frame.
 //
-// Description: UART Receive Module
-//
+// tick_baud_x16_i paces oversampling; word_length_i, parity_enable_i, parity_odd_i, and
+// extra_stop_bit_i shape the expected frame.
+// rx_valid_o pulses with rx_data_o; frame_err_o and rx_parity_err_o report framing and
+// parity faults.
 
 module uart_rx
   import uart_16550_pkg::*;
 #(
 ) (
-  input  logic       clk_i,
-  input  logic       rst_ni,
+  input  logic       clk_i,             // System clock.
+  input  logic       rst_ni,            // Active-low reset.
 
-  input  logic       rx_enable_i,
-  input  logic       tick_baud_x16_i,
-  input  logic       parity_enable_i,
-  input  logic       parity_odd_i,
-  input  logic       parity_force_i,
-  input  logic [3:0] word_length_i,
-  input  logic       extra_stop_bit_i,
+  input  logic       rx_enable_i,       // Receiver enable.
+  input  logic       tick_baud_x16_i,   // 16× baud oversample tick.
+  input  logic       parity_enable_i,   // Include a parity bit in the frame.
+  input  logic       parity_odd_i,      // 1 selects odd parity; 0 selects even.
+  input  logic       parity_force_i,    // Force parity value for testing.
+  input  logic [3:0] word_length_i,     // Data bits per frame.
+  input  logic       extra_stop_bit_i,  // Add a second stop bit when high.
 
-  output logic       tick_baud_o,
-  output logic       rx_valid_o,
-  output logic [7:0] rx_data_o,
-  output logic       idle_o,
-  output logic       frame_err_o,
-  output logic       rx_parity_err_o,
+  output logic       tick_baud_o,       // Tick baud.
+  output logic       rx_valid_o,        // Pulse when rx_data_o is valid.
+  output logic [7:0] rx_data_o,         // Received data byte.
+  output logic       idle_o,            // High when the shifter is empty or tx_enable_i is low.
+  output logic       frame_err_o,       // Framing error.
+  output logic       rx_parity_err_o,   // Parity error.
 
-  input logic        rx_i
+  input logic        rx_i               // Serial receive line.
 );
 
   logic [11:0] sreg_q, sreg_d;

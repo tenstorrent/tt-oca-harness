@@ -7,7 +7,8 @@
 Fails when the two-part // header after the SPDX lines is missing, when a
 parameter or port in the header has no same-line // clause, when a // line
 sits between two of those declarations, or when a banned banner or tag is
-present.
+present. A clause may continue on the next // lines when each one starts at
+or right of the clause's //.
 """
 
 import argparse
@@ -70,16 +71,26 @@ def check(path: Path) -> list:
         errors.append(f"{path}: missing two-part // header after the SPDX lines")
 
     prev_decl = False
+    clause_col = None
     for i in range(mod_start, mod_end + 1):
         line = lines[i]
         if _DECL.match(line):
             if "//" not in line:
                 errors.append(f"{path}:{i + 1}: declaration has no same-line // clause")
+                clause_col = None
+            else:
+                clause_col = line.index("//")
             prev_decl = True
             continue
-        if prev_decl and _COMMENT_ONLY.match(line) and line.strip() != "//":
-            errors.append(f"{path}:{i + 1}: // line between declarations")
-        if line.strip() and not _COMMENT_ONLY.match(line):
+        if _COMMENT_ONLY.match(line):
+            if clause_col is not None and line.index("//") >= clause_col:
+                continue
+            clause_col = None
+            if prev_decl and line.strip() != "//":
+                errors.append(f"{path}:{i + 1}: // line between declarations")
+            continue
+        clause_col = None
+        if line.strip():
             prev_decl = False
     return errors
 

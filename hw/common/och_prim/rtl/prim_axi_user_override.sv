@@ -1,118 +1,119 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXI User Override
+// Pass an AXI channel through while forcing AW, AR, and W user fields to AxiUserOverride.
 //
-//--------------------------------------------------
+// Wire every other channel field straight across.
+// Pass response user fields through unchanged.
+// AxiUserWidth must cover the override value.
 
 module prim_axi_user_override #(
-  parameter  int unsigned AxiAddrWidth = 64,
-  parameter  int unsigned AxiDataWidth = 64,
-  parameter  int unsigned AxiIdWidth   = 1,
-  parameter  int unsigned AxiUserWidth = 1,
+  parameter  int unsigned AxiAddrWidth = 64,  // AXI address width.
+  parameter  int unsigned AxiDataWidth = 64,  // AXI data width.
+  parameter  int unsigned AxiIdWidth   = 1,  // AXI ID width.
+  parameter  int unsigned AxiUserWidth = 1,  // AXI user width.
 
-  parameter  int unsigned AxiUserOverride = 0,
+  parameter  int unsigned AxiUserOverride = 0,  // Constant written onto outbound AW/AR/W user fields.
 
-  localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,
+  localparam int unsigned AxiStrbWidth = AxiDataWidth / 8,  // Write-strobe width from AxiDataWidth.
 
-  localparam type addr_t  = logic [AxiAddrWidth-1:0],
-  localparam type data_t  = logic [AxiDataWidth-1:0],
-  localparam type id_t    = logic [AxiIdWidth-1:0],
-  localparam type strb_t  = logic [AxiStrbWidth-1:0],
-  localparam type user_t  = logic [AxiUserWidth-1:0]
+  localparam type addr_t  = logic [AxiAddrWidth-1:0],  // Address type alias.
+  localparam type data_t  = logic [AxiDataWidth-1:0],  // Data type alias.
+  localparam type id_t    = logic [AxiIdWidth-1:0],  // ID type alias.
+  localparam type strb_t  = logic [AxiStrbWidth-1:0],  // Strobe type alias.
+  localparam type user_t  = logic [AxiUserWidth-1:0]  // User type alias.
 ) (
-  input  logic             axi_in_awvalid_i,
-  input  id_t              axi_in_awid_i,
-  input  addr_t            axi_in_awaddr_i,
-  input  axi_pkg::len_t    axi_in_awlen_i,
-  input  axi_pkg::size_t   axi_in_awsize_i,
-  input  axi_pkg::burst_t  axi_in_awburst_i,
-  input  logic             axi_in_awlock_i,
-  input  axi_pkg::cache_t  axi_in_awcache_i,
-  input  axi_pkg::prot_t   axi_in_awprot_i,
-  input  axi_pkg::qos_t    axi_in_awqos_i,
-  input  axi_pkg::region_t axi_in_awregion_i,
-  input  axi_pkg::atop_t   axi_in_awatop_i,
-  input  user_t            axi_in_awuser_i,
-  output logic             axi_in_awready_o,
-  input  logic             axi_in_wvalid_i,
-  input  data_t            axi_in_wdata_i,
-  input  strb_t            axi_in_wstrb_i,
-  input  logic             axi_in_wlast_i,
-  input  user_t            axi_in_wuser_i,
-  output logic             axi_in_wready_o,
-  output logic             axi_in_bvalid_o,
-  output id_t              axi_in_bid_o,
-  output axi_pkg::resp_t   axi_in_bresp_o,
-  output user_t            axi_in_buser_o,
-  input  logic             axi_in_bready_i,
-  input  logic             axi_in_arvalid_i,
-  input  id_t              axi_in_arid_i,
-  input  addr_t            axi_in_araddr_i,
-  input  axi_pkg::len_t    axi_in_arlen_i,
-  input  axi_pkg::size_t   axi_in_arsize_i,
-  input  axi_pkg::burst_t  axi_in_arburst_i,
-  input  logic             axi_in_arlock_i,
-  input  axi_pkg::cache_t  axi_in_arcache_i,
-  input  axi_pkg::prot_t   axi_in_arprot_i,
-  input  axi_pkg::qos_t    axi_in_arqos_i,
-  input  axi_pkg::region_t axi_in_arregion_i,
-  input  user_t            axi_in_aruser_i,
-  output logic             axi_in_arready_o,
-  output logic             axi_in_rvalid_o,
-  output id_t              axi_in_rid_o,
-  output data_t            axi_in_rdata_o,
-  output axi_pkg::resp_t   axi_in_rresp_o,
-  output logic             axi_in_rlast_o,
-  output user_t            axi_in_ruser_o,
-  input  logic             axi_in_rready_i,
+  input  logic             axi_in_awvalid_i,  // Upstream awvalid.
+  input  id_t              axi_in_awid_i,  // Upstream awid.
+  input  addr_t            axi_in_awaddr_i,  // Upstream awaddr.
+  input  axi_pkg::len_t    axi_in_awlen_i,  // Upstream awlen.
+  input  axi_pkg::size_t   axi_in_awsize_i,  // Upstream awsize.
+  input  axi_pkg::burst_t  axi_in_awburst_i,  // Upstream awburst.
+  input  logic             axi_in_awlock_i,  // Upstream awlock.
+  input  axi_pkg::cache_t  axi_in_awcache_i,  // Upstream awcache.
+  input  axi_pkg::prot_t   axi_in_awprot_i,  // Upstream awprot.
+  input  axi_pkg::qos_t    axi_in_awqos_i,  // Upstream awqos.
+  input  axi_pkg::region_t axi_in_awregion_i,  // Upstream awregion.
+  input  axi_pkg::atop_t   axi_in_awatop_i,  // Upstream awatop.
+  input  user_t            axi_in_awuser_i,  // Upstream awuser.
+  output logic             axi_in_awready_o,  // Upstream awready.
+  input  logic             axi_in_wvalid_i,  // Upstream wvalid.
+  input  data_t            axi_in_wdata_i,  // Upstream wdata.
+  input  strb_t            axi_in_wstrb_i,  // Upstream wstrb.
+  input  logic             axi_in_wlast_i,  // Upstream wlast.
+  input  user_t            axi_in_wuser_i,  // Upstream wuser.
+  output logic             axi_in_wready_o,  // Upstream wready.
+  output logic             axi_in_bvalid_o,  // Upstream bvalid.
+  output id_t              axi_in_bid_o,  // Upstream bid.
+  output axi_pkg::resp_t   axi_in_bresp_o,  // Upstream bresp.
+  output user_t            axi_in_buser_o,  // Upstream buser.
+  input  logic             axi_in_bready_i,  // Upstream bready.
+  input  logic             axi_in_arvalid_i,  // Upstream arvalid.
+  input  id_t              axi_in_arid_i,  // Upstream arid.
+  input  addr_t            axi_in_araddr_i,  // Upstream araddr.
+  input  axi_pkg::len_t    axi_in_arlen_i,  // Upstream arlen.
+  input  axi_pkg::size_t   axi_in_arsize_i,  // Upstream arsize.
+  input  axi_pkg::burst_t  axi_in_arburst_i,  // Upstream arburst.
+  input  logic             axi_in_arlock_i,  // Upstream arlock.
+  input  axi_pkg::cache_t  axi_in_arcache_i,  // Upstream arcache.
+  input  axi_pkg::prot_t   axi_in_arprot_i,  // Upstream arprot.
+  input  axi_pkg::qos_t    axi_in_arqos_i,  // Upstream arqos.
+  input  axi_pkg::region_t axi_in_arregion_i,  // Upstream arregion.
+  input  user_t            axi_in_aruser_i,  // Upstream aruser.
+  output logic             axi_in_arready_o,  // Upstream arready.
+  output logic             axi_in_rvalid_o,  // Upstream rvalid.
+  output id_t              axi_in_rid_o,  // Upstream rid.
+  output data_t            axi_in_rdata_o,  // Upstream rdata.
+  output axi_pkg::resp_t   axi_in_rresp_o,  // Upstream rresp.
+  output logic             axi_in_rlast_o,  // Upstream rlast.
+  output user_t            axi_in_ruser_o,  // Upstream ruser.
+  input  logic             axi_in_rready_i,  // Upstream rready.
 
-  output logic             axi_out_awvalid_o,
-  output id_t              axi_out_awid_o,
-  output addr_t            axi_out_awaddr_o,
-  output axi_pkg::len_t    axi_out_awlen_o,
-  output axi_pkg::size_t   axi_out_awsize_o,
-  output axi_pkg::burst_t  axi_out_awburst_o,
-  output logic             axi_out_awlock_o,
-  output axi_pkg::cache_t  axi_out_awcache_o,
-  output axi_pkg::prot_t   axi_out_awprot_o,
-  output axi_pkg::qos_t    axi_out_awqos_o,
-  output axi_pkg::region_t axi_out_awregion_o,
-  output axi_pkg::atop_t   axi_out_awatop_o,
-  output user_t            axi_out_awuser_o,
-  input  logic             axi_out_awready_i,
-  output logic             axi_out_wvalid_o,
-  output data_t            axi_out_wdata_o,
-  output strb_t            axi_out_wstrb_o,
-  output logic             axi_out_wlast_o,
-  output user_t            axi_out_wuser_o,
-  input  logic             axi_out_wready_i,
-  input  logic             axi_out_bvalid_i,
-  input  id_t              axi_out_bid_i,
-  input  axi_pkg::resp_t   axi_out_bresp_i,
-  input  user_t            axi_out_buser_i,
-  output logic             axi_out_bready_o,
-  output logic             axi_out_arvalid_o,
-  output id_t              axi_out_arid_o,
-  output addr_t            axi_out_araddr_o,
-  output axi_pkg::len_t    axi_out_arlen_o,
-  output axi_pkg::size_t   axi_out_arsize_o,
-  output axi_pkg::burst_t  axi_out_arburst_o,
-  output logic             axi_out_arlock_o,
-  output axi_pkg::cache_t  axi_out_arcache_o,
-  output axi_pkg::prot_t   axi_out_arprot_o,
-  output axi_pkg::qos_t    axi_out_arqos_o,
-  output axi_pkg::region_t axi_out_arregion_o,
-  output user_t            axi_out_aruser_o,
-  input  logic             axi_out_arready_i,
-  input  logic             axi_out_rvalid_i,
-  input  id_t              axi_out_rid_i,
-  input  data_t            axi_out_rdata_i,
-  input  axi_pkg::resp_t   axi_out_rresp_i,
-  input  logic             axi_out_rlast_i,
-  input  user_t            axi_out_ruser_i,
-  output logic             axi_out_rready_o
+  output logic             axi_out_awvalid_o,  // Downstream awvalid.
+  output id_t              axi_out_awid_o,  // Downstream awid.
+  output addr_t            axi_out_awaddr_o,  // Downstream awaddr.
+  output axi_pkg::len_t    axi_out_awlen_o,  // Downstream awlen.
+  output axi_pkg::size_t   axi_out_awsize_o,  // Downstream awsize.
+  output axi_pkg::burst_t  axi_out_awburst_o,  // Downstream awburst.
+  output logic             axi_out_awlock_o,  // Downstream awlock.
+  output axi_pkg::cache_t  axi_out_awcache_o,  // Downstream awcache.
+  output axi_pkg::prot_t   axi_out_awprot_o,  // Downstream awprot.
+  output axi_pkg::qos_t    axi_out_awqos_o,  // Downstream awqos.
+  output axi_pkg::region_t axi_out_awregion_o,  // Downstream awregion.
+  output axi_pkg::atop_t   axi_out_awatop_o,  // Downstream awatop.
+  output user_t            axi_out_awuser_o,  // Downstream awuser.
+  input  logic             axi_out_awready_i,  // Downstream awready.
+  output logic             axi_out_wvalid_o,  // Downstream wvalid.
+  output data_t            axi_out_wdata_o,  // Downstream wdata.
+  output strb_t            axi_out_wstrb_o,  // Downstream wstrb.
+  output logic             axi_out_wlast_o,  // Downstream wlast.
+  output user_t            axi_out_wuser_o,  // Downstream wuser.
+  input  logic             axi_out_wready_i,  // Downstream wready.
+  input  logic             axi_out_bvalid_i,  // Downstream bvalid.
+  input  id_t              axi_out_bid_i,  // Downstream bid.
+  input  axi_pkg::resp_t   axi_out_bresp_i,  // Downstream bresp.
+  input  user_t            axi_out_buser_i,  // Downstream buser.
+  output logic             axi_out_bready_o,  // Downstream bready.
+  output logic             axi_out_arvalid_o,  // Downstream arvalid.
+  output id_t              axi_out_arid_o,  // Downstream arid.
+  output addr_t            axi_out_araddr_o,  // Downstream araddr.
+  output axi_pkg::len_t    axi_out_arlen_o,  // Downstream arlen.
+  output axi_pkg::size_t   axi_out_arsize_o,  // Downstream arsize.
+  output axi_pkg::burst_t  axi_out_arburst_o,  // Downstream arburst.
+  output logic             axi_out_arlock_o,  // Downstream arlock.
+  output axi_pkg::cache_t  axi_out_arcache_o,  // Downstream arcache.
+  output axi_pkg::prot_t   axi_out_arprot_o,  // Downstream arprot.
+  output axi_pkg::qos_t    axi_out_arqos_o,  // Downstream arqos.
+  output axi_pkg::region_t axi_out_arregion_o,  // Downstream arregion.
+  output user_t            axi_out_aruser_o,  // Downstream aruser.
+  input  logic             axi_out_arready_i,  // Downstream arready.
+  input  logic             axi_out_rvalid_i,  // Downstream rvalid.
+  input  id_t              axi_out_rid_i,  // Downstream rid.
+  input  data_t            axi_out_rdata_i,  // Downstream rdata.
+  input  axi_pkg::resp_t   axi_out_rresp_i,  // Downstream rresp.
+  input  logic             axi_out_rlast_i,  // Downstream rlast.
+  input  user_t            axi_out_ruser_i,  // Downstream ruser.
+  output logic             axi_out_rready_o  // Downstream rready.
 );
 
   assign axi_out_awvalid_o  = axi_in_awvalid_i;

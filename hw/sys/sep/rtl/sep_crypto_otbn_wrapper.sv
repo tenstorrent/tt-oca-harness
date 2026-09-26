@@ -1,47 +1,44 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// OTBN wrapper: AXI-Lite 32 -> TL-UL + upstream OTBN.
-// AXCACHE forcing and the AXI 64 -> AXI 32 -> AXI-Lite 32 conversion
-// chain live in sep_crypto_axi_interconnect.
+// Bridge isolated AXI-Lite CSR and key buses onto TL-UL OTBN.
+//
+// AXCACHE forcing and the AXI 64 to AXI 32 to AXI-Lite 32 conversion chain live in
+// sep_crypto_axi_interconnect.
+// Exposes RND and URND EDN clients, the done interrupt, recoverable and fatal alerts, and
+// external IMEM/DMEM SRAM structs from prim_ram_1p_scr_ext.
+// bus_err_o sticks on a register-bridge fault until bus_err_clr_i.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module sep_crypto_otbn_wrapper (
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,                         // System clock.
+  input  logic rst_ni,                        // Active-low reset.
 
-  // 32-bit AXI-Lite CSR side from the sep_crypto interconnect (isolated)
-  input  sep_pkg::sep_32_32_axil_req_t  otbn_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t otbn_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  otbn_axil_req_i,  // 32-bit AXI-Lite CSR side from the sep_crypto interconnect (isolated).
+  output sep_pkg::sep_32_32_axil_resp_t otbn_axil_resp_o,  // OTBN AXIL response.
 
-  // AXI4-Lite key interface (32-bit from Key Manager private bus)
-  input  sep_pkg::sep_32_32_axil_req_t  otbn_key_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t otbn_key_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  otbn_key_axil_req_i,  // otbn key axil req i.
+  output sep_pkg::sep_32_32_axil_resp_t otbn_key_axil_resp_o,  // OTBN key AXIL response.
 
-  // EDN interfaces (RND and URND)
-  output edn_pkg::edn_req_t edn_rnd_req_o,
-  input  edn_pkg::edn_rsp_t edn_rnd_rsp_i,
-  output edn_pkg::edn_req_t edn_urnd_req_o,
-  input  edn_pkg::edn_rsp_t edn_urnd_rsp_i,
+  output edn_pkg::edn_req_t edn_rnd_req_o,    // edn rnd req o.
+  input  edn_pkg::edn_rsp_t edn_rnd_rsp_i,    // EDN rnd response.
+  output edn_pkg::edn_req_t edn_urnd_req_o,   // EDN urnd request.
+  input  edn_pkg::edn_rsp_t edn_urnd_rsp_i,   // EDN urnd response.
 
-  // OTBN done interrupt
-  output logic intr_done_o,
+  output logic intr_done_o,                   // OTBN done interrupt.
 
-  // Alert interface (2 alerts: fatal, recoverable)
-  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,  // alert rx i.
+  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,  // alert tx.
 
-  // External SRAM interfaces (from upstream OTBN via prim_ram_1p_scr_ext)
-  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t imem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t imem_sram_rsp_i,
-  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t dmem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i,
+  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t imem_sram_req_o,  // External SRAM interfaces (from upstream OTBN via prim_ram_1p_scr_ext).
+  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t imem_sram_rsp_i,  // IMEM SRAM response.
+  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t dmem_sram_req_o,  // DMEM SRAM request.
+  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i,  // DMEM SRAM response.
 
-  // Register bridge fault (sticky, held until bus_err_clr_i)
-  output logic bus_err_o,
-  input  logic bus_err_clr_i
+  output logic bus_err_o,                     // bus err o.
+  input  logic bus_err_clr_i                  // bus err clr.
 );
 
   // ========================================================================

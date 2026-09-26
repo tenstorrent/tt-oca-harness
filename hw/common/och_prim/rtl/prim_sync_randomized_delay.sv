@@ -1,53 +1,53 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Randomized Delay Synchronizer
+// Insert a simulation-only random delay ahead of a CDC synchronizer.
 //
-//--------------------------------------------------
+// Tie d_del_o to d_i in synthesis, or when random-delay modeling is disabled.
+//
+// RANDOM_DELAY_TYPE selects the delay set:
+//
+// - 0: none.
+// - 1 (default): zero or up to one clk_i cycle.
+// - 2: zero, 0.5, 1, or 1.5.
+// - 3: zero through three.
+// - 4: zero or up to 0.5.
+// - Any other value: none.
+//
+// The remaining parameters control the delay flops:
+//
+// - RANDOM_DELAY_RESET clears the delay flops on rst_ni when set.
+// - RANDOM_DELAY_GRAY_CODE shares one mux select across WIDTH bits.
+// - RANDOM_DELAY_MUX_OVR forces a fixed select.
+// - RESET_POLARITY chooses clear versus set when rst_ni asserts.
+
 module prim_sync_randomized_delay #(
-  parameter int unsigned WIDTH = 1,
+  parameter int unsigned WIDTH = 1,  // Datapath width.
 
 `ifdef RANDOM_DELAY_TYP_OVR
-  parameter int unsigned RANDOM_DELAY_TYPE = `RANDOM_DELAY_TYP_OVR,
+  parameter int unsigned RANDOM_DELAY_TYPE = `RANDOM_DELAY_TYP_OVR,  // Delay set: 0 none; 1 zero or up to 1 clk_i cycle (default);
+                                                                     // 2 zero/0.5/1/1.5; 3 zero..3; 4 zero or
+                                                                     // up to 0.5; else none.
 `else
-  parameter int unsigned RANDOM_DELAY_TYPE = 1,
+  parameter int unsigned RANDOM_DELAY_TYPE = 1,  // Delay set: 0 none; 1 zero or up to 1 clk_i cycle (default);
+                                                 // 2 zero/0.5/1/1.5; 3 zero..3; 4 zero or
+                                                 // up to 0.5; else none.
 `endif
-  // RANDOM_DELAY_TYPE =
-  // 0 => no delay
-  // 1 => 0 or up to 1 clk_i cycles of delay (DEFAULT)
-  // 2 => 0, 0.5, 1, 1.5 clk_i cycles of delay
-  // 3 => 0, 1, 2, 3 clk_i cycles of delay
-  // 4 => 0 or up to 0.5 clk_i cycles of delay
-  // otherwise => no delay
 
-  parameter bit RANDOM_DELAY_RESET = 1'b1,  // 0 ~ 1
-  // RANDOM_DELAY_RESET =
-  // 0 => dont reset the delay flops
-  // otherwise => reset the delay flops
+  parameter bit RANDOM_DELAY_RESET = 1'b1,  // 1 clears delay flops on rst_ni; 0 leaves them alone.
 
-  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0,  // 0 ~ 1
-  // RANDOM_DELAY_GRAY_CODE =
-  // 0 => each bit has its own random mux sel
-  // otherwise => all bits have the same random mux sel
+  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0,  // 1 shares one mux select across bits; 0 gives each bit its own.
 
-  parameter bit RANDOM_DELAY_MUX_OVR = 1'b0,  // 0 ~ 3
-  // RANDOM_DELAY_MUX_OVR =
-  // 0 => Use internal random mux_sel
-  // otherwise => Use RANDOM_DELAY_MUX_OVR value for all muxs
-  //
-  parameter bit RESET_POLARITY = 1'b0  // 0 ~ 1
-  // RESET_POLARITY =
-  // 0 => 'reset' to zero when rst_ni is low
-  // 1 => 'set'   to one  when rst_ni is low
+  parameter bit RANDOM_DELAY_MUX_OVR = 1'b0,  // 0 uses the internal random mux select; nonzero forces a fixed select.
+  parameter bit RESET_POLARITY = 1'b0  // 0 clears flops when rst_ni is low; 1 sets them to one.
 ) (
-  input logic clk_i,
-  input logic [WIDTH-1:0] d_i,
-  input logic rst_ni,  // Active Low Reset, if synchronizer is not resettable tie to 1
-  input logic [WIDTH*2-1:0] mux_sel_ovr_i,  // Mux Select Override Value, NOT USED FOR NOW
+  input logic clk_i,  // Delay clock.
+  input logic [WIDTH-1:0] d_i,  // Data into the delay.
+  input logic rst_ni,  // Active-low reset; tie high if the synchronizer is not resettable.
+  input logic [WIDTH*2-1:0] mux_sel_ovr_i,  // Mux-select override vector; unused.
 
-  output logic [WIDTH*2-1:0] mux_sel_o,  // Output Mux Select, NOT USED FOR NOW
-  output logic [WIDTH-1:0]   d_del_o     // Delayed Data
+  output logic [WIDTH*2-1:0] mux_sel_o,  // Observed mux-select vector; unused.
+  output logic [WIDTH-1:0]   d_del_o  // Delayed data toward the synchronizer.
 );
 
 `ifdef SYNTHESIS  // if we are synthesizing ignore random delay logic

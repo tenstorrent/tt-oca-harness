@@ -2,40 +2,59 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// SRAM interface adapter with scrambling, parity, and write-lock support.
+// Adapt the PicoRV32 native memory interface to the SRAM with scrambling, parity and
+// write-lock support.
 //
-// Bridges the PicoRV32 native memory bus to km_sram_mem_req_t / km_sram_mem_rsp_t.
-// Optional address/data scrambling is controlled from KMCSR; odd parity is
-// generated on writes and checked on reads. Writes into a locked region are
-// dropped and reported as a one-hot violation pulse. Look-ahead mem_la_*
-// supports pipelined SRAM prefetch.
+// Bridges the PicoRV32 native memory interface to the standard SRAM memory interface
+// (km_sram_mem_req_t / km_sram_mem_rsp_t).
+//
+// Features:
+//
+// - Optional address/data scrambling via scrambler_8192x32, controlled by
+//   scrambler_key_i / scrambler_en_i from KMCSR.
+// - Odd-parity generation on the write path and checking on the read path; parity is
+//   computed before scrambling.
+// - Per-region write-lock (SRAM_LOCK_REGION_BYTES per region, so SRAM_NUM_LOCK_REGIONS is
+//   SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES): writes to a locked region are silently
+//   dropped and a one-hot pulse on write_lock_violation_region_o reports to KMCSR which
+//   region had an attempted write while locked.
+// - PicoRV32 look-ahead prefetch support for pipelined SRAM.
 
 module km_sram_interface
   import km_intf_pkg::*;
   import scrambler_pkg::*;
 #(
-  parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,                  // SRAM word-address width
-  parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS  // Write-lock region count
+  parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,                   // SRAM word-address width.
+  parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS  // Write-lock regions.
 ) (
-  input  logic                                 clk_i,                         // System clock
-  input  logic                                 rst_ni,                        // Active-low reset
-  input  logic                                 mem_valid_i,                   // PicoRV32 memory request valid
-  output logic                                 mem_ready_o,                   // PicoRV32 memory ready (data available)
-  input  logic [31:0]                          mem_addr_i,                    // PicoRV32 byte address
-  input  logic [31:0]                          mem_wdata_i,                   // PicoRV32 write data
-  input  logic [3:0]                           mem_wstrb_i,                   // PicoRV32 write strobe (non-zero = write)
-  input  logic [3:0]                           mem_rstrb_i,                   // PicoRV32 read strobe (byte lanes consumed)
-  output logic [31:0]                          mem_rdata_o,                   // PicoRV32 read data
-  input  logic                                 mem_la_read_i,                 // Look-ahead read, one cycle before mem_valid_i
-  input  logic [31:0]                          mem_la_addr_i,                 // Look-ahead byte address
-  input  logic [3:0]                           mem_la_rstrb_i,                // Look-ahead read strobe
-  output km_sram_mem_req_t                     sram_mem_req_o,                // Request to the SRAM hard macro
-  input  km_sram_mem_rsp_t                     sram_mem_rsp_i,                // Response from the SRAM hard macro
-  input  logic [31:0]                          scrambler_key_i,               // Scrambler key from KMCSR
-  input  logic                                 scrambler_en_i,                // Scrambler enable from KMCSR
-  input  logic [SRAM_NUM_LOCK_REGIONS-1:0]     sram_lock_bits_i,              // Bit[i]=1 locks write-lock region i
-  output logic                                 parity_error_o,                // One-cycle pulse on odd-parity mismatch
-  output logic [SRAM_NUM_LOCK_REGIONS-1:0]     write_lock_violation_region_o  // One-hot pulse for a locked write attempt
+  input  logic clk_i,   // System clock.
+  input  logic rst_ni,  // Active-low reset.
+
+  input  logic        mem_valid_i,  // PicoRV32 native memory request valid (from CPU).
+  output logic        mem_ready_o,  // Memory ready (data available).
+  input  logic [31:0] mem_addr_i,   // Byte address.
+  input  logic [31:0] mem_wdata_i,  // Write data.
+  input  logic [3:0]  mem_wstrb_i,  // Write strobe (non-zero = write).
+  input  logic [3:0]  mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU).
+  output logic [31:0] mem_rdata_o,  // Read data.
+
+  input  logic        mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid).
+  input  logic [31:0] mem_la_addr_i,   // Look-ahead address.
+  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe.
+
+  output km_sram_mem_req_t sram_mem_req_o,  // SRAM memory request, exposed at the subsystem
+                                            // boundary.
+  input  km_sram_mem_rsp_t sram_mem_rsp_i,  // SRAM memory response.
+
+  input  logic [31:0] scrambler_key_i,  // Scrambler key from KMCSR.
+  input  logic   scrambler_en_i,        // Scrambler enable from KMCSR.
+
+  input  logic [SRAM_NUM_LOCK_REGIONS-1:0] sram_lock_bits_i,  // SRAM write-lock from KMCSR:
+                                                              // bit[i]=1 locks region i.
+
+  output logic        parity_error_o,  // Parity error detected (pulse to KMCSR).
+
+  output logic [SRAM_NUM_LOCK_REGIONS-1:0] write_lock_violation_region_o  // One-hot violation to KMCSR.
 );
 
   `include "prim_assert.sv"
@@ -206,7 +225,8 @@ module km_sram_interface
   // Parity Generation (Write Path)
   ////////////////////////////////////////////////////////////////////////////
 
-  // Generate odd parity per byte for a 32-bit write data word.
+  // Generate odd parity per byte for a 32-bit write data word. Returns 4-bit parity (one
+  // bit per byte, odd parity).
   function automatic logic [3:0] gen_parity(logic [31:0] data);
     logic [3:0] parity;
     for (int i = 0; i < 4; i++) begin
@@ -220,7 +240,9 @@ module km_sram_interface
   // Parity Checking (Read Path)
   ////////////////////////////////////////////////////////////////////////////
 
-  // Check odd parity per byte of a 32-bit read data word; return 1 on mismatch.
+  // Check odd parity per byte of a 32-bit read data word. data is the word after
+  // descrambling and parity the 4-bit stored parity (one bit per byte, odd parity).
+  // Returns 1 if a parity mismatch is detected, 0 otherwise.
   function automatic logic check_parity(logic [31:0] data, logic [3:0] parity,
                                         logic [3:0] byte_mask);
     logic [3:0] computed_parity;

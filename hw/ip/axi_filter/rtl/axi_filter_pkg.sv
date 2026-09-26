@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// AXI Filter Package
+// Hold shared types and helpers for the AXI traffic filter.
 //
-//-----------------------------------------------------------------------------
+// Defines filter hit and status typedefs and constants used by traffic_filter and the
+// wrap.
 
 package axi_filter_pkg;
 

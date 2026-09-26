@@ -1,38 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Log Engine
+// DMA buffered log bytes to a UART under AXI-Lite CSR control.
 //
-//-----------------------------------------------------------------------------
-
+// CSR port programs the engine; log_fetch_axil fetches source data; log_write_axil writes
+// payload toward the UART path.
+// uart_tx_ready_i paces DMA into the UART; irq_o signals completion or error; FIFO_DEPTH
+// sizes the internal FIFO.
 
 module log_engine
   import log_engine_pkg::*;
 #(
-  parameter int unsigned FIFO_DEPTH = 4
+  parameter int unsigned FIFO_DEPTH = 4  // FIFO depth.
 ) (
-  // Global Interface
-  input  logic                 clk_i,
-  input  logic                 rst_ni,
+  input  logic                 clk_i,   // System clock.
+  input  logic                 rst_ni,  // Active-low reset.
 
-  // AXI4-Lite Register Interface
-  input  csr_axil_req_t        csr_axil_req_i,
-  output csr_axil_resp_t       csr_axil_resp_o,
+  input  csr_axil_req_t        csr_axil_req_i,  // Csr AXI-Lite req (AXI4-Lite Register Interface).
+  output csr_axil_resp_t       csr_axil_resp_o,  // Csr AXI-Lite resp.
 
-  // AXI4-Lite Log Fetch Interface
-  output log_fetch_axil_req_t  log_fetch_axil_req_o,
-  input  log_fetch_axil_resp_t log_fetch_axil_resp_i,
+  output log_fetch_axil_req_t  log_fetch_axil_req_o,  // Log fetch AXI-Lite req (AXI4-Lite Log Fetch Interface).
+  input  log_fetch_axil_resp_t log_fetch_axil_resp_i,  // Log fetch AXI-Lite resp.
 
-  // AXI4-Lite Log Write Interface
-  output log_write_axil_req_t  log_write_axil_req_o,
-  input  log_write_axil_resp_t log_write_axil_resp_i,
+  output log_write_axil_req_t  log_write_axil_req_o,  // Log write AXI-Lite req (AXI4-Lite Log Write Interface).
+  input  log_write_axil_resp_t log_write_axil_resp_i,  // Log write AXI-Lite resp.
 
-  // DMA Interface
-  input  logic                 uart_tx_ready_i,
+  input  logic                 uart_tx_ready_i,  // Uart tx ready (DMA Interface).
 
-  // Interrupt Interface
-  output logic                 irq_o
+  output logic                 irq_o    // Interrupt request.
 );
 
   `include "prim_assert.sv"

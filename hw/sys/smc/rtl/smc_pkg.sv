@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Package
+// Share SMC types, address-map helpers, and fabric typedefs.
+//
+// Packages AXI and AXI-Lite request/response types used across the SMC hierarchy.
+// Holds mailbox counts, GPIO wrap counts, and other constants the top-level and fabrics
+// share.
 
 `ifndef SMC_PACKAGE_DEFINED
 `define SMC_PACKAGE_DEFINED
+
 package smc_pkg;
 
   // Include register header file
@@ -27,8 +32,8 @@ package smc_pkg;
   //////////////////////////////
 
   // Full AXI
-  localparam int unsigned AXI_ADDR_WIDTH = 56;  // General AXI address width
-  localparam int unsigned SMC_LOCAL_ADDR_WIDTH = 32;  // Within SMC
+  localparam int unsigned AXI_ADDR_WIDTH = 56;  // General AXI address width.
+  localparam int unsigned SMC_LOCAL_ADDR_WIDTH = 32;  // Within SMC.
 
   localparam int unsigned AXI_DATA_WIDTH = 64;
   localparam int unsigned AXI_STRB_WIDTH = AXI_DATA_WIDTH / 8;
@@ -46,10 +51,10 @@ package smc_pkg;
   localparam int unsigned SYS_OUT_ID_WIDTH = 8;
 
   // Fabric ID Width Parameters
-  localparam int unsigned SMC_INPUT_FABRIC_SLAVE_ID_WIDTH = 4;  // Into Input Fabric
-  localparam int unsigned SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH = 6; // Input to Local Fabric/Output Fabric
-  localparam int unsigned SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH  = 8; // Out of Local Fabric to CPU cluster + Peripherals
-  localparam int unsigned SMC_OUTPUT_FABRIC_MASTER_ID_WIDTH = 8;  // Out of Output Fabric
+  localparam int unsigned SMC_INPUT_FABRIC_SLAVE_ID_WIDTH = 4;  // Into Input Fabric.
+  localparam int unsigned SMC_LOCAL_OUTPUT_FABRIC_SLAVE_ID_WIDTH = 6; // Input to Local Fabric/Output Fabric.
+  localparam int unsigned SMC_LOCAL_FABRIC_XBAR_MASTER_ID_WIDTH  = 8; // Out of Local Fabric to CPU cluster + Peripherals.
+  localparam int unsigned SMC_OUTPUT_FABRIC_MASTER_ID_WIDTH = 8;  // Out of Output Fabric.
 
   // MMIO AXI interface (output from DigitalTop)
   // - ID width: 3 bits, Address: 56 bits, Data: 64 bits
@@ -192,7 +197,7 @@ package smc_pkg;
 
   // Unique-ID table depth for axi_id_remap (prim_axi_id_converter)
   localparam int unsigned MAX_INFLIGHT_IDS = 4;
-  localparam int unsigned TIMEOUT_COUNT_W = 48;  // 48 bits is enough for 78 hours at refclk
+  localparam int unsigned TIMEOUT_COUNT_W = 48;  // 48 bits is enough for 78 hours at refclk.
 
   ////////////////////////////////////
   // Alias Remap Parameters + Types //
@@ -201,7 +206,7 @@ package smc_pkg;
   localparam int unsigned INPUT_FABRIC_NUM_REG_MAPS = 3;
   localparam int unsigned NUM_ALIAS_REMAP_INPUTS = 4;
 
-  localparam int unsigned NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER = 5;  // 56-12+1 = 45, 45/5 = 9
+  localparam int unsigned NUM_CHUNKS_ALIAS_REMAP_CARRY_SELECT_ADDER = 5;  // 56-12+1 = 45, 45/5 = 9.
 
   typedef struct packed {
     logic [2:0] aw_remap_hit_debug;
@@ -330,7 +335,7 @@ package smc_pkg;
   } data_accelerator_type_t;
 
   // DMA backend internal ID width (for axi_mux inside DMA backend)
-  localparam int unsigned DMA_BACKEND_MST_ID_W = SMC_INPUT_FABRIC_SLAVE_ID_WIDTH - 2;  // 2
+  localparam int unsigned DMA_BACKEND_MST_ID_W = SMC_INPUT_FABRIC_SLAVE_ID_WIDTH - 2;  // 2.
 
   // DMA control interface (9-bit addr, reuses 64-bit data / 8-bit ID / 12-bit user)
   localparam int unsigned DMA_CTRL_ADDR_W = 9;
@@ -349,7 +354,7 @@ package smc_pkg;
                    smc_axi_user_t)
 
   // AXI data size for byte-lane calculations
-  localparam int unsigned AXI_DATA_SIZE = $clog2(AXI_STRB_WIDTH);  // 3
+  localparam int unsigned AXI_DATA_SIZE = $clog2(AXI_STRB_WIDTH);  // 3.
 
   // eFuse APB (AXI-Lite already exists as smc_axil_32_32)
   `APB_TYPEDEF_ALL(smc_efuse_apb, smc_axi_lite_32_addr_t, smc_axi_lite_32_data_t,
@@ -452,9 +457,9 @@ package smc_pkg;
   typedef logic [CG_HYSTERESIS_W-1:0] cg_hyster_t;
 
   // CPU Specific Parameters
-  localparam int unsigned DBG_ADDR_W = 12;  // smc_4core_cpu_pkg
-  localparam int unsigned DBG_DATA_W = 32;  // smc_4core_cpu_pkg
-  localparam int unsigned DBG_STRB_W = DBG_DATA_W / 8;  // smc_4core_cpu_pkg
+  localparam int unsigned DBG_ADDR_W = 12;  // smc_4core_cpu_pkg.
+  localparam int unsigned DBG_DATA_W = 32;  // smc_4core_cpu_pkg.
+  localparam int unsigned DBG_STRB_W = DBG_DATA_W / 8;  // smc_4core_cpu_pkg.
 
 
   typedef struct packed {

@@ -1,56 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXI-Lite to APB Single Bridge
+// Bridge one AXI-Lite manager to a single APB subordinate.
 //
-//--------------------------------------------------
+// Complete addresses outside [ADDR_START, ADDR_END) with a decode error on AXI-Lite.
+// PipelineRequest and PipelineResponse insert skid registers on the request and response
+// paths.
+// Hold only one APB transfer in flight at a time.
+
 module prim_axi_lite_to_apb_single #(
-  parameter bit PipelineRequest      = 1'b0,   // Pipeline request path
-  parameter bit PipelineResponse     = 1'b0,   // Pipeline response path
-  parameter int unsigned AXI_DATA_WIDTH = 32,
-  parameter int unsigned AXI_ADDR_WIDTH = 32,
+  parameter bit PipelineRequest      = 1'b0,  // Skid-registers the AXI-Lite to APB request path.
+  parameter bit PipelineResponse     = 1'b0,  // Skid-registers the APB to AXI-Lite response path.
+  parameter int unsigned AXI_DATA_WIDTH = 32,  // Shared data width.
+  parameter int unsigned AXI_ADDR_WIDTH = 32,  // Shared address width.
 
-  parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,
-  parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,
+  parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,  // Inclusive APB decode base.
+  parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,  // Exclusive APB decode limit.
 
-  localparam type addr_t = logic [AXI_ADDR_WIDTH-1:0],
-  localparam type data_t = logic [AXI_DATA_WIDTH-1:0],
-  localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]
+  localparam type addr_t = logic [AXI_ADDR_WIDTH-1:0],  // Address type alias.
+  localparam type data_t = logic [AXI_DATA_WIDTH-1:0],  // Data type alias.
+  localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]  // Strobe type alias.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,  // Clock.
+  input logic rst_ni,  // Async reset, active-low.
 
-  input  logic            axi_lite_awvalid_i,
-  input  addr_t           axi_lite_awaddr_i,
-  input  axi_pkg::prot_t  axi_lite_awprot_i,
-  output logic            axi_lite_awready_o,
-  input  logic            axi_lite_wvalid_i,
-  input  data_t           axi_lite_wdata_i,
-  input  strb_t           axi_lite_wstrb_i,
-  output logic            axi_lite_wready_o,
-  output logic            axi_lite_bvalid_o,
-  output axi_pkg::resp_t  axi_lite_bresp_o,
-  input  logic            axi_lite_bready_i,
-  input  logic            axi_lite_arvalid_i,
-  input  addr_t           axi_lite_araddr_i,
-  input  axi_pkg::prot_t  axi_lite_arprot_i,
-  output logic            axi_lite_arready_o,
-  output logic            axi_lite_rvalid_o,
-  output data_t           axi_lite_rdata_o,
-  output axi_pkg::resp_t  axi_lite_rresp_o,
-  input  logic            axi_lite_rready_i,
+  input  logic            axi_lite_awvalid_i,  // AXI-Lite awvalid.
+  input  addr_t           axi_lite_awaddr_i,  // AXI-Lite awaddr.
+  input  axi_pkg::prot_t  axi_lite_awprot_i,  // AXI-Lite awprot.
+  output logic            axi_lite_awready_o,  // AXI-Lite awready.
+  input  logic            axi_lite_wvalid_i,  // AXI-Lite wvalid.
+  input  data_t           axi_lite_wdata_i,  // AXI-Lite wdata.
+  input  strb_t           axi_lite_wstrb_i,  // AXI-Lite wstrb.
+  output logic            axi_lite_wready_o,  // AXI-Lite wready.
+  output logic            axi_lite_bvalid_o,  // AXI-Lite bvalid.
+  output axi_pkg::resp_t  axi_lite_bresp_o,  // AXI-Lite bresp.
+  input  logic            axi_lite_bready_i,  // AXI-Lite bready.
+  input  logic            axi_lite_arvalid_i,  // AXI-Lite arvalid.
+  input  addr_t           axi_lite_araddr_i,  // AXI-Lite araddr.
+  input  axi_pkg::prot_t  axi_lite_arprot_i,  // AXI-Lite arprot.
+  output logic            axi_lite_arready_o,  // AXI-Lite arready.
+  output logic            axi_lite_rvalid_o,  // AXI-Lite rvalid.
+  output data_t           axi_lite_rdata_o,  // AXI-Lite rdata.
+  output axi_pkg::resp_t  axi_lite_rresp_o,  // AXI-Lite rresp.
+  input  logic            axi_lite_rready_i,  // AXI-Lite rready.
 
-  output logic       psel_o,
-  output logic       penable_o,
-  output logic       pwrite_o,
-  output addr_t      paddr_o,
-  output data_t      pwdata_o,
-  output strb_t      pstrb_o,
-  output logic [2:0] pprot_o,
-  input  logic       pready_i,
-  input  logic       pslverr_i,
-  input  data_t      prdata_i
+  output logic       psel_o,  // APB PSEL.
+  output logic       penable_o,  // APB PENABLE.
+  output logic       pwrite_o,  // APB PWRITE.
+  output addr_t      paddr_o,  // APB PADDR.
+  output data_t      pwdata_o,  // APB PWDATA.
+  output strb_t      pstrb_o,  // APB PSTRB.
+  output logic [2:0] pprot_o,  // APB PPROT.
+  input  logic       pready_i,  // APB PREADY.
+  input  logic       pslverr_i,  // APB PSLVERR.
+  input  data_t      prdata_i  // APB PRDATA.
 );
 
   localparam int unsigned EXTENDED_ADDR_WIDTH = AXI_ADDR_WIDTH + 1;

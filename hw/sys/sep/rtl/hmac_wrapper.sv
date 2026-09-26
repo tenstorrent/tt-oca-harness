@@ -2,38 +2,37 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2024 TT
 
-// HMAC Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
+// Bridge AXI-Lite CSR and Key Manager key buses onto the OpenTitan HMAC TL-UL ports.
+//
+// Uses axi_lite_to_tlul for the 32-bit CSR interface and the AXI4-Lite key interface from
+// the Key Manager private bus.
+// One fatal alert leaves the block. bus_err_o sticks on a register-bridge fault until
+// bus_err_clr_i. idle_o reports HMAC idle.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module hmac_wrapper (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset.
 
-  // 32-bit AXI-Lite CSR interface
-  input  sep_pkg::sep_32_32_axil_req_t  hmac_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t hmac_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  hmac_axil_req_i,  // 32-bit AXI-Lite CSR request.
+  output sep_pkg::sep_32_32_axil_resp_t hmac_axil_resp_o,  // 32-bit AXI-Lite CSR response.
 
-  // AXI4-Lite key interface (32-bit from Key Manager private bus)
-  input  sep_pkg::sep_32_32_axil_req_t  hmac_key_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t hmac_key_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  hmac_key_axil_req_i,  // AXI4-Lite key interface request, 32-bit from the Key Manager private bus.
+  output sep_pkg::sep_32_32_axil_resp_t hmac_key_axil_resp_o,  // AXI4-Lite key interface response.
 
-  // Interrupt outputs
-  output logic intr_hmac_done_o,
-  output logic intr_fifo_empty_o,
-  output logic intr_hmac_err_o,
+  output logic intr_hmac_done_o,              // HMAC done interrupt.
+  output logic intr_fifo_empty_o,             // FIFO empty interrupt.
+  output logic intr_hmac_err_o,               // HMAC error interrupt.
 
-  // Alert interface (1 alert: fatal)
-  input  prim_alert_pkg::alert_rx_t [0:0] alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [0:0] alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [0:0] alert_rx_i,  // Alert receiver; one fatal alert.
+  output prim_alert_pkg::alert_tx_t [0:0] alert_tx_o,  // Alert transmitter; one fatal alert.
 
-  // Register bridge fault (sticky, held until bus_err_clr_i)
-  output logic bus_err_o,
-  input  logic bus_err_clr_i,
+  output logic bus_err_o,                     // Register-bridge fault; sticky until bus_err_clr_i.
+  input  logic bus_err_clr_i,                 // Clears bus_err_o.
 
-  // Idle output
-  output logic idle_o
+  output logic idle_o                         // HMAC idle status.
 );
 
   // 32-bit AXI-Lite signals with address masking applied

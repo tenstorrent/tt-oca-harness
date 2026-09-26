@@ -1,65 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Telemetry Receiver
+// Assemble ATB telemetry packets into buffered counter messages for AXI-Lite readout.
 //
-//-----------------------------------------------------------------------------
-
+// atdata/atid/atvalid/atready plus the AF handshake feed an assembly buffer; completed
+// messages land in a BUFFER_DEPTH FIFO. BUFFER_DEPTH must be greater than or equal to 2.
+//
+// debug_o bits:
+//
+// - debug_o[0] missing_last_event: assembly buffer filled without last_packet marker.
+// - debug_o[1] message_buffer_full: overflow, dropping oldest.
+// - debug_o[2] message_buffer_empty.
+// - debug_o[3] assembly_buffer_full.
 
 module telemetry_receiver
   import telemetry_receiver_pkg::*;
 #(
-  parameter int unsigned BUFFER_DEPTH                 = 8, // Must be greater than or equal to 2
-  parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,
+  parameter int unsigned BUFFER_DEPTH                 = 8,  // Completed-message FIFO depth; must be >= 2.
+  parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,  // Counters allowed per message.
 
-  // Dependent Parameters
-  localparam int unsigned MAX_NUM_BLOCKS_PER_MESSAGE =
+  localparam int unsigned MAX_NUM_BLOCKS_PER_MESSAGE =      // ATB blocks spanning one message.
         1 + (TELEMETRY_COUNTER_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_COUNTERS_PER_MESSAGE,
-  localparam int unsigned MAX_NUM_PACKETS_PER_MESSAGE =
+  localparam int unsigned MAX_NUM_PACKETS_PER_MESSAGE =     // ATB packets spanning one message.
         MAX_NUM_BLOCKS_PER_MESSAGE % NUM_BLOCKS_PER_PACKET == 0 ?
         MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET :
         MAX_NUM_BLOCKS_PER_MESSAGE / NUM_BLOCKS_PER_PACKET + 1,
 
-  // Decode loop index widths
-  localparam int unsigned PACKET_INDEX_WIDTH = $clog2(MAX_NUM_PACKETS_PER_MESSAGE),
-  localparam int unsigned BLOCK_INDEX_WIDTH  = $clog2(NUM_BLOCKS_PER_PACKET),
+  localparam int unsigned PACKET_INDEX_WIDTH = $clog2(MAX_NUM_PACKETS_PER_MESSAGE), // Packet-index counter width.
+  localparam int unsigned BLOCK_INDEX_WIDTH  = $clog2(NUM_BLOCKS_PER_PACKET), // Block-index counter width.
 
-  // Assembly Buffer
-  localparam int unsigned ASSEMBLY_BUFFER_DEPTH =
+  localparam int unsigned ASSEMBLY_BUFFER_DEPTH =           // Assembly-buffer depth in beats.
         (TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_PACKETS_PER_MESSAGE,
-  localparam int unsigned ASSEMBLY_BUFFER_PTR_WIDTH = $clog2(ASSEMBLY_BUFFER_DEPTH),
-  localparam type assembly_buffer_ptr_t = logic [ASSEMBLY_BUFFER_PTR_WIDTH-1:0],
+  localparam int unsigned ASSEMBLY_BUFFER_PTR_WIDTH = $clog2(ASSEMBLY_BUFFER_DEPTH), // Assembly-buffer pointer width.
+  localparam type assembly_buffer_ptr_t = logic [ASSEMBLY_BUFFER_PTR_WIDTH-1:0], // Assembly-buffer pointer type.
 
-  // Telemetry Message Buffer
-  localparam int unsigned MESSAGE_BUFFER_PTR_WIDTH = $clog2(BUFFER_DEPTH) + 1,
-  localparam type message_buffer_ptr_t = logic [MESSAGE_BUFFER_PTR_WIDTH-1:0]
+  localparam int unsigned MESSAGE_BUFFER_PTR_WIDTH = $clog2(BUFFER_DEPTH) + 1, // Message-FIFO pointer width.
+  localparam type message_buffer_ptr_t = logic [MESSAGE_BUFFER_PTR_WIDTH-1:0] // Message-FIFO pointer type.
 ) (
-  // Global Interface
-  input  logic            clk_i,
-  input  logic            rst_ni,
+  input  logic            clk_i,                            // System clock.
+  input  logic            rst_ni,                           // Async reset, active-low.
 
-  // AXI4-Lite Register Interface
-  input  axil_req_t       axil_req_i,
-  output axil_resp_t      axil_resp_o,
+  input  axil_req_t       axil_req_i,                       // AXI-Lite CSR request.
+  output axil_resp_t      axil_resp_o,                      // AXI-Lite CSR response.
 
-  // ATB Telemetry Interface
-  input  telemetry_data_t atdata_i,
-  input  atb_id_t         atid_i,
-  output logic            atready_o,
-  input  logic            atvalid_i,
-  output logic            afvalid_o,
-  input  logic            afready_i,
+  input  telemetry_data_t atdata_i,                         // ATB data.
+  input  atb_id_t         atid_i,                           // ATB ID.
+  output logic            atready_o,                        // ATB ready.
+  input  logic            atvalid_i,                        // ATB valid.
+  output logic            afvalid_o,                        // ATB flush valid.
+  input  logic            afready_i,                        // ATB flush ready.
 
-  // Interrupt Interface
-  output logic            irq_o,
+  output logic            irq_o,                            // Receiver interrupt.
 
-  // Debug Interface
-  // [0]: missing_last_event      - assembly buffer filled without last_packet marker
-  // [1]: message_buffer_full     - message buffer overflow (dropping oldest entry)
-  // [2]: message_buffer_empty    - no messages available to read
-  // [3]: assembly_buffer_full    - assembly buffer at capacity
-  output logic [3:0]      debug_o
+  output logic [3:0]      debug_o                           // [0] missing_last_event; [1] message_buffer_full;
+                                                            // [2] message_buffer_empty; [3] assembly_buffer_full.
 );
 
   `include "prim_assert.sv"

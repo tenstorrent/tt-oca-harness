@@ -1,52 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP integration wrapper for the internal entropy complex.
+// Group the internal entropy source and DRBG behind a coordinated AXI-Lite reset boundary.
 //
-// This groups the entropy source and DRBG behind the coordinated three-port
-// AXI-Lite reset boundary. Source selection and consumer adapters remain in
-// sep_crypto because they also serve the external TRNG path.
+// Owns:
+//
+// - entropy_source, CSRNG, and EDN on three AXI-Lite ports.
+// - DRBG AXI-Stream endpoints.
+// - Alerts.
+// - Sticky CSRNG/EDN register-bridge faults, each held until its clear.
+//
+// Source selection and consumer adapters live in sep_crypto because they also serve the
+// external TRNG path.
+//
+// trng_reset_active_o is a local-reset indication consumed only as a synchronous clear
+// downstream.
 
 module sep_trng #(
-  parameter int unsigned NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT
+  parameter int unsigned NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT  // Number of DRBG AXI-Stream endpoints.
 ) (
-  input logic clk_i,
-  input logic por_rst_ni,
-  input logic rst_ni,
-  input logic entropy_rosc_sample_clk_i,
+  input logic clk_i,                          // System clock.
+  input logic por_rst_ni,                     // Active-low power-on reset.
+  input logic rst_ni,                         // Active-low reset.
+  input logic entropy_rosc_sample_clk_i,      // entropy rosc sample clk.
 
-  input  sep_pkg::sep_32_32_axil_req_t  esrc_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t esrc_axil_resp_o,
-  input  drbg_pkg::drbg_axil64_req_t    csrng_axil_req_i,
-  output drbg_pkg::drbg_axil64_resp_t   csrng_axil_resp_o,
-  input  drbg_pkg::drbg_axil64_req_t    edn_axil_req_i,
-  output drbg_pkg::drbg_axil64_resp_t   edn_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  esrc_axil_req_i,  // esrc AXIL request.
+  output sep_pkg::sep_32_32_axil_resp_t esrc_axil_resp_o,  // esrc AXIL response.
+  input  drbg_pkg::drbg_axil64_req_t    csrng_axil_req_i,  // csrng AXIL request.
+  output drbg_pkg::drbg_axil64_resp_t   csrng_axil_resp_o,  // csrng AXIL response.
+  input  drbg_pkg::drbg_axil64_req_t    edn_axil_req_i,  // EDN AXIL request.
+  output drbg_pkg::drbg_axil64_resp_t   edn_axil_resp_o,  // EDN AXIL response.
 
-  output drbg_pkg::drbg_axis_req_t [NUM_AXIS-1:0] drbg_axis_req_o,
-  input  drbg_pkg::drbg_axis_rsp_t [NUM_AXIS-1:0] drbg_axis_rsp_i,
+  output drbg_pkg::drbg_axis_req_t [NUM_AXIS-1:0] drbg_axis_req_o,  // drbg AXIS request.
+  input  drbg_pkg::drbg_axis_rsp_t [NUM_AXIS-1:0] drbg_axis_rsp_i,  // drbg AXIS response.
 
-  input  prim_alert_pkg::alert_rx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_tx_o,
-  input  prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_rx_i,  // csrng alert rx.
+  output prim_alert_pkg::alert_tx_t [csrng_reg_pkg::NumAlerts-1:0] csrng_alert_tx_o,  // csrng alert tx.
+  input  prim_alert_pkg::alert_rx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_rx_i,  // EDN alert rx.
+  output prim_alert_pkg::alert_tx_t [edn_reg_pkg::NumAlerts-1:0]   edn_alert_tx_o,  // EDN alert tx.
 
-  output logic entropy_source_irq_o,
-  output logic intr_cs_cmd_req_done_o,
-  output logic intr_cs_entropy_req_o,
-  output logic intr_cs_hw_inst_exc_o,
-  output logic intr_cs_fatal_err_o,
-  output logic intr_edn_cmd_req_done_o,
-  output logic intr_edn_fatal_err_o,
+  output logic entropy_source_irq_o,          // entropy source interrupt.
+  output logic intr_cs_cmd_req_done_o,        // intr cs cmd req done.
+  output logic intr_cs_entropy_req_o,         // intr cs entropy request.
+  output logic intr_cs_hw_inst_exc_o,         // intr cs hw inst exc.
+  output logic intr_cs_fatal_err_o,           // intr cs fatal err.
+  output logic intr_edn_cmd_req_done_o,       // intr EDN cmd req done.
+  output logic intr_edn_fatal_err_o,          // intr EDN fatal err.
 
-  // DRBG register bridge faults, CSRNG and EDN paths reported separately
-  // (sticky, each held until its own clear)
-  output logic csrng_bus_err_o,
-  input  logic csrng_bus_err_clr_i,
-  output logic edn_bus_err_o,
-  input  logic edn_bus_err_clr_i,
+  output logic csrng_bus_err_o,               // DRBG register bridge faults, CSRNG and EDN paths reported separately
+                                              // (sticky, each held until its own clear).
+  input  logic csrng_bus_err_clr_i,           // csrng bus err clr.
+  output logic edn_bus_err_o,                 // EDN bus err.
+  input  logic edn_bus_err_clr_i,             // EDN bus err clr.
 
-  // Local-reset indication, consumed only as a synchronous clear downstream.
-  output logic trng_reset_active_o
+  output logic trng_reset_active_o            // Local-reset indication, consumed only as a synchronous clear downstream.
 );
 
   logic trng_reset_active_async;

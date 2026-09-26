@@ -1,31 +1,32 @@
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Buffer a TL-UL link with synchronous request and response FIFOs.
 //
-// TL-UL fifo, used to add elasticity or an asynchronous clock crossing
-// to an TL-UL bus.  This instantiates two FIFOs, one for the request side,
-// and one for the response side.
+// Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus.
+// ReqPass and RspPass allow fall-through when the corresponding FIFO is empty. SpareReqW
+// and SpareRspW carry optional sideband bits alongside each channel.
 
 module tlul_fifo_sync #(
-  parameter bit          ReqPass = 1'b1,
-  parameter bit          RspPass = 1'b1,
-  parameter int unsigned ReqDepth = 2,
-  parameter int unsigned RspDepth = 2,
-  parameter int unsigned SpareReqW = 1,
-  parameter int unsigned SpareRspW = 1
+  parameter bit          ReqPass = 1'b1,     // Allow A-channel fall-through when empty.
+  parameter bit          RspPass = 1'b1,     // Allow D-channel fall-through when empty.
+  parameter int unsigned ReqDepth = 2,       // Depth of the host-to-device request FIFO.
+  parameter int unsigned RspDepth = 2,       // Depth of the device-to-host response FIFO.
+  parameter int unsigned SpareReqW = 1,      // Width of spare bits with each request.
+  parameter int unsigned SpareRspW = 1       // Width of spare bits with each response.
 ) (
-  input                     clk_i,
-  input                     rst_ni,
-  input  tlul_pkg::tl_h2d_t tl_h_i,
-  output tlul_pkg::tl_d2h_t tl_h_o,
-  output tlul_pkg::tl_h2d_t tl_d_o,
-  input  tlul_pkg::tl_d2h_t tl_d_i,
-  input  [SpareReqW-1:0]    spare_req_i,
-  output [SpareReqW-1:0]    spare_req_o,
-  input  [SpareRspW-1:0]    spare_rsp_i,
-  output [SpareRspW-1:0]    spare_rsp_o
+  input                     clk_i,        // System clock.
+  input                     rst_ni,       // Active-low reset.
+  input  tlul_pkg::tl_h2d_t tl_h_i,       // Host-side TL-UL request.
+  output tlul_pkg::tl_d2h_t tl_h_o,       // Host-side TL-UL response.
+  output tlul_pkg::tl_h2d_t tl_d_o,       // Device-side TL-UL request.
+  input  tlul_pkg::tl_d2h_t tl_d_i,       // Device-side TL-UL response.
+  input  [SpareReqW-1:0]    spare_req_i,  // Spare request bits entering with tl_h_i.
+  output [SpareReqW-1:0]    spare_req_o,  // Spare request bits leaving with tl_d_o.
+  input  [SpareRspW-1:0]    spare_rsp_i,  // Spare response bits entering with tl_d_i.
+  output [SpareRspW-1:0]    spare_rsp_o   // Spare response bits leaving with tl_h_o.
 );
-
   // Put everything on the request side into one FIFO
   localparam int unsigned REQFIFO_WIDTH = $bits(tlul_pkg::tl_h2d_t) - 2 + SpareReqW;
 

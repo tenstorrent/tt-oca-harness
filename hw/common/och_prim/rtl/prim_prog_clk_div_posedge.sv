@@ -1,25 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Primitive Programmable Clock Divider
+// Divide clk_i on the positive edge with a programmable ratio and duty cycle.
 //
-//--------------------------------------------------
-module prim_prog_clk_div_posedge #(
-  parameter int unsigned RESET_WIDTH = 16,  // Reset width in clock cycles
-  parameter bit [7:0] INITIAL_DIVIDER_VAL = 8'd2,
-  parameter bit DIVIDED_CLOCK_ON_RESET = 1'b0
-) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic update_settings_i,
-  input logic [7:0] divider_i,
-  input logic [7:0] duty_cycle_i,
-  input logic use_clk_div_i,
-  input logic test_en_i,
-  input logic scan_rst_ni,
+// update_settings_i samples divider_i and duty_cycle_i into the divider.
+// use_clk_div_i selects the divided clock; otherwise clk_o follows clk_i.
+// test_en_i muxes scan_rst_ni onto the reset path and can bypass the divider.
+// RESET_WIDTH stretches the synchronized reset in clk_i cycles.
 
-  output logic clk_o
+module prim_prog_clk_div_posedge #(
+  parameter int unsigned RESET_WIDTH = 16,  // Synchronized reset stretch in clk_i cycles.
+  parameter bit [7:0] INITIAL_DIVIDER_VAL = 8'd2,  // Divider value after reset.
+  parameter bit DIVIDED_CLOCK_ON_RESET = 1'b0  // Starts with the divider engaged after reset.
+) (
+  input logic clk_i,  // Source clock.
+  input logic rst_ni,  // Async reset, active-low.
+  input logic update_settings_i,  // Samples divider_i and duty_cycle_i.
+  input logic [7:0] divider_i,  // Divide ratio.
+  input logic [7:0] duty_cycle_i,  // High-time numerator over divider_i.
+  input logic use_clk_div_i,  // Selects the divided clock when high.
+  input logic test_en_i,  // Scan/test bypass of the divider.
+  input logic scan_rst_ni,  // DFT scan reset, active-low.
+
+  output logic clk_o  // Divided or bypassed clock.
 );
 
   logic div_clk;

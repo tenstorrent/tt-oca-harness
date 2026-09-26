@@ -1,27 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG Debug Control Register
+// Implement the DEBUG_CONTROL TDR for clock-stop and boot-stall controls.
 //
-//-----------------------------------------------------------------------------
+// Captures cla_clock_stop_i into the shift path and updates control outputs on Update-DR.
+// Drives jtag_clock_stop_o, cla_clock_stop_en_o, boot_stall_ovrd_o, and boot_stall_o.
 
 module jtag_debug_ctrl_reg
   import prim_jtag_pkg::*;
 (
-  // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t  scan_ctrl_i,
-  input  logic             scan_in_i,
-  output logic             scan_out_o,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
+  input  logic             scan_in_i,   // Scan data in (TDI).
+  output logic             scan_out_o,  // Scan data out (TDO).
 
-  // Read-only status input
-  input  logic             cla_clock_stop_i,      // CLA clock stop status
+  input  logic             cla_clock_stop_i,  // CLA clock stop status.
 
-  // Debug control outputs
-  output logic             jtag_clock_stop_o,     // JTAG stop clock control
-  output logic             cla_clock_stop_en_o,  // CLA clock stop enable
-  output logic             boot_stall_ovrd_o,    // Boot stall override enable
-  output logic             boot_stall_o          // Boot stall control value
+  output logic             jtag_clock_stop_o,  // JTAG stop clock control.
+  output logic             cla_clock_stop_en_o,  // CLA clock stop enable.
+  output logic             boot_stall_ovrd_o,  // Boot stall override enable.
+  output logic             boot_stall_o  // Boot stall control value.
 );
 
   //--------------------------------------------------------------------------

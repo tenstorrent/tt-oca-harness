@@ -1,29 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_noise_source.sv
- * @brief Ring-oscillator entropy source with metastable sampling.
- *
- * @details Samples an asynchronous ring oscillator with a metastable D
- *          flip-flop to extract entropy from phase jitter, then double-
- *          synchronises the output to the system clock domain. The RO is
- *          parameterized by total length and number of tapped stages.
- *
- * @param TOTAL_LENGTH  Total ring oscillator length in stages (default: 17)
- * @param TAPPED_LENGTH Number of RO stages used for tapping (default: 13)
- */
+// Sample an asynchronous ring oscillator through a metastable flop into the system clock domain.
+//
+// TOTAL_LENGTH and TAPPED_LENGTH size the RO; enable_i starts oscillation; detune_i
+// selects the shorter feedback tap.
+// sample_clk_i clocks the metastable sample; the bit is double-synchronized onto clk_i as
+// noise_o.
 
 module entropy_noise_source #(
-  parameter int unsigned TOTAL_LENGTH  = 17,
-  parameter int unsigned TAPPED_LENGTH = 13
+  parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
+  parameter int unsigned TAPPED_LENGTH = 13  // Detuned tap stage count.
 ) (
-  input       logic clk_i,
-  input       logic rst_ni,
-  input       logic sample_clk_i,
-  input       logic enable_i,
-  input       logic detune_i,
-  output      logic noise_o
+  input       logic clk_i,              // System clock.
+  input       logic rst_ni,             // Active-low reset.
+  input       logic sample_clk_i,       // Ring-oscillator sample clock.
+  input       logic enable_i,           // Block enable.
+  input       logic detune_i,           // Detune.
+  output      logic noise_o             // Noise.
 );
 
   /////////////

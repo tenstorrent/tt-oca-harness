@@ -1,55 +1,55 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// APB arbiter
+// Arbitrate MASTER_NUM APB masters onto one slave port.
 //
-//--------------------------------------------------
+// Forward only addresses in [SLAVE_ADDR_START, SLAVE_ADDR_END) to the slave; complete other
+// accesses with an error response.
+// When SIM_APB_ARB is defined, splice a test master in at the highest index.
+// Grant one master at a time and steer the slave response back to that master.
+
 module prim_apb_arb #(
-  parameter int unsigned ADDR_WIDTH = 32,
-  parameter int unsigned DATA_WIDTH = 32,
-  parameter int unsigned MASTER_NUM = 8,
-  parameter bit [31:0] SLAVE_ADDR_START = 32'h0000,  // included address
-  parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,     // excluded address
-  localparam int unsigned DATA_STRB_WIDTH = DATA_WIDTH / 8
+  parameter int unsigned ADDR_WIDTH = 32,  // APB address width.
+  parameter int unsigned DATA_WIDTH = 32,  // APB data width.
+  parameter int unsigned MASTER_NUM = 8,  // Number of APB master ports.
+  parameter bit [31:0] SLAVE_ADDR_START = 32'h0000,  // Inclusive decoded address base.
+  parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,  // Exclusive decoded address limit.
+  localparam int unsigned DATA_STRB_WIDTH = DATA_WIDTH / 8  // Write-strobe width from DATA_WIDTH.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,  // APB clock.
+  input logic rst_ni,  // Async reset, active-low.
 
 `ifdef SIM_APB_ARB
-  //APB TEST master interface
-  input  logic                        test_psel_i,
-  input  logic                        test_penable_i,
-  input  logic [ADDR_WIDTH -1:0]      test_paddr_i,
-  input  logic                        test_pwrite_i,
-  input  logic [DATA_WIDTH -1:0]      test_pwdata_i,
-  input  logic [DATA_STRB_WIDTH -1:0] test_pstrb_i,
-  output logic [DATA_WIDTH -1:0]      test_prdata_o,
-  output logic                        test_pready_o,
-  output logic                        test_pslverr_o,
+  input  logic                        test_psel_i,  // SIM test-master PSEL.
+  input  logic                        test_penable_i,  // SIM test-master PENABLE.
+  input  logic [ADDR_WIDTH -1:0]      test_paddr_i,  // SIM test-master PADDR.
+  input  logic                        test_pwrite_i,  // SIM test-master PWRITE.
+  input  logic [DATA_WIDTH -1:0]      test_pwdata_i,  // SIM test-master PWDATA.
+  input  logic [DATA_STRB_WIDTH -1:0] test_pstrb_i,  // SIM test-master PSTRB.
+  output logic [DATA_WIDTH -1:0]      test_prdata_o,  // SIM test-master PRDATA.
+  output logic                        test_pready_o,  // SIM test-master PREADY.
+  output logic                        test_pslverr_o,  // SIM test-master PSLVERR.
 `endif
 
-  //APB master interfaces
-  input  logic [MASTER_NUM-1:0]                       mst_psel_i,
-  input  logic [MASTER_NUM-1:0]                       mst_penable_i,
-  input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      mst_paddr_i,
-  input  logic [MASTER_NUM-1:0]                       mst_pwrite_i,
-  input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_pwdata_i,
-  input  logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0] mst_pstrb_i,
-  output logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_prdata_o,
-  output logic [MASTER_NUM-1:0]                       mst_pready_o,
-  output logic [MASTER_NUM-1:0]                       mst_pslverr_o,
+  input  logic [MASTER_NUM-1:0]                       mst_psel_i,  // APB master PSELs.
+  input  logic [MASTER_NUM-1:0]                       mst_penable_i,  // APB master PENABLEs.
+  input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      mst_paddr_i,  // APB master PADDRs.
+  input  logic [MASTER_NUM-1:0]                       mst_pwrite_i,  // APB master PWRITEs.
+  input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_pwdata_i,  // APB master PWDATAs.
+  input  logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0] mst_pstrb_i,  // APB master PSTRBs.
+  output logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_prdata_o,  // APB master PRDATAs.
+  output logic [MASTER_NUM-1:0]                       mst_pready_o,  // APB master PREADYs.
+  output logic [MASTER_NUM-1:0]                       mst_pslverr_o,  // APB master PSLVERRs.
 
-  //APB slave interface
-  output logic                        slv_psel_o,
-  output logic                        slv_penable_o,
-  output logic [ADDR_WIDTH -1:0]      slv_paddr_o,
-  output logic                        slv_pwrite_o,
-  output logic [DATA_WIDTH -1:0]      slv_pwdata_o,
-  output logic [DATA_STRB_WIDTH -1:0] slv_pstrb_o,
-  input  logic [DATA_WIDTH -1:0]      slv_prdata_i,
-  input  logic                        slv_pready_i,
-  input  logic                        slv_pslverr_i
+  output logic                        slv_psel_o,  // APB slave PSEL.
+  output logic                        slv_penable_o,  // APB slave PENABLE.
+  output logic [ADDR_WIDTH -1:0]      slv_paddr_o,  // APB slave PADDR.
+  output logic                        slv_pwrite_o,  // APB slave PWRITE.
+  output logic [DATA_WIDTH -1:0]      slv_pwdata_o,  // APB slave PWDATA.
+  output logic [DATA_STRB_WIDTH -1:0] slv_pstrb_o,  // APB slave PSTRB.
+  input  logic [DATA_WIDTH -1:0]      slv_prdata_i,  // APB slave PRDATA.
+  input  logic                        slv_pready_i,  // APB slave PREADY.
+  input  logic                        slv_pslverr_i  // APB slave PSLVERR.
 );
 
 `ifdef SIM_APB_ARB

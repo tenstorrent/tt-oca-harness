@@ -1,38 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG TAP FSM
+// Advance the IEEE 1149.1 TAP FSM and generate IR/DR scan controls.
 //
-//-----------------------------------------------------------------------------
+// Tracks tap_state_e from TMS on TCK and drives host TAP control plus IR and DR scan
+// controls.
+// TMP persistence_mode_i and runbist_i adjust when test logic remains active across
+// Test-Logic-Reset.
+// tdo_oen_o enables TDO in Shift-IR and Shift-DR.
 
 module jtag_tap_ctrlr
   import prim_jtag_pkg::*;
   import jtag_tap_pkg::*;
 #(
-  parameter bit TMP_ENABLE = 1  // Enables TMP controller functionality and instructions
+  parameter bit TMP_ENABLE = 1          // Enables TMP controller functionality and instructions.
 ) (
-  // Standard JTAG input interface
-  input  jtag_tap_ctrl_t          client_tap_ctrl_i,    // TAP control inputs (tms, trst_n, tck)
+  input  jtag_tap_ctrl_t          client_tap_ctrl_i,  // TAP control inputs (tms, trst_n, tck).
 
-  // TMP controller inputs
-  input  logic                    persistence_mode_i,   // TMP persistence mode (1=On, 0=Off)
+  input  logic                    persistence_mode_i,  // TMP persistence mode (1=On, 0=Off).
 
-  // RUNBIST instruction input
-  input  logic                    runbist_i,             // RUNBIST instruction decoded
+  input  logic                    runbist_i,  // RUNBIST instruction decoded.
 
-  // Internal JTAG interface
-  output jtag_tap_ctrl_t          host_tap_ctrl_o,      // TAP control outputs (tms, trst_n, tck)
+  output jtag_tap_ctrl_t          host_tap_ctrl_o,  // TAP control outputs (tms, trst_n, tck).
 
-  // TDR scan interface
-  output jtag_scan_ctrl_t         host_dr_scan_ctrl_o,  // DR scan control outputs
-  output jtag_scan_ctrl_t         host_ir_scan_ctrl_o,  // IR scan control outputs
+  output jtag_scan_ctrl_t         host_dr_scan_ctrl_o,  // DR scan control outputs.
+  output jtag_scan_ctrl_t         host_ir_scan_ctrl_o,  // IR scan control outputs.
 
-  // Debug and status signals
-  output tap_state_e              current_state_o,
+  output tap_state_e              current_state_o,  // Current state (Debug and status signals).
 
-  // TDO output enable
-  output logic                    tdo_oen_o
+  output logic                    tdo_oen_o  // Tdo oen.
 );
 
   //--------------------------------------------------------------------------

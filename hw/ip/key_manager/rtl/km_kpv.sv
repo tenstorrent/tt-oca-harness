@@ -2,14 +2,33 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// Key and Policy Vault that stores key material behind a PeakRDL CSR facade.
+// Store Key Manager key material in the Key and Policy Vault (KPV) behind a PeakRDL CSR
+// block.
 //
-// Key data lives in km_kpv_regfile with one KM write port and one KM read port,
-// reached through an optional scrambler. Per-slot CTRL sticky bits implement
-// lock_write, lock_use, and seal; erase is never blocked, but a sealed slot is
-// retired instead of freed. wipe_pulse_i zeroes key data, CTRL sticky bits,
-// and scrambler state. Cold reset clears the whole block; warm reset clears
-// the KM CPUIF and lock bits.
+// Key data lives in a dedicated register file (km_kpv_regfile) with one write port (KM
+// CPU) and one read port (KM only). A PeakRDL-generated CSR block exposes per-slot
+// external req/ack interfaces (no internal flops for key data), which this module bridges
+// to the register file through an optional 1024x32 scrambler.
+//
+// Per-slot CTRL registers implement:
+//
+// - lock_write / lock_use / seal sticky W1S bits. A slot with seal set is sealed:
+//   hardware holds lock_write set alongside it, so the data is readable but not writable.
+// - Erase is never blocked, but the seal changes its outcome. An unsealed slot's CTRL is
+//   cleared, freeing the slot for reuse. A sealed slot is retired instead: lock_write
+//   stays set and lock_use is set, so the destroyed contents cannot be read and the slot
+//   cannot be refilled until warm reset.
+//
+// Scrambler key/ctrl lock: the stored scrambler key is held in a local flop; when locked
+// the CSR returns zero to software but hardware scramblers continue using the provisioned
+// value.
+//
+// Wipe: wipe_pulse_i zeroes key data, CTRL sticky bits (via hwclr), and scrambler
+// key/ctrl. It releases a sealed or retired slot, which is sound only because no KM CPU
+// execution follows a wipe before warm reset: a trap halts the CPU, and wipe_state_i is a
+// tamper input.
+//
+// Cold reset clears the entire KPV; warm reset clears the KM-port CPUIF and lock bits.
 
 module km_kpv
   import km_intf_pkg::*;
@@ -18,15 +37,20 @@ module km_kpv
   import km_kpv_reg_pkg::*;
   import km_kpv_addrmap_pkg::*;
 #(
-  parameter type axil_req_t  = km_axil_req_t,   // KM-side AXI-Lite request type
-  parameter type axil_resp_t = km_axil_resp_t   // KM-side AXI-Lite response type
+  parameter type axil_req_t  = km_axil_req_t,  // KM-side AXI-Lite request type.
+  parameter type axil_resp_t = km_axil_resp_t  // KM-side AXI-Lite response type.
 ) (
-  input  logic       clk_i,          // System clock
-  input  logic       cold_rst_ni,    // Cold reset (AASD); resets the entire KPV
-  input  logic       warm_rst_ni,    // Warm reset, synchronous; resets KM CPUIF and lock bits
-  input  axil_req_t  km_axil_req_i,  // KM AXI-Lite slave request from the crossbar
-  output axil_resp_t km_axil_resp_o, // KM AXI-Lite slave response to the crossbar
-  input  logic       wipe_pulse_i    // One-cycle pulse that zeroes the vault next cycle
+  input  logic clk_i,        // System clock.
+  input  logic cold_rst_ni,  // Cold reset: AASD; resets the entire KPV.
+  input  logic warm_rst_ni,  // Warm reset: synchronous; resets the KM-port CPUIF and lock
+                             // bits.
+
+  input  axil_req_t  km_axil_req_i,        // KM port request from the crossbar (base
+                                           // 0x0001_2000).
+  output axil_resp_t      km_axil_resp_o,  // KM port response to the crossbar.
+
+  input  logic        wipe_pulse_i  // Wipe: pulse high for one cycle to zero the entire KPV
+                                    // on the next cycle.
 );
 
   `include "prim_assert.sv"
@@ -40,7 +64,12 @@ module km_kpv
   localparam int unsigned WORDS_PER_SLOT = 16;
   localparam int unsigned WORD_W = $clog2(WORDS_PER_SLOT);
 
-  // Key-data word width for the eraser, scrambler, and regfile (RDL regwidth).
+  // Key-data word width, spanning the eraser, scrambler and regfile.
+  //
+  // Distinct from the KM AXI-Lite bus width even though both are 32: a key word is what
+  // one KEY_ENTRY sub-word holds, so it follows the RDL regwidth rather than the fabric.
+  // The KEY_ENTRY/CTRL address slices below assume that same regwidth, so changing it
+  // means regenerating the register block, not just editing this line.
   localparam int unsigned DATA_W = 32;
 
   // Regfile/scrambler address width: {slot, word}.
@@ -281,7 +310,7 @@ module km_kpv
   ) u_scrambler_km (
     .addr_i                (km_scrambler_addr),
     // scrambler_512x32 reserves byte_mask_i for future byte-masked write support (hw/ip/scrambler/doc/architecture.adoc)
-    // Tie to 0 for now (instead of leaving open), matches with km_sram_interface call sites
+    // Tie it to 0 rather than leaving it open, as the km_sram_interface call sites do.
     .byte_mask_i           ('0),
     .scrambler_key_i       (scrambler_key_stored),
     .scrambled_addr_o      (km_scrambler_phys_addr),

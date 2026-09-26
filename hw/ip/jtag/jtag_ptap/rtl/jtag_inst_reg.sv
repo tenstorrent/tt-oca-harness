@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG Instruction Register and Decoder
+// Shift the JTAG instruction register and decode the current opcode.
 //
-//-----------------------------------------------------------------------------
+// Captures and shifts the IR on the IR scan path between scan_in_i and scan_out_o.
+// inst_decoded_o is the decoded instruction enum consumed by PTAP muxes.
 
 module jtag_inst_reg
   import prim_jtag_pkg::*;
   import jtag_inst_reg_pkg::*;
 (
   /* verilator lint_off UNUSEDSIGNAL */
-  // JTAG IR scan control interface
-  input  jtag_scan_ctrl_t  scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic             scan_in_i,
-  output logic             scan_out_o,
+  input  logic             scan_in_i,   // Scan data in (TDI).
+  output logic             scan_out_o,  // Scan data out (TDO).
 
-  // Decoded instruction output
-  output jtag_instruction_decoded_e  inst_decoded_o  // Current decoded instruction
+  output jtag_instruction_decoded_e  inst_decoded_o  // Current decoded instruction.
 );
   // Tie off unused fields to satisfy lint
   logic unused_scan_ctrl;

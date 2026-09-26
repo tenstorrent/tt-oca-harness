@@ -1,65 +1,83 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-------------------------------------------------
-// SMC Reset Unit
+// Generate SMC cold, warm, cool, and domain resets.
 //
-//-------------------------------------------------
+// Combines external cold reset, software controls, and FLR into synchronized reset trees.
+// Exposes FLR isolation, memory-repair skip, and cool-reset distribution to other
+// chiplets.
+// Fans subsystem and sync IRQ resets out with test-mode and scan controls.
 
 module smc_reset_unit (
 
-  input  logic                                   clk_ref_i,
-  input  logic                                   clk_smc_i,
-  input  logic                                   clk_periph_i,
+  input  logic                                   clk_ref_i,  // Ref clock.
+  input  logic                                   clk_smc_i,  // Smc clock.
+  input  logic                                   clk_periph_i,  // Periph clock.
 
-  input  logic                                   powergood_i,
-  output logic                                   powergood_stable_o,          // Stable powergood signal
+  input  logic                                   powergood_i,  // Powergood.
+  output logic                                   powergood_stable_o,  // Stable powergood
+                                                                      // signal.
 
-  input  logic                                   rst_cold_ni,                 // cold reset
+  input  logic                                   rst_cold_ni,  // cold reset.
 
-  input  logic                                   fuse_reset_ni,
+  input  logic                                   fuse_reset_ni,  // Fuse reset.
 
-  // Stable cold reset for GPIO
-  output logic                                   rst_cold_stable_ref_clk_no,
-  output logic                                   rst_cold_stable_smc_clk_no,
+  output logic                                   rst_cold_stable_ref_clk_no,  // Stable cold reset
+                                                                              // for GPIO.
+  output logic                                   rst_cold_stable_smc_clk_no,  // Stable cold reset
+                                                                              // for GPIO.
 
-  input  smc_pkg::jtag_smc_reset_ctrl_t          jtag_reset_ctrl_i,
+  input  smc_pkg::jtag_smc_reset_ctrl_t          jtag_reset_ctrl_i,  // Jtag reset ctrl.
 
-  // AXI-Lite Register Interface
-  input  smc_pkg::smc_axil_32_32_req_t           reg_axi_lite_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t          reg_axi_lite_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t           reg_axi_lite_req_i,  // AXI-Lite Register
+                                                                      // Interface request.
+  output smc_pkg::smc_axil_32_32_resp_t          reg_axi_lite_resp_o,  // AXI-Lite Register
+                                                                       // Interface response.
 
-  // Reset Control Signals
-  input  logic                                   rst_ext_wdt_ni,              // other watchdog timers
-  input  logic                                   smc_wdt_first_timeout_i,
-  input  logic                                   smc_wdt_second_timeout_i,
+  input  logic                                   rst_ext_wdt_ni,  // other watchdog
+                                                                  // timers.
+  input  logic                                   smc_wdt_first_timeout_i,  // Smc wdt first
+                                                                           // timeout.
+  input  logic                                   smc_wdt_second_timeout_i,  // Smc wdt second
+                                                                            // timeout.
 
-  // FLR Signals
-  input  logic                                   isolate_req_pin_i,           // Set which subsystems are isolated from cool reset from external pin
-  input  logic                                   cfg_flr_pf_active_i,         // Indicates that FLR is requested from PCIe
-  input  logic                                   rst_cool_ni,                 // Incoming cool reset request from primary chiplet to place in internal register for visibility
-  output logic [31:0]                            isolate_req_o,               // Controls isolation of subsystems like PCIe and/or ETH during FLR
-  output logic                                   skip_mem_repair_o,           // Signal to skip memory repair & MBIST during FLR
-  output logic                                   rst_cool_no,                 // Cool reset from primary chiplet to other chiplets
+  input  logic                                   isolate_req_pin_i,  // Set which subsystems
+                                                                     // are isolated from
+                                                                     // cool reset from
+                                                                     // external pin.
+  input  logic                                   cfg_flr_pf_active_i,  // Indicates that FLR
+                                                                       // is requested from
+                                                                       // PCIe.
+  input  logic                                   rst_cool_ni,  // Incoming cool reset
+                                                               // request from primary
+                                                               // chiplet to place in
+                                                               // internal register for
+                                                               // visibility.
+  output logic [31:0]                            isolate_req_o,  // Controls isolation of
+                                                                 // subsystems like PCIe
+                                                                 // and/or ETH during FLR.
+  output logic                                   skip_mem_repair_o,  // Signal to skip
+                                                                     // memory repair &
+                                                                     // MBIST during FLR.
+  output logic                                   rst_cool_no,  // Cool reset from primary
+                                                               // chiplet to other
+                                                               // chiplets.
 
-  // Subsystem Reset Signals
-  input  logic [31:0]                            ss_reset_complete_i,
-  output logic [31:0]                            ss_config_o,
-  output smc_reset_unit_pkg::reset_ctrl_t        ss_reset_ctrl_o[31:0],
+  input  logic [31:0]                            ss_reset_complete_i,  // Ss reset complete.
+  output logic [31:0]                            ss_config_o,  // Ss config.
+  output smc_reset_unit_pkg::reset_ctrl_t        ss_reset_ctrl_o[31:0],  // Ss reset ctrl.
 
-  // Reset Sync Signals
-  output logic                                   rst_primary_ref_clk_no,
-  output logic                                   rst_primary_smc_clk_no,
-  output logic                                   rst_warm_smc_clk_no,
-  output logic                                   rst_wdt_smc_clk_no,
-  output logic                                   rst_primary_periph_clk_no,
+  output logic                                   rst_primary_ref_clk_no,  // Rst primary ref clk.
+  output logic                                   rst_primary_smc_clk_no,  // Rst primary smc clk.
+  output logic                                   rst_warm_smc_clk_no,  // Rst warm smc clk.
+  output logic                                   rst_wdt_smc_clk_no,  // Rst wdt smc clk.
+  output logic                                   rst_primary_periph_clk_no,  // Rst primary periph
+                                                                             // clk.
 
-  // Sync IRQ Signals
-  output logic                                   sync_irq_o,
+  output logic                                   sync_irq_o,  // Sync irq.
 
-  // Test mode signals
-  input  logic                                   test_en_i,
-  input  logic                                   scan_rst_ni
+  input  logic                                   test_en_i,  // Test en.
+  input  logic                                   scan_rst_ni  // Scan rst.
 
 );
 

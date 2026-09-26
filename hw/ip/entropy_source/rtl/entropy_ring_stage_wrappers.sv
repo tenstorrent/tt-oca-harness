@@ -1,30 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Ring oscillator stage wrappers
+// Wrap ring-oscillator stage primitives with simulation-only propagation delay.
 //
-// entropy_ring_oscillator is a free-running combinational loop. With no
-// propagation delay anywhere in it, RTL simulation never advances simulated
-// time (see issue #1556): every stage settles within the same delta cycle
-// as its input, so the loop re-evaluates forever at a single $time.
+// entropy_ring_oscillator is a free-running combinational loop; without delay, RTL
+// simulation never advances time because every stage settles in the same delta cycle.
 //
-// Real propagation delay comes from whichever prim_clock_nand2 /
-// prim_stdbuf / prim_stdmux2 flavor synthesis binds each stage to, and none
-// of those flavors carry a delay parameter: they are swapped in as a group
-// per build target (see the generic vs. tech-specific implementations of
-// these prims), so every flavor must keep the exact same port list. These
-// wrappers keep the one-off simulation delay this ring needs local to
-// entropy_source instead of adding a parameter to the shared prims: each
-// wraps one stage's unmodified prim instance and adds a #1 delay under
-// `ifndef SYNTHESIS`, so synthesis - and every other prim_clock_nand2 /
-// prim_stdbuf / prim_stdmux2 consumer - sees the ordinary zero-delay cell.
-//--------------------------------------------------
+// Real delay comes from whichever prim_clock_nand2 / prim_stdbuf / prim_stdmux2 flavor
+// synthesis binds; those prims cannot grow a delay parameter without breaking every other
+// consumer. Each wrapper instances an unmodified prim and adds #1 delay under
+// `ifndef SYNTHESIS` so synthesis and other consumers see zero-delay cells.
 
 module entropy_ring_nand2_wrapper (
-  input  a1_i,
-  input  a2_i,
-  output y_o
+  input  a1_i,                          // First NAND input.
+  input  a2_i,                          // Second NAND input.
+  output y_o                            // Cell output.
 );
   logic y_cell;
 
@@ -42,8 +32,8 @@ module entropy_ring_nand2_wrapper (
 endmodule
 
 module entropy_ring_buf_wrapper (
-  input  a_i,
-  output y_o
+  input  a_i,                           // Buffer or mux data input
+  output y_o                            // Cell output
 );
   logic y_cell;
 
@@ -60,10 +50,10 @@ module entropy_ring_buf_wrapper (
 endmodule
 
 module entropy_ring_mux2_wrapper (
-  input  i0_i,
-  input  i1_i,
-  input  sel_i,
-  output y_o
+  input  i0_i,                          // I0
+  input  i1_i,                          // I1
+  input  sel_i,                         // Sel
+  output y_o                            // Cell output
 );
   logic y_cell;
 

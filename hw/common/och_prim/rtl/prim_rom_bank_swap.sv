@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// ROM Bank Swap Module
+// Map rom_bank_swap_i to a zero-hot ROM bank permutation.
 //
-//--------------------------------------------------
-module prim_rom_bank_swap (
-  // 5-bit control signal for bank swapping
-  input logic [4:0] rom_bank_swap_i,
+// Each romN_index_o nibble names which original ROM (0, 1, 2, or 3) feeds logical slot N,
+// using zero-hot encoding.
+// Undefined codes fall back to the identity map across all 24 permutations of four banks.
 
-  // Outputs representing the potentially swapped ROM index for each position
-  // Each output indicates which original ROM (0, 1, 2, or 3) should map
-  // to this logical position, using a zero-hot style encoding.
-  output logic [3:0] rom0_index_o,
-  output logic [3:0] rom1_index_o,
-  output logic [3:0] rom2_index_o,
-  output logic [3:0] rom3_index_o
+module prim_rom_bank_swap (
+  input logic [4:0] rom_bank_swap_i,  // 5-bit bank-permutation select.
+
+  output logic [3:0] rom0_index_o,  // Zero-hot physical ROM (0..3) for logical slot 0.
+  output logic [3:0] rom1_index_o,  // Zero-hot physical ROM (0..3) for logical slot 1.
+  output logic [3:0] rom2_index_o,  // Zero-hot physical ROM (0..3) for logical slot 2.
+  output logic [3:0] rom3_index_o  // Zero-hot physical ROM (0..3) for logical slot 3.
 );
 
   // Define fixed identifiers for the original ROM banks

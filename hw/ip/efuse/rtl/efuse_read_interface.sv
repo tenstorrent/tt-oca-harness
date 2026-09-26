@@ -1,53 +1,53 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Read Interface
+// Read fuse words through the fuse-command interface with timeouts and sticky errors.
 //
-//-----------------------------------------------------------------------------
+// read_go_i starts a read from read_addr_i; read_back_data_o captures the response.
+// read_addr_oob_i is computed upstream against the full-width CSR field because casting
+// to efuse_addr_t truncates upper bits.
+// Honors secure_tm_blocked_i, efuse_req_err_i, and optional read_req_timeout_*; sticky
+// address errors clear with read_addr_error_clear_i.
+// is_reading_o and read_target_addr_o feed the guard while a read is active.
 
 `include "prim_assert.sv"
 
 module efuse_read_interface #(
-  parameter type efuse_addr_t = logic,
-  parameter type efuse_word_counter_t = logic,
-  parameter type fuse_command_req_t = logic,
-  parameter type fuse_command_resp_t = logic,
-  parameter type efuse_data_t = logic
+  parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type fuse_command_req_t = logic,  // Fuse-command request type.
+  parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
+  parameter type efuse_data_t = logic   // Fuse data-word type.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,                    // System clock.
+  input logic rst_ni,                   // Active-low reset.
+  input logic test_en_i,                // DFT test enable.
 
-  input  logic        read_enable_i,
-  output logic        is_reading_o,
-  output efuse_addr_t read_target_addr_o,
+  input  logic        read_enable_i,    // Read enable.
+  output logic        is_reading_o,     // Is reading.
+  output efuse_addr_t read_target_addr_o,  // Read target addr.
 
-  input  efuse_addr_t read_addr_i,
-  input  logic        read_go_i,
-  output logic        read_busy_o,
-  output logic        read_done_o,
-  output logic        read_error_o,
-  output efuse_data_t read_back_data_o,
+  input  efuse_addr_t read_addr_i,      // Read addr.
+  input  logic        read_go_i,        // Read go.
+  output logic        read_busy_o,      // Read busy.
+  output logic        read_done_o,      // Read done.
+  output logic        read_error_o,     // Read error.
+  output efuse_data_t read_back_data_o,  // Read back data.
 
-  // Address validation: oob computed in controller against full-width
-  // CSR field (the cast to efuse_addr_t that produces read_addr_i
-  // truncates upper bits, so the bounds check must live upstream).
-  input  logic read_addr_oob_i,
-  output logic read_addr_error_o,
-  input  logic read_addr_error_clear_i,
+  input  logic read_addr_oob_i,         // Read addr oob.
+  output logic read_addr_error_o,       // Read addr error.
+  input  logic read_addr_error_clear_i,  // Read addr error clear.
 
-  input logic efuse_req_err_i,
-  input logic secure_tm_blocked_i,
+  input logic efuse_req_err_i,          // Efuse req err.
+  input logic secure_tm_blocked_i,      // Secure tm blocked.
 
-  input logic        read_req_timeout_en_i,
-  input logic [27:0] read_req_timeout_cycles_i,
+  input logic        read_req_timeout_en_i,  // Read req timeout en.
+  input logic [27:0] read_req_timeout_cycles_i,  // Read req timeout cycles.
 
-  output fuse_command_req_t  fuse_command_req_o,
-  input  fuse_command_resp_t fuse_command_resp_i,
+  output fuse_command_req_t  fuse_command_req_o,  // Fuse command req.
+  input  fuse_command_resp_t fuse_command_resp_i,  // Fuse command resp.
 
-  // Debug signals
-  output logic is_read_timeout_debug_o
+  output logic is_read_timeout_debug_o  // Is read timeout debug.
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;

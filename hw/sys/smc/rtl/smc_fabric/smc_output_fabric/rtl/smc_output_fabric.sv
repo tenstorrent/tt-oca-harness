@@ -1,51 +1,62 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Output Fabric
+// Route outbound chiplet AXI through the SMC output fabric.
+//
+// Aggregates and filters outbound requests toward the system AXI port.
+// Applies outbound address remapping when alias remap is enabled.
 
 module smc_output_fabric #(
-  parameter bit          NO_ADDR_REMAP           = 1'b1,
-  parameter int unsigned NumFilters              = 16,
-  parameter int unsigned MaxTrans                = smc_pkg::FABRIC_MAX_TRANS,
-  parameter bit          FilterReqPipelineEnable = 1'b0,
-  parameter bit          FilterRspPipelineEnable = 1'b0,
-  parameter int unsigned MmodeBaseAddr           = smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR,
-  parameter int unsigned XvisorBaseAddr          = smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR
+  parameter bit          NO_ADDR_REMAP           = 1'b1,  // Disable alias address remap
+                                                          // when the integration map is
+                                                          // fixed.
+  parameter int unsigned NumFilters              = 16,  // Numfilters.
+  parameter int unsigned MaxTrans                = smc_pkg::FABRIC_MAX_TRANS,  // Maxtrans.
+  parameter bit          FilterReqPipelineEnable = 1'b0,  // Filterreqpipelineenable.
+  parameter bit          FilterRspPipelineEnable = 1'b0,  // Filterrsppipelineenable.
+  parameter int unsigned MmodeBaseAddr           = smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR,  // Mmodebaseaddr.
+  parameter int unsigned XvisorBaseAddr          = smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR  // Xvisorbaseaddr.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                   // Clock.
+  input  logic rst_ni,                  // Reset.
+  input  logic test_en_i,               // Test en.
 
-  input  smc_pkg::smc_axi_addr_t global_base_addr_i,
-  input  smc_pkg::smc_axi_addr_t local_base_addr_i,
+  input  smc_pkg::smc_axi_addr_t global_base_addr_i,  // Global base addr.
+  input  smc_pkg::smc_axi_addr_t local_base_addr_i,  // Local base addr.
 
-  input  logic                filter_axi_cg_en_i,
-  input  logic                fabric_cg_en_i,
-  input  smc_pkg::cg_hyster_t cg_hysteresis_i,
+  input  logic                filter_axi_cg_en_i,  // Filter axi clock-gate enable.
+  input  logic                fabric_cg_en_i,  // Fabric clock-gate enable.
+  input  smc_pkg::cg_hyster_t cg_hysteresis_i,  // Cg hysteresis.
 
-  // AXI interface
-  input  smc_pkg::smc_56_64_6_12_axi_req_t  axi_req_i,
-  output smc_pkg::smc_56_64_6_12_axi_resp_t axi_resp_o,
+  input  smc_pkg::smc_56_64_6_12_axi_req_t  axi_req_i,  // AXI interface request.
+  output smc_pkg::smc_56_64_6_12_axi_resp_t axi_resp_o,  // AXI interface response.
 
-  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  axi_filtered_remapped_req_o,
-  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t axi_filtered_remapped_resp_i,
+  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  axi_filtered_remapped_req_o,  // Axi filtered
+                                                                                  // remapped request.
+  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t axi_filtered_remapped_resp_i,  // Axi filtered
+                                                                                   // remapped response.
 
-  // Config struct from register block
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],  // Config struct from
+                                                                                  // register block.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],  // Config struct from
+                                                                                    // register block.
 
-  // CSR structs for remap configurations
-  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],
-  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],
+  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // CSR structs for
+                                                                                                             // remap
+                                                                                                             // configurations.
+  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // CSR structs for
+                                                                                                              // remap
+                                                                                                              // configurations.
 
-  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,
-  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,
+  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,  // Write filter hit
+                                                                   // debug.
+  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,  // Read filter hit
+                                                                  // debug.
 
-  // Clock gater activity indicators
-  output logic fabric_clk_active_o,
-  output logic fabric_bus_active_o,
-  output logic sys_out_filter_clk_active_o,
-  output logic sys_out_filter_bus_active_o
+  output logic fabric_clk_active_o,     // Clock gater activity indicators.
+  output logic fabric_bus_active_o,     // Clock gater activity indicators.
+  output logic sys_out_filter_clk_active_o,  // Clock gater activity indicators.
+  output logic sys_out_filter_bus_active_o  // Clock gater activity indicators.
 );
 
   `include "ocah_assert.svh"

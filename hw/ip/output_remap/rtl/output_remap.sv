@@ -1,34 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Output Remap
+// Remap AXI transactions that hit programmed output regions onto target addresses.
+//
+// remap_ctrl_i carries per-region PeakRDL outs.
+// When UserOverrideEn is set, UserOverrideVal replaces AxUSER on remapped beats.
 
 module output_remap #(
-  parameter type          axi_req_t        = logic,
-  parameter type          axi_resp_t       = logic,
-  parameter type          remap_addr_t     = logic,
-  parameter type          user_ovrd_t      = logic,
-  parameter int unsigned  NumRegions       = 8,
-  parameter int unsigned  RegionBase       = 0,
-  parameter int unsigned  IdxStart         = 20,
-  parameter bit           UserOverrideEn   = 1'b1,
-  parameter user_ovrd_t   UserOverrideVal  = '0,
+  parameter type          axi_req_t        = logic,         // AXI request type.
+  parameter type          axi_resp_t       = logic,         // AXI response type.
+  parameter type          remap_addr_t     = logic,         // Remap address type.
+  parameter type          user_ovrd_t      = logic,         // AxUSER override type.
+  parameter int unsigned  NumRegions       = 8,             // Number of remap regions.
+  parameter int unsigned  RegionBase       = 0,             // Region index base.
+  parameter int unsigned  IdxStart         = 20,            // Address bit where the region index begins.
+  parameter bit           UserOverrideEn   = 1'b1,          // Replace AxUSER on remapped beats.
+  parameter user_ovrd_t   UserOverrideVal  = '0,            // AxUSER value when overriding.
 
-  localparam int unsigned RemapIndexW      = $clog2(NumRegions)
+  localparam int unsigned RemapIndexW      = $clog2(NumRegions) // Region-index width.
 ) (
-  input  logic                                       clk_i,
-  input  logic                                       rst_ni,
-  input  logic                                       test_en_i,
+  input  logic                                       clk_i, // System clock.
+  input  logic                                       rst_ni, // Async reset, active-low.
+  input  logic                                       test_en_i, // DFT test enable.
 
-  // CSR structs for remap configuration
-  input  output_remap_reg_pkg::output_remap__out_t   remap_ctrl_i [NumRegions-1:0],
+  input  output_remap_reg_pkg::output_remap__out_t   remap_ctrl_i [NumRegions-1:0], // Per-region PeakRDL configuration.
 
-  // Main data AXI interface
-  input  axi_req_t           axi_req_i,
-  output axi_resp_t          axi_resp_o,
+  input  axi_req_t           axi_req_i,                     // Pre-remap AXI request.
+  output axi_resp_t          axi_resp_o,                    // Pre-remap AXI response.
 
-  output axi_req_t           axi_remapped_req_o,
-  input  axi_resp_t          axi_remapped_resp_i
+  output axi_req_t           axi_remapped_req_o,            // Post-remap AXI request.
+  input  axi_resp_t          axi_remapped_resp_i            // Post-remap AXI response.
 );
 
   /////////////////////////

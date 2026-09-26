@@ -1,20 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG Bypass Register
+// Implement the one-bit IEEE 1149.1 bypass TDR on the DR scan path.
 //
-//-----------------------------------------------------------------------------
+// Captures and shifts a single bit between scan_in_i and scan_out_o under scan_ctrl_i.
 
 module jtag_byp_reg
   import prim_jtag_pkg::*;
 (
   /* verilator lint_off UNUSEDSIGNAL */
-  // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t  scan_ctrl_i,
+  input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
   /* verilator lint_on UNUSEDSIGNAL */
-  input  logic             scan_in_i,
-  output logic             scan_out_o
+  input  logic             scan_in_i,   // Scan data in (TDI).
+  output logic             scan_out_o   // Scan data out (TDO).
 );
 
   //--------------------------------------------------------------------------

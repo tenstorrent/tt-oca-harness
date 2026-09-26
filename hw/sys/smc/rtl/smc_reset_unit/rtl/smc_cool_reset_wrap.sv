@@ -1,29 +1,51 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-------------------------------------------------
-// SMC Cool Reset Wrap (FLR)
+// Stage SMC cool-reset entry and exit across primary clocks.
 //
-//-------------------------------------------------
+// Coordinates cool reset with warm and cold trees so domain release does not race.
+// Distributes cool-reset controls used for FLR and multi-chiplet reset.
 
 module smc_cool_reset_wrap (
-  input  logic                                   clk_ref_i,
-  input  logic                                   rst_cold_ref_ni,             // cold reset, reference clock domain
+  input  logic                                   clk_ref_i,  // Ref clock.
+  input  logic                                   rst_cold_ref_ni,  // cold reset,
+                                                                   // reference clock
+                                                                   // domain.
 
-  input  logic                                   clk_smc_i,
-  input  logic                                   rst_cold_smc_ni,             // cold reset, SMC clock domain
+  input  logic                                   clk_smc_i,  // Smc clock.
+  input  logic                                   rst_cold_smc_ni,  // cold reset, SMC
+                                                                   // clock domain.
 
-  // Register Interface
-  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,
-  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in_o,
+  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,  // Register Interface.
+  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in_o,  // Register Interface.
 
-  // FLR Resets
-  input  logic                                   isolate_req_pin_i,           // Set which subsystems are isolated from cool reset from external pin
-  input  logic                                   cfg_flr_pf_active_i,         // Indicates that FLR is requested from PCIe
-  input  logic                                   rst_cool_ni,                 // Incoming cool reset request from primary chiplet to place in internal register for visibility
-  output logic [31:0]                            isolate_req_o,               // Controls isolation of subsystems like PCIe and/or ETH during FLR
-  output logic                                   skip_mem_repair_o,           // Signal to skip memory repair & MBIST during FLR
-  output logic                                   rst_cool_no                  // Cool reset from primary chiplet to other chiplets
+  input  logic                                   isolate_req_pin_i,  // FLR Resets.
+                                                                     // Set which subsystems
+                                                                     // are isolated from
+                                                                     // cool reset from
+                                                                     // external pin.
+  input  logic                                   cfg_flr_pf_active_i,  // Indicates that FLR
+                                                                       // is requested from
+                                                                       // PCIe.
+                                                                       // FLR Resets.
+  input  logic                                   rst_cool_ni,  // Incoming cool reset
+                                                               // request from primary
+                                                               // chiplet to place in
+                                                               // internal register for
+                                                               // visibility.
+                                                               // FLR Resets.
+  output logic [31:0]                            isolate_req_o,  // Controls isolation of
+                                                                 // subsystems like PCIe
+                                                                 // and/or ETH during FLR.
+                                                                 // FLR Resets.
+  output logic                                   skip_mem_repair_o,  // Signal to skip
+                                                                     // memory repair &
+                                                                     // MBIST during FLR.
+                                                                     // FLR Resets.
+  output logic                                   rst_cool_no  // Cool reset from primary
+                                                              // chiplet to other
+                                                              // chiplets.
+                                                              // FLR Resets.
 );
 
   /////////////////////////

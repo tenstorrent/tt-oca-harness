@@ -2,38 +2,38 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2025 TT
 
-// AES Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
-// Includes AXI4-Lite key interface CSR that drives the AES sideload port.
+// Bridge AXI-Lite CSR and Key Manager key buses onto the OpenTitan AES TL-UL ports.
+//
+// Uses axi_lite_to_tlul for both the 32-bit CSR interface and the AXI4-Lite key interface
+// CSR that drives the AES sideload port.
+// EDN supplies entropy for PRNG reseeding. Two alerts leave the block: recoverable and
+// fatal.
+// bus_err_o sticks on a register-bridge fault until bus_err_clr_i. idle_o reports AES
+// idle.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module aes_wrapper (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset.
 
-  // 32-bit AXI-Lite CSR interface
-  input  sep_pkg::sep_32_32_axil_req_t  aes_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t aes_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  aes_axil_req_i,  // 32-bit AXI-Lite CSR request.
+  output sep_pkg::sep_32_32_axil_resp_t aes_axil_resp_o,  // 32-bit AXI-Lite CSR response.
 
-  // AXI4-Lite key interface (32-bit from Key Manager private bus)
-  input  sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t aes_key_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req_i,  // AXI4-Lite key interface request, 32-bit from the Key Manager private bus.
+  output sep_pkg::sep_32_32_axil_resp_t aes_key_axil_resp_o,  // AXI4-Lite key interface response.
 
-  // EDN interface (entropy for PRNG reseeding)
-  output edn_pkg::edn_req_t edn_req_o,
-  input  edn_pkg::edn_rsp_t edn_rsp_i,
+  output edn_pkg::edn_req_t edn_req_o,        // EDN request for PRNG reseeding entropy.
+  input  edn_pkg::edn_rsp_t edn_rsp_i,        // EDN response for PRNG reseeding entropy.
 
-  // Alert interface (2 alerts: recoverable, fatal)
-  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,  // Alert receiver; two alerts: recoverable and fatal.
+  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,  // Alert transmitter; two alerts: recoverable and fatal.
 
-  // Register bridge fault (sticky, held until bus_err_clr_i)
-  output logic bus_err_o,
-  input  logic bus_err_clr_i,
+  output logic bus_err_o,                     // Register-bridge fault; sticky until bus_err_clr_i.
+  input  logic bus_err_clr_i,                 // Clears bus_err_o.
 
-  // Idle output
-  output logic idle_o
+  output logic idle_o                         // AES idle status.
 );
 
   // ============================================================================

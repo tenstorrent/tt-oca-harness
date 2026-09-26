@@ -1,103 +1,100 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP CPU Wrapper
-// Contains VeeR EL2 core complex (which itself contains the RV32 core, Data and Instruction TCMs, PIC and Debug Module)
-// The external interface is mostly not EL2-specific, which means the EL2 core can be replaced with another core relatively easily and transparently to other modules
+// Wrap the VeeR EL2 core complex behind a mostly core-agnostic SEP CPU boundary.
+//
+// Contains the RV32 core, data and instruction TCMs, PIC, and debug module. The external
+// interface is mostly not EL2-specific so another core can replace EL2 with limited churn
+// above.
+//
+// VeeR reset bypass (scan_rst_n) is not exposed on the el2_veer_wrapper boundary. Lockstep
+// ctrl/status ports stay present even when RV_LOCKSTEP_ENABLE is off so the hierarchy
+// above keeps one footprint.
+//
+// IFU ROM and SRAM leave through an internal demux. TCM structs route to sep_wrapper for
+// macro instantiation.
+//
+// nmi_vec_i and jtag_id_i should be tied to constants or sourced from a CSR.
 
 module sep_cpu (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic dbg_rstb_i,  // EL2 debugger reset
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset.
+  input logic dbg_rstb_i,                     // EL2 debugger reset.
 
-  input  logic jtag_tck_i,   // JTAG clk
-  input  logic jtag_tms_i,   // JTAG TMS
-  input  logic jtag_tdi_i,   // JTAG tdi
-  input  logic jtag_trst_ni, // JTAG Reset
-  output logic jtag_tdo_o,   // JTAG TDO
-  output logic jtag_tdoEn_o, // JTAG Test Data Output enable
+  input  logic jtag_tck_i,                    // JTAG clk.
+  input  logic jtag_tms_i,                    // JTAG TMS.
+  input  logic jtag_tdi_i,                    // JTAG tdi.
+  input  logic jtag_trst_ni,                  // JTAG Reset.
+  output logic jtag_tdo_o,                    // JTAG TDO.
+  output logic jtag_tdoEn_o,                  // JTAG Test Data Output enable.
 
-  // external MPC halt/run interface
-  input  logic mpc_debug_halt_req_i, // Async halt request
-  input  logic mpc_debug_run_req_i,  // Async run request
-  input  logic mpc_reset_run_req_i,  // Run/halt after reset
-  output logic mpc_debug_halt_ack_o, // Halt ack
-  output logic mpc_debug_run_ack_o,  // Run ack
-  output logic debug_brkpt_status_o, // debug breakpoint
+  input  logic mpc_debug_halt_req_i,          // Async halt request.
+  input  logic mpc_debug_run_req_i,           // Async run request.
+  input  logic mpc_reset_run_req_i,           // Run/halt after reset.
+  output logic mpc_debug_halt_ack_o,          // Halt ack.
+  output logic mpc_debug_run_ack_o,           // Run ack.
+  output logic debug_brkpt_status_o,          // debug breakpoint.
 
-  input  logic cpu_halt_req_i,      // Async halt req to CPU
-  output logic cpu_halt_ack_o,      // core response to halt
-  output logic cpu_halt_status_o,   // 1'b1 indicates core is halted
-  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-  input  logic cpu_run_req_i,       // Async restart req to CPU
-  output logic cpu_run_ack_o,       // Core response to run req
+  input  logic cpu_halt_req_i,                // Async halt req to CPU.
+  output logic cpu_halt_ack_o,                // core response to halt.
+  output logic cpu_halt_status_o,             // 1'b1 indicates core is halted.
+  output logic debug_mode_status_o,           // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request.
+  input  logic cpu_run_req_i,                 // Async restart req to CPU.
+  output logic cpu_run_ack_o,                 // Core response to run req.
 
-  // Excluding from coverage as usage is determined by the integrator of the VeeR core.
-  // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
-  input logic test_en_i,  // DFT test-enable
+  input logic test_en_i,                      // DFT test-enable (scan-enable).
 
-  // DMI port for uncore
-  input  logic        dmi_core_enable_i,
-  input  logic        dmi_uncore_enable_i,
-  output logic        dmi_uncore_en_o,
-  output logic        dmi_uncore_wr_en_o,
-  output logic [6:0]  dmi_uncore_addr_o,
-  output logic [31:0] dmi_uncore_wdata_o,
-  input  logic [31:0] dmi_uncore_rdata_i,
-  output logic        dmi_active_o,
+  input  logic        dmi_core_enable_i,      // DMI core enable.
+  input  logic        dmi_uncore_enable_i,    // DMI uncore enable.
+  output logic        dmi_uncore_en_o,        // DMI uncore en.
+  output logic        dmi_uncore_wr_en_o,     // DMI uncore wr en.
+  output logic [6:0]  dmi_uncore_addr_o,      // DMI uncore addr.
+  output logic [31:0] dmi_uncore_wdata_o,     // dmi uncore wdata o.
+  input  logic [31:0] dmi_uncore_rdata_i,     // dmi uncore rdata i.
+  output logic        dmi_active_o,           // DMI active.
 
-  // These values should be tied to constants in the top level or sourced from a CSR
-  input logic [31:1] nmi_vec_i,  // PC to jump to @ NMI
-  input logic [31:1] jtag_id_i,
+  input logic [31:1] nmi_vec_i,               // These values should be tied to constants in the top level or sourced from a CSR
+                                              // PC to jump to @ NMI.
+  input logic [31:1] jtag_id_i,               // JTAG id.
 
-  // IRQs
-  input logic                       nmi_int_i,
-  input logic                       timer_int_i,
-  input logic                       soft_int_i,
-  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req_i,
+  input logic                       nmi_int_i,  // NMI int.
+  input logic                       timer_int_i,  // timer int.
+  input logic                       soft_int_i,  // soft int.
+  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req_i,  // extintsrc request.
 
-  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,
+  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,  // SEP cpu trace.
 
-  output logic iccm_ecc_single_error_o,
-  output logic iccm_ecc_double_error_o,
-  output logic dccm_ecc_single_error_o,
-  output logic dccm_ecc_double_error_o,
+  output logic iccm_ecc_single_error_o,       // iccm ecc single error o.
+  output logic iccm_ecc_double_error_o,       // iccm ecc double error o.
+  output logic dccm_ecc_single_error_o,       // dccm ecc single error o.
+  output logic dccm_ecc_double_error_o,       // dccm ecc double error o.
 
-  output logic dec_tlu_perfcnt0_o, // toggles when slot0 perf counter 0 has an event inc
-  output logic dec_tlu_perfcnt1_o,
-  output logic dec_tlu_perfcnt2_o,
-  output logic dec_tlu_perfcnt3_o,
+  output logic dec_tlu_perfcnt0_o,            // toggles when slot0 perf counter 0 has an event inc.
+  output logic dec_tlu_perfcnt1_o,            // dec tlu perfcnt1.
+  output logic dec_tlu_perfcnt2_o,            // dec tlu perfcnt2.
+  output logic dec_tlu_perfcnt3_o,            // dec tlu perfcnt3.
 
-  // Unconditional: the VeeR wrapper's lockstep ports only exist under
-  // RV_LOCKSTEP_ENABLE, but this module's do not, so the hierarchy above keeps one
-  // port footprint regardless of the define.
-  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
-  output sep_pkg::sep_lockstep_status_t lockstep_status_o,
+  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,  // Unconditional: the VeeR wrapper's lockstep ports only exist under
+                                                          // RV_LOCKSTEP_ENABLE, but this module's do not, so the hierarchy above keeps one
+                                                          // port footprint regardless of the define.
+  output sep_pkg::sep_lockstep_status_t lockstep_status_o,  // lockstep status.
 
-  // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
-  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
-  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
+  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,  // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation.
+  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,  // SEP cpu TCM response.
 
-  // AXI interfaces (IFU split into ROM and SRAM via internal demux)
-  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
-
-  output sep_pkg::sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
-
-  input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
-
-  input  logic [31:0]                 sep_local_base_addr_i
+  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,  // AXI interfaces (IFU split into ROM and SRAM via internal demux).
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,  // IFU ROM AXI response.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,  // IFU SRAM AXI request.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,  // IFU SRAM AXI response.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,  // LSU ROM AXI request.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,  // LSU ROM AXI response.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,  // LSU xbar AXI request.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,  // LSU xbar AXI response.
+  output sep_pkg::sep_32_64_3_12_axi_req_t      dbg_axi_req_o,  // DBG AXI request.
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,  // DBG AXI response.
+  input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,  // cpu TCM AXI request.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,  // cpu TCM AXI response.
+  input  logic [31:0]                 sep_local_base_addr_i  // SEP local base addr.
 );
 
   import el2_pkg::el2_param_t;

@@ -1,31 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP WDT Wrapper - Watchdog Timer with AXI interface
+// Wrap the watchdog timer with an AXI register interface.
+//
+// clk_wdt_i times the bark and bite counters. wdt_timer_rst_req_o requests a system reset
+// bite.
+// wdt_alert_o aggregates the fatal alert pulse with integ_fail of all channels.
+// wdt_debug_sleep_mode_i pauses the watchdog in debug sleep.
 
 module sep_wdt_wrap (
-  // Global Interface
-  input  logic                         clk_i,
-  input  logic                         clk_wdt_i,
-  input  logic                         rst_ni,
+  input  logic                         clk_i,  // System clock.
+  input  logic                         clk_wdt_i,  // 200 kHz clock for the WDT timer.
+  input  logic                         rst_ni,  // Active-low reset.
 
-  input  logic                         test_en_i,
-  input  logic                         scan_rst_ni,
+  input  logic                         test_en_i,  // DFT test-enable (scan-enable).
+  input  logic                         scan_rst_ni,  // DFT scan reset, active-low; bypasses the reset synchronizer.
 
-  // AXI4 Slave Interface
-  input  sep_pkg::sep_32_64_6_12_axi_req_t    sep_wdt_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t   sep_wdt_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t    sep_wdt_axi_req_i,  // AXI4 Slave Interface.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t   sep_wdt_axi_resp_o,  // SEP WDT AXI response.
 
-  // WDT Interface
-  output logic                         intr_wdog_timer_bark_o,
-  output logic                         wdt_timer_rst_req_o,
-  // Aggregated fatal alert (alert pulse | integ_fail of all channels)
-  output logic                         wdt_alert_o,
-  input  logic                         wdt_debug_sleep_mode_i,
+  output logic                         intr_wdog_timer_bark_o,  // intr wdog timer bark.
+  output logic                         wdt_timer_rst_req_o,  // WDT timer rst request.
+  output logic                         wdt_alert_o,  // Aggregated fatal alert (alert pulse | integ_fail of all channels).
+  input  logic                         wdt_debug_sleep_mode_i,  // WDT debug sleep mode.
 
-  // Register bridge fault (sticky, held until bus_err_clr_i)
-  output logic                         bus_err_o,
-  input  logic                         bus_err_clr_i
+  output logic                         bus_err_o,  // bus err o.
+  input  logic                         bus_err_clr_i  // bus err clr.
 );
 
   localparam int unsigned NumAlerts = aon_timer_reg_pkg::NumAlerts;

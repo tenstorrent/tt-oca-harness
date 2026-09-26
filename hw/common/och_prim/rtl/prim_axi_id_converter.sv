@@ -1,35 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// AXI ID Converter
+// Remap AXI IDs when the upstream ID width exceeds the downstream width.
 //
-//--------------------------------------------------
+// When AXI_ID_WIDTH_IN is not greater than AXI_ID_WIDTH_OUT, pass requests through.
+// Otherwise prepend IDs through prim_axi_id_prepend_wrap with MAX_INFLIGHT_IDS and
+// MAX_TXNS_PER_ID limits.
+// test_en_i is the DFT enable on the remap path.
+
 module prim_axi_id_converter #(
 
-  parameter int unsigned AXI_ADDR_WIDTH = 64,
-  parameter int unsigned AXI_DATA_WIDTH = 64,
-  parameter int unsigned AXI_USER_WIDTH = 1,
+  parameter int unsigned AXI_ADDR_WIDTH = 64,  // AXI address width.
+  parameter int unsigned AXI_DATA_WIDTH = 64,  // AXI data width.
+  parameter int unsigned AXI_USER_WIDTH = 1,  // AXI user width.
 
-  parameter int unsigned AXI_ID_WIDTH_IN  = 16,
-  parameter int unsigned AXI_ID_WIDTH_OUT = 8,
+  parameter int unsigned AXI_ID_WIDTH_IN  = 16,  // Upstream AXI ID width.
+  parameter int unsigned AXI_ID_WIDTH_OUT = 8,  // Downstream AXI ID width.
 
-  parameter type input_axi_req_t = logic,
-  parameter type input_axi_resp_t = logic,
-  parameter type output_axi_req_t = logic,
-  parameter type output_axi_resp_t = logic,
+  parameter type input_axi_req_t = logic,  // Upstream request struct.
+  parameter type input_axi_resp_t = logic,  // Upstream response struct.
+  parameter type output_axi_req_t = logic,  // Downstream request struct.
+  parameter type output_axi_resp_t = logic,  // Downstream response struct.
 
-  parameter int unsigned MAX_INFLIGHT_IDS = 4,
-  parameter int unsigned MAX_TXNS_PER_ID  = 4
+  parameter int unsigned MAX_INFLIGHT_IDS = 4,  // Max distinct remapped IDs in flight.
+  parameter int unsigned MAX_TXNS_PER_ID  = 4  // Max outstanding beats per remapped ID.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,  // AXI clock.
+  input logic rst_ni,  // Async reset, active-low.
+  input logic test_en_i,  // DFT/test enable.
 
-  input  input_axi_req_t  axi_in_req_i,
-  output input_axi_resp_t axi_in_resp_o,
-  output output_axi_req_t  axi_out_req_o,
-  input  output_axi_resp_t axi_out_resp_i
+  input  input_axi_req_t  axi_in_req_i,  // Upstream AXI request.
+  output input_axi_resp_t axi_in_resp_o,  // Upstream AXI response.
+  output output_axi_req_t  axi_out_req_o,  // Downstream AXI request.
+  input  output_axi_resp_t axi_out_resp_i  // Downstream AXI response.
 
 );
 

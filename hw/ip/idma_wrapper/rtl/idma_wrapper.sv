@@ -1,68 +1,73 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// DMA Wrapper
+// Assemble the iDMA frontend, request manager, backend, and optional clock gating.
+//
+// Parameter constraints:
+//
+// - NUM_CTRL_INTERFACES, NUM_CTRL_STREAMS, and NUM_MST_INTERFACES must be >= 1.
+// - CTRL_OUTSTANDING_TX covers all in-flight transactions the ctrl port admits for the
+//   frontend clock-gate snoop and must cover what the upstream fabric can present on
+//   dma_ctrl_axi_req_i[0].
+// - F2M_FIFO_DEPTH has a minimum depth of 1; otherwise the dma ctrl read bus stalls on
+//   command start.
+// - BUFFER_DEPTH is the realignment buffer depth in beats and must be >= 2.
+// - EN_R_AW_COUPLING is recommended.
 
 module idma_wrapper #(
-  parameter  int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter  int unsigned NUM_CTRL_STREAMS = 1, // must be >= 1
+  parameter  int unsigned NUM_CTRL_INTERFACES = 1,          // Control-port count; must be >= 1.
+  parameter  int unsigned NUM_CTRL_STREAMS = 1,             // Streams per control port; must be >= 1.
 
-  parameter  int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
+  parameter  int unsigned NUM_MST_INTERFACES = 1,           // Backend master count; must be >= 1.
 
-  parameter  int unsigned DMA_MST_MAX_TXNS = 16,
+  parameter  int unsigned DMA_MST_MAX_TXNS = 16,            // Max outstanding AXI master transactions.
 
-  // All in-flight transactions the ctrl port admits, for the frontend clock-gate snoop.
-  // Must cover what the upstream fabric can present on dma_ctrl_axi_req_i[0]
-  parameter  int unsigned CTRL_OUTSTANDING_TX = 16,
+  parameter  int unsigned CTRL_OUTSTANDING_TX = 16,         // Ctrl-port outstanding for the frontend clock-gate snoop.
+                                                            // Must cover what the upstream fabric can present on dma_ctrl_axi_req_i[0].
 
-  parameter  int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, otherwise dma ctrl read bus will stall on cmd start
-  parameter  int unsigned M2B_FIFO_DEPTH = 0,
-  parameter  int unsigned BUFFER_DEPTH = 3,  // realignment buffer depth in beats, must be >= 2
+  parameter  int unsigned F2M_FIFO_DEPTH = 4,               // Frontend-to-manager FIFO depth.
+                                                            // Minimum depth of 1; otherwise the dma ctrl read bus stalls on command start.
+  parameter  int unsigned M2B_FIFO_DEPTH = 0,               // Manager-to-backend FIFO depth.
+  parameter  int unsigned BUFFER_DEPTH = 3,                 // Realignment buffer depth in beats; must be >= 2.
 
-  parameter  bit EN_R_AW_COUPLING = 1,  // recommended
+  parameter  bit EN_R_AW_COUPLING = 1,                      // Couple R and AW channels; recommended.
 
-  parameter  bit BYPASS_DMA_CTRL_FLOPS = 1'b0,
-  parameter  bit BYPASS_DMA_MST_FLOPS  = 1'b0,
+  parameter  bit BYPASS_DMA_CTRL_FLOPS = 1'b0,              // Skip AXI ctrl boundary flops.
+  parameter  bit BYPASS_DMA_MST_FLOPS  = 1'b0,              // Skip AXI master boundary flops.
 
-  parameter  int unsigned CG_HYSTERESIS_W = 6,
+  parameter  int unsigned CG_HYSTERESIS_W = 6,              // Clock-gater hysteresis width.
 
-  // AXI ctrl interface types
-  parameter type dma_ctrl_req_t  = logic,
-  parameter type dma_ctrl_resp_t = logic,
+  parameter type dma_ctrl_req_t  = logic,                   // AXI ctrl request type.
+  parameter type dma_ctrl_resp_t = logic,                   // AXI ctrl response type.
 
-  // AXI master interface types
-  parameter type dma_mst_req_t  = logic,
-  parameter type dma_mst_resp_t = logic,
+  parameter type dma_mst_req_t  = logic,                    // AXI master request type.
+  parameter type dma_mst_resp_t = logic,                    // AXI master response type.
 
-  // Width params for internal type construction
-  parameter int unsigned AXI_ADDR_WIDTH       = 56,
-  parameter int unsigned AXI_DATA_WIDTH       = 64,
-  parameter int unsigned AXI_USER_WIDTH       = 12,
-  parameter int unsigned CTRL_ID_WIDTH        = 8,
-  parameter int unsigned MST_ID_WIDTH         = 3,
-  parameter int unsigned BACKEND_INT_ID_WIDTH = 2
+  parameter int unsigned AXI_ADDR_WIDTH       = 56,         // AXI address width.
+  parameter int unsigned AXI_DATA_WIDTH       = 64,         // AXI data width.
+  parameter int unsigned AXI_USER_WIDTH       = 12,         // AXI user width.
+  parameter int unsigned CTRL_ID_WIDTH        = 8,          // Ctrl AXI ID width.
+  parameter int unsigned MST_ID_WIDTH         = 3,          // Master AXI ID width.
+  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // Internal backend ID width.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,                                       // System clock.
+  input  logic rst_ni,                                      // Async reset, active-low.
 
-  input  logic test_en_i,
-  output logic dma_busy_o,
-  output logic dma_intp_o,
+  input  logic test_en_i,                                   // DFT test enable.
+  output logic dma_busy_o,                                  // DMA has work in flight.
+  output logic dma_intp_o,                                  // DMA completion interrupt.
 
-  input  logic cg_enable_i,
-  input  logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,
+  input  logic cg_enable_i,                                 // Enable frontend clock gating.
+  input  logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,       // Idle cycles before gating.
 
-  // AXI interface to DMA control registers
-  input  dma_ctrl_req_t  [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_req_i,
-  output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o,
+  input  dma_ctrl_req_t  [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_req_i, // AXI ctrl slave request.
+  output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o, // AXI ctrl slave response.
 
-  // DMA Master
-  output dma_mst_req_t   [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o,
-  input  dma_mst_resp_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i,
+  output dma_mst_req_t   [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o, // AXI master request.
+  input  dma_mst_resp_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i, // AXI master response.
 
-  // Clock gater activity indicators
-  output logic                                     frontend_clk_active_o,
-  output logic                                     frontend_bus_active_o
+  output logic                                     frontend_clk_active_o, // Frontend clock is running.
+  output logic                                     frontend_bus_active_o // Frontend bus has traffic.
 );
 
   `include "idma/typedef.svh"

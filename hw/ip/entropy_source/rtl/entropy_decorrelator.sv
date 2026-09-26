@@ -1,38 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_decorrelator.sv
- * @brief Entropy noise source decorrelator and extractor.
- *
- * @details Reduces serial correlation in RO samples by feeding back through
- *          a prime-length (29-deep) delay chain, then downsampling one byte
- *          every sample_clk_div_i+1 cycles. bypass_i breaks the feedback path
- *          and halves the downsampling period for raw-output testing.
- *          entropy_byte_valid_o is deasserted whenever enable_i is LOW to
- *          prevent stale data from overflowing the downstream FIFO.
- *          sample_clk_div_i is one less than the actual division factor
- *          (counts sample_clk_div_i down to 0 inclusive).
- *
- * @param LENGTH       Delay chain length in stages (default: 29)
- * @param CLKDIV_WIDTH Width of downsampler clock divider counter (default: 24)
- * @param LFSR_MODE    Selects feedback mode: prime-length or LFSR (default: 0)
- */
+// Decorrelate and downsample ring-oscillator noise into masked entropy bytes.
+//
+// Feeds noise through a prime-length delay chain (default LENGTH 29) and emits one byte
+// every sample_clk_div_i+1 cycles. sample_clk_div_i is one less than the division factor
+// (counts down through 0 inclusive).
+//
+// Controls:
+//
+// - LFSR_MODE selects prime-length versus LFSR feedback.
+// - bypass_i breaks the feedback path and halves the downsampling period for raw-output
+//   testing.
+// - byte_mask_i masks the emitted byte.
+//
+// entropy_byte_valid_o deasserts whenever enable_i is low so stale data cannot overflow
+// the downstream FIFO.
 
 module entropy_decorrelator #(
-  parameter int unsigned LENGTH       = 29,
-  parameter int unsigned CLKDIV_WIDTH = 24,
-  parameter bit          LFSR_MODE    = 1'b0
+  parameter int unsigned LENGTH       = 29,  // Decorrelator delay-chain length.
+  parameter int unsigned CLKDIV_WIDTH = 24,  // Downsample divider counter width.
+  parameter bit          LFSR_MODE    = 1'b0  // B0.
 ) (
-  input       logic                    clk_i,
-  input       logic                    rst_ni,
-  input       logic                    enable_i,
-  input       logic                    noise_i,
-  input       logic                    bypass_i,
-  input       logic [7:0]              byte_mask_i,
-  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,
-  output      logic [7:0]              entropy_byte_sample_o,
-  output      logic                    entropy_byte_valid_o
+  input       logic                    clk_i,  // System clock.
+  input       logic                    rst_ni,  // Active-low reset.
+  input       logic                    enable_i,  // Block enable.
+  input       logic                    noise_i,  // Noise.
+  input       logic                    bypass_i,  // Bypass.
+  input       logic [7:0]              byte_mask_i,  // Byte mask.
+  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,  // Sample clk div.
+  output      logic [7:0]              entropy_byte_sample_o,  // Entropy byte sample.
+  output      logic                    entropy_byte_valid_o  // Entropy byte valid.
 );
 
   /////////////

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Telemetry Receiver Package
+// Hold ATB telemetry widths and AXI-Lite typedefs for the receiver.
 //
-//-----------------------------------------------------------------------------
+// Defines packet and block sizes and the axil_req_t / axil_resp_t used by
+// telemetry_receiver.
 
 package telemetry_receiver_pkg;
 
@@ -33,7 +33,7 @@ package telemetry_receiver_pkg;
   localparam int unsigned TELEMETRY_DATA_WIDTH = 8;
 
   typedef logic [TELEMETRY_DATA_WIDTH-1:0] telemetry_data_t;
-  typedef logic [6:0] atb_id_t;  // Fixed by ATB Standard
+  typedef logic [6:0] atb_id_t;  // Fixed by ATB Standard.
 
 
   ////////////////////////////////////

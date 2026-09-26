@@ -1,57 +1,58 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP DMA Wrapper
+// Bridge AXI register and host ports onto the secure_dma TileLink UL core.
 //
-// AXI to TileLink UL Bridge for secure_dma module
+// lsio_trigger_i carries peripheral signals that data is ready for DMA. Done, chunk-done,
+// and error interrupts leave to the PIC.
+//
+// dma_alert_o aggregates the fatal alert pulse with integ_fail of all channels.
+//
+// dma_reg_bus_err_o and dma_host_intg_err_o stick until dma_err_clr_i; a fault arriving in
+// the same cycle as the clear still latches. They are not cleared by a CPU-only reset
+// (sep_cpu_reset_n is a subset of this block's rst_ni), so firmware must treat an
+// assertion at boot as possibly stale.
 
 module sep_dma_wrap #(
-  // Local parameter for register address width
-  parameter int unsigned REG_ADDR_WIDTH = 32,
-  parameter bit [REG_ADDR_WIDTH-1:0]                SECURE_DMA_REG_MAP_BASE_ADDR = 32'h20000000,
-  parameter logic [secure_dma_reg_pkg::NumAlerts-1:0] AlertAsyncOn = {secure_dma_reg_pkg::NumAlerts{1'b1}},
-  parameter int unsigned                            AlertSkewCycles = 1,
-  parameter bit                                     EnableDataIntgGen = 1'b1,
-  parameter bit                                     EnableRspDataIntgCheck = 1'b1,
-  parameter logic [tlul_pkg::RsvdWidth-1:0]         TlUserRsvd = '0,
-  parameter top_racl_pkg::racl_role_t               SysRaclRole = '0,
-  parameter int unsigned                            OtAgentId = 0,
-  parameter bit                                     EnableRacl = 1'b0,
-  parameter bit                                     RaclErrorRsp = EnableRacl,
-  parameter top_racl_pkg::racl_policy_sel_t         RaclPolicySelVec[secure_dma_reg_pkg::NumRegs] = '{secure_dma_reg_pkg::NumRegs{0}}
+  parameter int unsigned REG_ADDR_WIDTH = 32,  // DMA register address width.
+  parameter bit [REG_ADDR_WIDTH-1:0]                SECURE_DMA_REG_MAP_BASE_ADDR = 32'h20000000,  // Secure DMA register map base address.
+  parameter logic [secure_dma_reg_pkg::NumAlerts-1:0] AlertAsyncOn = {secure_dma_reg_pkg::NumAlerts{1'b1}},  // Per-alert async-on configuration.
+  parameter int unsigned                            AlertSkewCycles = 1,  // Alert skew cycle count.
+  parameter bit                                     EnableDataIntgGen = 1'b1,  // Generate data integrity on the DMA host.
+  parameter bit                                     EnableRspDataIntgCheck = 1'b1,  // Check response data integrity.
+  parameter logic [tlul_pkg::RsvdWidth-1:0]         TlUserRsvd = '0,  // Reserved TL user bits.
+  parameter top_racl_pkg::racl_role_t               SysRaclRole = '0,  // System RACL role.
+  parameter int unsigned                            OtAgentId = 0,  // OpenTitan agent ID.
+  parameter bit                                     EnableRacl = 1'b0,  // Enable RACL checks.
+  parameter bit                                     RaclErrorRsp = EnableRacl,  // Return error responses on RACL fail.
+  parameter top_racl_pkg::racl_policy_sel_t         RaclPolicySelVec[secure_dma_reg_pkg::NumRegs] = '{secure_dma_reg_pkg::NumRegs{0}}  // Per-register RACL policy select.
 ) (
-  input  logic                                      clk_i,
-  input  logic                                      rst_ni,
+  input  logic                                      clk_i,  // System clock.
+  input  logic                                      rst_ni,  // Active-low reset.
 
-  input  logic                                      test_en_i,
+  input  logic                                      test_en_i,  // DFT test-enable (scan-enable).
 
-  // DMA Handshake Interface
-  input  secure_dma_pkg::lsio_trigger_t             lsio_trigger_i, // Periphal signals that it has data for DMA to transfer
-  output logic                                      intr_dma_done_o,
-  output logic                                      intr_dma_chunk_done_o,
-  output logic                                      intr_dma_error_o,
+  input  secure_dma_pkg::lsio_trigger_t             lsio_trigger_i,  // DMA Handshake Interface
+                                                                     // Periphal signals that it has data for DMA to transfer.
+  output logic                                      intr_dma_done_o,  // intr DMA done.
+  output logic                                      intr_dma_chunk_done_o,  // intr DMA chunk done.
+  output logic                                      intr_dma_error_o,  // intr dma error o.
 
-  // Aggregated fatal alert (alert pulse | integ_fail of all channels).
-  output logic                                      dma_alert_o,
+  output logic                                      dma_alert_o,  // Aggregated fatal alert (alert pulse | integ_fail of all channels).
 
-  // Bridge fault reporting. Both are held until dma_err_clr_i; a fault arriving in
-  // the same cycle as the clear still latches. They are NOT cleared by a CPU-only
-  // reset (sep_cpu_reset_n is a subset of this block's rst_ni), so firmware must
-  // treat an assertion at boot as possibly stale rather than a fresh fault.
-  output logic                                      dma_reg_bus_err_o,
-  output logic                                      dma_host_intg_err_o,
-  input  logic                                      dma_err_clr_i,
+  output logic                                      dma_reg_bus_err_o,  // Bridge fault reporting. Both are held until dma_err_clr_i; a fault arriving in
+                                                                        // the same cycle as the clear still latches. They are NOT cleared by a CPU-only
+                                                                        // reset (sep_cpu_reset_n is a subset of this block's rst_ni), so firmware must
+                                                                        // treat an assertion at boot as possibly stale rather than a fresh fault.
+  output logic                                      dma_host_intg_err_o,  // DMA host intg err.
+  input  logic                                      dma_err_clr_i,  // DMA err clr.
 
-  // Register Interface (AXI Slave)
-  input  sep_pkg::sep_32_64_6_12_axi_req_t            reg_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t           reg_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t            reg_req_i,  // reg request.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t           reg_resp_o,  // reg response.
 
-  // DMA SEP Master Interface (AXI Master)
-  output sep_pkg::sep_32_64_3_12_axi_req_t            dma_req_o,
-  input  sep_pkg::sep_32_64_3_12_axi_resp_t           dma_resp_i,
-
-  // Local Alias Remap Configuration
-  input  logic [31:0]                                sep_local_base_addr_i
+  output sep_pkg::sep_32_64_3_12_axi_req_t            dma_req_o,  // DMA SEP Master Interface (AXI Master).
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t           dma_resp_i,  // DMA response.
+  input  logic [31:0]                                sep_local_base_addr_i  // SEP local base addr.
 );
 
   // Local parameter for 32-bit data width

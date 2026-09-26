@@ -1,57 +1,67 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Guard
+// Filter fuse commands against field locks, lifecycle-state rules, and RMA token checks.
 //
-//-----------------------------------------------------------------------------
+// HAS_LC_STATE distinguishes SEP (lifecycle field present) from SMC.
+// LC_STATE_BIT_POSITION and TOKEN_MATCH_CODE locate and encode token checks; the SIP and
+// chiplet token bit addresses are LC_STATE_BIT_POSITION+1 and +2.
+//
+// Block program or read when shadow locks or failed RMA token matches apply; secure_tm_i
+// can force a secure-TM block.
+//
+// The outputs report the filtering result:
+//
+// - Filtered command req/resp pass allowed traffic.
+// - efuse_err_o sticks until error_clear_i.
+// - Lock and secure-TM status are exported.
 
 module efuse_guard #(
-  parameter int unsigned EFUSE_FIELDS     = 1,
-  parameter int unsigned EFUSE_ADDR_WIDTH = 12,
-  parameter type         efuse_map_t      = logic,
-  parameter type         fuse_command_req_t      = logic,
-  parameter type         fuse_command_resp_t      = logic,
+  parameter int unsigned EFUSE_FIELDS     = 1,  // eFuse field-map entry count.
+  parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
+  parameter type         efuse_map_t      = logic,  // Shadow eFuse map type.
+  parameter type         fuse_command_req_t      = logic,  // Fuse-command request type.
+  parameter type         fuse_command_resp_t      = logic,  // Fuse-command response type.
 
-  parameter bit HAS_LC_STATE = 1'b0,
-  parameter int unsigned LC_STATE_BIT_POSITION = 0,
+  parameter bit HAS_LC_STATE = 1'b0,    // B0.
+  parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
-  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,
+  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // B010101.
 
-  parameter type efuse_addr_t = logic,
-  parameter type efuse_data_t = logic [31:0],
+  parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+  parameter type efuse_data_t = logic [31:0],  // Fuse data-word type.
 
-  localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0],
-  localparam efuse_addr_t SIP_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),
-  localparam efuse_addr_t CHIPLET_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)
+  localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0],  // Fuse byte-address type.
+  localparam efuse_addr_t SIP_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),  // Bit address of the lifecycle-state field.
+  localparam efuse_addr_t CHIPLET_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)  // Bit address of the lifecycle-state field.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic secure_tm_i,
+  input logic clk_i,                    // System clock.
+  input logic rst_ni,                   // Active-low reset.
+  input logic secure_tm_i,              // Secure tm.
 
-  input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,
+  input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Efuse field map.
 
-  input logic [5:0] rma_sip_token_match_i,
-  input logic [5:0] rma_chiplet_token_match_i,
+  input logic [5:0] rma_sip_token_match_i,  // Rma sip token match.
+  input logic [5:0] rma_chiplet_token_match_i,  // Rma chiplet token match.
 
-  output logic efuse_err_o,
-  input  logic error_clear_i,
+  output logic efuse_err_o,             // Efuse err.
+  input  logic error_clear_i,           // Error clear.
 
-  input fuse_command_req_t fuse_command_req_i,
-  output fuse_command_req_t fuse_command_req_filtered_o,
+  input fuse_command_req_t fuse_command_req_i,  // Fuse command req.
+  output fuse_command_req_t fuse_command_req_filtered_o,  // Fuse command req filtered.
 
-  input fuse_command_resp_t fuse_command_resp_i,
-  output fuse_command_resp_t fuse_command_resp_filtered_o,
+  input fuse_command_resp_t fuse_command_resp_i,  // Fuse command resp.
+  output fuse_command_resp_t fuse_command_resp_filtered_o,  // Fuse command resp filtered.
 
-  input efuse_map_t shadow_regs_i,
-  input logic is_programing_i,
-  input efuse_addr_t program_target_addr_i,
-  input logic is_reading_i,
-  input efuse_addr_t read_target_addr_i,
+  input efuse_map_t shadow_regs_i,      // Shadow regs.
+  input logic is_programing_i,          // Is programing.
+  input efuse_addr_t program_target_addr_i,  // Program target addr.
+  input logic is_reading_i,             // Is reading.
+  input efuse_addr_t read_target_addr_i,  // Read target addr.
 
-  output logic is_read_locked_o,
-  output logic is_program_locked_o,
-  output logic secure_tm_blocked_o
+  output logic is_read_locked_o,        // Is read locked.
+  output logic is_program_locked_o,     // Is program locked.
+  output logic secure_tm_blocked_o      // Secure tm blocked.
 );
 
   logic is_program_locked;

@@ -1,56 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Core Module
+// Implement wire-OR and point-to-point cross-trigger pad protocols without a register block.
 //
-// Description:
-// Core functionality of the Cross Trigger Port IP without CSRs. Supports both
-// Wire-OR and Point-to-Point modes for inter-chiplet cross triggering via GPIO pads.
-// This module can be reused without the register interface.
-//------------------------------------------------------------------------------
-
+// mode_wire_or_i is 0 for wire-OR and 1 for point-to-point; invert_i inverts all I/O;
+// stretch_mult_i sets wire-OR stretch; handshake_reset_i recovers P2P deadlock.
+// Synchronizes pad inputs, stretches or handshakes ct_src_i, and reports busy plus
+// REQ/ACK status for CSR readback.
 
 module cross_trigger_port_core (
-  // Global Interface
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  input  logic        clk_i,            // System clock.
+  input  logic        rst_ni,           // Active-low reset.
 
-  // Configuration inputs (normally from CSRs)
-  input  logic        mode_wire_or_i,      // 1'b0 = Wire-OR, 1'b1 = Point-to-Point
-  input  logic        invert_i,            // Invert all I/O signals
-  input  logic        handshake_reset_i,   // Reset handshake state machine
-  input  logic [15:0] stretch_mult_i,      // Pulse stretch multiplier
+  input  logic        mode_wire_or_i,   // 1'b0 = Wire-OR, 1'b1 = Point-to-Point.
+  input  logic        invert_i,         // Invert all I/O signals.
+  input  logic        handshake_reset_i,  // Reset handshake state machine.
+  input  logic [15:0] stretch_mult_i,   // Pulse stretch multiplier.
 
-  // Core-side cross trigger interface
-  input  logic        ct_src_i,            // Cross trigger source pulse (synchronous)
-  output logic        ct_dst_o,             // Cross trigger destination pulse (registered)
-  output logic        busy_o,               // Transfer in progress
+  input  logic        ct_src_i,         // Cross trigger source pulse (synchronous).
+  output logic        ct_dst_o,         // Cross trigger destination pulse (registered).
+  output logic        busy_o,           // Transfer in progress.
 
-  // GPIO pad interface - CT_Req_out
-  output logic        ct_req_out_dout_en_o,  // Output enable for CT_Req_out pad
-  output logic        ct_req_out_din_en_o,   // Input enable for CT_Req_out pad
-  output logic        ct_req_out_dout_o,     // Output data for CT_Req_out pad
-  input  logic        ct_req_out_din_i,      // Input data from CT_Req_out pad
+  output logic        ct_req_out_dout_en_o,  // enable for CT_Req_out pad.
+  output logic        ct_req_out_din_en_o,  // enable for CT_Req_out pad.
+  output logic        ct_req_out_dout_o,  // data for CT_Req_out pad.
+  input  logic        ct_req_out_din_i,  // data from CT_Req_out pad.
 
-  // GPIO pad interface - CT_Req_in (point-to-point mode only)
-  output logic        ct_req_in_din_en_o,    // Input enable for CT_Req_in pad
-  input  logic        ct_req_in_din_i,       // Input data from CT_Req_in pad
+  output logic        ct_req_in_din_en_o,  // enable for CT_Req_in pad.
+  input  logic        ct_req_in_din_i,  // data from CT_Req_in pad.
 
-  // GPIO pad interface - CT_Ack_in (point-to-point mode only)
-  output logic        ct_ack_in_din_en_o,    // Input enable for CT_Ack_in pad
-  input  logic        ct_ack_in_din_i,       // Input data from CT_Ack_in pad
+  output logic        ct_ack_in_din_en_o,  // enable for CT_Ack_in pad.
+  input  logic        ct_ack_in_din_i,  // data from CT_Ack_in pad.
 
-  // GPIO pad interface - CT_Ack_out (point-to-point mode only)
-  output logic        ct_ack_out_dout_en_o,  // Output enable for CT_Ack_out pad
-  output logic        ct_ack_out_dout_o,     // Output data for CT_Ack_out pad
+  output logic        ct_ack_out_dout_en_o,  // enable for CT_Ack_out pad.
+  output logic        ct_ack_out_dout_o,  // data for CT_Ack_out pad.
 
-  // Status outputs (for CSR readback)
-  output logic        status_busy_o,         // Current BUSY status
-  output logic        status_req_out_o,      // Current REQ_OUT status
-  output logic        status_ack_in_o,       // Current ACK_IN status
-  output logic        status_req_in_o,       // Current REQ_IN status
-  output logic        status_ack_out_o       // Current ACK_OUT status
+  output logic        status_busy_o,    // Current BUSY status.
+  output logic        status_req_out_o,  // Current REQ_OUT status.
+  output logic        status_ack_in_o,  // Current ACK_IN status.
+  output logic        status_req_in_o,  // Current REQ_IN status.
+  output logic        status_ack_out_o  // Current ACK_OUT status.
 );
 
   // Synchronizer module

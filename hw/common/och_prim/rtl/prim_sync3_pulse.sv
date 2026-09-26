@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 3-stage Synchronizer Pulse
+// Pulse dst_pulse_o once for each src_pulse_i across a clock-domain crossing.
 //
-//--------------------------------------------------
+// Toggle a level on src_clk_i and edge-detect it on dst_clk_i after a 3-flop sync.
+// src_rst_ni clears the source toggle state.
+// Collapse back-to-back source pulses if the destination has not yet seen the prior edge.
+
 module prim_sync3_pulse (
-  input  logic src_clk_i,
-  input  logic src_pulse_i,
-  input  logic src_rst_ni,
-  input  logic dst_clk_i,
-  output logic dst_pulse_o
+  input  logic src_clk_i,  // Source clock.
+  input  logic src_pulse_i,  // Source-domain pulse to forward.
+  input  logic src_rst_ni,  // Async reset in the source domain, active-low.
+  input  logic dst_clk_i,  // Destination clock.
+  output logic dst_pulse_o  // One-cycle pulse on dst_clk_i.
 );
 
   wire toggle;

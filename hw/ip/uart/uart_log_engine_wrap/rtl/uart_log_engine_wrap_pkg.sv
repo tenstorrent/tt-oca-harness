@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// UART & Log Engine Wrapper Package
+// Define address-map constants and AXI-Lite typedefs for the UART plus log-engine wrap.
 //
-//-----------------------------------------------------------------------------
+// Places UART and log-engine CTRL/windows and defines select typedefs shared with
+// generated collateral.
 
 package uart_log_engine_wrap_pkg;
 

@@ -1,43 +1,57 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC CPU Control Wrapper
+// Wrap CPU control CSRs for the SMC cluster.
+//
+// Decodes cpu_ctrl CSRs that gate resets, clocks, and debug for the four cores.
+// Sits on the local fabric front-port address range beside the L2 frontend.
 
 module smc_cpu_ctrl_wrap #(
-  parameter bit NO_ADDR_REMAP = 1'b1,
-  parameter int unsigned NumCPUCores                 = 4,
+  parameter bit NO_ADDR_REMAP = 1'b1,   // Disable alias address remap when the
+                                        // integration map is fixed.
+  parameter int unsigned NumCPUCores                 = 4,  // Numcpucores.
 
-  localparam int unsigned MaxCPUCores                = 4
+  localparam int unsigned MaxCPUCores                = 4  // Maxcpucores.
 ) (
-  input  logic                                    clk_ref_i,
-  input  logic                                    clk_smc_i,
-  input  logic                                    rst_warm_smc_clk_ni,
-  input  logic                                    rst_primary_ni,
+  input  logic                                    clk_ref_i,  // Ref clock.
+  input  logic                                    clk_smc_i,  // Smc clock.
+  input  logic                                    rst_warm_smc_clk_ni,  // Rst warm smc clk.
+  input  logic                                    rst_primary_ni,  // Rst primary.
 
-  input  logic                                    test_en_i,
-  input  logic                                    scan_rst_ni,
+  input  logic                                    test_en_i,  // Test en.
+  input  logic                                    scan_rst_ni,  // Scan rst.
 
-  input  smc_pkg::smc_axil_32_64_req_t            axil_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t           axil_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t            axil_req_i,  // Axil request.
+  output smc_pkg::smc_axil_32_64_resp_t           axil_resp_o,  // Axil response.
 
-  input  logic [NumCPUCores-1:0][57:0]            wb_reg_pc_i,
-  input  logic [NumCPUCores-1:0]                  wb_pc_valid_i,
+  input  logic [NumCPUCores-1:0][57:0]            wb_reg_pc_i,  // Wb reg pc.
+  input  logic [NumCPUCores-1:0]                  wb_pc_valid_i,  // Wb pc valid.
 
-  input  logic [NumCPUCores-1:0]                  wdt_timeout_cluster_i,
-  input  logic                                    chiplet_is_primary_i,
-  output logic                                    wdt_second_timeout_o,
+  input  logic [NumCPUCores-1:0]                  wdt_timeout_cluster_i,  // Wdt timeout cluster.
+  input  logic                                    chiplet_is_primary_i,  // Chiplet is primary.
+  output logic                                    wdt_second_timeout_o,  // Wdt second timeout.
 
-  output logic [NumCPUCores-1:0]                  core_reset_n_n0_scan_o,
-  output logic [NumCPUCores-1:0][55:0]            core_reset_vector_o,
-  output logic                                    cluster_uncore_reset_n_n0_scan_o,
-  output logic                                    debug_reset_n_o,
+  output logic [NumCPUCores-1:0]                  core_reset_n_n0_scan_o,  // Core reset n n0
+                                                                           // scan.
+  output logic [NumCPUCores-1:0][55:0]            core_reset_vector_o,  // Core reset vector.
+  output logic                                    cluster_uncore_reset_n_n0_scan_o,  // Cluster uncore reset
+                                                                                     // n n0 scan.
+  output logic                                    debug_reset_n_o,  // Debug reset n.
 
-  // Reset-drain handshake to/from the CPU cluster (always-on rst_cold domain)
-  output logic                                    isolate_req_o,
-  input  logic                                    drained_i,
+  output logic                                    isolate_req_o,  // Reset-drain handshake
+                                                                  // to/from the CPU
+                                                                  // cluster (always-on
+                                                                  // rst_cold domain)
+                                                                  // request.
+  input  logic                                    drained_i,  // Reset-drain handshake
+                                                              // to/from the CPU cluster
+                                                              // (always-on rst_cold
+                                                              // domain).
 
-  // Timeout-forced reset: flush request to the cluster AXI isolates
-  output logic                                    isolate_flush_o
+  output logic                                    isolate_flush_o  // Timeout-forced
+                                                                   // reset: flush request
+                                                                   // to the cluster AXI
+                                                                   // isolates.
 );
 
   localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS =

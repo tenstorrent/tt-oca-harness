@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// UART 16550 Package
+// Define types and constants for the 16550 UART core and register map.
 //
-//-----------------------------------------------------------------------------
+// Provides AXI-Lite typedefs, FIFO helpers, frame constants, and register struct types
+// for uart_16550, uart_core, uart_tx, and uart_rx.
 
 package uart_16550_pkg;
 
@@ -15,7 +15,7 @@ package uart_16550_pkg;
   ////////////////////////////
 
   localparam int unsigned MAX_FRAME_LEN = 12;
-  localparam int unsigned TIMEOUT_CHAR_CNT = 4;  // Fixed by UART 16550
+  localparam int unsigned TIMEOUT_CHAR_CNT = 4;  // Fixed by UART 16550.
 
 
   ////////////////////////////////////
@@ -76,7 +76,7 @@ NUM_REG_MAPS
                                                   logic extra_stop_bit, logic parity_en);
     logic [3:0] frame_length;
     frame_length = 4'd0;
-    frame_length += 4'd1;  // 1 start bit
+    frame_length += 4'd1;  // 1 start bit.
     frame_length += word_length;
     frame_length += 4'(parity_en);
     if (extra_stop_bit) begin
@@ -107,12 +107,12 @@ NUM_REG_MAPS
     logic [3:0] frame_length;
     logic [7:0] rx_data;
     frame_length = get_frame_length(RX, word_length, extra_stop_bit, parity_en);
-    rx_data  = 8'(rx_frame >> 12 - frame_length + 1); // Plus 1 to shift out start bit
+    rx_data  = 8'(rx_frame >> 12 - frame_length + 1); // Plus 1 to shift out start bit.
     rx_data &= 8'hff >> 8 - word_length;
     return rx_data;
   endfunction
 
-  localparam int unsigned NUM_TRIGGER_LEVELS = 12; // 1, 4, 8, 14, 32, 64, 128, 256, 512, 1024, 2048, 4096
+  localparam int unsigned NUM_TRIGGER_LEVELS = 12; // 1, 4, 8, 14, 32, 64, 128, 256, 512, 1024, 2048, 4096.
 
   typedef enum logic {
     DMA_MODE_0 = 1'b0,
@@ -125,12 +125,12 @@ NUM_REG_MAPS
   ///////////////////////////
 
   typedef enum logic [2:0] {
-    FIFO_ERROR                         = 3'b111, // Highest priority
+    FIFO_ERROR                         = 3'b111, // Highest priority.
     RECEIVER_LINE_STATUS               = 3'b011,
     RECEPTION_TIMEOUT                  = 3'b110,
     RECEIVED_DATA_READY                = 3'b010,
     TRANSMITTER_HOLDING_REGISTER_EMPTY = 3'b001,
-    MODEM_STATUS                       = 3'b000  // Lowest priority
+    MODEM_STATUS                       = 3'b000  // Lowest priority.
   } interrupt_id_e;
 
   typedef struct packed {

@@ -1,32 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// AVSBus Async FIFO
+// Cross AVSBus data between the write and read clock domains in an async FIFO.
 //
-//-----------------------------------------------------------------------------
+// Each side takes its own synchronized reset.
+// vacant_slots_o and full_slots_o report occupancy for flow control.
 
 module avsbus_async_fifo #(
-  parameter int unsigned DEPTH = 8,
-  parameter int unsigned WIDTH = 32
+  parameter int unsigned DEPTH = 8,                         // FIFO depth in words.
+  parameter int unsigned WIDTH = 32                         // FIFO data width in bits.
 ) (
-  input logic scan_rst_ni,
-  input logic test_mode_i,
+  input logic scan_rst_ni,                                  // DFT scan reset, active-low.
+  input logic test_mode_i,                                  // DFT test mode.
 
-  input logic rst_wr_clk_syncd_ni,
-  input logic wr_clk_i,
-  input logic wr_en_i,
-  input logic [WIDTH-1:0] wr_data_i,
-  output logic wr_full_o,
-  output logic wr_empty_o,
+  input logic rst_wr_clk_syncd_ni,                          // Write-side reset, synchronized to wr_clk_i.
+  input logic wr_clk_i,                                     // Write clock.
+  input logic wr_en_i,                                      // Write enable.
+  input logic [WIDTH-1:0] wr_data_i,                        // Write data.
+  output logic wr_full_o,                                   // FIFO full in the write domain.
+  output logic wr_empty_o,                                  // FIFO empty in the write domain.
 
-  input logic rst_rd_clk_syncd_ni,
-  input logic rd_clk_i,
-  input logic rd_en_i,
-  output logic [WIDTH-1:0] rd_data_o,
-  output logic rd_empty_o,
-  output logic [$clog2(DEPTH):0] vacant_slots_o,
-  output logic [$clog2(DEPTH):0] full_slots_o
+  input logic rst_rd_clk_syncd_ni,                          // Read-side reset, synchronized to rd_clk_i.
+  input logic rd_clk_i,                                     // Read clock.
+  input logic rd_en_i,                                      // Read enable.
+  output logic [WIDTH-1:0] rd_data_o,                       // Read data.
+  output logic rd_empty_o,                                  // FIFO empty in the read domain.
+  output logic [$clog2(DEPTH):0] vacant_slots_o,            // Free entries visible to the reader.
+  output logic [$clog2(DEPTH):0] full_slots_o               // Occupied entries visible to the reader.
 );
 
   //NOTE: DEPTH must be a power of 2 for this fifo to work (otherwise gray code counter will not work).

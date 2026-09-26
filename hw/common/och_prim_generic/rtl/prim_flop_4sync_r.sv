@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 4-Flop Synchronizer (Reset)
+// Synchronize d_i into the clk_i domain through 4 flops.
 //
-//--------------------------------------------------
-module prim_flop_4sync_r (
-  input clk_i,
-  input d_i,
-  input rst_ni,
-  output wire q_o
-);
+// Chain 4 positive-edge flops so q_o is a metastability-hardened copy of d_i. Async
+// active-low rst_ni clears the chain to 0.
 
+module prim_flop_4sync_r (
+  input clk_i,       // Destination-domain clock.
+  input d_i,         // Async data to synchronize.
+  input rst_ni,      // Async active-low reset; clears q_o to 0.
+  output wire q_o    // Synchronized data.
+);
   logic q_d, q_dd, q_ddd, q_dddd;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (rst_ni == 1'b0) begin

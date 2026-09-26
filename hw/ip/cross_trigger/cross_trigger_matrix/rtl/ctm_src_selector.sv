@@ -1,31 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Matrix Source Selector Module
+// Mask CT_Dst inputs with a select vector, OR them, and register the CT_Src pulse.
 //
-// Description:
-// Implements the selection and OR logic for a single CT_Src output port.
-// Selects which CT_Dst inputs to forward based on the select mask, then ORs
-// them together. The output is registered to prevent glitches.
-//------------------------------------------------------------------------------
-
+// select_i enables which destinations contribute; registration prevents glitches on
+// ct_src_o.
 
 module ctm_src_selector #(
-  parameter int unsigned NUM_CT_DST = 4
+  parameter int unsigned NUM_CT_DST = 4  // CT_Dst input count.
 ) (
-  // Clock and Reset
-  input  logic                    clk_i,
-  input  logic                    rst_ni,
+  input  logic                    clk_i,  // System clock.
+  input  logic                    rst_ni,  // Active-low reset.
 
-  // CT_Dst input pulses
-  input  logic [NUM_CT_DST-1:0]   ct_dst_i,
+  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger dst.
 
-  // Selection mask from register (each bit enables corresponding CT_Dst)
-  input  logic [NUM_CT_DST-1:0]   select_i,
+  input  logic [NUM_CT_DST-1:0]   select_i,  // Select.
 
-  // CT_Src output pulse (registered)
-  output logic                    ct_src_o
+  output logic                    ct_src_o  // Cross-trigger src.
 );
 
   // Combinatorial logic: AND each CT_Dst with its select bit, then OR all together

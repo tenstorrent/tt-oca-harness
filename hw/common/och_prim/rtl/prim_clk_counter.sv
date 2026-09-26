@@ -1,23 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Clock Counter
+// Count clk_i edges while a reference window on refclk_i is open.
 //
-//--------------------------------------------------
+// Close the window on refclk_cnt_done_i and make clk_cnt_o valid.
+// test_mode_i swaps scan_rst_ni onto the reset path.
+// cnt_en_i must be high for the counter to run.
+
 module prim_clk_counter #(
-  parameter int unsigned WIDTH = 24
+  parameter int unsigned WIDTH = 24  // Counter width.
 ) (
-  input  logic             refclk_i,
-  input  logic             refclk_cnt_done_i,
-  input  logic             refclk_rst_ni,
-  input  logic             clk_i,
-  input  logic             rst_ni,
-  input  logic             test_mode_i,
-  input  logic             scan_rst_ni,
-  input  logic             cnt_en_i,
-  output logic [WIDTH-1:0] clk_cnt_o,
-  output logic             clk_cnt_valid_o
+  input  logic             refclk_i,  // Reference clock for the measurement window.
+  input  logic             refclk_cnt_done_i,  // Reference window complete, sync to refclk_i.
+  input  logic             refclk_rst_ni,  // Async reset in the reference domain, active-low.
+  input  logic             clk_i,  // Clock under measurement.
+  input  logic             rst_ni,  // Async reset in the clk_i domain, active-low.
+  input  logic             test_mode_i,  // Selects scan_rst_ni on the reset mux.
+  input  logic             scan_rst_ni,  // DFT scan reset, active-low.
+  input  logic             cnt_en_i,  // Enables counting on clk_i.
+  output logic [WIDTH-1:0] clk_cnt_o,  // Measured clk_i edge count.
+  output logic             clk_cnt_valid_o  // clk_cnt_o is valid after the window closes.
 );
 
   wire reset_n_synced;

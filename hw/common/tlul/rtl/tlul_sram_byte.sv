@@ -2,51 +2,48 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+// Handle TL-UL byte writes with integrity-aware read-modify-write.
+//
+// When a byte write arrives and EnableIntg is set, generate a TL-UL read first so the
+// integrity constant can be rebuilt, then complete the write. When RMW is not required,
+// mux the incoming transaction straight through. compound_txn_in_progress_o is high while
+// an RMW compound access is active.
+//
+// If error_i is set on an incoming transaction, do not attempt byte-write handling. Feed
+// the transaction through and allow the system to error back, and feed the error
+// indication through on error_o.
+//
+// EnableReadback enables readback checks on all transactions and requires
+// EnableIntg == 1. alert_o reports integrity or readback failures.
 
-/**
- * Tile-Link UL adapter for SRAM-like devices
- *
- * This module handles byte writes for tlul integrity.
- * When a byte write is received, the downstream data is read first
- * to correctly create the integrity constant.
- *
- * A tlul transaction goes through this module.  If required, a
- * tlul read transaction is generated out first.  If not required, the
- * incoming tlul transaction is directly muxed out.
- */
 module tlul_sram_byte
   import tlul_pkg::*;
 #(
-  parameter bit EnableIntg     = 0, // Enable integrity handling at byte level,
-  parameter int Outstanding    = 1,
-  parameter bit EnableReadback = 0  // Enable readback checks on all transactions must have
-                                    // EnableIntg == 1 to enable
+  parameter bit EnableIntg     = 0,  // Handle byte writes with integrity-aware RMW.
+  parameter int Outstanding    = 1,  // Outstanding transactions tracked through the helper.
+  parameter bit EnableReadback = 0   // Readback-check all transactions; requires EnableIntg.
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_i,                                          // System clock.
+  input rst_ni,                                         // Active-low reset.
 
-  input tl_h2d_t tl_i,
-  output tl_d2h_t tl_o,
+  input tl_h2d_t tl_i,                                  // Upstream TL-UL request.
+  output tl_d2h_t tl_o,                                 // Upstream TL-UL response.
 
-  output tl_h2d_t tl_sram_o,
-  input tl_d2h_t tl_sram_i,
+  output tl_h2d_t tl_sram_o,                            // Downstream request to the SRAM adapter.
+  input tl_d2h_t tl_sram_i,                             // Downstream response from the SRAM adapter.
 
-  // if incoming transaction already has an error, do not
-  // attempt to handle the byte-write access.  Instead treat as
-  // feedthrough and allow the system to directly error back.
-  // The error indication is also fed through
-  input error_i,
-  output logic error_o,
-  output logic alert_o,
+  input error_i,                                        // Upstream already-errored; feed through
+                                                        // without RMW and allow a direct error.
+  output logic error_o,                                 // Error indication fed through.
+  output logic alert_o,                                 // Alert for integrity or readback failures.
 
-  output logic compound_txn_in_progress_o,
+  output logic compound_txn_in_progress_o,              // High while an RMW compound access runs.
 
-  input prim_mubi_pkg::mubi4_t readback_en_i,
+  input prim_mubi_pkg::mubi4_t readback_en_i,           // MuBi4 enable for readback checking.
 
-  input logic wr_collision_i,
-  input logic write_pending_i
+  input logic wr_collision_i,                           // SRAM reports a write collision.
+  input logic write_pending_i                           // SRAM still has a write pending.
 );
-
   `include "prim_assert.sv"
 
   import prim_mubi_pkg::mubi4_t;

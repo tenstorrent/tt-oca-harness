@@ -1,59 +1,48 @@
-//-----------------------------------------------------------------------------
-// I2C Core
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Bind I2C register outs to the controller, target, and bus-monitor FSMs.
 //
-// Description: I2C core module
+// Exposes SMBus sideband, DMA ready levels, a combined irq_o, and a four-bit debug bus.
+// debug_o[0] is raw SDA, [1] is raw SCL, [2] is target_idle, [3] is any_error_sticky
+// pulse-extended about 256 cycles.
 
 module i2c_core
   import i2c_pkg::*;
 #(
-  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
-  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,
-  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,
-  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,
-  parameter int unsigned INPUT_DELAY_CYCLES       = 0
+  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Controller TX FIFO depth.
+  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,     // Controller RX FIFO depth.
+  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,     // Target TX FIFO depth.
+  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,    // Target RX FIFO depth.
+  parameter int unsigned INPUT_DELAY_CYCLES       = 0       // Extra input-pipeline cycles.
 ) (
-  // Global Interface
-  input                                    clk_i,
-  input                                    rst_ni,
+  input                                    clk_i,           // System clock.
+  input                                    rst_ni,          // Async reset, active-low.
 
-  // Register Interface
-  input  i2c_reg_pkg::i2c__out_t           reg_out_i,
-  output i2c_reg_pkg::i2c__in_t            reg_in_o,
+  input  i2c_reg_pkg::i2c__out_t           reg_out_i,       // Register-block outputs into the core.
+  output i2c_reg_pkg::i2c__in_t            reg_in_o,        // Register-block inputs from the core.
 
-  // I2C Interface
-  input                                    scl_i,
-  output logic                             scl_o,
-  input                                    sda_i,
-  output logic                             sda_o,
+  input                                    scl_i,           // SCL pad input.
+  output logic                             scl_o,           // SCL pad output.
+  input                                    sda_i,           // SDA pad input.
+  output logic                             sda_o,           // SDA pad output.
 
-  // SMBus Interface
-  input  logic                             smbus_en_i,
-  input  logic                             smbsus_ni,
-  output logic                             smbsus_no,
-  input  logic                             smbalert_ni,
-  output logic                             smbalert_no,
+  input  logic                             smbus_en_i,      // Enable SMBus sideband.
+  input  logic                             smbsus_ni,       // SMBus SUS pin in, active-low.
+  output logic                             smbsus_no,       // SMBus SUS pin out, active-low.
+  input  logic                             smbalert_ni,     // SMBus ALERT pin in, active-low.
+  output logic                             smbalert_no,     // SMBus ALERT pin out, active-low.
 
-  // DMA Interface
-  output logic                             controller_tx_ready_o,
-  output logic                             controller_rx_ready_o,
-  output logic                             target_tx_ready_o,
-  output logic                             target_rx_ready_o,
+  output logic                             controller_tx_ready_o, // Controller TX DMA ready.
+  output logic                             controller_rx_ready_o, // Controller RX DMA ready.
+  output logic                             target_tx_ready_o, // Target TX DMA ready.
+  output logic                             target_rx_ready_o, // Target RX DMA ready.
 
-  // Interrupt Interface
-  output logic                             irq_o,
+  output logic                             irq_o,           // Combined I2C interrupt.
 
-  // Debug Interface
-  // [0]: sda_i             - raw SDA line
-  // [1]: scl_i             - raw SCL line
-  // [2]: target_idle       - target FSM idle
-  // [3]: any_error_sticky  - any error event pulse-extended ~256 cycles
-  output logic [3:0]                       debug_o
+  output logic [3:0]                       debug_o          // [0] raw SDA; [1] raw SCL; [2] target_idle;
+                                                            // [3] any_error_sticky pulse-extended ~256 cycles.
 );
 
   `include "prim_assert.sv"

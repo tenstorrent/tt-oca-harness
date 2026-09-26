@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP system-peripherals AXI crossbar.
+// Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.
+//
 // Address rules are explicit integration apertures in AddrMap below.
+// Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit;
+// smn_inbound_from_xbar stays full AXI4.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -11,36 +14,28 @@ module sep_system_peripherals_xbar
   import axi_pkg::*;
   import sep_system_peripherals_xbar_pkg::*;
 (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_i,
+  input  logic clk_i,                         // System clock.
+  input  logic rst_ni,                        // Active-low reset.
+  input  logic test_i,                        // axi_xbar test mode.
 
-  // ===========================================================================
-  // Initiator Ports
-  // ===========================================================================
-  // sep_local_from_remap (AXI4, 64-bit)
-  input  axi64_req_t  sep_local_from_remap_req_i,
-  output axi64_resp_t sep_local_from_remap_resp_o,
+  input  axi64_req_t  sep_local_from_remap_req_i,  // Local-from-remap initiator request (AXI4, 64-bit)
+                                                   // sep_local_from_remap (AXI4, 64-bit).
+  output axi64_resp_t sep_local_from_remap_resp_o,  // Local-from-remap initiator response.
 
-  // smn_inbound (AXI4, 64-bit)
-  input  axi64_req_t  smn_inbound_req_i,
-  output axi64_resp_t smn_inbound_resp_o,
+  input  axi64_req_t  smn_inbound_req_i,      // SMN inbound initiator request (AXI4, 64-bit)
+                                              // smn_inbound (AXI4, 64-bit).
+  output axi64_resp_t smn_inbound_resp_o,     // SMN inbound initiator response.
 
-  // ===========================================================================
-  // Target Ports
-  // ===========================================================================
-  // smn_inbound_from_xbar (AXI4, 64-bit)
-  output axi_out_req_t  smn_inbound_from_xbar_req_o,
-  input  axi_out_resp_t smn_inbound_from_xbar_resp_i,
+  output axi_out_req_t  smn_inbound_from_xbar_req_o,  // SMN inbound-from-xbar target request (AXI4, 64-bit)
+                                                      // smn_inbound_from_xbar (AXI4, 64-bit).
+  input  axi_out_resp_t smn_inbound_from_xbar_resp_i,  // SMN inbound-from-xbar target response.
 
-  // mailbox (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  mailbox_req_o,
-  input  axi_lite64_resp_t mailbox_resp_i,
+  output axi_lite64_req_t  mailbox_req_o,     // Mailbox target request (AXI4-Lite, 64-bit).
+  input  axi_lite64_resp_t mailbox_resp_i,    // Mailbox target response.
 
-  // system_csr (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  system_csr_req_o,
-  input  axi_lite64_resp_t system_csr_resp_i
-
+  output axi_lite64_req_t  system_csr_req_o,  // System CSR target request (AXI4-Lite, 64-bit)
+                                              // system_csr (AXI4_LITE, 64-bit).
+  input  axi_lite64_resp_t system_csr_resp_i  // System CSR target response.
 );
 
   // ===========================================================================

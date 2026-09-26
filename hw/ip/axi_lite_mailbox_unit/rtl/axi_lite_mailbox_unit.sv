@@ -1,36 +1,40 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Expose NUM_MAILBOXES AXI-Lite mailboxes with inbound and outbound IRQs.
+//
+// Independent mailboxes share one AXI-Lite slave decode sized by MAILBOX_BASE_ADDR and
+// MAILBOX_SIZE.
+// Each mailbox has depth MAILBOX_DEPTH and raises inbound_interrupt_o and
+// outbound_interrupt_o.
+
 module axi_lite_mailbox_unit #(
-  parameter int unsigned NUM_MAILBOXES = 2,
-  parameter int unsigned MAILBOX_DEPTH = 8,
-  parameter int unsigned MAX_TRANS = 32,
-  parameter int unsigned MAILBOX_BASE_ADDR = 32'h0,
-  parameter bit [31:0] MAILBOX_SIZE = 32'h800,
-  // AXI-Lite bus widths
-  parameter int unsigned ADDR_WIDTH = 32,
-  parameter int unsigned DATA_WIDTH = 64,
-  // AXI-Lite type parameters
-  parameter type aw_chan_t  = logic,
-  parameter type w_chan_t   = logic,
-  parameter type b_chan_t   = logic,
-  parameter type ar_chan_t  = logic,
-  parameter type r_chan_t   = logic,
-  parameter type axi_req_t  = logic,
-  parameter type axi_resp_t = logic,
-  // Derived parameters
-  localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8,
-  localparam int unsigned MailboxSizeW = $clog2(MAILBOX_SIZE)
+  parameter int unsigned NUM_MAILBOXES = 2,                 // Number of mailboxes.
+  parameter int unsigned MAILBOX_DEPTH = 8,                 // FIFO depth per mailbox.
+  parameter int unsigned MAX_TRANS = 32,                    // AXI-Lite outstanding capacity.
+  parameter int unsigned MAILBOX_BASE_ADDR = 32'h0,         // Byte base of mailbox 0.
+  parameter bit [31:0] MAILBOX_SIZE = 32'h800,              // Byte span per mailbox.
+  parameter int unsigned ADDR_WIDTH = 32,                   // AXI-Lite address width.
+  parameter int unsigned DATA_WIDTH = 64,                   // AXI-Lite data width.
+  parameter type aw_chan_t  = logic,                        // AW channel type.
+  parameter type w_chan_t   = logic,                        // W channel type.
+  parameter type b_chan_t   = logic,                        // B channel type.
+  parameter type ar_chan_t  = logic,                        // AR channel type.
+  parameter type r_chan_t   = logic,                        // R channel type.
+  parameter type axi_req_t  = logic,                        // AXI-Lite request type.
+  parameter type axi_resp_t = logic,                        // AXI-Lite response type.
+  localparam int unsigned STRB_WIDTH = DATA_WIDTH / 8,      // Write-strobe width.
+  localparam int unsigned MailboxSizeW = $clog2(MAILBOX_SIZE) // clog2 of MAILBOX_SIZE.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,                                        // System clock.
+  input logic rst_ni,                                       // Async reset, active-low.
+  input logic test_en_i,                                    // DFT test enable.
 
-  input  axi_req_t mailbox_axi_req_i,
-  output axi_resp_t mailbox_axi_resp_o,
+  input  axi_req_t mailbox_axi_req_i,                       // AXI-Lite slave request.
+  output axi_resp_t mailbox_axi_resp_o,                     // AXI-Lite slave response.
 
-  output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
-  output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o
+  output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,     // Per-mailbox inbound data IRQ.
+  output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o     // Per-mailbox outbound data IRQ.
 );
 
   // Local address type for internal use

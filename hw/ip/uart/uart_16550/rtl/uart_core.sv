@@ -1,70 +1,60 @@
-//-----------------------------------------------------------------------------
-// UART 16550 Core
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Bind 16550 TX/RX datapaths, FIFOs, modem status, and interrupts to the register structs.
 //
-// Description: UART core module
-//
+// TX_FIFO_DEPTH and RX_FIFO_DEPTH size the FIFOs; localparams derive baud, FIFO
+// depth/threshold, timeout, and trigger-level types.
+// reg_out_i/reg_in_o are the generated register HW outputs and inputs.
+// Exposes serial, modem, DMA ready, err_o, and irq_o.
 
 module uart_core
   import uart_16550_pkg::*;
 #(
-  // TX and RX FIFO depths
-  parameter int unsigned TX_FIFO_DEPTH = 16,
-  parameter int unsigned RX_FIFO_DEPTH = 16,
+  parameter int unsigned TX_FIFO_DEPTH = 16,  // Transmit FIFO depth.
+  parameter int unsigned RX_FIFO_DEPTH = 16,  // Receive FIFO depth.
 
-  // Internal parameters
-  localparam int unsigned BAUD_CNT_WIDTH = 16,
-  localparam type         baud_cnt_t = logic [BAUD_CNT_WIDTH-1:0],
+  localparam int unsigned BAUD_CNT_WIDTH = 16,  // Baud-rate divider counter width.
+  localparam type         baud_cnt_t = logic [BAUD_CNT_WIDTH-1:0],  // Baud divider counter type.
 
-  localparam int unsigned RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH + 1),
-  localparam type         rx_fifo_depth_t = logic [RX_FIFO_DEPTH_WIDTH-1:0],
+  localparam int unsigned RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH + 1),  // Receive FIFO depth.
+  localparam type         rx_fifo_depth_t = logic [RX_FIFO_DEPTH_WIDTH-1:0],  // RX FIFO fill-level type.
 
-  localparam int unsigned RX_FIFO_THRESHOLD_WIDTH = $clog2(4096 + 1),
-  localparam type         rx_fifo_threshold_t = logic [RX_FIFO_THRESHOLD_WIDTH-1:0],
+  localparam int unsigned RX_FIFO_THRESHOLD_WIDTH = $clog2(4096 + 1),  // Clog2.
+  localparam type         rx_fifo_threshold_t = logic [RX_FIFO_THRESHOLD_WIDTH-1:0],  // RX FIFO threshold type.
 
-  localparam int unsigned TIMEOUT_CNT_WIDTH = $clog2(MAX_FRAME_LEN * TIMEOUT_CHAR_CNT),
-  localparam type         timeout_cnt_t = logic [TIMEOUT_CNT_WIDTH-1:0],
+  localparam int unsigned TIMEOUT_CNT_WIDTH = $clog2(MAX_FRAME_LEN * TIMEOUT_CHAR_CNT),  // TIMEOUT CHAR CNT.
+  localparam type         timeout_cnt_t = logic [TIMEOUT_CNT_WIDTH-1:0],  // Character-timeout counter type.
 
-  localparam int unsigned TRIGGER_LEVEL_WIDTH = $clog2(NUM_TRIGGER_LEVELS),
-  localparam type         trigger_level_t = logic [TRIGGER_LEVEL_WIDTH-1:0]
+  localparam int unsigned TRIGGER_LEVEL_WIDTH = $clog2(NUM_TRIGGER_LEVELS),  // NUM TRIGGER LEVELS.
+  localparam type         trigger_level_t = logic [TRIGGER_LEVEL_WIDTH-1:0]  // RX trigger-level select type.
 ) (
-  // Global Interface
-  input  logic                clk_i,
-  input  logic                rst_ni,
+  input  logic                clk_i,    // System clock.
+  input  logic                rst_ni,   // Active-low reset.
 
-  // Register Interface
-  input  uart_16550_reg_out_t reg_out_i,
-  output uart_16550_reg_in_t  reg_in_o,
+  input  uart_16550_reg_out_t reg_out_i,  // Reg out (Register Interface).
+  output uart_16550_reg_in_t  reg_in_o,  // Reg in.
 
-  // UART Interface
-  input  logic                rx_i,
-  output logic                tx_o,
+  input  logic                rx_i,     // Serial receive line.
+  output logic                tx_o,     // Serial transmit line.
 
-  // Modem Interface
-  input  logic                cts_ni,
-  input  logic                dsr_ni,
-  input  logic                ri_ni,
-  input  logic                dcd_ni,
+  input  logic                cts_ni,   // cts, active-low (Modem Interface).
+  input  logic                dsr_ni,   // dsr, active-low.
+  input  logic                ri_ni,    // ri, active-low.
+  input  logic                dcd_ni,   // dcd, active-low.
 
-  output logic                rts_no,
-  output logic                dtr_no,
-  output logic                out1_no,
-  output logic                out2_no,
+  output logic                rts_no,   // rts, active-low.
+  output logic                dtr_no,   // dtr, active-low.
+  output logic                out1_no,  // out1, active-low.
+  output logic                out2_no,  // out2, active-low.
 
-  // DMA Interface
-  output logic                rxrdy_o,
-  output logic                txrdy_o,
+  output logic                rxrdy_o,  // Rxrdy (DMA Interface).
+  output logic                txrdy_o,  // Txrdy.
 
-  // Error Interface
-  output logic                err_o,
+  output logic                err_o,    // Error status.
 
-  // Interrupt Interface
-  output logic                irq_o
+  output logic                irq_o     // Interrupt request.
 );
 
   //////////////////////////////////

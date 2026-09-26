@@ -1,18 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11
-) (
-  input  [7:0]   RW0_addr,
-  input          RW0_clk,
-  input  [143:0] RW0_wdata,
-  output [143:0] RW0_rdata,
-  input          RW0_en,
-  input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+// Replace Chipyard memory black boxes for the four-core cluster.
+//
+// Maps generated *_ext memory modules onto OCAH SRAM and ROM primitives.
+// MEM_CFG_WIDTH sizes the foundry config bus threaded to each macro.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
+  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
+) (
+  input  [7:0]   RW0_addr,              // RW0 addr.
+  input          RW0_clk,               // RW0 clk.
+  input  [143:0] RW0_wdata,             // RW0 wdata.
+  output [143:0] RW0_rdata,             // RW0 rdata.
+  input          RW0_en,                // RW0 en.
+  input          RW0_wmode,             // RW0 wmode.
+  input  [1:0]   RW0_wmask,             // RW0 wmask.
+
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
 );
 
   prim_ram_1p #(
@@ -37,17 +42,17 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
 ) (
-  input  [4:0]   RW0_addr,
-  input          RW0_clk,
-  input  [107:0] RW0_wdata,
-  output [107:0] RW0_rdata,
-  input          RW0_en,
-  input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+  input  [4:0]   RW0_addr,              // RW0 addr.
+  input          RW0_clk,               // RW0 clk.
+  input  [107:0] RW0_wdata,             // RW0 wdata.
+  output [107:0] RW0_rdata,             // RW0 rdata.
+  input          RW0_en,                // RW0 en.
+  input          RW0_wmode,             // RW0 wmode.
+  input  [1:0]   RW0_wmask,             // RW0 wmask.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
 );
 
   prim_ram_1p #(
@@ -72,17 +77,17 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
 ) (
-  input  [4:0]   RW0_addr,
-  input          RW0_clk,
-  input  [93:0]  RW0_wdata,
-  output [93:0]  RW0_rdata,
-  input          RW0_en,
-  input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+  input  [4:0]   RW0_addr,              // RW0 addr.
+  input          RW0_clk,               // RW0 clk.
+  input  [93:0]  RW0_wdata,             // RW0 wdata.
+  output [93:0]  RW0_rdata,             // RW0 rdata.
+  input          RW0_en,                // RW0 en.
+  input          RW0_wmode,             // RW0 wmode.
+  input  [1:0]   RW0_wmask,             // RW0 wmask.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
 );
 
   prim_ram_1p #(
@@ -107,17 +112,17 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
 ) (
-  input  [7:0]  RW0_addr,
-  input         RW0_clk,
-  input  [65:0] RW0_wdata,
-  output [65:0] RW0_rdata,
-  input         RW0_en,
-  input         RW0_wmode,
-  input  [1:0]  RW0_wmask,
+  input  [7:0]  RW0_addr,               // RW0 addr.
+  input         RW0_clk,                // RW0 clk.
+  input  [65:0] RW0_wdata,              // RW0 wdata.
+  output [65:0] RW0_rdata,              // RW0 rdata.
+  input         RW0_en,                 // RW0 en.
+  input         RW0_wmode,              // RW0 wmode.
+  input  [1:0]  RW0_wmask,              // RW0 wmask.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
 );
 
   prim_ram_1p #(
@@ -142,16 +147,16 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
 endmodule
 
 module OCAH4CORECluster_mem_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
 ) (
-  input  [11:0] RW0_addr,
-  input         RW0_clk,
-  input  [71:0] RW0_wdata,
-  output [71:0] RW0_rdata,
-  input         RW0_en,
-  input         RW0_wmode,
+  input  [11:0] RW0_addr,               // RW0 addr.
+  input         RW0_clk,                // RW0 clk.
+  input  [71:0] RW0_wdata,              // RW0 wdata.
+  output [71:0] RW0_rdata,              // RW0 rdata.
+  input         RW0_en,                 // RW0 en.
+  input         RW0_wmode,              // RW0 wmode.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
 );
 
   prim_ram_1p #(
@@ -176,14 +181,14 @@ module OCAH4CORECluster_mem_0_ext #(
 endmodule
 
 module OCAH4CORECluster_rom_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
 ) (
-  input  [13:0] R0_addr,
-  input         R0_clk,
-  input         R0_en,
-  output [63:0] R0_rdata,
+  input  [13:0] R0_addr,                // R0 addr.
+  input         R0_clk,                 // R0 clk.
+  input         R0_en,                  // R0 en.
+  output [63:0] R0_rdata,               // R0 rdata.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
 );
 
   prim_rom #(

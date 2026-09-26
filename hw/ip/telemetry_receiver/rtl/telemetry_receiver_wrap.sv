@@ -1,50 +1,47 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Telemetry Receiver Wrapper
+// Demux one AXI-Lite slave onto NUM_TELEMETRY_RECEIVERS with dual clocks.
 //
-//-----------------------------------------------------------------------------
-
+// Register accesses use clk_i / rst_ni; ATB streams use clk_telemetry_i /
+// rst_telemetry_ni.
+// TELEMETRY_RECEIVER_BUFFER_DEPTH must be greater than or equal to 2.
+// NUM_REG_MAPS is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
+// Each receiver's debug nibble matches telemetry_receiver's four-bit debug bus.
 
 module telemetry_receiver_wrap #(
-  parameter int unsigned NUM_TELEMETRY_RECEIVERS         = 3,
-  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 8,  // Must be greater than or equal to 2
-  parameter int unsigned TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE [NUM_TELEMETRY_RECEIVERS-1:0] = '{default: 4},
+  parameter int unsigned NUM_TELEMETRY_RECEIVERS         = 3, // Receiver instance count.
+  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 8, // Per-receiver message FIFO depth; must be >= 2.
+  parameter int unsigned TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE [NUM_TELEMETRY_RECEIVERS-1:0] = '{default: 4}, // Per-receiver max counters.
 
-  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0,
-  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0,
+  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0, // Instance 0 register-map base.
+  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
 
-  localparam int unsigned NUM_REG_MAPS                             = NUM_TELEMETRY_RECEIVERS + 1,  // +1 for error slave
-  localparam type         telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],
+  localparam int unsigned NUM_REG_MAPS                             = NUM_TELEMETRY_RECEIVERS + 1, // Decode targets: instances + error slave.
+  localparam type         telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0], // Register-map select type.
 
-  localparam telemetry_receiver_wrap_reg_map_select_t UNDEFINED_REG_MAP =
+  localparam telemetry_receiver_wrap_reg_map_select_t UNDEFINED_REG_MAP = // Select index for the error slave.
         telemetry_receiver_wrap_reg_map_select_t'(NUM_REG_MAPS-1)
 ) (
-  // Global Interface
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,                                       // Register-domain clock.
+  input  logic rst_ni,                                      // Register-domain async reset, active-low.
 
-  input  logic clk_telemetry_i,
-  input  logic rst_telemetry_ni,
+  input  logic clk_telemetry_i,                             // ATB-domain clock.
+  input  logic rst_telemetry_ni,                            // ATB-domain async reset, active-low.
 
-  // AXI4-Lite Register Interface
-  input  telemetry_receiver_wrap_pkg::axil_req_t  axil_req_i,
-  output telemetry_receiver_wrap_pkg::axil_resp_t axil_resp_o,
+  input  telemetry_receiver_wrap_pkg::axil_req_t  axil_req_i, // Shared AXI-Lite request.
+  output telemetry_receiver_wrap_pkg::axil_resp_t axil_resp_o, // Shared AXI-Lite response.
 
-  // ATB Telemetry Interface
-  input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i,
-  input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i,
-  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o,
-  input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atvalid_i,
-  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afvalid_o,
-  input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afready_i,
+  input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i, // Per-receiver ATB data.
+  input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i, // Per-receiver ATB ID.
+  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o, // Per-receiver ATB ready.
+  input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atvalid_i, // Per-receiver ATB valid.
+  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afvalid_o, // Per-receiver ATB flush valid.
+  input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afready_i, // Per-receiver ATB flush ready.
 
-  // Interrupt Interface
-  output logic [NUM_TELEMETRY_RECEIVERS-1:0] telemetry_receiver_irq_o,
+  output logic [NUM_TELEMETRY_RECEIVERS-1:0] telemetry_receiver_irq_o, // Per-receiver interrupt.
 
-  // Debug Interface (4 bits per receiver: see telemetry_receiver.sv for field definitions)
-  output logic [NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_receiver_debug_o
+  output logic [NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_receiver_debug_o // Per-receiver debug nibble; see telemetry_receiver.
 );
 
   `include "axi/assign.svh"

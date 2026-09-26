@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-------------------------------------------------
-// SMC Subsystem Resets
+// Fan SMC reset-unit controls out to per-subsystem resets.
 //
-//-------------------------------------------------
+// Derives block-level resets for CPU, fabric, peripherals, and DFX.
+// Applies hold qualifiers from reset_ctrl_t so domains can be held independently.
 
 module smc_subsystem_resets (
-  input  logic                                   clk_i,
-  input  logic                                   rst_primary_ni,              // stable_cold_rst_n && stable_cool_rst_n && rst_cool_from_flr_ni -> synced to smc_clk
+  input  logic                                   clk_i,  // Clock.
+  input  logic                                   rst_primary_ni,  // stable_cold_rst_n &&
+                                                                  // stable_cool_rst_n &&
+                                                                  // rst_cool_from_flr_ni
+                                                                  // -> synced to smc_clk.
 
-  // Register Interface
-  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,
-  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in_o,
+  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,  // Register Interface.
+  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in_o,  // Register Interface.
 
-  input  logic [31:0]                            ss_reset_complete_i,
-  output logic [31:0]                            ss_config_o,
-  output smc_reset_unit_pkg::reset_ctrl_t        ss_reset_ctrl_o[31:0]
+  input  logic [31:0]                            ss_reset_complete_i,  // Ss reset complete.
+  output logic [31:0]                            ss_config_o,  // Ss config.
+  output smc_reset_unit_pkg::reset_ctrl_t        ss_reset_ctrl_o[31:0]  // Ss reset ctrl.
 );
 
   ///////////////////////////////////

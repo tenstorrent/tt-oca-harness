@@ -1,52 +1,62 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// System Management Controller Alias Remap Wrap
+// Wrap axi_alias_remap with register-programmed SMC regions.
 //
-//-----------------------------------------------------------------------------
+// Converts misc/CSR remap programming into the remap_table the alias engine consumes.
+// Sits on fabric paths that need programmable address aliasing.
 
 module smc_alias_remap_wrap (
-  // JTAG AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_jtag_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_jtag_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_jtag_req_i,  // JTAG AXI Input
+                                                                             // request.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_jtag_resp_o,  // JTAG AXI Input
+                                                                              // response.
 
-  // Data Accelerator AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,  // Data Accelerator AXI
+                                                                                   // Input request.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,  // Data Accelerator AXI
+                                                                                    // Input response.
 
-  // MMIO AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_mmio_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_mmio_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_mmio_req_i,  // MMIO AXI Input
+                                                                             // request.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_mmio_resp_o,  // MMIO AXI Input
+                                                                              // response.
 
-  // Log AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_log_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_log_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_log_req_i,  // Log AXI Input
+                                                                            // request.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_log_resp_o,  // Log AXI Input
+                                                                             // response.
 
-  // Remapped JTAG AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_jtag_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_jtag_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_jtag_req_o,  // Remapped JTAG AXI
+                                                                                       // Output request.
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_jtag_resp_i,  // Remapped JTAG AXI
+                                                                                        // Output response.
 
-  // Remapped Data Accelerator AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_data_accel_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_data_accel_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_data_accel_req_o,  // Remapped Data
+                                                                                             // Accelerator AXI
+                                                                                             // Output request.
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_data_accel_resp_i,  // Remapped Data
+                                                                                              // Accelerator AXI
+                                                                                              // Output response.
 
-  // Remapped MMIO AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_mmio_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_mmio_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_mmio_req_o,  // Remapped MMIO AXI
+                                                                                       // Output request.
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_mmio_resp_i,  // Remapped MMIO AXI
+                                                                                        // Output response.
 
-  // Remapped Log AXI Output
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_log_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_log_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_out_remapped_log_req_o,  // Remapped Log AXI
+                                                                                      // Output request.
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_log_resp_i,  // Remapped Log AXI
+                                                                                       // Output response.
 
-  // Config struct from register block -- alias remap
-  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
+  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Config struct from
+                                                                                                    // register block --
+                                                                                                    // alias remap.
 
-  // debug structs
-  output smc_pkg::remap_debug_t remap_debug_mmio_o,
-  output smc_pkg::remap_debug_t remap_debug_jtag_o,
-  output smc_pkg::remap_debug_t remap_debug_log_o,
-  output smc_pkg::remap_debug_t remap_debug_dma_o
+  output smc_pkg::remap_debug_t remap_debug_mmio_o,  // debug structs.
+  output smc_pkg::remap_debug_t remap_debug_jtag_o,  // debug structs.
+  output smc_pkg::remap_debug_t remap_debug_log_o,  // debug structs.
+  output smc_pkg::remap_debug_t remap_debug_dma_o  // debug structs.
 );
 
   smc_pkg::remap_region_t remap_table[smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0];

@@ -2,62 +2,44 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// SEP Reset Controller
+// Sequence software resets for Key Manager and crypto accelerators through isolation.
 //
-// Provides software-controllable reset for KM and crypto accelerators.
-// Each bit in the SW_RESET register drives a sep_isolate_rst_seq FSM which
-// requests isolation of that domain's AXI paths, waits for them to drain,
-// and then asserts the domain's sequenced reset. Reset primitives combine the
-// sequenced resets with the SEP reset and apply the JTAG IC_RESET overrides
-// for KM, OTBN, AES, HMAC, KMAC, ABR, and the internal TRNG complex.
-//
-// Register map defined in hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl
-//   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
-//   Bit 1: otbn_sw_rst     - write 1 to release OTBN from reset (0=hold)
-//   Bit 2: aes_sw_rst      - write 1 to release AES from reset (0=hold)
-//   Bit 3: hmac_sw_rst     - write 1 to release HMAC from reset (0=hold)
-//   Bit 4: kmac_sw_rst     - write 1 to release KMAC from reset (0=hold)
-//   Bit 5: trng_sw_rst      - write 1 to release internal TRNG (0=hold)
-//   Bit 6: abr_sw_rst       - write 1 to release ABR from reset (0=hold)
+// Each bit in the SW_RESET register drives a sep_isolate_rst_seq FSM that requests
+// isolation of that domain's AXI paths, waits for them to drain, and then asserts the
+// domain's sequenced reset.
+// Reset primitives combine the sequenced resets with the SEP reset and apply the JTAG
+// IC_RESET overrides for KM, OTBN, AES, HMAC, KMAC, ABR, and the internal TRNG complex.
+// SW_RESET bits: 0 km_sw_rst, 1 otbn_sw_rst, 2 aes_sw_rst, 3 hmac_sw_rst, 4 kmac_sw_rst, 5
+// trng_sw_rst, 6 abr_sw_rst; write 1 to release from reset, 0 to hold. Register map:
+// hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl.
 
 `include "prim_assert.sv"
 
 module sep_reset_ctrl (
-  input  logic   clk_i,
-  // Cold reset for the isolation sequencing FSMs
-  input logic    rst_ni,
+  input  logic   clk_i,                       // System clock.
+  input logic    rst_ni,                      // Active-low reset.
 
-  // Aggregated WDT Resets from SMC and SEP
-  input  logic   wdt_rst_ni,
+  input  logic   wdt_rst_ni,                  // Aggregated WDT Resets from SMC and SEP.
 
-  // JTAG SEP Reset Control
-  input sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
+  input sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,  // JTAG SEP Reset Control.
 
-  // Intermediate reset signal (before JTAG override) for efuse sensing being done
-  input  logic   sep_intermediate_reset_ni,
-  // Reset signal (after JTAG override) for efuse sensing being done
-  output logic        sep_reset_no,
+  input  logic   sep_intermediate_reset_ni,   // Intermediate reset signal (before JTAG override) for efuse sensing being done.
+  output logic        sep_reset_no,           // Reset signal (after JTAG override) for efuse sensing being done.
 
-  // AXI4 slave (full AXI from top-level SEP local xbar). An internal
-  // axi_to_axi_lite converter feeds the AXI-Lite reg block
-  input  sep_pkg::sep_32_64_6_12_axi_req_t sep_reset_ctrl_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t  sep_reset_ctrl_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t sep_reset_ctrl_axi_req_i,  // AXI4 slave (full AXI from top-level SEP local xbar). An internal
+                                                                      // axi_to_axi_lite converter feeds the AXI-Lite reg block.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t  sep_reset_ctrl_axi_resp_o,  // SEP reset ctrl AXI response.
 
-  // DFT
-  input  logic   test_en_i,
-  input  logic   scan_rst_ni,
+  input  logic   test_en_i,                   // DFT test-enable (scan-enable).
+  input  logic   scan_rst_ni,                 // DFT scan reset, active-low; bypasses the reset synchronizer.
 
-  // sep_reset_n AND wdt_rst_ni
-  output logic   sep_cpu_reset_no,
+  output logic   sep_cpu_reset_no,            // sep_reset_n AND wdt_rst_ni.
 
-  // Isolation handshake with sep_crypto's AXI interconnect (one per IP)
-  output sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req_o,
-  input  sep_pkg::sep_crypto_isolate_t sep_crypto_isolated_i,
+  output sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req_o,  // Isolation handshake with sep_crypto's AXI interconnect (one per IP).
+  input  sep_pkg::sep_crypto_isolate_t sep_crypto_isolated_i,  // SEP crypto isolated.
 
-  // Isolation-sequenced resets to sep_crypto (active-low, one per IP)
-  // Potentially overridden by JTAG overrides
-  output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no
-
+  output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no  // Isolation-sequenced resets to sep_crypto (active-low, one per IP)
+                                                        // Potentially overridden by JTAG overrides.
 );
   // Internal reset signal (after JTAG override) for efuse sensing being done
   logic sep_reset_n;

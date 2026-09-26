@@ -1,51 +1,67 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-// Copyright 2026 Tenstorrent Inc.
 
-// AXI4-Lite crossbar that fans the KM CPU master out to ten KM slaves.
+// Route Key Manager CPU AXI4-Lite transactions by address to the ten KM peripheral ports.
 //
-// Routes by address to KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC,
-// HMAC, Adams Bridge, and the OTP/eFuse pass-through at index 8. Uses the
-// PULP axi_lite_xbar in zero-latency mode. OTP addresses leave this block
-// unchanged; key_manager remaps addr[31:12] before driving efuse_req_o.
+// Address rules use the Key Manager interface constants defined in km_intf_pkg. Routes to
+// KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC, HMAC, Adams Bridge, and the
+// OTP/eFuse pass-through at index 8. Uses the PULP axi_lite_xbar in zero-latency mode.
+// OTP addresses leave this block unchanged; key_manager remaps addr[31:12] before driving
+// efuse_req_o. The channel type parameters must match the req/resp types.
 
 module km_axi_lite_xbar
   import km_intf_pkg::*;
   import axi_pkg::*;
 #(
-  parameter type axil_req_t     = km_axil_req_t,      // AXI-Lite request struct type
-  parameter type axil_resp_t    = km_axil_resp_t,     // AXI-Lite response struct type
-  parameter type axil_aw_chan_t = km_axil_aw_chan_t,  // Write address channel type
-  parameter type axil_w_chan_t  = km_axil_w_chan_t,   // Write data channel type
-  parameter type axil_b_chan_t  = km_axil_b_chan_t,   // Write response channel type
-  parameter type axil_ar_chan_t = km_axil_ar_chan_t,  // Read address channel type
-  parameter type axil_r_chan_t  = km_axil_r_chan_t    // Read data channel type
+  parameter type axil_req_t  = km_axil_req_t,         // AXI-Lite request struct type.
+  parameter type axil_resp_t = km_axil_resp_t,        // AXI-Lite response struct type.
+  parameter type axil_aw_chan_t = km_axil_aw_chan_t,  // Write address channel type.
+  parameter type axil_w_chan_t  = km_axil_w_chan_t,   // Write data channel type.
+  parameter type axil_b_chan_t  = km_axil_b_chan_t,   // Write response channel type.
+  parameter type axil_ar_chan_t = km_axil_ar_chan_t,  // Read address channel type.
+  parameter type axil_r_chan_t  = km_axil_r_chan_t    // Read data channel type.
 ) (
-  input  logic       clk_i,         // System clock
-  input  logic       rst_ni,        // Active-low reset
-  input  logic       test_i,        // DFT test mode for the PULP xbar
-  input  axil_req_t  slv_req_i,     // Slave port request from the KM CPU
-  output axil_resp_t slv_resp_o,    // Slave port response to the KM CPU
-  output axil_req_t  kpv_req_o,     // Master request to KPV
-  input  axil_resp_t kpv_resp_i,    // Master response from KPV
-  output axil_req_t  kmcsr_req_o,   // Master request to KMCSR
-  input  axil_resp_t kmcsr_resp_i,  // Master response from KMCSR
-  output axil_req_t  drbg_req_o,    // Master request to the DRBG sampler
-  input  axil_resp_t drbg_resp_i,   // Master response from the DRBG sampler
-  output axil_req_t  mbox_req_o,    // Master request to the mailbox
-  input  axil_resp_t mbox_resp_i,   // Master response from the mailbox
-  output axil_req_t  otbn_req_o,    // Master request to OTBN
-  input  axil_resp_t otbn_resp_i,   // Master response from OTBN
-  output axil_req_t  aes_req_o,     // Master request to AES
-  input  axil_resp_t aes_resp_i,    // Master response from AES
-  output axil_req_t  kmac_req_o,    // Master request to KMAC
-  input  axil_resp_t kmac_resp_i,   // Master response from KMAC
-  output axil_req_t  hmac_req_o,    // Master request to HMAC
-  input  axil_resp_t hmac_resp_i,   // Master response from HMAC
-  output axil_req_t  abr_req_o,     // Master request to Adams Bridge
-  input  axil_resp_t abr_resp_i,    // Master response from Adams Bridge
-  output axil_req_t  otp_req_o,     // Master request to OTP/eFuse (pass-through)
-  input  axil_resp_t otp_resp_i     // Master response from OTP/eFuse
+  input  logic clk_i,   // System clock.
+  input  logic rst_ni,  // Active-low reset.
+  input  logic test_i,  // DFT test mode for the PULP xbar.
+
+  input  axil_req_t slv_req_i,    // Slave port request from the KM CPU.
+  output axil_resp_t slv_resp_o,  // Slave port response to the KM CPU.
+
+  output axil_req_t  kpv_req_o,   // Internal peripheral master port request to KPV.
+  input  axil_resp_t kpv_resp_i,  // Master port response from KPV.
+
+  output axil_req_t  kmcsr_req_o,   // Internal peripheral master port request to KMCSR.
+  input  axil_resp_t kmcsr_resp_i,  // Master port response from KMCSR.
+
+  output axil_req_t  drbg_req_o,   // Internal peripheral master port request to the DRBG
+                                   // sampler.
+  input  axil_resp_t drbg_resp_i,  // Master port response from the DRBG sampler.
+
+  output axil_req_t  mbox_req_o,   // Internal peripheral master port request to the mailbox.
+  input  axil_resp_t mbox_resp_i,  // Master port response from the mailbox.
+
+  output axil_req_t  otbn_req_o,   // External crypto engine master port request to OTBN.
+  input  axil_resp_t otbn_resp_i,  // Master port response from OTBN.
+
+  output axil_req_t  aes_req_o,   // External crypto engine master port request to AES.
+  input  axil_resp_t aes_resp_i,  // Master port response from AES.
+
+  output axil_req_t  kmac_req_o,   // External crypto engine master port request to KMAC.
+  input  axil_resp_t kmac_resp_i,  // Master port response from KMAC.
+
+  output axil_req_t  hmac_req_o,   // External crypto engine master port request to HMAC.
+  input  axil_resp_t hmac_resp_i,  // Master port response from HMAC.
+
+  output axil_req_t  abr_req_o,   // External crypto engine master port request to Adams
+                                  // Bridge.
+  input  axil_resp_t abr_resp_i,  // Master port response from Adams Bridge.
+
+  output axil_req_t  otp_req_o,  // OTP/eFuse pass-through port request (index 8,
+                                 // OTP_BASE_ADDR-OTP_END_ADDR). Addresses are forwarded
+                                 // unchanged; key_manager.sv applies the OTP_EFUSE_REMAP_BASE
+                                 // remap before driving efuse_req_o.
+  input  axil_resp_t otp_resp_i  // OTP/eFuse pass-through port response.
 );
 
   `include "prim_assert.sv"

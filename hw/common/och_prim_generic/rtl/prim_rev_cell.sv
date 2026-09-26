@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// REV Cell
+// Fan constant straps and a pass-through data bus.
 //
-//--------------------------------------------------
-module prim_rev_cell (
-  output logic [7:0] lo_o,
-  output logic [7:0] hi_o,
-  input  logic [7:0] in_i,
-  output logic [7:0] out_o,
-  input logic src_low_i,
-  input logic src_high_i
-);
+// Drive every bit of lo_o from src_low_i and every bit of hi_o from src_high_i, and copy
+// in_i to out_o. Use this to build netlist-visible constant and revision straps.
 
+module prim_rev_cell (
+  output logic [7:0] lo_o,      // All bits tied to src_low_i.
+  output logic [7:0] hi_o,      // All bits tied to src_high_i.
+  input  logic [7:0] in_i,      // Pass-through data into out_o.
+  output logic [7:0] out_o,     // Copy of in_i.
+  input logic src_low_i,        // Constant sourced onto lo_o.
+  input logic src_high_i        // Constant sourced onto hi_o.
+);
   integer i;
 
   always_comb begin

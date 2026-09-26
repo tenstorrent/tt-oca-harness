@@ -1,24 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_rosc_tune_fsm.sv
- * @brief Ring-oscillator auto-tune FSM for health-test driven detuning.
- *
- * @details Toggles the tune-state of an RO lane on rising edges of
- *          health_error_i. A rising edge (0->1) represents a new health-test
- *          failure and drives the FSM to an alternate detune setting. Once the
- *          error clears the current detune state is preserved (it resolved the
- *          issue). Edge detection ensures the state toggles exactly once per
- *          new error event, not continuously while the error signal remains
- *          asserted.
- */
+// Toggle ring-oscillator detune once per new health-test failure edge.
+//
+// A rising edge on health_error_i (0→1) flips tune_state_o to an alternate detune
+// setting.
+// While the error stays asserted the state does not re-toggle; when the error clears the
+// current detune setting is preserved.
 
 module entropy_rosc_tune_fsm (
-  input       logic clk_i,
-  input       logic rst_ni,
-  input       logic health_error_i,
-  output      logic tune_state_o
+  input       logic clk_i,              // System clock.
+  input       logic rst_ni,             // Active-low reset.
+  input       logic health_error_i,     // Health error.
+  output      logic tune_state_o        // Tune state.
 );
 
   /////////////

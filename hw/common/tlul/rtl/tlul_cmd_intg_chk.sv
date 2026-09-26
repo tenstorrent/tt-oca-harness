@@ -2,21 +2,18 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-
-/**
- * Tile-Link UL command integrity check
- */
+// Check TL-UL A-channel command integrity.
+//
+// Recompute the command checksum over tl_i and raise err_o when it does not match the
+// carried integrity bits.
 
 module tlul_cmd_intg_chk
   import tlul_pkg::*;
 (
-  // TL-UL interface
-  input  tl_h2d_t tl_i,
+  input  tl_h2d_t tl_i,  // A-channel request whose command integrity is checked.
 
-  // error output
-  output logic err_o
+  output logic err_o     // High when command integrity fails.
 );
-
   `include "prim_assert.sv"
 
   logic [1:0] err;

@@ -1,41 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// APB2AVSBus V1.3.1 Controller
+// Bridge AXI-Lite CSR traffic onto an AVSBus V1.3.1 serial link.
+//
+// Command and readback FIFOs cross between the register clock (clk_reg_i) and the AVS
+// reference clock (clk_ref_i).
+// Release rst_clk_div_ni before the rest of the AVS logic so the generated avs_clock_o is
+// stable before transactions begin.
+// rst_ref_ni and rst_reg_ni assert asynchronously and deassert synchronously to their
+// respective clocks.
 
 `begin_keywords "1800-2005"
 
-
 module avsbus_controller #(
-  parameter int unsigned COMMAND_FIFO_DEPTH = 8,
-  parameter int unsigned READBACK_FIFO_DEPTH = 8
+  parameter int unsigned COMMAND_FIFO_DEPTH = 8,            // Depth of the AVS command FIFO.
+  parameter int unsigned READBACK_FIFO_DEPTH = 8            // Depth of the AVS readback FIFO.
 ) (
-  // Global interface
-  input  logic            clk_reg_i,
-  input  logic            clk_ref_i,
-  input  logic            rst_ref_ni,     // async reset, deasserted synchronously to clk_ref_i
-  input  logic            rst_reg_ni,     // async reset, deasserted synchronously to clk_reg_i
-  input  logic            rst_clk_div_ni, // clock divider needs to be taken out of reset before rest of AVS logic
+  input  logic            clk_reg_i,                        // Register-domain clock.
+  input  logic            clk_ref_i,                        // AVS bit-bang reference clock.
+  input  logic            rst_ref_ni,                       // Active-low.
+                                                            // Async assert; deassert synchronously to clk_ref_i.
+  input  logic            rst_reg_ni,                       // Active-low.
+                                                            // Async assert; deassert synchronously to clk_reg_i.
+  input  logic            rst_clk_div_ni,                   // Active-low clock-divider reset.
+                                                            // Release before the rest of the AVS logic.
 
-  // AVSBus Interface
-  input  logic            avs_sdata_i,
-  output logic            avs_mdata_o,
-  output logic            avs_clock_o,
-  output logic            avs_gpio_enable_o,
+  input  logic            avs_sdata_i,                      // AVS slave data in.
+  output logic            avs_mdata_o,                      // AVS master data out.
+  output logic            avs_clock_o,                      // AVS serial clock out.
+  output logic            avs_gpio_enable_o,                // Enables the AVS GPIO pad drivers.
 
-  input  avsbus_controller_pkg::avsbus_axil_req_t              axil_req_i,
-  output avsbus_controller_pkg::avsbus_axil_resp_t             axil_resp_o,
+  input  avsbus_controller_pkg::avsbus_axil_req_t              axil_req_i, // AXI-Lite CSR request.
+  output avsbus_controller_pkg::avsbus_axil_resp_t             axil_resp_o, // AXI-Lite CSR response.
 
-  // Interrupt interface
-  output logic interrupt_o,
+  output logic interrupt_o,                                 // Controller interrupt.
 
-  // DFT interface
-  input logic scan_rst_ni,
-  input logic test_en_i,
-  input logic clk_test_i,
+  input logic scan_rst_ni,                                  // DFT scan reset, active-low.
+  input logic test_en_i,                                    // DFT test enable.
+  input logic clk_test_i,                                   // DFT test clock.
 
-  // Debug interface
-  output logic [16:0] cur_state_debug_o
+  output logic [16:0] cur_state_debug_o                     // FSM state debug bus.
 );
 
   localparam int unsigned SlaveResyncCycles = 34;

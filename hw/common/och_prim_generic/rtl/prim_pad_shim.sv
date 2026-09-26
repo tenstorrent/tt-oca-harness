@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// GPIO shim -> prim_pad_wrapper pad shim
+// Shim GPIO model controls onto an OpenTitan prim_pad_wrapper.
 //
-// Translates gpio_shim_pkg::gpio_model_ctrl_t into the vendored OpenTitan
-// prim_pad_wrapper_pkg::pad_attr_t and instantiates the (InputStd/BidirStd)
-// generic pad primitive. One instance per pin.
-//-----------------------------------------------------------------------------
+// Translate gpio_shim_pkg::gpio_model_ctrl_t into prim_pad_wrapper_pkg::pad_attr_t and
+// instantiate one InputStd or BidirStd pad per pin. pad2core_o reads as 0 when the input
+// enable is low instead of propagating the wrapper disabled-input Z/X. The NAND-tree
+// ports pass through unchanged.
 
 module prim_pad_shim #(
-  parameter bit InputOnly = 1'b0
+  parameter bit InputOnly = 1'b0  // 1 instantiates InputStd; 0 instantiates BidirStd.
 ) (
-  input  logic                            core2pad_i,
-  input  logic                            core2pad_en_i,
-  output logic                            pad2core_o,
-  input  logic                            pad2core_en_i,
-  input  gpio_shim_pkg::gpio_model_ctrl_t gpio_ctrl_i,
-  input  logic                            gpio_nandtree_in_i,
-  output logic                            gpio_nandtree_out_o,
-  inout  wire                             pad_io
+  input  logic                            core2pad_i,          // Core data driven toward the pad.
+  input  logic                            core2pad_en_i,       // Output enable toward the pad.
+  output logic                            pad2core_o,          // Pad data returned to the core.
+  input  logic                            pad2core_en_i,       // Input enable from the pad.
+  input  gpio_shim_pkg::gpio_model_ctrl_t gpio_ctrl_i,         // Pull, drive, and filter controls.
+  input  logic                            gpio_nandtree_in_i,  // NAND-tree input (pass-through).
+  output logic                            gpio_nandtree_out_o, // NAND-tree output (pass-through).
+  inout  wire                             pad_io               // Bidirectional pad pin.
 );
-
   import prim_pad_wrapper_pkg::*;
 
   pad_attr_t pad_attr;

@@ -1,65 +1,61 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// I2C Wrapper
+// Demux one AXI-Lite slave onto NUM_I2CS I2C cores and a shared ctrl map.
+//
+// NUM_REG_MAPS is NUM_I2CS plus one for ctrl and one for the error slave.
+// SMBus, DMA ready, IRQ, and debug ports are vectors with one slice per instance.
+// Each instance's debug nibble matches i2c_core's four-bit debug bus.
 
 module i2c_wrap #(
-  parameter int unsigned NUM_I2CS                 = 3,
-  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
-  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,
-  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,
-  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,
-  parameter int unsigned INPUT_DELAY_CYCLES       = 0,
+  parameter int unsigned NUM_I2CS                 = 3,      // Number of I2C instances.
+  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Controller TX FIFO depth.
+  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,     // Controller RX FIFO depth.
+  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,     // Target TX FIFO depth.
+  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,    // Target RX FIFO depth.
+  parameter int unsigned INPUT_DELAY_CYCLES       = 0,      // Extra input-pipeline cycles.
 
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_BASE_ADDR = 0,
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_SIZE      = 0,
+  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_BASE_ADDR = 0, // Shared ctrl register-map base.
+  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_SIZE      = 0, // Shared ctrl register-map size.
 
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_BASE_ADDR = 0,
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_SIZE      = 0,
-  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_INSTANCE_SPACING     = 0,
+  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_BASE_ADDR = 0, // Instance 0 register-map base.
+  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
+  parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_INSTANCE_SPACING     = 0, // Byte spacing between instances.
 
-  localparam int unsigned NUM_REG_MAPS = NUM_I2CS + 2, // +1 for ctrl +1 for error slave
-  localparam type i2c_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0],
-  localparam i2c_wrap_reg_map_select_t CTRL_REG_MAP =
+  localparam int unsigned NUM_REG_MAPS = NUM_I2CS + 2,      // Decode targets: instances + ctrl + error slave.
+  localparam type i2c_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0], // Register-map select type.
+  localparam i2c_wrap_reg_map_select_t CTRL_REG_MAP =       // Select index for the ctrl map.
         i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 2),
-  localparam i2c_wrap_reg_map_select_t UNDEFINED_REG_MAP =
+  localparam i2c_wrap_reg_map_select_t UNDEFINED_REG_MAP =  // Select index for the error slave.
         i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 1)
 ) (
-  // Global Interface
-  input  logic                clk_i,
-  input  logic                rst_ni,
+  input  logic                clk_i,                        // System clock.
+  input  logic                rst_ni,                       // Async reset, active-low.
 
-  // AXI4-Lite Register Interface
-  input  i2c_wrap_pkg::axil_req_t           axil_req_i,
-  output i2c_wrap_pkg::axil_resp_t          axil_resp_o,
+  input  i2c_wrap_pkg::axil_req_t           axil_req_i,     // Shared AXI-Lite request.
+  output i2c_wrap_pkg::axil_resp_t          axil_resp_o,    // Shared AXI-Lite response.
 
-  // Control Interface
-  output logic [NUM_I2CS-1:0] i2c_en_o,
-  output logic [NUM_I2CS-1:0] i2c_controller_mode_en_o,
+  output logic [NUM_I2CS-1:0] i2c_en_o,                     // Per-instance enable.
+  output logic [NUM_I2CS-1:0] i2c_controller_mode_en_o,     // Per-instance controller-mode enable.
 
-  // I2C Interface
-  input  logic [NUM_I2CS-1:0] scl_i,
-  output logic [NUM_I2CS-1:0] scl_o,
-  input  logic [NUM_I2CS-1:0] sda_i,
-  output logic [NUM_I2CS-1:0] sda_o,
+  input  logic [NUM_I2CS-1:0] scl_i,                        // Per-instance SCL in.
+  output logic [NUM_I2CS-1:0] scl_o,                        // Per-instance SCL out.
+  input  logic [NUM_I2CS-1:0] sda_i,                        // Per-instance SDA in.
+  output logic [NUM_I2CS-1:0] sda_o,                        // Per-instance SDA out.
 
-  // I2C SMBus Interface
-  input  logic [NUM_I2CS-1:0] smbsus_ni,
-  output logic [NUM_I2CS-1:0] smbsus_no,
-  input  logic [NUM_I2CS-1:0] smbalert_ni,
-  output logic [NUM_I2CS-1:0] smbalert_no,
+  input  logic [NUM_I2CS-1:0] smbsus_ni,                    // Per-instance SMBus SUS in, active-low.
+  output logic [NUM_I2CS-1:0] smbsus_no,                    // Per-instance SMBus SUS out, active-low.
+  input  logic [NUM_I2CS-1:0] smbalert_ni,                  // Per-instance SMBus ALERT in, active-low.
+  output logic [NUM_I2CS-1:0] smbalert_no,                  // Per-instance SMBus ALERT out, active-low.
 
-  // I2C DMA Interface
-  output logic [NUM_I2CS-1:0] controller_tx_ready_o,
-  output logic [NUM_I2CS-1:0] controller_rx_ready_o,
-  output logic [NUM_I2CS-1:0] target_tx_ready_o,
-  output logic [NUM_I2CS-1:0] target_rx_ready_o,
+  output logic [NUM_I2CS-1:0] controller_tx_ready_o,        // Per-instance controller TX DMA ready.
+  output logic [NUM_I2CS-1:0] controller_rx_ready_o,        // Per-instance controller RX DMA ready.
+  output logic [NUM_I2CS-1:0] target_tx_ready_o,            // Per-instance target TX DMA ready.
+  output logic [NUM_I2CS-1:0] target_rx_ready_o,            // Per-instance target RX DMA ready.
 
-  // Interrupt Interface
-  output logic [NUM_I2CS-1:0] i2c_irq_o,
+  output logic [NUM_I2CS-1:0] i2c_irq_o,                    // Per-instance interrupt.
 
-  // Debug Interface (4 bits per I2C; see i2c_core.sv for field definitions)
-  output logic [NUM_I2CS-1:0][3:0] i2c_debug_o
+  output logic [NUM_I2CS-1:0][3:0] i2c_debug_o              // Per-instance four-bit debug; see i2c_core.
 );
 
   `include "axi/assign.svh"

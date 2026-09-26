@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// AVSBus Package
+// Hold shared types and constants for the AVSBus controller.
 //
-//-----------------------------------------------------------------------------
+// Defines the AXI-Lite request and response typedefs for the controller CSR port and the
+// AVS command and status encodings used by the bit-bang FSM.
 
 package avsbus_controller_pkg;
 

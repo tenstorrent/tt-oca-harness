@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Log Engine Package
+// Define AXI-Lite typedefs and constants for the log engine.
 //
-//-----------------------------------------------------------------------------
+// Types the CSR, log-fetch, and log-write AXI-Lite ports shared with the generated
+// register block.
 
 package log_engine_pkg;
 
@@ -62,8 +62,8 @@ package log_engine_pkg;
   ////////////////////////////
 
   // Independent Parameters
-  localparam int unsigned NUM_LOG_ENTRIES = 16;  // Must be a power of 2
-  localparam int unsigned MAX_LOG_REGION_SIZE = 524288;  // 512 KB
+  localparam int unsigned NUM_LOG_ENTRIES = 16;  // Must be a power of 2.
+  localparam int unsigned MAX_LOG_REGION_SIZE = 524288;  // 512 KB.
   localparam int unsigned LOG_REGION_ALIGNMENT = NUM_LOG_ENTRIES * (LOG_FETCH_DATA_WIDTH / 8);
 
   // Dependent Parameters

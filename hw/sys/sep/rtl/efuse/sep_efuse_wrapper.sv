@@ -1,75 +1,62 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP eFuse Wrapper
+// Wrap efuse_interface_controller with SEP datapath conversion, JTAG policy, and secure
+// test mode.
 //
-//-----------------------------------------------------------------------------
-//
-// Wraps the generic `efuse_interface_controller` for SEP and implements the
-// SEP-specific data-path conversion, security policy, and secure test mode control:
-//   * Downsizes the functional AXI4 slave from the local crossbar (64-bit) to
-//     32-bit, then converts it to AXI4-Lite for the eFuse controller.
-//   * Implements the SEP JTAG access-control policy: in a restricted state
-//     (PROD / RMA_SiP, or an LC-state differential-decode integrity error)
-//     block JTAG accesses to the eFuse except the MMR / token register space,
-//     which stays accessible (e.g. for RMA_SiP token programming).
-//   * Upon cold reset release, if secure test mode is enabled, latch the secure test mode signal.
+// Downsizes the functional AXI4 slave from the local crossbar (64-bit) to 32-bit, then
+// converts it to AXI4-Lite for the eFuse controller.
+// In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity
+// error), block JTAG accesses to the eFuse except the MMR / token register space, which
+// stays accessible for RMA_SiP token programming.
+// On cold reset release, if secure test mode is enabled, latch the secure test mode
+// signal.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module sep_efuse_wrapper #(
-  // During synthesis, to be replaced with the actual token digest embedded in the netlist
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token digest; replace at synthesis.
 ) (
-  input logic                                clk_i,
-  input logic                                rst_ni,
+  input logic                                clk_i,  // System clock.
+  input logic                                rst_ni,  // Active-low reset.
 
-  input  logic                               test_en_i,
-  input  logic                               scan_rst_ni,
+  input  logic                               test_en_i,  // DFT test-enable (scan-enable).
+  input  logic                               scan_rst_ni,  // DFT scan reset, active-low; bypasses the reset synchronizer.
 
-  input  logic                               secure_tm_req_i,
-  input  logic                               ext_boot_seq_done_i,
+  input  logic                               secure_tm_req_i,  // secure tm request.
+  input  logic                               ext_boot_seq_done_i,  // ext boot seq done.
 
-  output logic                               security_disable_o,
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-  output sep_efuse_pkg::efuse_map_t          shadow_regs_o,
-  output logic                               fuse_sense_done_o,
-  output logic                               secure_tm_o,
+  output logic                               security_disable_o,  // security disable.
+  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // LC state.
+  output sep_efuse_pkg::efuse_map_t          shadow_regs_o,  // shadow regs.
+  output logic                               fuse_sense_done_o,  // fuse sense done.
+  output logic                               secure_tm_o,  // secure tm.
 
-  // OTP debug AXI-Lite manager interface
-  input  sep_efuse_pkg::efuse_axil_req_t     axil_sep_otp_jtag_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t     axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager interface.
+  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,  // AXIL SEP OTP JTAG response.
 
-  // Key Manager AXI-Lite manager interface
-  input  sep_efuse_pkg::efuse_axil_req_t     km_efuse_axil_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t    km_efuse_axil_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t     km_efuse_axil_req_i,  // Key Manager AXI-Lite manager interface.
+  output sep_efuse_pkg::efuse_axil_resp_t    km_efuse_axil_resp_o,  // KM efuse AXIL response.
 
-  // Full AXI4 slave from local crossbar
-  input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_axi_req_i,
-  output sep_pkg::sep_crypto_axi_resp_t      sep_efuse_axi_resp_o,
+  input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_axi_req_i,  // Full AXI4 slave from local crossbar.
+  output sep_pkg::sep_crypto_axi_resp_t      sep_efuse_axi_resp_o,  // SEP efuse AXI response.
 
-  // Efuse Interface to SHIM
-  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
-  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,
+  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,  // efuse bank ctrl request.
+  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,  // efuse bank ctrl response.
 
-  // Efuse Command Interface - custom interface for SHIM
-  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,
-  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,
+  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,  // Efuse Command Interface - custom interface for SHIM.
+  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,  // efuse shim command response.
 
-  // Efuse intermediate reset
-  output logic                               sep_intermediate_reset_no,
+  output logic                               sep_intermediate_reset_no,  // SEP intermediate reset.
 
-  // Debug signals
-  output logic [9:0]                         sep_efuse_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
+  output logic [9:0]                         sep_efuse_debug_o,  // SEP efuse debug.
+  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,  // SEP efuse token match sip debug.
+  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,  // SEP efuse token match chiplet debug.
 
-  // Locked Field Access Interrupt
-  output logic                               locked_field_access_interrupt_o,
+  output logic                               locked_field_access_interrupt_o,  // Locked Field Access Interrupt.
 
-  // Token Comparator Redundancy Fault Interrupt
-  output logic                               token_match_fault_o
+  output logic                               token_match_fault_o  // Token Comparator Redundancy Fault Interrupt.
 );
 
   // Intermediate 32-bit AXI (after data-width conversion)

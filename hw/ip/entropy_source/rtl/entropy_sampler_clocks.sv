@@ -1,35 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_sampler_clocks.sv
- * @brief Per-generator sample-clock multiplexer and ripple divider network.
- *
- * @details This module provides independent sample-clock selection and division
- *          for each of NRINGS noise generators. Each generator can select
- *          between an external sample clock and a shared internal ring
- *          oscillator, then further divide by factors ÷1 through ÷32 (in
- *          powers of two). The shared RO is enabled whenever ANY generator is
- *          enabled and detunes when ANY generator requests detune (OR-based
- *          aggregation). The shared RO is approximately 10× longer than the
- *          noise-generating ROs to achieve the target frequency ratio, with
- *          the detuned length chosen to preserve that ratio.
- *
- * @param NRINGS  Number of independent ring oscillators and sampler channels.
- *                 Default: 12
- */
+// Mux and ripple-divide per-lane sample clocks for NRINGS noise generators.
+//
+// Each generator selects external sample_clk_i or a shared internal ring oscillator, then
+// divides by powers of two from ÷1 through ÷32.
+//
+// The shared RO enables when any generator enables and detunes when any generator
+// requests detune (OR aggregation). It is about 10× longer than the noise ROs to hit the
+// target frequency ratio; detuned length preserves that ratio.
 
 module entropy_sampler_clocks #(
-  parameter int unsigned NRINGS = 12
+  parameter int unsigned NRINGS = 12    // Ring-oscillator lane count.
 ) (
-  input       logic                   clk_i,
-  input       logic                   rst_ni,
-  input       logic                   sample_clk_i,
-  input       logic [NRINGS-1:0]      sample_clk_select_i,
-  input       logic [NRINGS-1:0]      enable_i,
-  input       logic [NRINGS-1:0]      detune_ro_i,
-  input       logic [NRINGS-1:0][4:0] sample_clk_divide_i,
-  output      logic [NRINGS-1:0]      sample_clk_o
+  input       logic                   clk_i,  // System clock.
+  input       logic                   rst_ni,  // Active-low reset.
+  input       logic                   sample_clk_i,  // Ring-oscillator sample clock.
+  input       logic [NRINGS-1:0]      sample_clk_select_i,  // Sample clk select.
+  input       logic [NRINGS-1:0]      enable_i,  // Block enable.
+  input       logic [NRINGS-1:0]      detune_ro_i,  // Detune ro.
+  input       logic [NRINGS-1:0][4:0] sample_clk_divide_i,  // Sample clk divide.
+  output      logic [NRINGS-1:0]      sample_clk_o  // Sample clk.
 );
 
   /////////////////////

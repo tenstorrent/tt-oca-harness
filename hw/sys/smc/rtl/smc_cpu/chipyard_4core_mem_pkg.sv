@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Declare memory-interface typedefs for the four-core Chipyard cluster.
+//
+// Declares ROM, scratch RAM, and L1 cache request/response structs.
+// Bank-count localparams size the mem-swap and CPU wrapper port arrays.
+
 `ifndef CHIPYARD_4CORE_MEMORY_INTERFACE
 `define CHIPYARD_4CORE_MEMORY_INTERFACE
 

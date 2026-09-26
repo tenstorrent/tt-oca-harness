@@ -1,63 +1,57 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP local AXI crossbar wrapper.
-// Adapts sep_pkg interfaces to the crossbar request and response types.
+// Adapt sep_pkg AXI structs to the local crossbar request and response types.
+//
+// Initiator (slave-into-xbar) ports use 3-bit ID masters. Target (master-from-xbar) ports
+// use 6-bit ID slaves.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
 
 module sep_local_axi_xbar_wrapper (
-  // Global Interface
-  input  logic                                clk_i,
-  input  logic                                rst_ni,
+  input  logic                                clk_i,  // System clock.
+  input  logic                                rst_ni,  // Active-low reset.
 
-  // AXI4 Slaves (Initiators into xbar) - 3-bit ID masters
-  input  sep_pkg::sep_32_64_3_12_axi_req_t     ifu_sram_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t    ifu_sram_axi_resp_o,
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     ifu_sram_axi_req_i,  // IFU SRAM initiator request; 3-bit ID master
+                                                                    // AXI4 Slaves (Initiators into xbar) - 3-bit ID masters.
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    ifu_sram_axi_resp_o,  // IFU SRAM initiator response.
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     lsu_axi_req_i,  // LSU initiator request; 3-bit ID master.
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    lsu_axi_resp_o,  // LSU initiator response.
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     dbg_axi_req_i,  // Debug initiator request; 3-bit ID master.
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    dbg_axi_resp_o,  // Debug initiator response.
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     dma_axi_req_i,  // DMA initiator request; 3-bit ID master.
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    dma_axi_resp_o,  // DMA initiator response.
+  input  sep_pkg::sep_32_64_3_12_axi_req_t     ext_axi_req_i,  // External initiator request; 3-bit ID master.
+  output sep_pkg::sep_32_64_3_12_axi_resp_t    ext_axi_resp_o,  // External initiator response.
+  output sep_pkg::sep_32_64_6_12_axi_req_t     cpu_tcm_axi_req_o,  // CPU TCM target request; 6-bit ID slave
+                                                                   // AXI4 Masters (Targets from xbar) - 6-bit ID slaves.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    cpu_tcm_axi_resp_i,  // CPU TCM target response.
+  output sep_pkg::sep_32_64_6_12_axi_req_t     dma_csr_axi_req_o,  // DMA CSR target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    dma_csr_axi_resp_i,  // DMA CSR target response.
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sram_axi_req_o,  // SRAM target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sram_axi_resp_i,  // SRAM target response.
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t     lsu_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t    lsu_axi_resp_o,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_crypto_axi_req_o,  // SEP crypto target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_crypto_axi_resp_i,  // SEP crypto target response.
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t     dbg_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t    dbg_axi_resp_o,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_io_axi_req_o,  // SEP IO target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_io_axi_resp_i,  // SEP IO target response.
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t     dma_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t    dma_axi_resp_o,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     entropy_fifo_axi_req_o,  // Entropy FIFO target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    entropy_fifo_axi_resp_i,  // Entropy FIFO target response.
 
-  input  sep_pkg::sep_32_64_3_12_axi_req_t     ext_axi_req_i,
-  output sep_pkg::sep_32_64_3_12_axi_resp_t    ext_axi_resp_o,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_system_peripherals_axi_req_o,  // System peripherals target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_system_peripherals_axi_resp_i,  // System peripherals target response.
 
-  // AXI4 Masters (Targets from xbar) - 6-bit ID slaves
-  output sep_pkg::sep_32_64_6_12_axi_req_t     cpu_tcm_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    cpu_tcm_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_wdt_axi_req_o,  // SEP WDT target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_wdt_axi_resp_i,  // SEP WDT target response.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t     dma_csr_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    dma_csr_axi_resp_i,
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_reset_ctrl_axi_req_o,  // Reset controller target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_reset_ctrl_axi_resp_i,  // Reset controller target response.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sram_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sram_axi_resp_i,
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_crypto_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_crypto_axi_resp_i,
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_io_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_io_axi_resp_i,
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t     entropy_fifo_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    entropy_fifo_axi_resp_i,
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_system_peripherals_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_system_peripherals_axi_resp_i,
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_wdt_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_wdt_axi_resp_i,
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_reset_ctrl_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_reset_ctrl_axi_resp_i,
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i
+  output sep_pkg::sep_32_64_6_12_axi_req_t     sep_external_axi_req_o,  // External aperture target request; 6-bit ID slave.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_external_axi_resp_i  // External aperture target response.
 );
 
   // =========================================================================

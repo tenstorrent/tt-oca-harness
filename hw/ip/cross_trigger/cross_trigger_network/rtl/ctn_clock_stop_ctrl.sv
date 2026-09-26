@@ -1,34 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// CTN Clock Stop Control Module
+// OR clock-stop requests and register a glitch-free chiplet halt.
 //
-// Description:
-// Aggregates multiple clock stop request signals using an OR tree.
-// The OR-reduced CLA status is exported directly and also registered
-// for a glitch-free chiplet clock stop output.
-//------------------------------------------------------------------------------
-
+// clk_stop_req_i are CLA (or other) requests in the ck_feedthru domain; jtag_clock_stop_i
+// is quasi-static from JTAG_TCK.
+// cla_clock_stop_o is the combinational OR of CLA requests for JTAG status; stop_clks_o
+// registers that OR with the JTAG request in clk_i.
 
 module ctn_clock_stop_ctrl #(
-  parameter int unsigned NUM_CLK_STOP_REQ = 1  // Number of clock stop request inputs
+  parameter int unsigned NUM_CLK_STOP_REQ = 1  // Number of clock stop request inputs.
 ) (
-  // Global Interface
-  input  wire logic                          clk_i,
-  input  wire logic                          rst_ni,
+  input  wire logic                          clk_i,  // System clock.
+  input  wire logic                          rst_ni,  // Active-low reset.
 
-  // Clock stop request inputs (from CLAs or other devices, ck_feedthru domain)
-  input  wire logic [NUM_CLK_STOP_REQ-1:0]   clk_stop_req_i,
+  input  wire logic [NUM_CLK_STOP_REQ-1:0]   clk_stop_req_i,  // Clk stop req.
 
-  // JTAG DEBUG_CONTROL direct clock stop (JTAG_TCK domain, quasi-static)
-  input  wire logic                          jtag_clock_stop_i,
+  input  wire logic                          jtag_clock_stop_i,  // Jtag clock stop.
 
-  // Clock stop output (registered, clk_i domain)
-  output logic                          stop_clks_o,
+  output logic                          stop_clks_o,  // Stop clks (Clock stop (registered, clk_i domain)).
 
-  // CLA clock stop status output (for JTAG status reporting, combinational)
-  output logic                          cla_clock_stop_o
+  output logic                          cla_clock_stop_o  // Cla clock stop.
 );
 
   // CLA clock stop status for JTAG readback (CLA requests only, no sync needed —

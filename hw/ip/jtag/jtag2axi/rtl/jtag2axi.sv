@@ -1,117 +1,107 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Module: jtag2axi
-// Description:
-//   This module generates single-beat AXI4 transactions based on inputs
-//   from JTAG scan chains. It features parametrizable address and data widths,
-//   separate JTAG shift and update latches, and a shared shift register
-//   architecture. Series read and write operations can be pipelined.
+// Generate single-beat AXI4 transactions from JTAG scan-chain inputs.
 //
-//   All stateful logic (JTAG TAP scan, command dispatch, AXI master FSM,
-//   series request/response FIFOs, sticky status) lives in the TCK clock
-//   domain. The AXI master interface crosses into the ACLK domain through a
-//   single `axi_cdc_clearable` instance which tolerates independent warm
-//   resets on `trst_ni` and `arst_ni` via its internal
-//   `cdc_fifo_gray_clearable` reset coupling.
+// Separate JTAG shift and update latches share a shift-register architecture; series
+// reads and writes pipeline. AXISeriesCtrl.pipeline_depth programs 0..FIFO_DEPTH;
+// effective depth is pipeline_depth + 1.
 //
-// Parameters:
-//   ADDR_WIDTH   : Width of the AXI address bus (awaddr, araddr).
-//   DATA_WIDTH   : Width of the AXI data bus (wdata, rdata). Must be a power
-//                  of 2 and a multiple of 8.
-//   ID_WIDTH     : Width of the AXI ID signals (awid, arid, bid, rid).
-//   USER_WIDTH   : Width of the AXI USER signals (awuser, wuser, buser, aruser, ruser).
-//   FIFO_DEPTH   : Max depth for series request FIFO and series read data FIFO.
-//                  The value programmed via AXISeriesCtrl.pipeline_depth can be
-//                  from 0 to FIFO_DEPTH. Effective depth is pipeline_depth + 1.
-//   ATOP_WIDTH   : Width of the AWATOP signal (AXI5 atomic operations). Must
-//                  be 6 to match the PULP AXI channel typedef layout.
+// All stateful logic lives in the TCK domain:
+//
+// - TAP scan
+// - command dispatch
+// - AXI master FSM
+// - series request/response FIFOs
+// - sticky status
+//
+// The AXI master crosses into ACLK through one axi_cdc_clearable instance that tolerates
+// independent warm resets on trst_ni and arst_ni via cdc_fifo_gray_clearable reset
+// coupling.
+//
+// Parameter constraints:
+//
+// - Address and data widths are parametrizable; DATA_WIDTH must be a power of 2 and a
+//   multiple of 8.
+// - ATOP_WIDTH must be 6 to match the PULP AXI channel typedef layout.
 
 module jtag2axi #(
-  parameter int ADDR_WIDTH   = 52,
-  parameter int DATA_WIDTH   = 64,
-  parameter int ID_WIDTH     = 1,
-  parameter int USER_WIDTH   = 1,
-  parameter int FIFO_DEPTH   = 2,
-  parameter int ATOP_WIDTH   = 6
+  parameter int ADDR_WIDTH   = 52,      // Address width.
+  parameter int DATA_WIDTH   = 64,      // Data width.
+  parameter int ID_WIDTH     = 1,       // AXI ID width.
+  parameter int USER_WIDTH   = 1,       // AXI user width.
+  parameter int FIFO_DEPTH   = 2,       // FIFO depth.
+  parameter int ATOP_WIDTH   = 6        // AWATOP width; must be 6 for PULP AXI typedefs.
 ) (
-  // JTAG Interface Signals (TCK Domain)
-  input  logic        tck_i,              // JTAG Test Clock
-  input  logic        trst_ni,            // JTAG Test Reset (active low)
+  input  logic        tck_i,            // JTAG Test Clock.
+  input  logic        trst_ni,          // JTAG Test Reset (active low).
 
-  input  logic        scan_in_i,          // JTAG Scan Data In (TDI)
-  output logic        scan_out_o,         // JTAG Scan Data Out (TDO)
+  input  logic        scan_in_i,        // JTAG Scan Data In (TDI).
+  output logic        scan_out_o,       // JTAG Scan Data Out (TDO).
 
-  input  logic        capture_en_i,       // JTAG Capture Enable (Capture-DR state)
-  input  logic        shift_en_i,         // JTAG Shift Enable (Shift-DR state)
-  input  logic        update_en_i,        // JTAG Update Enable (Update-DR state)
+  input  logic        capture_en_i,     // JTAG Capture Enable (Capture-DR state).
+  input  logic        shift_en_i,       // JTAG Shift Enable (Shift-DR state).
+  input  logic        update_en_i,      // JTAG Update Enable (Update-DR state).
 
-  // JTAG Scan Chain Select Signals (decoded from JTAG Instruction Register)
-  input  logic        select_AXISingleOp_i,
-  input  logic        select_AXISeriesCtrl_i,
-  input  logic        select_AXISeriesDataIncr_i,
-  input  logic        select_AXISeriesDataNoIncr_i,
-  input  logic        select_AXISeriesDataWithErrorStatus_i,
-  input  logic        security_disable_i,
+  input  logic        select_AXISingleOp_i,  // Select AXISingleOp scan chain.
+  input  logic        select_AXISeriesCtrl_i,  // Select AXISeriesCtrl scan chain.
+  input  logic        select_AXISeriesDataIncr_i,  // Select AXISeriesDataIncr scan chain.
+  input  logic        select_AXISeriesDataNoIncr_i,  // Select AXISeriesDataNoIncr scan chain.
+  input  logic        select_AXISeriesDataWithErrorStatus_i,  // Select AXISeriesDataWithErrorStatus scan chain.
+  input  logic        security_disable_i,  // Active-high bridge/security disable.
 
-  // AXI Interface Signals (ACLK Domain)
-  input  logic        aclk_i,             // AXI Clock
-  input  logic        arst_ni,            // AXI Reset (active low)
+  input  logic        aclk_i,           // AXI Clock.
+  input  logic        arst_ni,          // AXI Reset (active low).
 
-  // AXI Write Address Channel
-  output logic [ID_WIDTH-1:0]     awid_o,
-  output logic [ADDR_WIDTH-1:0]   awaddr_o,
-  output logic [7:0]              awlen_o,
-  output logic [2:0]              awsize_o,
-  output logic [1:0]              awburst_o,
-  output logic                    awlock_o,
-  output logic [3:0]              awcache_o,
-  output logic [2:0]              awprot_o,
-  output logic [3:0]              awqos_o,
-  output logic [3:0]              awregion_o,
-  output logic [USER_WIDTH-1:0]   awuser_o,
-  output logic [ATOP_WIDTH-1:0]   awatop_o,
-  output logic                    awvalid_o,
-  input  logic                    awready_i,
+  output logic [ID_WIDTH-1:0]     awid_o,  // Write-address ID.
+  output logic [ADDR_WIDTH-1:0]   awaddr_o,  // Write address.
+  output logic [7:0]              awlen_o,  // Write burst length.
+  output logic [2:0]              awsize_o,  // Write beat size.
+  output logic [1:0]              awburst_o,  // Write burst type.
+  output logic                    awlock_o,  // Write lock.
+  output logic [3:0]              awcache_o,  // Write cache attributes.
+  output logic [2:0]              awprot_o,  // Write protection attributes.
+  output logic [3:0]              awqos_o,  // Write QoS.
+  output logic [3:0]              awregion_o,  // Write region.
+  output logic [USER_WIDTH-1:0]   awuser_o,  // Write-address user.
+  output logic [ATOP_WIDTH-1:0]   awatop_o,  // Write atomic op (AWATOP).
+  output logic                    awvalid_o,  // Write-address valid.
+  input  logic                    awready_i,  // Write-address ready.
 
-  // AXI Write Data Channel
-  output logic [DATA_WIDTH-1:0]   wdata_o,
-  output logic [DATA_WIDTH/8-1:0] wstrb_o,
-  output logic                    wlast_o,
-  output logic [USER_WIDTH-1:0]   wuser_o,
-  output logic                    wvalid_o,
-  input  logic                    wready_i,
+  output logic [DATA_WIDTH-1:0]   wdata_o,  // Write data.
+  output logic [DATA_WIDTH/8-1:0] wstrb_o,  // Write strobes.
+  output logic                    wlast_o,  // Write last.
+  output logic [USER_WIDTH-1:0]   wuser_o,  // Write-data user.
+  output logic                    wvalid_o,  // Write-data valid.
+  input  logic                    wready_i,  // Write-data ready.
 
-  // AXI Write Response Channel
-  input  logic [ID_WIDTH-1:0]     bid_i,
-  input  logic [1:0]              bresp_i,
-  input  logic [USER_WIDTH-1:0]   buser_i,
-  input  logic                    bvalid_i,
-  output logic                    bready_o,
+  input  logic [ID_WIDTH-1:0]     bid_i,  // Write-response ID.
+  input  logic [1:0]              bresp_i,  // Write-response status.
+  input  logic [USER_WIDTH-1:0]   buser_i,  // Write-response user.
+  input  logic                    bvalid_i,  // Write-response valid.
+  output logic                    bready_o,  // Write-response ready.
 
-  // AXI Read Address Channel
-  output logic [ID_WIDTH-1:0]     arid_o,
-  output logic [ADDR_WIDTH-1:0]   araddr_o,
-  output logic [7:0]              arlen_o,
-  output logic [2:0]              arsize_o,
-  output logic [1:0]              arburst_o,
-  output logic                    arlock_o,
-  output logic [3:0]              arcache_o,
-  output logic [2:0]              arprot_o,
-  output logic [3:0]              arqos_o,
-  output logic [3:0]              arregion_o,
-  output logic [USER_WIDTH-1:0]   aruser_o,
-  output logic                    arvalid_o,
-  input  logic                    arready_i,
+  output logic [ID_WIDTH-1:0]     arid_o,  // Read-address ID.
+  output logic [ADDR_WIDTH-1:0]   araddr_o,  // Read address.
+  output logic [7:0]              arlen_o,  // Read burst length.
+  output logic [2:0]              arsize_o,  // Read beat size.
+  output logic [1:0]              arburst_o,  // Read burst type.
+  output logic                    arlock_o,  // Read lock.
+  output logic [3:0]              arcache_o,  // Read cache attributes.
+  output logic [2:0]              arprot_o,  // Read protection attributes.
+  output logic [3:0]              arqos_o,  // Read QoS.
+  output logic [3:0]              arregion_o,  // Read region.
+  output logic [USER_WIDTH-1:0]   aruser_o,  // Read-address user.
+  output logic                    arvalid_o,  // Read-address valid.
+  input  logic                    arready_i,  // Read-address ready.
 
-  // AXI Read Data Channel
-  input  logic [ID_WIDTH-1:0]     rid_i,
-  input  logic [DATA_WIDTH-1:0]   rdata_i,
-  input  logic [1:0]              rresp_i,
-  input  logic                    rlast_i,
-  input  logic [USER_WIDTH-1:0]   ruser_i,
-  input  logic                    rvalid_i,
-  output logic                    rready_o
+  input  logic [ID_WIDTH-1:0]     rid_i,  // Read-data ID.
+  input  logic [DATA_WIDTH-1:0]   rdata_i,  // Read data.
+  input  logic [1:0]              rresp_i,  // Read-response status.
+  input  logic                    rlast_i,  // Read last.
+  input  logic [USER_WIDTH-1:0]   ruser_i,  // Read-data user.
+  input  logic                    rvalid_i,  // Read-data valid.
+  output logic                    rready_o  // Read-data ready.
 );
 
   `include "axi/typedef.svh"

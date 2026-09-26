@@ -2,34 +2,31 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file entropy_sha256_whitener.sv
- * @brief SHA-256 entropy whitening and conditioning.
- *
- * @details Accepts a 32-bit entropy stream, accumulates 16 words (512 bits)
- *          into a SHA-256 block, and outputs the 256-bit digest as 8 × 32-bit
- *          words. Provides cryptographic conditioning per NIST SP 800-90B.
- *          When enable_i is LOW the module passes entropy through directly
- *          in bypass mode.
- */
+// Condition a 32-bit entropy stream with SHA-256 whitening per NIST SP 800-90B.
+//
+// Accumulates 16 words (512 bits) into a SHA-256 block and streams the 256-bit digest as
+// eight 32-bit words.
+// When enable_i is low the module bypasses hashing and passes entropy through with
+// ready/valid.
+// busy_o, input_count_o, and output_count_o report hasher progress.
 
 module entropy_sha256_whitener (
-  input       logic       clk_i,
-  input       logic       rst_ni,
+  input       logic       clk_i,        // System clock.
+  input       logic       rst_ni,       // Active-low reset.
 
-  input       logic       entropy_valid_i,
-  input       logic [31:0] entropy_data_i,
-  output      logic       entropy_ready_o,
+  input       logic       entropy_valid_i,  // Entropy valid.
+  input       logic [31:0] entropy_data_i,  // Entropy data.
+  output      logic       entropy_ready_o,  // Entropy ready.
 
-  output      logic       whitened_valid_o,
-  output      logic [31:0] whitened_data_o,
-  input       logic       whitened_ready_i,
+  output      logic       whitened_valid_o,  // Whitened valid.
+  output      logic [31:0] whitened_data_o,  // Whitened data.
+  input       logic       whitened_ready_i,  // Whitened ready.
 
-  input       logic       enable_i,
+  input       logic       enable_i,     // Block enable.
 
-  output      logic       busy_o,
-  output      logic [3:0] input_count_o,
-  output      logic [3:0] output_count_o
+  output      logic       busy_o,       // Operation in progress.
+  output      logic [3:0] input_count_o,  // Input count.
+  output      logic [3:0] output_count_o  // Output count.
 );
 
   /////////////////////

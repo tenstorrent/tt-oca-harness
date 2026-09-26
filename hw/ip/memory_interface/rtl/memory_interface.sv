@@ -1,53 +1,47 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------
-// Memory Interface
+// Decode an AXI memory window and CSR port onto a simple mem_req/mem_rsp bank interface.
 //
-//------------------------------------------------
+// Decodes MEM_BASE_ADDR versus CSR_BASE_ADDR on the AXI slave.
+// csr_out_* forwards unclaimed CSR traffic; busy_o tracks outstanding memory ops.
+// NUM_BANKS sizes split-bank configurations.
 
 module memory_interface #(
 
-  // Memory Generic Parameters
-  parameter int unsigned MEM_ADDR_WIDTH   = 0,
-  parameter int unsigned MEM_DATA_WIDTH   = 0,
-  parameter int unsigned MEM_ID_WIDTH     = 0,
-  parameter type mem_req_t                = logic,
-  parameter type mem_rsp_t                = logic,
-  parameter type mem_axi_req_t            = logic,
-  parameter type mem_axi_resp_t           = logic,
+  parameter int unsigned MEM_ADDR_WIDTH   = 0,              // Memory address width.
+  parameter int unsigned MEM_DATA_WIDTH   = 0,              // Memory data width.
+  parameter int unsigned MEM_ID_WIDTH     = 0,              // Memory ID width.
+  parameter type mem_req_t                = logic,          // Memory request type.
+  parameter type mem_rsp_t                = logic,          // Memory response type.
+  parameter type mem_axi_req_t            = logic,          // AXI memory request type.
+  parameter type mem_axi_resp_t           = logic,          // AXI memory response type.
 
-  // CSR Port Generic Parameters
-  parameter int unsigned CSR_ADDR_WIDTH   = 0,
-  parameter int unsigned CSR_DATA_WIDTH   = 0,
-  parameter type csr_axil_req_t           = logic,
-  parameter type csr_axil_resp_t          = logic,
+  parameter int unsigned CSR_ADDR_WIDTH   = 0,              // CSR address width.
+  parameter int unsigned CSR_DATA_WIDTH   = 0,              // CSR data width.
+  parameter type csr_axil_req_t           = logic,          // CSR AXI-Lite request type.
+  parameter type csr_axil_resp_t          = logic,          // CSR AXI-Lite response type.
 
-  // Address Decode
-  parameter logic [31:0] CSR_BASE_ADDR    = 0,    // CSR base address
-  parameter logic [31:0] MEM_BASE_ADDR    = 0,    // Memory (SRAM) base address
+  parameter logic [31:0] CSR_BASE_ADDR    = 0,              // CSR window base.
+  parameter logic [31:0] MEM_BASE_ADDR    = 0,              // Memory (SRAM) window base.
 
-  parameter int unsigned NUM_BANKS        = 1     // Number of memory banks (for split banks)
+  parameter int unsigned NUM_BANKS        = 1               // Number of memory banks for split banks.
 ) (
-  input   logic                           clk_i,
-  input   logic                           rst_ni,
+  input   logic                           clk_i,            // System clock.
+  input   logic                           rst_ni,           // Async reset, active-low.
 
-  // AXI interface
-  input   mem_axi_req_t                   mem_axi_req_i,
-  output  mem_axi_resp_t                  mem_axi_resp_o,
+  input   mem_axi_req_t                   mem_axi_req_i,    // AXI memory slave request.
+  output  mem_axi_resp_t                  mem_axi_resp_o,   // AXI memory slave response.
 
-  // AXI4-Lite IN interface
-  input   csr_axil_req_t                  csr_in_axil_req_i,
-  output  csr_axil_resp_t                 csr_in_axil_resp_o,
+  input   csr_axil_req_t                  csr_in_axil_req_i, // Inbound CSR AXI-Lite request.
+  output  csr_axil_resp_t                 csr_in_axil_resp_o, // Inbound CSR AXI-Lite response.
 
-  // AXI4-Lite OUT interface
-  output csr_axil_req_t                   csr_out_axil_req_o,
-  input  csr_axil_resp_t                  csr_out_axil_resp_i,
+  output csr_axil_req_t                   csr_out_axil_req_o, // Forwarded CSR AXI-Lite request.
+  input  csr_axil_resp_t                  csr_out_axil_resp_i, // Forwarded CSR AXI-Lite response.
 
-  // Memory Interface
-  output mem_req_t                        mem_req_o,
-  input  mem_rsp_t                        mem_rsp_i,
-  output                                  busy_o
+  output mem_req_t                        mem_req_o,        // Bank memory request.
+  input  mem_rsp_t                        mem_rsp_i,        // Bank memory response.
+  output                                  busy_o            // Outstanding memory activity.
 );
 
   `include "axi/typedef.svh"

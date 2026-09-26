@@ -1,48 +1,60 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// DFD Wrapper
+// Wrap SMC design-for-debug and DFX sidebands.
 //
-//------------------------------------------------------------------------------
-
+// Exposes DFD/DFX control and status into the SMC register and debug fabric.
+// Bridges scan and debug buses between the SMC and the chiplet DFD logic.
 
 module smc_dfd_wrap #(
-  parameter logic [22:0] BASE_ADDR       = 0,
-  parameter int unsigned NUM_INPUT_LANES = 64,
-  // Width of the reference tick accounting counters. Bounds how far clk_gated_i may fall behind
-  // clk_ref_i before ticks are lost; 2**REF_CNT_W ref cycles of slack.
-  parameter int unsigned REF_CNT_W  = 8,
-  localparam int unsigned LANE_WIDTH = 16
+  parameter logic [22:0] BASE_ADDR       = 0,  // BASE ADDR.
+  parameter int unsigned NUM_INPUT_LANES = 64,  // NUM INPUT LANES.
+  parameter int unsigned REF_CNT_W  = 8,  // Width of the reference tick accounting
+                                          // counters. Bounds how far clk_gated_i may fall
+                                          // behind clk_ref_i before ticks are lost;
+                                          // 2**REF_CNT_W ref cycles of slack.
+  localparam int unsigned LANE_WIDTH = 16  // Width of the reference tick accounting
+                                           // counters. Bounds how far clk_gated_i may
+                                           // fall behind clk_ref_i before ticks are lost;
+                                           // 2**REF_CNT_W ref cycles of slack.
 ) (
-  input  logic clk_smc_i,
-  input  logic clk_ref_i,
-  input  logic rst_primary_ni,
+  input  logic clk_smc_i,               // Smc clock.
+  input  logic clk_ref_i,               // Ref clock.
+  input  logic rst_primary_ni,          // Rst primary.
 
-  input  smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_i,
-  output smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_o,
+  input  smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_i,  // Apb smc dfd reg request.
+  output smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_o,  // Apb smc dfd reg response.
 
-  input  smc_pkg::dfd_enable_t dfd_enables_i,
+  input  smc_pkg::dfd_enable_t dfd_enables_i,  // Dfd enables.
 
-  output logic                                             external_action_debug_interrupt_o,
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] external_action_custom_o,
+  output logic                                             external_action_debug_interrupt_o,  // External action
+                                                                                               // debug interrupt.
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] external_action_custom_o,  // External action
+                                                                                      // custom.
 
-  output smc_pkg::xtrigger_t xtrigger_ss_o,
-  input  smc_pkg::xtrigger_t xtrigger_ss_i,
-  input  logic               tdr_dbg_ctrl_clock_stop_en_i,
-  output logic               tdr_dbg_ctrl_clocks_stopped_by_cla_o,
+  output smc_pkg::xtrigger_t xtrigger_ss_o,  // Xtrigger ss.
+  input  smc_pkg::xtrigger_t xtrigger_ss_i,  // Xtrigger ss.
+  input  logic               tdr_dbg_ctrl_clock_stop_en_i,  // Tdr dbg ctrl clock stop en.
+  output logic               tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // Tdr dbg ctrl clocks
+                                                                    // stopped by cla.
 
-  input  tt_dbm_pkg::DbgMuxSelMmr_s             dbg_mux_sel_csr_i,
-  input  logic [NUM_INPUT_LANES*LANE_WIDTH-1:0] debug_bus_i,
-  output logic [7:0]                            debug_marker_o,
+  input  tt_dbm_pkg::DbgMuxSelMmr_s             dbg_mux_sel_csr_i,  // Dbg mux sel csr.
+  input  logic [NUM_INPUT_LANES*LANE_WIDTH-1:0] debug_bus_i,  // Debug bus.
+  output logic [7:0]                            debug_marker_o,  // Debug marker.
 
-  // Trace sink RAMs live outside the DFD block (EXTERNAL_SINK_MEM = 1).
-  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
-  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
+  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Trace sink RAMs live
+                                                                                          // outside the DFD
+                                                                                          // block
+                                                                                          // (EXTERNAL_SINK_MEM =
+                                                                                          // 1) request.
+  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,  // Trace sink RAMs live
+                                                                                           // outside the DFD
+                                                                                           // block
+                                                                                           // (EXTERNAL_SINK_MEM =
+                                                                                           // 1) response.
 
-  // DFT
-  input  logic test_en_i,
-  input  logic scan_rst_ni
+  input  logic test_en_i,               // DFT.
+  input  logic scan_rst_ni              // DFT.
 );
 
   /////////////////////////

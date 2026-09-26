@@ -2,15 +2,17 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// Shared Key Manager interface types and address-map constants.
+// Define the Key Manager interface types and address-map constants.
 //
-// Defines the 32-bit AXI4-Lite channel/request/response types, ROM and SRAM
-// memory req/rsp structs, DRBG AXI-Stream structs, IRQ event and SEP OTP data
-// bundles, and the CPU address-map bases/ends used by the crossbar and CPU
-// router. Each register-block port spans exactly 2^MIN_ADDR_WIDTH bytes from
-// its generated package so registers are not aliased under a second address.
-// The OTP window is a full 4 KB page remapped by key_manager onto the system
-// eFuse controller (MAP/CTRL/MMR sub-regions keep addr[11:0]).
+// Shared by every Key Manager subsystem component:
+//
+// - AXI4-Lite channel, request and response types (32-bit)
+// - ROM and SRAM memory interface structs (req/rsp)
+// - DRBG AXI-Stream interface structs
+// - IRQ event type
+// - SEP OTP data interface struct
+// - Full CPU address map constants for internal and external peripherals, used by the
+//   crossbar and the CPU router
 
 package km_intf_pkg;
 
@@ -22,9 +24,9 @@ package km_intf_pkg;
   // AXI4-Lite Type Definitions (32-bit)
   // =========================================================================
 
-  localparam int unsigned KM_AXI_ADDR_WIDTH = 32;  // AXI4-Lite address width
-  localparam int unsigned KM_AXI_DATA_WIDTH = 32;  // AXI4-Lite data width
-  localparam int unsigned KM_AXI_STRB_WIDTH = KM_AXI_DATA_WIDTH / 8;  // AXI4-Lite write-strobe width
+  localparam int unsigned KM_AXI_ADDR_WIDTH = 32;  // AXI4-Lite address width.
+  localparam int unsigned KM_AXI_DATA_WIDTH = 32;  // AXI4-Lite data width.
+  localparam int unsigned KM_AXI_STRB_WIDTH = KM_AXI_DATA_WIDTH / 8;  // AXI4-Lite write-strobe width.
 
   // 32-bit AXI address type for the Key Manager subsystem.
   typedef logic [KM_AXI_ADDR_WIDTH-1:0] km_addr_t;
@@ -37,52 +39,54 @@ package km_intf_pkg;
   // AXI4-Lite Channel and Request/Response Types
   //=========================================================================
 
-  // AXI-Lite channel, request, and response types (macro-generated:
-  // km_axil_aw/w/b/ar/r_chan_t, km_axil_req_t, km_axil_resp_t).
+  // AXI-Lite channel, request, and response types (macro-generated). Expands to
+  // km_axil_aw_chan_t, km_axil_w_chan_t, km_axil_b_chan_t, km_axil_ar_chan_t,
+  // km_axil_r_chan_t, km_axil_req_t and km_axil_resp_t.
   `AXI_LITE_TYPEDEF_ALL(km_axil, km_addr_t, km_data_t, km_strb_t)
 
   //=========================================================================
   // Memory Interface Types
   //=========================================================================
 
-  parameter int unsigned KM_MEM_ADDR_WIDTH = 32;  // Memory byte-address width
-  parameter int unsigned KM_MEM_DATA_WIDTH = 32;  // Memory data width
-  parameter int unsigned KM_MEM_STRB_WIDTH = KM_MEM_DATA_WIDTH / 8;  // Memory byte-enable width
+  // Memory interface common widths (byte address, data, byte-enables).
+  parameter int unsigned KM_MEM_ADDR_WIDTH = 32;  // Byte address width.
+  parameter int unsigned KM_MEM_DATA_WIDTH = 32;  // Memory data width.
+  parameter int unsigned KM_MEM_STRB_WIDTH = KM_MEM_DATA_WIDTH / 8;  // Memory byte-enable width.
 
-  parameter int unsigned KM_ROM_MEM_ADDR_WIDTH = 12;  // ROM word-address width (4K words = 16 KB)
+  parameter int unsigned KM_ROM_MEM_ADDR_WIDTH = 12;  // ROM word-address width (12 bits = 4K words = 16 KB).
 
-  parameter int unsigned KM_SRAM_MEM_ADDR_WIDTH = 13;  // SRAM word-address width (8K words = 32 KB)
+  parameter int unsigned KM_SRAM_MEM_ADDR_WIDTH = 13;  // SRAM word-address width (13 bits = 8K words = 32 KB).
 
   // ROM memory request (CPU -> ROM hard macro).
   typedef struct packed {
-    logic                             req;         // Request valid
-    logic [KM_ROM_MEM_ADDR_WIDTH-1:0] addr;        // Word address
+    logic                             req;           // Request valid.
+    logic [KM_ROM_MEM_ADDR_WIDTH-1:0] addr;        // Word address.
   } km_rom_mem_req_t;
 
   // ROM memory response (ROM hard macro -> CPU).
   typedef struct packed {
-    logic                           gnt;           // Grant/ready
-    logic                           rvalid;        // Read data valid
-    logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data
-    logic [KM_MEM_STRB_WIDTH-1:0]   parity;        // Byte parity bits
+    logic                           gnt;           // Grant/ready.
+    logic                           rvalid;        // Read data valid.
+    logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data.
+    logic [KM_MEM_STRB_WIDTH-1:0]   parity;        // Byte parity bits.
   } km_rom_mem_rsp_t;
 
   // SRAM memory request (CPU -> SRAM hard macro).
   typedef struct packed {
-    logic                              req;           // Request valid
-    logic                              we;            // Write enable
-    logic [KM_MEM_STRB_WIDTH-1:0]      be;            // Byte enables
-    logic [KM_SRAM_MEM_ADDR_WIDTH-1:0] addr;          // Word address
-    logic [KM_MEM_DATA_WIDTH-1:0]      wdata;         // Write data
-    logic [KM_MEM_STRB_WIDTH-1:0]      wparity;       // Write parity bits
+    logic                              req;           // Request valid.
+    logic                              we;            // Write enable.
+    logic [KM_MEM_STRB_WIDTH-1:0]      be;            // Byte enables.
+    logic [KM_SRAM_MEM_ADDR_WIDTH-1:0] addr;          // Word address.
+    logic [KM_MEM_DATA_WIDTH-1:0]      wdata;         // Write data.
+    logic [KM_MEM_STRB_WIDTH-1:0]      wparity;       // Write parity bits.
   } km_sram_mem_req_t;
 
   // SRAM memory response (SRAM hard macro -> CPU).
   typedef struct packed {
-    logic                           gnt;           // Grant/ready
-    logic                           rvalid;        // Read data valid
-    logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data
-    logic [KM_MEM_STRB_WIDTH-1:0]   rparity;       // Read parity bits
+    logic                           gnt;           // Grant/ready.
+    logic                           rvalid;        // Read data valid.
+    logic [KM_MEM_DATA_WIDTH-1:0]   rdata;         // Read data.
+    logic [KM_MEM_STRB_WIDTH-1:0]   rparity;       // Read parity bits.
   } km_sram_mem_rsp_t;
 
   //=========================================================================
@@ -91,14 +95,15 @@ package km_intf_pkg;
 
   // Packed IRQ event flags for the Key Manager subsystem.
   typedef struct packed {
-    logic rom_parity_err;       // ROM parity error event
-    logic sram_parity_err;      // SRAM parity error event
+    logic rom_parity_err;       // ROM parity error event.
+    logic sram_parity_err;      // SRAM parity error event.
   } km_irq_events_t;
 
-  // Key Manager CPU address map: each register-block port spans exactly the
-  // window its block decodes (2^MIN_ADDR_WIDTH). Addresses between one port's
-  // end and the next base get DECERR from the crossbar; unmapped offsets
-  // inside a port window get SLVERR from --err-if-bad-addr register blocks.
+  // Key Manager CPU address map.
+  //
+  // Every register-block port spans exactly the window its block decodes, 2^MIN_ADDR_WIDTH
+  // bytes taken from the generated register package, so no register is reachable from more
+  // than one address. The table sizes are what those widths yield.
   //
   //  | Region | Base        | End         | Size  | Notes                                   |
   //  |--------|-------------|-------------|-------|-----------------------------------------|
@@ -119,18 +124,26 @@ package km_intf_pkg;
   //  | HMAC   | 0x0001_B000 | 0x0001_B07F | 128 B |                                         |
   //  | ABR    | 0x0001_C000 | 0x0001_C7FF |  2 KB |                                         |
   //  | VROM   | 0x1000_0000 | 0x1000_FFFF | 64 KB |                                         |
+  //
+  // Addresses between one port's end and the next port's base are outside every crossbar
+  // rule, so the crossbar answers DECERR; unmapped offsets inside a port's window reach its
+  // register block, which is generated with --err-if-bad-addr and answers SLVERR.
 
-  localparam km_addr_t ROM_BASE_ADDR = 32'h0000_0000;   // ROM window base
-  localparam km_addr_t ROM_END_ADDR = 32'h0000_3FFF;    // ROM window end (inclusive)
-  localparam km_addr_t SRAM_BASE_ADDR = 32'h0000_8000;  // SRAM window base
-  localparam km_addr_t SRAM_END_ADDR = 32'h0000_FFFF;   // SRAM window end (inclusive)
+  // Internal memory
+  localparam km_addr_t ROM_BASE_ADDR = 32'h0000_0000;   // ROM window base.
+  localparam km_addr_t ROM_END_ADDR = 32'h0000_3FFF;    // ROM window end (inclusive).
+  localparam km_addr_t SRAM_BASE_ADDR = 32'h0000_8000;  // SRAM window base.
+  localparam km_addr_t SRAM_END_ADDR = 32'h0000_FFFF;   // SRAM window end (inclusive).
 
-  // Last inclusive address of a register-block decode window of width addr_width.
+  // Last address of a rule that spans one register block's decode window. A block keeps
+  // only `addr_width` low address bits, so a rule any wider than its window would let the
+  // block's registers repeat through the rest of the rule under a second set of addresses.
   function automatic km_addr_t km_window_end(km_addr_t base, int unsigned addr_width);
     return base + km_addr_t'((32'd1 << addr_width) - 1);
   endfunction
 
-  localparam km_addr_t MBOX_BASE_ADDR = 32'h0001_0000;  // Mailbox register window base
+  // Internal peripherals
+  localparam km_addr_t MBOX_BASE_ADDR = 32'h0001_0000;  // Mailbox register window base.
   localparam km_addr_t MBOX_END_ADDR = km_window_end(
       MBOX_BASE_ADDR, km_mailbox_km_reg_pkg::KM_MAILBOX_KM_REG_MIN_ADDR_WIDTH
   );  // Mailbox register window end
@@ -147,9 +160,16 @@ package km_intf_pkg;
       DRBG_SAMPLER_BASE_ADDR, km_drbg_sampler_reg_pkg::KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH
   );  // DRBG sampler window end
 
+  // OTP / eFuse access port. The crossbar routes 0x0001_1xxx to xbar master port 8;
+  // key_manager.sv replaces addr[31:12] with OTP_EFUSE_REMAP_BASE[31:12] before driving
+  // efuse_req_o, so the shared SEP efuse_interface_controller is reached correctly.
+  // Accessible sub-regions: MAP/shadow (offset 0x000-0x3FF), CTRL (offset 0x400-0x41B),
+  // MMR (offset 0x500-0x56F). This rule is a full 4 KB page: the remap keeps addr[11:0]
+  // and the sub-regions run to 0x56F.
   localparam km_addr_t OTP_BASE_ADDR = 32'h0001_1000;  // OTP/eFuse KM-local window base
   localparam km_addr_t OTP_END_ADDR = 32'h0001_1FFF;   // OTP/eFuse KM-local window end
 
+  // External crypto engine ports
   localparam km_addr_t OTBN_BASE_ADDR = 32'h0001_8000;  // OTBN window base
   localparam km_addr_t OTBN_END_ADDR = km_window_end(
       OTBN_BASE_ADDR, otbn_wrapper_key_reg_pkg::OTBN_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
@@ -171,20 +191,34 @@ package km_intf_pkg;
       ABR_BASE_ADDR, abr_wrapper_key_reg_pkg::ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
   );  // Adams Bridge window end
 
+  // Testbench virtual ROM (rodata)
   localparam km_addr_t VROM_BASE_ADDR = 32'h1000_0000;  // Virtual ROM window base
   localparam km_addr_t VROM_END_ADDR = 32'h1000_FFFF;   // Virtual ROM window end
 
-  localparam int unsigned ROM_SIZE_BYTES = ROM_END_ADDR - ROM_BASE_ADDR + 1;  // ROM size in bytes
-  localparam int unsigned SRAM_SIZE_BYTES = SRAM_END_ADDR - SRAM_BASE_ADDR + 1;  // SRAM size in bytes
-  localparam int unsigned VROM_SIZE_BYTES = VROM_END_ADDR - VROM_BASE_ADDR + 1;  // VROM size in bytes
+  // Region sizes derived from the address ranges above.
+  localparam int unsigned ROM_SIZE_BYTES = ROM_END_ADDR - ROM_BASE_ADDR + 1;  // 16 KB
+  localparam int unsigned SRAM_SIZE_BYTES = SRAM_END_ADDR - SRAM_BASE_ADDR + 1;  // 32 KB
+  localparam int unsigned VROM_SIZE_BYTES = VROM_END_ADDR - VROM_BASE_ADDR + 1;  // 64 KB
 
+  // SRAM write-lock granularity: 1 KB per lockable region.
   localparam int unsigned SRAM_LOCK_REGION_BYTES = 1024;  // Bytes per write-lock region
   localparam int unsigned SRAM_NUM_LOCK_REGIONS = SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES;  // Lock region count
 
-  localparam int unsigned KM_DRBG_AXIS_DATA_WIDTH = 32;  // DRBG AXI-Stream data width
-  localparam int unsigned KM_DRBG_AXIS_STRB_WIDTH = KM_DRBG_AXIS_DATA_WIDTH / 8;  // DRBG AXI-Stream strobe width
+  // =========================================================================
+  // DRBG AXI-Stream Interface (KM is slave, DRBG is master)
+  // =========================================================================
 
-  // DRBG AXI-Stream request (DRBG→KM); tuser mirrors drbg_pkg for width-matched bind.
+  // DRBG AXI-Stream bus widths (32-bit data, 4-bit strobe).
+  localparam int unsigned KM_DRBG_AXIS_DATA_WIDTH = 32;
+  localparam int unsigned KM_DRBG_AXIS_STRB_WIDTH = KM_DRBG_AXIS_DATA_WIDTH / 8;
+
+  // DRBG AXI-Stream request (DRBG master -> KM sampler slave).
+  //
+  // `tuser` is the per-beat sideband carried on drbg_pkg::drbg_axis_req_t (FIPS provenance
+  // for post-CSRNG DRBG output). KM does not consume `tuser` but must mirror the producer
+  // struct layout so the port connection at
+  // sep_crypto.u_key_manager_s3c_scan.drbg_axis_req_i is not a width-mismatched (and thus
+  // bit-shifted) bind.
   typedef struct packed {
     logic                               tvalid;
     logic [KM_DRBG_AXIS_DATA_WIDTH-1:0] tdata;
@@ -198,7 +232,15 @@ package km_intf_pkg;
   //=========================================================================
   // SEP OTP Data Interface
   //=========================================================================
-  // SEP OTP bundle for KMCSR: differential life-cycle/demotion; dual-rail 256-bit IDs.
+  // SEP OTP data bundle read directly from port signals by KMCSR.
+  //
+  // The life-cycle field is differentially encoded (4-bit value in 8 bits); the demotion
+  // state fields are 1-bit values encoded into 2 bits each. The four 256-bit secret fields
+  // (chiplet_uid, class_key, sip_uid, sys_uid) and the three 256-bit public identity fields
+  // (sep_chiplet_id, sep_sip_id, sep_sys_id) are dual-rail encoded by
+  // prim_diff_encode_multi in sep_crypto.sv: the 512-bit wire carries
+  // {~value[255:0], value[255:0]}, so [511:256] is the complement (~value) and [255:0] is
+  // the value.
   typedef struct packed {
     logic [7:0]   life_cycle;           // 4-bit value differentially encoded into 8-bit
     logic [1:0]   demotion_state_1;     // 1-bit value differentially encoded into 2-bit

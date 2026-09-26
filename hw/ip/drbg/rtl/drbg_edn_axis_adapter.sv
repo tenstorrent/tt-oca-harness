@@ -1,44 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-// drbg_edn_axis_adapter
-//
-// Native EDN endpoint to AXI-Stream adapter for the DRBG wrapper.
-//----------------------------------------------------------
 
-/**
- * @file drbg_edn_axis_adapter.sv
- * @brief Converts native EDN endpoint req/ack traffic into AXI-Stream outputs.
- *
- * @details Each endpoint is serviced independently with a local same-clock FIFO.
- *          The adapter keeps `edn_req` asserted whenever the endpoint FIFO has
- *          space, captures `{edn_fips, edn_bus}` on `edn_ack`, and presents
- *          the buffered words on 32-bit AXI-Stream outputs with
- *          `tstrb = 4'hF` and a per-beat `tuser` sideband carrying the FIPS
- *          provenance of the genbits.
- *
- * @param EDN_ENDPOINT_COUNT Number of exposed EDN endpoints.
- * @param ENDPOINT_FIFO_DEPTH FIFO depth for each endpoint AXI-Stream output.
- */
+// Convert native EDN endpoint req/ack traffic into per-endpoint AXI-Stream outputs.
+//
+// Each endpoint is serviced independently with a local same-clock FIFO.
+// The adapter keeps edn_req asserted whenever the endpoint FIFO has space, captures
+// {edn_fips, edn_bus} on edn_ack, and presents the buffered words on 32-bit AXI-Stream
+// outputs with tstrb = 4'hF and a per-beat tuser sideband carrying the FIPS provenance of
+// the genbits.
+
 module drbg_edn_axis_adapter
   import drbg_pkg::*;
 #(
-  parameter int unsigned EDN_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_ENDPOINT_COUNT,
-  parameter int unsigned ENDPOINT_FIFO_DEPTH = DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH
+  parameter int unsigned EDN_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_ENDPOINT_COUNT, // Number of exposed EDN endpoints.
+  parameter int unsigned ENDPOINT_FIFO_DEPTH = DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH // FIFO depth for each endpoint AXI-Stream output.
 ) (
-  input  wire logic                                                   clk_i,
-  input  wire logic                                                   rst_ni,
+  input  wire logic                                                   clk_i, // System clock.
+  input  wire logic                                                   rst_ni, // Async reset, active-low.
 
-  output edn_pkg::edn_req_t [EDN_ENDPOINT_COUNT-1:0]                  edn_req_o,
-  input  wire edn_pkg::edn_rsp_t [EDN_ENDPOINT_COUNT-1:0]             edn_rsp_i,
+  output edn_pkg::edn_req_t [EDN_ENDPOINT_COUNT-1:0]                  edn_req_o, // Native EDN requests toward EDN.
+  input  wire edn_pkg::edn_rsp_t [EDN_ENDPOINT_COUNT-1:0]             edn_rsp_i, // Native EDN responses from EDN.
 
-  output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0]                     edn_axis_o,
-  input  wire drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0]                edn_axis_i,
+  output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0]                     edn_axis_o, // Per-endpoint AXI-Stream out.
+  input  wire drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0]                edn_axis_i, // Per-endpoint AXI-Stream ready.
 
-  output logic [EDN_ENDPOINT_COUNT-1:0]                               endpoint_fifo_full_o,
-  output logic [EDN_ENDPOINT_COUNT-1:0][$clog2(ENDPOINT_FIFO_DEPTH + 1)-1:0]
+  output logic [EDN_ENDPOINT_COUNT-1:0]                               endpoint_fifo_full_o, // Per-endpoint FIFO full.
+  output logic [EDN_ENDPOINT_COUNT-1:0][$clog2(ENDPOINT_FIFO_DEPTH + 1)-1:0] // Per-endpoint FIFO fill level.
                                                                       endpoint_fifo_depth_o
 );
 

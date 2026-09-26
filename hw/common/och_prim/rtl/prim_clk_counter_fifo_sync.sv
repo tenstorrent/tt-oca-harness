@@ -1,24 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Clock Counter FIFO Sync
+// Measure clk_i against a reference window and return the count through a CDC FIFO.
 //
-//--------------------------------------------------
-module prim_clk_counter_fifo_sync #(
-  parameter int unsigned CLOCK_COUNTER_WIDTH = 64
-) (
-  input  logic                            ref_clk_i,
-  input  logic                            ref_clk_rst_ni,
-  input  logic                            ref_clk_done_i,
-  input  logic                            tile_rst_ni,
-  input  logic                            ss_clk_i,
-  input  logic                            ss_rst_ni,
+// End the reference window on ref_clk_done_i in the ref_clk_i domain.
+// Arm a measurement with clk_count_en_i; pulse clk_count_valid_o when clk_counts_o is ready
+// on clk_i.
+// tile_rst_ni and ss_rst_ni clear the tile and subsystem sides of the path.
 
-  input  logic                            clk_count_en_i,
-  input  logic                            clk_i,
-  output logic                            clk_count_valid_o,
-  output logic [CLOCK_COUNTER_WIDTH-1:0]  clk_counts_o
+module prim_clk_counter_fifo_sync #(
+  parameter int unsigned CLOCK_COUNTER_WIDTH = 64  // Returned count width.
+) (
+  input  logic                            ref_clk_i,  // Reference clock.
+  input  logic                            ref_clk_rst_ni,  // Async reset in the reference domain, active-low.
+  input  logic                            ref_clk_done_i,  // Reference window complete.
+  input  logic                            tile_rst_ni,  // Tile-side async reset, active-low.
+  input  logic                            ss_clk_i,  // Subsystem clock on the CDC path.
+  input  logic                            ss_rst_ni,  // Subsystem async reset, active-low.
+
+  input  logic                            clk_count_en_i,  // Arms a count on clk_i.
+  input  logic                            clk_i,  // Clock under measurement.
+  output logic                            clk_count_valid_o,  // clk_counts_o valid on clk_i.
+  output logic [CLOCK_COUNTER_WIDTH-1:0]  clk_counts_o  // Measured count after CDC.
 );
 
   logic [CLOCK_COUNTER_WIDTH-1:0] clock_count;

@@ -1,52 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// AXI Zeroer
+// Write zeros over a programmed AXI address range from a ctrl port.
+//
+// zeroer_ctrl_axi_* programs start and end; mst_axi_* performs the clears.
+// cg_enable_i gates the datapath clock when idle; zeroer_intp_o signals completion.
 
 module zeroer #(
-  // AXI ctrl interface types
-  parameter type zeroer_ctrl_req_t  = logic,
-  parameter type zeroer_ctrl_resp_t = logic,
+  parameter type zeroer_ctrl_req_t  = logic,                // Ctrl AXI request type.
+  parameter type zeroer_ctrl_resp_t = logic,                // Ctrl AXI response type.
 
-  // AXI master interface types
-  parameter type mst_req_t  = logic,
-  parameter type mst_resp_t = logic,
+  parameter type mst_req_t  = logic,                        // Master AXI request type.
+  parameter type mst_resp_t = logic,                        // Master AXI response type.
 
-  // Width params for ctrl-side AXI-Lite derivation + axi_to_axi_lite
-  parameter int unsigned CTRL_ADDR_WIDTH = 5,
-  parameter int unsigned CTRL_DATA_WIDTH = 64,
-  parameter int unsigned CTRL_ID_WIDTH   = 8,
-  parameter int unsigned CTRL_USER_WIDTH = 12,
+  parameter int unsigned CTRL_ADDR_WIDTH = 5,               // Ctrl AXI address width.
+  parameter int unsigned CTRL_DATA_WIDTH = 64,              // Ctrl AXI data width.
+  parameter int unsigned CTRL_ID_WIDTH   = 8,               // Ctrl AXI ID width.
+  parameter int unsigned CTRL_USER_WIDTH = 12,              // Ctrl AXI user width.
 
-  // Width params for master-side internal logic
-  parameter int unsigned AXI_ADDR_WIDTH = 56,
-  parameter int unsigned AXI_DATA_WIDTH = 64,
-  parameter int unsigned AXI_USER_WIDTH = 12,
-  parameter int unsigned MST_ID_WIDTH   = 3,
+  parameter int unsigned AXI_ADDR_WIDTH = 56,               // Master AXI address width.
+  parameter int unsigned AXI_DATA_WIDTH = 64,               // Master AXI data width.
+  parameter int unsigned AXI_USER_WIDTH = 12,               // Master AXI user width.
+  parameter int unsigned MST_ID_WIDTH   = 3,                // Master AXI ID width.
 
-  parameter int unsigned CG_HYSTERESIS_W = 6
+  parameter int unsigned CG_HYSTERESIS_W = 6                // Clock-gater hysteresis width.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,                                        // System clock.
+  input logic rst_ni,                                       // Async reset, active-low.
+  input logic test_en_i,                                    // DFT test enable.
 
-  input logic                       cg_enable_i,
-  input logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,
+  input logic                       cg_enable_i,            // Enable datapath clock gating.
+  input logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,        // Idle cycles before gating.
 
-  output logic zeroer_busy_o,
-  output logic zeroer_intp_o,
+  output logic zeroer_busy_o,                               // Zeroer has work in flight.
+  output logic zeroer_intp_o,                               // Completion interrupt.
 
-  // AXI Register Interface
-  input  zeroer_ctrl_req_t  zeroer_ctrl_axi_req_i,
-  output zeroer_ctrl_resp_t zeroer_ctrl_axi_resp_o,
+  input  zeroer_ctrl_req_t  zeroer_ctrl_axi_req_i,          // Ctrl AXI slave request.
+  output zeroer_ctrl_resp_t zeroer_ctrl_axi_resp_o,         // Ctrl AXI slave response.
 
-  // Zeroer Output Interface
-  output mst_req_t  mst_axi_req_o,
-  input  mst_resp_t mst_axi_resp_i,
+  output mst_req_t  mst_axi_req_o,                          // Clearing AXI master request.
+  input  mst_resp_t mst_axi_resp_i,                         // Clearing AXI master response.
 
-  // Clock gater activity indicators
-  output logic zeroer_clk_active_o,
-  output logic zeroer_bus_active_o
+  output logic zeroer_clk_active_o,                         // Datapath clock is running.
+  output logic zeroer_bus_active_o                          // Master bus has traffic.
 );
 
   `include "ocah_assert.svh"

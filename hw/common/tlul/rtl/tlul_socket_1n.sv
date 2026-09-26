@@ -1,71 +1,50 @@
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-//
-// TL-UL socket 1:N module
-//
-// configuration settings
-//   device_count: 4
-//
-// Verilog parameters
-//   HReqPass:      if 1 then host requests can pass through on empty fifo,
-//                  default 1
-//   HRspPass:      if 1 then host responses can pass through on empty fifo,
-//                  default 1
-//   DReqPass:      (one per device_count) if 1 then device i requests can
-//                  pass through on empty fifo, default 1
-//   DRspPass:      (one per device_count) if 1 then device i responses can
-//                  pass through on empty fifo, default 1
-//   HReqDepth:     Depth of host request FIFO, default 2
-//   HRspDepth:     Depth of host response FIFO, default 2
-//   DReqDepth:     (one per device_count) Depth of device i request FIFO,
-//                  default 2
-//   DRspDepth:     (one per device_count) Depth of device i response FIFO,
-//                  default 2
-//   ExplicitErrs:  This module always returns a request error if dev_select_i
-//                  is greater than N-1. If ExplicitErrs is set then the width
-//                  of the dev_select_i signal will be chosen to make sure that
-//                  this is possible. This only makes a difference if N is a
-//                  power of 2.
-//
-// Requests must stall to one device until all responses from other devices
-// have returned.  Need to keep a counter of all outstanding requests and
-// wait until that counter is zero before switching devices.
-//
-// This module will return a request error if the input value of 'dev_select_i'
-// is not within the range 0..N-1. Thus the instantiator of the socket
-// can indicate error by any illegal value of dev_select_i. 4'b1111 is
-// recommended for visibility
-//
-// The maximum value of N is 63
 
+// Steer one TL-UL host onto N device ports.
+//
+// Route each A-channel request to tl_d_o[dev_select_i] through optional host and
+// per-device FIFOs. Maximum N is 63.
+//
+// Stall switching to another device until all outstanding responses from other devices
+// have returned: keep a counter of outstanding requests and wait until it is zero before
+// switching.
+//
+// Return a request error when dev_select_i is outside 0..N-1. The instantiator may force
+// an error with any illegal select; 4'b1111 is recommended for visibility. When
+// ExplicitErrs is set, widen dev_select_i so value N is representable and can request
+// that error response.
+//
+// FIFO parameters:
+//
+// - HReqPass/HRspPass and DReqPass/DRspPass allow fall-through when the corresponding
+//   FIFO is empty.
+// - HReqDepth/HRspDepth and DReqDepth/DRspDepth set FIFO depths; the D* depths pack one
+//   nibble per device.
 
 module tlul_socket_1n #(
-  parameter int unsigned  N            = 4,
-  parameter bit           HReqPass     = 1'b1,
-  parameter bit           HRspPass     = 1'b1,
-  parameter bit [N-1:0]   DReqPass     = {N{1'b1}},
-  parameter bit [N-1:0]   DRspPass     = {N{1'b1}},
-  parameter bit [3:0]     HReqDepth    = 4'h1,
-  parameter bit [3:0]     HRspDepth    = 4'h1,
-  parameter bit [N*4-1:0] DReqDepth    = {N{4'h1}},
-  parameter bit [N*4-1:0] DRspDepth    = {N{4'h1}},
-  parameter bit           ExplicitErrs = 1'b1,
+  parameter int unsigned  N            = 4,           // Number of device ports (max 63).
+  parameter bit           HReqPass     = 1'b1,        // Host request FIFO fall-through.
+  parameter bit           HRspPass     = 1'b1,        // Host response FIFO fall-through.
+  parameter bit [N-1:0]   DReqPass     = {N{1'b1}},   // Per-device request FIFO fall-through.
+  parameter bit [N-1:0]   DRspPass     = {N{1'b1}},   // Per-device response FIFO fall-through.
+  parameter bit [3:0]     HReqDepth    = 4'h1,        // Host request FIFO depth.
+  parameter bit [3:0]     HRspDepth    = 4'h1,        // Host response FIFO depth.
+  parameter bit [N*4-1:0] DReqDepth    = {N{4'h1}},   // Packed per-device request FIFO depths.
+  parameter bit [N*4-1:0] DRspDepth    = {N{4'h1}},   // Packed per-device response FIFO depths.
+  parameter bit           ExplicitErrs = 1'b1,        // Widen select so N can request an error.
 
-  // The width of dev_select_i. We must be able to select any of the N devices
-  // (i.e. values 0..N-1). If ExplicitErrs is set, we also need to be able to
-  // represent N.
-  localparam int unsigned NWD = $clog2(ExplicitErrs ? N+1 : N)
+  localparam int unsigned NWD = $clog2(ExplicitErrs ? N+1 : N)  // Width of dev_select_i.
 ) (
-  input                     clk_i,
-  input                     rst_ni,
-  input  tlul_pkg::tl_h2d_t tl_h_i,
-  output tlul_pkg::tl_d2h_t tl_h_o,
-  output tlul_pkg::tl_h2d_t tl_d_o    [N],
-  input  tlul_pkg::tl_d2h_t tl_d_i    [N],
-  input  [NWD-1:0]          dev_select_i
+  input                     clk_i,         // System clock.
+  input                     rst_ni,        // Active-low reset.
+  input  tlul_pkg::tl_h2d_t tl_h_i,        // Host-side TL-UL request.
+  output tlul_pkg::tl_d2h_t tl_h_o,        // Host-side TL-UL response.
+  output tlul_pkg::tl_h2d_t tl_d_o    [N], // Per-device TL-UL requests.
+  input  tlul_pkg::tl_d2h_t tl_d_i    [N], // Per-device TL-UL responses.
+  input  [NWD-1:0]          dev_select_i   // Device index; out of range (or N) means error.
 );
-
   `include "prim_assert.sv"
 
   `OCAH_OT_ASSERT_INIT(maxN, N < 64)

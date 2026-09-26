@@ -1,220 +1,159 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP Security Processor
+// Integrate the SEP security processor CPU, crypto, IO, SMN, and lifecycle boundaries.
+//
+// Exposes JTAG, DMI, memory-macro, SMN AXI, crypto SRAM, eFuse, SPI, lifecycle, mailbox,
+// and Key Manager error interfaces to the integrator.
+// sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl
+// CSRs for the SMU AXI crossbar SEP-target rule.
+// When unused, tie test_en_i to 1'b0 and scan_rst_ni to 1'b1.
 
 `include "axi/assign.svh"
 `include "prim_assert.sv"
 
 module sep #(
-  parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
-  parameter bit ABR_MASKING_EN = 1'b1,
-  parameter int unsigned ABR_SRAM_LATENCY = 1,
-  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,
-  // Size for the vendor eFuse shim CSR block
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,
-  // During synthesis, to be replaced with the actual token digest embedded in the netlist
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
+  parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for look-ahead.
+  parameter bit ABR_MASKING_EN = 1'b1,        // Enable Adams Bridge 2-share DOM masking.
+  parameter int unsigned ABR_SRAM_LATENCY = 1,  // Adams Bridge SRAM read latency in cycles.
+  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size of the vendor eFuse shim CSR block.
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token digest; replace at synthesis.
 ) (
-  input  logic clk_i,
-  input  logic clk_ref_i,           // Free-running reference clock for REFERENCE_COUNTER
-  input  logic clk_wdt_i,           // 200 kHz clock for WDT timer
-  input  logic rst_ni,
-  input  logic dbg_rstb_i,          // EL2 debugger reset
-  input  logic wdt_rst_ni,          // Aggregated WDT Resets from SMC and SEP
+  input  logic clk_i,                         // System clock.
+  input  logic clk_ref_i,                     // Free-running reference clock for REFERENCE_COUNTER.
+  input  logic clk_wdt_i,                     // 200 kHz clock for the WDT timer.
+  input  logic rst_ni,                        // Active-low reset.
+  input  logic dbg_rstb_i,                    // EL2 debugger reset.
+  input  logic wdt_rst_ni,                    // Aggregated WDT resets from SMC and SEP, active-low.
 
-  output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
+  output logic wdt_timer_rst_req_o,           // SEP WDT bite reset request, active-high, to the SMC reset unit.
 
-  input  logic jtag_tck_i,   // JTAG clk
-  input  logic jtag_tms_i,   // JTAG TMS
-  input  logic jtag_tdi_i,   // JTAG tdi
-  input  logic jtag_trst_ni, // JTAG Reset
-  output logic jtag_tdo_o,   // JTAG TDO
-  output logic jtag_tdoEn_o, // JTAG Test Data Output enable
+  input  logic jtag_tck_i,                    // JTAG clock.
+  input  logic jtag_tms_i,                    // JTAG TMS.
+  input  logic jtag_tdi_i,                    // JTAG TDI.
+  input  logic jtag_trst_ni,                  // JTAG reset, active-low.
+  output logic jtag_tdo_o,                    // JTAG TDO.
+  output logic jtag_tdoEn_o,                  // JTAG TDO output enable.
 
-  // JTAG SEP Reset Control
-  input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
+  input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,  // JTAG SEP reset control.
 
-  // OTP debug AXI-Lite manager interface
-  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager request.
+  output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,  // OTP debug AXI-Lite manager response.
 
-  // external MPC halt/run interface
-  input  logic mpc_debug_halt_req_i, // Async halt request
-  input  logic mpc_debug_run_req_i,  // Async run request
-  input  logic mpc_reset_run_req_i,  // Run/halt after reset
+  input  logic mpc_debug_halt_req_i,          // Async MPC debug halt request.
+  input  logic mpc_debug_run_req_i,           // Async MPC debug run request.
+  input  logic mpc_reset_run_req_i,           // Run/halt after reset.
 
-  input  logic cpu_halt_req_i,      // Async halt req to CPU
-  input  logic cpu_run_req_i, // Async restart req to CPU
+  input  logic cpu_halt_req_i,                // Async halt request to the CPU.
+  input  logic cpu_run_req_i,                 // Async restart request to the CPU.
 
-  // DFT
-  // Default tie-offs when unused: test_en_i=1'b0, scan_rst_ni=1'b1
-  input  logic test_en_i,     // DFT test-enable (scan-enable)
-  input  logic scan_rst_ni,   // DFT scan reset (active-low) for reset synchronizer bypass
+  input  logic test_en_i,                     // DFT test-enable / scan-enable; tie 1'b0 when unused.
+  input  logic scan_rst_ni,                   // DFT scan reset, active-low, for reset synchronizer bypass; tie 1'b1 when unused.
 
-  input  logic ext_boot_seq_done_i,
+  input  logic ext_boot_seq_done_i,           // External boot sequence done.
 
-  // DMI port for uncore
-  input  logic        dmi_core_enable_i,
-  input  logic        dmi_uncore_enable_i,
-  output logic        dmi_uncore_en_o,
-  output logic        dmi_uncore_wr_en_o,
-  output logic [6:0]  dmi_uncore_addr_o,
-  output logic [31:0] dmi_uncore_wdata_o,
-  input  logic [31:0] dmi_uncore_rdata_i,
-  output logic        dmi_active_o,
+  input  logic        dmi_core_enable_i,      // DMI core enable.
+  input  logic        dmi_uncore_enable_i,    // DMI uncore enable.
+  output logic        dmi_uncore_en_o,        // DMI uncore access enable.
+  output logic        dmi_uncore_wr_en_o,     // DMI uncore write enable.
+  output logic [6:0]  dmi_uncore_addr_o,      // DMI uncore address.
+  output logic [31:0] dmi_uncore_wdata_o,     // DMI uncore write data.
+  input  logic [31:0] dmi_uncore_rdata_i,     // DMI uncore read data.
+  output logic        dmi_active_o,           // DMI active.
 
-  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,
+  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,  // SEP CPU trace bundle.
 
-  // CPU lockstep control/status (inert unless the core is built with
-  // RV_LOCKSTEP_ENABLE)
-  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
-  output sep_pkg::sep_lockstep_status_t lockstep_status_o,
+  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,  // CPU lockstep control; inert unless built with RV_LOCKSTEP_ENABLE.
+  output sep_pkg::sep_lockstep_status_t lockstep_status_o,  // CPU lockstep status; inert unless built with RV_LOCKSTEP_ENABLE.
 
-  input logic [31:1] jtag_id_i,
+  input logic [31:1] jtag_id_i,               // JTAG ID.
 
-  // Interrupt inputs
-  input logic                      timer_int_i,
-  input logic                      soft_int_i,
-  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req_i,
+  input logic                      timer_int_i,  // Timer interrupt.
+  input logic                      soft_int_i,  // Software interrupt.
+  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req_i,  // External interrupt requests.
 
-  // Memory macro interfaces
-  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
-  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
+  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,  // CPU TCM memory-macro request.
+  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,  // CPU TCM memory-macro response.
 
-  output sep_pkg::sep_sram_req_t    sep_sram_req_o,
-  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,
+  output sep_pkg::sep_sram_req_t    sep_sram_req_o,  // SEP SRAM memory-macro request.
+  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,  // SEP SRAM memory-macro response.
 
-  output sep_pkg::sep_sram_req_t    sep_boot_rom_req_o,
-  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp_i,
+  output sep_pkg::sep_sram_req_t    sep_boot_rom_req_o,  // Boot ROM memory-macro request.
+  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp_i,  // Boot ROM memory-macro response.
 
-  /////////
-  // SMN External AXI interfaces
-  /////////
+  output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // SMN outbound AXI request.
+  input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,  // SMN outbound AXI response.
 
-  output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,
-  input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,
+  input  sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_axi_req_i,  // SMN inbound AXI request.
+  output sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_axi_resp_o,  // SMN inbound AXI response.
 
-  input  sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_axi_req_i,
-  output sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_axi_resp_o,
+  output sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ext_to_smc_axi_req_o,  // SEP external-to-SMC AXI request.
+  input  sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ext_to_smc_axi_resp_i,  // SEP external-to-SMC AXI response.
 
-  output sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ext_to_smc_axi_req_o,
-  input  sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ext_to_smc_axi_resp_i,
+  input logic entropy_rosc_sample_clk_i,      // Ring-oscillator sample clock for entropy_source; async vs clk_i, ~100-400 MHz typical.
 
-  /////////
-  // Crypto
-  /////////
+  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req_o,  // OTBN IMEM SRAM request from prim_ram_1p_scr_ext.
+  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp_i,  // OTBN IMEM SRAM response.
 
-  // Ring-oscillator sample clock for entropy_source (async vs clk_i; ~100–400 MHz typical)
-  input logic entropy_rosc_sample_clk_i,
+  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req_o,  // OTBN DMEM SRAM request from prim_ram_1p_scr_ext.
+  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp_i,  // OTBN DMEM SRAM response.
 
-  // OTBN external SRAM interfaces (from prim_ram_1p_scr_ext inside OTBN)
-  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp_i,
+  output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req_o,  // Adams Bridge external SRAM request; tech macros in sep_ip_integration.
+  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,  // Adams Bridge external SRAM response.
 
-  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req_o,
-  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp_i,
+  output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,  // External TRNG AXI-Lite passthrough request to sep_ip_integration.
+  input  sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_i,  // External TRNG AXI-Lite passthrough response.
 
-  // Adams Bridge external SRAM interface (tech macros in sep_ip_integration)
-  output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req_o,
-  input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,
+  input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-Stream request from sep_ip_integration.
+  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-Stream response.
 
-  // External TRNG AXI-Lite passthrough (to sep_ip_integration in sep_wrapper)
-  output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,
-  input  sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_i,
+  input logic ext_trng_irq_i,                 // External TRNG interrupt to the PIC.
 
-  // External TRNG AXI-Stream (from sep_ip_integration)
-  input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
-  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
+  output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,  // Key Manager ROM hard-macro request.
+  input  km_intf_pkg::km_rom_mem_rsp_t   km_rom_mem_rsp_i,  // Key Manager ROM hard-macro response.
+  output km_intf_pkg::km_sram_mem_req_t  km_sram_mem_req_o,  // Key Manager SRAM hard-macro request.
+  input  km_intf_pkg::km_sram_mem_rsp_t  km_sram_mem_rsp_i,  // Key Manager SRAM hard-macro response.
 
-  // External TRNG irq (PIC)
-  input logic ext_trng_irq_i,
+  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,  // eFuse bank control AXI-Lite request to the shim CSR.
+  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,  // eFuse bank control AXI-Lite response.
+  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,  // eFuse shim command request.
+  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,  // eFuse shim command response.
 
-  // Key Manager ROM/SRAM memory interfaces (hard macros at integration level)
-  output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,
-  input  km_intf_pkg::km_rom_mem_rsp_t   km_rom_mem_rsp_i,
-  output km_intf_pkg::km_sram_mem_req_t  km_sram_mem_req_o,
-  input  km_intf_pkg::km_sram_mem_rsp_t  km_sram_mem_rsp_i,
+  output logic [1:0] lcc_demote_state_1_o,    // Lifecycle demote state 1 to SMC.
+  output logic [1:0] lcc_demote_state_2_o,    // Lifecycle demote state 2 to SMC.
 
-  // Efuse Interface to SHIM CSR
-  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
-  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,
-  // Efuse Command Interface - custom interface for SHIM
-  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,
-  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,
+  output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,  // SPI pad request.
+  input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,  // SPI pad response.
 
-  // LC Demote State
-  output logic [1:0] lcc_demote_state_1_o, // To SMC
-  output logic [1:0] lcc_demote_state_2_o, // To SMC
+  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // Lifecycle state.
+  output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,  // Debug disable bundle.
+  output logic sep_fuse_dft_disable_o,        // SEP fuse DFT disable.
+  output logic smc_fuse_dft_disable_o,        // SMC fuse DFT disable.
+  output logic lc_sigint_err_o,               // Lifecycle signal-integrity error.
+  output logic security_disable_o,            // Security disable.
+  output logic secure_tm_o,                   // Secure test mode latched status.
 
-  /////////
-  // IO
-  /////////
-  output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
-  input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
+  output logic [sep_pkg::NUM_MAILBOXES-1:0] smc_mailbox_interrupt_o,  // SMC mailbox interrupts.
 
-  /////////////
-  // LC State
-  /////////////
+  input  logic smc_fuse_sense_done_i,         // SMC fuse sense done.
+  output logic sep_fuse_sense_done_o,         // SEP fuse sense done.
 
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-  output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
-  output logic sep_fuse_dft_disable_o,
-  output logic smc_fuse_dft_disable_o,
-  output logic lc_sigint_err_o,
-  output logic security_disable_o,
-  output logic secure_tm_o,
+  input logic secure_tm_req_i,                // Secure test mode request strap.
 
-  ////////////////////////
-  // Mailbox Interrupts //
-  ////////////////////////
+  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req_o,  // SEP external AXI extension request.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_axi_resp_i,  // SEP external AXI extension response.
 
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] smc_mailbox_interrupt_o,
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_global_base_addr_i,  // SMC global base address.
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_region_size_i,  // SMC region size.
 
-  /////////
-  // Efuse Status //
-  /////////
+  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_global_base_addr_o,  // SEP global base address from sep_cpu_ctrl; SMU crossbar SEP-target rule.
+  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_region_size_o,  // SEP region size from sep_cpu_ctrl; SMU crossbar SEP-target rule.
 
-  input  logic smc_fuse_sense_done_i,
-  output logic sep_fuse_sense_done_o,
+  output logic km_unrecoverable_err_o,        // Key Manager unrecoverable error.
+  output logic km_recoverable_err_o,          // Key Manager recoverable error.
 
-  /////////
-  // Straps //
-  /////////
-
-  input logic secure_tm_req_i,
-
-  ///////////////////
-  // AXI Extension //
-  ///////////////////
-
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_axi_resp_i,
-
-  ///////////////////////////////
-  // SMC Address Configuration //
-  ///////////////////////////////
-
-  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_global_base_addr_i,
-  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_region_size_i,
-
-  // SEP's own aperture (from sep_cpu_ctrl CSRs); consumed by the SMU
-  // AXI crossbar to build the SEP-target address rule.
-  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_global_base_addr_o,
-  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_region_size_o,
-
-  /////////////////////////////
-  // Key Manager Error Ports //
-  /////////////////////////////
-
-  output logic km_unrecoverable_err_o,
-  output logic km_recoverable_err_o,
-
-  //////////////////////
-  // External Debug Bus //
-  //////////////////////
-
-  output logic [383:0] ext_debug_bus_o
+  output logic [383:0] ext_debug_bus_o        // External debug bus.
 );
 
   /////////////////////////

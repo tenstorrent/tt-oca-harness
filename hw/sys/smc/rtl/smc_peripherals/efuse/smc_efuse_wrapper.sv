@@ -1,68 +1,76 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC eFuse Wrapper
+// Wrap the vendor eFuse controller for the SMC peripheral map.
 //
-//-----------------------------------------------------------------------------
-//
-// Wraps the generic `efuse_interface_controller` for SMC and implements the
-// SMC-specific JTAG access-control policy:
-//   * Block JTAG accesses to the eFuse when the SMC LC state (received from
-//     SEP, differentially encoded) is PROD or RMA_SiP.
-//   * Always allow JTAG reads of the JTAG_PUBLIC_IDENTITY register, so a part
-//     can still be identified in the field once the rest of the map is closed off.
-//   * On a differential-decode integrity error, restrict JTAG access.
-//
-// JTAG transactions that fail the policy are routed to a `prim_axi_lite_err_slv`
-// which returns `32'hbadcab1e` with a slave error response.
+// Presents the eFuse CSR window on the peripheral AXI-Lite map.
+// Bridges fuse sense, program, shadow-register, and DFT sidebands into the SMC peripheral
+// domain.
 
 module smc_efuse_wrapper
   import smc_pkg::*;
   import smc_efuse_pkg::*;
 (
-  input  logic                                       clk_i,
-  input  logic                                       rst_ni,
-  input  logic                                       test_en_i,
-  input  logic                                       scan_rst_ni,
+  input  logic                                       clk_i,  // Clock.
+  input  logic                                       rst_ni,  // Reset.
+  input  logic                                       test_en_i,  // Test en.
+  input  logic                                       scan_rst_ni,  // Scan rst.
 
-  // Functional AXI4-Lite slave (from SMC peripherals xbar)
-  input  smc_pkg::smc_axil_32_32_req_t               axil_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t              axil_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t               axil_req_i,  // Functional AXI4-Lite
+                                                                  // slave (from SMC
+                                                                  // peripherals xbar)
+                                                                  // request.
+  output smc_pkg::smc_axil_32_32_resp_t              axil_resp_o,  // Functional AXI4-Lite
+                                                                   // slave (from SMC
+                                                                   // peripherals xbar)
+                                                                   // response.
 
-  // JTAG AXI4-Lite slave
-  input  smc_pkg::smc_axil_32_32_req_t               axil_smc_otp_jtag_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t              axil_smc_otp_jtag_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t               axil_smc_otp_jtag_req_i,  // JTAG AXI4-Lite slave
+                                                                               // request.
+  output smc_pkg::smc_axil_32_32_resp_t              axil_smc_otp_jtag_resp_o,  // JTAG AXI4-Lite slave
+                                                                                // response.
 
-  // LC state from SEP (differentially encoded) and sigint error output
-  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]       lc_state_i,
-  output logic                                       lc_sigint_err_o,
+  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]       lc_state_i,  // LC state from SEP
+                                                                  // (differentially
+                                                                  // encoded) and sigint
+                                                                  // error output.
+  output logic                                       lc_sigint_err_o,  // LC state from SEP
+                                                                       // (differentially
+                                                                       // encoded) and sigint
+                                                                       // error output.
 
-  // eFuse SHIM CSR AXI4-Lite
-  output smc_pkg::smc_axil_32_32_req_t               fuse_bank_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_32_resp_t              fuse_bank_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_32_req_t               fuse_bank_ctrl_req_o,  // eFuse SHIM CSR
+                                                                            // AXI4-Lite request.
+  input  smc_pkg::smc_axil_32_32_resp_t              fuse_bank_ctrl_resp_i,  // eFuse SHIM CSR
+                                                                             // AXI4-Lite response.
 
-  // eFuse Command Interface - custom interface for SHIM state machine
-  output smc_efuse_pkg::fuse_command_req_t           efuse_shim_command_req_o,
-  input  smc_efuse_pkg::fuse_command_resp_t          efuse_shim_command_resp_i,
+  output smc_efuse_pkg::fuse_command_req_t           efuse_shim_command_req_o,  // eFuse Command
+                                                                                // Interface - custom
+                                                                                // interface for SHIM
+                                                                                // state machine.
+  input  smc_efuse_pkg::fuse_command_resp_t          efuse_shim_command_resp_i,  // eFuse Command
+                                                                                 // Interface - custom
+                                                                                 // interface for SHIM
+                                                                                 // state machine.
 
-  // SEP security disable
-  input  logic                                       sep_security_disable_i,
+  input  logic                                       sep_security_disable_i,  // SEP security
+                                                                              // disable.
 
-  // External boot sequence done (gate the released reset)
-  input  logic                                       ext_boot_seq_done_i,
+  input  logic                                       ext_boot_seq_done_i,  // External boot
+                                                                           // sequence done (gate
+                                                                           // the released reset).
 
-  // Released reset and fuse sense done
-  output logic                                       reset_n_o,
-  output logic                                       fuse_sense_done_o,
+  output logic                                       reset_n_o,  // Released reset and
+                                                                 // fuse sense done.
+  output logic                                       fuse_sense_done_o,  // Released reset and
+                                                                         // fuse sense done.
 
-  // Shadow registers
-  output smc_efuse_pkg::efuse_map_t                  shadow_regs_o,
+  output smc_efuse_pkg::efuse_map_t                  shadow_regs_o,  // Shadow registers.
 
-  // Debug
-  output logic [9:0]                                 efuse_debug_o,
+  output logic [9:0]                                 efuse_debug_o,  // Efuse debug.
 
-  // Locked Field Access Interrupt
-  output logic                                       locked_field_access_interrupt_o
+  output logic                                       locked_field_access_interrupt_o  // Locked Field Access
+                                                                                      // Interrupt.
 );
 
   /////////////////////////////////////////////////////////////////////////

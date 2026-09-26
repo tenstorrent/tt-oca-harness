@@ -1,34 +1,33 @@
-//-----------------------------------------------------------------------------
-// UART 16550 Transmitter
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors.
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Serialize wr_data_i onto tx_o at the baud tick rate.
 //
-// Description: UART Transmit Module
-//
+// wr_i loads a frame from wr_data_i and wr_parity_i using word_length_i, parity_enable_i,
+// and extra_stop_bit_i.
+// tick_baud_x16_i derives the baud tick; idle_o is high when the shifter is empty or
+// tx_enable_i is low.
 
 module uart_tx
   import uart_16550_pkg::*;
 #(
 ) (
-  input  logic       clk_i,
-  input  logic       rst_ni,
+  input  logic       clk_i,             // System clock.
+  input  logic       rst_ni,            // Active-low reset.
 
-  input  logic       tx_enable_i,
-  input  logic       tick_baud_x16_i,
-  input  logic       parity_enable_i,
-  input  logic [3:0] word_length_i,
-  input  logic       extra_stop_bit_i,
+  input  logic       tx_enable_i,       // Transmitter enable.
+  input  logic       tick_baud_x16_i,   // 16× baud oversample tick.
+  input  logic       parity_enable_i,   // Include a parity bit in the frame.
+  input  logic [3:0] word_length_i,     // Data bits per frame.
+  input  logic       extra_stop_bit_i,  // Add a second stop bit when high.
 
-  input  logic       wr_i,
-  input  logic       wr_parity_i,
-  input  logic [7:0] wr_data_i,
-  output logic       idle_o,
+  input  logic       wr_i,              // Pulse that loads wr_data_i into the shifter.
+  input  logic       wr_parity_i,       // Parity bit loaded with wr_data_i.
+  input  logic [7:0] wr_data_i,         // Transmit data byte.
+  output logic       idle_o,            // High when the shifter is empty or tx_enable_i is low.
 
-  output logic       tx_o
+  output logic       tx_o               // Serial transmit line.
 );
 
   logic  [3:0] baud_div_q;

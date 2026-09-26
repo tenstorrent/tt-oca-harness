@@ -1,79 +1,76 @@
-//-----------------------------------------------------------------------------
-// I2C Target FSM
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Answer matched I2C addresses in the target FSM and fill the ACQ FIFO.
 //
-// Description: I2C finite state machine
+// Drives SCL stretch for TX underrun and ACK-control mode, applies address masks, and
+// pulses events for match, NACK, unexpected STOP, and arbitration loss.
 
 module i2c_target_fsm
   import i2c_pkg::*;
 #(
-  parameter  int unsigned TARGET_RX_FIFO_DEPTH = 64,
-  localparam int unsigned TARGET_RX_FIFO_DEPTH_WIDTH = $clog2(TARGET_RX_FIFO_DEPTH+1)
+  parameter  int unsigned TARGET_RX_FIFO_DEPTH = 64,        // ACQ FIFO depth.
+  localparam int unsigned TARGET_RX_FIFO_DEPTH_WIDTH = $clog2(TARGET_RX_FIFO_DEPTH+1) // clog2(depth+1) for ACQ fill.
 ) (
-  input  logic                                  clk_i,                        // Clock
-  input  logic                                  rst_ni,                       // Active low reset
+  input  logic                                  clk_i,      // System clock.
+  input  logic                                  rst_ni,     // Async reset, active-low.
 
-  input  logic                                  scl_i,                        // Serial clock input from i2c bus
-  output logic                                  scl_o,                        // Serial clock output to i2c bus
-  input  logic                                  sda_i,                        // Serial data input from i2c bus
-  output logic                                  sda_o,                        // Serial data output to i2c bus
-  input  logic                                  start_detect_i,
-  input  logic                                  stop_detect_i,
-  output logic                                  transmitting_o,               // Target is transmitting SDA (disambiguates high sda_o)
+  input  logic                                  scl_i,      // Serial clock input from the I2C bus.
+  output logic                                  scl_o,      // Serial clock output to the I2C bus.
+  input  logic                                  sda_i,      // Serial data input from the I2C bus.
+  output logic                                  sda_o,      // Serial data output to the I2C bus.
+  input  logic                                  start_detect_i, // START from the bus monitor.
+  input  logic                                  stop_detect_i, // STOP from the bus monitor.
+  output logic                                  transmitting_o, // Target is transmitting SDA (disambiguates high sda_o).
 
-  input  logic                                  target_enable_i,              // Enable target functionality
+  input  logic                                  target_enable_i, // Enable target functionality.
 
-  input  logic                                  tx_fifo_rvalid_i,             // Indicates there is valid data in tx_fifo
-  output logic                                  tx_fifo_rready_o,             // Pop entry from tx_fifo
-  input  logic [TARGET_TX_FIFO_WIDTH-1:0]       tx_fifo_rdata_i,              // Byte in tx_fifo to be sent to host
+  input  logic                                  tx_fifo_rvalid_i, // TX FIFO has valid data.
+  output logic                                  tx_fifo_rready_o, // Pop entry from TX FIFO.
+  input  logic [TARGET_TX_FIFO_WIDTH-1:0]       tx_fifo_rdata_i, // Byte in TX FIFO to send to the host.
 
-  output logic                                  acq_fifo_wvalid_o,            // High if there is valid data in acq_fifo
-  output logic [TARGET_RX_FIFO_WIDTH-1:0]       acq_fifo_wdata_o,             // Data to write to acq_fifo from target
-  input  logic [TARGET_RX_FIFO_DEPTH_WIDTH-1:0] acq_fifo_depth_i,             // Fill level of acq_fifo
-  output logic                                  acq_fifo_full_o,              // Local version of "full"
-  input  logic [TARGET_RX_FIFO_WIDTH-1:0]       acq_fifo_rdata_i,             // Only used for assertion
+  output logic                                  acq_fifo_wvalid_o, // Push valid data into the ACQ FIFO.
+  output logic [TARGET_RX_FIFO_WIDTH-1:0]       acq_fifo_wdata_o, // Data to write to the ACQ FIFO.
+  input  logic [TARGET_RX_FIFO_DEPTH_WIDTH-1:0] acq_fifo_depth_i, // Fill level of the ACQ FIFO.
+  output logic                                  acq_fifo_full_o, // Local version of full.
+  input  logic [TARGET_RX_FIFO_WIDTH-1:0]       acq_fifo_rdata_i, // ACQ peek used only for assertions.
 
-  output logic                                  target_idle_o,                // Indicates the target is idle
+  output logic                                  target_idle_o, // Target is idle.
 
-  input logic [12:0]                            t_r_i,                        // Rise time of both SDA and SCL in clock units
-  input logic [12:0]                            tsu_dat_i,                    // Data setup time in clock units
-  input logic [12:0]                            thd_dat_i,                    // Data hold time in clock units
-  input logic [30:0]                            nack_timeout_i,               // Max time target may stretch until it should NACK
-  input logic                                   nack_timeout_en_i,            // Enable nack timeout
-  input logic                                   nack_addr_after_timeout_i,
-  input logic                                   arbitration_lost_i,           // Lost arbitration while transmitting
-  input logic                                   bus_timeout_i,                // The bus timed out, with SCL held low for too long.
+  input logic [12:0]                            t_r_i,      // Rise time of SDA and SCL in clock units.
+  input logic [12:0]                            tsu_dat_i,  // Data setup time in clock units.
+  input logic [12:0]                            thd_dat_i,  // Data hold time in clock units.
+  input logic [30:0]                            nack_timeout_i, // Max time the target may stretch until it should NACK.
+  input logic                                   nack_timeout_en_i, // Enable NACK timeout.
+  input logic                                   nack_addr_after_timeout_i, // NACK address after timeout.
+  input logic                                   arbitration_lost_i, // Lost arbitration while transmitting.
+  input logic                                   bus_timeout_i, // Bus timed out with SCL held low too long.
 
-  input logic                                   unhandled_tx_stretch_event_i, // An unhandled event requests TX stretching
+  input logic                                   unhandled_tx_stretch_event_i, // Unhandled event requests TX stretching.
 
-  // ACK Control Mode signals
-  input  logic                                  ack_ctrl_mode_i,              // Whether ACK Control Mode is enabled
-  input  logic                                  acq_start_stop_en_i,           // Enable Start/Stop in ACQ FIFO
-  input  logic [8:0]                            auto_ack_cnt_i,               // Current value of the TARGET_ACK_CTRL.NBYTES counter
-  output logic                                  auto_ack_cnt_clr_o,           // Clear the TARGET_ACK_CTRL.NBYTES counter
-  output logic                                  auto_ack_cnt_decr_o,          // Decrement the TARGET_ACK_CTRL.NBYTES counter
-  input  logic                                  sw_nack_i,                    // SW pulses high to NACK while stretching in ack_ctrl
-  output logic                                  ack_ctrl_stretching_o,        // Stretching due to zero Auto ACK count
-  output logic [7:0]                            acq_fifo_next_data_o,         // SW uses this for deciding whether to NACK data bytes
+  input  logic                                  ack_ctrl_mode_i, // ACK Control Mode enabled.
+  input  logic                                  acq_start_stop_en_i, // Enable START/STOP in the ACQ FIFO.
+  input  logic [8:0]                            auto_ack_cnt_i, // Current TARGET_ACK_CTRL.NBYTES counter value.
+  output logic                                  auto_ack_cnt_clr_o, // Clear the TARGET_ACK_CTRL.NBYTES counter.
+  output logic                                  auto_ack_cnt_decr_o, // Decrement the TARGET_ACK_CTRL.NBYTES counter.
+  input  logic                                  sw_nack_i,  // SW pulses high to NACK while stretching in ack_ctrl.
+  output logic                                  ack_ctrl_stretching_o, // Stretching due to zero Auto ACK count.
+  output logic [7:0]                            acq_fifo_next_data_o, // Next data byte for SW NACK decisions.
 
-  input  logic [6:0]                            target_address0_i,
-  input  logic [6:0]                            target_mask0_i,
-  input  logic [6:0]                            target_address1_i,
-  input  logic [6:0]                            target_mask1_i,
+  input  logic [6:0]                            target_address0_i, // Address 0.
+  input  logic [6:0]                            target_mask0_i, // Address 0 mask.
+  input  logic [6:0]                            target_address1_i, // Address 1.
+  input  logic [6:0]                            target_mask1_i, // Address 1 mask.
 
-  output logic                                  event_address_match_o,         // One of target's addresses matches the one sent by host
-  output logic                                  event_target_nack_o,           // This target sent a NACK (this is used to keep count)
-  output logic                                  event_cmd_complete_o,          // Command is complete
-  output logic                                  event_tx_stretch_o,            // Tx transaction is being stretched
-  output logic                                  event_unexp_stop_o,            // Target received an unexpected stop
-  output logic                                  event_tx_arbitration_lost_o,   // Arbitration was lost during a read transfer
-  output logic                                  event_tx_bus_timeout_o,        // Bus timed out during a read transfer
-  output logic                                  event_read_cmd_received_o      // A read awaits confirmation for TX FIFO release
+  output logic                                  event_address_match_o, // One of the target addresses matched.
+  output logic                                  event_target_nack_o, // This target sent a NACK.
+  output logic                                  event_cmd_complete_o, // Command is complete.
+  output logic                                  event_tx_stretch_o, // TX transaction is being stretched.
+  output logic                                  event_unexp_stop_o, // Target received an unexpected STOP.
+  output logic                                  event_tx_arbitration_lost_o, // Arbitration was lost during a read transfer.
+  output logic                                  event_tx_bus_timeout_o, // Bus timed out during a read transfer.
+  output logic                                  event_read_cmd_received_o // A read awaits confirmation for TX FIFO release.
 );
 
   // I2C bus clock timing variables

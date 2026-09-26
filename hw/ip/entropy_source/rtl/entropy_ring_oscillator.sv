@@ -1,30 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_ring_oscillator.sv
- * @brief Asynchronous ring oscillator with configurable delay chain length.
- *
- * @details This module implements an asynchronous ring oscillator composed of
- *          buffer cells arranged in a delay chain. Oscillation proceeds when
- *          the enable pin is asserted high. The oscillation frequency is based
- *          on the number of buffers in the delay chain. The frequency can be
- *          lowered by asserting the detune input high, which selects a shorter
- *          feedback path via an internal multiplexer.
- *
- * @param TOTAL_LENGTH   Total number of buffer stages in the delay chain.
- *                       Default: 17
- * @param TAPPED_LENGTH  Number of stages before the tap point for detuning.
- *                       Default: 13
- */
+// Oscillate an asynchronous buffer ring with an optional detuned feedback tap.
+//
+// enable_i high closes the delay chain so it oscillates; frequency follows the number of
+// buffer stages.
+// detune_i high selects the shorter TAPPED_LENGTH feedback path through an internal mux
+// and lowers frequency.
+// TOTAL_LENGTH is the full stage count; TAPPED_LENGTH is the detune tap point.
 
 module entropy_ring_oscillator #(
-  parameter int unsigned TOTAL_LENGTH  = 17,
-  parameter int unsigned TAPPED_LENGTH = 13
+  parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
+  parameter int unsigned TAPPED_LENGTH = 13  // Detuned tap stage count.
 ) (
-  input  logic enable_i, // program with config register
-  input  logic detune_i, // program with config register
-  output logic noise_o
+  input  logic enable_i,                // program with config register.
+  input  logic detune_i,                // program with config register.
+  output logic noise_o                  // Noise.
 );
 
   logic [TOTAL_LENGTH-1:0] stage_o;

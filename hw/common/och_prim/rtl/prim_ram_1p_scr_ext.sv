@@ -1,10 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// External RAM Scrambled Memory Primitive
+// Scramble a single-port SRAM front-end over prim_ram_1p_adv_ext tiles.
 //
-//--------------------------------------------------
+// Refuse to grant req_i while key_valid_i is low. intg_error_i suppresses any real memory
+// transaction on an upstream integrity fault.
+//
+// Delay writes one cycle so reads and writes share the PRINCE keystream unit. Hold a
+// pending write across a following read and detect address collisions.
+//
+// Keep cipher rounds low for latency. PRINCE's original 5 half-rounds are 2*5+1 effective
+// rounds; NumPrinceRoundsHalf of 3 is about 7 effective rounds and must be in [1..5].
+//
+// NumDiffRounds of 0 disables diffusion because non-linear data diffusion can interact
+// adversely with end-to-end ECC. Enable it only with full knowledge of that interaction,
+// for example with byte parity.
 
 module prim_ram_1p_scr_ext
   import prim_ram_1p_pkg::*;
@@ -12,82 +22,64 @@ module prim_ram_1p_scr_ext
   `include "prim_assert.sv"
   import prim_ram_1p_adv_ext_pkg::*;
 #(
-  parameter  int Depth               = 16*1024, // Needs to be a power of 2 if NumAddrScrRounds > 0.
-  parameter  int InstDepth           = Depth,
-  parameter  int Width               = 32, // Needs to be byte aligned if byte parity is enabled.
-  parameter  int DataBitsPerMask     = 8, // Needs to be set to 8 in case of byte parity.
-  parameter  bit EnableParity        = 0, // Enable byte parity.
+  parameter  int Depth               = 16*1024,  // Logical depth; must be a power of 2 if NumAddrScrRounds > 0.
+  parameter  int InstDepth           = Depth,  // Per-tile depth for RAM tiling.
+  parameter  int Width               = 32,  // Data width; must be byte-aligned when byte parity is enabled.
+  parameter  int DataBitsPerMask     = 8,  // Must be 8 when byte parity is enabled.
+  parameter  bit EnableParity        = 0,  // Enables byte parity.
 
-  // Scrambling parameters. Note that this needs to be low-latency, hence we have to keep the
-  // amount of cipher rounds low. PRINCE has 5 half rounds in its original form, which corresponds
-  // to 2*5 + 1 effective rounds. Setting this to 3 lowers this to approximately 7 effective rounds.
-  // Number of PRINCE half rounds, can be [1..5]
-  parameter  int NumPrinceRoundsHalf = 3,
-  // Number of extra diffusion rounds. Setting this to 0 to disables diffusion.
-  // NOTE: this is zero by default, since the non-linear transformation of data bits can interact
-  // adversely with end-to-end ECC integrity. Only enable this if you know what you are doing
-  // (e.g. using this primitive in a different context with byte parity). See #20788 for context.
-  parameter  int NumDiffRounds       = 0,
-  // This parameter governs the block-width of additional diffusion layers.
-  // For intra-byte diffusion, set this parameter to 8.
-  parameter  int DiffWidth           = DataBitsPerMask,
-  // Number of address scrambling rounds. Setting this to 0 disables address scrambling.
-  parameter  int NumAddrScrRounds    = 2,
-  // If set to 1, the same 64bit key stream is replicated if the data port is wider than 64bit.
-  // If set to 0, the cipher primitive is replicated, and together with a wider nonce input,
-  // a unique keystream is generated for the full data width.
-  parameter  bit ReplicateKeyStream  = 1'b0,
+  parameter  int NumPrinceRoundsHalf = 3,  // PRINCE half-rounds in [1..5]; kept low for latency.
+                                           // Original PRINCE uses 5 half-rounds (2*5+1
+                                           // effective); 3 is about 7 effective rounds.
+  parameter  int NumDiffRounds       = 0,  // Extra diffusion rounds; 0 disables diffusion.
+                                           // Default 0 because non-linear data diffusion
+                                           // can interact adversely with end-to-end ECC;
+                                           // enable only with full knowledge of that
+                                           // interaction (for example with byte parity).
+  parameter  int DiffWidth           = DataBitsPerMask,  // Diffusion block width; use 8 for intra-byte diffusion.
+  parameter  int NumAddrScrRounds    = 2,  // Address scrambling rounds; 0 disables address scrambling.
+  parameter  bit ReplicateKeyStream  = 1'b0,  // 1 replicates the same 64-bit keystream across a wider data port;
+                                              // 0 replicates the cipher with a wider
+                                              // nonce for a unique keystream across the
+                                              // full width.
 
-  // External RAM interface type parameters (can override defaults)
-  parameter type ram_req_t           = prim_ram_1p_adv_ext_req_t,
-  parameter type ram_rsp_t           = prim_ram_1p_adv_ext_rsp_t,
+  parameter type ram_req_t           = prim_ram_1p_adv_ext_req_t,  // External RAM request struct; may override the package default.
+  parameter type ram_rsp_t           = prim_ram_1p_adv_ext_rsp_t,  // External RAM response struct; may override the package default.
 
-  // Derived parameters
-  localparam int AddrWidth           = prim_util_pkg::vbits(Depth),
-  // Depending on the data width, we need to instantiate multiple parallel cipher primitives to
-  // create a keystream that is wide enough (PRINCE has a block size of 64bit)
-  localparam int NumParScr           = (ReplicateKeyStream) ? 1 : (Width + 63) / 64,
-  localparam int NumParKeystr        = (ReplicateKeyStream) ? (Width + 63) / 64 : 1,
-  // This is given by the PRINCE cipher primitive. All parallel cipher modules
-  // use the same key, but they use a different IV
-  localparam int DataKeyWidth        = 128,
-  // Each 64 bit scrambling primitive requires a 64bit IV
-  localparam int NonceWidth          = 64 * NumParScr,
-  // Compute RAM tiling
-  localparam int NumRamInst          = prim_util_pkg::ceil_div(Depth, InstDepth)
+  localparam int AddrWidth           = prim_util_pkg::vbits(Depth),  // Logical address width; derived.
+  localparam int NumParScr           = (ReplicateKeyStream) ? 1 : (Width + 63) / 64,  // Parallel PRINCE instances so the keystream covers Width;
+                                                                                      // PRINCE block size is 64 bits.
+  localparam int NumParKeystr        = (ReplicateKeyStream) ? (Width + 63) / 64 : 1,  // Parallel keystream replicas when ReplicateKeyStream is set.
+  localparam int DataKeyWidth        = 128,  // Scrambling key width from PRINCE; all parallel ciphers share the key with different IVs.
+  localparam int NonceWidth          = 64 * NumParScr,  // Nonce width; each 64-bit scrambling primitive needs a 64-bit IV.
+  localparam int NumRamInst          = prim_util_pkg::ceil_div(Depth, InstDepth)  // Number of tiled RAM instances.
 ) (
-  input                                    clk_i,
-  input                                    rst_ni,
+  input                                    clk_i,  // Memory clock.
+  input                                    rst_ni,  // Async reset, active-low.
 
-  // Key interface. Memory requests will not be granted if key_valid is set to 0.
-  input                                    key_valid_i,
-  input        [DataKeyWidth-1:0]          key_i,
-  input        [NonceWidth-1:0]            nonce_i,
+  input                                    key_valid_i,  // Scrambling key is live; requests are not granted while low.
+  input        [DataKeyWidth-1:0]          key_i,  // Scrambling key.
+  input        [NonceWidth-1:0]            nonce_i,  // Scrambling nonce.
 
-  // Interface to bus interface to SRAM adapter (unscrambled)
-  input                                    req_i,
-  output logic                             gnt_o,
-  input                                    write_i,
-  input        [AddrWidth-1:0]             addr_i,
-  input        [Width-1:0]                 wdata_i,
-  input        [Width-1:0]                 wmask_i,  // Needs to be byte-aligned for parity
-  // On integrity errors, the primitive suppresses any real transaction to the memory.
-  input                                    intg_error_i,
-  output logic [Width-1:0]                 rdata_o,
-  output logic                             rvalid_o, // Read response (rdata_o) is valid
-  output logic [1:0]                       rerror_o, // Bit1: Uncorrectable, Bit0: Correctable
+  input                                    req_i,  // Unscrambled access request from the SRAM adapter.
+  output logic                             gnt_o,  // Request grant.
+  input                                    write_i,  // Write when high, read when low.
+  input        [AddrWidth-1:0]             addr_i,  // Logical address before scramble.
+  input        [Width-1:0]                 wdata_i,  // Plaintext write data.
+  input        [Width-1:0]                 wmask_i,  // Write mask; must be byte-aligned for parity.
+  input                                    intg_error_i,  // Suppresses any real memory transaction on an integrity fault.
+  output logic [Width-1:0]                 rdata_o,  // Descrambled read data.
+  output logic                             rvalid_o,  // Read response (rdata_o) is valid.
+  output logic [1:0]                       rerror_o,  // Bit1 uncorrectable, bit0 correctable.
   output logic [AddrWidth-1:0]             raddr_o,  // Read address for error reporting.
 
-  // Status outputs
-  output logic                             wr_collision_o,
-  output logic                             write_pending_o,
+  output logic                             wr_collision_o,  // Read hits a pending write address.
+  output logic                             write_pending_o,  // A delayed write is still held.
 
-  // When detecting multi-bit encoding errors, raise alert.
-  output logic                             alert_o,
+  output logic                             alert_o,  // Multi-bit encoding-error alert.
 
-  // External RAM interface through req/rsp structs - passed through from internal prim_ram_1p_adv_ext
-  output ram_req_t         [NumRamInst-1:0] ram_req_o,
-  input  ram_rsp_t         [NumRamInst-1:0] ram_rsp_i
+  output ram_req_t         [NumRamInst-1:0] ram_req_o,  // Per-tile external RAM requests from the inner prim_ram_1p_adv_ext.
+  input  ram_rsp_t         [NumRamInst-1:0] ram_rsp_i  // Per-tile external RAM responses.
 );
 
   import prim_mubi_pkg::mubi4_t;

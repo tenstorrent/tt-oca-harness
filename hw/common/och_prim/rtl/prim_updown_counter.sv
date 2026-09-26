@@ -1,30 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Up/Down Counter
+// Count up or down with saturation, clear, set, and commit.
 //
-//--------------------------------------------------
-module prim_updown_counter #(
-  parameter int               Width      = 16,
-  // Can be used to reset the counter to a different value than 0, for example when
-  // the counter is used as a down-counter.
-  parameter logic [Width-1:0] ResetValue = '0,
+// ResetValue can be nonzero so a down-counter need not start at 0.
+// incr_en_i and decr_en_i together do not count; either alone steps by step_i.
+// commit_i freezes cnt_after_commit_o into count_o; without it the next value stays
+// speculative.
 
-  localparam type ctr_t = logic [Width-1:0]
+module prim_updown_counter #(
+  parameter int               Width      = 16,  // Counter width.
+  parameter logic [Width-1:0] ResetValue = '0,  // Value loaded on reset or clear_i;
+                                                // may be nonzero when the counter is used
+                                                // as a down-counter.
+
+  localparam type ctr_t = logic [Width-1:0]  // Counter type alias.
 ) (
-  input        clk_i,
-  input        rst_ni,
-  input        clear_i,
-  input        set_i,
-  input  ctr_t set_cnt_i,           // Set value for the counter.
-  input        incr_en_i,
-  input        decr_en_i,
-  input  ctr_t step_i,              // Increment/decrement step when enabled.
-  input        commit_i,
-  output ctr_t count_o,             // Current counter state
-  output ctr_t cnt_after_commit_o,  // Next counter state if committed
-  output logic err_o
+  input        clk_i,  // Counter clock.
+  input        rst_ni,  // Async reset, active-low.
+  input        clear_i,  // Loads ResetValue.
+  input        set_i,  // Loads set_cnt_i.
+  input  ctr_t set_cnt_i,  // Value loaded when set_i is high.
+  input        incr_en_i,  // Counts up by step_i.
+  input        decr_en_i,  // Counts down by step_i.
+  input  ctr_t step_i,  // Increment or decrement step when enabled.
+  input        commit_i,  // Commits the pending next value.
+  output ctr_t count_o,  // Current committed counter state.
+  output ctr_t cnt_after_commit_o,  // Next counter state if commit_i is taken.
+  output logic err_o  // Hardening error output.
 );
 
   ///////////////////

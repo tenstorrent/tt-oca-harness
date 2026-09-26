@@ -1,38 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Alias Remap Wrapper - Connects register interface to axi_alias_remap
+// Pack PeakRDL register outs into remap_region_t and drive axi_alias_remap.
 //
-// This module provides an easy-to-use wrapper that converts the generated
-// register outputs to the remap_table format expected by axi_alias_remap.
-//
-//-----------------------------------------------------------------------------
+// Converts the generated register outputs to the remap_table format expected by
+// axi_alias_remap.
+// reg_ctrl_i is one generated out-struct per region; AXI and debug ports pass through to
+// the remapper.
 
 module axi_alias_remap_wrap #(
-  parameter type         axi_req_t                     = logic,
-  parameter type         axi_resp_t                    = logic,
-  parameter type         remap_region_t                = logic,
-  parameter type         remap_debug_t                 = logic,
-  parameter int unsigned NUM_REGIONS                   = 8,
-  parameter int unsigned DEBUG_OUTPUT                  = 0,
-  parameter int unsigned ALIAS_REMAP_IDX_START         = 12,
-  parameter int unsigned AXI_ADDR_WIDTH                = 64,
-  parameter int unsigned NUM_CHUNKS_CARRY_SELECT_ADDER = 2
+  parameter type         axi_req_t                     = logic, // AXI request channel type.
+  parameter type         axi_resp_t                    = logic, // AXI response channel type.
+  parameter type         remap_region_t                = logic, // Per-region remap configuration type.
+  parameter type         remap_debug_t                 = logic, // Remap hit debug type.
+  parameter int unsigned NUM_REGIONS                   = 8, // Number of alias regions.
+  parameter int unsigned DEBUG_OUTPUT                  = 0, // Enables remap_debug_o.
+  parameter int unsigned ALIAS_REMAP_IDX_START         = 12, // Address bit where the remap index begins.
+  parameter int unsigned AXI_ADDR_WIDTH                = 64, // AXI address width.
+  parameter int unsigned NUM_CHUNKS_CARRY_SELECT_ADDER = 2  // Carry-select adder chunk count.
 ) (
-  // Register interface from generated register block
-  input  alias_remap_reg_pkg::alias_remap__out_t reg_ctrl_i [NUM_REGIONS-1:0],
+  input  alias_remap_reg_pkg::alias_remap__out_t reg_ctrl_i [NUM_REGIONS-1:0], // PeakRDL outs for each remap region.
 
-  // Debug output
-  output remap_debug_t remap_debug_o,
+  output remap_debug_t remap_debug_o,                       // Remap hit debug.
 
-  // AXI Input Interface
-  input  axi_req_t  axi_in_req_i,
-  output axi_resp_t axi_in_resp_o,
+  input  axi_req_t  axi_in_req_i,                           // Pre-remap AXI request.
+  output axi_resp_t axi_in_resp_o,                          // Pre-remap AXI response.
 
-  // AXI Output Interface (remapped)
-  output axi_req_t  axi_out_req_o,
-  input  axi_resp_t axi_out_resp_i
+  output axi_req_t  axi_out_req_o,                          // Post-remap AXI request.
+  input  axi_resp_t axi_out_resp_i                          // Post-remap AXI response.
 );
 
   remap_region_t remap_table[NUM_REGIONS-1:0];

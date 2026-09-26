@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Replace the Chipyard inferred-reset shift-register black box.
+//
+// Substitutes an OCAH synchronizer for the generated inferred reset primitive.
+// Three stages synchronize the reset into the local clock domain.
+
 module OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0 (
-  input  clock,
-  input  reset,
-  input  io_d,
-  output io_q
+  input  clock,                         // Clock.
+  input  reset,                         // Reset.
+  input  io_d,                          // Io d.
+  output io_q                           // Io q.
 );
 
   wire io_rstbypass, io_rst_synced, reset_n;

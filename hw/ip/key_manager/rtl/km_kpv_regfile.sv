@@ -2,25 +2,33 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// Single-write, single-read register file for KPV key data.
+// Store KPV key data in a single-write, single-read register file.
 //
-// Stores NUM_SLOTS x WORDS_PER_SLOT entries of DATA_WIDTH bits with a KM write
-// port and a combinational KM read port. Key storage has no reset so power-up
-// values are undefined; wipe_i synchronously zeroes every entry on the next
-// clock edge.
+// Stores NUM_SLOTS x WORDS_PER_SLOT entries of DATA_WIDTH bits.
+//
+// - Write port: KM (Key Manager CPU).
+// - Read port: KM only (combinational, zero-latency).
+//
+// Key data storage has no reset: the power-up value is undefined for security. The wipe
+// input provides a synchronous bulk-clear of all entries.
 
 module km_kpv_regfile #(
-  parameter int unsigned NUM_SLOTS      = 64,  // Number of key slots
-  parameter int unsigned WORDS_PER_SLOT = 16,  // Words per key slot
-  parameter int unsigned DATA_WIDTH     = 32   // Key-data word width
+  parameter int unsigned NUM_SLOTS      = 64,  // Number of key slots.
+  parameter int unsigned WORDS_PER_SLOT = 16,  // Words per slot.
+  parameter int unsigned DATA_WIDTH     = 32   // Data width in bits.
 ) (
-  input  logic                                        clk_i,       // System clock
-  input  logic                                        wipe_i,      // Bulk-zero all entries next cycle
-  input  logic                                        wr_a_en_i,   // KM write enable
-  input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] wr_a_addr_i, // KM flat write address
-  input  logic [DATA_WIDTH-1:0]                       wr_a_data_i, // KM write data
-  input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] rd_addr_i,   // KM flat read address
-  output logic [DATA_WIDTH-1:0]                       rd_data_o    // Combinational KM read data
+  input  logic                                    clk_i,  // System clock.
+
+  input  logic                                    wipe_i,  // Bulk wipe: zeroes ALL entries on
+                                                           // the next clock edge.
+
+  input  logic                                    wr_a_en_i,        // KM write port enable.
+  input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] wr_a_addr_i,  // KM write port flat address.
+  input  logic [DATA_WIDTH-1:0]                   wr_a_data_i,      // KM write port data.
+
+  input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] rd_addr_i,  // KM-only read port flat address.
+  output logic [DATA_WIDTH-1:0]                        rd_data_o  // KM-only read data
+                                                                  // (combinational).
 );
 
   // Derived address geometry for the flat storage array.

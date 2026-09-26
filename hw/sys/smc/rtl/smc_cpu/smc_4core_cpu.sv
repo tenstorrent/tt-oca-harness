@@ -1,79 +1,115 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// SMC 4 core CPU cluster
-// - built using Chipyard's Rocket-chip generator framework
+// Instantiate the four-core SMC Rocket CPU cluster shell.
 //
-//-----------------------------------------------------------------------------
+// Builds the Chipyard DigitalTop with OCAH mem and reset synchronizer swaps.
+// Exposes TileLink/AXI cluster ports and interrupt inputs to smc_cpu_wrapper.
 
 module smc_4core_cpu (
-  // Clock and reset
-  input  logic                                            clk_i,
-  input  logic                                            rst_isolate_ni,
+  input  logic                                            clk_i,  // Clock and reset.
+  input  logic                                            rst_isolate_ni,  // Clock and reset.
 
-  input  logic                                            mem_init_reset_ni,
+  input  logic                                            mem_init_reset_ni,  // Mem init reset.
 
-  input  logic                                            rst_uncore_ni,
-  input  logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    rst_core_ni,
-  input  logic                                            rst_debug_ni,
+  input  logic                                            rst_uncore_ni,  // Rst uncore.
+  input  logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    rst_core_ni,  // Rst core.
+  input  logic                                            rst_debug_ni,  // Rst debug.
 
-  // Reset-drain handshake (driven by smc_cpu_ctrl_wrap, always-on domain)
-  input  logic                                            isolate_req_i,
-  output logic                                            drained_o,
-  // Flush requests to the AXI isolate modules
-  input  logic                                            isolate_flush_i,
+  input  logic                                            isolate_req_i,  // Reset-drain
+                                                                          // handshake (driven by
+                                                                          // smc_cpu_ctrl_wrap,
+                                                                          // always-on domain)
+                                                                          // request.
+  output logic                                            drained_o,  // Reset-drain
+                                                                      // handshake (driven by
+                                                                      // smc_cpu_ctrl_wrap,
+                                                                      // always-on domain).
+  input  logic                                            isolate_flush_i,  // Flush requests to
+                                                                            // the AXI isolate
+                                                                            // modules.
 
-  // Reset vector inputs
-  input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,
+  input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,  // Reset vector inputs.
 
-  // Interrupts input
-  input  logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]      interrupts_i,
+  input  logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]      interrupts_i,  // Interrupts input.
 
-  // AXI interfaces
-  output smc_pkg::smc_cpu_mmio_axi_req_t                  mmio_axi_req_o,
-  input  smc_pkg::smc_cpu_mmio_axi_resp_t                 mmio_axi_resp_i,
+  output smc_pkg::smc_cpu_mmio_axi_req_t                  mmio_axi_req_o,  // AXI interfaces
+                                                                           // request.
+  input  smc_pkg::smc_cpu_mmio_axi_resp_t                 mmio_axi_resp_i,  // AXI interfaces
+                                                                            // response.
 
-  input  smc_pkg::smc_cpu_l2_frontend_axi_req_t           l2_frontend_axi_req_i,
-  output smc_pkg::smc_cpu_l2_frontend_axi_resp_t          l2_frontend_axi_resp_o,
+  input  smc_pkg::smc_cpu_l2_frontend_axi_req_t           l2_frontend_axi_req_i,  // L2 frontend axi
+                                                                                  // request.
+  output smc_pkg::smc_cpu_l2_frontend_axi_resp_t          l2_frontend_axi_resp_o,  // L2 frontend axi
+                                                                                   // response.
 
-  // Debug interfaces (JTAG)
-  input  logic                                            smc_cpu_jtag_TCK_i,
-  input  logic                                            smc_cpu_jtag_TMS_i,
-  input  logic                                            smc_cpu_jtag_TDI_i,
-  output logic                                            smc_cpu_jtag_TDO_data_o,
-  input  logic                                            smc_cpu_jtag_reset_i,
-  input  logic [10:0]                                     smc_cpu_jtag_mfr_id_i,
-  input  logic [15:0]                                     smc_cpu_jtag_part_number_i,
-  input  logic [3:0]                                      smc_cpu_jtag_version_i,
+  input  logic                                            smc_cpu_jtag_TCK_i,  // Debug interfaces
+                                                                               // (JTAG).
+  input  logic                                            smc_cpu_jtag_TMS_i,  // Debug interfaces
+                                                                               // (JTAG).
+  input  logic                                            smc_cpu_jtag_TDI_i,  // Debug interfaces
+                                                                               // (JTAG).
+  output logic                                            smc_cpu_jtag_TDO_data_o,  // Debug interfaces
+                                                                                    // (JTAG).
+  input  logic                                            smc_cpu_jtag_reset_i,  // Debug interfaces
+                                                                                 // (JTAG).
+  input  logic [10:0]                                     smc_cpu_jtag_mfr_id_i,  // Debug interfaces
+                                                                                  // (JTAG).
+  input  logic [15:0]                                     smc_cpu_jtag_part_number_i,  // Debug interfaces
+                                                                                       // (JTAG).
+  input  logic [3:0]                                      smc_cpu_jtag_version_i,  // Debug interfaces
+                                                                                   // (JTAG).
 
-  // Core status outputs
-  output logic                                            cluster_ded_o,
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]    wb_pc_valid_o,
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0]   wb_reg_pc_o,
+  output logic                                            cluster_ded_o,  // Core status outputs.
+  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]    wb_pc_valid_o,  // Core status outputs.
+  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0]   wb_reg_pc_o,  // Core status outputs.
 
-  output logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    wdt_reset_o,
+  output logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    wdt_reset_o,  // Wdt reset.
 
-  // Memory interface signals between DigitalTop and mems
-  output chipyard_4core_mem_pkg::rom_tilelink_req_t             rom_intf_req_o,
-  input  chipyard_4core_mem_pkg::rom_tilelink_rsp_t             rom_intf_rsp_i,
-  output chipyard_4core_mem_pkg::scratch_ram_req_t              scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::scratch_ram_rsp_t              scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_icache_tag_req_t            l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t            l1_icache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_icache_data_req_t           l1_icache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t           l1_icache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_dcache_tag_req_t            l1_dcache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t            l1_dcache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_dcache_data_req_t           l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t           l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
+  output chipyard_4core_mem_pkg::rom_tilelink_req_t             rom_intf_req_o,  // Memory interface
+                                                                                 // signals between
+                                                                                 // DigitalTop and mems.
+  input  chipyard_4core_mem_pkg::rom_tilelink_rsp_t             rom_intf_rsp_i,  // Memory interface
+                                                                                 // signals between
+                                                                                 // DigitalTop and mems.
+  output chipyard_4core_mem_pkg::scratch_ram_req_t              scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],  // Memory interface
+                                                                                                                                          // signals between
+                                                                                                                                          // DigitalTop and mems.
+  input  chipyard_4core_mem_pkg::scratch_ram_rsp_t              scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],  // Memory interface
+                                                                                                                                          // signals between
+                                                                                                                                          // DigitalTop and mems.
+  output chipyard_4core_mem_pkg::l1_icache_tag_req_t            l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],  // Memory interface
+                                                                                                                                                // signals between
+                                                                                                                                                // DigitalTop and mems.
+  input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t            l1_icache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],  // Memory interface
+                                                                                                                                                // signals between
+                                                                                                                                                // DigitalTop and mems.
+  output chipyard_4core_mem_pkg::l1_icache_data_req_t           l1_icache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],  // Memory interface
+                                                                                                                                                 // signals between
+                                                                                                                                                 // DigitalTop and mems.
+  input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t           l1_icache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],  // Memory interface
+                                                                                                                                                 // signals between
+                                                                                                                                                 // DigitalTop and mems.
+  output chipyard_4core_mem_pkg::l1_dcache_tag_req_t            l1_dcache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],  // Memory interface
+                                                                                                                                                // signals between
+                                                                                                                                                // DigitalTop and mems.
+  input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t            l1_dcache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],  // Memory interface
+                                                                                                                                                // signals between
+                                                                                                                                                // DigitalTop and mems.
+  output chipyard_4core_mem_pkg::l1_dcache_data_req_t           l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],  // Memory interface
+                                                                                                                                                 // signals between
+                                                                                                                                                 // DigitalTop and mems.
+  input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t           l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],  // Memory interface
+                                                                                                                                                 // signals between
+                                                                                                                                                 // DigitalTop and mems.
 
-  input  logic                                            disable_sram_auto_init_i,
+  input  logic                                            disable_sram_auto_init_i,  // Disable sram auto
+                                                                                     // init.
 
-  output logic                                            init_mem_done_o,
+  output logic                                            init_mem_done_o,  // Init mem done.
 
-  // Test related signals
-  input  logic                                            test_en_i
+  input  logic                                            test_en_i  // Test related
+                                                                     // signals.
 );
   // Mem Init signals
   chipyard_4core_mem_pkg::scratch_ram_req_t scratch_ram_intf_req_pre_init [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];

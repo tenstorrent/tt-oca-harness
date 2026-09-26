@@ -1,56 +1,47 @@
-//-----------------------------------------------------------------------------
-// I2C
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-//
-// Description: I2C top level wrapper file
 
+// Wrap the I2C core with AXI-Lite CSRs, SMBus sideband, and DMA ready strobes.
+//
+// Instantiates i2c_core and the register block.
+// FIFO depths and INPUT_DELAY_CYCLES size the controller and target paths.
+// debug_o mirrors i2c_core's four debug bits.
 
 module i2c
   import i2c_pkg::*;
 #(
-  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
-  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,
-  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,
-  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,
-  parameter int unsigned INPUT_DELAY_CYCLES       = 0
+  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Controller TX FIFO depth.
+  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,     // Controller RX FIFO depth.
+  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,     // Target TX FIFO depth.
+  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,    // Target RX FIFO depth.
+  parameter int unsigned INPUT_DELAY_CYCLES       = 0       // Extra input-pipeline cycles.
 ) (
-  // Global Interface
-  input  logic                             clk_i,
-  input  logic                             rst_ni,
+  input  logic                             clk_i,           // System clock.
+  input  logic                             rst_ni,          // Async reset, active-low.
 
-  // AXI4-Lite Register Interface
-  input  axil_req_t                        axil_req_i,
-  output axil_resp_t                       axil_resp_o,
+  input  axil_req_t                        axil_req_i,      // AXI-Lite CSR request.
+  output axil_resp_t                       axil_resp_o,     // AXI-Lite CSR response.
 
-  // I2C Interface
-  input  logic                             scl_i,
-  output logic                             scl_o,
-  input  logic                             sda_i,
-  output logic                             sda_o,
+  input  logic                             scl_i,           // SCL pad input.
+  output logic                             scl_o,           // SCL pad output (open-drain drive).
+  input  logic                             sda_i,           // SDA pad input.
+  output logic                             sda_o,           // SDA pad output (open-drain drive).
 
-  // SMBus Interface
-  input  logic                             smbus_en_i,
-  input  logic                             smbsus_ni,
-  output logic                             smbsus_no,
-  input  logic                             smbalert_ni,
-  output logic                             smbalert_no,
+  input  logic                             smbus_en_i,      // Enable SMBus sideband.
+  input  logic                             smbsus_ni,       // SMBus SUS pin in, active-low.
+  output logic                             smbsus_no,       // SMBus SUS pin out, active-low.
+  input  logic                             smbalert_ni,     // SMBus ALERT pin in, active-low.
+  output logic                             smbalert_no,     // SMBus ALERT pin out, active-low.
 
-  // DMA Interface
-  output logic                             controller_tx_ready_o,
-  output logic                             controller_rx_ready_o,
-  output logic                             target_tx_ready_o,
-  output logic                             target_rx_ready_o,
+  output logic                             controller_tx_ready_o, // Controller TX DMA ready.
+  output logic                             controller_rx_ready_o, // Controller RX DMA ready.
+  output logic                             target_tx_ready_o, // Target TX DMA ready.
+  output logic                             target_rx_ready_o, // Target RX DMA ready.
 
-  // Interrupt Interface
-  output logic                             irq_o,
+  output logic                             irq_o,           // Combined I2C interrupt.
 
-  // Debug Interface (see i2c_core.sv for field definitions)
-  output logic [3:0]                       debug_o
+  output logic [3:0]                       debug_o          // Four-bit debug bus; see i2c_core for field definitions.
 );
 
   `include "prim_assert.sv"

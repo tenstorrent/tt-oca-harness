@@ -1,63 +1,61 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Shadow Register Access Control
+// Enforce per-field read and write locks on APB accesses to the shadow map.
 //
-//-----------------------------------------------------------------------------
+// Filter APB requests using efuse_field_map_i and locks_i before they reach the shadow
+// regs.
+//
+// LOCK_VECTOR_BITS is 2*(EFUSE_FIELDS-1), with write-lock at 2n and read-lock at 2n+1 per
+// real field. The LOCKS meta-field uses sentinel idx all-ones and is excluded from hw-lock
+// checks.
+//
+// Report write_locked_o, read_locked_o, write_setup_only_o, and lc_state_access_o.
+// locked_field_access_interrupt_o signals locked-field hits.
 
 module efuse_shadow_reg_access_control #(
-  parameter int unsigned EFUSE_ADDR_WIDTH = 12,
-  parameter int unsigned EFUSE_FIELDS = 1,
-  parameter bit HAS_LC_STATE = 1'b0,
+  parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
+  parameter int unsigned EFUSE_FIELDS = 1,  // eFuse field-map entry count.
+  parameter bit HAS_LC_STATE = 1'b0,    // B0.
 
-  parameter type efuse_apb_req_t = logic,
-  parameter type efuse_apb_resp_t = logic,
+  parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
+  parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
-  parameter type efuse_addr_t = logic,
-  parameter type efuse_data_t = logic,
+  parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+  parameter type efuse_data_t = logic,  // Fuse data-word type.
 
-  localparam type efuse_strb_t = logic [3:0],
+  localparam type efuse_strb_t = logic [3:0],  // APB write-strobe type.
 
-  // Two lock bits per real field slot. The LOCKS meta-field uses the fixed
-  // sentinel idx '1 (all-ones) and is excluded from hw-lock checks.
-  localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1)
+  localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1)  // eFuse field-map entry count.
 ) (
-  input  logic                                  clk_i,
-  input  logic                                  rst_ni,
+  input  logic                                  clk_i,  // System clock.
+  input  logic                                  rst_ni,  // Active-low reset.
 
-  input  logic                                  secure_tm_i,
+  input  logic                                  secure_tm_i,  // Secure tm.
 
-  // Efuse Field Map Configuration
-  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,
+  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Efuse field map.
 
-  // APB Register Interface
-  input  logic [EFUSE_ADDR_WIDTH-1:0]           apb_req_paddr_i,
-  input  logic [2:0]                            apb_req_pprot_i,
-  input  logic                                  apb_req_psel_i,
-  input  logic                                  apb_req_penable_i,
-  input  logic                                  apb_req_pwrite_i,
-  input  logic [31:0]                           apb_req_pwdata_i,
-  input  logic [3:0]                            apb_req_pstrb_i,
+  input  logic [EFUSE_ADDR_WIDTH-1:0]           apb_req_paddr_i,  // Apb req paddr (APB Register Interface).
+  input  logic [2:0]                            apb_req_pprot_i,  // Apb req pprot.
+  input  logic                                  apb_req_psel_i,  // Apb req psel.
+  input  logic                                  apb_req_penable_i,  // Apb req penable.
+  input  logic                                  apb_req_pwrite_i,  // Apb req pwrite.
+  input  logic [31:0]                           apb_req_pwdata_i,  // Apb req pwdata.
+  input  logic [3:0]                            apb_req_pstrb_i,  // Apb req pstrb.
 
-  output efuse_apb_resp_t                       apb_resp_o,
+  output efuse_apb_resp_t                       apb_resp_o,  // Apb resp.
 
-  // APB Interface to/from Access Control
-  output efuse_apb_req_t                        apb_req_from_ac_o,
-  input  efuse_apb_resp_t                       apb_resp_from_ac_i,
+  output efuse_apb_req_t                        apb_req_from_ac_o,  // Apb req from ac (APB Interface to/from Access Control).
+  input  efuse_apb_resp_t                       apb_resp_from_ac_i,  // Apb resp from ac.
 
-  // Access Control Status Outputs
-  output logic                                  write_locked_o,
-  output logic                                  write_setup_only_o,
-  output logic                                  lc_state_access_o,
-  output logic                                  read_locked_o,
+  output logic                                  write_locked_o,  // Write locked (Access Control Status Outputs).
+  output logic                                  write_setup_only_o,  // Write setup only.
+  output logic                                  lc_state_access_o,  // Lc state access.
+  output logic                                  read_locked_o,  // Read locked.
 
-  // Hardware lock vector: 2 bits per real field slot (write-lock at 2n, read-lock at 2n+1).
-  // Extracted from the LOCK shadow register by the parent efuse_shadow_regs module.
-  input  logic [LOCK_VECTOR_BITS-1:0]           locks_i,
+  input  logic [LOCK_VECTOR_BITS-1:0]           locks_i,  // Locks.
 
-  // Locked Field Access Interrupt
-  output logic                                  locked_field_access_interrupt_o
+  output logic                                  locked_field_access_interrupt_o  // Locked field access interrupt.
 );
 
   `include "prim_assert.sv"

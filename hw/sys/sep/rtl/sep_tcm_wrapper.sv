@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP TCM Wrapper
-// Contains ICCM and DCCM RAM instances
-// Uses struct-based interface to connect to VeeR EL2 core via sep_cpu
+// Instantiate ICCM and DCCM RAM macros for the SEP CPU TCM interface.
+//
+// Uses the sep_cpu_tcm_req_t / sep_cpu_tcm_rsp_t struct interface from sep_cpu.
+// Bank geometry comes from el2_param.vh via the EL2 parameter include.
 
 module sep_tcm_wrapper
     import el2_pkg::*;
@@ -12,8 +13,8 @@ module sep_tcm_wrapper
 `include "el2_param.vh"
 )
 (
-    input  sep_cpu_tcm_req_t tcm_req_i,
-    output sep_cpu_tcm_rsp_t tcm_rsp_o
+    input  sep_cpu_tcm_req_t tcm_req_i,       // TCM request.
+    output sep_cpu_tcm_rsp_t tcm_rsp_o        // TCM response.
 );
 
   //////////

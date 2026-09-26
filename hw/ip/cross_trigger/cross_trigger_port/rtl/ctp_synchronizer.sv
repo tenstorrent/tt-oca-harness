@@ -1,28 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Synchronizer Module
+// Synchronize asynchronous CTP GPIO inputs into the core clock domain.
 //
-// Description:
-// Synchronizes asynchronous GPIO input signals to the CTP core clock domain.
-// All outputs are registered to prevent glitches.
-//------------------------------------------------------------------------------
-
+// Double-synchronizes ct_req_out_din_i (wire-OR), ct_req_in_din_i, and ct_ack_in_din_i
+// (point-to-point).
+// All synchronized outputs are registered to prevent glitches.
 
 module ctp_synchronizer (
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,                   // System clock.
+  input  logic rst_ni,                  // Active-low reset.
 
-  // Asynchronous inputs from GPIO pads
-  input  logic ct_req_out_din_i,  // Input from CT_Req_out pad (wire-OR mode)
-  input  logic ct_req_in_din_i,  // Input from CT_Req_in pad (point-to-point mode)
-  input  logic ct_ack_in_din_i,  // Input from CT_Ack_in pad (point-to-point mode)
+  input  logic ct_req_out_din_i,        // from CT_Req_out pad (wire-OR mode).
+  input  logic ct_req_in_din_i,         // from CT_Req_in pad (point-to-point mode).
+  input  logic ct_ack_in_din_i,         // from CT_Ack_in pad (point-to-point mode).
 
-  // Synchronized outputs
-  output logic ct_req_out_din_sync_o,  // Synchronized CT_Req_out input
-  output logic ct_req_in_din_sync_o,  // Synchronized CT_Req_in input
-  output logic ct_ack_in_din_sync_o   // Synchronized CT_Ack_in input
+  output logic ct_req_out_din_sync_o,   // Synchronized CT_Req_out.
+  output logic ct_req_in_din_sync_o,    // Synchronized CT_Req_in.
+  output logic ct_ack_in_din_sync_o     // Synchronized CT_Ack_in.
 );
 
   // Synchronize ct_req_out_din (used in wire-OR mode)

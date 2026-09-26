@@ -1,7 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// JTAG Interface Unit
+// Host the primary JTAG TAP and fan out scan, STAP, and debug-bridge interfaces for the chiplet.
+//
+// Parameters:
+//
+// - Enables select BSR instructions, optional EXTEST/INTEST/CLAMP/HIGHZ/RUNBIST, TMP,
+//   IC_RESET slices, SMC/SEP debug, and STAP I/O.
+// - NUM_EXTRA_STAPS sizes additional DTP STAPs.
+// - IDCODE_* and OCH_VER program identification fields.
+// - NUM_XTRIG_CTP and NUM_XTRIG_INT_CT report cross-trigger geometry in capabilities.
+// - IC_RESET slice types carry .ovrd and .val members; stub defaults exist only for
+//   standalone elaboration.
+//
+// Optional JTAG2AXI bridges reach SMC fabric AXI and SMC/SEP OTP AXI-Lite with
+// programmable pipeline depths.
+//
+// dbg_disable_i comes from the SEP lifecycle controller; pwr_on_rst_ni resets JTAG logic.
+//
+// Exported controls:
+//
+// - IC_RESET slices
+// - boot-stall override/value
+// - JTAG/CLA clock-stop controls
+// - PTAP state/instruction
 
 module jtag_intf_unit
   import prim_jtag_pkg::*;
@@ -9,163 +31,134 @@ module jtag_intf_unit
   import jtag_inst_reg_pkg::*;
 #(
   /* verilator lint_off UNUSEDPARAM */
-  // JTAG configuration parameters
-  parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory JTAG boundary scan instructions
-  parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Enables optional JTAG EXTEST_TRAIN instruction
-  parameter bit  EXTEST_PULSE_ENABLE = 1,  // Enables optional JTAG EXTEST_PULSE instruction
-  parameter bit  INTEST_ENABLE       = 1,  // Enables optional JTAG INTEST instruction
-  parameter bit  CLAMP_ENABLE        = 1,  // Enables optional JTAG CLAMP instruction
-  parameter bit  HIGHZ_ENABLE        = 1,  // Enables optional JTAG HIGHZ instruction
-  parameter bit  RUNBIST_ENABLE      = 1,  // Enables optional JTAG RUNBIST instruction
-  parameter bit  TMP_ENABLE          = 1,  // Enables TMP controller functionality and instructions
-  parameter bit  IC_RESET_SMC_ENABLE = 0,  // Enables the SMC slice of the IC_RESET TDR
-  parameter bit  IC_RESET_SEP_ENABLE = 0,  // Enables the SEP slice of the IC_RESET TDR
-  parameter bit  IC_RESET_EXT_ENABLE = 0,  // Enables the external slice of the IC_RESET TDR
-  parameter bit  SMC_DBG_ENABLE      = 1,  // Enables optional JTAG2AXI ports for the SMC debug interface
-  parameter bit  SEP_DBG_ENABLE      = 1,  // Enables optional STAP for the SEP debug interface
-  parameter bit  STAP_IO_ENABLE      = 1,  // Enables the STAP for chiplet-to-chiplet connectivity
+  parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory JTAG boundary scan instructions.
+  parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Enables optional JTAG EXTEST_TRAIN instruction.
+  parameter bit  EXTEST_PULSE_ENABLE = 1,  // Enables optional JTAG EXTEST_PULSE instruction.
+  parameter bit  INTEST_ENABLE       = 1,  // Enables optional JTAG INTEST instruction.
+  parameter bit  CLAMP_ENABLE        = 1,  // Enables optional JTAG CLAMP instruction.
+  parameter bit  HIGHZ_ENABLE        = 1,  // Enables optional JTAG HIGHZ instruction.
+  parameter bit  RUNBIST_ENABLE      = 1,  // Enables optional JTAG RUNBIST instruction.
+  parameter bit  TMP_ENABLE          = 1,  // Enables TMP controller functionality and instructions.
+  parameter bit  IC_RESET_SMC_ENABLE = 0,  // Enables the SMC slice of the IC_RESET TDR.
+  parameter bit  IC_RESET_SEP_ENABLE = 0,  // Enables the SEP slice of the IC_RESET TDR.
+  parameter bit  IC_RESET_EXT_ENABLE = 0,  // Enables the external slice of the IC_RESET TDR.
+  parameter bit  SMC_DBG_ENABLE      = 1,  // Enables optional JTAG2AXI ports for the SMC debug interface.
+  parameter bit  SEP_DBG_ENABLE      = 1,  // Enables optional STAP for the SEP debug interface.
+  parameter bit  STAP_IO_ENABLE      = 1,  // Enables the STAP for chiplet-to-chiplet connectivity.
 
-  parameter int unsigned  NUM_EXTRA_STAPS = 0,  // The number of additional STAPs included in the DTP for local connectivity
+  parameter int unsigned  NUM_EXTRA_STAPS = 0,  // The number of additional STAPs included in the DTP for local connectivity.
 
-  parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,   // JTAG IDCODE manufacturer ID (11 bits)
-  parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number (16 bits)
-  parameter logic [3:0]   IDCODE_SI_REV   = 4'h0,      // JTAG IDCODE silicon revision (4 bits)
+  parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,  // JTAG IDCODE manufacturer ID (11 bits).
+  parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number (16 bits).
+  parameter logic [3:0]   IDCODE_SI_REV   = 4'h0,  // JTAG IDCODE silicon revision (4 bits).
 
-  parameter int unsigned  NUM_XTRIG_CTP     = 8,     // The number of cross trigger ports
-  parameter int unsigned  NUM_XTRIG_INT_CT  = 1,     // Number of internal cross triggers
-  parameter logic [7:0]   OCH_VER           = 8'h00, // DTP IP major version number
+  parameter int unsigned  NUM_XTRIG_CTP     = 8,  // The number of cross trigger ports.
+  parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Number of internal cross triggers.
+  parameter logic [7:0]   OCH_VER           = 8'h00,  // DTP IP major version number.
 
-  localparam int unsigned  NUM_EXTRA_STAP_PORTS = (NUM_EXTRA_STAPS > 0) ? NUM_EXTRA_STAPS : 1,  // Minimum of 1 for tie-off case
+  localparam int unsigned  NUM_EXTRA_STAP_PORTS = (NUM_EXTRA_STAPS > 0) ? NUM_EXTRA_STAPS : 1,  // Minimum of 1 for tie-off case.
 
-  // Type parameters for JTAG TAP and scan control
-  parameter type  jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t,
-  parameter type  jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,
+  parameter type  jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t,  // JTAG TAP-control struct type.
+  parameter type  jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,  // JTAG scan-control struct type.
 
-  // Type parameters for IC_RESET TDR slices (packed structs with `.ovrd` and `.val` fields of
-  // matching width).
-  parameter type  ic_reset_smc_t = jtag_tap_pkg::jtag_ic_reset_default_t,
-  parameter type  ic_reset_sep_t = jtag_tap_pkg::jtag_ic_reset_default_t,
-  parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
+  parameter type  ic_reset_smc_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // jtag ic reset default t type.
+  parameter type  ic_reset_sep_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // jtag ic reset default t type.
+  parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // jtag ic reset default t type.
 
-  // Type parameters for SMC fabric debug AXI interface
-  parameter type  smc_jtag_axi_req_t = logic,
-  parameter type  smc_jtag_axi_resp_t = logic,
+  parameter type  smc_jtag_axi_req_t = logic,  // SMC fabric debug AXI request type.
+  parameter type  smc_jtag_axi_resp_t = logic,  // SMC fabric debug AXI response type.
 
-  // Type parameters for SMC OTP debug AXI-Lite interface
-  parameter type  smc_otp_axil_req_t = logic,
-  parameter type  smc_otp_axil_resp_t = logic,
+  parameter type  smc_otp_axil_req_t = logic,  // SMC OTP debug AXI-Lite request type.
+  parameter type  smc_otp_axil_resp_t = logic,  // SMC OTP debug AXI-Lite response type.
 
-  // Type parameters for SEP OTP debug AXI-Lite interface
-  parameter type  sep_otp_axil_req_t = logic,
-  parameter type  sep_otp_axil_resp_t = logic,
+  parameter type  sep_otp_axil_req_t = logic,  // SEP OTP debug AXI-Lite request type.
+  parameter type  sep_otp_axil_resp_t = logic,  // SEP OTP debug AXI-Lite response type.
 
-  // Pipeline depth parameters for JTAG2AXI capabilities registers
-  parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth (0 = single outstanding transaction)
-  parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth (0 = single outstanding transaction)
-  parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth (0 = single outstanding transaction)
-  parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth (0 = single outstanding transaction)
-  parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth (0 = single outstanding transaction)
-  parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3   // SMC fabric write pipeline depth (0 = single outstanding transaction)
+  parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3  // SMC fabric write pipeline depth (0 = single outstanding transaction).
   /* verilator lint_on UNUSEDPARAM */
 ) (
-  // System clock and reset (non-JTAG)
-  input  logic clk_i,
-  input  logic rst_n_i,
+  input  logic clk_i,                   // System clock.
+  input  logic rst_n_i,                 // Active-low system reset.
 
-  // Power-on reset (for JTAG logic)
-  input  logic pwr_on_rst_ni,  // Power-on reset for JTAG logic
+  input  logic pwr_on_rst_ni,           // Power-on reset for JTAG logic.
 
-  // Debug-disable bits from the SEP lifecycle controller
-  input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,
+  input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,  // Dbg disable.
 
-  // Primary JTAG TAP interface
-  input  jtag_tap_ctrl_t  ptap_client_tap_ctrl_i,
-  input  logic            ptap_client_tdi_i,
-  output logic            ptap_client_tdo_o,
-  output logic            ptap_client_tdo_oen_o,
+  input  jtag_tap_ctrl_t  ptap_client_tap_ctrl_i,  // Ptap client tap ctrl (Primary JTAG TAP interface).
+  input  logic            ptap_client_tdi_i,  // Ptap client tdi.
+  output logic            ptap_client_tdo_o,  // Ptap client tdo.
+  output logic            ptap_client_tdo_oen_o,  // Ptap client tdo oen.
 
-  // Boundary scan interface
-  output jtag_scan_ctrl_t  bsr_host_scan_ctrl_o,
-  input  logic             bsr_host_scan_in_i,
-  output logic             bsr_host_scan_out_o,
+  output jtag_scan_ctrl_t  bsr_host_scan_ctrl_o,  // Bsr host scan ctrl (Boundary scan interface).
+  input  logic             bsr_host_scan_in_i,  // Bsr host scan in.
+  output logic             bsr_host_scan_out_o,  // Bsr host scan out.
 
-  // I/O STAP interface (chiplet-to-chiplet connectivity)
-  output jtag_tap_ctrl_t  stap_io_host_tap_ctrl_o,
-  input  logic            stap_io_host_tdi_i,
-  output logic            stap_io_host_tdo_o,
-  output logic            stap_io_host_tdo_oen_o,
+  output jtag_tap_ctrl_t  stap_io_host_tap_ctrl_o,  // Stap io host tap ctrl (I/O STAP interface (chiplet-to-chiplet connectivity)).
+  input  logic            stap_io_host_tdi_i,  // Stap io host tdi.
+  output logic            stap_io_host_tdo_o,  // Stap io host tdo.
+  output logic            stap_io_host_tdo_oen_o,  // Stap io host tdo oen.
 
-  // SMC Debug STAP interface
-  output jtag_tap_ctrl_t  stap_smc_host_tap_ctrl_o,
-  input  logic            stap_smc_host_tdi_i,
-  output logic            stap_smc_host_tdo_o,
-  output logic            stap_smc_host_tdo_oen_o,
+  output jtag_tap_ctrl_t  stap_smc_host_tap_ctrl_o,  // Stap smc host tap ctrl (SMC Debug STAP interface).
+  input  logic            stap_smc_host_tdi_i,  // Stap smc host tdi.
+  output logic            stap_smc_host_tdo_o,  // Stap smc host tdo.
+  output logic            stap_smc_host_tdo_oen_o,  // Stap smc host tdo oen.
 
-  // SEP Debug STAP interface
-  output jtag_tap_ctrl_t  stap_sep_host_tap_ctrl_o,
-  input  logic            stap_sep_host_tdi_i,
-  output logic            stap_sep_host_tdo_o,
-  output logic            stap_sep_host_tdo_oen_o,
+  output jtag_tap_ctrl_t  stap_sep_host_tap_ctrl_o,  // Stap sep host tap ctrl (SEP Debug STAP interface).
+  input  logic            stap_sep_host_tdi_i,  // Stap sep host tdi.
+  output logic            stap_sep_host_tdo_o,  // Stap sep host tdo.
+  output logic            stap_sep_host_tdo_oen_o,  // Stap sep host tdo oen.
 
-  // Extra STAP interfaces
-  output jtag_tap_ctrl_t  stap_extra_host_tap_ctrl_o [NUM_EXTRA_STAP_PORTS-1:0],
+  output jtag_tap_ctrl_t  stap_extra_host_tap_ctrl_o [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tap ctrl.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  logic            stap_extra_host_tdi_i      [NUM_EXTRA_STAP_PORTS-1:0],
+  input  logic            stap_extra_host_tdi_i      [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tdi.
   /* verilator lint_on UNUSEDSIGNAL */
-  output logic            stap_extra_host_tdo_o      [NUM_EXTRA_STAP_PORTS-1:0],
-  output logic            stap_extra_host_tdo_oen_o  [NUM_EXTRA_STAP_PORTS-1:0],
+  output logic            stap_extra_host_tdo_o      [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tdo.
+  output logic            stap_extra_host_tdo_oen_o  [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tdo oen.
 
-  // Extended JTAG STAP scan interface
-  output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,
-  input  logic             stap_host_scan_in_i,
-  output logic             stap_host_scan_out_o,
+  output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,  // Stap host scan ctrl (Extended JTAG STAP scan interface).
+  input  logic             stap_host_scan_in_i,  // Stap host scan in.
+  output logic             stap_host_scan_out_o,  // Stap host scan out.
 
-  // External DFD iJTAG interface
-  output jtag_scan_ctrl_t  dfd_host_scan_ctrl_o,
-  input  logic             dfd_host_scan_in_i,
-  output logic             dfd_host_scan_out_o,
+  output jtag_scan_ctrl_t  dfd_host_scan_ctrl_o,  // Dfd host scan ctrl (JTAG (TCK domain)).
+  input  logic             dfd_host_scan_in_i,  // Dfd host scan in.
+  output logic             dfd_host_scan_out_o,  // Dfd host scan out.
 
-  // External secure DFT iJTAG interface
-  output jtag_scan_ctrl_t  dft_secure_host_scan_ctrl_o,
-  input  logic             dft_secure_host_scan_in_i,
-  output logic             dft_secure_host_scan_out_o,
+  output jtag_scan_ctrl_t  dft_secure_host_scan_ctrl_o,  // Dft secure host scan ctrl (JTAG (TCK domain)).
+  input  logic             dft_secure_host_scan_in_i,  // Dft secure host scan in.
+  output logic             dft_secure_host_scan_out_o,  // Dft secure host scan out.
 
-  // External non-secure DFT iJTAG interface
-  output jtag_scan_ctrl_t  dft_host_scan_ctrl_o,
-  input  logic             dft_host_scan_in_i,
-  output logic             dft_host_scan_out_o,
+  output jtag_scan_ctrl_t  dft_host_scan_ctrl_o,  // Dft host scan ctrl (JTAG (TCK domain)).
+  input  logic             dft_host_scan_in_i,  // Dft host scan in.
+  output logic             dft_host_scan_out_o,  // Dft host scan out.
 
-  // SMC fabric debug AXI manager interface
-  output smc_jtag_axi_req_t   axi_smc_dbg_req_o,
-  input  smc_jtag_axi_resp_t  axi_smc_dbg_resp_i,
+  output smc_jtag_axi_req_t   axi_smc_dbg_req_o,  // AXI smc dbg req (SMC fabric debug AXI manager interface).
+  input  smc_jtag_axi_resp_t  axi_smc_dbg_resp_i,  // AXI smc dbg resp.
 
-  // SMC OTP debug AXI-Lite manager interface
-  output smc_otp_axil_req_t   axil_smc_otp_jtag_req_o,
-  input  smc_otp_axil_resp_t  axil_smc_otp_jtag_resp_i,
+  output smc_otp_axil_req_t   axil_smc_otp_jtag_req_o,  // AXI-Lite smc otp jtag req (SMC OTP debug AXI-Lite manager interface).
+  input  smc_otp_axil_resp_t  axil_smc_otp_jtag_resp_i,  // AXI-Lite smc otp jtag resp.
 
-  // SEP OTP debug AXI-Lite manager interface
-  output sep_otp_axil_req_t   axil_sep_otp_jtag_req_o,
-  input  sep_otp_axil_resp_t  axil_sep_otp_jtag_resp_i,
+  output sep_otp_axil_req_t   axil_sep_otp_jtag_req_o,  // AXI-Lite sep otp jtag req (SEP OTP debug AXI-Lite manager interface).
+  input  sep_otp_axil_resp_t  axil_sep_otp_jtag_resp_i,  // AXI-Lite sep otp jtag resp.
 
-  // Clock control
-  output logic  jtag_clock_stop_o,   // JTAG stop clocks signal
+  output logic  jtag_clock_stop_o,      // JTAG stop clocks signal.
 
-  // Debug control interface
-  input  logic  cla_clock_stop_i,      // CLA clock stop status
-  output logic  cla_clock_stop_en_o,   // CLA clock stop enable
+  input  logic  cla_clock_stop_i,       // CLA clock stop status.
+  output logic  cla_clock_stop_en_o,    // CLA clock stop enable.
 
-  // Boot stall control
-  output logic  boot_stall_ovrd_o,  // Gives the JTAG interface control over boot stall
-  output logic  boot_stall_o,       // Cause a boot stall if jtag_boot_stall_ovrd is asserted
+  output logic  boot_stall_ovrd_o,      // Gives the JTAG interface control over boot stall.
+  output logic  boot_stall_o,           // Cause a boot stall if jtag_boot_stall_ovrd is asserted.
 
-  // Reset control (typed struct slices; packed struct contains `.ovrd` + `.val` halves)
-  output ic_reset_smc_t  ic_reset_smc_o,  // SMC slice (closest to TDI in IC_RESET TDR)
-  output ic_reset_sep_t  ic_reset_sep_o,  // SEP slice (middle of IC_RESET TDR)
-  output ic_reset_ext_t  ic_reset_ext_o,  // External slice (closest to TDO in IC_RESET TDR)
+  output ic_reset_smc_t  ic_reset_smc_o,  // SMC slice (closest to TDI in IC_RESET TDR).
+  output ic_reset_sep_t  ic_reset_sep_o,  // SEP slice (middle of IC_RESET TDR).
+  output ic_reset_ext_t  ic_reset_ext_o,  // External slice (closest to TDO in IC_RESET TDR).
 
-  // TAP internal state
-  output tap_state_e                 ptap_state_o,         // Current PTAP state
-  output jtag_instruction_decoded_e  ptap_inst_decoded_o   // Current PTAP instruction (decoded)
+  output tap_state_e                 ptap_state_o,  // Current PTAP state.
+  output jtag_instruction_decoded_e  ptap_inst_decoded_o  // Current PTAP instruction (decoded).
 );
 
   //--------------------------------------------------------------------------

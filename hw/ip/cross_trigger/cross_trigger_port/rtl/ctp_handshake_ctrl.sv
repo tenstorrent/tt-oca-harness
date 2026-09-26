@@ -1,38 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Handshake Controller Module
+// Run four-phase req/ack handshaking for point-to-point CTP mode.
 //
-// Description:
-// Implements four-phase handshaking protocol for point-to-point mode.
-// Controls ct_req_out assertion/deassertion based on ct_ack_in.
-// Controls ct_ack_out assertion/deassertion based on ct_req_in.
-// Supports RESET signal for deadlock recovery.
-//------------------------------------------------------------------------------
-
+// Asserts and releases ct_req_out_o from ct_src_i against synchronized ct_ack_in_sync_i.
+// Asserts and releases ct_ack_out_o from synchronized ct_req_in_sync_i and pulses
+// ct_dst_o.
+// reset_i recovers handshake deadlock; busy_o is high while a handshake is in progress.
+// Pad outputs are registered.
 
 module ctp_handshake_ctrl (
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,                   // System clock.
+  input  logic rst_ni,                  // Active-low reset.
 
-  // Core-side signals
-  input  logic ct_src_i,      // Cross trigger source pulse (synchronous)
-  output logic ct_dst_o,       // Cross trigger destination pulse (registered)
+  input  logic ct_src_i,                // Cross trigger source pulse (synchronous).
+  output logic ct_dst_o,                // Cross trigger destination pulse (registered).
 
-  // Handshake reset (from CONFIG.RESET register)
-  input  logic reset_i,
+  input  logic reset_i,                 // Reset (Handshake reset (from CONFIG.RESET register)).
 
-  // Synchronized pad inputs
-  input  logic ct_req_in_sync_i,   // Synchronized CT_Req_in
-  input  logic ct_ack_in_sync_i,   // Synchronized CT_Ack_in
+  input  logic ct_req_in_sync_i,        // Synchronized CT_Req_in.
+  input  logic ct_ack_in_sync_i,        // Synchronized CT_Ack_in.
 
-  // Pad outputs (all registered)
-  output logic ct_req_out_o,       // CT_Req_out output
-  output logic ct_ack_out_o,        // CT_Ack_out output
+  output logic ct_req_out_o,            // CT_Req_out.
+  output logic ct_ack_out_o,            // CT_Ack_out.
 
-  // Status
-  output logic busy_o               // Handshake in progress
+  output logic busy_o                   // Handshake in progress.
 );
 
   // Sender state machine states

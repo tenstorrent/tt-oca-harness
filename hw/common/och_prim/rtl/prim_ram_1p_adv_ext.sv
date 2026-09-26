@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// External Single-Port SRAM Wrapper
+// Wrap a single-port SRAM with optional ECC or parity, pipelines, and tiled external RAM ports.
 //
-//--------------------------------------------------
+// InstDepth smaller than Depth tiles into ceil(Depth/InstDepth) external RAM instances,
+// each InstDepth deep.
+//
+// EnableECC and EnableParity select per-word ECC or per-byte parity. HammingECC switches
+// from HSIAO to Hamming; HSIAO is more compact and faster.
+//
+// EnableInputPipeline and EnableOutputPipeline each add one cycle of read latency.
+//
+// alert_o rises on multi-bit encoding faults. rerror_o bit1 is uncorrectable and bit0 is
+// correctable.
 
 module prim_ram_1p_adv_ext
   import prim_ram_1p_pkg::*;
@@ -12,52 +20,45 @@ module prim_ram_1p_adv_ext
   `include "prim_assert.sv"
   import prim_ram_1p_adv_ext_pkg::*;
 #(
-  parameter  int Depth                = 512,
-  // Setting InstDepth to a smaller value than Depth enables RAM tiling. RAM is tiled to
-  // ceil(Depth/InstDepth) prim_ram_1p instances, each InstDepth deep.
-  parameter  int InstDepth            = Depth,
-  parameter  int Width                = 32,
-  parameter  int DataBitsPerMask      = 1,  // Number of data bits per bit of write mask
-  parameter      MemInitFile          = "", // VMEM file to initialize the memory with
+  parameter  int Depth                = 512,  // Logical memory depth.
+  parameter  int InstDepth            = Depth,  // Per-tile depth; smaller than Depth tiles into ceil(Depth/InstDepth)
+                                                // prim_ram_1p instances, each InstDepth
+                                                // deep.
+  parameter  int Width                = 32,  // Data width.
+  parameter  int DataBitsPerMask      = 1,  // Data bits covered by each write-mask bit.
+  parameter      MemInitFile          = "",  // Optional VMEM file used to initialize the memory.
 
-  // Configurations
-  parameter  bit EnableECC            = 0, // Enables per-word ECC
-  parameter  bit EnableParity         = 0, // Enables per-Byte Parity
-  parameter  bit EnableInputPipeline  = 0, // Adds an input register (read latency +1)
-  parameter  bit EnableOutputPipeline = 0, // Adds an output register (read latency +1)
+  parameter  bit EnableECC            = 0,  // Enables per-word ECC.
+  parameter  bit EnableParity         = 0,  // Enables per-byte parity.
+  parameter  bit EnableInputPipeline  = 0,  // Adds an input register; read latency +1.
+  parameter  bit EnableOutputPipeline = 0,  // Adds an output register; read latency +1.
 
-  // This switch allows to switch to standard Hamming ECC instead of the HSIAO ECC.
-  // It is recommended to leave this parameter at its default setting (HSIAO),
-  // since this results in a more compact and faster implementation.
-  parameter bit HammingECC            = 0,
+  parameter bit HammingECC            = 0,  // Selects Hamming ECC instead of HSIAO;
+                                            // HSIAO is more compact and faster.
 
-  // External RAM interface type parameters (can override defaults)
-  parameter type ram_req_t            = prim_ram_1p_adv_ext_req_t,
-  parameter type ram_rsp_t            = prim_ram_1p_adv_ext_rsp_t,
+  parameter type ram_req_t            = prim_ram_1p_adv_ext_req_t,  // External RAM request struct; may override the package default.
+  parameter type ram_rsp_t            = prim_ram_1p_adv_ext_rsp_t,  // External RAM response struct; may override the package default.
 
-  localparam int Aw                   = prim_util_pkg::vbits(Depth),
-  // Compute RAM tiling
-  localparam int NumRamInst           = prim_util_pkg::ceil_div(Depth, InstDepth),
-  localparam int InstAw               = prim_util_pkg::vbits(InstDepth)
+  localparam int Aw                   = prim_util_pkg::vbits(Depth),  // Logical address width.
+  localparam int NumRamInst           = prim_util_pkg::ceil_div(Depth, InstDepth),  // Number of tiled RAM instances.
+  localparam int InstAw               = prim_util_pkg::vbits(InstDepth)  // Per-instance address width.
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_i,  // Memory clock.
+  input rst_ni,  // Async reset, active-low.
 
-  input                               req_i,
-  input                               write_i,
-  input        [Aw-1:0]               addr_i,
-  input        [Width-1:0]            wdata_i,
-  input        [Width-1:0]            wmask_i,
-  output logic [Width-1:0]            rdata_o,
-  output logic                        rvalid_o, // read response (rdata_o) is valid
-  output logic [1:0]                  rerror_o, // Bit1: Uncorrectable, Bit0: Correctable
+  input                               req_i,  // Access request.
+  input                               write_i,  // Write when high, read when low.
+  input        [Aw-1:0]               addr_i,  // Logical word address.
+  input        [Width-1:0]            wdata_i,  // Write data.
+  input        [Width-1:0]            wmask_i,  // Write mask.
+  output logic [Width-1:0]            rdata_o,  // Read data.
+  output logic                        rvalid_o,  // Read response (rdata_o) is valid.
+  output logic [1:0]                  rerror_o,  // Bit1 uncorrectable, bit0 correctable.
 
-  // When detecting multi-bit encoding errors, raise alert.
-  output logic                             alert_o,
+  output logic                             alert_o,  // Multi-bit encoding-error alert.
 
-  // External RAM interface through req/rsp structs - one per RAM instance for tiling
-  output ram_req_t        [NumRamInst-1:0] ram_req_o,
-  input  ram_rsp_t        [NumRamInst-1:0] ram_rsp_i
+  output ram_req_t        [NumRamInst-1:0] ram_req_o,  // Per-tile external RAM requests.
+  input  ram_rsp_t        [NumRamInst-1:0] ram_rsp_i  // Per-tile external RAM responses.
 
 );
 

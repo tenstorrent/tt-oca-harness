@@ -1,10 +1,24 @@
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Hold TileLink Uncached Lightweight types, opcodes, and integrity widths.
 //
+// Define the A/D opcodes, packed channel structs, integrity and reserved-user widths, and
+// the ArbiterImpl selection shared by the TL-UL adapters and sockets.
+//
+// ArbiterImpl may be PPC or BINTREE. Both are functionally equivalent, but timing and
+// area differ:
+//
+// - PPC can be smaller when timing is not critical.
+// - BINTREE is favorable under timing pressure, and on FPGA for both area and timing.
+//
+// Two constants give the data returned on a TL-UL error, each with correct bus integrity:
+//
+// - DataWhenInstrError is returned for an instruction fetch.
+// - DataWhenError is returned for any access that is not an instruction fetch.
 
 package tlul_pkg;
-
   // this can be either PPC or BINTREE
   // there is no functional difference, but timing and area behavior is different
   // between the two instances. PPC can result in smaller implementations when timing
@@ -108,7 +122,7 @@ package tlul_pkg;
     logic                         d_valid;
     tl_d_op_e                     d_opcode;
     logic                  [2:0]  d_param;
-    logic  [top_pkg::TL_SZW-1:0]  d_size;   // Bouncing back a_size
+    logic  [top_pkg::TL_SZW-1:0]  d_size;   // Bouncing back a_size.
     logic  [top_pkg::TL_AIW-1:0]  d_source;
     logic  [top_pkg::TL_DIW-1:0]  d_sink;
     logic   [top_pkg::TL_DW-1:0]  d_data;
@@ -144,7 +158,7 @@ package tlul_pkg;
     unused_user = |user;
     malformed_err = prim_mubi_pkg::mubi4_test_invalid(user.instr_type);
     return malformed_err;
-  endfunction  // tl_a_user_chk
+  endfunction  // tl_a_user_chk.
 
   // extract variables used for command checking
   function automatic tl_h2d_cmd_intg_t extract_h2d_cmd_intg(tl_h2d_t tl);
@@ -156,7 +170,7 @@ package tlul_pkg;
     payload.mask = tl.a_mask;
     payload.instr_type = tl.a_user.instr_type;
     return payload;
-  endfunction  // extract_h2d_payload
+  endfunction  // extract_h2d_payload.
 
   // extract variables used for response checking
   function automatic tl_d2h_rsp_intg_t extract_d2h_rsp_intg(tl_d2h_t tl);
@@ -168,7 +182,7 @@ package tlul_pkg;
     //payload.source = tl.d_source;
     payload.error  = tl.d_error;
     return payload;
-  endfunction  // extract_d2h_rsp_intg
+  endfunction  // extract_d2h_rsp_intg.
 
   // calculate ecc for command checking
   function automatic logic [H2DCmdIntgWidth-1:0] get_cmd_intg(tl_h2d_t tl);
@@ -179,7 +193,7 @@ package tlul_pkg;
     {cmd_intg, unused_cmd_payload} =
         prim_secded_pkg::prim_secded_inv_64_57_enc(H2DCmdMaxWidth'(cmd));
     return cmd_intg;
-  endfunction  // get_cmd_intg
+  endfunction  // get_cmd_intg.
 
   // calculate ecc for data checking
   function automatic logic [DataIntgWidth-1:0] get_data_intg(logic [top_pkg::TL_DW-1:0] data);
@@ -190,20 +204,20 @@ package tlul_pkg;
     data_intg = enc_data[DataIntgWidth + top_pkg::TL_DW - 1 : top_pkg::TL_DW];
     unused_data = enc_data[top_pkg::TL_DW - 1 : 0];
     return data_intg;
-  endfunction  // get_data_intg
+  endfunction  // get_data_intg.
 
   // return inverted integrity for command payload
   function automatic logic [H2DCmdIntgWidth-1:0] get_bad_cmd_intg(tl_h2d_t tl);
     logic [H2DCmdIntgWidth-1:0] cmd_intg;
     cmd_intg = get_cmd_intg(tl);
     return ~cmd_intg;
-  endfunction  // get_bad_cmd_intg
+  endfunction  // get_bad_cmd_intg.
 
   // return inverted integrity for data payload
   function automatic logic [H2DCmdIntgWidth-1:0] get_bad_data_intg(logic [top_pkg::TL_DW-1:0] data);
     logic [H2DCmdIntgWidth-1:0] data_intg;
     data_intg = get_data_intg(data);
     return ~data_intg;
-  endfunction  // get_bad_data_intg
+  endfunction  // get_bad_data_intg.
 
 endpackage

@@ -2,34 +2,46 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// ROM interface adapter with parity checking and look-ahead prefetch.
+// Adapt the PicoRV32 native memory interface to the ROM with parity checking and
+// look-ahead prefetch.
 //
-// Bridges the PicoRV32 native memory bus to km_rom_mem_req_t / km_rom_mem_rsp_t.
-// Writes are acknowledged immediately and reported on rom_write_err_o. Look-ahead
-// mem_la_* arrives one cycle before mem_valid_i so the ROM can start early.
-// Odd parity is checked per byte on every read; mismatches pulse parity_error_o.
+// Bridges the PicoRV32 native memory interface to the standard ROM memory interface
+// (km_rom_mem_req_t / km_rom_mem_rsp_t). Read-only: write attempts are immediately
+// acknowledged and reported as errors on rom_write_err_o.
+//
+// Supports the PicoRV32 look-ahead interface for efficient prefetching: mem_la_read_i /
+// mem_la_addr_i arrive one cycle before mem_valid_i, allowing the ROM to begin the fetch
+// early.
+//
+// Odd parity is checked per byte on every read response; mismatches generate a
+// single-cycle parity_error_o pulse to KMCSR.
 
 module km_rom_interface
   import km_intf_pkg::*;
 #(
-  parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH  // ROM word-address width
+  parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH  // Word-address width for the ROM.
 ) (
-  input  logic            clk_i,           // System clock
-  input  logic            rst_ni,          // Active-low reset
-  input  logic            mem_valid_i,     // PicoRV32 memory request valid
-  output logic            mem_ready_o,     // PicoRV32 memory ready (data available)
-  input  logic [31:0]     mem_addr_i,      // PicoRV32 byte address
-  input  logic [31:0]     mem_wdata_i,     // PicoRV32 write data (unused; ROM is read-only)
-  input  logic [3:0]      mem_wstrb_i,     // PicoRV32 write strobe (unused; ROM is read-only)
-  input  logic [3:0]      mem_rstrb_i,     // PicoRV32 read strobe (byte lanes consumed)
-  output logic [31:0]     mem_rdata_o,     // PicoRV32 read data
-  input  logic            mem_la_read_i,   // Look-ahead read, one cycle before mem_valid_i
-  input  logic [31:0]     mem_la_addr_i,   // Look-ahead byte address
-  input  logic [3:0]      mem_la_rstrb_i,  // Look-ahead read strobe
-  output km_rom_mem_req_t rom_mem_req_o,   // Request to the ROM hard macro
-  input  km_rom_mem_rsp_t rom_mem_rsp_i,   // Response from the ROM hard macro
-  output logic            parity_error_o,  // One-cycle pulse on odd-parity mismatch
-  output logic            rom_write_err_o  // One-cycle pulse on a ROM write attempt
+  input  logic clk_i,   // System clock.
+  input  logic rst_ni,  // Active-low reset.
+
+  input  logic        mem_valid_i,  // PicoRV32 native memory request valid (from CPU).
+  output logic        mem_ready_o,  // Memory ready (data available).
+  input  logic [31:0] mem_addr_i,   // Byte address.
+  input  logic [31:0] mem_wdata_i,  // Write data (unused, ROM is read-only).
+  input  logic [3:0]  mem_wstrb_i,  // Write strobe (unused, ROM is read-only).
+  input  logic [3:0]  mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU).
+  output logic [31:0] mem_rdata_o,  // Read data.
+
+  input  logic        mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid).
+  input  logic [31:0] mem_la_addr_i,   // Look-ahead address.
+  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe.
+
+  output km_rom_mem_req_t rom_mem_req_o,  // ROM memory request, exposed at the subsystem
+                                          // boundary.
+  input  km_rom_mem_rsp_t rom_mem_rsp_i,  // ROM memory response.
+
+  output logic parity_error_o,  // Parity error detected (pulse to KMCSR).
+  output logic rom_write_err_o  // ROM write attempt detected (pulse to KMCSR).
 );
 
   `include "prim_assert.sv"
@@ -49,7 +61,9 @@ module km_rom_interface
   // Parity Check Function
   ////////////////////////////////////////////////////////////////////////////
 
-  // Check odd parity per byte of a 32-bit word; return 1 on mismatch.
+  // Check odd parity per byte of a 32-bit word. data is the word to verify and parity the
+  // 4-bit stored parity (one bit per byte, odd parity). Returns 1 if a parity mismatch is
+  // detected, 0 otherwise.
   function automatic logic check_parity(logic [31:0] data, logic [3:0] parity,
                                         logic [3:0] byte_mask);
     logic [3:0] computed_parity;

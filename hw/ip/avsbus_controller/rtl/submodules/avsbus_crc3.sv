@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// AVSBus CRC3
+// Compute and check the AVSBus CRC-3 over a 32-bit message.
 //
-//-----------------------------------------------------------------------------
+// crc_o is the residue over msg_i; check_good_o is high when that residue is zero.
 
 module avsbus_crc3 (
-  input  logic [31:0] msg_i,
-  output logic [2:0]  crc_o,
-  output logic        check_good_o
+  input  logic [31:0] msg_i,                                // Message bits to CRC.
+  output logic [2:0]  crc_o,                                // CRC-3 residue.
+  output logic        check_good_o                          // High when the residue is zero.
 );
   //timeunit 1ns;
   //timeprecision 1ps;

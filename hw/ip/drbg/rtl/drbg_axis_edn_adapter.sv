@@ -1,58 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-// drbg_axis_edn_adapter
-//
-// Generic 32b AXI-Stream to multi-client native EDN fan-out.
-//----------------------------------------------------------
 
-/**
- * @file drbg_axis_edn_adapter.sv
- * @brief Converts a single 32-bit AXI-Stream source into `NUM_ENDPOINTS`
- *        native `edn_pkg` client ports.
- *
- * @details Pipeline is:
- *            axis (32b) -> prim_fifo_sync (32b staging)
- *                       -> prim_arbiter_ppc (N requesters)
- *                       -> per-endpoint 1-deep holding FIFO
- *                       -> edn_ack_sm drives edn_ack / edn_bus
- *
- *          `edn_fips` is forwarded from the AXI-Stream `tuser` sideband
- *          (carried per-beat through both FIFO stages), so a FIPS-aware
- *          client such as OTBN RND — which raises `rnd_fips_chk_fail` on an
- *          ack with `edn_fips == 0` — sees the correct provenance of the
- *          bits. Upstream producers are responsible for driving `tuser`:
- *          the DRBG native-EDN-to-AXIS adapter forwards `edn_fips` from
- *          `u_edn`, while externally provided entropy streams should drive
- *          it from the producer's own FIPS policy (commonly tied low when
- *          the source is not NIST SP 800-90A approved).
- *
- *          `clear_i` synchronously flushes staged entropy and every endpoint.
- *          `endpoint_rst_ni` cancels only the corresponding endpoint and
- *          does not disturb another client's in-flight response.
- *          Each endpoint reset must assert whenever `rst_ni` asserts.
- *
- * @param NUM_ENDPOINTS Number of native EDN clients (e.g. AES, KMAC, OTBN RND/URND).
- */
+// Fan a 32-bit AXI-Stream entropy source out to native EDN client ports.
+//
+// Entropy passes through these pipeline stages in order:
+//
+// - axis (32b) into prim_fifo_sync staging.
+// - prim_arbiter_ppc across N requesters.
+// - A per-endpoint 1-deep holding FIFO.
+// - edn_ack_sm driving edn_ack / edn_bus.
+//
+// edn_fips is forwarded from the AXI-Stream tuser sideband through both FIFO stages so a
+// FIPS-aware client such as OTBN RND sees correct provenance. Upstream producers drive
+// tuser:
+//
+// - The DRBG native-EDN-to-AXIS adapter forwards edn_fips from u_edn.
+// - External streams should drive it from the producer's FIPS policy, commonly tied low
+//   when the source is not NIST SP 800-90A approved.
+//
+// clear_i synchronously flushes staged entropy and every endpoint. endpoint_rst_ni
+// cancels only the corresponding endpoint and does not disturb another client's in-flight
+// response. Each endpoint reset must assert whenever rst_ni asserts.
+
 module drbg_axis_edn_adapter
   import drbg_pkg::*;
 #(
-  parameter int unsigned NUM_ENDPOINTS = 4
+  parameter int unsigned NUM_ENDPOINTS = 4                  // Number of native EDN clients (e.g. AES, KMAC, OTBN RND/URND).
 ) (
-  input  wire logic clk_i,
-  input  wire logic rst_ni,
-  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_rst_ni,
-  input  wire logic clear_i,
+  input  wire logic clk_i,                                  // System clock.
+  input  wire logic rst_ni,                                 // Async reset, active-low.
+  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_rst_ni,    // Per-client cancel.
+                                                            // Must assert whenever rst_ni asserts; does not disturb other clients.
+  input  wire logic clear_i,                                // Synchronous flush of staged entropy and every endpoint.
 
-  // 32b AXI-Stream sink (producer drives valid/data/strb; adapter drives tready)
-  input  wire drbg_axis_req_t axis_req_i,
-  output drbg_axis_rsp_t axis_rsp_o,
+  input  wire drbg_axis_req_t axis_req_i,                   // 32b AXI-Stream sink from the producer (valid/data/strb).
+                                                            // Adapter drives tready.
+  output drbg_axis_rsp_t axis_rsp_o,                        // AXI-Stream ready toward the producer.
 
-  // Native EDN toward clients (clients drive req; adapter drives rsp)
-  input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i,
-  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o
+  input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i, // Native EDN requests from clients.
+  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o   // Native EDN responses to clients.
 );
 
   `include "prim_assert.sv"

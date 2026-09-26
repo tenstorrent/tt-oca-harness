@@ -3,14 +3,21 @@
 
 // Copyright 2026 Tenstorrent Inc.
 
-// Bidirectional mailbox for SEP–KM message exchange over two AXI4-Lite slaves.
+// Exchange messages between SEP and KM through two FIFOs behind independent AXI4-Lite
+// slave interfaces.
 //
-// Two synchronous FIFOs carry SEP→KM (inbound) and KM→SEP (outbound) traffic;
-// each word includes a separator bit for framing. WRITE_DATA / READ_DATA push
-// and pop the FIFOs directly; STATUS and IRQ live in RDL register blocks.
-// Overflow/underflow response policy is configurable per side, CTRL.FLUSH
-// clears both FIFOs, and each side aggregates data-available plus sticky
-// overflow, underflow, and flushed-by-peer IRQs.
+// Two synchronous FIFOs sit between the KM-side and SEP-side slaves:
+//
+// - Inbound FIFO (SEP -> KM): SEP writes via WRITE_DATA, KM reads via READ_DATA.
+// - Outbound FIFO (KM -> SEP): KM writes via WRITE_DATA, SEP reads via READ_DATA.
+//
+// Each FIFO word carries a 1-bit separator tag for message framing. WRITE_DATA /
+// READ_DATA addresses are handled as direct FIFO push/pop; STATUS and IRQ registers are
+// served by RDL-generated register blocks.
+//
+// Overflow and underflow responses are configurable per side (SLVERR or OKAY). Both sides
+// can flush all FIFOs via CTRL.FLUSH. Each side aggregates its IRQ from data-available
+// (level) plus sticky overflow / underflow / flushed-by-peer events.
 
 module km_mailbox
   import km_intf_pkg::*;
@@ -20,22 +27,36 @@ module km_mailbox
   import km_mailbox_sep_addrmap_pkg::*;
   import km_mailbox_km_addrmap_pkg::*;
 #(
-  parameter int unsigned MAILBOX_DEPTH = 16,                        // Words per FIFO direction
-  parameter type km_axil_req_t  = km_intf_pkg::km_axil_req_t,       // KM-side AXI-Lite request type
-  parameter type km_axil_resp_t = km_intf_pkg::km_axil_resp_t,      // KM-side AXI-Lite response type
-  parameter type sep_axil_req_t  = logic,                           // SEP-side AXI-Lite request type
-  parameter type sep_axil_resp_t = logic                            // SEP-side AXI-Lite response type
+  parameter int unsigned MAILBOX_DEPTH = 16,  // Words per FIFO direction.
+
+  parameter type km_axil_req_t  = km_intf_pkg::km_axil_req_t,   // KM-side AXI-Lite request type;
+                                                                // defaults to km_intf_pkg.
+  parameter type km_axil_resp_t = km_intf_pkg::km_axil_resp_t,  // KM-side AXI-Lite response
+                                                                // type; defaults to km_intf_pkg.
+  parameter type sep_axil_req_t  = logic,                       // SEP-side AXI-Lite request
+                                                                // type; must be provided
+                                                                // explicitly (not defined in
+                                                                // km_intf_pkg).
+  parameter type sep_axil_resp_t = logic                        // SEP-side AXI-Lite response
+                                                                // type; must be provided
+                                                                // explicitly.
 ) (
-  input  logic           clk_i,            // System clock
-  input  logic           cold_rst_ni,      // Cold reset (AASD); resets FIFOs and SEP-facing interfaces
-  input  logic           warm_rst_ni,      // Warm reset, synchronous; resets KM-CPU-facing interfaces
-  input  logic           test_en_i,        // DFT test-enable
-  input  km_axil_req_t   km_axil_req_i,    // KM CPU AXI-Lite slave request
-  output km_axil_resp_t  km_axil_resp_o,   // KM CPU AXI-Lite slave response
-  input  sep_axil_req_t  sep_axil_req_i,   // SEP host AXI-Lite slave request
-  output sep_axil_resp_t sep_axil_resp_o,  // SEP host AXI-Lite slave response
-  output logic           mbox_irq_to_km_o, // Inbound data-available IRQ to the KM CPU (level)
-  output logic           mbox_irq_to_sep_o // Outbound data-available IRQ to the SEP host (level)
+  input  logic clk_i,        // System clock.
+  input  logic cold_rst_ni,  // Cold reset: AASD; resets the FIFOs and SEP-facing interfaces.
+  input  logic warm_rst_ni,  // Warm reset: synchronous; resets the KM-CPU-facing interfaces.
+  input  logic test_en_i,    // DFT test-enable.
+
+  input  km_axil_req_t km_axil_req_i,    // KM CPU AXI4-Lite slave request (for the outbound
+                                         // FIFO).
+  output km_axil_resp_t km_axil_resp_o,  // KM CPU AXI4-Lite slave response.
+
+  input  sep_axil_req_t sep_axil_req_i,    // SEP host AXI4-Lite slave request (for the
+                                           // inbound FIFO).
+  output sep_axil_resp_t sep_axil_resp_o,  // SEP host AXI4-Lite slave response.
+
+
+  output logic        mbox_irq_to_km_o,  // Inbound IRQ to the KM CPU (level).
+  output logic        mbox_irq_to_sep_o  // Outbound IRQ to the SEP host (level).
 );
 
   `include "prim_assert.sv"
@@ -521,7 +542,7 @@ module km_mailbox
   logic km_inbound_underflow_detected;  // KM reads from empty inbound FIFO
   assign km_inbound_underflow_detected = km_fifo_ar_handshake && inbound_empty;
 
-  // Now assign overflow/underflow status and IRQ bits
+  // Overflow/underflow status and IRQ bits
   // STATUS sticky bits use hwset (not .next) because they have hwset=true and stickybit=true in RDL
   // But we also need to set .next to 0 to prevent X propagation
   // All four overflow/underflow bits are visible on both sides

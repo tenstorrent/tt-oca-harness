@@ -2,59 +2,122 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// PicoRV32 wrapper that routes ROM, SRAM, and AXI-Lite peripheral traffic.
+// Run the PicoRV32 core and route its native memory interface to ROM, SRAM and an
+// AXI4-Lite peripheral master.
 //
-// Instantiates RV32EMC PicoRV32 and steers its native memory bus to
-// km_rom_interface, km_sram_interface, and picorv32_axi_adapter. External IRQs
-// on bits 3–5 are level-sensitive (KMCSR, mailbox, ABR shared-key). An
-// execute-permission whitelist follows sram_exec_mode_i and ROM lockout;
-// AXI SLVERR/DECERR pulse to KMCSR. LATCHED_MEM_RDATA enables look-ahead when
-// ROM/SRAM keep rdata valid after the request drops.
+// Instantiates the PicoRV32 core (RV32EMC: 16 registers, M extension, compressed ISA) and
+// routes the native memory interface by address to three targets:
+//
+// - ROM (read-only, via km_rom_interface with parity checking).
+// - SRAM (read/write, via km_sram_interface with scrambling, parity, and write-lock
+//   enforcement).
+// - Peripherals (via picorv32_axi_adapter to an AXI4-Lite master).
+//
+// A virtual ROM region (testbench-only) is exposed for simulation.
+//
+// Three external IRQ sources connect to the PicoRV32 as non-latched level-sensitive
+// inputs:
+//
+// - Bit 3: KMCSR aggregated interrupt (sticky error sources).
+// - Bit 4: Mailbox inbound data available (direct level).
+// - Bit 5: Adams Bridge ML-KEM shared-key valid.
+//
+// AXI bus errors (SLVERR, DECERR) on the write and read response channels are detected
+// and reported as pulse outputs to KMCSR.
+//
+// An execute-permission whitelist is enforced on committed instruction fetches
+// (mem_instr). Allowed regions are selected by sram_exec_mode_i (from KMCSR
+// SRAM_EXEC_MODE.enable) and by the ROM lockout:
+//
+// - 0 (ROM mode): ROM and VROM only.
+// - 1 (SRAM mode): VROM and write-locked SRAM regions, plus the ROM until the lockout
+//   engages (see the ROM Lockout section).
+//
+// Any fetch outside the whitelist pulses exec_violation_o, except a blocked ROM access,
+// which pulses rom_access_violation_o instead.
+//
+// LATCHED_MEM_RDATA is 1 when ROM/SRAM latch read data, so it stays valid after the
+// request deasserts, and 0 when read data is valid only while rvalid is asserted. Setting
+// it lets the CPU use look-ahead optimization when the memory supports it.
 
 module picorv32_wrapper
   import km_intf_pkg::*;
   import axi_pkg::*;
 #(
-  parameter type axil_req_t  = km_axil_req_t,                                    // AXI-Lite request type for peripherals
-  parameter type axil_resp_t = km_axil_resp_t,                                   // AXI-Lite response type for peripherals
-  parameter int unsigned ROM_ADDR_WIDTH = km_intf_pkg::KM_ROM_MEM_ADDR_WIDTH,    // ROM word-address width
-  parameter int unsigned SRAM_ADDR_WIDTH = km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH,  // SRAM word-address width
-  parameter bit LATCHED_MEM_RDATA = 1'b0                                         // 1 if ROM/SRAM latch rdata for look-ahead
+  parameter type axil_req_t  = km_axil_req_t,                                    // Peripheral-port AXI-Lite
+                                                                                 // request type.
+  parameter type axil_resp_t = km_axil_resp_t,                                   // Peripheral-port AXI-Lite
+                                                                                 // response type.
+  parameter int unsigned ROM_ADDR_WIDTH = km_intf_pkg::KM_ROM_MEM_ADDR_WIDTH,    // ROM word-address width.
+  parameter int unsigned SRAM_ADDR_WIDTH = km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH,  // SRAM word-address width.
+  parameter bit LATCHED_MEM_RDATA = 1'b0                                         // 1 if ROM/SRAM latch read data.
 ) (
-  input  logic             clk_i,                               // System clock
-  input  logic             rst_ni,                              // Active-low async reset into the core
-  input  logic             rst_sync_ni,                         // Active-low synchronous reset companion
-  output km_rom_mem_req_t  rom_mem_req_o,                       // ROM hard-macro request
-  input  km_rom_mem_rsp_t  rom_mem_rsp_i,                       // ROM hard-macro response
-  output logic             rom_parity_err_o,                    // ROM parity error pulse
-  output logic             rom_write_err_o,                     // ROM write-attempt pulse
-  output km_sram_mem_req_t sram_mem_req_o,                      // SRAM hard-macro request
-  input  km_sram_mem_rsp_t sram_mem_rsp_i,                      // SRAM hard-macro response
-  output logic             sram_parity_err_o,                   // SRAM parity error pulse
-  input  logic [31:0]      scrambler_key_i,                     // Scrambler key passed through to SRAM
-  input  logic             scrambler_en_i,                      // Scrambler enable passed through to SRAM
-  input  logic [31:0]      sram_lock_bits_i,                    // Write-lock bits from KMCSR
-  output logic [31:0]      sram_write_lock_violation_region_o,  // One-hot locked-write violation to KMCSR
-  input  logic             sram_exec_mode_i,                    // 0=ROM-only whitelist, 1=write-locked-SRAM whitelist
-  output logic             exec_violation_o,                    // Execute-whitelist violation pulse
-  output logic             rom_access_violation_o,              // ROM lockout violation pulse
-  output axil_req_t        axi_mst_req_o,                       // AXI-Lite master to the crossbar
-  input  axil_resp_t       axi_mst_resp_i,                      // AXI-Lite response from the crossbar
-  input  logic             irq_i,                               // KMCSR aggregated interrupt (sticky sources)
-  input  logic             mbox_irq_i,                          // Mailbox inbound data-available (level)
-  input  logic             abr_sharedkey_irq_i,                 // ML-KEM shared-key valid (level)
-  input  logic [31:0]      irq_entry_addr_i,                    // Runtime IRQ handler entry PC from KMCSR
-  output logic             trap_o,                              // PicoRV32 trap indication
-  output logic             axi_slverr_o,                        // AXI SLVERR pulse to KMCSR
-  output logic             axi_decerr_o                         // AXI DECERR pulse to KMCSR
+  input  logic clk_i,        // System clock.
+  input  logic rst_ni,       // Active-low async reset for the memory interfaces, PCPI CRC,
+                             // read-data select and AXI error logic.
+  input  logic rst_sync_ni,  // Active-low synchronous reset for the PicoRV32 core and the ROM
+                             // lockout latch.
+
+  output km_rom_mem_req_t rom_mem_req_o,     // ROM interface request (with parity checking).
+  input  km_rom_mem_rsp_t rom_mem_rsp_i,     // ROM interface response.
+  output logic            rom_parity_err_o,  // ROM parity error detected (pulse).
+  output logic            rom_write_err_o,   // ROM write attempt detected (pulse).
+
+  output km_sram_mem_req_t sram_mem_req_o,     // SRAM interface request (with scrambling and
+                                               // parity checking).
+  input  km_sram_mem_rsp_t sram_mem_rsp_i,     // SRAM interface response.
+  output logic             sram_parity_err_o,  // SRAM parity error detected (pulse).
+
+  input  logic [31:0] scrambler_key_i,  // Scrambler key from KMCSR, passed through to the
+                                        // SRAM interface.
+  input  logic   scrambler_en_i,        // Scrambler enable from KMCSR, passed through to the
+                                        // SRAM interface.
+
+  input  logic [31:0] sram_lock_bits_i,  // SRAM write-lock (KMCSR): bit[i]=1 locks region i.
+
+  output logic [31:0] sram_write_lock_violation_region_o,  // SRAM write-lock violation to
+                                                           // KMCSR: one-hot region that had
+                                                           // an attempted write while locked.
+
+  input  logic   sram_exec_mode_i,             // Execute-permission whitelist mode from
+                                               // KMCSR: 0=ROM-only, 1=write-locked-SRAM.
+  output logic        exec_violation_o,        // Execute-permission whitelist violation to
+                                               // KMCSR: pulse on a committed fetch outside
+                                               // the whitelist.
+  output logic        rom_access_violation_o,  // ROM lockout violation to KMCSR: pulse on a
+                                               // ROM fetch or data read after lockout engages.
+
+  output axil_req_t  axi_mst_req_o,   // AXI4-Lite master request to the peripherals via the
+                                      // crossbar.
+  input  axil_resp_t axi_mst_resp_i,  // AXI4-Lite master response from the crossbar.
+
+  input  logic irq_i,                // KMCSR aggregated interrupt (sticky error sources).
+  input  logic mbox_irq_i,           // Mailbox inbound data available (level-sensitive).
+  input  logic abr_sharedkey_irq_i,  // ML-KEM shared-key valid (level-sensitive).
+
+  input  logic [31:0] irq_entry_addr_i,  // Runtime IRQ handler entry PC from KMCSR (reset
+                                         // default 0x0000_0010).
+
+  output logic trap_o,  // PicoRV32 trap output (for debugging).
+
+  output logic axi_slverr_o,  // AXI SLVERR error detected (pulse to KMCSR IRQ).
+  output logic axi_decerr_o   // AXI DECERR error detected (pulse to KMCSR IRQ).
 );
 
   //=========================================================================
   // Local Parameters
   //=========================================================================
 
-  // PicoRV32 IRQ configuration: bits 0-2 latched (timer/ebreak/buserror);
-  // bits 3-5 level-sensitive (KMCSR, mailbox, ABR). MASKED_IRQ masks 6-31.
+  // PicoRV32 IRQ configuration.
+  //
+  // Bits 0-2 are internal (timer, ebreak, buserror) and latched since they fire as
+  // single-cycle pulses. Bits 3-5 are external and non-latched; PicoRV32 tracks the live
+  // level directly:
+  // - Bit 3: KMCSR aggregated (sticky error sources, sustained level)
+  // - Bit 4: Mailbox inbound (level while FIFO has data)
+  // - Bit 5: ABR ML-KEM shared key (level while IRQ_STATUS & IRQ_ENABLE)
+  // MASKED_IRQ: 1 = always masked. Only bits 0-5 are used; mask 6-31.
+  // LATCHED_IRQ: bits 0-2 latched; bits 3-5 level-sensitive.
   localparam logic [31:0] PICORV32_MASKED_IRQ = 32'hFFFF_FFC0;
   localparam logic [31:0] PICORV32_LATCHED_IRQ = 32'h0000_0007;
 

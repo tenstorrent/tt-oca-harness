@@ -1,37 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// DMA Request Manager
+// Route frontend DMA requests onto one or more backend master ports.
 //
-//-----------------------------------------------------------------------------
+// NUM_CTRL_INTERFACES and NUM_MST_INTERFACES must be >= 1.
+// Arbitrates ctrl_req_* onto mst_req_* and returns mst_resp_* to the matching control
+// interface.
 
 module idma_request_manager_wrapper #(
-  parameter int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
+  parameter int unsigned NUM_CTRL_INTERFACES = 1,           // Control-port count; must be >= 1.
+  parameter int unsigned NUM_MST_INTERFACES = 1,            // Backend master count; must be >= 1.
 
-  parameter type req_t = logic,
-  parameter type resp_t = logic
+  parameter type req_t = logic,                             // Request payload type.
+  parameter type resp_t = logic                             // Response payload type.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                                       // System clock.
+  input  logic rst_ni,                                      // Async reset, active-low.
+  input  logic test_en_i,                                   // DFT test enable.
 
-  input  req_t  [NUM_CTRL_INTERFACES-1:0] ctrl_req_i,
-  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_valid_i,
-  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_ready_o,
+  input  req_t  [NUM_CTRL_INTERFACES-1:0] ctrl_req_i,       // Frontend request payload.
+  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_valid_i, // Frontend request valid.
+  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_req_ready_o, // Frontend request ready.
 
-  output resp_t [NUM_CTRL_INTERFACES-1:0] ctrl_resp_o,
-  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_valid_o,
-  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_ready_i,
+  output resp_t [NUM_CTRL_INTERFACES-1:0] ctrl_resp_o,      // Frontend response payload.
+  output logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_valid_o, // Frontend response valid.
+  input  logic  [NUM_CTRL_INTERFACES-1:0] ctrl_resp_ready_i, // Frontend response ready.
 
-  output req_t  [NUM_MST_INTERFACES-1:0] mst_req_o,
-  output logic  [NUM_MST_INTERFACES-1:0] mst_req_valid_o,
-  input  logic  [NUM_MST_INTERFACES-1:0] mst_req_ready_i,
+  output req_t  [NUM_MST_INTERFACES-1:0] mst_req_o,         // Backend request payload.
+  output logic  [NUM_MST_INTERFACES-1:0] mst_req_valid_o,   // Backend request valid.
+  input  logic  [NUM_MST_INTERFACES-1:0] mst_req_ready_i,   // Backend request ready.
 
-  input  resp_t [NUM_MST_INTERFACES-1:0] mst_resp_i,
-  input  logic  [NUM_MST_INTERFACES-1:0] mst_resp_valid_i,
-  output logic  [NUM_MST_INTERFACES-1:0] mst_resp_ready_o
+  input  resp_t [NUM_MST_INTERFACES-1:0] mst_resp_i,        // Backend response payload.
+  input  logic  [NUM_MST_INTERFACES-1:0] mst_resp_valid_i,  // Backend response valid.
+  output logic  [NUM_MST_INTERFACES-1:0] mst_resp_ready_o   // Backend response ready.
 );
 
   if ((NUM_CTRL_INTERFACES == 1) && (NUM_MST_INTERFACES == 1)) begin : gen_passthrough

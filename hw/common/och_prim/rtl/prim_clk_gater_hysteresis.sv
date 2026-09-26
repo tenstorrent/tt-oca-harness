@@ -1,25 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Clock Gater with Hysteresis
+// Gate clk_i with a programmable hysteresis after busy_i falls.
 //
-//--------------------------------------------------
+// Require enable_i high to open the gate; kick_i forces an immediate ungating.
+// hysteresis_i is the idle wait in clk_i cycles before gated_clk_o stops.
+// test_clk_en_i forces the clock on for scan.
+
 module prim_clk_gater_hysteresis #(
-  parameter int unsigned HYST_WIDTH = 6
+  parameter int unsigned HYST_WIDTH = 6  // Width of hysteresis_i.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,  // Clock to gate.
+  input logic rst_ni,  // Async reset, active-low.
 
-  input logic busy_i,
-  input logic enable_i,
-  input logic kick_i,
-  input logic test_clk_en_i,
+  input logic busy_i,  // Keeps the clock running while high.
+  input logic enable_i,  // Allows ungating when high.
+  input logic kick_i,  // Forces an immediate ungating pulse.
+  input logic test_clk_en_i,  // Scan force-clock enable.
 
-  input logic [HYST_WIDTH-1:0] hysteresis_i,
+  input logic [HYST_WIDTH-1:0] hysteresis_i,  // Idle cycles before the gate closes.
 
-  output logic clk_active_o,
-  output logic gated_clk_o
+  output logic clk_active_o,  // High while the gated clock is running.
+  output logic gated_clk_o  // Gated clock output.
 );
   logic sticky_kick_en;
   logic load_hyst;

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// --------------------------------------------------------------------
-// SMC Version ID Wrap
+// Expose SMC version and identity CSRs.
 //
-// --------------------------------------------------------------------
+// Returns fixed version and chip-identity fields firmware uses to recognize the SMC
+// image.
+// Sits on the misc AXI-Lite map as the version/identity target.
 
 module smc_version_id_wrap (
-  output logic [63:0] version_id_o
+  output logic [63:0] version_id_o      // Version id.
 );
 
   // rev cell, pulls tie signals to top metal layer to allow for easy re-spin

@@ -1,78 +1,72 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_generator_complex.sv
- * @brief Multi-ring entropy generator with GF(2^8) output extraction.
- *
- * @details Instantiates NRINGS entropy generators (each with noise source,
- *          decorrelator, per-lane health test, and auto-tune FSM) and combines
- *          their byte outputs through a BIW (Between 1 and 8 Worth) GF(2^8)
- *          extractor to produce a single 32-bit entropy output stream. Hosts
- *          the shared window counter and synchronisation pulse that drives
- *          all per-lane health test window resets, enabling coordinated
- *          Repetition/APT/Markov test windows across all rings.
- *
- * @param NRINGS        Number of ring oscillator lanes (default 12).
- * @param CLKDIV_WIDTH  Width of decorrelator clock divider value (default 24).
- */
+// Combine NRINGS entropy generators through a GF(2^8) BIW extractor into one 32-bit stream.
+//
+// Each lane has a noise source, decorrelator, per-lane health test, and auto-tune FSM.
+// Per-lane jitter_ro_*, sample_clk_*, and decorrelator_* inputs configure each generator;
+// health_test_* inputs are shared.
+//
+// The block hosts the shared window counter and window_wrap_pulse_o, which resets all
+// per-lane health-test windows together. module_enable_i keeps the window counter running
+// even when individual health tests are disabled so the main_sm boot gate can finish its
+// boot window.
+//
+// count_err_o ORs every per-lane health-test counter disagreement with the shared window
+// counter's own fault.
 
 module entropy_generator_complex #(
-  parameter int unsigned NRINGS       = 12,
-  parameter int unsigned CLKDIV_WIDTH = 24
+  parameter int unsigned NRINGS       = 12,  // Ring-oscillator lane count.
+  parameter int unsigned CLKDIV_WIDTH = 24  // Downsample divider counter width.
 ) (
-  input       logic                    clk_i,
-  input       logic                    rst_ni,
-  input       logic                    sample_clk_i,
-  output      logic [31:0]             entropy_stream_o,
-  output      logic [NRINGS-1:0][7:0]  entropy_stream_uncompressed_o,
-  output      logic                    entropy_stream_valid_o,
-  output      logic [NRINGS-1:0]       noise_bit_monitor_o,
-  output      logic [NRINGS-1:0]       sample_clk_monitor_o,
+  input       logic                    clk_i,  // System clock.
+  input       logic                    rst_ni,  // Active-low reset.
+  input       logic                    sample_clk_i,  // Ring-oscillator sample clock.
+  output      logic [31:0]             entropy_stream_o,  // Entropy stream.
+  output      logic [NRINGS-1:0][7:0]  entropy_stream_uncompressed_o,  // Entropy stream uncompressed.
+  output      logic                    entropy_stream_valid_o,  // Entropy stream valid.
+  output      logic [NRINGS-1:0]       noise_bit_monitor_o,  // Noise bit monitor.
+  output      logic [NRINGS-1:0]       sample_clk_monitor_o,  // Sample clk monitor.
 
-  output      logic [7:0]              generator_0_test_status_o,
-  output      logic [7:0]              generator_1_test_status_o,
-  output      logic [7:0]              generator_2_test_status_o,
-  output      logic [7:0]              generator_3_test_status_o,
-  output      logic [7:0]              generator_4_test_status_o,
-  output      logic [7:0]              generator_5_test_status_o,
-  output      logic [7:0]              generator_6_test_status_o,
-  output      logic [7:0]              generator_7_test_status_o,
-  output      logic [7:0]              generator_8_test_status_o,
-  output      logic [7:0]              generator_9_test_status_o,
-  output      logic [7:0]              generator_10_test_status_o,
-  output      logic [7:0]              generator_11_test_status_o,
+  output      logic [7:0]              generator_0_test_status_o,  // Generator 0 test status.
+  output      logic [7:0]              generator_1_test_status_o,  // Generator 1 test status.
+  output      logic [7:0]              generator_2_test_status_o,  // Generator 2 test status.
+  output      logic [7:0]              generator_3_test_status_o,  // Generator 3 test status.
+  output      logic [7:0]              generator_4_test_status_o,  // Generator 4 test status.
+  output      logic [7:0]              generator_5_test_status_o,  // Generator 5 test status.
+  output      logic [7:0]              generator_6_test_status_o,  // Generator 6 test status.
+  output      logic [7:0]              generator_7_test_status_o,  // Generator 7 test status.
+  output      logic [7:0]              generator_8_test_status_o,  // Generator 8 test status.
+  output      logic [7:0]              generator_9_test_status_o,  // Generator 9 test status.
+  output      logic [7:0]              generator_10_test_status_o,  // Generator 10 test status.
+  output      logic [7:0]              generator_11_test_status_o,  // Generator 11 test status.
 
-  // OR of every per-lane health-test counter-disagreement error and the
-  // shared window counter's own; see entropy_health_test.count_err_o.
-  output      logic                    count_err_o,
+  output      logic                    count_err_o,  // Count err.
 
-  input       logic [NRINGS-1:0]       jitter_ro_enable_i,
-  input       logic [NRINGS-1:0]       jitter_ro_detune_i,
-  input       logic [NRINGS-1:0]       jitter_ro_auto_tune_enable_i,
+  input       logic [NRINGS-1:0]       jitter_ro_enable_i,  // Jitter ro enable.
+  input       logic [NRINGS-1:0]       jitter_ro_detune_i,  // Jitter ro detune.
+  input       logic [NRINGS-1:0]       jitter_ro_auto_tune_enable_i,  // Jitter ro auto tune enable.
 
-  input       logic [NRINGS-1:0]       sample_clk_select_i,
-  input       logic [NRINGS-1:0]       sample_clk_ro_detune_i,
-  input       logic [NRINGS-1:0]       sample_clk_enable_i,
-  input       logic [NRINGS-1:0][4:0]  sample_clk_divide_i,
+  input       logic [NRINGS-1:0]       sample_clk_select_i,  // Sample clk select.
+  input       logic [NRINGS-1:0]       sample_clk_ro_detune_i,  // Sample clk ro detune.
+  input       logic [NRINGS-1:0]       sample_clk_enable_i,  // Sample clk enable.
+  input       logic [NRINGS-1:0][4:0]  sample_clk_divide_i,  // Sample clk divide.
 
-  input       logic [NRINGS-1:0]       decorrelator_bypass_i,
-  input       logic [CLKDIV_WIDTH-1:0] decorrelator_sample_clk_div_i,
-  input       logic [7:0]              decorrelator_entropy_byte_mask_i,
+  input       logic [NRINGS-1:0]       decorrelator_bypass_i,  // Decorrelator bypass.
+  input       logic [CLKDIV_WIDTH-1:0] decorrelator_sample_clk_div_i,  // Decorrelator sample clk div.
+  input       logic [7:0]              decorrelator_entropy_byte_mask_i,  // Decorrelator entropy byte mask.
 
-  // Master enable: window counter runs even when individual health tests
-  // are disabled so the main_sm boot gate can complete its boot window.
-  input       logic                    module_enable_i,
+  input       logic                    module_enable_i,  // Module enable.
 
-  input       logic [2:0]              health_test_enable_i,
-  input       logic [7:0]              health_test_repetition_limit_i,
-  input       logic [15:0]             health_test_proportion_limit_1bit_i,
-  input       logic [15:0]             health_test_proportion_limit_lo_i,
-  input       logic [15:0]             health_test_markov_prob_01_threshold_i,
-  input       logic [15:0]             health_test_markov_prob_10_threshold_i,
-  input       logic [15:0]             health_test_window_size_i,
+  input       logic [2:0]              health_test_enable_i,  // Health test enable.
+  input       logic [7:0]              health_test_repetition_limit_i,  // Health test repetition limit.
+  input       logic [15:0]             health_test_proportion_limit_1bit_i,  // Health test proportion limit 1bit.
+  input       logic [15:0]             health_test_proportion_limit_lo_i,  // Health test proportion limit lo.
+  input       logic [15:0]             health_test_markov_prob_01_threshold_i,  // Health test markov prob 01 threshold.
+  input       logic [15:0]             health_test_markov_prob_10_threshold_i,  // Health test markov prob 10 threshold.
+  input       logic [15:0]             health_test_window_size_i,  // Health test window size.
 
-  output      logic                    window_wrap_pulse_o
+  output      logic                    window_wrap_pulse_o  // Window wrap pulse.
 );
 
   /////////////////////

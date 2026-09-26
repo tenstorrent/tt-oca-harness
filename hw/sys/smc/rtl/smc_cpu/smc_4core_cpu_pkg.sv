@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC CPU Package
-// - Defines CPU parameters in OCAH4CORECluster_DigitalTop
+// Declare CPU-cluster sizing constants for the four-core SMC Rocket cluster.
+//
+// Defines core count and interrupt widths consumed by smc_4core_cpu and wrappers.
+// Keeps these values aligned with the Chipyard DigitalTop configuration.
 
 `ifndef SMC_4CORE_CPU_PACKAGE_DEFINED
 `define SMC_4CORE_CPU_PACKAGE_DEFINED

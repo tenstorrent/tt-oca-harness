@@ -1,27 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------
-// SEP ROM Interface Shim
+// Forward the SEP ROM memory_interface struct onto a prim_rom macro.
 //
-//------------------------------------------------
+// ROM_ADDR_WIDTH defaults to 10 (1K entries). Forwards mem_req_i into macro_req_o /
+// macro_addr_o and returns macro_rdata_i on mem_rsp_o.
 
 module sep_rom_interface_shim
   import sep_pkg::*;
 #(
-  parameter int unsigned ROM_ADDR_WIDTH = 10  // Default to 1K entries (10 bits)
+  parameter int unsigned ROM_ADDR_WIDTH = 10  // ROM address width; default 10 for 1K entries.
 ) (
-  input  logic                        clk_i,
-  input  logic                        rst_ni,
+  input  logic                        clk_i,  // System clock.
+  input  logic                        rst_ni,  // Active-low reset.
 
-  // Memory Interface (from memory_interface module)
-  input  sep_sram_req_t               mem_req_i,
-  output sep_sram_rsp_t               mem_rsp_o,
+  input  sep_sram_req_t               mem_req_i,  // Memory Interface (from memory_interface module).
+  output sep_sram_rsp_t               mem_rsp_o,  // mem response.
 
-  // Macro Interface (to ROM primitive - prim_rom)
-  output logic                        macro_req_o,
-  output logic [ROM_ADDR_WIDTH-1:0]   macro_addr_o,
-  input  logic [SEP_MEM_DATA_WIDTH-1:0] macro_rdata_i
+  output logic                        macro_req_o,  // Macro Interface (to ROM primitive - prim_rom).
+  output logic [ROM_ADDR_WIDTH-1:0]   macro_addr_o,  // macro addr.
+  input  logic [SEP_MEM_DATA_WIDTH-1:0] macro_rdata_i  // macro rdata i.
 );
 
   // Generate rvalid by delaying req by one cycle (ROM has 1 cycle latency)

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//-----------------------------------------------------------------------------
-// Utility functions for SRAM Data and Address Scrambling
-//
 // Copyright 2026 Tenstorrent Inc.
-//-----------------------------------------------------------------------------
+
+// Hold PRESENT sbox and permute helpers for SRAM data and address scrambling.
+//
+// Provides the nibble S-box, 32-bit and 8-bit permutations, and their inverses.
+
 package scrambler_pkg;
   // Pyjamask lightweight cipher substitution function
   function automatic logic [2:0] sbox3(input logic [2:0] d);

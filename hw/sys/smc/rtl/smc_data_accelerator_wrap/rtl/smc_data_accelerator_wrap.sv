@@ -1,45 +1,60 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC Data Accelerator Wrapper
+// Wrap the SMC DMA and zeroer with address-based demux and mux.
 //
-// Wrapper module for DMA and Zeroer with address-based demux/mux
+// Adapts accelerator control and master data ports to the SMC fabric.
+// Exposes status and clock-gater activity indicators alongside clock-gating control.
 
 module smc_data_accelerator_wrap #(
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0,
-  parameter int unsigned DMA_BUFFER_DEPTH = 16
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,  // DMA control register
+                                                                                     // map base address.
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,  // DMA control register
+                                                                                // map size.
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,  // Zeroer control
+                                                                                        // register map base
+                                                                                        // address.
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0,  // Zeroer control
+                                                                                   // register map size.
+  parameter int unsigned DMA_BUFFER_DEPTH = 16  // DMA buffer depth in beats.
 ) (
-  input  logic                                             clk_i,
-  input  logic                                             rst_ni,
-  input  logic                                             test_en_i,
+  input  logic                                             clk_i,  // Clock.
+  input  logic                                             rst_ni,  // Reset.
+  input  logic                                             test_en_i,  // Test en.
 
-  // Clock gating control
-  input  logic                                             dma_cg_en_i,
-  input  logic                                             zeroer_cg_en_i,
-  input  logic [smc_pkg::CG_HYSTERESIS_W-1:0]              cg_hysteresis_i,
+  input  logic                                             dma_cg_en_i,  // DMA clock-gate
+                                                                         // enable.
+  input  logic                                             zeroer_cg_en_i,  // Zeroer clock-gate
+                                                                            // enable.
+  input  logic [smc_pkg::CG_HYSTERESIS_W-1:0]              cg_hysteresis_i,  // Cg hysteresis.
 
-  // Control interface (from fabric)
-  input  smc_pkg::smc_local_32_64_8_12_axi_req_t           ctrl_axi_req_i,
-  output smc_pkg::smc_local_32_64_8_12_axi_resp_t          ctrl_axi_resp_o,
+  input  smc_pkg::smc_local_32_64_8_12_axi_req_t           ctrl_axi_req_i,  // Control interface
+                                                                            // (from fabric)
+                                                                            // request.
+  output smc_pkg::smc_local_32_64_8_12_axi_resp_t          ctrl_axi_resp_o,  // Control interface
+                                                                             // (from fabric)
+                                                                             // response.
 
-  // Master data interface (to fabric)
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t    mst_axi_req_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t   mst_axi_resp_i,
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t    mst_axi_req_o,  // Master data
+                                                                           // interface (to
+                                                                           // fabric) request.
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t   mst_axi_resp_i,  // Master data
+                                                                            // interface (to
+                                                                            // fabric) response.
 
-  // Status signals
-  output logic                                             dma_busy_o,
-  output logic                                             dma_intp_o,
-  output logic                                             zeroer_busy_o,
-  output logic                                             zeroer_intp_o,
+  output logic                                             dma_busy_o,  // Dma busy.
+  output logic                                             dma_intp_o,  // Dma intp.
+  output logic                                             zeroer_busy_o,  // Zeroer busy.
+  output logic                                             zeroer_intp_o,  // Zeroer intp.
 
-  // Clock gater activity indicators
-  output logic                                             dma_frontend_clk_active_o,
-  output logic                                             dma_frontend_bus_active_o,
-  output logic                                             zeroer_clk_active_o,
-  output logic                                             zeroer_bus_active_o
+  output logic                                             dma_frontend_clk_active_o,  // Clock gater activity
+                                                                                       // indicators.
+  output logic                                             dma_frontend_bus_active_o,  // Clock gater activity
+                                                                                       // indicators.
+  output logic                                             zeroer_clk_active_o,  // Clock gater activity
+                                                                                 // indicators.
+  output logic                                             zeroer_bus_active_o  // Clock gater activity
+                                                                                // indicators.
 );
 
   localparam int unsigned NumAccelerators = 2;

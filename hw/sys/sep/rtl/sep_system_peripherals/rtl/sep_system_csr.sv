@@ -1,63 +1,55 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP System CSRs
+// Publish SEP system CSRs for remap, filters, straps, and bridge-fault status.
+//
+// Exposes alias and output remap register hwifs, inbound and outbound filter ctrl/status,
+// aperture address/size outputs, NMI vector, external TRNG source select, Key Manager
+// wipe, and DMA/peripheral bus-error status/clear.
 
 module sep_system_csr (
-  input  logic clk_i,
-  input  logic clk_ref_i,
-  input  logic rst_ni,
-  input  logic rst_warm_ni,
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic clk_i,                         // System clock.
+  input  logic clk_ref_i,                     // Free-running reference clock for REFERENCE_COUNTER.
+  input  logic rst_ni,                        // Active-low reset.
+  input  logic rst_warm_ni,                   // Active-low warm reset.
+  input  logic test_en_i,                     // DFT test-enable (scan-enable).
+  input  logic scan_rst_ni,                   // DFT scan reset, active-low; bypasses the reset synchronizer.
 
-  input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  sep_system_csr_axil_req_i,
-  output sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t sep_system_csr_axil_resp_o,
+  input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  sep_system_csr_axil_req_i,  // SEP system CSR AXIL request.
+  output sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t sep_system_csr_axil_resp_o,  // SEP system CSR AXIL response.
 
-  // Alias Remap Register Interface
-  output alias_remap_reg_pkg::alias_remap__out_t   local_masters_alias_remap_reg_ctrl_o [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0],
-  output output_remap_reg_pkg::output_remap__out_t ap_output_remap_reg_ctrl_o [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0],
-  output output_remap_reg_pkg::output_remap__out_t stee_output_remap_reg_ctrl_o [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0],
+  output alias_remap_reg_pkg::alias_remap__out_t   local_masters_alias_remap_reg_ctrl_o [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0],  // local masters alias remap reg ctrl.
+  output output_remap_reg_pkg::output_remap__out_t ap_output_remap_reg_ctrl_o [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0],  // ap output remap reg ctrl.
+  output output_remap_reg_pkg::output_remap__out_t stee_output_remap_reg_ctrl_o [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0],  // stee output remap reg ctrl.
 
-  // Outbound Filter Register Interface
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // outbound filter ctrl.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // outbound filter status.
 
-  // Inbound Filter Register Interface
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // inbound filter ctrl.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // inbound filter status.
 
-  // Address/Size outputs
-  output logic [55:0] sep_global_base_addr_o,
-  output logic [55:0] sep_local_base_addr_o,
-  output logic [55:0] sep_region_size_o,
+  output logic [55:0] sep_global_base_addr_o,  // SEP global base addr.
+  output logic [55:0] sep_local_base_addr_o,  // SEP local base addr.
+  output logic [55:0] sep_region_size_o,      // SEP region size.
 
-  output logic [55:0] smu_global_base_addr_o,
-  output logic [55:0] smu_region_size_o,
+  output logic [55:0] smu_global_base_addr_o,  // smu global base addr.
+  output logic [55:0] smu_region_size_o,      // smu region size.
 
-  // SMC Status inputs
-  input  logic smc_fuse_sense_done_i,
-  input  logic sep_fuse_sense_done_i,
+  input  logic smc_fuse_sense_done_i,         // SMC fuse sense done.
+  input  logic sep_fuse_sense_done_i,         // SEP fuse sense done.
 
-  // SEP Straps inputs
+  output logic [31:1] nmi_vec_o,              // NMI vec.
 
-  // SEP NMI VEC output
-  output logic [31:1] nmi_vec_o,
+  output logic [2:0] ext_trng_src_sel_o,      // External TRNG source selection (from sep_cpu_ctrl EXT_TRNG_SRC_SEL register).
 
-  // External TRNG source selection (from sep_cpu_ctrl EXT_TRNG_SRC_SEL register)
-  output logic [2:0] ext_trng_src_sel_o,
+  output logic km_wipe_state_o,               // Key Manager emergency wipe control (from sep_cpu_ctrl KM_WIPE_CTRL register).
 
-  // Key Manager emergency wipe control (from sep_cpu_ctrl KM_WIPE_CTRL register)
-  output logic km_wipe_state_o,
+  input  logic dma_reg_bus_err_i,             // Secure DMA bridge fault status/clear (sep_cpu_ctrl DMA_BUS_ERR_* registers).
+  input  logic dma_host_intg_err_i,           // DMA host intg err.
+  output logic dma_err_clr_o,                 // DMA err clr.
 
-  // Secure DMA bridge fault status/clear (sep_cpu_ctrl DMA_BUS_ERR_* registers)
-  input  logic dma_reg_bus_err_i,
-  input  logic dma_host_intg_err_i,
-  output logic dma_err_clr_o,
-
-  // Peripheral bridge fault status/clear (sep_cpu_ctrl PERIPH_BUS_ERR_* registers)
-  input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_i,
-  output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_clr_o
+  input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_i,  // Peripheral bridge fault status/clear (sep_cpu_ctrl PERIPH_BUS_ERR_* registers).
+  output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_clr_o  // periph bus err clr.
 );
 
   ////////////////////////////////////////////////////////////////////////////

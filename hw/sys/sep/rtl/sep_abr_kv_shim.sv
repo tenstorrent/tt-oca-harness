@@ -1,72 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// sep_abr_kv_shim : Key-Vault facade for Adams Bridge in SEP
-// -----------------------------------------------------------------------------
-// Adams Bridge expects to pull its seed from a Caliptra Key Vault using the KV
-// streaming protocol (kv_read / kv_rd_resp). SEP has no Caliptra KV; the KM
-// delivers keys by *pushing* them into the abr_wrapper_key_reg sideload CSR over
-// a private 32-bit AXI4-Lite key bus (the aes_wrapper pattern). The register
-// block lives inside sep_crypto_abr_wrapper (u_abr_key_csr); this shim consumes
-// its decoded hardware interface and re-presents it as AB's Caliptra KV ports:
+// Present Adams Bridge Caliptra Key-Vault ports from the ABR sideload CSR hardware
+// interface.
 //
-//   KM AXI4-Lite -> abr_wrapper_key_reg (u_abr_key_csr) -> [this shim] -> AB KV
+// SEP has no Caliptra KV; the Key Manager pushes keys into abr_wrapper_key_reg over a
+// private 32-bit AXI4-Lite bus. This shim consumes that decoded hwif and re-presents
+// Caliptra kv_read / kv_rd_resp / kv_write / kv_wr_resp.
 //
-// The seed is stored as two XOR shares (KEY_SHARE0[8] ^ KEY_SHARE1[8]); the
-// plaintext dword served on the KV bus is recovered as SHARE0[i] ^ SHARE1[i].
-// The seed is never SW-readable (write-only CSR) and never reconstructed outside
-// this shim, so abr_top's mldsa_privkey_lock stays engaged and the derived SK is
-// hardware-confined.
+// Seeds are stored as dual XOR shares; plaintext dwords on the KV bus are SHARE0[i] ^
+// SHARE1[i], gated by key_valid. The seed is write-only in the CSR and never reconstructed
+// outside this shim, so abr_top's mldsa_privkey_lock stays engaged.
 //
-// Protocol (verified against caliptra-rtl kv_read_client.sv + kv_fsm.sv):
-//   * AB's internal kv_read_client walks read_offset = 0,1,2,... in state KV_RW,
-//     and in the SAME cycle samples kv_rd_resp.read_data (write_offset==read_offset,
-//     write_en=1). So the vault read is COMBINATIONAL w.r.t. read_offset.
-//   * The client FSM terminates on (offset == num_dwords-1) OR kv_rd_resp.last.
-//   * kv_rd_resp.error latches a KV_READ_FAIL in the client.
+// kv_read is combinational with respect to read_offset: AB's kv_read_client samples
+// kv_rd_resp.read_data in the same cycle. The client ends on (offset == num_dwords-1) or
+// kv_rd_resp.last; kv_rd_resp.error latches KV_READ_FAIL. The kv_read ports carry:
 //
-// KV lane map (confirmed against abr_ctrl.sv kv_read_client instantiation order):
-//   * kv_read[0] = ML-DSA seed   (kv_mldsa_seed_read_inst,  256b /  8 dwords)
-//   * kv_read[1] = ML-KEM seed   (kv_mlkem_seed_read_inst,  512b / 16 dwords)
-//   * kv_read[2] = ML-KEM msg    (kv_mlkem_msg_read_inst,   256b /  8 dwords)
+// - kv_read[0]: the ML-DSA seed (256b / 8 dwords).
+// - kv_read[1]: the ML-KEM seed D||Z (512b / 16 dwords: offsets 0..7 stream seed_D,
+//   8..15 stream seed_Z); succeeds only when both D and Z are valid.
+// - kv_read[2]: the ML-KEM msg (256b / 8 dwords).
 //
-// The ML-KEM 512-bit seed on kv_read[1] is the concatenation of seed_D then
-// seed_Z: kv_read offsets 0..7 stream seed_D[0..7] and offsets 8..15 stream
-// seed_Z[0..7] (abr_ctrl.sv splits it at the SEED_NUM_DWORDS=8 boundary). Each
-// block carries its own dual XOR shares and KEY_CTRL.key_valid; the seed read
-// only succeeds when both D and Z are valid. The ML-KEM msg block is single
-// (8-dword) with its own valid.
-//
-// Serves, on the Caliptra KV read/write ports:
-//   * ML-DSA seed (kv_read[0]), ML-KEM seed D||Z (kv_read[1]), ML-KEM msg
-//     (kv_read[2]) -- all recovered as SHARE0[i]^SHARE1[i], gated by key_valid.
-//   * kv_write (ML-KEM shared-key output from abr_top) is written back into
-//     MLKEM_SHARED_KEY.KEY[write_offset] via hwif_o; on the final dword it pulses
-//     KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset so the wrapper's
-//     gated interrupt fires. kv_wr_resp is acked no-error.
+// kv_write writes ML-KEM shared-key dwords into MLKEM_SHARED_KEY via hwif_o and, on the
+// final dword, pulses KEY_CTRL.key_valid.hwset and IRQ_STATUS.key_valid.hwset. kv_wr_resp
+// is acknowledged with no error.
 
 module sep_abr_kv_shim
   import kv_defines_pkg::*;
   import abr_wrapper_key_reg_pkg::*;
 #(
-  parameter int unsigned SEED_DWORDS       = 8, // ML-DSA-87 / ML-KEM seed block = 256 bits
-  parameter int unsigned MSG_DWORDS        = 8, // ML-KEM message               = 256 bits
-  parameter int unsigned SHARED_KEY_DWORDS = 8  // ML-KEM shared key            = 256 bits
+  parameter int unsigned SEED_DWORDS       = 8,  // ML-DSA-87 / ML-KEM seed block = 256 bits.
+  parameter int unsigned MSG_DWORDS        = 8,  // ML-KEM message = 256 bits.
+  parameter int unsigned SHARED_KEY_DWORDS = 8  // ML-KEM shared key = 256 bits.
 ) (
-  // ---- ABR sideload CSR hardware interface (from u_abr_key_csr) ----
-  // hwif_i : reg block outputs (KM-written seed shares, shared-key control).
-  // hwif_o : reg block inputs  (HW-driven ML-KEM shared-key writeback).
-  // NOTE: the PeakRDL hwif types are *unpacked* structs, which cannot be a
-  // net; declare with no explicit `wire` (defaults to var) to match the
-  // generated abr_wrapper_key_reg port style and satisfy Xcelium (SVUPSL).
-  input       abr_wrapper_key__out_t hwif_i,
-  output      abr_wrapper_key__in_t  hwif_o,
+  input       abr_wrapper_key__out_t hwif_i,  // ABR sideload CSR hardware outputs from u_abr_key_csr: KM-written seed shares and shared-key control
+                                              // Unpacked PeakRDL struct; declare without wire so it defaults to var for Xcelium SVUPSL.
+  output      abr_wrapper_key__in_t  hwif_o,  // ABR sideload CSR hardware inputs to u_abr_key_csr for ML-KEM shared-key writeback.
 
-  // ---- Adams Bridge Caliptra KV ports ----
-  input  wire kv_read_t    [2:0] kv_read_i,
-  output      kv_rd_resp_t [2:0] kv_rd_resp_o,
-  input  wire kv_write_t         kv_write_i,
-  output      kv_wr_resp_t       kv_wr_resp_o
+  input  wire kv_read_t    [2:0] kv_read_i,   // Adams Bridge Caliptra KV read commands; three lanes.
+  output      kv_rd_resp_t [2:0] kv_rd_resp_o,  // Adams Bridge Caliptra KV read responses.
+  input  wire kv_write_t         kv_write_i,  // Adams Bridge Caliptra KV write command for the ML-KEM shared key.
+  output      kv_wr_resp_t       kv_wr_resp_o  // Adams Bridge Caliptra KV write response; acknowledged with no error.
 );
 
   // ML-KEM seed is D||Z: two SEED_DWORDS blocks streamed as one KV entry.

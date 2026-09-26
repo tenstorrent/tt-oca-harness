@@ -2,23 +2,24 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// Shared byte-per-cycle CRC engine for PicoRV32 PCPI CRC instructions.
+// Compute CRCs one byte per cycle as the shared engine behind the Key Manager PicoRV32
+// PCPI CRC instructions.
 //
-// On start_i it latches mode_i, state_i, and data_i, then folds one reflected
-// byte per cycle until the mode's byte count completes. busy_o stays high for
-// the duration; done_o pulses with result_o when the last byte finishes.
-// mode_i selects CRC-32C word, CRC-32C byte, or CRC-8/ROHC.
+// On start_i it latches mode_i, state_i, and data_i, then folds one reflected byte per
+// cycle until the mode's byte count completes. busy_o stays high for the duration; done_o
+// pulses with result_o when the last byte finishes. mode_i selects CRC-32C word, CRC-32C
+// byte, or CRC-8/ROHC.
 
 module km_crc_engine (
-  input  logic        clk_i,    // System clock
-  input  logic        rst_ni,   // Active-low reset
-  input  logic        start_i,  // Pulse that begins a CRC operation when idle
-  input  logic [1:0]  mode_i,   // CRC mode select (32C word, 32C byte, or 8/ROHC)
-  input  logic [31:0] state_i,  // Incoming CRC state / seed
-  input  logic [31:0] data_i,   // Data word or byte (little-endian byte order)
-  output logic        busy_o,   // High while a CRC operation is in progress
-  output logic        done_o,   // One-cycle pulse when result_o is valid
-  output logic [31:0] result_o  // Final CRC value (CRC-8 zero-extended)
+  input  logic        clk_i,    // System clock.
+  input  logic        rst_ni,   // Active-low reset.
+  input  logic        start_i,  // Pulse that begins a CRC operation when idle.
+  input  logic [1:0]  mode_i,   // CRC mode select (32C word, 32C byte, or 8/ROHC).
+  input  logic [31:0] state_i,  // Incoming CRC state / seed.
+  input  logic [31:0] data_i,   // Data word or byte (little-endian byte order).
+  output logic        busy_o,   // High while a CRC operation is in progress.
+  output logic        done_o,   // One-cycle pulse when result_o is valid.
+  output logic [31:0] result_o  // Final CRC value (CRC-8 zero-extended).
 );
 
   `include "prim_assert.sv"

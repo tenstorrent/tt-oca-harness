@@ -1,31 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Bridge TileLink Gets to the SMC boot ROM memory interface.
+//
+// Converts TileLink Get traffic into a ROM address and chip-enable.
+// Optionally swaps response endianness before returning data on the D channel.
+
 module tilelink_to_rom_mem #(
-  parameter int unsigned ADDR_WIDTH = 14,
-  parameter int unsigned WORD_WIDTH = 64
+  parameter int unsigned ADDR_WIDTH = 14,  // Address width.
+  parameter int unsigned WORD_WIDTH = 64  // Word width.
 ) (
-  input  logic         clk_i,
-  input  logic         rst_i,
+  input  logic         clk_i,           // Clock.
+  input  logic         rst_i,           // Reset.
 
-  output logic         auto_in_a_ready,
-  input  logic         auto_in_a_valid,
-  input  logic  [1:0]  auto_in_a_bits_size,
-  input  logic  [14:0] auto_in_a_bits_source,
-  input  logic  [31:0] auto_in_a_bits_address,
-  input  logic         auto_in_d_ready,
-  output logic         auto_in_d_valid,
-  output logic  [1:0]  auto_in_d_bits_size,
-  output logic  [14:0] auto_in_d_bits_source,
-  output logic  [WORD_WIDTH-1:0] auto_in_d_bits_data,
+  output logic         auto_in_a_ready,  // Auto in a ready.
+  input  logic         auto_in_a_valid,  // Auto in a valid.
+  input  logic  [1:0]  auto_in_a_bits_size,  // Auto in a bits size.
+  input  logic  [14:0] auto_in_a_bits_source,  // Auto in a bits source.
+  input  logic  [31:0] auto_in_a_bits_address,  // Auto in a bits address.
+  input  logic         auto_in_d_ready,  // Auto in d ready.
+  output logic         auto_in_d_valid,  // Auto in d valid.
+  output logic  [1:0]  auto_in_d_bits_size,  // Auto in d bits size.
+  output logic  [14:0] auto_in_d_bits_source,  // Auto in d bits source.
+  output logic  [WORD_WIDTH-1:0] auto_in_d_bits_data,  // Auto in d bits data.
 
-  input  logic                  rom_flip_endianness_i,
+  input  logic                  rom_flip_endianness_i,  // Rom flip endianness.
 
-  // Tilelink to generic memory interface conversion outputs
-  output logic [ADDR_WIDTH-1:0] rom_address_o,
-  output logic                  mem_chip_en_o,
-  // Memory data response from ROM
-  input  logic [63:0]           rom_bank_data_i
+  output logic [ADDR_WIDTH-1:0] rom_address_o,  // Tilelink to generic memory interface
+                                                // conversion outputs.
+  output logic                  mem_chip_en_o,  // Tilelink to generic memory interface
+                                                // conversion outputs.
+  input  logic [63:0]           rom_bank_data_i  // Memory data response from ROM.
 );
 
   // Flop the incoming request

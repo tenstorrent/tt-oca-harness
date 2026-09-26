@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 3-Flop Synchronizer
+// Synchronize d_i into the clk_i domain through 3 flops.
 //
-//--------------------------------------------------
-module prim_flop_3sync (
-  input clk_i,
-  input d_i,
-  output wire q_o
-);
+// Chain 3 positive-edge flops so q_o is a metastability-hardened copy of d_i. The chain
+// has no reset and powers up undefined until d_i is sampled.
 
+module prim_flop_3sync (
+  input clk_i,       // Destination-domain clock.
+  input d_i,         // Async data to synchronize.
+  output wire q_o    // Synchronized data.
+);
   logic q_d, q_dd, q_ddd;
 
   always_ff @(posedge clk_i) begin

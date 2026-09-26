@@ -1,49 +1,47 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_health_test.sv
- * @brief OpenTitan entropy health test integration with unified status port.
- *
- * @details Wraps OpenTitan's division-free health test implementations
- *          (Repetition Count Test, Adaptive Proportion Test, Markov Test) to
- *          validate entropy quality. Provides current test counts, separate APT
- *          failure pulses, and a unified status byte. Status bit allocation:
- *          [0]=Repetition failure, [3]=APT
- *          (high/low), [4]=Markov (>threshold), [5]=Markov (<threshold),
- *          [1,2,6,7]=reserved.
- *
- * @param DATA_WIDTH    Width of entropy input bus (default 32 bits).
- */
+// Run OpenTitan Repetition, Adaptive Proportion, and Markov health tests with a unified status byte.
+//
+// enable_i selects which tests run; window_wrap_pulse_i closes each window. The block
+// exposes raw repetition/APT/Markov counts and apt_fail_hi_o/apt_fail_lo_o pulses.
+//
+// status_o bits:
+//
+// - [0] Repetition failure
+// - [3] APT high/low
+// - [4] Markov above threshold
+// - [5] Markov below threshold
+// - [1,2,6,7] reserved
+//
+// count_err_o sets when a health-test counter's duplicate copies disagree (prim_count
+// fault detection), independent of threshold trips; callers must route it to the alert
+// path because a glitched counter can stop reporting real failures.
 
 module entropy_health_test #(
-  parameter int unsigned DATA_WIDTH = 32
+  parameter int unsigned DATA_WIDTH = 32  // Data width.
 ) (
-  input       logic                  clk_i,
-  input       logic                  rst_ni,
-  input       logic [DATA_WIDTH-1:0] entropy_i,
-  input       logic                  entropy_valid_i,
-  input       logic [2:0]            enable_i,
-  input       logic [7:0]            repetition_limit_i,
-  input       logic [15:0]           proportion_limit_1bit_i,
-  input       logic [15:0]           proportion_limit_lo_i,
-  input       logic [15:0]           markov_prob_01_threshold_i,
-  input       logic [15:0]           markov_prob_10_threshold_i,
-  input       logic                  window_wrap_pulse_i,
+  input       logic                  clk_i,  // System clock.
+  input       logic                  rst_ni,  // Active-low reset.
+  input       logic [DATA_WIDTH-1:0] entropy_i,  // Entropy.
+  input       logic                  entropy_valid_i,  // Entropy valid.
+  input       logic [2:0]            enable_i,  // Block enable.
+  input       logic [7:0]            repetition_limit_i,  // Repetition limit.
+  input       logic [15:0]           proportion_limit_1bit_i,  // Proportion limit 1bit.
+  input       logic [15:0]           proportion_limit_lo_i,  // Proportion limit lo.
+  input       logic [15:0]           markov_prob_01_threshold_i,  // Markov prob 01 threshold.
+  input       logic [15:0]           markov_prob_10_threshold_i,  // Markov prob 10 threshold.
+  input       logic                  window_wrap_pulse_i,  // Window wrap pulse.
 
-  output      logic [15:0]           ctr_repetition_o,
-  output      logic [15:0]           apt_pattern_count_1bit_o,
-  output      logic [15:0]           apt_pattern_count_2bit_o,
-  output      logic [15:0]           count_01_o,
-  output      logic [15:0]           count_10_o,
-  output      logic                  apt_fail_hi_o,
-  output      logic                  apt_fail_lo_o,
-  output      logic [7:0]            status_o,
-  // Set when a health-test counter's duplicate copies disagree
-  // (prim_count's own fault detection), independent of a test threshold
-  // trip. Every caller must route this to the alert path: a glitched
-  // counter can silently stop reporting real threshold failures.
-  output      logic                  count_err_o
+  output      logic [15:0]           ctr_repetition_o,  // Ctr repetition.
+  output      logic [15:0]           apt_pattern_count_1bit_o,  // Apt pattern count 1bit.
+  output      logic [15:0]           apt_pattern_count_2bit_o,  // Apt pattern count 2bit.
+  output      logic [15:0]           count_01_o,  // Count 01.
+  output      logic [15:0]           count_10_o,  // Count 10.
+  output      logic                  apt_fail_hi_o,  // Apt fail hi.
+  output      logic                  apt_fail_lo_o,  // Apt fail lo.
+  output      logic [7:0]            status_o,  // Status.
+  output      logic                  count_err_o  // Count err.
 );
 
   /////////////////////

@@ -1,46 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-// drbg_csrng_seed_adapter
-//
-// 32-bit entropy-word to CSRNG seed adapter for the DRBG wrapper.
-//----------------------------------------------------------
 
-/**
- * @file drbg_csrng_seed_adapter.sv
- * @brief Packs 32-bit entropy words into queued 384-bit CSRNG seeds.
- *
- * @details Uses `prim_packer_fifo` to accumulate twelve 32-bit words into one
- *          384-bit seed with the required lane mapping, then stores complete
- *          `{es_fips, es_bits}` entries in a small same-clock FIFO. The wrapped
- *          CSRNG consumes queued entries through the native
- *          `entropy_src_hw_if_req_t` / `entropy_src_hw_if_rsp_t` interface.
- *
- * @param SEED_FIFO_DEPTH Number of complete seeds that can be queued.
- */
+// Pack 32-bit entropy words into queued 384-bit CSRNG seeds.
+//
+// Uses prim_packer_fifo to accumulate twelve 32-bit words into one 384-bit seed with the
+// required lane mapping, then stores complete {es_fips, es_bits} entries in a small
+// same-clock FIFO.
+// The wrapped CSRNG consumes queued entries through the native entropy_src_hw_if_req_t /
+// entropy_src_hw_if_rsp_t interface.
+
 module drbg_csrng_seed_adapter
   import drbg_pkg::*;
 #(
-  parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH
+  parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH // Number of complete seeds that can be queued.
 ) (
-  input  wire logic                               clk_i,
-  input  wire logic                               rst_ni,
+  input  wire logic                               clk_i,    // System clock.
+  input  wire logic                               rst_ni,   // Async reset, active-low.
 
-  input  wire logic                               csrng_word_valid_i,
-  input  wire logic [31:0]                        csrng_word_data_i,
-  output logic                                    csrng_word_ready_o,
+  input  wire logic                               csrng_word_valid_i, // Incoming entropy-word valid.
+  input  wire logic [31:0]                        csrng_word_data_i, // Incoming 32-bit entropy word.
+  output logic                                    csrng_word_ready_o, // Packer ready for a word.
 
-  input  wire entropy_src_pkg::entropy_src_hw_if_req_t entropy_src_hw_if_req_i,
-  output entropy_src_pkg::entropy_src_hw_if_rsp_t entropy_src_hw_if_rsp_o,
+  input  wire entropy_src_pkg::entropy_src_hw_if_req_t entropy_src_hw_if_req_i, // CSRNG seed-request handshake.
+  output entropy_src_pkg::entropy_src_hw_if_rsp_t entropy_src_hw_if_rsp_o, // CSRNG seed response with bits and fips.
 
-  output logic                                    seed_queue_valid_o,
-  output logic [383:0]                            seed_queue_bits_o,
-  output logic                                    seed_queue_fips_o,
-  output logic                                    seed_push_o,
-  output logic [4:0]                              packer_word_count_o,
-  output logic [$clog2(SEED_FIFO_DEPTH + 1)-1:0]  seed_queue_depth_o
+  output logic                                    seed_queue_valid_o, // Seed FIFO not empty.
+  output logic [383:0]                            seed_queue_bits_o, // Next queued 384-bit seed.
+  output logic                                    seed_queue_fips_o, // FIPS flag for the next seed.
+  output logic                                    seed_push_o, // Pulse when a seed is pushed.
+  output logic [4:0]                              packer_word_count_o, // Words accumulated in the packer.
+  output logic [$clog2(SEED_FIFO_DEPTH + 1)-1:0]  seed_queue_depth_o // Current seed-FIFO fill.
 );
 
   `include "prim_assert.sv"

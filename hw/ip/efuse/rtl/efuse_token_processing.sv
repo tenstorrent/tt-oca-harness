@@ -1,44 +1,56 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Token Processing
+// Hash and compare RMA and security-disable tokens against the shadow map.
 //
-//-----------------------------------------------------------------------------
+// Drives triple-redundant digest compares and publishes rma_sip/chiplet_token_match and
+// security_disable_o. Processing runs after fuse_sense_done_i and may rewrite
+// shadow_regs_o when lifecycle state must reflect token outcomes.
+//
+// Encodings:
+//
+// - SEP_SEC_DISABLE_TOKEN is embedded.
+// - TOKEN_MATCH_CODE is the success encoding.
+// - LC_STATE_INVALID encodes an invalid lifecycle value.
+//
+// Status outputs:
+//
+// - token_match_fault_o flags redundancy disagreement.
+// - sec_disable_token_o exports the baked token words.
 
 module efuse_token_processing #(
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0,
-  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0,  // B0.
+  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // B010101.
 
-  parameter int unsigned LC_STATE_WIDTH = 4,
-  localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),
+  parameter int unsigned LC_STATE_WIDTH = 4,  // Lifecycle-state field width.
+  localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),  // B1.
 
-  parameter type efuse_apb_req_t = logic,
-  parameter type efuse_apb_resp_t = logic,
+  parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
+  parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
-  parameter type efuse_map_t = logic
+  parameter type efuse_map_t = logic    // Shadow eFuse map type.
 ) (
-  input  logic                     clk_i,
-  input  logic                     rst_ni,
+  input  logic                     clk_i,  // System clock.
+  input  logic                     rst_ni,  // Active-low reset.
 
-  input  logic                     test_en_i,
+  input  logic                     test_en_i,  // DFT test enable.
 
-  input  logic                     fuse_sense_done_i,
+  input  logic                     fuse_sense_done_i,  // Fuse sense done.
 
-  input  efuse_apb_req_t           apb_req_i,
-  output efuse_apb_resp_t          apb_resp_o,
+  input  efuse_apb_req_t           apb_req_i,  // Apb req.
+  output efuse_apb_resp_t          apb_resp_o,  // Apb resp.
 
-  output logic[5:0]                rma_sip_token_match_q_o,
-  output logic[5:0]                rma_chiplet_token_match_q_o,
+  output logic[5:0]                rma_sip_token_match_q_o,  // Rma sip token match q.
+  output logic[5:0]                rma_chiplet_token_match_q_o,  // Rma chiplet token match q.
 
-  output logic [7:0][31:0]         sec_disable_token_o,
+  output logic [7:0][31:0]         sec_disable_token_o,  // Sec disable token.
 
-  output logic                     security_disable_o,
+  output logic                     security_disable_o,  // Security disable.
 
-  output logic                     token_match_fault_o,
+  output logic                     token_match_fault_o,  // Token match fault.
 
-  input  efuse_map_t               shadow_regs_i,
-  output efuse_map_t               shadow_regs_o
+  input  efuse_map_t               shadow_regs_i,  // Shadow regs.
+  output efuse_map_t               shadow_regs_o  // Shadow regs.
 );
 
   ///////////////////////////////////////////////

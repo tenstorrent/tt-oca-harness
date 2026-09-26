@@ -1,57 +1,52 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// DMA Frontend
+// Accept AXI control traffic and emit iDMA backend requests.
 //
-//-----------------------------------------------------------------------------
-
+// NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be >= 1.
+// F2M_FIFO_DEPTH has a minimum depth of 1; the value set here creates a depth of 1 + val.
 
 module idma_frontend_wrapper #(
-  parameter int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter int unsigned NUM_CTRL_STREAMS = 1, // must be >= 1
+  parameter int unsigned NUM_CTRL_INTERFACES = 1,           // Control-port count; must be >= 1.
+  parameter int unsigned NUM_CTRL_STREAMS = 1,              // Streams per control port; must be >= 1.
 
-  parameter int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, any value set here will create a depth of 1 + val
+  parameter int unsigned F2M_FIFO_DEPTH = 4,                // Frontend-to-manager FIFO depth; effective depth is 1 + this value.
 
-  parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,
+  parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,               // Skip AXI ctrl boundary flops.
 
-  parameter int unsigned NumDim = 2,
-  parameter int unsigned RepWidth = 32,
+  parameter int unsigned NumDim = 2,                        // N-dimensional transfer rank.
+  parameter int unsigned RepWidth = 32,                     // Repetition-count width.
 
-  parameter type idma_req_t = logic,
-  parameter type idma_resp_t = logic,
-  parameter type idma_nd_req_t = logic,
-  parameter type dma_mst_addr_t = logic,
+  parameter type idma_req_t = logic,                        // iDMA request type.
+  parameter type idma_resp_t = logic,                       // iDMA response type.
+  parameter type idma_nd_req_t = logic,                     // N-D request type.
+  parameter type dma_mst_addr_t = logic,                    // DMA address type.
 
-  // AXI ctrl interface types
-  parameter type dma_ctrl_req_t  = logic,
-  parameter type dma_ctrl_resp_t = logic,
+  parameter type dma_ctrl_req_t  = logic,                   // AXI ctrl request type.
+  parameter type dma_ctrl_resp_t = logic,                   // AXI ctrl response type.
 
-  // Width params for internal AXI typedef + axi_to_reg_v2
-  parameter int unsigned CTRL_ADDR_WIDTH = 9,
-  parameter int unsigned CTRL_DATA_WIDTH = 64,
-  parameter int unsigned CTRL_ID_WIDTH   = 8,
-  parameter int unsigned CTRL_USER_WIDTH = 12
+  parameter int unsigned CTRL_ADDR_WIDTH = 9,               // Ctrl AXI address width.
+  parameter int unsigned CTRL_DATA_WIDTH = 64,              // Ctrl AXI data width.
+  parameter int unsigned CTRL_ID_WIDTH   = 8,               // Ctrl AXI ID width.
+  parameter int unsigned CTRL_USER_WIDTH = 12               // Ctrl AXI user width.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                                       // System clock.
+  input  logic rst_ni,                                      // Async reset, active-low.
+  input  logic test_en_i,                                   // DFT test enable.
 
-  output logic dma_frontend_wakeup_o,
-  output logic dma_frontend_busy_o,
+  output logic dma_frontend_wakeup_o,                       // Wake request from the frontend.
+  output logic dma_frontend_busy_o,                         // Frontend has work in flight.
 
-  // AXI interface to DMA control registers
-  input  dma_ctrl_req_t  [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_req_i,
-  output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o,
+  input  dma_ctrl_req_t  [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_req_i, // AXI ctrl slave request.
+  output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o, // AXI ctrl slave response.
 
-  // iDMA request/response interface
-  output idma_req_t  [NUM_CTRL_INTERFACES-1:0] req_o,
-  output logic       [NUM_CTRL_INTERFACES-1:0] req_valid_o,
-  input  logic       [NUM_CTRL_INTERFACES-1:0] req_ready_i,
+  output idma_req_t  [NUM_CTRL_INTERFACES-1:0] req_o,       // Outbound backend request.
+  output logic       [NUM_CTRL_INTERFACES-1:0] req_valid_o, // Outbound request valid.
+  input  logic       [NUM_CTRL_INTERFACES-1:0] req_ready_i, // Outbound request ready.
 
-  input  idma_resp_t [NUM_CTRL_INTERFACES-1:0] resp_i,
-  input  logic       [NUM_CTRL_INTERFACES-1:0] resp_valid_i,
-  output logic       [NUM_CTRL_INTERFACES-1:0] resp_ready_o
+  input  idma_resp_t [NUM_CTRL_INTERFACES-1:0] resp_i,      // Inbound backend response.
+  input  logic       [NUM_CTRL_INTERFACES-1:0] resp_valid_i, // Inbound response valid.
+  output logic       [NUM_CTRL_INTERFACES-1:0] resp_ready_o // Inbound response ready.
 );
 
   `include "axi/typedef.svh"

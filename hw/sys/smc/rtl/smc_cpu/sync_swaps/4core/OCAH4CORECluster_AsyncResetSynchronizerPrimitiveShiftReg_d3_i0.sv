@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Replace the Chipyard async-reset shift-register black box.
+//
+// Substitutes an OCAH synchronizer for the generated async reset primitive.
+// Three stages synchronize the async reset into the local clock domain.
+
 module OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0 (
-  input  clock,
+  input  clock,                         // Clock.
   reset,
-  io_d,  // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14]
-  output io_q   // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14]
+  io_d,  // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14].
+  output io_q                           // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14].
 );
 
   wire io_rstbypass, io_rst_synced, reset_n;

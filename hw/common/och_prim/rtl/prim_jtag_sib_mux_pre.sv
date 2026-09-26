@@ -1,26 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// JTAG SIB with MUX Before SR Register
+// Insert a JTAG SIB that muxes the host chain before the local scan register.
 //
-//--------------------------------------------------
+// security_disable_i forces the SIB closed.
+// SAFE_SELECT adds a flop on SIB enable to avoid a race on the host update_en.
+// LOCKUP passes through to the nested scan register.
+
 module prim_jtag_sib_mux_pre
   import prim_jtag_pkg::*;
 #(
-  parameter bit  LOCKUP = 0,       // Adds a lockup latch to the output of the scan register
-  parameter bit  SAFE_SELECT = 0,  // Adds an additional flop stage to the SIB enable output to avoid a race on the host update_en.
+  parameter bit  LOCKUP = 0,  // Adds a lockup latch on the nested scan-register output.
+  parameter bit  SAFE_SELECT = 0,  // Flops SIB enable to avoid a race on the host update_en.
 
-  parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t
+  parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t  // Scan-control struct type.
 ) (
-  input  jtag_scan_ctrl_t  client_scan_ctrl_i,
-  input  logic             client_scan_in_i,
-  output logic             client_scan_out_o,
-  input  logic             security_disable_i,
+  input  jtag_scan_ctrl_t  client_scan_ctrl_i,  // Client-side scan control.
+  input  logic             client_scan_in_i,  // Client serial scan in.
+  output logic             client_scan_out_o,  // Client serial scan out.
+  input  logic             security_disable_i,  // Forces the SIB closed when high.
 
-  output jtag_scan_ctrl_t  host_scan_ctrl_o,
-  input  logic             host_scan_in_i,
-  output logic             host_scan_out_o
+  output jtag_scan_ctrl_t  host_scan_ctrl_o,  // Host-side scan control.
+  input  logic             host_scan_in_i,  // Host serial scan in.
+  output logic             host_scan_out_o  // Host serial scan out.
 );
 
   jtag_scan_ctrl_t scan_reg_scan_ctrl;

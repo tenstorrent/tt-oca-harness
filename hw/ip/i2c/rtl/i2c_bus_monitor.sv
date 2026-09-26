@@ -1,40 +1,39 @@
-//-----------------------------------------------------------------------------
-// I2C Bus Monitor
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Monitor SCL and SDA for START/STOP, bus-free, and active/inactive timeouts.
 //
-// Description: I2C bus idle and timeout monitoring, plus Start/Stop
-// detection.
+// thd_dat_i is the data hold time (< 200 ns, < thd_sta).
+// t_buf_i is the bus free time (< 5 us).
+// bus_active_timeout_i covers SCL held low (~25 ms); bus_inactive_timeout_i covers SCL
+// held high (~50 us).
 
 module i2c_bus_monitor
   import i2c_pkg::*;
 (
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  input  logic        clk_i,                                // System clock.
+  input  logic        rst_ni,                               // Async reset, active-low.
 
-  input  logic        scl_i,
-  input  logic        sda_i,
+  input  logic        scl_i,                                // SCL pad input.
+  input  logic        sda_i,                                // SDA pad input.
 
-  input  logic        controller_enable_i,
-  input  logic        multi_controller_enable_i,
-  input  logic        target_enable_i,
-  input  logic        target_idle_i,
-  input  logic [12:0] thd_dat_i,                   // Data hold time(< 200 ns, < thd_sta)
-  input  logic [12:0] t_buf_i,                     // Bus free time (< 5 us)
-  input  logic [29:0] bus_active_timeout_i,        // SCL held low  (~25 ms)
-  input  logic        bus_active_timeout_en_i,
-  input  logic [30:0] bus_inactive_timeout_i,      // SCL held high (~50 us)
+  input  logic        controller_enable_i,                  // Controller mode enabled.
+  input  logic        multi_controller_enable_i,            // Multi-controller mode enabled.
+  input  logic        target_enable_i,                      // Target mode enabled.
+  input  logic        target_idle_i,                        // Target FSM is idle.
+  input  logic [12:0] thd_dat_i,                            // Data hold time in clocks (< 200 ns, < thd_sta).
+  input  logic [12:0] t_buf_i,                              // Bus free time in clocks (< 5 us).
+  input  logic [29:0] bus_active_timeout_i,                 // SCL-low timeout threshold (~25 ms).
+  input  logic        bus_active_timeout_en_i,              // Enable SCL-low timeout.
+  input  logic [30:0] bus_inactive_timeout_i,               // SCL-high timeout threshold (~50 us).
 
-  output logic        bus_free_o,
-  output logic        start_detect_o,
-  output logic        stop_detect_o,
+  output logic        bus_free_o,                           // Bus free for a new transfer.
+  output logic        start_detect_o,                       // START condition detected.
+  output logic        stop_detect_o,                        // STOP condition detected.
 
-  output logic        event_bus_active_timeout_o,
-  output logic        event_host_timeout_o
+  output logic        event_bus_active_timeout_o,           // SCL held low past threshold.
+  output logic        event_host_timeout_o                  // SCL held high past threshold.
 );
 
   `include "prim_assert.sv"

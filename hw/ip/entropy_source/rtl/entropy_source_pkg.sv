@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_source_pkg.sv
- * @brief Package defining entropy source register and data type definitions.
- *
- * @details Provides register address/data width definitions and common type
- *          aliases (reg_addr_t, reg_data_t, reg_strb_t) for entropy source
- *          register access, plus the NRINGS constant specifying the number of
- *          entropy generator lanes.
- */
+// Define entropy-source register widths, type aliases, lane count, and the error aggregation bus.
+//
+// REG_ADDR_WIDTH/REG_DATA_WIDTH/REG_STRB_WIDTH and reg_addr_t/reg_data_t/reg_strb_t serve
+// register access; NRINGS is the generator-lane count.
+// entropy_source_err_bus_t collects every error and fault that drives INTR_STATUS sticky
+// bits; irq_o is the single OR of those bits.
 
 package entropy_source_pkg;
 
@@ -34,17 +31,17 @@ package entropy_source_pkg;
   // these bits.
   // ------------------------------------------------------------------------
   typedef struct packed {
-    logic health_test_failed;  // |health_status (Rep/APT/Markov)
-    logic fifo_error;          // entropy_fifo.security_alert_o
-    logic fifo_overflow;       // entropy_fifo.overflow_o
-    logic fifo_underflow;      // entropy_fifo.underflow_o
-    logic biw_obs_overflow;    // u_biw_obs_fifo.overflow_o (diagnostic tap drop)
-    logic noise_obs_overflow;  // u_noise_obs_fifo.overflow_o (raw-collection gap)
-    logic es_cntr_err;         // counter-fault escalation -> local_escalate_i
-    logic main_sm_alert;       // entropy_src_main_sm.main_sm_alert_o (AlertHang)
-    logic main_sm_err;         // entropy_src_main_sm.main_sm_err_o
-    logic persistent_failure;  // alert_thresh_fail fired -> main_sm locked
-    logic autotune_fail;       // auto-detune retune fired on a HT failure
+    logic health_test_failed;  // |health_status (Rep/APT/Markov).
+    logic fifo_error;          // entropy_fifo.security_alert_o.
+    logic fifo_overflow;       // entropy_fifo.overflow_o.
+    logic fifo_underflow;      // entropy_fifo.underflow_o.
+    logic biw_obs_overflow;    // u_biw_obs_fifo.overflow_o (diagnostic tap drop).
+    logic noise_obs_overflow;  // u_noise_obs_fifo.overflow_o (raw-collection gap).
+    logic es_cntr_err;         // counter-fault escalation -> local_escalate_i.
+    logic main_sm_alert;       // entropy_src_main_sm.main_sm_alert_o (AlertHang).
+    logic main_sm_err;         // entropy_src_main_sm.main_sm_err_o.
+    logic persistent_failure;  // alert_thresh_fail fired -> main_sm locked.
+    logic autotune_fail;       // auto-detune retune fired on a HT failure.
   } entropy_source_err_bus_t;
 
 endpackage

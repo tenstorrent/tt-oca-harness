@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC local AXI crossbar.
-// Address rules derive from smc_top_addrmap_pkg; child-fabric outputs span
-// their generated aggregate bounds.
+// Route the SMC local AXI crossbar.
+//
+// Connects CPU and fabric initiators to local SMC targets over full AXI.
+// Address rules come from smc_local_xbar_pkg and smc_top_addrmap_pkg.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -12,47 +13,34 @@ module smc_local_xbar
   import axi_pkg::*;
   import smc_local_xbar_pkg::*;
 (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_i,
+  input  logic clk_i,                   // Clock.
+  input  logic rst_ni,                  // Reset.
+  input  logic test_i,                  // Test.
 
-  // ===========================================================================
-  // Initiator Ports
-  // ===========================================================================
-  // system (AXI4, 64-bit)
-  input  axi64_req_t  system_req_i,
-  output axi64_resp_t system_resp_o,
+  input  axi64_req_t  system_req_i,     // system (AXI4, 64-bit) request.
+  output axi64_resp_t system_resp_o,    // system (AXI4, 64-bit) response.
 
-  // sep_in (AXI4, 64-bit)
-  input  axi64_req_t  sep_in_req_i,
-  output axi64_resp_t sep_in_resp_o,
+  input  axi64_req_t  sep_in_req_i,     // sep_in (AXI4, 64-bit) request.
+  output axi64_resp_t sep_in_resp_o,    // sep_in (AXI4, 64-bit) response.
 
-  // local_in (AXI4, 64-bit)
-  input  axi64_req_t  local_in_req_i,
-  output axi64_resp_t local_in_resp_o,
+  input  axi64_req_t  local_in_req_i,   // local_in (AXI4, 64-bit) request.
+  output axi64_resp_t local_in_resp_o,  // local_in (AXI4, 64-bit) response.
 
-  // ===========================================================================
-  // Target Ports
-  // ===========================================================================
-  // front_port (AXI4, 64-bit)
-  output axi_out_req_t  front_port_req_o,
-  input  axi_out_resp_t front_port_resp_i,
+  output axi_out_req_t  front_port_req_o,  // front_port (AXI4, 64-bit) request.
+  input  axi_out_resp_t front_port_resp_i,  // front_port (AXI4, 64-bit) response.
 
-  // data_accel_ctrl (AXI4, 64-bit)
-  output axi_out_req_t  data_accel_ctrl_req_o,
-  input  axi_out_resp_t data_accel_ctrl_resp_i,
+  output axi_out_req_t  data_accel_ctrl_req_o,  // data_accel_ctrl (AXI4, 64-bit) request.
+  input  axi_out_resp_t data_accel_ctrl_resp_i,  // data_accel_ctrl (AXI4, 64-bit)
+                                                 // response.
 
-  // local_reg (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  local_reg_req_o,
-  input  axi_lite64_resp_t local_reg_resp_i,
+  output axi_lite64_req_t  local_reg_req_o,  // local_reg (AXI4_LITE, 64-bit) request.
+  input  axi_lite64_resp_t local_reg_resp_i,  // local_reg (AXI4_LITE, 64-bit) response.
 
-  // periph_reg (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  periph_reg_req_o,
-  input  axi_lite32_resp_t periph_reg_resp_i,
+  output axi_lite32_req_t  periph_reg_req_o,  // periph_reg (AXI4_LITE, 32-bit) request.
+  input  axi_lite32_resp_t periph_reg_resp_i,  // periph_reg (AXI4_LITE, 32-bit) response.
 
-  // smc_dfd_reg (APB4, 32-bit)
-  output apb32_req_t  smc_dfd_reg_req_o,
-  input  apb32_resp_t smc_dfd_reg_resp_i
+  output apb32_req_t  smc_dfd_reg_req_o,  // smc_dfd_reg (APB4, 32-bit) request.
+  input  apb32_resp_t smc_dfd_reg_resp_i  // smc_dfd_reg (APB4, 32-bit) response.
 
 );
 

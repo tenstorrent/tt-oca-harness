@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// General purpose IO model
+// Model a bidirectional GPIO pad between core2pad/pad2core wires and GPIO_PAD.
+//
+// gpio_ctrl programs pull and drive; gpio_status reports the sampled pad level.
 
 module gpio_model #(
-  parameter type ctrl_t = logic,
-  parameter type status_t = logic
+  parameter type ctrl_t = logic,                            // Pad control struct type.
+  parameter type status_t = logic                           // Pad status struct type.
 ) (
-  input  wire             core2pad_i,
-  input  wire             core2pad_en_i,
+  input  wire             core2pad_i,                       // Core-to-pad data.
+  input  wire             core2pad_en_i,                    // Core-to-pad output enable.
 
-  output wire             pad2core_o,
-  input  wire             pad2core_en_i,
+  output wire             pad2core_o,                       // Pad-to-core data.
+  input  wire             pad2core_en_i,                    // Pad-to-core input enable.
 
-  inout  wire             GPIO_PAD,
+  inout  wire             GPIO_PAD,                         // Bidirectional pad pin.
 
-  input  ctrl_t           gpio_ctrl,
-  output status_t         gpio_status
+  input  ctrl_t           gpio_ctrl,                        // Pad drive and pull control.
+  output status_t         gpio_status                       // Sampled pad status.
 );
 
   // Internal signals

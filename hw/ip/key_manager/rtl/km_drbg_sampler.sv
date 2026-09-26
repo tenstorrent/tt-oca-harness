@@ -3,13 +3,20 @@
 
 // Copyright 2026 Tenstorrent Inc.
 
-// DRBG sampler that bridges KM CPU AXI4-Lite reads to a DRBG AXI-Stream.
+// Bridge Key Manager CPU AXI4-Lite reads of the sampler registers to a DRBG AXI-Stream.
 //
-// Mapped at base 0x0001_5000. A CPU read of DATA either returns a prefetched
-// random word or starts a new AXI-Stream request; CFG.TIMEOUT guards stalls
-// and CFG.PREFETCH can hold one word ready. STATUS reports ready, prefetch,
-// timeout, stream-error, and good/bad beat counts; drbg_error_o pulses on
-// timeout or stream protocol violations.
+// Mapped at base 0x0001_5000. A CPU read of the DATA register either returns a prefetched
+// random word or initiates a new DRBG request via the AXI-Stream handshake. A
+// configurable timeout (CFG.TIMEOUT) protects against DRBG stalls during active reads. An
+// optional single-word prefetch (CFG.PREFETCH) reduces latency for the first DATA read
+// after configuration. drbg_error_o pulses on a timeout or a stream protocol violation.
+//
+// Register map:
+//
+// - DATA
+// - CFG (PREFETCH, TIMEOUT)
+// - STATUS (DRBG_READY, PREFETCHED, TIMEOUT_ERR, STREAM_ERR, COUNT_GOOD, COUNT_BAD)
+// - PREFETCH_DATA (read-only)
 
 module km_drbg_sampler
   import km_intf_pkg::*;
@@ -17,17 +24,23 @@ module km_drbg_sampler
   import km_drbg_sampler_reg_pkg::*;
   import km_drbg_sampler_addrmap_pkg::*;
 #(
-  parameter type axil_req_t  = km_axil_req_t,   // AXI-Lite request struct type
-  parameter type axil_resp_t = km_axil_resp_t   // AXI-Lite response struct type
+  parameter type axil_req_t  = km_axil_req_t,  // AXI-Lite request struct type.
+  parameter type axil_resp_t = km_axil_resp_t  // AXI-Lite response struct type.
 ) (
-  input  logic               clk_i,            // System clock
-  input  logic               cold_rst_ni,      // Cold reset (AASD)
-  input  logic               warm_rst_ni,      // Warm reset, synchronous to clk_i
-  input  axil_req_t          axil_req_i,       // AXI-Lite slave request from the crossbar
-  output axil_resp_t         axil_resp_o,      // AXI-Lite slave response to the crossbar
-  input  km_drbg_axis_req_t  drbg_axis_req_i,  // DRBG AXI-Stream request (KM is slave)
-  output km_drbg_axis_resp_t drbg_axis_resp_o, // DRBG AXI-Stream response (TREADY)
-  output logic               drbg_error_o      // Aggregated error pulse to KMCSR
+  input  logic   clk_i,        // System clock.
+  input  logic   cold_rst_ni,  // Cold reset: AASD.
+  input  logic   warm_rst_ni,  // Warm reset: fully synchronous.
+
+  input  axil_req_t axil_req_i,    // AXI4-Lite slave request from the crossbar (base
+                                   // 0x0001_5000).
+  output axil_resp_t axil_resp_o,  // AXI4-Lite slave response to the crossbar.
+
+  input  km_drbg_axis_req_t drbg_axis_req_i,    // DRBG AXI-Stream TVALID, TDATA, TSTRB in (KM
+                                                // is slave).
+  output km_drbg_axis_resp_t drbg_axis_resp_o,  // DRBG AXI-Stream TREADY out.
+
+  output logic        drbg_error_o  // Aggregated error pulse to KMCSR (sets
+                                    // IRQ_STATUS.DRBG_ERR).
 );
 
   `include "prim_assert.sv"

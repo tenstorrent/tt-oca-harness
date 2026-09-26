@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP local AXI crossbar types and configuration.
-// Address rules are defined by sep_local_axi_xbar.
+// Define types and configuration for the SEP local AXI crossbar.
+//
+// Address decode rules live in sep_local_axi_xbar rather than this package.
 
 `include "axi/typedef.svh"
 
@@ -135,11 +136,11 @@ package sep_local_axi_xbar_pkg;
   // Connectivity Matrix
   // ===========================================================================
   localparam bit [NumInputs-1:0][NumOutputs-1:0] Connectivity = '{
-      0: 10'b0000000010,  // ifu_sram
-      1: 10'b1111111110,  // lsu
-      2: 10'b1111111110,  // dbg
-      3: 10'b1011111011,  // dma
-      4: 10'b1110101110  // ext
+      0: 10'b0000000010,  // ifu_sram.
+      1: 10'b1111111110,  // lsu.
+      2: 10'b1111111110,  // dbg.
+      3: 10'b1011111011,  // dma.
+      4: 10'b1110101110  // ext.
   };
 
 endpackage : sep_local_axi_xbar_pkg

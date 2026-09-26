@@ -1,58 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Program Interface
+// Program fuse bits or words through the fuse-command interface with optional read-back and timeouts.
 //
-//-----------------------------------------------------------------------------
+// program_go_i starts a program to program_addr_i with program_data_in_i;
+// program_read_back_enable_i requests post-program read-back.
+// program_addr_oob_i is computed upstream against the full-width CSR field because
+// casting to efuse_addr_t truncates upper bits.
+// Honors secure_tm_blocked_i, efuse_req_err_i, and optional program_req_timeout_* ;
+// sticky address errors clear with program_addr_error_clear_i.
+// is_programing_o and program_target_addr_o feed the guard while a program is active.
 
 `include "prim_assert.sv"
 
 module efuse_program_interface #(
-  parameter unsigned EFUSE_WORD_WIDTH = 32,
+  parameter unsigned EFUSE_WORD_WIDTH = 32,  // Program/read data word width.
 
-  parameter type efuse_addr_t = logic,
-  parameter type efuse_data_t = logic,
-  parameter type efuse_word_counter_t = logic,
-  parameter type fuse_command_req_t = logic,
-  parameter type fuse_command_resp_t = logic
+  parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+  parameter type efuse_data_t = logic,  // Fuse data-word type.
+  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type fuse_command_req_t = logic,  // Fuse-command request type.
+  parameter type fuse_command_resp_t = logic  // Fuse-command response type.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,                    // System clock.
+  input logic rst_ni,                   // Active-low reset.
+  input logic test_en_i,                // DFT test enable.
 
-  input  logic        program_enable_i,
-  output logic        is_programing_o,
-  output efuse_addr_t program_target_addr_o,
+  input  logic        program_enable_i,  // Program enable.
+  output logic        is_programing_o,  // Is programing.
+  output efuse_addr_t program_target_addr_o,  // Program target addr.
 
-  input efuse_addr_t program_addr_i,
-  input logic        program_data_in_i,
-  input logic        program_go_i,
-  input logic        program_read_back_enable_i,
+  input efuse_addr_t program_addr_i,    // Program addr.
+  input logic        program_data_in_i,  // Program data in.
+  input logic        program_go_i,      // Program go.
+  input logic        program_read_back_enable_i,  // Program read back enable.
 
-  output logic        program_busy_o,
-  output logic        program_done_o,
-  output logic        program_error_o,
-  output efuse_data_t program_read_back_data_o,
+  output logic        program_busy_o,   // Program busy.
+  output logic        program_done_o,   // Program done.
+  output logic        program_error_o,  // Program error.
+  output efuse_data_t program_read_back_data_o,  // Program read back data.
 
-  // Address validation: oob computed in controller against full-width
-  // CSR field (the cast to efuse_addr_t that produces program_addr_i
-  // truncates upper bits, so the bounds check must live upstream).
-  input  logic program_addr_oob_i,
-  output logic program_addr_error_o,
-  input  logic program_addr_error_clear_i,
+  input  logic program_addr_oob_i,      // Program addr oob.
+  output logic program_addr_error_o,    // Program addr error.
+  input  logic program_addr_error_clear_i,  // Program addr error clear.
 
-  input logic efuse_req_err_i,
-  input logic secure_tm_blocked_i,
+  input logic efuse_req_err_i,          // Efuse req err.
+  input logic secure_tm_blocked_i,      // Secure tm blocked.
 
-  input logic        program_req_timeout_en_i,
-  input logic [27:0] program_req_timeout_cycles_i,
+  input logic        program_req_timeout_en_i,  // Program req timeout en.
+  input logic [27:0] program_req_timeout_cycles_i,  // Program req timeout cycles.
 
-  output fuse_command_req_t  fuse_command_req_o,
-  input  fuse_command_resp_t fuse_command_resp_i,
+  output fuse_command_req_t  fuse_command_req_o,  // Fuse command req.
+  input  fuse_command_resp_t fuse_command_resp_i,  // Fuse command resp.
 
-  // Debug signals
-  output logic is_program_timeout_debug_o
+  output logic is_program_timeout_debug_o  // Is program timeout debug.
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;

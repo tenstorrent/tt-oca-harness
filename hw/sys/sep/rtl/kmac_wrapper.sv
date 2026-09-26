@@ -2,42 +2,41 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2025 TT
 
-// KMAC Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
+// Bridge AXI-Lite CSR and Key Manager key buses onto the OpenTitan KMAC TL-UL ports.
+//
+// Uses axi_lite_to_tlul for the 32-bit CSR interface and the AXI4-Lite key interface from
+// the Key Manager private bus.
+// EDN supplies entropy for the PRNG. Two alerts leave the block: recoverable and fatal.
+// bus_err_o sticks on a register-bridge fault until bus_err_clr_i. idle_o reports KMAC
+// idle.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module kmac_wrapper (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset.
 
-  // 32-bit AXI-Lite CSR interface
-  input  sep_pkg::sep_32_32_axil_req_t  kmac_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t kmac_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  kmac_axil_req_i,  // 32-bit AXI-Lite CSR request.
+  output sep_pkg::sep_32_32_axil_resp_t kmac_axil_resp_o,  // 32-bit AXI-Lite CSR response.
 
-  // AXI4-Lite key interface (32-bit from Key Manager private bus)
-  input  sep_pkg::sep_32_32_axil_req_t  kmac_key_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t kmac_key_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  kmac_key_axil_req_i,  // AXI4-Lite key interface request, 32-bit from the Key Manager private bus.
+  output sep_pkg::sep_32_32_axil_resp_t kmac_key_axil_resp_o,  // AXI4-Lite key interface response.
 
-  // EDN interface (entropy for PRNG)
-  output edn_pkg::edn_req_t edn_req_o,
-  input  edn_pkg::edn_rsp_t edn_rsp_i,
+  output edn_pkg::edn_req_t edn_req_o,        // EDN request for PRNG entropy.
+  input  edn_pkg::edn_rsp_t edn_rsp_i,        // EDN response for PRNG entropy.
 
-  // Interrupts
-  output logic intr_kmac_done_o,
-  output logic intr_fifo_empty_o,
-  output logic intr_kmac_err_o,
+  output logic intr_kmac_done_o,              // KMAC done interrupt.
+  output logic intr_fifo_empty_o,             // FIFO empty interrupt.
+  output logic intr_kmac_err_o,               // KMAC error interrupt.
 
-  // Alert interface (2 alerts: recoverable, fatal)
-  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,  // Alert receiver; two alerts: recoverable and fatal.
+  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,  // Alert transmitter; two alerts: recoverable and fatal.
 
-  // Register bridge fault (sticky, held until bus_err_clr_i)
-  output logic bus_err_o,
-  input  logic bus_err_clr_i,
+  output logic bus_err_o,                     // Register-bridge fault; sticky until bus_err_clr_i.
+  input  logic bus_err_clr_i,                 // Clears bus_err_o.
 
-  // Idle output
-  output logic idle_o
+  output logic idle_o                         // KMAC idle status.
 );
 
   // 32-bit AXI-Lite signals with address masking applied

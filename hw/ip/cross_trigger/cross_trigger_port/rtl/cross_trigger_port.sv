@@ -1,50 +1,41 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Top Module
+// Bridge core cross-trigger pulses to GPIO pads in wire-OR or point-to-point mode with AXI-Lite CSRs.
 //
-// Description:
-// Top-level module for the Cross Trigger Port IP. Supports both Wire-OR and
-// Point-to-Point modes for inter-chiplet cross triggering via GPIO pads.
-//------------------------------------------------------------------------------
-
+// Wraps cross_trigger_port_core; CSRs program mode, invert, stretch, and handshake reset.
+// ct_src_i is the synchronous core source pulse; ct_dst_o is the registered destination
+// pulse; busy_o marks a transfer in progress.
+// Pad ports cover CT_Req_out/in and CT_Ack_in/out with dout, dout_en, din, and din_en as
+// required by mode.
 
 module cross_trigger_port #(
-  // Parameterized AXI-Lite bus interface types (default logic to force explicit definition)
-  parameter type axil_req_t = cross_trigger_port_pkg::ctp_axil_req_t,
-  parameter type axil_resp_t = cross_trigger_port_pkg::ctp_axil_resp_t
+  parameter type axil_req_t = cross_trigger_port_pkg::ctp_axil_req_t,  // CTP AXI-Lite request type.
+  parameter type axil_resp_t = cross_trigger_port_pkg::ctp_axil_resp_t  // CTP AXI-Lite response type.
 ) (
-  // Global Interface
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  input  logic        clk_i,            // System clock.
+  input  logic        rst_ni,           // Active-low reset.
 
-  // AXI4-Lite Register Interface
-  input  axil_req_t   axil_req_i,
-  output axil_resp_t  axil_resp_o,
+  input  axil_req_t   axil_req_i,       // AXI-Lite req (AXI4-Lite Register Interface).
+  output axil_resp_t  axil_resp_o,      // AXI-Lite resp.
 
-  // Core-side cross trigger interface
-  input  logic        ct_src_i,      // Cross trigger source pulse (synchronous)
-  output logic        ct_dst_o,       // Cross trigger destination pulse (registered)
-  output logic        busy_o,         // Optional: transfer in progress
+  input  logic        ct_src_i,         // Cross trigger source pulse (synchronous).
+  output logic        ct_dst_o,         // Cross trigger destination pulse (registered).
+  output logic        busy_o,           // Optional: transfer in progress.
 
-  // GPIO pad interface - CT_Req_out
-  output logic        ct_req_out_dout_en_o,  // Output enable for CT_Req_out pad
-  output logic        ct_req_out_din_en_o,   // Input enable for CT_Req_out pad
-  output logic        ct_req_out_dout_o,     // Output data for CT_Req_out pad
-  input  logic        ct_req_out_din_i,      // Input data from CT_Req_out pad
+  output logic        ct_req_out_dout_en_o,  // enable for CT_Req_out pad.
+  output logic        ct_req_out_din_en_o,  // enable for CT_Req_out pad.
+  output logic        ct_req_out_dout_o,  // data for CT_Req_out pad.
+  input  logic        ct_req_out_din_i,  // data from CT_Req_out pad.
 
-  // GPIO pad interface - CT_Req_in (point-to-point mode only)
-  output logic        ct_req_in_din_en_o,    // Input enable for CT_Req_in pad
-  input  logic        ct_req_in_din_i,       // Input data from CT_Req_in pad
+  output logic        ct_req_in_din_en_o,  // enable for CT_Req_in pad.
+  input  logic        ct_req_in_din_i,  // data from CT_Req_in pad.
 
-  // GPIO pad interface - CT_Ack_in (point-to-point mode only)
-  output logic        ct_ack_in_din_en_o,     // Input enable for CT_Ack_in pad
-  input  logic        ct_ack_in_din_i,       // Input data from CT_Ack_in pad
+  output logic        ct_ack_in_din_en_o,  // enable for CT_Ack_in pad.
+  input  logic        ct_ack_in_din_i,  // data from CT_Ack_in pad.
 
-  // GPIO pad interface - CT_Ack_out (point-to-point mode only)
-  output logic        ct_ack_out_dout_en_o,  // Output enable for CT_Ack_out pad
-  output logic        ct_ack_out_dout_o       // Output data for CT_Ack_out pad
+  output logic        ct_ack_out_dout_en_o,  // enable for CT_Ack_out pad.
+  output logic        ct_ack_out_dout_o  // data for CT_Ack_out pad.
 );
 
   import cross_trigger_port_reg_pkg::*;

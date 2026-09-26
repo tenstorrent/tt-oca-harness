@@ -1,31 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// SMC DFT Control Status wrapper Module
+// Expose SMC DFX control and status CSRs.
 //
-//-----------------------------------------------------------------------------
+// Bridges software-visible DFX controls onto the internal AXI-Lite map.
+// Feeds DFX bits used by smc_dfd_wrap and fabric debug paths.
 
 module smc_dfx_ctrl_status_wrap (
-  input  logic                                clk_i,
-  input  logic                                rst_ni,
+  input  logic                                clk_i,  // Clock.
+  input  logic                                rst_ni,  // Reset.
 
-  // AXI-Lite interface to DFT CSR
-  input  smc_pkg::smc_axil_32_64_req_t        axil_dfx_csr_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t       axil_dfx_csr_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t        axil_dfx_csr_req_i,  // AXI-Lite interface
+                                                                   // to DFT CSR request.
+  output smc_pkg::smc_axil_32_64_resp_t       axil_dfx_csr_resp_o,  // AXI-Lite interface
+                                                                    // to DFT CSR response.
 
-  // indicators for DFT status
-  input  logic                                mem_repair_done_i,
-  input  logic                                mem_repair_success_i,
-  input  logic                                mem_repair_abort_i,
-  input  logic                                mbist_done_i,
-  input  logic                                mbist_pass_i,
-  input  logic                                mbist_abort_i,
+  input  logic                                mem_repair_done_i,  // indicators for DFT
+                                                                  // status.
+  input  logic                                mem_repair_success_i,  // indicators for DFT
+                                                                     // status.
+  input  logic                                mem_repair_abort_i,  // indicators for DFT
+                                                                   // status.
+  input  logic                                mbist_done_i,  // indicators for DFT status.
+  input  logic                                mbist_pass_i,  // indicators for DFT status.
+  input  logic                                mbist_abort_i,  // indicators for DFT
+                                                              // status.
 
-  // DFD config (DEBUG_CTRL / DEBUG_BUS_MUX)
-  output logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable_o,
-  output smc_pkg::dfd_enable_t                dfd_enables_o,
-  output tt_dbm_pkg::DbgMuxSelMmr_s           dbg_mux_sel_csr_o
+  output logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable_o,  // DFD config
+                                                                      // (DEBUG_CTRL /
+                                                                      // DEBUG_BUS_MUX).
+  output smc_pkg::dfd_enable_t                dfd_enables_o,  // DFD config (DEBUG_CTRL /
+                                                              // DEBUG_BUS_MUX).
+  output tt_dbm_pkg::DbgMuxSelMmr_s           dbg_mux_sel_csr_o  // DFD config (DEBUG_CTRL
+                                                                 // / DEBUG_BUS_MUX).
 );
 
   dfx_ctrl_status_reg_pkg::dfx_ctrl_status__in_t  dfx_csr_hwif_in;

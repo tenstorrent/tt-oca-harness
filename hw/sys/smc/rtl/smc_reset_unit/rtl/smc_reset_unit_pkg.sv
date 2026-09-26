@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// System Management Controller Reset Unit Wrap Package
+// Declare types and helpers for the SMC reset unit.
 //
-//-----------------------------------------------------------------------------
+// Defines reset_ctrl_t and the AXI-Lite select map for the reset-unit register block.
+// Provides a max() helper used when sizing reset-related parameters.
 
 package smc_reset_unit_pkg;
 

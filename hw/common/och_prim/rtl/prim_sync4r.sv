@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 4-stage Resettable Synchronizer
+// Synchronize d_i into the clk_i domain through 4 resettable flops.
 //
-//--------------------------------------------------
+// rst_ni clears the synchronizer flops asynchronously.
+// Optionally insert randomized delay ahead of the flops; RANDOM_DELAY_GRAY_CODE shares one
+// delay select across bits.
+// q_o follows d_i after four clk_i edges once out of reset.
+
 module prim_sync4r #(
-  parameter int unsigned WIDTH = 1,
-  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0
+  parameter int unsigned WIDTH = 1,  // Datapath width.
+  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0  // Shares one random delay select across bits when set.
 ) (
-  input  logic             clk_i,
-  input  logic [WIDTH-1:0] d_i,
-  input  logic             rst_ni,
-  output logic [WIDTH-1:0] q_o
+  input  logic             clk_i,  // Destination clock.
+  input  logic [WIDTH-1:0] d_i,  // Async data to synchronize.
+  input  logic             rst_ni,  // Async active-low reset.
+  output logic [WIDTH-1:0] q_o  // Synchronized data.
 );
 
 `ifndef SYNTHESIS

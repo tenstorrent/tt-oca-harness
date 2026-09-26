@@ -1,32 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG STAP Interface Module
+// Bridge a secondary TAP link with optional pipeline and lockup stages.
 //
-//-----------------------------------------------------------------------------
+// Forwards client scan and TAP control to the host when security_disable_i is low.
+// SCAN_IN_PIPE adds a pipeline stage on the client scan input; TDI_LOCKUP and
+// SCAN_OUT_LOCKUP add lockup latches on TDI and scan out.
 
 module jtag_stap
   import prim_jtag_pkg::*;
 #(
-  parameter bit  SCAN_IN_PIPE = 0,     // Adds a pipeline stage to the client interface scan input
-  parameter bit  TDI_LOCKUP = 0,       // Adds a lockup latch to the STAP TDI input
-  parameter bit  SCAN_OUT_LOCKUP = 0,  // Adds a lockup latch to the STAP scan out output
+  parameter bit  SCAN_IN_PIPE = 0,      // Adds a pipeline stage to the client interface scan.
+  parameter bit  TDI_LOCKUP = 0,        // Adds a lockup latch to the STAP TDI.
+  parameter bit  SCAN_OUT_LOCKUP = 0,   // Adds a lockup latch to the STAP scan out.
 
-  parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,
-  parameter type jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t
+  parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,  // JTAG scan-control struct type.
+  parameter type jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t  // JTAG TAP-control struct type.
 ) (
-  input  jtag_scan_ctrl_t  client_scan_ctrl_i,
-  input  logic             client_scan_in_i,
-  output logic             client_scan_out_o,
+  input  jtag_scan_ctrl_t  client_scan_ctrl_i,  // Client scan ctrl.
+  input  logic             client_scan_in_i,  // Client scan in.
+  output logic             client_scan_out_o,  // Client scan out.
 
-  input  jtag_tap_ctrl_t  client_tap_ctrl_i,
-  input  logic            security_disable_i,
+  input  jtag_tap_ctrl_t  client_tap_ctrl_i,  // Client tap ctrl.
+  input  logic            security_disable_i,  // Active-high bridge/security disable.
 
-  output jtag_tap_ctrl_t  host_tap_ctrl_o,
-  output logic            host_tdo_oen_o,
-  output logic            host_tdo_o,
-  input  logic            host_tdi_i
+  output jtag_tap_ctrl_t  host_tap_ctrl_o,  // Host tap ctrl.
+  output logic            host_tdo_oen_o,  // Host tdo oen.
+  output logic            host_tdo_o,   // Host tdo.
+  input  logic            host_tdi_i    // Host tdi.
 );
 
   logic stap_scan_in, sib_client_scan_in;

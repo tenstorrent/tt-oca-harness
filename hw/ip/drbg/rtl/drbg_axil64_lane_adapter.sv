@@ -1,46 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//----------------------------------------------------------
 // Copyright 2026 Tenstorrent Inc.
-// drbg_axil64_lane_adapter
-//
-// 64-bit AXI-Lite single-lane adapter used by the DRBG wrapper.
-//----------------------------------------------------------
 
-/**
- * @file drbg_axil64_lane_adapter.sv
- * @brief 64-bit AXI-Lite single-lane adapter used by the DRBG wrapper.
- *
- * @details Filters 64-bit AXI-Lite accesses down to supported aligned
- *          single-lane 32-bit semantics before forwarding them into the
- *          existing 32-bit AXI-Lite to TL-UL bridge. Unsupported multi-lane or
- *          unaligned accesses return AXI `SLVERR` and emit no downstream
- *          request.
- */
+// Filter 64-bit AXI-Lite traffic down to aligned single-lane 32-bit accesses.
+//
+// Forwards supported beats into the existing 32-bit AXI-Lite to TL-UL bridge.
+// Unsupported multi-lane or unaligned accesses return AXI SLVERR and emit no downstream
+// request.
+
 module drbg_axil64_lane_adapter
   import drbg_pkg::*;
   import axi_pkg::*;
 #(
-  parameter type axil64_req_t = drbg_axil64_req_t,
-  parameter type axil64_rsp_t = drbg_axil64_resp_t,
-  parameter type axil32_req_t = drbg_axil32_req_t,
-  parameter type axil32_rsp_t = drbg_axil32_resp_t
+  parameter type axil64_req_t = drbg_axil64_req_t,          // 64-bit AXI-Lite request type.
+  parameter type axil64_rsp_t = drbg_axil64_resp_t,         // 64-bit AXI-Lite response type.
+  parameter type axil32_req_t = drbg_axil32_req_t,          // 32-bit AXI-Lite request type.
+  parameter type axil32_rsp_t = drbg_axil32_resp_t          // 32-bit AXI-Lite response type.
 ) (
-  // `wire` is fine on scalar logic; omit it on type-parameter ports
-  // (Xcelium *E,SVNSTP rejects `wire` + type parameters).
-  input  wire logic   clk_i,
-  input  wire logic   rst_ni,
+  input  wire logic   clk_i,                                // System clock.
+  input  wire logic   rst_ni,                               // Async reset, active-low.
 
-  input  axil64_req_t axil64_req_i,
-  output axil64_rsp_t axil64_rsp_o,
+  input  axil64_req_t axil64_req_i,                         // 64-bit AXI-Lite request in.
+  output axil64_rsp_t axil64_rsp_o,                         // 64-bit AXI-Lite response out.
 
-  output axil32_req_t axil32_req_o,
-  input  axil32_rsp_t axil32_rsp_i,
+  output axil32_req_t axil32_req_o,                         // Forwarded 32-bit AXI-Lite request.
+  input  axil32_rsp_t axil32_rsp_i,                         // 32-bit AXI-Lite response from the bridge.
 
-  output logic        unsupported_access_pulse_o,
-  output logic        forwarded_read_pulse_o,
-  output logic        forwarded_write_pulse_o
+  output logic        unsupported_access_pulse_o,           // Pulse on SLVERR for an illegal access.
+  output logic        forwarded_read_pulse_o,               // Pulse when a read is forwarded.
+  output logic        forwarded_write_pulse_o               // Pulse when a write is forwarded.
 );
 
   `include "prim_assert.sv"

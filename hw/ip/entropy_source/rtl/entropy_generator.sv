@@ -1,57 +1,53 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_generator.sv
- * @brief Single-lane entropy generator with noise source, decorrelator, and
- *        auto-tune control.
- *
- * @details Combines one entropy noise source (ring oscillator sampled by slower
- *          clock) with its decorrelator (LFSR-based whitener), per-lane health
- *          test (Repetition/APT/Markov), and auto-tune FSM. The auto-tune FSM
- *          adaptively adjusts ring oscillator detuning based on test results
- *          to maintain entropy quality. Intended to be instantiated once per
- *          ring oscillator lane inside entropy_generator_complex, with each
- *          lane producing an 8-bit entropy byte.
- *
- * @param TOTAL_LENGTH   Full ring oscillator length (default 17 stages).
- * @param TAPPED_LENGTH  Detuned tap point length; shorter yields higher
- *                       frequency (default 13 stages).
- * @param CLKDIV_WIDTH   Width of decorrelator clock divider (default 24).
- */
+// Generate one entropy lane from a noise source, decorrelator, health tests, and auto-tune.
+//
+// Combines a TOTAL_LENGTH/TAPPED_LENGTH ring oscillator sampled on sample_clk_i with
+// decorrelation and Repetition/APT/Markov tests.
+//
+// Controls:
+//
+// - auto_tune_enable_i lets health failures retune detune through the tune FSM;
+//   detune_ro_i forces detune.
+// - bypass_decorrelator_i and entropy_byte_mask_i configure the decorrelator;
+//   sample_clk_div_i sets its downsample.
+// - test_enable_i and the limit/threshold inputs program the three health tests;
+//   window_wrap_pulse_i closes each window.
+//
+// count_err_o is this lane's health-test counter-disagreement error.
 
 module entropy_generator #(
-  parameter int unsigned TOTAL_LENGTH  = 17,
-  parameter int unsigned TAPPED_LENGTH = 13,
-  parameter int unsigned CLKDIV_WIDTH  = 24
+  parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
+  parameter int unsigned TAPPED_LENGTH = 13,  // Detuned tap stage count.
+  parameter int unsigned CLKDIV_WIDTH  = 24  // Downsample divider counter width.
 ) (
-  input       logic                    clk_i,
-  input       logic                    rst_ni,
+  input       logic                    clk_i,  // System clock.
+  input       logic                    rst_ni,  // Active-low reset.
 
-  input       logic                    sample_clk_i,
+  input       logic                    sample_clk_i,  // Ring-oscillator sample clock.
 
-  input       logic                    enable_i,
-  input       logic                    auto_tune_enable_i,
-  input       logic                    detune_ro_i,
-  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,
+  input       logic                    enable_i,  // Block enable.
+  input       logic                    auto_tune_enable_i,  // Auto tune enable.
+  input       logic                    detune_ro_i,  // Detune ro.
+  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,  // Sample clk div.
 
-  input       logic                    bypass_decorrelator_i,
-  input       logic [7:0]              entropy_byte_mask_i,
+  input       logic                    bypass_decorrelator_i,  // Bypass decorrelator.
+  input       logic [7:0]              entropy_byte_mask_i,  // Entropy byte mask.
 
-  input       logic [2:0]              test_enable_i,
-  input       logic [7:0]              repetition_limit_i,
-  input       logic [15:0]             proportion_limit_1bit_i,
-  input       logic [15:0]             proportion_limit_lo_i,
-  input       logic [15:0]             markov_prob_01_threshold_i,
-  input       logic [15:0]             markov_prob_10_threshold_i,
-  input       logic                    window_wrap_pulse_i,
+  input       logic [2:0]              test_enable_i,  // Test enable.
+  input       logic [7:0]              repetition_limit_i,  // Repetition limit.
+  input       logic [15:0]             proportion_limit_1bit_i,  // Proportion limit 1bit.
+  input       logic [15:0]             proportion_limit_lo_i,  // Proportion limit lo.
+  input       logic [15:0]             markov_prob_01_threshold_i,  // Markov prob 01 threshold.
+  input       logic [15:0]             markov_prob_10_threshold_i,  // Markov prob 10 threshold.
+  input       logic                    window_wrap_pulse_i,  // Window wrap pulse.
 
-  output      logic                    noise_bit_monitor_o,
-  output      logic [7:0]              test_status_o,
-  output      logic [7:0]              entropy_byte_o,
-  output      logic                    entropy_byte_valid_o,
-  // This lane's health-test counter-disagreement error; see entropy_health_test.
-  output      logic                    count_err_o
+  output      logic                    noise_bit_monitor_o,  // Noise bit monitor.
+  output      logic [7:0]              test_status_o,  // Test status.
+  output      logic [7:0]              entropy_byte_o,  // Entropy byte.
+  output      logic                    entropy_byte_valid_o,  // Entropy byte valid.
+  output      logic                    count_err_o  // Count err.
 );
 
   /////////////

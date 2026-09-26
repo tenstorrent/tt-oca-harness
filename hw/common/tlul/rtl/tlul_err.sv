@@ -2,18 +2,21 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+// Check TL-UL A-channel protocol encodings.
+//
+// Raise err_o when the incoming A channel carries an illegal opcode, size, address
+// alignment, or mask encoding for this bus.
 
 module tlul_err
   import tlul_pkg::*;
 (
-  input clk_i,
-  input rst_ni,
+  input clk_i,           // System clock.
+  input rst_ni,          // Active-low reset.
 
-  input tl_h2d_t tl_i,
+  input tl_h2d_t tl_i,   // A-channel request under check.
 
-  output logic err_o
+  output logic err_o     // High when the A-channel encoding is illegal.
 );
-
   `include "prim_assert.sv"
 
   localparam int IW = $bits(tl_i.a_source);

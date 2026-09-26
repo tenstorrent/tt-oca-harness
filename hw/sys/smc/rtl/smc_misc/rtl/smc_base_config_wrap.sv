@@ -1,54 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// SMC Base Config wrapper Module
+// Expose SMC base-config CSRs for address windows and clock gates.
 //
-//-----------------------------------------------------------------------------
+// Publishes address-window and clock-gate enables consumed by smc_base and the top.
+// Sits on the internal AXI-Lite fabric as the smc_base_config target.
 
 module smc_base_config_wrap (
-  input  logic                                clk_i,
-  input  logic                                rst_n_i,
+  input  logic                                clk_i,  // Clock.
+  input  logic                                rst_n_i,  // Rst n.
 
-  // AXI-Lite interface to base config CSR
-  input  smc_pkg::smc_axil_32_64_req_t        axil_base_config_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t       axil_base_config_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t        axil_base_config_req_i,  // AXI-Lite interface
+                                                                       // to base config CSR
+                                                                       // request.
+  output smc_pkg::smc_axil_32_64_resp_t       axil_base_config_resp_o,  // AXI-Lite interface
+                                                                        // to base config CSR
+                                                                        // response.
 
-  // SMC address window
-  output smc_pkg::smc_axi_addr_t              smc_global_base_o,
-  output smc_pkg::smc_axi_addr_t              smc_local_base_o,
-  output logic [31:0]                         smc_region_size_o,
+  output smc_pkg::smc_axi_addr_t              smc_global_base_o,  // SMC address window.
+  output smc_pkg::smc_axi_addr_t              smc_local_base_o,  // SMC address window.
+  output logic [31:0]                         smc_region_size_o,  // SMC address window.
 
-  // Clock-gate enables
-  output logic                                cg_ctrl_dma_cg_en_o,
-  output logic                                cg_ctrl_mailbox_cg_en_o,
-  output logic                                cg_ctrl_ob_filter_axi_cg_en_o,
-  output logic                                cg_ctrl_ob_filter_reg_cg_en_o,
-  output logic                                cg_ctrl_ib_filter_axi_cg_en_o,
-  output logic                                cg_ctrl_ib_filter_reg_cg_en_o,
-  output logic                                cg_ctrl_addr_remap_cg_en_o,
-  output logic                                cg_ctrl_output_fabric_cg_en_o,
-  output logic                                cg_ctrl_zeroer_cg_en_o,
-  output logic                                cg_ctrl_i3c_cg_en_o,
-  output logic                                cg_ctrl_avs_cg_en_o,
-  output logic                                cg_ctrl_i2c_cg_en_o,
-  output logic                                cg_ctrl_uart_cg_en_o,
-  output logic                                cg_ctrl_tel_cg_en_o,
-  output smc_pkg::cg_hyster_t                 cg_ctrl_hysteresis_o,
+  output logic                                cg_ctrl_dma_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_mailbox_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_ob_filter_axi_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_ob_filter_reg_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_ib_filter_axi_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_ib_filter_reg_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_addr_remap_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_output_fabric_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_zeroer_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_i3c_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_avs_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_i2c_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_uart_cg_en_o,  // Clock-gate enables.
+  output logic                                cg_ctrl_tel_cg_en_o,  // Clock-gate enables.
+  output smc_pkg::cg_hyster_t                 cg_ctrl_hysteresis_o,  // Clock-gate enables.
 
-  // AXI hang detector config
-  output logic                                hang_det_sys_axi_enable_o,
-  output logic                                hang_det_sys_axi_irq_en_o,
-  output logic                                hang_det_sys_axi_irq_test_o,
-  output logic [19:0]                         hang_det_sys_axi_threshold_o,
-  output logic                                hang_det_sep_axi_enable_o,
-  output logic                                hang_det_sep_axi_irq_en_o,
-  output logic                                hang_det_sep_axi_irq_test_o,
-  output logic [19:0]                         hang_det_sep_axi_threshold_o,
-  output logic                                hang_det_data_accel_enable_o,
-  output logic                                hang_det_data_accel_irq_en_o,
-  output logic                                hang_det_data_accel_irq_test_o,
-  output logic [19:0]                         hang_det_data_accel_threshold_o
+  output logic                                hang_det_sys_axi_enable_o,  // AXI hang detector
+                                                                          // config.
+  output logic                                hang_det_sys_axi_irq_en_o,  // AXI hang detector
+                                                                          // config.
+  output logic                                hang_det_sys_axi_irq_test_o,  // AXI hang detector
+                                                                            // config.
+  output logic [19:0]                         hang_det_sys_axi_threshold_o,  // AXI hang detector
+                                                                             // config.
+  output logic                                hang_det_sep_axi_enable_o,  // AXI hang detector
+                                                                          // config.
+  output logic                                hang_det_sep_axi_irq_en_o,  // AXI hang detector
+                                                                          // config.
+  output logic                                hang_det_sep_axi_irq_test_o,  // AXI hang detector
+                                                                            // config.
+  output logic [19:0]                         hang_det_sep_axi_threshold_o,  // AXI hang detector
+                                                                             // config.
+  output logic                                hang_det_data_accel_enable_o,  // AXI hang detector
+                                                                             // config.
+  output logic                                hang_det_data_accel_irq_en_o,  // AXI hang detector
+                                                                             // config.
+  output logic                                hang_det_data_accel_irq_test_o,  // AXI hang detector
+                                                                               // config.
+  output logic [19:0]                         hang_det_data_accel_threshold_o  // AXI hang detector
+                                                                               // config.
 );
 
   smc_base_config_reg_pkg::smc_base_config__out_t hwif_out;

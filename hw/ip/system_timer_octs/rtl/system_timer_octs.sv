@@ -1,44 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// System Timer OCTS
+// Wrap the OCTS system timer with AXI-Lite CSRs and primary/secondary sync.
 //
-//-----------------------------------------------------------------------------
-
-// Description: Top level wrapper for the System Timer OCTS
-
+// is_primary_i selects primary versus secondary mode at runtime.
+// timer_sync_load_* and timer_cnt_credit_* carry the OCTS synchronization pulses.
+// timer_count_o is the live 64-bit count; timer_gpio_enable_o gates an optional GPIO
+// export.
 
 module system_timer_octs
   import system_timer_octs_pkg::*;
 (
-  // Global Interface
-  input  logic                         clk_i,
-  input  logic                         rst_ni,
+  input  logic                         clk_i,               // System clock.
+  input  logic                         rst_ni,              // Async reset, active-low.
 
-  // Primary/Secondary mode select (runtime signal)
-  input  logic                         is_primary_i,
+  input  logic                         is_primary_i,        // Runtime primary/secondary mode select.
 
-  // AXI4-Lite Register Interface
-  input  system_timer_octs_axil_req_t  axil_req_i,
-  output system_timer_octs_axil_resp_t axil_resp_o,
+  input  system_timer_octs_axil_req_t  axil_req_i,          // AXI-Lite CSR request.
+  output system_timer_octs_axil_resp_t axil_resp_o,         // AXI-Lite CSR response.
 
+  input  logic                         timer_sync_load_i,   // Inbound sync-load pulse.
+  input  logic                         timer_cnt_credit_i,  // Inbound credit pulse.
+  output logic                         timer_sync_load_o,   // Outbound sync-load pulse.
+  output logic                         timer_cnt_credit_o,  // Outbound credit pulse.
 
-  // OCTS Synchronization Interface
-  input  logic                         timer_sync_load_i,
-  input  logic                         timer_cnt_credit_i,
-  output logic                         timer_sync_load_o,
-  output logic                         timer_cnt_credit_o,
+  output logic [63:0]                  timer_count_o,       // Live 64-bit timer count.
 
-  // Timer Interface
-  output logic [63:0]                  timer_count_o,
+  output logic                         timer_gpio_enable_o, // GPIO export enable.
 
-  // GPIO Interface
-  output logic                         timer_gpio_enable_o,
-
-  // Debug output
-  output logic [8:0]                   cur_credits_debug_o,
-  output logic                         credits_left_debug_o
+  output logic [8:0]                   cur_credits_debug_o, // Current credit count.
+  output logic                         credits_left_debug_o // Credits remain nonzero.
 );
 
   /////////////////////////

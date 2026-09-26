@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Primitive Glitch-Free Clock Mux 2-to-1
+// Mux clk0_i and clk1_i onto clk_o without glitches.
 //
-//--------------------------------------------------
-module prim_clock_mux2_gf #(
-  parameter bit SelectOnReset = 1'b0  // Which clock is selected on reset
-) (
-  input  logic clk0_i,
-  input  logic clk1_i,
-  input  logic rst_ni,
-  input  logic sel_i,
-  output logic clk_o
-);
+// Synchronize sel_i into each source domain, gate the deselected clock off before
+// enabling the other, and NAND-combine the gated clocks onto clk_o. SelectOnReset chooses
+// which clock is enabled while rst_ni is asserted: 0 selects clk0_i during reset, 1
+// selects clk1_i.
 
+module prim_clock_mux2_gf #(
+  parameter bit SelectOnReset = 1'b0  // 0 selects clk0_i during reset; 1 selects clk1_i.
+) (
+  input  logic clk0_i,  // First clock source.
+  input  logic clk1_i,  // Second clock source.
+  input  logic rst_ni,  // Active-low reset for the select synchronizers.
+  input  logic sel_i,   // Selects clk1_i when high, clk0_i when low.
+  output logic clk_o    // Glitch-free muxed clock.
+);
   logic sel_sync_clk0, sel_sync_clk1;
   logic gated_clk0, gated_clk1;
   logic inv_clk0, inv_clk1;

@@ -1,36 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------
-// AXI Alias Remap Interface
+// Remap AXI addresses that hit configured alias regions onto their target bases.
 //
-//------------------------------------------------------------
+// Each remap_regions_i entry supplies enable, alias base, and target base.
+// Hits rewrite AW and AR addresses with a carry-select adder; misses pass through
+// unchanged.
 
 module axi_alias_remap #(
-  parameter type          axi_req_t                       = logic,
-  parameter type          axi_resp_t                      = logic,
-  parameter type          remap_region_t                  = logic,
-  parameter type          remap_debug_t                   = logic,
-  parameter int unsigned  NUM_REGIONS                     = 4,
-  parameter int unsigned  DEBUG_OUTPUT                    = 0,
+  parameter type          axi_req_t                       = logic, // AXI request channel type.
+  parameter type          axi_resp_t                      = logic, // AXI response channel type.
+  parameter type          remap_region_t                  = logic, // Per-region remap configuration type.
+  parameter type          remap_debug_t                   = logic, // Remap hit debug type.
+  parameter int unsigned  NUM_REGIONS                     = 4, // Number of alias regions.
+  parameter int unsigned  DEBUG_OUTPUT                    = 0, // Enables remap_debug_o.
 
-  parameter int unsigned  ALIAS_REMAP_IDX_START           = 12,
-  parameter int unsigned  AXI_ADDR_WIDTH                  = 64,
+  parameter int unsigned  ALIAS_REMAP_IDX_START           = 12, // Address bit where the remap index begins.
+  parameter int unsigned  AXI_ADDR_WIDTH                  = 64, // AXI address width.
 
-  parameter int unsigned  NUM_CHUNKS_CARRY_SELECT_ADDER   = 2,
+  parameter int unsigned  NUM_CHUNKS_CARRY_SELECT_ADDER   = 2, // Carry-select adder chunk count.
 
-  localparam int unsigned ALIAS_REMAP_OFFSET_WIDTH        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START
+  localparam int unsigned ALIAS_REMAP_OFFSET_WIDTH        = AXI_ADDR_WIDTH - ALIAS_REMAP_IDX_START // Width of the kept address offset.
 ) (
-  input   remap_region_t                      remap_regions_i [NUM_REGIONS-1:0],
-  output  remap_debug_t                       remap_debug_o,
+  input   remap_region_t                      remap_regions_i [NUM_REGIONS-1:0], // Per-region remap configuration.
+  output  remap_debug_t                       remap_debug_o, // Remap hit debug.
 
-  // AXI Input Interface
-  input   axi_req_t                           axi_in_req_i,
-  output  axi_resp_t                          axi_in_resp_o,
+  input   axi_req_t                           axi_in_req_i, // Pre-remap AXI request.
+  output  axi_resp_t                          axi_in_resp_o, // Pre-remap AXI response.
 
-  // AXI Output Interface (remapped)
-  output  axi_req_t                           axi_out_req_o,
-  input   axi_resp_t                          axi_out_resp_i
+  output  axi_req_t                           axi_out_req_o, // Post-remap AXI request.
+  input   axi_resp_t                          axi_out_resp_i // Post-remap AXI response.
 );
 
   localparam int unsigned RemapIndexW = $clog2(NUM_REGIONS);

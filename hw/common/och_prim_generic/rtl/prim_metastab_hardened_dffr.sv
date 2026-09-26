@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Metastability-Hardened DFFR
+// Register d_i in a metastability-hardened flop with async reset to 0.
 //
-//--------------------------------------------------
+// Behave as a positive-edge D flip-flop with async active-low reset to 0. Synthesis maps
+// this wrapper to a hardened cell when the library provides one.
+
 module prim_metastab_hardened_dffr (
-  input clk_i,
-  input d_i,
-  input rst_ni,
-  output wire q_o
+  input clk_i,       // Sampling clock.
+  input d_i,         // Data input.
+  input rst_ni,      // Async active-low reset; clears q_o to 0.
+  output wire q_o    // Registered data.
 );
   logic q_d;
   always_ff @(posedge clk_i or negedge rst_ni) begin

@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Auto-Handshake Data Synchronizer
+// Cross data_i from clk_src_i to clk_dst_i with an automatic req/ack toggle handshake.
 //
-//--------------------------------------------------
+// Sample data_i in the source domain and capture it in the destination after the handshake
+// closes.
+// DEPTH selects a 2-flop or 3-flop synchronizer on the toggle wires; the default of 2
+// preserves existing integrations.
+// Wait for the destination ack before accepting the next source change.
+
 module prim_sync_data_autohs #(
-  parameter int unsigned WIDTH = 1,
-  parameter int unsigned DEPTH = 2    // default currently 2 in order to not break existing usage
+  parameter int unsigned WIDTH = 1,  // Datapath width.
+  parameter int unsigned DEPTH = 2  // Sync depth on handshake toggles; default 2 preserves existing integrations.
 ) (
-  input  logic             clk_src_i,
-  input  logic             rst_src_ni,
-  input  logic [WIDTH-1:0] data_i,
-  input  logic             clk_dst_i,
-  input  logic             rst_dst_ni,
-  output logic [WIDTH-1:0] data_o
+  input  logic             clk_src_i,  // Source clock.
+  input  logic             rst_src_ni,  // Async reset in the source domain, active-low.
+  input  logic [WIDTH-1:0] data_i,  // Source-domain data.
+  input  logic             clk_dst_i,  // Destination clock.
+  input  logic             rst_dst_ni,  // Async reset in the destination domain, active-low.
+  output logic [WIDTH-1:0] data_o  // Destination-domain captured data.
 );
 
   ////////////////////////////////////////////////////////////////////////////////

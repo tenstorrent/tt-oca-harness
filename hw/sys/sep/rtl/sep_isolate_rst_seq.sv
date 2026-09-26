@@ -1,24 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Reset sequencing FSM for one software-resettable domain. On a software
-// reset request, requests isolation of the domain's AXI paths, waits until
-// all of them report isolated, then asserts the domain reset. Isolation is
-// held until the software reset request is released.
+// Sequence isolation then reset for one software-resettable AXI domain.
+//
+// On a software reset request, request isolation of the domain's AXI paths, wait until all
+// report isolated, then assert the domain reset.
+// Hold isolation until the software reset request is released.
 
 `include "ocah_assert.svh"
 
 module sep_isolate_rst_seq (
-  input  logic clk_i,
-  input  logic rst_ni,
-  // Software reset request (active low)
-  input  logic sw_rst_req_ni,
-  // All of the domain's isolate units report isolated
-  input  logic isolated_i,
-  // Isolation request to the domain's isolate units
-  output logic isolate_req_o,
-  // Sequenced reset to the domain (active low)
-  output logic gated_rst_no
+  input  logic clk_i,                         // System clock.
+  input  logic rst_ni,                        // Active-low reset.
+  input  logic sw_rst_req_ni,                 // Software reset request (active low).
+  input  logic isolated_i,                    // All of the domain's isolate units report isolated.
+  output logic isolate_req_o,                 // Isolation request to the domain's isolate units.
+  output logic gated_rst_no                   // Sequenced reset to the domain (active low).
 );
 
   typedef enum logic [1:0] {

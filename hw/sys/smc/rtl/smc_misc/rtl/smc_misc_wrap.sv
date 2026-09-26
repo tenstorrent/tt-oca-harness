@@ -1,28 +1,31 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC Miscellaneous Wrapper
-// Consolidates scratch registers and chip config
+// Wrap SMC miscellaneous register targets on the misc AXI-Lite map.
+//
+// Demultiplexes the misc map onto version, base-config, and DFX helpers.
+// Aggregates scratch and status registers used by firmware and debug.
 
 module smc_misc_wrap #(
-  parameter int unsigned CHIP_ID        = 0,
-  parameter int unsigned LC_STATE_WIDTH = 8
+  parameter int unsigned CHIP_ID        = 0,  // CHIP ID.
+  parameter int unsigned LC_STATE_WIDTH = 8  // LC STATE WIDTH.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic rst_warm_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                   // Clock.
+  input  logic rst_ni,                  // Reset.
+  input  logic rst_warm_ni,             // Rst warm.
+  input  logic test_en_i,               // Test en.
 
-  // AXI-Lite Register Interface
-  input  smc_pkg::smc_axil_32_32_req_t  reg_axi_lite_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t reg_axi_lite_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t  reg_axi_lite_req_i,  // AXI-Lite Register
+                                                             // Interface request.
+  output smc_pkg::smc_axil_32_32_resp_t reg_axi_lite_resp_o,  // AXI-Lite Register
+                                                              // Interface response.
 
-  // Lifecycle state
-  input  logic [LC_STATE_WIDTH-1:0] lc_state_i,
+  input  logic [LC_STATE_WIDTH-1:0] lc_state_i,  // Lifecycle state.
 
-  // NDM Reset signals (connected to SMU)
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // NDM Reset signals
+                                                                            // (connected to SMU).
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o  // NDM Reset signals
+                                                                           // (connected to SMU).
 );
 
   ////////////////////

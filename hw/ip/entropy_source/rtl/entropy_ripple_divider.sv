@@ -1,32 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_ripple_divider.sv
- * @brief Asynchronous ripple frequency divider with cascaded toggle flip-flops.
- *
- * @details This module implements an asynchronous ripple frequency divider
- *          using cascaded toggle flip-flops. Each stage divides the frequency
- *          by 2, creating a chain of division factors. Each stage uses the
- *          canonical resettable D flip-flop and inverter primitives as a
- *          toggle flip-flop (D connected to inverted Q).
- *          The first stage is clocked by the input clock, and each subsequent
- *          stage is clocked by the Q output of the previous stage. The output
- *          array provides all division factors simultaneously: div_o[0]=clk_i
- *          (divide by 1), div_o[1]=clk_i/2, div_o[2]=clk_i/4, ...,
- *          div_o[N]=clk_i/2^N. NOTE: This is an asynchronous design that
- *          intentionally violates synchronous design rules; it is used for
- *          frequency division where timing constraints are not critical.
- *
- * @param NUM_STAGES  Number of divide-by-2 stages. Default: 7
- */
+// Divide an input clock through cascaded asynchronous toggle flip-flops.
+//
+// Each stage divides by two; div_o[0] is clk_i, div_o[1] is clk_i/2, through
+// div_o[NUM_STAGES] = clk_i/2^NUM_STAGES. Stages use resettable D flops with inverted Q
+// fed to D; the first stage clocks from clk_i and later stages from the prior Q.
+//
+// This asynchronous design intentionally violates synchronous rules and is only for
+// sampler frequency division where those constraints are not critical.
 
 module entropy_ripple_divider #(
-  parameter int unsigned NUM_STAGES = 7  // Number of divide-by-2 stages
+  parameter int unsigned NUM_STAGES = 7  // Number of divide-by-2 stages.
 ) (
-  input  logic                  rst_ni,  // Async reset (active low)
-  input  logic                  clk_i,   // Input clock to divide
-  output logic [NUM_STAGES:0]   div_o    // Divided outputs [0]=clk_i, [1]=÷2, [2]=÷4, etc.
+  input  logic                  rst_ni,  // Async reset (active low).
+  input  logic                  clk_i,  // clock to divide.
+  output logic [NUM_STAGES:0]   div_o   // Divided outputs [0]=clk_i, [1]=÷2, [2]=÷4, etc.
 );
 
   // Internal signals for the ripple divider chain

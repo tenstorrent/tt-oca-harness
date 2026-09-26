@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------
-// Example ROM Package
+// Hold example ROM parameters for memory_interface bring-up.
 //
-//------------------------------------------------
-
+// Supplies default widths and base addresses used by the ROM example binding.
 
 package example_rom_pkg;
 
@@ -16,7 +14,7 @@ package example_rom_pkg;
   // User Specified Parameters //
   ///////////////////////////////
   localparam int unsigned MEM_ADDR_WIDTH = 32;
-  localparam int unsigned MEM_DATA_WIDTH = 64;  // 64-bit to match SEP AXI bus
+  localparam int unsigned MEM_DATA_WIDTH = 64;  // 64-bit to match SEP AXI bus.
   localparam int unsigned MEM_ID_WIDTH = 1;
 
   localparam int unsigned AXI_USER_WIDTH = 1;

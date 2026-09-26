@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// System Timer OCTS typedefs and parameters
+// Hold typedefs and AXI-Lite types for the OCTS system timer.
 //
-//-----------------------------------------------------------------------------
+// Defines DATA_WIDTH and the axil request/response structs used by the wrapper.
 
 package system_timer_octs_pkg;
 

@@ -1,55 +1,71 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Input Fabric
+// Route local SMC AXI between CPU, CSRs, and the input/output stages.
+//
+// Hosts the local AXI crossbar and paths into internal register targets.
+// Bridges CPU MMIO and front-port traffic with the rest of the SMC address map.
 
 module smc_local_fabric (
-  input logic                                         clk_i,
-  input logic                                         rst_ni,
-  input logic                                         test_en_i,
+  input logic                                         clk_i,  // Clock.
+  input logic                                         rst_ni,  // Reset.
+  input logic                                         test_en_i,  // Test en.
 
-  input smc_pkg::smc_axi_addr_t                       local_base_addr_i,
-  input logic [31:0]                                  region_size_i,
+  input smc_pkg::smc_axi_addr_t                       local_base_addr_i,  // Local base addr.
+  input logic [31:0]                                  region_size_i,  // Region size.
 
-  // Input AXI
-  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      input_axi_req_i,
-  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     input_axi_rsp_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      sep_in_axi_req_i,
-  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     sep_in_axi_rsp_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      local_axi_req_i,
-  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     local_axi_rsp_o,
+  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      input_axi_req_i,  // Input AXI request.
+  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     input_axi_rsp_o,  // Input AXI response.
+  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      sep_in_axi_req_i,  // Input AXI request.
+  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     sep_in_axi_rsp_o,  // Input AXI response.
+  input  smc_pkg::smc_local_32_64_6_12_axi_req_t      local_axi_req_i,  // Input AXI request.
+  output smc_pkg::smc_local_32_64_6_12_axi_resp_t     local_axi_rsp_o,  // Input AXI response.
 
-  // Output AXI
-  output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_front_port_req_o,
-  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_front_port_rsp_i,
-  output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_data_accel_ctrl_req_o,
-  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_data_accel_ctrl_rsp_i,
+  output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_front_port_req_o,  // Output AXI request.
+  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_front_port_rsp_i,  // Output AXI response.
+  output smc_pkg::smc_local_32_64_8_12_axi_req_t      axi_data_accel_ctrl_req_o,  // Output AXI request.
+  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_data_accel_ctrl_rsp_i,  // Output AXI response.
 
-  // Peripheral AXI-Lite (32-bit)
-  output smc_local_xbar_pkg::axi_lite32_req_t         periph_reg_req_o,
-  input  smc_local_xbar_pkg::axi_lite32_resp_t        periph_reg_resp_i,
+  output smc_local_xbar_pkg::axi_lite32_req_t         periph_reg_req_o,  // Peripheral AXI-Lite
+                                                                         // (32-bit) request.
+  input  smc_local_xbar_pkg::axi_lite32_resp_t        periph_reg_resp_i,  // Peripheral AXI-Lite
+                                                                          // (32-bit) response.
 
-  // Internal AXI-Lite (64-bit)
-  output smc_pkg::smc_axil_32_64_req_t                axil_aR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_aR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t                axil_mR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_mR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t                axil_xR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_xR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t                axil_inbound_filter_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_inbound_filter_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t                axil_outbound_filter_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_outbound_filter_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t                axil_mailbox_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_mailbox_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t                axil_smc_base_config_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_smc_base_config_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t                axil_dfx_csr_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t               axil_dfx_csr_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t                axil_aR_ctrl_req_o,  // Internal AXI-Lite
+                                                                           // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_aR_ctrl_resp_i,  // Internal AXI-Lite
+                                                                            // (64-bit) response.
+  output smc_pkg::smc_axil_32_64_req_t                axil_mR_ctrl_req_o,  // Internal AXI-Lite
+                                                                           // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_mR_ctrl_resp_i,  // Internal AXI-Lite
+                                                                            // (64-bit) response.
+  output smc_pkg::smc_axil_32_64_req_t                axil_xR_ctrl_req_o,  // Internal AXI-Lite
+                                                                           // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_xR_ctrl_resp_i,  // Internal AXI-Lite
+                                                                            // (64-bit) response.
+  output smc_pkg::smc_axil_32_64_req_t                axil_inbound_filter_ctrl_req_o,  // Internal AXI-Lite
+                                                                                       // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_inbound_filter_ctrl_resp_i,  // Internal AXI-Lite
+                                                                                        // (64-bit) response.
+  output smc_pkg::smc_axil_32_64_req_t                axil_outbound_filter_ctrl_req_o,  // Internal AXI-Lite
+                                                                                        // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_outbound_filter_ctrl_resp_i,  // Internal AXI-Lite
+                                                                                         // (64-bit) response.
+  output smc_pkg::smc_axil_32_64_req_t                axil_mailbox_req_o,  // Internal AXI-Lite
+                                                                           // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_mailbox_resp_i,  // Internal AXI-Lite
+                                                                            // (64-bit) response.
+  output smc_pkg::smc_axil_32_64_req_t                axil_smc_base_config_req_o,  // Internal AXI-Lite
+                                                                                   // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_smc_base_config_resp_i,  // Internal AXI-Lite
+                                                                                    // (64-bit) response.
+  output smc_pkg::smc_axil_32_64_req_t                axil_dfx_csr_req_o,  // Internal AXI-Lite
+                                                                           // (64-bit) request.
+  input  smc_pkg::smc_axil_32_64_resp_t               axil_dfx_csr_resp_i,  // Internal AXI-Lite
+                                                                            // (64-bit) response.
 
-  // DFD APB
-  output smc_pkg::smc_dfd_apb_req_t                   apb_smc_dfd_reg_req_o,
-  input  smc_pkg::smc_dfd_apb_resp_t                  apb_smc_dfd_reg_resp_i
+  output smc_pkg::smc_dfd_apb_req_t                   apb_smc_dfd_reg_req_o,  // DFD APB.
+  input  smc_pkg::smc_dfd_apb_resp_t                  apb_smc_dfd_reg_resp_i  // DFD APB.
 );
 
   // ===========================================================================

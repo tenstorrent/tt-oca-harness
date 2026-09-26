@@ -1,24 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Pulse Signal
+// Shape pulse_in_i with programmable pre- and post-wait counts.
 //
-//--------------------------------------------------
+// pulse_start_i arms a sequence that waits, asserts pulse_out_o, then waits again.
+// IS_ACTIVE_HIGH sets the polarity of pulse_out_o.
+// pulse_done_o pulses when the full sequence finishes.
+
 module prim_pulse_signal #(
-  parameter int COUNT_WIDTH = 16,
-  parameter bit IS_ACTIVE_HIGH = 0  // set whether the pulse is active high
+  parameter int COUNT_WIDTH = 16,  // Width of the wait counters.
+  parameter bit IS_ACTIVE_HIGH = 0  // 1 makes pulse_out_o active-high; 0 makes it active-low.
 ) (
-  input  logic                        clk_i,
-  input  logic                        rst_ni,
+  input  logic                        clk_i,  // Pulse clock.
+  input  logic                        rst_ni,  // Async reset, active-low.
 
-  input  logic                        pulse_start_i,
-  input  logic      [COUNT_WIDTH-1:0] pre_pulse_wait_i,
-  input  logic      [COUNT_WIDTH-1:0] post_pulse_wait_i,
+  input  logic                        pulse_start_i,  // Arms a shaped pulse sequence.
+  input  logic      [COUNT_WIDTH-1:0] pre_pulse_wait_i,  // Idle cycles before asserting pulse_out_o.
+  input  logic      [COUNT_WIDTH-1:0] post_pulse_wait_i,  // Idle cycles after the pulse before done.
 
-  input  logic                        pulse_in_i,
-  output logic                        pulse_out_o,
-  output logic                        pulse_done_o
+  input  logic                        pulse_in_i,  // Raw pulse level to forward while active.
+  output logic                        pulse_out_o,  // Shaped pulse output.
+  output logic                        pulse_done_o  // Sequence complete.
 
 );
 

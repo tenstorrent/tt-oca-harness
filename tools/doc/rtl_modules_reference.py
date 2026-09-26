@@ -44,8 +44,27 @@ def _package_body(pkg: PackageDoc) -> str:
     return text + ("\n" if text else "")
 
 
+def _para_html(para: str) -> str:
+    """One header paragraph. Lines starting with "- " form a list; indented lines continue an item."""
+    items = []
+    text = []
+    for line in para.splitlines():
+        if line.startswith("- "):
+            items.append([line[2:]])
+        elif items:
+            items[-1].append(line)
+        else:
+            text.append(line)
+    html = f"<p>{escape(' '.join(' '.join(text).split()))}</p>" if text else ""
+    if items:
+        lis = "".join(f"<li>{escape(' '.join(' '.join(i).split()))}</li>" for i in items)
+        html += f"<ul>{lis}</ul>"
+    return html
+
+
 _DECL_RE = re.compile(r"^\s*(module|interface|package)\b")
 _HEADER_END_RE = re.compile(r"^\s*\)\s*;")
+_ASSIGN_RE = re.compile(r"(?<![=!<>])=(?!=)")
 _SPDX_RE = re.compile(r"^(SPDX-|Copyright\b|SPDX-FileCopyrightText\b)")
 _RULE_RE = re.compile(r"^[-=*_]{3,}$")
 _DESC_RE = re.compile(r"^Description:\s*", re.IGNORECASE)
@@ -172,33 +191,47 @@ def _parse(path: Path, include_dirs: list):
 def _decl_docs(path: Path, names: list) -> dict:
     """Comment on a declaration: the same-line clause, else the // block above it.
 
-    svdoc stores the comment above a declaration on the previous one.
+    A same-line clause continues on the following comment-only lines whose //
+    starts at or right of the clause's //. svdoc stores the comment above a
+    declaration on the previous one, so it cannot be used here.
     """
     if not names:
         return {}
-    pats = [
-        (name, re.compile(r"(?<![\w$])" + re.escape(name) + r"(?![\w$])"))
-        for name in sorted(names, key=len, reverse=True)
-    ]
+    known = set(names)
+
+    def declared(code: str):
+        # The declared name is the last identifier outside brackets before the default value.
+        head = re.sub(r"\[[^\]]*\]", " ", _ASSIGN_RE.split(code, 1)[0])
+        idents = re.findall(r"[A-Za-z_][\w$]*", head)
+        return idents[-1] if idents and idents[-1] in known else None
+
     lines = path.read_text(errors="replace").splitlines()
     start = next((i for i, line in enumerate(lines) if _DECL_RE.match(line)), None)
     if start is None:
         return {}
     docs = {}
     pending = []
+    last = None
+    last_col = None
     for line in lines[start + 1 :]:
         if _HEADER_END_RE.match(line):
             break
         stripped = line.strip()
         if stripped.startswith("//"):
             body = _DESC_RE.sub("", stripped[2:].strip()).strip()
+            if last is not None and last_col is not None and line.index("//") >= last_col:
+                if body:
+                    docs[last] = f"{docs[last]} {body}".strip()
+                continue
+            last = None
             if body and not _RULE_RE.match(body):
                 pending.append(body)
             continue
+        last = None
         if not stripped or stripped.startswith("`"):
             continue
         code = line.split("//", 1)[0]
-        hit = next((name for name, pat in pats if pat.search(code)), None)
+        hit = declared(code)
         if hit is None:
             pending = []
             continue
@@ -208,6 +241,9 @@ def _decl_docs(path: Path, names: list) -> dict:
         if text:
             docs[hit] = text
         pending = []
+        if same:
+            last = hit
+            last_col = line.index("//")
     return docs
 
 
@@ -233,11 +269,7 @@ def _adoc(title: str, doc: str, partial: str) -> str:
     ]
     text = (doc or "").strip()
     if text:
-        paras = "".join(
-            f"<p>{escape(' '.join(para.split()))}</p>"
-            for para in text.split("\n\n")
-            if para.strip()
-        )
+        paras = "".join(_para_html(para) for para in text.split("\n\n") if para.strip())
         lines += ["++++", paras, "++++", ""]
     if partial:
         lines += [

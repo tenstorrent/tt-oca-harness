@@ -2,94 +2,27 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-
-// Tile-Link UL to register interface adapter
+// Adapt TL-UL device traffic onto a register read/write interface.
 //
-// This module acts as a device, addressed through the TL-UL bus. It receives Get, PutPartialData
-// and PutFullData messages on the A channel. These are read or write requests, which are passed to
-// the register interface on the same cycle. The response from the register interface is sent back
-// to the host as a message on the D channel on the next cycle.
+// Act as a TL-UL device. Accept Get, PutPartialData, and PutFullData on the A channel and
+// pass each read or write to the register interface in the same cycle. Return the register
+// response on the D channel in the next cycle, whatever AccessLatency is.
 //
-// A module instance performs several checks on A-channel messages and only forwards a request to
-// the register interface if they all pass. These checks are:
+// Forward a request only when every check passes:
 //
-//  - A_OPCODE must be Get, PutPartialData or PutFullData.
+// - A_OPCODE is Get, PutPartialData, or PutFullData.
+// - A_SIZE is 0, 1, or 2 (a 1-, 2-, or 4-byte operation).
+// - A_ADDRESS is naturally aligned for the A_SIZE byte width.
+// - A_MASK is true only for active byte lanes. The first active lane is the address modulo
+//   the TL-UL data-bus width.
+// - A_OPCODE is Get when A_USER.INSTR_TYPE is MuBi4True.
+// - A_USER.INSTR_TYPE is not MuBi4True, or en_ifetch_i is MuBi4True.
+// - The command integrity check passes, when CmdIntgCheck is set.
 //
-//  - A_SIZE must be 0, 1 or 2 (giving a 1-, 2- or 4-byte operation, respectively).
+// A request that fails a check reaches no register and gets D_ERROR on the response.
 //
-//  - A_ADDRESS must be naturally aligned for the operation byte width signaled in A_SIZE.
-//
-//  - A_MASK must only be true for active byte-lanes. The position of the first of these active
-//    lanes is calculated from the address, modulo the width of the TL-UL data bus.
-//
-//  - If the A_USER.INSTR_TYPE value is MuBi4True, A_OPCODE must be Get.
-//
-//  - Either the A_USER.INSTR_TYPE value must be a value other than MuBi4True or the en_ifetch_i
-//    port must be MuBi4True.
-//
-//  - If the CmdIntgCheck parameter is true then the command integrity check must pass.
-//
-//
-// ** Parameters
-//
-// CmdIntgCheck: If this parameter is true then there is a "command integrity check". This uses a
-//               tlul_cmd_intg_chk instance to compare integrity checksums from requests on the A
-//               channel. If the integrity checksums don't match, the adapter doesn't pass the
-//               request to the register interface through re_o/we_o and the response on the D
-//               channel will then have its D_ERROR flag set.
-//
-// EnableRspIntgGen: OpenTitan sends response integrity with messages on the TL-UL bus. If this
-//                   parameter is true, the module will perform calculations to send a correct
-//                   integrity value in the response's A_USER.RSP_INTG field.
-//
-// EnableDataIntgGen: This parameter is analogous to EnableRspIntgGen but controls whether the
-//                    module performs calculations to send a correct integrity value in the
-//                    response's A_USER.DATA_INTG field.
-//
-// RegAw: The number of bits used for addresses in the register interface. Higher bits of the
-//        A_ADDRESS field in an A channel message are ignored.
-//
-// RegDw: The number of bits used for data words in the register interface. This is assumed to match
-//        the data width of the TL-UL bus (see the MatchedWidth_A assertion).
-//
-// AccessLatency: This adapter always returns TileLink responses after one cycle, but this parameter
-//                allows it to handle different timings on the register interface. If AccessLatency
-//                is zero then the adapter expects a combinatorial response on the register
-//                interface and flops the result to break paths and add a cycle delay. If
-//                AccessLatency is one then the adapter expects a response on the register interface
-//                in the cycle after the re_o/we_o signal goes high, but then forwards it
-//                combinatorially to the TileLink interface. Only values 0 and 1 are allowed for
-//                this parameter.
-//
-//
-// ** Ports
-//
-// clk_i/rst_ni: Clock and reset.
-// tl_i/tl_o:    Connections to the TL-UL bus.
-// en_ifetch_i:  This mubi4_t port controls whether to allow read requests from Get messages whose
-//               A_USER.INSTR_TYPE is MuBi4True (considered to be processor "fetch" requests).
-// intg_error_o: This port is high when the adapter has detected a command integrity error. That can
-//               only happen if the CmdIntgCheck parameter is set.
-// re_o/we_o:    The read-enable and write-enable ports in the register interface.
-// addr_o:       The address to read or write through the register interface.
-// wdata_o:      The value to write through the register interface if we_o is true.
-// be_o:         A byte-enable signal, which is true for each byte-lane where the TL-UL operation's
-//               mask is true.
-// busy_i:       If this input is high then the A channel interface is stalled (by dropping
-//               A_READY), which means that the adapter will not accept any new operations.
-// rdata_i:      Read data being returned for a read request through the register interface.
-// error_i:      An error flag in the register interface. This signals that an error has been seen,
-//               which can be seen in the D channel response by D_ERROR being high. The D_DATA
-//               response is also set to '1, squashing any data that might have been returned
-//               through rdata_i.
-//
-// ICEBOX(#15822): Note that due to some modules with special needs (like the vendored-in RV_DM),
-//                 this module has been extended so that it supports use cases outside of the
-//                 generated reg_top module. This makes this adapter and its parameterization
-//                 options a bit heavy.
-//
-//                 We should in the future come back to this and refactor / align the module and its
-//                 parameterization needs.
+// Besides the generated reg_top modules, this adapter serves modules with special needs,
+// such as the vendored RV_DM, which is why its parameter set is broader than reg_top needs.
 
 module tlul_adapter_reg
   import tlul_pkg::*;
@@ -97,39 +30,40 @@ module tlul_adapter_reg
   `include "prim_assert.sv"
   import prim_mubi_pkg::mubi4_t;
 #(
-  parameter  bit CmdIntgCheck      = 0,  // 1: Enable command integrity check
-  parameter  bit EnableRspIntgGen  = 0,  // 1: Generate response integrity
-  parameter  bit EnableDataIntgGen = 0,  // 1: Generate response data integrity
-  parameter  int RegAw             = 8,  // Width of register address
-  parameter  int RegDw             = 32, // Shall be matched with TL_DW
-  parameter  int AccessLatency     = 0,  // 0: same cycle, 1: next cycle
-  localparam int RegBw             = RegDw/8
+  parameter  bit CmdIntgCheck      = 0,  // Check A-channel command integrity with tlul_cmd_intg_chk.
+                                         // On a mismatch, re_o and we_o stay low, D_ERROR is
+                                         // set, and intg_error_o rises.
+  parameter  bit EnableRspIntgGen  = 0,  // Generate the response integrity in D_USER.RSP_INTG.
+  parameter  bit EnableDataIntgGen = 0,  // Generate the data integrity in D_USER.DATA_INTG.
+  parameter  int RegAw             = 8,  // Register address width. Higher A_ADDRESS bits are
+                                         // ignored.
+  parameter  int RegDw             = 32, // Register data width. Must match the TL-UL data width
+                                         // (MatchedWidth_A).
+  parameter  int AccessLatency     = 0,  // 0 or 1. 0: the register response is combinatorial and
+                                         // is flopped here. 1: the response arrives the cycle
+                                         // after re_o/we_o and is forwarded combinatorially.
+  localparam int RegBw             = RegDw/8  // Register byte-enable width from RegDw.
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_i,                       // System clock.
+  input rst_ni,                      // Active-low reset.
 
-  // TL-UL interface
-  input  tl_h2d_t tl_i,
-  output tl_d2h_t tl_o,
+  input  tl_h2d_t tl_i,              // TL-UL host-to-device request.
+  output tl_d2h_t tl_o,              // TL-UL device-to-host response.
 
-  // control interface
-  input  mubi4_t  en_ifetch_i,
-  output logic    intg_error_o,
+  input  mubi4_t  en_ifetch_i,       // MuBi4True allows Gets whose A_USER.INSTR_TYPE is MuBi4True
+                                     // (processor fetches).
+  output logic    intg_error_o,      // Command integrity error. Only rises when CmdIntgCheck is set.
 
-  // Register interface
-  output logic             re_o,
-  output logic             we_o,
-  output logic [RegAw-1:0] addr_o,
-  output logic [RegDw-1:0] wdata_o,
-  output logic [RegBw-1:0] be_o,
-  input                    busy_i,
-  // The following two signals are expected
-  // to be returned in AccessLatency cycles.
-  input        [RegDw-1:0] rdata_i,
-  // This can be a write or read error.
-  input                    error_i
+  output logic             re_o,     // Register read enable.
+  output logic             we_o,     // Register write enable.
+  output logic [RegAw-1:0] addr_o,   // Register address.
+  output logic [RegDw-1:0] wdata_o,  // Register write data.
+  output logic [RegBw-1:0] be_o,     // Register byte enables from the TL-UL mask.
+  input                    busy_i,   // Stall: A_READY drops and no new operation is accepted.
+  input        [RegDw-1:0] rdata_i,  // Register read data, AccessLatency cycles after re_o.
+  input                    error_i   // Register read or write error, AccessLatency cycles after
+                                     // re_o/we_o. Sets D_ERROR and forces D_DATA to '1.
 );
-
   `OCAH_OT_ASSERT_INIT(AllowedLatency_A, AccessLatency inside {0, 1})
 
   localparam int IW  = $bits(tl_i.a_source);

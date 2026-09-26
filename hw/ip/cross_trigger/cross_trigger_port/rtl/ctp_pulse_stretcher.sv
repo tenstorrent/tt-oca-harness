@@ -1,28 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Pulse Stretcher Module
+// Stretch a core-side pulse to stretch_mult_i+1 clk_i cycles for wire-OR mode.
 //
-// Description:
-// Stretches a core-side pulse to (STRETCH_MULT + 1) clock cycles for wire-OR mode.
-// If a new pulse arrives before the current pulse finishes stretching, the counter
-// is restarted to ensure all chiplets see the pulse.
-//------------------------------------------------------------------------------
-
+// pulse_i is synchronous to clk_i; a new pulse while stretching restarts the counter so
+// every chiplet still sees the event.
+// stretched_pulse_o is the registered stretched pulse.
 
 module ctp_pulse_stretcher (
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  input  logic        clk_i,            // System clock.
+  input  logic        rst_ni,           // Active-low reset.
 
-  // Pulse input (synchronous to clk_i)
-  input  logic        pulse_i,
+  input  logic        pulse_i,          // Pulse.
 
-  // Stretch multiplier (number of cycles to stretch)
-  input  logic [15:0] stretch_mult_i,
+  input  logic [15:0] stretch_mult_i,   // Stretch mult.
 
-  // Stretched pulse output (registered)
-  output logic        stretched_pulse_o
+  output logic        stretched_pulse_o  // Stretched pulse.
 );
 
   logic [15:0] counter_q, counter_d;

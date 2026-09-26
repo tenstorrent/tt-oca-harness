@@ -1,23 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//-----------------------------------------------------------------------------
-// Parameterized Right Rotator Module
-//
-// This module performs a right rotation on an input value by a specified
-// amount modulo the data width.
-//
 // Copyright 2026 Tenstorrent Inc.
+
+// Right-rotate data_i by rotate_amt_i modulo DATA_WIDTH.
 //
-//-----------------------------------------------------------------------------
+// ROT_WIDTH is clog2(DATA_WIDTH); the rotate amount wraps within the word.
 
 module scrambler_rotator #(
-  parameter int unsigned DATA_WIDTH = 9,
-  parameter int unsigned ROT_WIDTH = $clog2(DATA_WIDTH)
+  parameter int unsigned DATA_WIDTH = 9,                    // Word width to rotate.
+  parameter int unsigned ROT_WIDTH = $clog2(DATA_WIDTH)     // clog2(DATA_WIDTH) rotate-amount width.
 ) (
-  input  logic [DATA_WIDTH-1:0]     data_i,
-  input  logic [ROT_WIDTH-1:0]      rotate_amt_i,
-  output logic [DATA_WIDTH-1:0]     data_o
+  input  logic [DATA_WIDTH-1:0]     data_i,                 // Value to rotate.
+  input  logic [ROT_WIDTH-1:0]      rotate_amt_i,           // Right-rotate amount.
+  output logic [DATA_WIDTH-1:0]     data_o                  // Rotated value.
 );
   logic [ROT_WIDTH-1:0] rotate_amt;
 

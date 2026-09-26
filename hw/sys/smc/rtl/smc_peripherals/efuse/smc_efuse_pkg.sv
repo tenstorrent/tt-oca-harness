@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/*************************************************************************
-*
-* SMC Efuse Package
-*
-*
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
- */
+// Declare types and constants for the SMC eFuse shim.
+//
+// Describes the vendor eFuse CSR window carved from smc_external.
+// Shared by smc_efuse_wrapper and the peripheral AXI-Lite address map.
 
 package smc_efuse_pkg;
   import smc_top_addrmap_pkg::*;
@@ -123,11 +118,11 @@ package smc_efuse_pkg;
   `include "efuse_typedef.svh"
 
   // NumFuseWordWidth MAX is 32 bits
-  localparam int unsigned NumEfuseBits = 8 * 1024;  // 8192 bits
+  localparam int unsigned NumEfuseBits = 8 * 1024;  // 8192 bits.
   localparam int unsigned NumFuseWordWidth = 32;
 
-  localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity
-  localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes
+  localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity.
+  localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes.
 
   localparam int unsigned NumFuseBitsWidth = $clog2(
       NumEfuseBits

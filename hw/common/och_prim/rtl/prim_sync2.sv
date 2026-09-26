@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// 2-stage Synchronizer
+// Synchronize d_i into the clk_i domain through 2 flops.
 //
-//--------------------------------------------------
+// Optionally insert prim_sync_randomized_delay ahead of the flops when
+// RANDOM_DELAY_GRAY_CODE selects shared delay.
+// Use prim_flop_2sync with its internal CDC randomizer disabled so only one random-delay
+// model is on the path.
+// There is no reset; q_o follows d_i after two clk_i edges.
+
 module prim_sync2 #(
-  parameter int unsigned WIDTH = 1,
-  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0
+  parameter int unsigned WIDTH = 1,  // Datapath width.
+  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0  // Shares one random delay select across bits when set.
 ) (
-  input  logic             clk_i,
-  input  logic [WIDTH-1:0] d_i,
-  output logic [WIDTH-1:0] q_o
+  input  logic             clk_i,  // Destination clock.
+  input  logic [WIDTH-1:0] d_i,  // Async data to synchronize.
+  output logic [WIDTH-1:0] q_o  // Synchronized data.
 );
 
 `ifndef SYNTHESIS

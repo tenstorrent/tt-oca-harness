@@ -1,47 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG Capabilities Register
+// Expose a read-only capabilities TDR built from elaboration-time feature parameters.
 //
-//-----------------------------------------------------------------------------
-
+// Packs enable bits for BSR and optional instructions, IC_RESET port counts, STAP counts,
+// cross-trigger counts, and OCH_VER into the shift register.
+// Contents are fixed from parameters; scan_ctrl_i and scan_in_i/scan_out_o form the DR
+// scan path.
 
 module jtag_caps_reg
     import prim_jtag_pkg::*;
 
     `include "prim_assert.sv"
 #(
-    // Configuration parameters
-    parameter bit  BSR_ENABLE          = 1,
-    parameter bit  EXTEST_TRAIN_ENABLE = 1,
-    parameter bit  EXTEST_PULSE_ENABLE = 1,
-    parameter bit  INTEST_ENABLE       = 1,
-    parameter bit  CLAMP_ENABLE        = 1,
-    parameter bit  HIGHZ_ENABLE        = 1,
-    parameter bit  RUNBIST_ENABLE      = 1,
-    parameter bit  TMP_ENABLE          = 1,
-    parameter bit  IC_RESET_ENABLE     = 1,
-    parameter bit  SMC_DBG_ENABLE      = 1,
-    parameter bit  SEP_DBG_ENABLE      = 1,
-    parameter bit  STAP_IO_ENABLE      = 1,
+    parameter bit  BSR_ENABLE          = 1,  // Enable mandatory boundary-scan instructions.
+    parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Enable optional EXTEST_TRAIN.
+    parameter bit  EXTEST_PULSE_ENABLE = 1,  // Enable optional EXTEST_PULSE.
+    parameter bit  INTEST_ENABLE       = 1,  // Enable optional INTEST.
+    parameter bit  CLAMP_ENABLE        = 1,  // Enable optional CLAMP.
+    parameter bit  HIGHZ_ENABLE        = 1,  // Enable optional HIGHZ.
+    parameter bit  RUNBIST_ENABLE      = 1,  // Enable optional RUNBIST.
+    parameter bit  TMP_ENABLE          = 1,  // Enable TMP controller and instructions.
+    parameter bit  IC_RESET_ENABLE     = 1,  // Enable the IC_RESET TDR.
+    parameter bit  SMC_DBG_ENABLE      = 1,  // Enable SMC debug JTAG2AXI ports.
+    parameter bit  SEP_DBG_ENABLE      = 1,  // Enable SEP debug STAP.
+    parameter bit  STAP_IO_ENABLE      = 1,  // Enable chiplet-to-chiplet STAP.
 
-    parameter int unsigned  NUM_SMC_IC_RESET = 0,   // Port count of SMC IC_RESET slice (0..255)
-    parameter int unsigned  NUM_SEP_IC_RESET = 0,   // Port count of SEP IC_RESET slice (0..255)
-    parameter int unsigned  NUM_EXT_IC_RESET = 0,   // Port count of external IC_RESET slice (0..255)
-    parameter int unsigned  NUM_EXTRA_STAPS  = 0,
+    parameter int unsigned  NUM_SMC_IC_RESET = 0,  // Port count of SMC IC_RESET slice (0..255).
+    parameter int unsigned  NUM_SEP_IC_RESET = 0,  // Port count of SEP IC_RESET slice (0..255).
+    parameter int unsigned  NUM_EXT_IC_RESET = 0,  // Port count of external IC_RESET slice (0..255).
+    parameter int unsigned  NUM_EXTRA_STAPS  = 0,  // Additional DTP STAP count.
 
-    parameter int unsigned  NUM_XTRIG_CTP     = 8,
-    parameter int unsigned  NUM_XTRIG_INT_CT  = 1,
+    parameter int unsigned  NUM_XTRIG_CTP     = 8,  // Cross-trigger port count in CAPS.
+    parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Internal cross-trigger count in CAPS.
 
-    parameter logic [7:0]   OCH_VER = 8'h00  // DTP IP major version number
+    parameter logic [7:0]   OCH_VER = 8'h00  // DTP IP major version number.
 ) (
     /* verilator lint_off UNUSEDSIGNAL */
-    // JTAG DR scan control interface
-    input  jtag_scan_ctrl_t  scan_ctrl_i,
+    input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
     /* verilator lint_on UNUSEDSIGNAL */
-    input  logic             scan_in_i,
-    output logic             scan_out_o
+    input  logic             scan_in_i,  // Scan data in (TDI).
+    output logic             scan_out_o  // Scan data out (TDO).
 );
 
     //--------------------------------------------------------------------------

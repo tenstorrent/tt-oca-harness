@@ -1,80 +1,93 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Input Fabric
+// Route inbound chiplet AXI through the SMC input fabric.
+//
+// Demultiplexes and filters system, JTAG, and SEP inbound AXI into the local map.
+// Hands accepted traffic to the local fabric toward CPU and CSR targets.
 
 module smc_input_fabric #(
-  parameter bit          FilterReqPipelineEnable = 1'b0,
-  parameter bit          FilterRspPipelineEnable = 1'b0,
-  parameter int unsigned NumFilters              = 16
+  parameter bit          FilterReqPipelineEnable = 1'b0,  // Filterreqpipelineenable.
+  parameter bit          FilterRspPipelineEnable = 1'b0,  // Filterrsppipelineenable.
+  parameter int unsigned NumFilters              = 16  // Numfilters.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic clk_i,                   // Clock.
+  input  logic rst_ni,                  // Reset.
+  input  logic test_en_i,               // Test en.
+  input  logic scan_rst_ni,             // Scan rst.
 
-  input  logic                filter_axi_cg_en_i,
-  input  smc_pkg::cg_hyster_t cg_hysteresis_i,
+  input  logic                filter_axi_cg_en_i,  // Filter axi clock-gate enable.
+  input  smc_pkg::cg_hyster_t cg_hysteresis_i,  // Cg hysteresis.
 
-  // Configuration Bits
-  input  smc_pkg::smc_axi_addr_t global_base_addr_i,
-  input  smc_pkg::smc_axi_addr_t local_base_addr_i,
-  input  logic [31:0]            region_size_i,
+  input  smc_pkg::smc_axi_addr_t global_base_addr_i,  // Configuration Bits.
+  input  smc_pkg::smc_axi_addr_t local_base_addr_i,  // Configuration Bits.
+  input  logic [31:0]            region_size_i,  // Configuration Bits.
 
-  // JTAG AXI Input
-  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t  axi_in_jtag_req_i,
-  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t axi_in_jtag_resp_o,
+  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t  axi_in_jtag_req_i,  // JTAG AXI Input
+                                                                     // request.
+  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t axi_in_jtag_resp_o,  // JTAG AXI Input
+                                                                      // response.
 
-  // MMIO AXI Input
-  input  smc_pkg::smc_cpu_mmio_axi_req_t  axi_in_mmio_req_i,
-  output smc_pkg::smc_cpu_mmio_axi_resp_t axi_in_mmio_resp_o,
+  input  smc_pkg::smc_cpu_mmio_axi_req_t  axi_in_mmio_req_i,  // MMIO AXI Input request.
+  output smc_pkg::smc_cpu_mmio_axi_resp_t axi_in_mmio_resp_o,  // MMIO AXI Input response.
 
-  // Data Accelerator AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,  // Data Accelerator AXI
+                                                                                   // Input request.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,  // Data Accelerator AXI
+                                                                                    // Input response.
 
-  // Log AXI-Lite Input
-  input  smc_pkg::smc_axil_56_64_req_t  axi_lite_log_req_i,
-  output smc_pkg::smc_axil_56_64_resp_t axi_lite_log_resp_o,
+  input  smc_pkg::smc_axil_56_64_req_t  axi_lite_log_req_i,  // Log AXI-Lite Input
+                                                             // request.
+  output smc_pkg::smc_axil_56_64_resp_t axi_lite_log_resp_o,  // Log AXI-Lite Input
+                                                              // response.
 
-  // Local AXI Output
-  output smc_pkg::smc_local_32_64_6_12_axi_req_t  axi_local_out_req_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t axi_local_out_resp_i,
+  output smc_pkg::smc_local_32_64_6_12_axi_req_t  axi_local_out_req_o,  // Local AXI Output
+                                                                        // request.
+  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t axi_local_out_resp_i,  // Local AXI Output
+                                                                         // response.
 
-  // Global AXI Output
-  output smc_pkg::smc_56_64_6_12_axi_req_t  axi_out_req_o,
-  input  smc_pkg::smc_56_64_6_12_axi_resp_t axi_out_resp_i,
+  output smc_pkg::smc_56_64_6_12_axi_req_t  axi_out_req_o,  // Global AXI Output request.
+  input  smc_pkg::smc_56_64_6_12_axi_resp_t axi_out_resp_i,  // Global AXI Output
+                                                             // response.
 
-  // System AXI Input
-  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_req_i,
-  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_resp_o,
-  output smc_pkg::smc_local_32_64_6_12_axi_req_t   filtered_sys_axi_out_req_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  filtered_sys_axi_out_resp_i,
+  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_req_i,  // System AXI Input
+                                                                      // request.
+  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_resp_o,  // System AXI Input
+                                                                       // response.
+  output smc_pkg::smc_local_32_64_6_12_axi_req_t   filtered_sys_axi_out_req_o,  // System AXI Input
+                                                                                // request.
+  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  filtered_sys_axi_out_resp_i,  // System AXI Input
+                                                                                 // response.
 
-  // SEP AXI Input
-  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req_i,
-  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp_o,
-  output smc_pkg::smc_local_32_64_6_12_axi_req_t   sep_axi_id_remap_req_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  sep_axi_id_remap_resp_i,
+  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req_i,  // SEP AXI Input
+                                                                      // request.
+  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp_o,  // SEP AXI Input
+                                                                       // response.
+  output smc_pkg::smc_local_32_64_6_12_axi_req_t   sep_axi_id_remap_req_o,  // SEP AXI Input
+                                                                            // request.
+  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  sep_axi_id_remap_resp_i,  // SEP AXI Input
+                                                                             // response.
 
-  // Config struct from register block -- filter
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],  // Config struct from
+                                                                                  // register block --
+                                                                                  // filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],  // Config struct from
+                                                                                    // register block --
+                                                                                    // filter.
 
-  // Config struct from register block -- alias remap
-  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
+  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Config struct from
+                                                                                                    // register block --
+                                                                                                    // alias remap.
 
-  // debug structs
-  output smc_pkg::remap_debug_t         remap_debug_mmio_o,
-  output smc_pkg::remap_debug_t         remap_debug_jtag_o,
-  output smc_pkg::remap_debug_t         remap_debug_log_o,
-  output smc_pkg::remap_debug_t         remap_debug_dma_o,
-  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,
-  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,
+  output smc_pkg::remap_debug_t         remap_debug_mmio_o,  // debug structs.
+  output smc_pkg::remap_debug_t         remap_debug_jtag_o,  // debug structs.
+  output smc_pkg::remap_debug_t         remap_debug_log_o,  // debug structs.
+  output smc_pkg::remap_debug_t         remap_debug_dma_o,  // debug structs.
+  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,  // debug structs.
+  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,  // debug structs.
 
-  // Clock gater activity indicators
-  output logic sys_in_filter_clk_active_o,
-  output logic sys_in_filter_bus_active_o
+  output logic sys_in_filter_clk_active_o,  // Clock gater activity indicators.
+  output logic sys_in_filter_bus_active_o  // Clock gater activity indicators.
 );
 
   `include "axi/assign.svh"

@@ -1,58 +1,54 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// DMA Backend
+// Turn iDMA ND requests into AXI master read and write traffic.
 //
-//-----------------------------------------------------------------------------
-
+// NUM_MST_INTERFACES must be >= 1.
+// BUFFER_DEPTH is the realignment buffer depth in beats and must be >= 2.
+// EN_R_AW_COUPLING is recommended.
 
 module idma_backend_wrapper #(
-  parameter int unsigned NUM_MST_INTERFACES = 1,  // must be >= 1
+  parameter int unsigned NUM_MST_INTERFACES = 1,            // Backend master count; must be >= 1.
 
-  parameter int unsigned DMA_MST_MAX_TXNS = 16,
+  parameter int unsigned DMA_MST_MAX_TXNS = 16,             // Max outstanding AXI master transactions.
 
-  parameter int unsigned M2B_FIFO_DEPTH = 0,
-  parameter int unsigned BUFFER_DEPTH = 3,  // realignment buffer depth in beats, must be >= 2
+  parameter int unsigned M2B_FIFO_DEPTH = 0,                // Manager-to-backend FIFO depth.
+  parameter int unsigned BUFFER_DEPTH = 3,                  // Realignment buffer depth in beats; must be >= 2.
 
-  parameter bit EN_R_AW_COUPLING = 1,  // recommended
+  parameter bit EN_R_AW_COUPLING = 1,                       // Couple R and AW channels; recommended.
 
-  parameter bit BYPASS_DMA_MST_FLOPS  = 1'b0,
+  parameter bit BYPASS_DMA_MST_FLOPS  = 1'b0,               // Skip AXI master boundary flops.
 
-  parameter int unsigned TFLenWidth = 32,
+  parameter int unsigned TFLenWidth = 32,                   // Transfer-length field width.
 
-  parameter type idma_req_t = logic,
-  parameter type idma_resp_t = logic,
+  parameter type idma_req_t = logic,                        // iDMA request type.
+  parameter type idma_resp_t = logic,                       // iDMA response type.
 
-  // AXI master interface types
-  parameter type dma_mst_req_t  = logic,
-  parameter type dma_mst_resp_t = logic,
+  parameter type dma_mst_req_t  = logic,                    // AXI master request type.
+  parameter type dma_mst_resp_t = logic,                    // AXI master response type.
 
-  // Width params for internal AXI type construction
-  parameter int unsigned AXI_ADDR_WIDTH       = 56,
-  parameter int unsigned AXI_DATA_WIDTH       = 64,
-  parameter int unsigned AXI_USER_WIDTH       = 12,
-  parameter int unsigned MST_ID_WIDTH         = 3,
-  parameter int unsigned BACKEND_INT_ID_WIDTH = 2
+  parameter int unsigned AXI_ADDR_WIDTH       = 56,         // AXI address width.
+  parameter int unsigned AXI_DATA_WIDTH       = 64,         // AXI data width.
+  parameter int unsigned AXI_USER_WIDTH       = 12,         // AXI user width.
+  parameter int unsigned MST_ID_WIDTH         = 3,          // AXI master ID width.
+  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // Internal backend ID width.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                                       // System clock.
+  input  logic rst_ni,                                      // Async reset, active-low.
+  input  logic test_en_i,                                   // DFT test enable.
 
-  output logic dma_backend_busy_o,
+  output logic dma_backend_busy_o,                          // Backend has work in flight.
 
-  // iDMA request/response interface
-  input  idma_req_t  [NUM_MST_INTERFACES-1:0] req_i,
-  input  logic       [NUM_MST_INTERFACES-1:0] req_valid_i,
-  output logic       [NUM_MST_INTERFACES-1:0] req_ready_o,
+  input  idma_req_t  [NUM_MST_INTERFACES-1:0] req_i,        // Backend request payload.
+  input  logic       [NUM_MST_INTERFACES-1:0] req_valid_i,  // Backend request valid.
+  output logic       [NUM_MST_INTERFACES-1:0] req_ready_o,  // Backend request ready.
 
-  output idma_resp_t [NUM_MST_INTERFACES-1:0] resp_o,
-  output logic       [NUM_MST_INTERFACES-1:0] resp_valid_o,
-  input  logic       [NUM_MST_INTERFACES-1:0] resp_ready_i,
+  output idma_resp_t [NUM_MST_INTERFACES-1:0] resp_o,       // Backend response payload.
+  output logic       [NUM_MST_INTERFACES-1:0] resp_valid_o, // Backend response valid.
+  input  logic       [NUM_MST_INTERFACES-1:0] resp_ready_i, // Backend response ready.
 
-  // DMA Master
-  output dma_mst_req_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o,
-  input  dma_mst_resp_t [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i
+  output dma_mst_req_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o, // AXI master request.
+  input  dma_mst_resp_t [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i // AXI master response.
 );
 
   `include "axi/typedef.svh"

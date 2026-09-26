@@ -1,31 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// JTAG2AXI Capabilities Register
+// Expose a read-only TDR for JTAG2AXI bridge pipeline depths and bus type.
 //
-//-----------------------------------------------------------------------------
+// Encodes RD_PL_DEPTH and WR_PL_DEPTH where 0 means a single outstanding transaction.
+// IS_AXI4_LITE is 0 for AXI4 typedefs and 1 for AXI4-Lite typedefs; axi_req_t sizes
+// related fields.
 
 module jtag_jtag2axi_caps_reg
   import prim_jtag_pkg::*;
 #(
-  // AXI bus type parameter
-  // Expected signature from AXI_TYPEDEF_ALL or AXI_LITE_TYPEDEF_ALL macros
-  parameter type axi_req_t = logic,
+  parameter type axi_req_t = logic,     // AXI request struct type.
 
-  // Queue depth parameters
-  parameter logic [1:0] RD_PL_DEPTH = 2'h3,  // Read pipeline depth (0 = single outstanding transaction)
-  parameter logic [1:0] WR_PL_DEPTH = 2'h3,  // Write pipeline depth (0 = single outstanding transaction)
+  parameter logic [1:0] RD_PL_DEPTH = 2'h3,  // Read pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0] WR_PL_DEPTH = 2'h3,  // Write pipeline depth (0 = single outstanding transaction).
 
-  // Bus type parameter
-  // For AXI4 types (from AXI_TYPEDEF_ALL), set to 1'b0 (default)
-  // For AXI4-Lite types (from AXI_LITE_TYPEDEF_ALL), set to 1'b1
-  parameter bit IS_AXI4_LITE = 1'b0  // 0=AXI4, 1=AXI4-Lite
+  parameter bit IS_AXI4_LITE = 1'b0     // 0=AXI4, 1=AXI4-Lite.
 ) (
-  // JTAG DR scan control interface
-  input  jtag_scan_ctrl_t  scan_ctrl_i,
-  input  logic             scan_in_i,
-  output logic             scan_out_o
+  input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
+  input  logic             scan_in_i,   // Scan data in (TDI).
+  output logic             scan_out_o   // Scan data out (TDO).
 );
 
   //--------------------------------------------------------------------------

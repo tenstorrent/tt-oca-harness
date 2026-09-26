@@ -1,62 +1,58 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// GPIO Interface Shim Example
+// Shim a GPIO pad with 2nd-HW override, LSIO, strap capture, and model control.
+//
+// force_primary_i preempts hw2 override back to the primary plane (for example CAT-THERM
+// over a 2nd-HW-function override).
+// External drive, pull, and glitch-filter controls can override register settings when
+// selected.
 
 module gpio_shim
   import gpio_pkg::*;
   import gpio_shim_pkg::*;
 #(
-  parameter bit INPUT_BY_DEFAULT = 1'b1,
-  parameter bit ENABLE_PULL = 1'b0,
-  parameter bit USE_PULL_UP = 1'b0
+  parameter bit INPUT_BY_DEFAULT = 1'b1,                    // Pad defaults to input when unset.
+  parameter bit ENABLE_PULL = 1'b0,                         // Enable on-die pull.
+  parameter bit USE_PULL_UP = 1'b0                          // Pull-up when pulls are enabled.
 ) (
-  input  logic        clk_i,
-  input  logic        rst_primary_ni,
-  input  logic        rst_cold_ni,
-  input  logic        test_en_i,
+  input  logic        clk_i,                                // System clock.
+  input  logic        rst_primary_ni,                       // Primary async reset, active-low.
+  input  logic        rst_cold_ni,                          // Cold async reset, active-low.
+  input  logic        test_en_i,                            // DFT test enable.
 
-  // GPIO request/response
-  input  wire         core2pad_i,
-  input  wire         core2pad_en_i,
-  output wire         pad2core_o,
-  input  wire         pad2core_en_i,
+  input  wire         core2pad_i,                           // Primary core-to-pad data.
+  input  wire         core2pad_en_i,                        // Primary core-to-pad enable.
+  output wire         pad2core_o,                           // Primary pad-to-core data.
+  input  wire         pad2core_en_i,                        // Primary pad-to-core enable.
 
-  // GPIO 2nd HW Function Override
-  input  logic        core2pad_ovrd_i,
-  input  logic        core2pad_en_ovrd_i,
-  output logic        pad2core_ovrd_o,
-  input  logic        pad2core_en_ovrd_i,
+  input  logic        core2pad_ovrd_i,                      // 2nd-HW core-to-pad data.
+  input  logic        core2pad_en_ovrd_i,                   // 2nd-HW core-to-pad enable.
+  output logic        pad2core_ovrd_o,                      // 2nd-HW pad-to-core data.
+  input  logic        pad2core_en_ovrd_i,                   // 2nd-HW pad-to-core enable.
 
-  // Safety preempt: when asserted, force the primary/normal plane regardless
-  // of hw2_ovrd (e.g. CAT-THERM preempts a 2nd-HW-function override)
-  input  logic        force_primary_i,
+  input  logic        force_primary_i,                      // Force the primary plane over hw2 override.
+                                                            // Assert for safety preempt (e.g. CAT-THERM).
 
-  // External GPIO Control
-  input  logic        ext_intf_sel_i,
-  input  logic        reg_lsio_sel_i,
-  input  logic        reg_lsio_disable_i,
-  input  logic [2:0]  ext_drive_strength_i,
-  input  logic        ext_pull_en_i,
-  input  logic        ext_pull_sel_i,
-  input  logic        ext_gf_disable_i,
+  input  logic        ext_intf_sel_i,                       // External interface select.
+  input  logic        reg_lsio_sel_i,                       // Register LSIO select.
+  input  logic        reg_lsio_disable_i,                   // Register LSIO disable.
+  input  logic [2:0]  ext_drive_strength_i,                 // External drive strength.
+  input  logic        ext_pull_en_i,                        // External pull enable.
+  input  logic        ext_pull_sel_i,                       // External pull select.
+  input  logic        ext_gf_disable_i,                     // Disable the glitch filter.
 
-  // Strap
-  output logic        captured_strap_o,
+  output logic        captured_strap_o,                     // Latched strap value.
 
-  // GPIO Hardware Interface
-  input  logic                gpio_in_i,
-  output logic                gpio_out_o,
-  output logic                gpio_in_en_o,
-  output logic                gpio_out_en_o,
-  output gpio_model_ctrl_t    gpio_ctrl_o,
-  input  gpio_model_status_t  gpio_status_i,
+  input  logic                gpio_in_i,                    // Pad input sample.
+  output logic                gpio_out_o,                   // Pad output data.
+  output logic                gpio_in_en_o,                 // Pad input enable.
+  output logic                gpio_out_en_o,                // Pad output enable.
+  output gpio_model_ctrl_t    gpio_ctrl_o,                  // Model control struct.
+  input  gpio_model_status_t  gpio_status_i,                // Model status struct.
 
-
-  // GPIO Register Interface
-  // AXI4-Lite Register Interface
-  input  gpio_axil_req_t  axil_req_i,
-  output gpio_axil_resp_t axil_resp_o
+  input  gpio_axil_req_t  axil_req_i,                       // AXI-Lite CSR request.
+  output gpio_axil_resp_t axil_resp_o                       // AXI-Lite CSR response.
 );
 
   localparam int unsigned GPIO_REG_ADDR_WIDTH = $clog2(gpio_wrap_addrmap_pkg::GPIO_WRAP_SIZE);

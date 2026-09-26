@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Telemetry Receiver Wrapper Package
+// Hold address-map and AXI-Lite typedefs for the telemetry receiver wrapper.
 //
-//-----------------------------------------------------------------------------
+// Defines REG_ADDR_WIDTH and the axil types used by telemetry_receiver_wrap.
 
 package telemetry_receiver_wrap_pkg;
 

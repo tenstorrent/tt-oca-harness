@@ -1,32 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP system-peripherals AXI crossbar wrapper.
-// Adapts sep_pkg interfaces to the crossbar request and response types.
+// Adapt sep_pkg AXI structs to the system-peripherals crossbar types.
+//
+// sep_local_from_remap and smn_inbound use 6-bit ID and 56-bit address.
+// Output ports use 7-bit ID and 56-bit address, except mailbox and system_csr which are
+// AXI4-Lite.
 
 module sep_system_peripherals_xbar_wrapper
 
     `include "axi/assign.svh"
 (
-    input  logic                                       clk_i,
-    input  logic                                       rst_ni,
-    input  logic                                       test_i,
+    input  logic                                       clk_i,  // System clock.
+    input  logic                                       rst_ni,  // Active-low reset.
+    input  logic                                       test_i,  // axi_xbar test mode.
 
-    // Input ports
-    // sep_local_from_remap: 6-bit ID, 56-bit addr
-    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   sep_local_from_remap_req_i,
-    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  sep_local_from_remap_resp_o,
-    // smn_inbound: 6-bit ID, 56-bit addr
-    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   smn_inbound_req_i,
-    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  smn_inbound_resp_o,
+    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   sep_local_from_remap_req_i,  // Local-from-remap request; 6-bit ID, 56-bit address
+                                                                                             // sep_local_from_remap: 6-bit ID, 56-bit addr.
+    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  sep_local_from_remap_resp_o,  // Local-from-remap response.
+    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   smn_inbound_req_i,  // SMN inbound request; 6-bit ID, 56-bit address
+                                                                                    // smn_inbound: 6-bit ID, 56-bit addr.
+    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  smn_inbound_resp_o,  // SMN inbound response.
 
-    // Output ports (7-bit ID, 56-bit addr)
-    output sep_pkg::sep_system_peripherals_xbar_slv_axi_req_t          smn_inbound_from_xbar_axi_req_o,
-    input  sep_pkg::sep_system_peripherals_xbar_slv_axi_resp_t         smn_inbound_from_xbar_axi_resp_i,
-    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   mailbox_req_o,
-    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  mailbox_resp_i,
-    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   system_csr_req_o,
-    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  system_csr_resp_i
+    output sep_pkg::sep_system_peripherals_xbar_slv_axi_req_t          smn_inbound_from_xbar_axi_req_o,  // SMN inbound-from-xbar request; 7-bit ID, 56-bit address
+                                                                                                         // Output ports (7-bit ID, 56-bit addr).
+    input  sep_pkg::sep_system_peripherals_xbar_slv_axi_resp_t         smn_inbound_from_xbar_axi_resp_i,  // SMN inbound-from-xbar response.
+    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   mailbox_req_o,  // Mailbox AXI4-Lite request.
+    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  mailbox_resp_i,  // Mailbox AXI4-Lite response.
+    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   system_csr_req_o,  // System CSR AXI4-Lite request.
+    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  system_csr_resp_i  // System CSR AXI4-Lite response.
 );
 
     // =========================================================================

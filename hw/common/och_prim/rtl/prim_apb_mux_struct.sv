@@ -1,31 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// APB Multiplexer (with Structured Interfaces)
+// Mux NUM_MASTERS struct-typed APB slave ports onto one master port.
+//
+// Select one requesting slave and steer the master response back to it.
+// req_t and resp_t set the APB request and response struct shapes.
+// With NUM_MASTERS equal to one, pass the structs straight through.
 
 module prim_apb_mux_struct #(
-    parameter int unsigned NUM_MASTERS = 2,
-    parameter type req_t  = logic,
-    parameter type resp_t = logic,
+    parameter int unsigned NUM_MASTERS = 2,  // Number of APB slave ports into the mux.
+    parameter type req_t  = logic,  // APB request struct type.
+    parameter type resp_t = logic,  // APB response struct type.
 
-    localparam int unsigned ADDR_WIDTH = $bits(req_t'(0).paddr),
-    localparam int unsigned DATA_WIDTH = $bits(req_t'(0).pwdata),
-    localparam int unsigned STRB_WIDTH = $bits(req_t'(0).pstrb),
-    localparam type addr_t = logic [ADDR_WIDTH-1:0],
-    localparam type data_t = logic [DATA_WIDTH-1:0],
-    localparam type strb_t = logic [STRB_WIDTH-1:0]
+    localparam int unsigned ADDR_WIDTH = $bits(req_t'(0).paddr),  // Address width derived from req_t.
+    localparam int unsigned DATA_WIDTH = $bits(req_t'(0).pwdata),  // Data width derived from req_t.
+    localparam int unsigned STRB_WIDTH = $bits(req_t'(0).pstrb),  // Strobe width derived from req_t.
+    localparam type addr_t = logic [ADDR_WIDTH-1:0],  // Address type alias.
+    localparam type data_t = logic [DATA_WIDTH-1:0],  // Data type alias.
+    localparam type strb_t = logic [STRB_WIDTH-1:0]  // Strobe type alias.
 ) (
-    // Global Interface
-    input  logic                    clk_i,
-    input  logic                    rst_ni,
+    input  logic                    clk_i,  // APB clock.
+    input  logic                    rst_ni,  // Async reset, active-low.
 
-    // APB4 Slave Interface
-    input  req_t  [NUM_MASTERS-1:0] slv_req_i,
-    output resp_t [NUM_MASTERS-1:0] slv_resp_o,
+    input  req_t  [NUM_MASTERS-1:0] slv_req_i,  // Per-slave APB requests.
+    output resp_t [NUM_MASTERS-1:0] slv_resp_o,  // Per-slave APB responses.
 
-    // APB4 Master Interface
-    output req_t                    mst_req_o,
-    input  resp_t                   mst_resp_i
+    output req_t                    mst_req_o,  // Muxed APB request toward the bus.
+    input  resp_t                   mst_resp_i  // APB response from the bus.
 );
 
     /////////////////

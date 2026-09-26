@@ -1,25 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//--------------------------------------------------
-// Clock Gating Request
+// Drive Q-Channel qreq_no from qactive_i, qaccept_ni, and qdeny_i.
 //
-//--------------------------------------------------
+// Hold a denied request low for DenyDelay cycles before retrying.
+// qreq_no is active-low toward the clock controller.
+// HysteresisW sizes the deny-hold counter.
 
 module prim_cg_req #(
-  parameter int unsigned DenyDelay = 1,
+  parameter int unsigned DenyDelay = 1,  // Cycles to hold after a deny before reasserting.
 
-  // Derived parameters
-  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)
+  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)  // Deny-hold counter width; derived.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,  // Q-Channel clock.
+  input  logic rst_ni,  // Async reset, active-low.
 
-  // Power management interface
-  input  logic qactive_i,
-  input  logic qaccept_ni,
-  input  logic qdeny_i,
-  output logic qreq_no
+  input  logic qactive_i,  // Device wants the clock.
+  input  logic qaccept_ni,  // Controller accepted the request, active-low.
+  input  logic qdeny_i,  // Controller denied the request.
+  output logic qreq_no  // Clock request to the controller, active-low.
 );
 
   `include "prim_assert.sv"

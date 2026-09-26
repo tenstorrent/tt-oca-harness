@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC internal AXI-Lite crossbar types and configuration.
+// Declare SMC internal AXI-Lite crossbar types and configuration.
+//
+// Defines initiator/target counts and AXI-Lite typedefs for the internal CSR xbar.
 // Address rules are defined by smc_internal_axi_lite_xbar.
 
 `include "axi/typedef.svh"
@@ -110,7 +112,7 @@ package smc_internal_axi_lite_xbar_pkg;
   // Connectivity Matrix
   // ===========================================================================
   localparam bit [NumInputs-1:0][NumOutputs-1:0] Connectivity = '{
-    0: 8'b11111111  // local_in
+    0: 8'b11111111  // local_in.
   };
 
 endpackage : smc_internal_axi_lite_xbar_pkg
