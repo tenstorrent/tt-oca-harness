@@ -378,7 +378,7 @@ Source: `hw/sys/sep/dv/build/runs/20260919_225443__vcs__all/cov/report/modinfo.t
 
 Scope: the mass that `fabric_ttip.adoc` and `opentitan.adoc` did not explain --
 `vendor/chipsalliance/adams-bridge`, `hw/ip/efuse`, `hw/ip/key_manager`,
-`vendor/chipsalliance/caliptra-rtl`, `hw/common/tlul`, `hw/common/och_prim`,
+`vendor/chipsalliance/caliptra-rtl`, `hw/common/tlul`, `hw/common/ocah_prim`,
 `hw/ip/axi_lite_mailbox_unit`, `hw/ip/memory_interface`, `hw/ip/axi_window_remap`.
 Nothing claimed here is claimed in either earlier file.
 
@@ -1318,7 +1318,7 @@ Recorded so the next pass does not re-derive them. None is a waiver.
   the private key bus. A `sep_cov_abr_mlkem_keygen_decaps_test` and a
   `sep_cov_abr_mldsa_stream_msg_test` appeared in the working tree from another
   pass while this one ran -- check those before writing anything here.
-* `extintsrc_req` / `sep_ext_interrupts_i`, ~424 bits. Top-level input,
+* `extintsrc_req_i` / `sep_ext_interrupts_i`, ~424 bits. Top-level input,
   `sep.sv:79`, into the PIC vector at `sep.sv:580`. No tie; the TB never wiggles it.
 * `dbg_req_i.w.data` / `dbg_resp_o.r.data`, 256 bits, entirely dark: the debug
   master issued no transaction at all in this regression.
@@ -1390,7 +1390,7 @@ to `/proj_soc/user_dev/yenhenglai/tt-oca-harness`.
 
 | `prim_prince` -- the decryption key modification: lines 62, 63, 64 and 78
 | `dec_i` is tied to zero at every instantiation of `prim_prince` in the build.
-  `hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv:261` -- `.dec_i ( 1'b0 )`, with
+  `hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv:261` -- `.dec_i ( 1'b0 )`, with
   the source comment at `:260` stating the reason ("Since we operate in counter
   mode, this can always be set to encryption mode"); the vendor copy of the same
   block ties it identically at

@@ -20,7 +20,7 @@ module efuse_bank_model #(
   input  efuse_apb_req_t   apb_req_i,
   output efuse_apb_resp_t  apb_resp_o,
 
-  output efuse_bank_reg_pkg::efuse_bank__out_t hwif_out
+  output efuse_bank_reg_pkg::efuse_bank__out_t hwif_out_o
 );
 
   // Sim-only failure injection for efuse program operations. Used to test that
@@ -123,7 +123,7 @@ module efuse_bank_model #(
     .s_apb_prdata(apb_resp_o.prdata),
     .s_apb_pslverr(apb_resp_o.pslverr),
 
-    .hwif_out(hwif_out)
+    .hwif_out(hwif_out_o)
   );
 
   // Sim-only OTP image preload. The plusarg is a path sampled at time 0;

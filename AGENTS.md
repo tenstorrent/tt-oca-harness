@@ -359,7 +359,7 @@ Whatever the testbench, these hold:
 
 | Path | Contents |
 |---|---|
-| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
+| `hw/common/` | Shared RTL and infrastructure: `ocah_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
@@ -581,6 +581,20 @@ work, is worse than the ordering mistake.
 
 Without companion access you can only do the open half. Say so and stop, rather than editing
 open files to compensate.
+
+### What the open side may say about the companion
+
+Everything that lands in the open repository is public: files, code comments, commit
+messages, and pull request and issue bodies and comments. The "keep proprietary material
+out" rule for this guide holds there too. The open half of a pair links the companion PR and
+says that it merges first, and nothing more. It does not describe what the companion
+contains, which of its tests or scripts ran, what passed there, or how the companion builds
+or consumes open files. That evidence belongs in the companion PR's own test plan.
+
+Open files follow the same rule. A comment or README documents the open code and its open
+callers. It does not name a companion consumer ("testbench layouts that include this file",
+"the companion builds these images from …"), because the only reader who can act on that
+statement has the companion's own documentation.
 
 ## Linting and Formatting
 

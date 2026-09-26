@@ -161,10 +161,9 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     | 64'(DtpOchVer);  // och_ver
   endfunction
 
-  static function bit [63:0] expected_jtag2axi_caps(bit bus_type, int unsigned addr_width,
-                                                    int unsigned data_width_bits,
-                                                    int unsigned rd_pl_depth = DtpJ2aPipelineDepth,
-                                                    int unsigned wr_pl_depth = DtpJ2aPipelineDepth);
+  static function bit [63:0] expected_jtag2axi_caps(
+      bit bus_type, int unsigned addr_width, int unsigned data_width_bits, int unsigned rd_pl_depth,
+      int unsigned wr_pl_depth);
     int unsigned size_enc = $clog2(data_width_bits / 8);
     return (64'(rd_pl_depth) << 12)
              | (64'(wr_pl_depth) << 10)
@@ -228,7 +227,8 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     bit bus_type = t.bus_type;
     int unsigned addr_width = t.addr_width;
     int unsigned data_width_bits = t.data_width;
-    bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits);
+    bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits,
+                                                 t.rd_pl_depth, t.wr_pl_depth);
     bit [63:0] value, reread;
     read_caps_tdr(instr, Jtag2AxiCapsLen, value);
     `uvm_info(
@@ -240,8 +240,8 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     family_check("CHK-CAPS", {label, ".addr_width"}, 64'(value[6:1]), 64'(addr_width & 'h3F));
     family_check("CHK-CAPS", {label, ".data_size"}, 64'(value[9:7]), 64'($clog2(data_width_bits / 8
                  )));
-    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(DtpJ2aPipelineDepth));
-    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(DtpJ2aPipelineDepth));
+    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(t.wr_pl_depth));
+    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(t.rd_pl_depth));
     check_caps_multi_read(instr, Jtag2AxiCapsLen, value, label);
     check_caps_read_only_patterns(instr, Jtag2AxiCapsLen, value, label);
     // Instruction switches must not disturb the stored capability value.

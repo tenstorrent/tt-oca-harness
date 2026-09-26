@@ -200,14 +200,17 @@ boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the
 inbound pins
 |SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
 |SMC scratch / mailbox |Backdoor read plus cocotb polling
-|Cross-trigger / iJTAG |product-pin stimulus from the sequences; no dedicated VIP
+|Cross-trigger / iJTAG |product-pin stimulus from the sequences; every CT_Req_out pad
+sits on an `ocah_open_drain_bus` shared wire (private or the group the pads in
+`tb_xtrig_ctp_wire_group` share), resting at the board pull of the port's INVERT sense; no
+dedicated VIP otherwise
 |SMC and SEP eFuse / OTP |`efuse_interface_shim` + `efuse_bank_model`, instantiated by
 `hw/top/smc_ip_integration.sv` and `hw/top/sep_ip_integration.sv` inside the DUT
 compile (a model in the product composition, not a testbench component). Shadow
 registers are preloaded under `+skip_fuse_sense`
 |BSR / STAP / DFD host scan chains |testbench loopback of `scan_out` to `scan_in`
 (`tb/tb_wrapper_top.sv`, all five host chains and the I/O and extra STAP TDO-to-TDI returns)
-|CDC synchronisers on Verilator |`prim_sync2` / `prim_sync3` stand-ins from
+|CDC synchronisers on Verilator |`prim_sync3` stand-in from
 `hw/sys/smc/dv/tb/verilator_stubs/`, listed in `[build].stubs`
 |===
 

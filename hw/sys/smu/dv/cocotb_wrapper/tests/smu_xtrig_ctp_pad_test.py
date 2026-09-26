@@ -9,8 +9,11 @@ the five pad-ring controls that table defines no driver for, swaps one lane to
 point-to-point and checks the controls move on that lane alone, runs the
 four-phase handshake in both directions, and routes a trigger through the
 cross trigger matrix to a second port and to an internal cross-trigger lane at
-xtrig_ctm_src_req_o. Addresses, counts and bitmasks come from the generated
-cross-trigger headers.
+xtrig_ctm_src_req_o. A wire-OR port's CT_Req_out pad sits on an
+ocah_open_drain_bus shared wire, private or the group pads in
+tb_xtrig_ctp_wire_group share, and its ct_dst is checked cycle-exactly against
+a chiplet pull of that wire. Addresses, counts and bitmasks come from the
+generated cross-trigger headers.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_xtrig_ctp_pad_test --target compile_smu_chiplet

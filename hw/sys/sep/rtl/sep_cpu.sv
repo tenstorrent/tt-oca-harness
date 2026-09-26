@@ -37,36 +37,36 @@ module sep_cpu (
   input logic test_en_i,  // DFT test-enable
 
   // DMI port for uncore
-  input  logic        dmi_core_enable,
-  input  logic        dmi_uncore_enable,
-  output logic        dmi_uncore_en,
-  output logic        dmi_uncore_wr_en,
-  output logic [6:0]  dmi_uncore_addr,
-  output logic [31:0] dmi_uncore_wdata,
-  input  logic [31:0] dmi_uncore_rdata,
-  output logic        dmi_active,
+  input  logic        dmi_core_enable_i,
+  input  logic        dmi_uncore_enable_i,
+  output logic        dmi_uncore_en_o,
+  output logic        dmi_uncore_wr_en_o,
+  output logic [6:0]  dmi_uncore_addr_o,
+  output logic [31:0] dmi_uncore_wdata_o,
+  input  logic [31:0] dmi_uncore_rdata_i,
+  output logic        dmi_active_o,
 
   // These values should be tied to constants in the top level or sourced from a CSR
-  input logic [31:1] nmi_vec,  // PC to jump to @ NMI
-  input logic [31:1] jtag_id,
+  input logic [31:1] nmi_vec_i,  // PC to jump to @ NMI
+  input logic [31:1] jtag_id_i,
 
   // IRQs
-  input logic                       nmi_int,
-  input logic                       timer_int,
-  input logic                       soft_int,
-  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
+  input logic                       nmi_int_i,
+  input logic                       timer_int_i,
+  input logic                       soft_int_i,
+  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req_i,
 
-  output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
+  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,
 
-  output logic iccm_ecc_single_error,
-  output logic iccm_ecc_double_error,
-  output logic dccm_ecc_single_error,
-  output logic dccm_ecc_double_error,
+  output logic iccm_ecc_single_error_o,
+  output logic iccm_ecc_double_error_o,
+  output logic dccm_ecc_single_error_o,
+  output logic dccm_ecc_double_error_o,
 
-  output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
-  output logic dec_tlu_perfcnt1,
-  output logic dec_tlu_perfcnt2,
-  output logic dec_tlu_perfcnt3,
+  output logic dec_tlu_perfcnt0_o, // toggles when slot0 perf counter 0 has an event inc
+  output logic dec_tlu_perfcnt1_o,
+  output logic dec_tlu_perfcnt2_o,
+  output logic dec_tlu_perfcnt3_o,
 
   // Unconditional: the VeeR wrapper's lockstep ports only exist under
   // RV_LOCKSTEP_ENABLE, but this module's do not, so the hierarchy above keeps one
@@ -138,8 +138,8 @@ module sep_cpu (
   // dbg_rstb_i deasserts well before rst_ni, so the value is stable when sampled.
   logic mpc_reset_run_req_sync;
 
-  prim_sync2r #(
-    .WIDTH(1)
+  prim_flop_2sync #(
+    .Width(1)
   ) u_mpc_reset_run_req_sync (
     .clk_i  (clk_i),
     .d_i    (mpc_reset_run_req_i),
@@ -180,50 +180,50 @@ module sep_cpu (
     .mbist_mode (1'b0),    // This is unused in the EL2, tie down
 
     // DMI port for uncore
-    .dmi_core_enable   (dmi_core_enable),
-    .dmi_uncore_enable (dmi_uncore_enable),
-    .dmi_uncore_en     (dmi_uncore_en),
-    .dmi_uncore_wr_en  (dmi_uncore_wr_en),
-    .dmi_uncore_addr   (dmi_uncore_addr),
-    .dmi_uncore_wdata  (dmi_uncore_wdata),
-    .dmi_uncore_rdata  (dmi_uncore_rdata),
-    .dmi_active        (dmi_active),
+    .dmi_core_enable   (dmi_core_enable_i),
+    .dmi_uncore_enable (dmi_uncore_enable_i),
+    .dmi_uncore_en     (dmi_uncore_en_o),
+    .dmi_uncore_wr_en  (dmi_uncore_wr_en_o),
+    .dmi_uncore_addr   (dmi_uncore_addr_o),
+    .dmi_uncore_wdata  (dmi_uncore_wdata_o),
+    .dmi_uncore_rdata  (dmi_uncore_rdata_i),
+    .dmi_active        (dmi_active_o),
 
     // jtag_id and nmi_vec should be tied to constant in the top level or sourced from a CSR
-    .nmi_vec (nmi_vec),
-    .jtag_id (jtag_id),
+    .nmi_vec (nmi_vec_i),
+    .jtag_id (jtag_id_i),
     .core_id ('0),      // drives register that controls mhartid, a single core el2 can safely tie this to 0
 
     // Non-maskable interrupt, should be asserted for at least 2 clock cycles
     //(Documentation section 3.16, https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/memory-map.html#non-maskable-interrupt-nmi-signal-and-vector)
-    .nmi_int       (nmi_int),
-    .timer_int     (timer_int),
-    .soft_int      (soft_int),
-    .extintsrc_req (extintsrc_req),
+    .nmi_int       (nmi_int_i),
+    .timer_int     (timer_int_i),
+    .soft_int      (soft_int_i),
+    .extintsrc_req (extintsrc_req_i),
 
     // Trace interface
-    .trace_rv_i_insn_ip      (sep_cpu_trace.trace_rv_i_insn_ip),
-    .trace_rv_i_address_ip   (sep_cpu_trace.trace_rv_i_address_ip),
-    .trace_rv_i_valid_ip     (sep_cpu_trace.trace_rv_i_valid_ip),
-    .trace_rv_i_exception_ip (sep_cpu_trace.trace_rv_i_exception_ip),
-    .trace_rv_i_ecause_ip    (sep_cpu_trace.trace_rv_i_ecause_ip),
-    .trace_rv_i_interrupt_ip (sep_cpu_trace.trace_rv_i_interrupt_ip),
-    .trace_rv_i_tval_ip      (sep_cpu_trace.trace_rv_i_tval_ip),
+    .trace_rv_i_insn_ip      (sep_cpu_trace_o.trace_rv_i_insn_ip),
+    .trace_rv_i_address_ip   (sep_cpu_trace_o.trace_rv_i_address_ip),
+    .trace_rv_i_valid_ip     (sep_cpu_trace_o.trace_rv_i_valid_ip),
+    .trace_rv_i_exception_ip (sep_cpu_trace_o.trace_rv_i_exception_ip),
+    .trace_rv_i_ecause_ip    (sep_cpu_trace_o.trace_rv_i_ecause_ip),
+    .trace_rv_i_interrupt_ip (sep_cpu_trace_o.trace_rv_i_interrupt_ip),
+    .trace_rv_i_tval_ip      (sep_cpu_trace_o.trace_rv_i_tval_ip),
 
     .lsu_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .ifu_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .dbg_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB master interface
     .dma_bus_clk_en (1'b1), // Clock ratio b/w cpu core clk & AHB slave interface
 
-    .iccm_ecc_single_error (iccm_ecc_single_error),
-    .iccm_ecc_double_error (iccm_ecc_double_error),
-    .dccm_ecc_single_error (dccm_ecc_single_error),
-    .dccm_ecc_double_error (dccm_ecc_double_error),
+    .iccm_ecc_single_error (iccm_ecc_single_error_o),
+    .iccm_ecc_double_error (iccm_ecc_double_error_o),
+    .dccm_ecc_single_error (dccm_ecc_single_error_o),
+    .dccm_ecc_double_error (dccm_ecc_double_error_o),
 
-    .dec_tlu_perfcnt0 (dec_tlu_perfcnt0), // toggles when slot0 perf counter 0 has an event inc
-    .dec_tlu_perfcnt1 (dec_tlu_perfcnt1),
-    .dec_tlu_perfcnt2 (dec_tlu_perfcnt2),
-    .dec_tlu_perfcnt3 (dec_tlu_perfcnt3),
+    .dec_tlu_perfcnt0 (dec_tlu_perfcnt0_o), // toggles when slot0 perf counter 0 has an event inc
+    .dec_tlu_perfcnt1 (dec_tlu_perfcnt1_o),
+    .dec_tlu_perfcnt2 (dec_tlu_perfcnt2_o),
+    .dec_tlu_perfcnt3 (dec_tlu_perfcnt3_o),
 
 `ifdef RV_LOCKSTEP_ENABLE
     .disable_corruption_detection_i (lockstep_ctrl_i.disable_corruption_detection),

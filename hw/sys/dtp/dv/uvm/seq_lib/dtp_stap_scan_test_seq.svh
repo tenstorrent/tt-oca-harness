@@ -49,14 +49,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   endfunction
 
   protected function sep_lifecycle_ctrl_pkg::dbg_disable_t stap_gate_mask(int unsigned stap);
-    sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0;
-    case (stap)
-      int'(ST_IO):  d.stap_io    = 1'b1;
-      int'(ST_SMC): d.stap_smc   = 1'b1;
-      int'(ST_SEP): d.stap_sep   = 1'b1;
-      default:      d.stap_extra = 1'b1;
-    endcase
-    return d;
+    return dtp_dbg_disable_only(dtp_stap_dbg_path(stap));
   endfunction
 
   // Open the STAP's SIB and write its selected 3DCR payload through two
@@ -265,7 +258,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     active.push_back("jtag_stap_host_shift_en");
 
     write_ptap_3dcr(1'b1, 1'b1, "ext.gate_enable");
-    gate.stap_host = 1'b1;
+    dtp_dbg_path_set(gate, DTP_DBG_PATH_STAP_HOST);
     set_dbg_disable_full(gate);
     // Seeded per-pass gated attempt: any value with the select bit set
     // is an equally valid attempt that must be ignored while gated.
