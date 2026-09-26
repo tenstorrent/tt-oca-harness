@@ -3,7 +3,7 @@
 """Host-side Key Manager (KM) mailbox command driver.
 
 Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/ip/key_manager/dv/fw`, `rom_main`) implements, so an OSS cocotb test
+(`hw/ip/key_manager/approm/prod`, `rom_main`) implements, so an OSS cocotb test
 can drive the KM the same way the reference suite `sep_subsystem_km_consume_base_seq` does:
 send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
 
@@ -171,7 +171,7 @@ def _km_csr_version_reset() -> int:
 
 def _km_rom_version() -> int:
     """ROM version word from the firmware header, not a copied literal."""
-    hdr = (_hw_root() / "ip/key_manager/dv/fw/include/rom_defs.h").read_text()
+    hdr = (_hw_root() / "ip/key_manager/approm/prod/include/rom_defs.h").read_text()
     parts: dict[str, int] = {}
     for name in ("MAJOR", "MINOR", "PATCH"):
         match = re.search(rf"#define ROM_KM_ROM_VERSION_{name}\s+(\d+)", hdr)

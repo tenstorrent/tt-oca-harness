@@ -456,14 +456,13 @@ outputs = [
 ]
 
 [c_build.km_rom_main]
-# Production Key Manager ROM (hw/ip/key_manager/dv/fw production/rom_main).
+# Key Manager application ROM (hw/ip/key_manager/approm/prod, entry src/rom_main.c).
 # Not [c_build.default]: that template builds SEP EL2 TCM images via
 # hw/sys/sep/dv/fw. rom_main is rv32emc KM firmware, and it must be built with
-# ROM_KM_BOOT_WIPE_DEFAULT=0 / ROM_KM_UNREC_WIPE_DEFAULT=0 -- a default KM build
-# wipes SRAM at boot and halts before RESP_KM_READY. Those defines live in
-# cocotb/tests/km_fw/Makefile (stamp-guarded so a stale rom_boot.o cannot
-# silently re-enable the wipe), so argv drives that target rather than fw.mk
-# directly.
+# KM_BOOT_WIPE=0 / KM_UNREC_WIPE=0 -- a default KM build wipes SRAM at boot and
+# halts before RESP_KM_READY. cocotb/tests/km_fw/Makefile passes those knobs to
+# the ROM Makefile in a BUILD_DIR of its own, so argv drives that target rather
+# than the ROM Makefile directly.
 #
 # Tests select it with `firmware = { name = "rom_main", mode = "km_rom_main" }`.
 # Both keys are required: mode selects this block, and the declared output is
@@ -472,12 +471,12 @@ outputs = [
 # c_compile stages the basename into the sim CWD.
 #
 # The gitignored parhex is the built artifact. Do not commit it. The C source
-# is tracked under hw/ip/key_manager/dv/fw.
+# is tracked under hw/ip/key_manager/approm/prod.
 #
 # Toolchain: $RISCV_TOOLCHAIN when that gcc has picolibc, else the OCAH
 # container via scripts/docker-run.sh run-here. No site, $HOME, or PATH probe.
-# The sandbox make sets PYTHON=python3: add_rom_parity.py is stdlib, and the
-# toolchain image has no uv. The host path keeps the locked uv default.
+# add_rom_parity.py is stdlib, and the toolchain image has no uv, so both paths
+# run it with python3.
 # argv goes through str.format() and rejects every placeholder except
 # {fw_target}, so use "$VAR" and $(...), never shell ${...}.
 cwd = "."
