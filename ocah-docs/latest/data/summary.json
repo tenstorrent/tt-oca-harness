@@ -41,7 +41,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-09-26T15:11:39+00:00",
+  "generated_at": "2026-09-26T16:10:17+00:00",
   "results": [
     {
       "coverage": {
@@ -81,11 +81,11 @@
       "coverage": {
         "effective_metrics": {
           "branch": 81.96,
-          "condition": 62.84,
+          "condition": 62.87,
           "fsm_state": 63.96,
           "functional": 98.57,
-          "line": 90.22,
-          "toggle": 62.65
+          "line": 90.25,
+          "toggle": 62.61
         }
       },
       "flow": "sep",
