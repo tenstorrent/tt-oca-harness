@@ -211,9 +211,7 @@ knob, or any compile flag, rebuilds every object in that `BUILD_DIR`.
 run-here`) unless `RISCV_TOOLCHAIN` points at a directory of
 `riscv64-unknown-elf-*` tools whose compiler has `picolibc.specs`. A caller that
 already runs inside the container uses `make build`, which compiles with the
-toolchain in reach. `toolchain.mk` holds the compiler, assembler and linker flags;
-testbenches that link their own images against these drivers include it so they
-compile with the same flags.
+toolchain in reach. `toolchain.mk` holds the compiler, assembler and linker flags.
 
 ## Code size optimization
 

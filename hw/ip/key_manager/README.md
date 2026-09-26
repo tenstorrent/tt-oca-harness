@@ -15,5 +15,4 @@ Authoritative description and register maps: `hw/ip/key_manager/doc/` (published
 ## Verification
 
 The SEP subsystem testbench (`hw/sys/sep/dv/`) boots the application ROM and
-exercises the Key Manager through the SEP mailbox. The block-level
-firmware-driven testbench lives in the proprietary `nonfree` companion.
+exercises the Key Manager through the SEP mailbox.
