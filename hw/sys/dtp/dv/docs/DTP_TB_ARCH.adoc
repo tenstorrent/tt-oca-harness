@@ -197,22 +197,26 @@ through `OcahAxiConfig.bus()` at each bus's real geometry.
 |DUT Interface |`tb_top` Handling
 |JTAG TAP |`u_jtag_if` (`ocah_jtag_if`): the shared JTAG master drives tck/tms/trst_n/tdi, the DUT drives tdo/tdo_oen
 |SMC fabric AXI4 |`+axi_smc_dbg_*+` structs flattened onto `u_smc_axi_slave_if` (responder) and mirrored onto `u_m_axi_if` (monitor); real geometry ID 2 / ADDR 56 / DATA 64 / USER 12 in the VIP configs
-|Debug disables |One named `dtp_tb_if.dbg_disable_<field>` member per `dbg_disable_i` path (init 1 = fail-closed), bound by field name into the typed `sep_lifecycle_ctrl_pkg::dbg_disable_t` that `tb_top` forwards to `dbg_disable_i`; cocotb deposits the members by name and SV-UVM writes them through `dtp_tb_if.drive_dbg_disable`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly
+|Debug disables |One named `dtp_tb_if.dbg_disable_<field>` member per `dbg_disable_i` path (init 1 = fail-closed), bound by field name into the typed `sep_lifecycle_ctrl_pkg::dbg_disable_t` that `tb_top` forwards to `dbg_disable_i`; cocotb deposits the members by name and SV-UVM writes them through `dtp_tb_if.drive_dbg_disable`; base bring-up drives the all-clear/full-debug startup vector and tests assert disables explicitly. The path-to-field binding is the "DTP debug-disable paths" table of `hw/sys/dtp/doc/jtag.adoc`; SV-UVM holds it once, as `dtp_dbg_path_e` with `dtp_dbg_path_set` / `dtp_dbg_path_disabled` in `uvm/env/dtp_types.svh`, and every driven vector and every gating prediction starts from a path
 |JTAG2AXI bridge state |`dtp_tb_if.<target>_fsm_idle`, `<target>_fsm_write_path`, `<target>_fsm_read_path`, `<target>_op_pending` and the sticky `<target>_cdc_clear_seen` per bridge, driven by `tb_top` from the bridges' TCK-domain state machines (decoded by state name) and pending registers and the `axi_cdc_clearable` instance's `src_clear_pending_o` through the hierarchical references the coverage instance uses; `cdc_clear_seen_clear` clears the sticky flags. cocotb reads them through `DtpTbIf.bridge_fsm_state`, `bridge_op_pending` and `cdc_clear_seen`; SV-UVM through the JTAG2AXI base sequence's functions of the same names
 |BSR |Looped back; the chain controls mirrored onto `dtp_scan_if`
 |iJTAG SIB host chains |One `prim_jtag_scan_reg` instrument stub per SIB (4, 5, 6 bits behind secure DFT, non-secure DFT, DFD) that captures its own update register, so open-SIB subsets have distinct chain lengths and a written value reads back on the next scan; the chain controls mirrored onto `dtp_scan_if`
 |STAP host ports |Loopback (`tdi <- tdo`) by default; `dtp_scan_if.stap_<x>_ds_en` splices the downstream `u_stap_<x>_ds_if` TAP behind the port for the STAP-selection scenarios; the forwarded TAP pins mirrored onto `dtp_scan_if`
-|SMC/SEP OTP AXI-Lite |Flattened onto `u_smc_otp_slave_if` / `u_sep_otp_slave_if` (responders) and `u_smc_otp_axil_if` / `u_sep_otp_axil_if` (monitors); real geometry 32/32
+|SMC/SEP OTP AXI-Lite |Flattened onto `u_smc_otp_slave_if` / `u_sep_otp_slave_if` (responders) and `u_smc_otp_axil_if` / `u_sep_otp_axil_if` (monitors); geometry from the bench configuration
 |DEBUG_CONTROL and IC_RESET |Boot-stall, clock-stop, and IC_RESET struct outputs flattened onto `dtp_tb_if`; `dtp_tb_if.xtrig_clk_stop_req` drives the CLA clock-stop requests
 |XTRIG CSR/CTP/CTM |`u_xtrig_master_if` (initiator) and `u_xtrig_axil_if` (monitor) for the CSR port (the generated CSR blocks elaborate under Verilator); CTM/CTP pins on `dtp_xtrig_if`. Every CT_Req_out pad sits on an open-drain wire (`ocah_open_drain_bus`, `hw/common/dv/shims/analog/`): a private wire with one bench-side chiplet driver, or the group wire the pads in `xtrig_ctp_wire_group` share; each wire rests at the pull of the board built for its port's INVERT sense, and the resolved wires and the ports' receive pulses are mirrored onto `dtp_xtrig_if`
 |Clocks/resets |`dtp_tb_if.clk`, `sys_rst_n`, `por_rst_n`: cocotb deposits them, the UVM harness generates the clock and sequences drive the resets; the JTAG master owns TCK/TRST sequencing
 |===
 
-The three JTAG2AXI bridge geometries (bus type, address width, data width) live
-in one table per realization, `JTAG2AXI_TARGETS` in `cocotb/env/dtp_types.py`
-and the `dtp_j2a_target_*` functions in `uvm/env/dtp_types.svh`, holding the
-values each bridge publishes in its `*_JTAG2AXI_CAPS` TDR; every other TDR field
-width derives from those three values by the `*_AXI_SINGLE_OP` and
+The three JTAG2AXI bridge geometries (bus type, address width, data width, and
+the read and write pipeline depths) come from the bench configuration table,
+which also elaborates the DUT: `tb_top` passes the bridge AXI types it declares
+and the six pipeline-depth parameters to `dtp`. The SMC fabric bridge's widths
+are those of SMC `jtag_axi_in_req_i` in the SMC port table; the OTP widths and
+the depths are the bench's choice, with a different read and write depth on
+every bridge. `JTAG2AXI_TARGETS` in `cocotb/env/dtp_types.py` and the
+`dtp_j2a_target_*` functions in `uvm/env/dtp_types.svh` read that table; every
+other TDR field width derives from the widths by the `*_AXI_SINGLE_OP` and
 `*_AXI_SERIES_CTRL` tables of the PTAP document. Every JTAG2AXI scenario opens
 each pass with the geometry gate in the JTAG2AXI base sequence's `pre_body`: it
 reads the three `*_JTAG2AXI_CAPS` TDRs and records `CHK-J2A-GEOMETRY` against
@@ -456,7 +460,7 @@ code coverage come from the commercial simulators. See `DTP_FCOV.adoc`.
 
 === Canonical RTL Selection
 
-Bender supplies the HW-owned `prim_sync2` and generated
+Bender supplies the OpenTitan `prim_flop_2sync` and generated
 `cross_trigger_port_reg` and `cross_trigger_matrix_reg` implementations to the
 DTP simulator flows. Verilator and VCS therefore compile the same synchronizer
 and CSR RTL selected by the subsystem source graph.

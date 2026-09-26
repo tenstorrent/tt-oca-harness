@@ -61,7 +61,6 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   localparam bit [63:0] XtrigCtpBase = DtpXtrigCtpBase;
   localparam int unsigned XtrigCtpStride = DtpXtrigCtpStride;
   localparam bit [63:0] XtrigUnmappedBase = DtpXtrigUnmappedBase;
-  localparam bit [31:0] XtrigDecerrData = DtpXtrigDecerrData;
 
   localparam int unsigned CtpConfigOffset = DtpCtpConfigOffset;
   localparam int unsigned CtpStatusOffset = DtpCtpStatusOffset;
@@ -811,6 +810,21 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     check_evidence(ChkSignal, {name, ".mask"}, 64'(observed), 64'(expected & mask), label);
   endtask
 
+  // Every bit of `mask` on `name` has fired: seen by the running activity
+  // window, or high now. A selected output whose pulse ended while its
+  // trigger was still held counts as fired.
+  task wait_window_fired(string name, bit [31:0] mask, int unsigned cycles = 60, string label = "");
+    bit [31:0] observed = '0;
+    for (int unsigned c = 0; c < cycles; c++) begin
+      observed = xtrig_pin(name);
+      if (window_running && window_activity.exists(name)) observed |= window_activity[name];
+      observed &= mask;
+      if (observed == mask) break;
+      wait_sys_cycles(1);
+    end
+    check_evidence(ChkSignal, {name, ".mask"}, 64'(observed), 64'(mask), label);
+  endtask
+
   // Quiet window: the request/acknowledge observables must show zero
   // activity for the window (CHK-XTRIG-QUIET).
   task check_quiet(string label, int unsigned cycles = 4);
@@ -1036,10 +1050,10 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
       xtrig_vif.xtrig_ctp_ack_in_din <= XtrigNumCtp'(all_idle);
       wait_signal_mask("xtrig_ctp_req_out_dout", ctp_outputs, idle, 60, {label, ".ctp_idle"});
     end else if (ctp_outputs != 0) begin
-      wait_signal_mask("xtrig_ctp_req_out_dout_en", ctp_outputs, ctp_outputs, 60, {label, ".ctp"});
+      wait_window_fired("xtrig_ctp_req_out_dout_en", ctp_outputs, 60, {label, ".ctp"});
     end
     if (int_outputs != 0)
-      wait_signal_mask("xtrig_ctm_src_req", int_outputs, int_outputs, 60, {label, ".internal"});
+      wait_window_fired("xtrig_ctm_src_req", int_outputs, 60, {label, ".internal"});
   endtask
 
   // Judge one route: selected outputs fire, the window matches the model,
@@ -1083,10 +1097,12 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // vector of this pulse; +DTP_XTRIG_CHECKER_NEGATIVE corrupts the model so
   // the comparison against the DUT must fail.
   task run_route_window(bit [31:0] input_mask, bit [31:0] intent_mask, int unsigned mode,
-                        string label, int unsigned drain_cycles = IsolationTailCycles);
+                        string label, int unsigned drain_cycles = IsolationTailCycles,
+                        int unsigned pulse_cycles = 2, int unsigned lead_cycles = 0);
     bit [31:0] predicted = ctm_model.route(input_mask);
     open_route_window();
-    drive_input_mask(input_mask, mode);
+    wait_sys_cycles(lead_cycles);
+    drive_input_mask(input_mask, mode, pulse_cycles);
     check_output_mask(intent_mask, mode, predicted, label, drain_cycles, input_mask);
   endtask
 
@@ -1105,10 +1121,11 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // Program every output of `output_mask` with `input_mask`, pulse the
   // inputs together, judge.
   task verify_route_mask(bit [31:0] input_mask, bit [31:0] output_mask, int unsigned mode,
-                         string label);
+                         string label, int unsigned pulse_cycles = 2, int unsigned lead_cycles = 0);
     configure_ctp_modes_for_route_mask(input_mask, output_mask, mode);
     program_routes(input_mask, output_mask, label);
-    run_route_window(input_mask, output_mask, mode, label);
+    run_route_window(input_mask, output_mask, mode, label, IsolationTailCycles, pulse_cycles,
+                     lead_cycles);
   endtask
 
   // Route one internal CT to a wire-OR CTP: window, model, isolation, and

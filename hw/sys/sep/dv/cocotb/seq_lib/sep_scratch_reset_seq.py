@@ -25,9 +25,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # SEP System-block scratch register addresses (sep_system_csr.sv aperture).
 SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")  # cold domain: .arst_n(rst_ni)
-SCRATCH_WARM_0 = sym(
-    "SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"
-)  # warm domain: .arst_n(rst_ni && rst_warm_ni)
+SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")  # warm domain: .arst_n(rst_warm_ni)
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
 

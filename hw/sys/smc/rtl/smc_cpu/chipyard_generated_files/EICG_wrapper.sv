@@ -3,7 +3,7 @@
 
 // Copyright Tenstorrent Inc.
 // Clock gating wrapper for Chipyard-generated designs
-// This module wraps the prim_clkgater to match the interface expected by Chipyard
+// This module wraps prim_clock_gating to match the interface expected by Chipyard
 
 module EICG_wrapper (
     input  logic in,       // Clock input
@@ -12,10 +12,10 @@ module EICG_wrapper (
     output logic out       // Gated clock output
 );
 
-    prim_clkgater u_clkgater (
+    prim_clock_gating u_clkgater (
         .clk_i  (in),
         .en_i   (en),
-        .te_i   (test_en),
+        .test_en_i (test_en),
         .clk_o  (out)
     );
 

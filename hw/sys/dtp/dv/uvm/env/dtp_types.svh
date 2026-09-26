@@ -134,9 +134,6 @@ function automatic bit dtp_tap_state_is_shift(logic [15:0] state, bit is_ir);
   return state === (is_ir ? SHIFT_IR : SHIFT_DR);
 endfunction
 
-// Device identification of the public DTP elaboration: the jtag_ptap IDCODE
-// parameters default to manufacturer 0, part 0, revision 0, leaving only the
-// IEEE 1149.1 marker bit.
 // The bench configuration tb_top elaborates the DUT from (dtp_dv_cfg_pkg;
 // dtp_dv_cfg.py parity): the identification IDCODE publishes, and the STAP
 // count, IC_RESET slice widths, and version JTAG_CAPS publishes ("JTAG
@@ -148,6 +145,15 @@ localparam int unsigned DtpNumSmcIcReset = dtp_dv_cfg_pkg::NumSmcIcReset;
 localparam int unsigned DtpNumSepIcReset = dtp_dv_cfg_pkg::NumSepIcReset;
 localparam int unsigned DtpNumExtIcReset = dtp_dv_cfg_pkg::NumExtIcReset;
 localparam int unsigned DtpOchVer = int'(dtp_dv_cfg_pkg::OchVer);
+
+// IC_RESET across Test-Logic-Reset ("PTAP IC_RESET fields" table, PTAP
+// document): with reset_hold 0 a TLR keeps every reset_enable and
+// reset_control bit, and reset_hold with them; with reset_hold 1 a TLR
+// restores the reset image. TRST and POR restore every bit.
+function automatic bit [63:0] dtp_ic_reset_after_tlr(bit reset_hold, bit [63:0] written,
+                                                     bit [63:0] reset_image);
+  return reset_hold ? reset_image : written;
+endfunction
 
 // Capture-IR loads the instruction shift register with 01 in its two LSBs
 // (IEEE 1149.1 7.1.1) and zeros above (jtag_inst_reg), so an IR scan that
@@ -164,6 +170,72 @@ localparam string DtpFeatureXtrigCsr = "xtrig_csr";
 localparam string DtpFeatureXtrigDecode = "xtrig_decode";
 localparam string DtpFeatureJtag2axiReq = "jtag2axi_req";
 localparam string DtpFeatureJtag2axiStatus = "jtag2axi_status";
+
+// ---------------------------------------------------------------------------
+// Debug-disable paths: the "DTP debug-disable paths" table of the DTP JTAG
+// document (hw/sys/dtp/doc/jtag.adoc, "Debug Disable") binds each debug path
+// to the active-high dbg_disable_i field that disables it. The document names
+// the fields, not their bit positions, so the bench reaches every field by
+// name through these functions: each driven disable vector and each gating
+// prediction starts from a path.
+// ---------------------------------------------------------------------------
+
+typedef enum int unsigned {
+  DTP_DBG_PATH_STAP_IO          = 0,
+  DTP_DBG_PATH_STAP_SMC         = 1,
+  DTP_DBG_PATH_STAP_SEP         = 2,
+  DTP_DBG_PATH_STAP_EXTRA       = 3,
+  DTP_DBG_PATH_STAP_HOST        = 4,
+  DTP_DBG_PATH_DFT_SECURE       = 5,
+  DTP_DBG_PATH_DFT_NONSECURE    = 6,
+  DTP_DBG_PATH_DFD              = 7,
+  DTP_DBG_PATH_SMC_JTAG2AXI     = 8,
+  DTP_DBG_PATH_SMC_OTP_JTAG2AXI = 9,
+  DTP_DBG_PATH_SEP_OTP_JTAG2AXI = 10
+} dtp_dbg_path_e;
+
+localparam int unsigned DtpDbgPathCount = 11;
+
+function automatic bit dtp_dbg_path_disabled(sep_lifecycle_ctrl_pkg::dbg_disable_t d,
+                                             dtp_dbg_path_e p);
+  case (p)
+    DTP_DBG_PATH_STAP_IO:          return d.stap_io;
+    DTP_DBG_PATH_STAP_SMC:         return d.stap_smc;
+    DTP_DBG_PATH_STAP_SEP:         return d.stap_sep;
+    DTP_DBG_PATH_STAP_EXTRA:       return d.stap_extra;
+    DTP_DBG_PATH_STAP_HOST:        return d.stap_host;
+    DTP_DBG_PATH_DFT_SECURE:       return d.dft_secure;
+    DTP_DBG_PATH_DFT_NONSECURE:    return d.dft_nonsecure;
+    DTP_DBG_PATH_DFD:              return d.dfd;
+    DTP_DBG_PATH_SMC_JTAG2AXI:     return d.smc_jtag2axi;
+    DTP_DBG_PATH_SMC_OTP_JTAG2AXI: return d.smc_otp_jtag2axi;
+    default:                       return d.sep_otp_jtag2axi;
+  endcase
+endfunction
+
+function automatic void dtp_dbg_path_set(ref sep_lifecycle_ctrl_pkg::dbg_disable_t d,
+                                         input dtp_dbg_path_e p, input bit disabled = 1'b1);
+  case (p)
+    DTP_DBG_PATH_STAP_IO:          d.stap_io = disabled;
+    DTP_DBG_PATH_STAP_SMC:         d.stap_smc = disabled;
+    DTP_DBG_PATH_STAP_SEP:         d.stap_sep = disabled;
+    DTP_DBG_PATH_STAP_EXTRA:       d.stap_extra = disabled;
+    DTP_DBG_PATH_STAP_HOST:        d.stap_host = disabled;
+    DTP_DBG_PATH_DFT_SECURE:       d.dft_secure = disabled;
+    DTP_DBG_PATH_DFT_NONSECURE:    d.dft_nonsecure = disabled;
+    DTP_DBG_PATH_DFD:              d.dfd = disabled;
+    DTP_DBG_PATH_SMC_JTAG2AXI:     d.smc_jtag2axi = disabled;
+    DTP_DBG_PATH_SMC_OTP_JTAG2AXI: d.smc_otp_jtag2axi = disabled;
+    default:                       d.sep_otp_jtag2axi = disabled;
+  endcase
+endfunction
+
+// The disable vector that disables exactly one path.
+function automatic sep_lifecycle_ctrl_pkg::dbg_disable_t dtp_dbg_disable_only(dtp_dbg_path_e p);
+  sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0;
+  dtp_dbg_path_set(d, p);
+  return d;
+endfunction
 
 // ---------------------------------------------------------------------------
 // JTAG2AXI bridges (dtp_types.py JTAG2AXI_TARGETS parity).
@@ -206,8 +278,10 @@ typedef struct {
   int unsigned                          wstrb_bits;
   int unsigned                          default_size;
   int unsigned                          beat_bytes;
-  // The one dbg_disable_t field that gates this bridge (one-hot mask).
-  sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_mask;
+  int unsigned                          rd_pl_depth;
+  int unsigned                          wr_pl_depth;
+  // The debug path whose disable gates this bridge.
+  dtp_dbg_path_e                        dbg_path;
 } dtp_j2a_target_t;
 
 // Bridge status polls before a stuck-BUSY bridge fails CHK-AXI-COMPLETION.
@@ -226,12 +300,6 @@ localparam int unsigned DtpJ2aSeriesLaunchCycles = 5;
 // the scan's start. A status capture whose scan starts inside this window
 // after a completion is not checkable.
 localparam int unsigned DtpJ2aStatusSettleTck = 8;
-// Read and write pipeline depth every bridge publishes in the rd_pl_depth and
-// wr_pl_depth fields of its *_JTAG2AXI_CAPS TDR; the CAPS scenarios compare them.
-localparam int unsigned DtpJ2aPipelineDepth = 3;
-// Series read requests one CTRL programming may enqueue: pipeline_depth + 1,
-// with the depth capped at the bridge's read pipeline depth.
-localparam int unsigned DtpJ2aMaxPipelineDepth = DtpJ2aPipelineDepth;
 // *_JTAG2AXI_CAPS[13:0] (PTAP document, "*_JTAG2AXI_CAPS" table).
 localparam int unsigned DtpJtag2AxiCapsLen = 14;
 // Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
@@ -286,9 +354,10 @@ function automatic void dtp_j2a_derive_geometry(ref dtp_j2a_target_t t);
   t.wstrb_bits   = 1 << dtp_j2a_data_size(t);
 endfunction
 
-// One function per bridge: bus type, address width, and data width are the
-// values the bridge publishes in its *_JTAG2AXI_CAPS TDR; the geometry gate
-// compares them with the DUT every pass.
+// One function per bridge: the bus type, widths, and pipeline depths come from
+// the bench configuration tb_top elaborates the DUT with (dtp_dv_cfg_pkg); the
+// geometry gate compares the bridge's *_JTAG2AXI_CAPS publication with them
+// every pass.
 function automatic dtp_j2a_target_t dtp_j2a_target_smc_otp();
   dtp_j2a_target_t t;
   t.name                          = "smc_otp";
@@ -300,11 +369,12 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_otp();
   t.series_data_no_incr_instr     = SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
   t.series_data_with_status_instr =
         SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
-  t.addr_width       = 32;
-  t.data_width       = 32;
+  t.addr_width                    = dtp_dv_cfg_pkg::OtpAxilAddrWidth;
+  t.data_width                    = dtp_dv_cfg_pkg::OtpAxilDataWidth;
+  t.rd_pl_depth                   = int'(dtp_dv_cfg_pkg::SmcOtpRdPlDepth);
+  t.wr_pl_depth                   = int'(dtp_dv_cfg_pkg::SmcOtpWrPlDepth);
   dtp_j2a_derive_geometry(t);
-  t.dbg_disable_mask = '0;
-  t.dbg_disable_mask.smc_otp_jtag2axi = 1'b1;
+  t.dbg_path = DTP_DBG_PATH_SMC_OTP_JTAG2AXI;
   return t;
 endfunction
 
@@ -319,11 +389,12 @@ function automatic dtp_j2a_target_t dtp_j2a_target_sep_otp();
   t.series_data_no_incr_instr     = SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
   t.series_data_with_status_instr =
         SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
-  t.addr_width       = 32;
-  t.data_width       = 32;
+  t.addr_width                    = dtp_dv_cfg_pkg::OtpAxilAddrWidth;
+  t.data_width                    = dtp_dv_cfg_pkg::OtpAxilDataWidth;
+  t.rd_pl_depth                   = int'(dtp_dv_cfg_pkg::SepOtpRdPlDepth);
+  t.wr_pl_depth                   = int'(dtp_dv_cfg_pkg::SepOtpWrPlDepth);
   dtp_j2a_derive_geometry(t);
-  t.dbg_disable_mask = '0;
-  t.dbg_disable_mask.sep_otp_jtag2axi = 1'b1;
+  t.dbg_path = DTP_DBG_PATH_SEP_OTP_JTAG2AXI;
   return t;
 endfunction
 
@@ -338,11 +409,12 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_axi();
   t.series_data_no_incr_instr     = SMC_AXI_SERIES_DATA_NO_INCR_INSTR;
   t.series_data_with_status_instr =
         SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
-  t.addr_width       = 56;
-  t.data_width       = 64;
+  t.addr_width                    = dtp_dv_cfg_pkg::SmcAxiAddrWidth;
+  t.data_width                    = dtp_dv_cfg_pkg::SmcAxiDataWidth;
+  t.rd_pl_depth                   = int'(dtp_dv_cfg_pkg::SmcRdPlDepth);
+  t.wr_pl_depth                   = int'(dtp_dv_cfg_pkg::SmcWrPlDepth);
   dtp_j2a_derive_geometry(t);
-  t.dbg_disable_mask = '0;
-  t.dbg_disable_mask.smc_jtag2axi = 1'b1;
+  t.dbg_path = DTP_DBG_PATH_SMC_JTAG2AXI;
   return t;
 endfunction
 
@@ -601,30 +673,41 @@ function automatic int unsigned dtp_j2a_series_data_len(dtp_j2a_scan_kind_e kind
   return 8 * dtp_j2a_size_bytes(size) + ((kind == DTP_J2A_SCAN_SERIES_DATA_WITH_STATUS) ? 1 : 0);
 endfunction
 
-// Series transfers ride the byte lanes the current address selects
-// (jtag2axi series_lane_wstrb / series_lane_wdata); SINGLE_OP keeps the
+// Series data rides the AXI byte lanes the current address and
+// AXI_SERIES_CTRL.size select, and Capture-DR returns the payload from those
+// lanes (PTAP document, "*_AXI_SERIES_DATA_INCR"). The lanes are those of an
+// AXI narrow transfer (AMBA AXI protocol specification, "Narrow transfers"):
+// a transfer of 2**size bytes at address A on an N-byte bus uses lanes
+// A mod N through the last lane of its 2**size-aligned container, whose first
+// byte sits on lane (A aligned down to 2**size) mod N. SINGLE_OP keeps the
 // host-packed strobes and data.
-function automatic int unsigned dtp_j2a_lane_offset(dtp_j2a_target_t t, bit [63:0] addr);
-  return int'(addr % t.beat_bytes);
+function automatic int unsigned dtp_j2a_container_lane(dtp_j2a_target_t t, bit [63:0] addr,
+                                                       int unsigned size);
+  int unsigned nbytes = dtp_j2a_size_bytes(size);
+  if (nbytes >= t.beat_bytes) return 0;
+  return int'((addr & ~64'(nbytes - 1)) % t.beat_bytes);
 endfunction
 
 function automatic bit [7:0] dtp_j2a_series_wstrb(dtp_j2a_target_t t, bit [63:0] addr,
                                                   int unsigned size);
   int unsigned nbytes = dtp_j2a_size_bytes(size);
-  if (nbytes >= t.beat_bytes) return 8'((1 << t.beat_bytes) - 1);
-  return 8'(((1 << nbytes) - 1) << dtp_j2a_lane_offset(t, addr));
+  int unsigned lower = int'(addr % t.beat_bytes);
+  int unsigned upper = dtp_j2a_container_lane(t, addr, size) +
+      ((nbytes >= t.beat_bytes) ? t.beat_bytes : nbytes) - 1;
+  bit [7:0] strobe = '0;
+  for (int unsigned lane = lower; lane <= upper; lane++) strobe[lane] = 1'b1;
+  return strobe;
 endfunction
 
 function automatic bit [63:0] dtp_j2a_series_wdata(dtp_j2a_target_t t, bit [63:0] data,
-                                                   bit [63:0] addr);
-  return (data << (8 * dtp_j2a_lane_offset(t, addr))) & ocah_rng::bit_mask(t.data_width);
+                                                   bit [63:0] addr, int unsigned size);
+  return (data << (8 * dtp_j2a_container_lane(t, addr, size))) & ocah_rng::bit_mask(t.data_width);
 endfunction
 
-// Read data as the bridge presents it in a series capture: the addressed
-// lanes shifted down to bit 0 (jtag2axi series_lane_rdata).
 function automatic bit [63:0] dtp_j2a_series_rdata(dtp_j2a_target_t t, bit [63:0] word,
-                                                   bit [63:0] addr);
-  return (word >> (8 * dtp_j2a_lane_offset(t, addr))) & ocah_rng::bit_mask(t.data_width);
+                                                   bit [63:0] addr, int unsigned size);
+  return (word >> (8 * dtp_j2a_container_lane(t, addr, size))) & dtp_j2a_data_mask(size) &
+      ocah_rng::bit_mask(t.data_width);
 endfunction
 
 // ---------------------------------------------------------------------------
@@ -644,6 +727,25 @@ typedef enum int unsigned {
   ST_SEP    = 2,
   ST_EXTRA0 = 3
 } dtp_stap_e;
+
+// The debug path that gates each iJTAG SIB and each STAP host port ("DTP
+// debug-disable paths" table).
+function automatic dtp_dbg_path_e dtp_ijtag_sib_dbg_path(int unsigned sib);
+  case (sib)
+    int'(IJ_DFT_SECURE): return DTP_DBG_PATH_DFT_SECURE;
+    int'(IJ_DFT):        return DTP_DBG_PATH_DFT_NONSECURE;
+    default:             return DTP_DBG_PATH_DFD;
+  endcase
+endfunction
+
+function automatic dtp_dbg_path_e dtp_stap_dbg_path(int unsigned stap);
+  case (stap)
+    int'(ST_IO):  return DTP_DBG_PATH_STAP_IO;
+    int'(ST_SMC): return DTP_DBG_PATH_STAP_SMC;
+    int'(ST_SEP): return DTP_DBG_PATH_STAP_SEP;
+    default:      return DTP_DBG_PATH_STAP_EXTRA;
+  endcase
+endfunction
 
 localparam int unsigned DtpIjtagSibCount = 3;
 // Instrument stub widths behind each SIB (tb_top), dtp_ijtag_sib_e order:
@@ -758,9 +860,6 @@ localparam int unsigned DtpXtrigCtmStride =
 localparam bit [63:0] DtpXtrigCtpBase = 64'h200;
 localparam int unsigned DtpXtrigCtpStride = 16;
 localparam bit [63:0] DtpXtrigUnmappedBase = DtpXtrigCtpBase + DtpXtrigNumCtp * DtpXtrigCtpStride;
-// Read data the crossbar's error subordinate returns alongside DECERR on an
-// unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
-localparam bit [31:0] DtpXtrigDecerrData = 32'hBADC_AB1E;
 
 localparam int unsigned DtpCtpConfigOffset  =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR);

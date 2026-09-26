@@ -22,13 +22,13 @@ module sep_sram #(
 
 
   // external memory macro function interface
-  output logic                     sram_ck,     // all operations synchronous
-  output logic                     sram_csn,    // chip enable, active low
+  output logic                     sram_ck_o,   // all operations synchronous
+  output logic                     sram_cs_no,  // chip enable, active low
   output logic                     sram_wen_o,  // write enable, active low
   output logic [DWIDTH-1:0]        sram_bwen_o, // bit-write mask
   output logic [AWIDTH-1:0]        sram_a_o,    // read/write address
-  output logic [DWIDTH+PWIDTH-1:0] sram_di_i,   // data input bus
-  input  logic [DWIDTH+PWIDTH-1:0] sram_dout_o  // data output bus
+  output logic [DWIDTH+PWIDTH-1:0] sram_di_o,   // data input bus
+  input  logic [DWIDTH+PWIDTH-1:0] sram_dout_i  // data output bus
 );
 
 endmodule

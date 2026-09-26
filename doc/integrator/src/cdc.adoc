@@ -10,22 +10,34 @@ required for the assembled SoC. This section explains what those constraints do,
 are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.
 
-The collateral ships with the harness. `integration/constraint/<block>/synth/`
-groups it by system while preserving the original filenames and relative path
-depth:
+To give the different systems a unified view of how the constraints are defined,
+these constraints are collected with symlinks under `integration/constraint`
+using a common hierarchy, described below. If the collateral inventory changes,
+run `scripts/update_integration_symlinks.py` to regenerate the index.
 
-* `constraints.sdc` -- the block's full timing intent, including the clock
-definitions and the asynchronous clock groups. It sources the two files below.
-* `<block>_cdc_max_delay.tcl` -- generated-clock periods and any hand-written
-overrides.
-* `<block>_cdc_max_delay_generated.tcl` -- the per-instance calls.
+The constraints for each system can build on some shared code, linked at
+`integration/constraint/shared`. This consists of two files:
+`async_clock_groups.tcl` (which defines clock groups with default bounds) and
+`cdc_max_delay_procs.tcl` (which defines procs for emitting CDC constraints).
 
-The shared `async_clock_groups.tcl` and `cdc_max_delay_procs.tcl` helpers are
-under `integration/constraint/shared/`. These are symlink indexes: the
-canonical per-system files remain under `hw/sys/<block>/synth/`, and the
-canonical shared helpers remain under `flows/synth/constraints/`. Regenerate
-the index with `python3 scripts/update_integration_symlinks.py` after changing the
-collateral inventory.
+The constraints for each system can use this shared code and are visible through
+symlinks at `integration/constraint/<block>/synth`. This directory contains the
+following files:
+
+* `constraints.sdc`:
+  The block's full timing intent, including the clock definitions and the
+  asynchronous clock groups. This sources `cdc_max_delay_procs.tcl` from the
+  shared code and then sources the next script.
+
+* `<block>_cdc_max_delay.tcl`:
+  This defines periods for generated clocks and any hand-written overrides and
+  then sources the next script.
+
+* `<block>_cdc_max_delay_generated.tcl`:
+  This auto-generated file defines maximum delays for instances of
+  synchronization structures in the system. It expects to be sourced by a file
+  that has already sourced `cdc_max_delay_procs.tcl` to define the procs that
+  it uses.
 
 == Why crossings are bounded rather than timed
 
@@ -34,25 +46,28 @@ against a capture edge. Its correctness still depends on delay, though: every CD
 element assumes the data reaches the receiver within a bounded time.
 
 OCAH therefore keeps the crossings visible to the tool and gives each one an
-explicit upper bound, sized from the clock that captures it. This asserts no phase
-relationship -- it states only how much delay the crossing tolerates while its CDC
-element's guarantee still holds.
+explicit upper bound, sized from the clock that captures it. This doesn't assert
+any phase relationship. It only states how much delay the crossing tolerates
+while its CDC element's guarantee still holds.
 
 == What is constrained
 
-Each enumerated CDC element in each block is given its own `set_max_delay`,
-sized from the clock that actually captures it as read from the netlist. Muxed
-domains resolve to several clocks; the tightest period wins.
+Any CDC element has at least one capture clock. For every CDC element whose type
+is listed below, the generated constraints give the element its own
+`set_max_delay`. This is sized from the capture clock, as read from the netlist.
+When the capture clock is muxed from several sources, the bound must hold for
+whichever source the mux selects at runtime; as such, the shortest period among
+the mux inputs is used.
 
-The elements covered are `prim_sync2/3/4` and their reset and set variants, the
-pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
+The elements covered are `prim_flop_2sync`, `prim_sync3/4` and their reset
+variants, the pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
 `avsbus_async_fifo`, `cdc_fifo_gray`, `axi_cdc`, `prim_reg_cdc`,
 `prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`, `dmi_wrapper` and
 Rocket `AsyncQueue`.
 
 The bound depends on what protects the crossing:
 
-[options="header"]
+[options="header", cols="3,3,5"]
 |===
 | Kind of path | Bound | Reason
 
@@ -82,13 +97,14 @@ constraint, and it is reasonable to ask why such a path needs a bound at all, or
 why a single blanket bound covering every crossing in the design would not be
 enough.
 
-Because the protocol guarantees *ordering*, not *arrival*. The read side will not
-look at an entry until the write pointer has crossed, which takes `SYNC_STAGES`
-destination cycles, where `SYNC_STAGES` is the depth of the pointer
-synchronizer. Nothing in the protocol ensures the data physically arrived within
-that window; that is a timing property, and only a `max_delay` states it. Miss it
-and the consumer samples the entry's previous contents. There is no violation
-report and no metastability event, just wrong data.
+The bound is needed because the protocol guarantees *ordering*, not *arrival*.
+The read side will not look at an entry until the write pointer has crossed,
+which takes `SYNC_STAGES` destination cycles, where `SYNC_STAGES` is the depth
+of the pointer synchronizer. Nothing in the protocol ensures the data has
+physically arrived within that window; that is a timing property, and only a
+`max_delay` states it. Miss it and the consumer samples the entry's previous
+contents. There is no violation report and no metastability event, just wrong
+data.
 
 So the requirement is `data path < SYNC_STAGES * T_dst`. It is not a fixed number
 of nanoseconds: it scales with the clock that captures the crossing, and the
@@ -104,23 +120,22 @@ destination periods within one design span an order of magnitude.
 |===
 
 That is why the bound is applied per instance rather than as one global value. A
-single blanket `max_delay` has to be chosen once for the whole design: loose
-enough to be feasible on the slowest domains, it permits several times more delay
-than a fast crossing's pointer scheme tolerates; tight enough for the fastest
-domain, it over-constrains every slow crossing and burns effort closing paths
-that were never at risk. Sizing each crossing from its own capturing clock is the
-only bound that tracks the requirement.
+single blanket `max_delay` would have to be loose enough to be feasible on the
+slowest domains. But this would permit several times more delay than a fast
+crossing's pointer scheme tolerates. To ensure that fast crossings are properly
+constrained, each crossing is sized from its own capturing clock.
 
-The blanket default that the clock-group layer applies (see <<cdc-two-layers,The
-two layers>>) is deliberately on the loose side, and for slow destination domains
-it is already sufficient -- there the explicit per-instance constraint is
-redundant. It is the fast crossings that need it.
+The blanket default applied by the clock-group layer (see <<cdc-two-layers,The
+two layers>>) deliberately applies this looser constraint. For slow domains, it
+is already sufficient and an explicit per-instance constraint is redundant. It
+is the fast crossings that need a per-instance constraint.
 
 `1.0 * T_dst` is therefore conservative by a factor of two to three. It is kept
-simple deliberately, but if wide payloads such as AXI data will not close, raising
-`cdc_data_delay` to `2.0 * T_dst` stays inside a three-stage guarantee with a
-cycle to spare. An adopter whose synchronizer cells use a different depth should
-recompute from their own `SYNC_STAGES` rather than inheriting this factor.
+simple deliberately, but if wide payloads such as AXI data will not close then
+raising `cdc_data_delay` to `2.0 * T_dst` stays inside a three-stage guarantee
+with a cycle to spare. An adopter whose synchronizer cells use a different depth
+should recompute from their own `SYNC_STAGES` rather than inheriting this
+factor.
 
 Enumeration and clock resolution run once, offline, against an elaborated design,
 and their output is an explicit per-block file of constraint calls that is reviewed
@@ -136,7 +151,7 @@ listed (see <<cdc-integration-checklist,Integration checklist>> item 2).
 [[cdc-two-layers]]
 == The two layers
 
-The per-instance bounds take effect only on top of a correctly configured
+The per-instance bounds only take effect on top of a correctly configured
 clock-group layer. That layer decides whether the tool considers inter-domain
 paths at all, so it must be established first; the per-instance exceptions then
 refine it.
@@ -190,15 +205,17 @@ two deliberate carve-outs:
 |===
 
 SMU is a flat build containing the other three, so its instance paths carry
-`u_smc/`, `gen_sep.u_sep/` and `u_dtp/` prefixes. It is not the sum of the parts:
-DTP contributes 375 elements inside SMU against 250 standalone, because it
-instantiates three JTAG2AXI bridges in the SMU configuration and two on its own.
+`u_smc/`, `gen_sep.u_sep/` and `u_dtp/` prefixes. The SMU row has more CDC
+elements than the sum of the other three rows because the SMU instantiates a
+larger DTP. The DTP contains three JTAG2AXI bridges in the SMU configuration and
+only two when it is on its own. These configurations give the DTP 375 and 250
+elements, respectively.
 
 [[cdc-integration-checklist]]
 == Integration checklist
 
 Five things must change, three should be checked. None of them requires editing
-per-instance data by hand; every change is either a one-line policy edit or a
+per-instance data by hand. Every change is either a one-line policy edit or a
 regeneration.
 
 === 1. Repoint the constraints at the pin of the cell inside the prim wrapper
@@ -206,8 +223,8 @@ regeneration.
 This is the most important change.
 
 As shipped, the procs target the prim wrapper's own port, `prim_sync3/d_i`. That
-port exists only as long as the wrapper survives as a hierarchical boundary, and a
-prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
+port exists only as long as the wrapper survives as a hierarchical boundary, and
+a prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
 dissolving its ports.
 
 [WARNING]
@@ -401,7 +418,7 @@ the constraints did not load, not that the design has no crossings.
 == Scope and limitations
 
 The 20 ns default is loose by design. Against a 1 ns clock it permits twenty clock
-periods of delay into a synchronizer input. It is a safety net that keeps
+periods of delay into a synchronizer input. This is a safety net that keeps
 `-allow_paths` usable, not a real constraint; any crossing that matters belongs in
 layer 2.
 
