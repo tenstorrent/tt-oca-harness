@@ -13,6 +13,14 @@ run_modes = ["smoke"]
 args = ["+smc_uart_cross_3to0"]
 
 [[tests]]
+name = "smc_uart_window_landing_test"
+module = "smc_uart_window_landing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_uart_thr_paths_test"
 module = "smc_uart_thr_paths_test"
 seed = 1

@@ -632,8 +632,9 @@ regressions it is not wall-clock elapsed time.
 schema. The initial failing count is calculated as `total - passing`.
 
 |Test detail
-|Regression `jobs` are converted to `tests_detail`; retries can therefore
-produce several attempt records for one final test.
+|Regression `jobs` are converted to `tests_detail`, one entry per
+`(test, seed)` leaf carrying its final attempt. `collect --all-attempts`
+keeps one entry per attempt instead.
 
 |Coverage
 |The dashboard keeps the coverage fields it reads: status, total and
@@ -934,8 +935,12 @@ recorded identity rather than the selected download path.
 native run's Git metadata).
 
 Each `tests_detail` entry carries: `name`, `category`, `seed`, `attempt`,
-`stage`, `status` (may be `SKIP`), `duration_sec`, and `reason`. Retried
-leaves appear once per `(name, seed, attempt)` combination.
+`stage`, `status` (may be `SKIP`), `duration_sec`, and `reason`. A retried
+leaf appears once, as its highest `attempt`, which decides its status; the
+retry itself stays visible in `regression.failed_tests` and
+`regression.flaky_tests` through `attempt_count`. With `collect
+--all-attempts`, a retried leaf appears once per `(name, seed, attempt)`
+combination.
 
 === Aggregate summary: `summary.json` (schema `"0.2"`)
 
@@ -1079,6 +1084,12 @@ collected result records a different framework.
 |`--output PATH`
 |Default: `<repo>/reports/latest/<dut>.result.json`
 |Normalized dashboard result destination.
+
+|`--all-attempts`
+|Default: final attempt only
+|Keep every attempt of a retried leaf in `tests_detail`. Every consumer of
+the record, the per-category counts and the test-history page included,
+then counts each attempt as a separate entry.
 |===
 
 === `report`

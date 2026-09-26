@@ -18,14 +18,15 @@ import re
 import sys
 from pathlib import Path
 
+from sv_comment_text import DECL_START, clause, declared_name, header_prose, rtl_blocks, rtl_sources
+
 _BANNED = re.compile(
     r"@file\b|@brief\b|@param\b|@details\b|@author\b"
     r"|//\s*File:|//\s*Module:|//\s*Author:"
 )
 _DECL = re.compile(r"^\s*(parameter|localparam|input|output|inout)\b")
 _COMMENT_ONLY = re.compile(r"^\s*//")
-_ASSIGN = re.compile(r"(?<![=!<>])=(?!=)")
-_SPDX = re.compile(r"^\s*//\s*(SPDX-|Copyright)")
+_GENERATED = "chipyard_generated_files"
 
 
 def _header_spans(lines):
@@ -33,7 +34,7 @@ def _header_spans(lines):
     spans = []
     i = 0
     while i < len(lines):
-        if not re.match(r"^\s*(module|interface|package)\b", lines[i]):
+        if not DECL_START.match(lines[i]):
             i += 1
             continue
         start = i
@@ -56,103 +57,84 @@ def _header_spans(lines):
     return spans
 
 
-def check(path: Path) -> list:
-    text = path.read_text(errors="replace")
-    lines = text.splitlines()
-    errors = []
-    for i, line in enumerate(lines, 1):
-        if _BANNED.search(line):
-            errors.append(f"{path}:{i}: banned comment tag or banner")
-
-    spans = _header_spans(lines)
-    if not spans:
-        return errors
-    mod_start = spans[0][0]
-
-    prose = []
-    for line in lines[:mod_start]:
-        if _SPDX.match(line) or not line.strip():
-            continue
-        if line.strip().startswith("//"):
-            prose.append(line.strip()[2:].strip())
-        else:
-            break
-    if len([p for p in prose if p]) < 2:
-        errors.append(f"{path}: missing two-part // header after the SPDX lines")
-
-    for start, end in spans:
-        prev_decl = False
-        clause_col = None
-        for i in range(start, end + 1):
-            line = lines[i]
-            if _DECL.match(line):
-                if "//" not in line:
-                    errors.append(f"{path}:{i + 1}: declaration has no same-line // clause")
-                    clause_col = None
-                else:
-                    clause_col = line.index("//")
-                prev_decl = True
-                continue
-            if _COMMENT_ONLY.match(line):
-                if clause_col is not None and line.index("//") >= clause_col:
-                    continue
-                clause_col = None
-                if prev_decl and line.strip() != "//":
-                    errors.append(f"{path}:{i + 1}: // line between declarations")
-                continue
-            clause_col = None
-            if line.strip():
-                prev_decl = False
-        errors.extend(_empty_clauses(path, lines, start, end))
-    return errors
-
-
 def _norm(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
-def _empty_clauses(path, lines, start, end):
-    """Clauses that restate the name, repeat a literal default, are one word, or repeat another clause."""
+def _clause_errors(path, line_no, name, text, seen):
+    """A clause that restates the name, repeats a literal default, is one word, or repeats another."""
     errors = []
-    seen = {}
-    i = start
-    while i <= end:
-        line = lines[i]
-        if not (_DECL.match(line) and "//" in line):
+    stem = re.sub(r"_(n?[io]|n?io)$", "", name)
+    if (
+        _norm(text) in {_norm(name), _norm(stem)}
+        or re.fullmatch(r"[BHDbhd][0-9a-fA-FxXzZ_]+\.?", text)
+        or len(text.rstrip(".").split()) < 2
+    ):
+        errors.append(f"{path}:{line_no}: clause does not describe {name}")
+    key = " ".join(text.lower().split())
+    if key in seen:
+        errors.append(f"{path}:{line_no}: clause of {name} repeats the clause of {seen[key]}")
+    else:
+        seen[key] = name
+    return errors
+
+
+def check(path: Path) -> list:
+    lines = path.read_text(errors="replace").splitlines()
+    errors = [
+        f"{path}:{i}: banned comment tag or banner"
+        for i, line in enumerate(lines, 1)
+        if _BANNED.search(line)
+    ]
+    spans = _header_spans(lines)
+    if not spans:
+        return errors
+    if len([p for p in header_prose(lines).splitlines() if p]) < 2:
+        errors.append(f"{path}:1: missing two-part // header after the SPDX lines")
+
+    for start, end in spans:
+        prev_decl = False
+        seen = {}
+        i = start
+        while i <= end:
+            line = lines[i]
+            if _DECL.match(line):
+                prev_decl = True
+                if "//" not in line:
+                    errors.append(f"{path}:{i + 1}: declaration has no same-line // clause")
+                    i += 1
+                    continue
+                text, nxt = clause(lines, i)
+                name = declared_name(line.split("//", 1)[0])
+                errors.extend(_clause_errors(path, i + 1, name, text, seen))
+                i = nxt
+                continue
+            if _COMMENT_ONLY.match(line):
+                if prev_decl and line.strip() != "//":
+                    errors.append(f"{path}:{i + 1}: // line between declarations")
+            elif line.strip():
+                prev_decl = False
             i += 1
-            continue
-        code, text = line.split("//", 1)
-        col = line.index("//")
-        j = i + 1
-        while j <= end and _COMMENT_ONLY.match(lines[j]) and lines[j].index("//") >= col:
-            text += " " + lines[j].split("//", 1)[1]
-            j += 1
-        head = re.sub(r"\[[^\]]*\]", " ", _ASSIGN.split(code, 1)[0])
-        idents = re.findall(r"[A-Za-z_][\w$]*", head)
-        name = idents[-1] if idents else ""
-        text = text.strip()
-        stem = re.sub(r"_(n?[io]|n?io)$", "", name)
-        if (
-            _norm(text) in {_norm(name), _norm(stem)}
-            or re.fullmatch(r"[BHDbhd][0-9a-fA-FxXzZ_]+\.?", text)
-            or len(text.rstrip(".").split()) < 2
-        ):
-            errors.append(f"{path}:{i + 1}: clause does not describe {name}")
-        key = " ".join(text.lower().split())
-        if key in seen:
-            errors.append(f"{path}:{i + 1}: clause of {name} repeats the clause of {seen[key]}")
-        else:
-            seen[key] = name
-        i = j
     return errors
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("paths", nargs="+", type=Path)
+    p.add_argument("paths", nargs="*", type=Path)
+    p.add_argument(
+        "--root",
+        type=Path,
+        help="also check every source the RTL Modules Reference documents, except generated CPU RTL",
+    )
     args = p.parse_args()
+    paths = list(args.paths)
+    if args.root:
+        for _group, _slug, rtl in rtl_blocks(args.root):
+            paths += [f for f in rtl_sources(rtl) if _GENERATED not in f.parts]
+    if not paths:
+        p.error("no paths given")
     errors = []
-    for path in args.paths:
+    for path in paths:
         errors.extend(check(path))
     for err in errors:
         print(err, file=sys.stderr)

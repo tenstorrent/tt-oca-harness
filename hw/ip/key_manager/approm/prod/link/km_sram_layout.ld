@@ -5,9 +5,7 @@
 /*
  * Key Manager firmware -- shared SRAM layout.
  *
- * Included from inside the SECTIONS{} block of link/km_production.ld and of any
- * testbench layout that links these drivers, so every image keeps the production
- * SRAM map. Before the
+ * Included from inside the SECTIONS{} block of link/km_production.ld. Before the
  * INCLUDE, the including script must define the `sram` MEMORY region (0x8000,
  * 32 KB) and map the .data load region with REGION_ALIAS("DATA_LOAD", <rom|vrom>).
  *

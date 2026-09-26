@@ -582,6 +582,20 @@ work, is worse than the ordering mistake.
 Without companion access you can only do the open half. Say so and stop, rather than editing
 open files to compensate.
 
+### What the open side may say about the companion
+
+Everything that lands in the open repository is public: files, code comments, commit
+messages, and pull request and issue bodies and comments. The "keep proprietary material
+out" rule for this guide holds there too. The open half of a pair links the companion PR and
+says that it merges first, and nothing more. It does not describe what the companion
+contains, which of its tests or scripts ran, what passed there, or how the companion builds
+or consumes open files. That evidence belongs in the companion PR's own test plan.
+
+Open files follow the same rule. A comment or README documents the open code and its open
+callers. It does not name a companion consumer ("testbench layouts that include this file",
+"the companion builds these images from …"), because the only reader who can act on that
+statement has the companion's own documentation.
+
 ## Linting and Formatting
 
 | Check | Local command |
@@ -591,6 +605,7 @@ open files to compensate.
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
+| SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |
