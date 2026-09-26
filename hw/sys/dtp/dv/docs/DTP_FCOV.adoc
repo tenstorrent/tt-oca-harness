@@ -331,7 +331,13 @@ mode delivering a trigger from its shared wire.
 *Description*: Covers the routes the matrix carried. A destination rise is
 credited to each source that rose within the preceding 32 system clocks and
 that the destination's `CT_SRC` `CONFIG_0` `CT_DST_SELECT` mask, shadowed from
-the CSR writes, selects.
+the CSR writes, selects. A source event is a CTP delivering a trigger into the
+matrix (`ct_dst`, either mode) or a CLA request; a destination event is a CTP
+starting to assert `CT_Req_out` or the matrix requesting a CLA. A CTP asserts
+by driving its wire in wire-OR mode and by driving the request level, high
+unless `CONFIG.INVERT` is set, in point-to-point mode. The random-route mixes
+walk every route of their classes within one test, so each seed closes both
+crosses.
 
 [cols=",",options="header",]
 |===
