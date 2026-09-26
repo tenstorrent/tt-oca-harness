@@ -11,11 +11,11 @@
 
 module picorv32_pcpi_crc (
   input  logic        clk_i,         // System clock.
-  input  logic        rst_ni,        // Active-low reset.
+  input  logic        rst_ni,        // Active-low asynchronous reset.
   input  logic        pcpi_valid_i,  // PicoRV32 presents a candidate instruction.
   input  logic [31:0] pcpi_insn_i,   // Instruction word under decode.
   input  logic [31:0] pcpi_rs1_i,    // rs1 value used as CRC state / seed.
-  input  logic [31:0] pcpi_rs2_i,    // rs2 value used as CRC data.
+  input  logic [31:0] pcpi_rs2_i,    // rs2 value used as CRC data; byte modes use bits [7:0].
   output logic        pcpi_wr_o,     // Write-back enable for pcpi_rd_o.
   output logic [31:0] pcpi_rd_o,     // CRC result returned to the CPU.
   output logic        pcpi_wait_o,   // Stall request while the CRC engine runs.

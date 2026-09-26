@@ -6,50 +6,82 @@
 // force_primary_i preempts hw2 override back to the primary plane (for example CAT-THERM
 // over a 2nd-HW-function override).
 // External drive, pull, and glitch-filter controls can override register settings when
-// selected.
+// selected: the electrical controls come, in priority order, from the cold-reset defaults,
+// the LSIO pin select, CONTROL.config_enable, then the LSIO software select.
+// AXI-Lite addresses at or below the GPIO_CTRL base plus size reach the gpio_ctrl register
+// block; others receive DECERR from an error subordinate.
+// While rst_cold_ni is low a latch follows the pad input, and it holds the strap value once
+// rst_cold_ni rises.
 
 module gpio_shim
   import gpio_pkg::*;
   import gpio_shim_pkg::*;
 #(
-  parameter bit INPUT_BY_DEFAULT = 1'b1,                    // Pad defaults to input when unset.
-  parameter bit ENABLE_PULL = 1'b0,                         // Enable on-die pull.
-  parameter bit USE_PULL_UP = 1'b0                          // Pull-up when pulls are enabled.
+  parameter bit INPUT_BY_DEFAULT = 1'b1,                    // Enables strap capture and drives
+                                                            // CONTROL.strap_valid; when clear,
+                                                            // captured_strap_o is tied low.
+  parameter bit ENABLE_PULL = 1'b0,                         // Pull enable driven in cold reset and
+                                                            // when no source owns the electrical
+                                                            // controls.
+  parameter bit USE_PULL_UP = 1'b0                          // Pull select driven in cold reset and
+                                                            // when no source owns the electrical
+                                                            // controls; 1 selects pull-up.
 ) (
   input  logic        clk_i,                                // System clock.
-  input  logic        rst_primary_ni,                       // Primary async reset, active-low.
-  input  logic        rst_cold_ni,                          // Cold async reset, active-low.
-  input  logic        test_en_i,                            // DFT test enable.
+  input  logic        rst_primary_ni,                       // Primary async reset, active-low;
+                                                            // resets the demux, error subordinate
+                                                            // and register block.
+  input  logic        rst_cold_ni,                          // Cold reset, active-low; forces the
+                                                            // default electrical controls and opens
+                                                            // the strap latch while low.
+  input  logic        test_en_i,                            // DFT test enable, driven to the demux
+                                                            // test input.
 
   input  wire         core2pad_i,                           // Primary core-to-pad data.
   input  wire         core2pad_en_i,                        // Primary core-to-pad enable.
-  output wire         pad2core_o,                           // Primary pad-to-core data.
+  output wire         pad2core_o,                           // Pad input to the primary plane,
+                                                            // driven from gpio_in_i whether or not
+                                                            // the override is active.
   input  wire         pad2core_en_i,                        // Primary pad-to-core enable.
 
-  input  logic        core2pad_ovrd_i,                      // 2nd-HW core-to-pad data.
+  input  logic        core2pad_ovrd_i,                      // 2nd-HW core-to-pad data, used while
+                                                            // CONTROL.hw2_ovrd is set and
+                                                            // force_primary_i is low.
   input  logic        core2pad_en_ovrd_i,                   // 2nd-HW core-to-pad enable.
-  output logic        pad2core_ovrd_o,                      // 2nd-HW pad-to-core data.
+  output logic        pad2core_ovrd_o,                      // 2nd-HW pad-to-core data; low while
+                                                            // the override is inactive.
   input  logic        pad2core_en_ovrd_i,                   // 2nd-HW pad-to-core enable.
 
-  input  logic        force_primary_i,                      // Force the primary plane over hw2 override.
-                                                            // Assert for safety preempt (e.g. CAT-THERM).
+  input  logic        force_primary_i,                      // Force the primary plane over hw2
+                                                            // override. Assert for safety preempt
+                                                            // (e.g. CAT-THERM).
 
-  input  logic        ext_intf_sel_i,                       // External interface select.
-  input  logic        reg_lsio_sel_i,                       // Register LSIO select.
-  input  logic        reg_lsio_disable_i,                   // Register LSIO disable.
+  input  logic        ext_intf_sel_i,                       // LSIO pin select; the ext_* controls
+                                                            // take priority over the register
+                                                            // settings unless reg_lsio_disable_i is
+                                                            // set.
+  input  logic        reg_lsio_sel_i,                       // Software LSIO select; applies the
+                                                            // ext_* controls only when
+                                                            // CONTROL.config_enable is clear.
+  input  logic        reg_lsio_disable_i,                   // Register LSIO disable; blocks both
+                                                            // LSIO selects.
   input  logic [2:0]  ext_drive_strength_i,                 // External drive strength.
   input  logic        ext_pull_en_i,                        // External pull enable.
   input  logic        ext_pull_sel_i,                       // External pull select.
   input  logic        ext_gf_disable_i,                     // Disable the glitch filter.
 
-  output logic        captured_strap_o,                     // Latched strap value.
+  output logic        captured_strap_o,                     // Pad input latched while rst_cold_ni
+                                                            // is low; also read back as
+                                                            // CONTROL.strap_value.
 
-  input  logic                gpio_in_i,                    // Pad input sample.
+  input  logic                gpio_in_i,                    // Pad input level.
   output logic                gpio_out_o,                   // Pad output data.
   output logic                gpio_in_en_o,                 // Pad input enable.
   output logic                gpio_out_en_o,                // Pad output enable.
-  output gpio_model_ctrl_t    gpio_ctrl_o,                  // Model control struct.
-  input  gpio_model_status_t  gpio_status_i,                // Model status struct.
+  output gpio_model_ctrl_t    gpio_ctrl_o,                  // Pad drive strength, pull and
+                                                            // glitch-filter controls; sps is always
+                                                            // low.
+  input  gpio_model_status_t  gpio_status_i,                // Model status struct; unused.
 
   input  gpio_axil_req_t  axil_req_i,                       // AXI-Lite CSR request.
   output gpio_axil_resp_t axil_resp_o                       // AXI-Lite CSR response.

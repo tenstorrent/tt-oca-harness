@@ -5,56 +5,77 @@
 //
 // Adapts accelerator control and master data ports to the SMC fabric.
 // Exposes status and clock-gater activity indicators alongside clock-gating control.
+// The control demux decodes the DMA and zeroer windows from smc_top_addrmap_pkg and sends
+// any other address to the DMA; the master mux prepends a source bit to the transfer IDs.
 
 module smc_data_accelerator_wrap #(
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,  // DMA control register
-                                                                                     // map base address.
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,  // DMA control register
-                                                                                // map size.
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,  // Zeroer control
-                                                                                        // register map base
-                                                                                        // address.
-  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0,  // Zeroer control
-                                                                                   // register map size.
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_BASE_ADDR = 0,  // Unused; the control
+                                                                                     // demux decodes the DMA
+                                                                                     // window from
+                                                                                     // smc_top_addrmap_pkg.
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] DMA_CTRL_REG_MAP_SIZE = 0,  // Unused; the DMA window
+                                                                                // size also comes from
+                                                                                // smc_top_addrmap_pkg.
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_BASE_ADDR = 0,  // Unused; the
+                                                                                        // zeroer window base
+                                                                                        // comes from
+                                                                                        // smc_top_addrmap_pkg.
+  parameter bit [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] ZEROER_CTRL_REG_MAP_SIZE = 0,  // Unused; the zeroer
+                                                                                   // window size comes from
+                                                                                   // smc_top_addrmap_pkg.
   parameter int unsigned DMA_BUFFER_DEPTH = 16  // DMA buffer depth in beats.
 ) (
-  input  logic                                             clk_i,  // Clock.
-  input  logic                                             rst_ni,  // Reset.
-  input  logic                                             test_en_i,  // Test en.
+  input  logic                                             clk_i,  // SMC core clock.
+  input  logic                                             rst_ni,  // Primary reset, active-low, synchronized to
+                                                                    // the SMC core clock.
+  input  logic                                             test_en_i,  // Scan test mode enable, active-high;
+                                                                       // forwarded to the DMA, the zeroer, and the
+                                                                       // AXI demux and mux.
 
-  input  logic                                             dma_cg_en_i,  // DMA clock-gate
-                                                                         // enable.
-  input  logic                                             zeroer_cg_en_i,  // Zeroer clock-gate
-                                                                            // enable.
-  input  logic [smc_pkg::CG_HYSTERESIS_W-1:0]              cg_hysteresis_i,  // Cg hysteresis.
+  input  logic                                             dma_cg_en_i,  // Enables idle clock gating of the
+                                                                         // DMA front end when high; while low
+                                                                         // its clock runs continuously.
+  input  logic                                             zeroer_cg_en_i,  // Enables idle clock gating of the
+                                                                            // zeroer datapath when high; while
+                                                                            // low its clock runs continuously.
+  input  logic [smc_pkg::CG_HYSTERESIS_W-1:0]              cg_hysteresis_i,  // Idle SMC core clock cycles the DMA and
+                                                                             // zeroer clock gates wait after going idle
+                                                                             // before stopping their clocks.
 
-  input  smc_pkg::smc_local_32_64_8_12_axi_req_t           ctrl_axi_req_i,  // Control interface
-                                                                            // (from fabric)
-                                                                            // request.
-  output smc_pkg::smc_local_32_64_8_12_axi_resp_t          ctrl_axi_resp_o,  // Control interface
-                                                                             // (from fabric)
-                                                                             // response.
+  input  smc_pkg::smc_local_32_64_8_12_axi_req_t           ctrl_axi_req_i,  // Control request from the
+                                                                            // local crossbar for the DMA and
+                                                                            // zeroer register windows.
+  output smc_pkg::smc_local_32_64_8_12_axi_resp_t          ctrl_axi_resp_o,  // Control response to the
+                                                                             // local crossbar.
 
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t    mst_axi_req_o,  // Master data
-                                                                           // interface (to
-                                                                           // fabric) request.
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t   mst_axi_resp_i,  // Master data
-                                                                            // interface (to
-                                                                            // fabric) response.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t    mst_axi_req_o,  // Transfer request from the
+                                                                           // DMA or zeroer into the input
+                                                                           // fabric.
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t   mst_axi_resp_i,  // Transfer response from the
+                                                                            // input fabric.
 
-  output logic                                             dma_busy_o,  // Dma busy.
-  output logic                                             dma_intp_o,  // Dma intp.
-  output logic                                             zeroer_busy_o,  // Zeroer busy.
-  output logic                                             zeroer_intp_o,  // Zeroer intp.
+  output logic                                             dma_busy_o,  // High while the DMA front end or back end
+                                                                        // has a transfer in flight.
+  output logic                                             dma_intp_o,  // DMA completion interrupt, a one-cycle
+                                                                        // pulse when dma_busy_o falls.
+  output logic                                             zeroer_busy_o,  // High while the zeroer has work in flight.
+  output logic                                             zeroer_intp_o,  // Zeroer completion interrupt, a one-cycle
+                                                                           // pulse when zeroer_busy_o falls while its
+                                                                           // interrupt is enabled; held low when the
+                                                                           // zeroer enters its error state.
 
-  output logic                                             dma_frontend_clk_active_o,  // Clock gater activity
-                                                                                       // indicators.
-  output logic                                             dma_frontend_bus_active_o,  // Clock gater activity
-                                                                                       // indicators.
-  output logic                                             zeroer_clk_active_o,  // Clock gater activity
-                                                                                 // indicators.
-  output logic                                             zeroer_bus_active_o  // Clock gater activity
-                                                                                // indicators.
+  output logic                                             dma_frontend_clk_active_o,  // High while the DMA
+                                                                                       // front-end gated clock
+                                                                                       // is running.
+  output logic                                             dma_frontend_bus_active_o,  // High while the DMA
+                                                                                       // control port has an
+                                                                                       // AXI transaction
+                                                                                       // outstanding.
+  output logic                                             zeroer_clk_active_o,  // High while the zeroer
+                                                                                 // datapath gated clock is
+                                                                                 // running.
+  output logic                                             zeroer_bus_active_o  // High while the zeroer
+                                                                                // control bus has traffic.
 );
 
   localparam int unsigned NumAccelerators = 2;

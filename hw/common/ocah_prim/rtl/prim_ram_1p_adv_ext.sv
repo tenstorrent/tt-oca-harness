@@ -7,12 +7,15 @@
 // each InstDepth deep.
 //
 // EnableECC and EnableParity select per-word ECC or per-byte parity. HammingECC switches
-// from HSIAO to Hamming; HSIAO is more compact and faster.
+// from HSIAO to Hamming; HSIAO is more compact and faster. ECC supports Width of 16 or 32
+// and whole-word writes only; parity is odd per byte and needs DataBitsPerMask of 8.
 //
-// EnableInputPipeline and EnableOutputPipeline each add one cycle of read latency.
+// Read data returns one cycle after the request; EnableInputPipeline and
+// EnableOutputPipeline each add one cycle of read latency.
 //
-// alert_o rises on multi-bit encoding faults. rerror_o bit1 is uncorrectable and bit0 is
-// correctable.
+// alert_o rises on an invalid multi-bit (MuBi4) encoding of the internal request, write or
+// read-valid controls. rerror_o bit1 is uncorrectable and bit0 is correctable; parity errors
+// set bit1.
 
 module prim_ram_1p_adv_ext
   import prim_ram_1p_pkg::*;
@@ -21,12 +24,14 @@ module prim_ram_1p_adv_ext
   import prim_ram_1p_adv_ext_pkg::*;
 #(
   parameter  int Depth                = 512,  // Logical memory depth.
-  parameter  int InstDepth            = Depth,  // Per-tile depth; smaller than Depth tiles into ceil(Depth/InstDepth)
-                                                // prim_ram_1p instances, each InstDepth
-                                                // deep.
+  parameter  int InstDepth            = Depth,  // Per-tile depth; smaller than Depth tiles into
+                                                // ceil(Depth/InstDepth) external RAM ports, each
+                                                // InstDepth deep.
   parameter  int Width                = 32,  // Data width.
-  parameter  int DataBitsPerMask      = 1,  // Data bits covered by each write-mask bit.
-  parameter      MemInitFile          = "",  // Optional VMEM file used to initialize the memory.
+  parameter  int DataBitsPerMask      = 1,  // Data bits covered by each write-mask bit; only
+                                            // checked to be 8 when EnableParity is set.
+  parameter      MemInitFile          = "",  // Declared but unused; the external RAM owns
+                                             // initialization.
 
   parameter  bit EnableECC            = 0,  // Enables per-word ECC.
   parameter  bit EnableParity         = 0,  // Enables per-byte parity.
@@ -50,12 +55,14 @@ module prim_ram_1p_adv_ext
   input                               write_i,  // Write when high, read when low.
   input        [Aw-1:0]               addr_i,  // Logical word address.
   input        [Width-1:0]            wdata_i,  // Write data.
-  input        [Width-1:0]            wmask_i,  // Write mask.
+  input        [Width-1:0]            wmask_i,  // Per-bit write mask; must be all ones with ECC.
   output logic [Width-1:0]            rdata_o,  // Read data.
   output logic                        rvalid_o,  // Read response (rdata_o) is valid.
-  output logic [1:0]                  rerror_o,  // Bit1 uncorrectable, bit0 correctable.
+  output logic [1:0]                  rerror_o,  // Bit1 uncorrectable, bit0 correctable; 0 unless
+                                                 // rvalid_o.
 
-  output logic                             alert_o,  // Multi-bit encoding-error alert.
+  output logic                             alert_o,  // Invalid MuBi4 encoding on an internal
+                                                     // control signal.
 
   output ram_req_t        [NumRamInst-1:0] ram_req_o,  // Per-tile external RAM requests.
   input  ram_rsp_t        [NumRamInst-1:0] ram_rsp_i  // Per-tile external RAM responses.

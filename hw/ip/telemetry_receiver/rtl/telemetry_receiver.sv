@@ -3,23 +3,30 @@
 
 // Assemble ATB telemetry packets into buffered counter messages for AXI-Lite readout.
 //
-// atdata/atid/atvalid/atready plus the AF handshake feed an assembly buffer; completed
-// messages land in a BUFFER_DEPTH FIFO. BUFFER_DEPTH must be greater than or equal to 2.
+// ATB beats accepted on atvalid_i and atready_o fill an assembly buffer; a packet whose
+// last_packet bit is set completes a message, which is decoded into a probe ID and counters
+// and pushed into a BUFFER_DEPTH message FIFO read through the CSRs. A push into a full
+// FIFO drops the oldest message. BUFFER_DEPTH must be a power of two and greater than or
+// equal to 2. CTRL.TELEMETRY_RX_FLUSH empties both buffers and deasserts atready_o, and
+// CTRL.TELEMETRY_TX_FLUSH drives the AF flush request.
 //
 // debug_o bits:
 //
 // - debug_o[0] missing_last_event: assembly buffer filled without last_packet marker.
-// - debug_o[1] message_buffer_full: overflow, dropping oldest.
+// - debug_o[1] message_buffer_full: a further push drops the oldest message.
 // - debug_o[2] message_buffer_empty.
-// - debug_o[3] assembly_buffer_full.
+// - debug_o[3] assembly_buffer_full: the beat being accepted fills the assembly buffer.
 
 module telemetry_receiver
   import telemetry_receiver_pkg::*;
 #(
-  parameter int unsigned BUFFER_DEPTH                 = 8,  // Completed-message FIFO depth; must be >= 2.
-  parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,  // Counters allowed per message.
+  parameter int unsigned BUFFER_DEPTH                 = 8,  // Completed-message FIFO depth; must be
+                                                            // a power of two and >= 2.
+  parameter int unsigned MAX_NUM_COUNTERS_PER_MESSAGE = 4,  // Counters allowed per message; only
+                                                            // the first NUM_COUNTER_REGS are
+                                                            // readable.
 
-  localparam int unsigned MAX_NUM_BLOCKS_PER_MESSAGE =      // ATB blocks spanning one message.
+  localparam int unsigned MAX_NUM_BLOCKS_PER_MESSAGE =      // Packet blocks spanning one message: one header block plus one block per counter byte.
         1 + (TELEMETRY_COUNTER_WIDTH / TELEMETRY_DATA_WIDTH) * MAX_NUM_COUNTERS_PER_MESSAGE,
   localparam int unsigned MAX_NUM_PACKETS_PER_MESSAGE =     // ATB packets spanning one message.
         MAX_NUM_BLOCKS_PER_MESSAGE % NUM_BLOCKS_PER_PACKET == 0 ?
@@ -38,22 +45,46 @@ module telemetry_receiver
   localparam type message_buffer_ptr_t = logic [MESSAGE_BUFFER_PTR_WIDTH-1:0] // Message-FIFO pointer type.
 ) (
   input  logic            clk_i,                            // System clock.
+                                                            // All synchronous logic uses the rising
+                                                            // edge.
   input  logic            rst_ni,                           // Async reset, active-low.
+                                                            // Assert asynchronously; deassert
+                                                            // synchronously to clk_i.
 
   input  axil_req_t       axil_req_i,                       // AXI-Lite CSR request.
   output axil_resp_t      axil_resp_o,                      // AXI-Lite CSR response.
 
   input  telemetry_data_t atdata_i,                         // ATB data.
+                                                            // One 8-bit data beat per transfer.
   input  atb_id_t         atid_i,                           // ATB ID.
+                                                            // Identifies the trace source. Unused.
   output logic            atready_o,                        // ATB ready.
+                                                            // High when the receiver can accept a
+                                                            // beat; low only while
+                                                            // CTRL.TELEMETRY_RX_FLUSH is set.
   input  logic            atvalid_i,                        // ATB valid.
+                                                            // High when atdata_i and atid_i are
+                                                            // valid.
   output logic            afvalid_o,                        // ATB flush valid.
+                                                            // Requests a flush from the source. It
+                                                            // is CTRL.TELEMETRY_TX_FLUSH, held
+                                                            // until afready_i completes the
+                                                            // handshake.
   input  logic            afready_i,                        // ATB flush ready.
+                                                            // Acknowledges the flush request and
+                                                            // clears CTRL.TELEMETRY_TX_FLUSH.
 
   output logic            irq_o,                            // Receiver interrupt.
+                                                            // Active high, level. Asserted while
+                                                            // INTR_STATUS.MISSING_LAST is set, or
+                                                            // while the FIFO fill level exceeds
+                                                            // CTRL.BUFFER_THRESHOLD, each gated by
+                                                            // its INTR_ENABLE bit.
 
-  output logic [3:0]      debug_o                           // [0] missing_last_event; [1] message_buffer_full;
-                                                            // [2] message_buffer_empty; [3] assembly_buffer_full.
+  output logic [3:0]      debug_o                           // [0] missing_last_event; [1]
+                                                            // message_buffer_full; [2]
+                                                            // message_buffer_empty; [3]
+                                                            // assembly_buffer_full.
 );
 
   `include "prim_assert.sv"

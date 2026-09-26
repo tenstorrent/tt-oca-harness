@@ -3,7 +3,8 @@
 
 // Define instruction opcodes and the decode enum for the primary JTAG TAP.
 //
-// Holds IR width, opcode constants, and jtag_instruction_decoded_e for jtag_inst_reg.
+// Holds IR width, opcode constants, the one-hot jtag_instruction_decoded_e, and the IDCODE
+// reset default DEFAULT_INSTRUCTION for jtag_inst_reg.
 // Shared by the PTAP and interface unit so decode stays in one package.
 
 package jtag_inst_reg_pkg;

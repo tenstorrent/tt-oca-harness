@@ -16,45 +16,57 @@
 //   computed before scrambling.
 // - Per-region write-lock (SRAM_LOCK_REGION_BYTES per region, so SRAM_NUM_LOCK_REGIONS is
 //   SRAM_SIZE_BYTES / SRAM_LOCK_REGION_BYTES): writes to a locked region are silently
-//   dropped and a one-hot pulse on write_lock_violation_region_o reports to KMCSR which
-//   region had an attempted write while locked.
+//   dropped but still acknowledged, and write_lock_violation_region_o reports to KMCSR
+//   which region had an attempted write while locked.
+// - Requests are held off for two cycles after reset release.
 // - PicoRV32 look-ahead prefetch support for pipelined SRAM.
 
 module km_sram_interface
   import km_intf_pkg::*;
   import scrambler_pkg::*;
 #(
-  parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,                   // SRAM word-address width.
-  parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS  // Write-lock regions.
+  parameter int unsigned SRAM_ADDR_WIDTH = KM_SRAM_MEM_ADDR_WIDTH,                   // SRAM word-address width;
+                                                                                     // must be 13 to match
+                                                                                     // scrambler_8192x32.
+  parameter int unsigned SRAM_NUM_LOCK_REGIONS = km_intf_pkg::SRAM_NUM_LOCK_REGIONS  // Number of write-lock regions,
+                                                                                     // each SRAM_LOCK_REGION_BYTES
+                                                                                     // long.
 ) (
   input  logic clk_i,   // System clock.
-  input  logic rst_ni,  // Active-low reset.
+  input  logic rst_ni,  // Active-low asynchronous reset.
 
   input  logic        mem_valid_i,  // PicoRV32 native memory request valid (from CPU).
-  output logic        mem_ready_o,  // Memory ready (data available).
+  output logic        mem_ready_o,  // Memory ready: read data valid, write granted, or write to a
+                                    // locked region dropped.
   input  logic [31:0] mem_addr_i,   // Byte address.
   input  logic [31:0] mem_wdata_i,  // Write data.
   input  logic [3:0]  mem_wstrb_i,  // Write strobe (non-zero = write).
-  input  logic [3:0]  mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU).
+  input  logic [3:0]  mem_rstrb_i,  // Read strobe: byte lanes consumed by the CPU, which select the
+                                    // parity-checked lanes.
   output logic [31:0] mem_rdata_o,  // Read data.
 
   input  logic        mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid).
   input  logic [31:0] mem_la_addr_i,   // Look-ahead address.
-  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe.
+  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe; selects the parity-checked lanes
+                                       // of a look-ahead fetch.
 
   output km_sram_mem_req_t sram_mem_req_o,  // SRAM memory request, exposed at the subsystem
                                             // boundary.
   input  km_sram_mem_rsp_t sram_mem_rsp_i,  // SRAM memory response.
 
   input  logic [31:0] scrambler_key_i,  // Scrambler key from KMCSR.
-  input  logic   scrambler_en_i,        // Scrambler enable from KMCSR.
+  input  logic   scrambler_en_i,        // Scrambler enable from KMCSR; high scrambles the address
+                                        // and write data and descrambles read data.
 
   input  logic [SRAM_NUM_LOCK_REGIONS-1:0] sram_lock_bits_i,  // SRAM write-lock from KMCSR:
                                                               // bit[i]=1 locks region i.
 
-  output logic        parity_error_o,  // Parity error detected (pulse to KMCSR).
+  output logic        parity_error_o,  // Combinational; high while a valid read response fails
+                                       // parity on a strobed lane after descrambling.
 
-  output logic [SRAM_NUM_LOCK_REGIONS-1:0] write_lock_violation_region_o  // One-hot violation to KMCSR.
+  output logic [SRAM_NUM_LOCK_REGIONS-1:0] write_lock_violation_region_o  // One-hot region of a write
+                                                                          // presented to a locked region;
+                                                                          // combinational.
 );
 
   `include "prim_assert.sv"

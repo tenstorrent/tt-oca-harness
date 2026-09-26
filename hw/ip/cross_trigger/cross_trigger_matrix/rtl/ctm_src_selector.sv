@@ -10,13 +10,17 @@ module ctm_src_selector #(
   parameter int unsigned NUM_CT_DST = 4  // CT_Dst input count.
 ) (
   input  logic                    clk_i,  // System clock.
-  input  logic                    rst_ni,  // Active-low reset.
+  input  logic                    rst_ni,  // Active-low asynchronous reset; clears ct_src_o.
 
-  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger dst.
+  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger pulses from every CT_Dst port, one bit
+                                             // per port.
 
-  input  logic [NUM_CT_DST-1:0]   select_i,  // Select.
+  input  logic [NUM_CT_DST-1:0]   select_i,  // Per-destination enable mask from this CT_Src's
+                                             // CT_DST_SELECT field; bit i admits ct_dst_i[i] into
+                                             // the OR.
 
-  output logic                    ct_src_o  // Cross-trigger src.
+  output logic                    ct_src_o  // OR of the selected ct_dst_i bits, registered on
+                                            // clk_i; one cycle of latency.
 );
 
   // Combinatorial logic: AND each CT_Dst with its select bit, then OR all together

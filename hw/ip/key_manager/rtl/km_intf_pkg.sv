@@ -9,7 +9,7 @@
 // - AXI4-Lite channel, request and response types (32-bit)
 // - ROM and SRAM memory interface structs (req/rsp)
 // - DRBG AXI-Stream interface structs
-// - IRQ event type
+// - IRQ event type, which no module uses
 // - SEP OTP data interface struct
 // - Full CPU address map constants for internal and external peripherals, used by the
 //   crossbar and the CPU router
@@ -49,7 +49,7 @@ package km_intf_pkg;
   //=========================================================================
 
   // Memory interface common widths (byte address, data, byte-enables).
-  parameter int unsigned KM_MEM_ADDR_WIDTH = 32;  // Byte address width.
+  parameter int unsigned KM_MEM_ADDR_WIDTH = 32;  // Byte address width; not used by any module.
   parameter int unsigned KM_MEM_DATA_WIDTH = 32;  // Memory data width.
   parameter int unsigned KM_MEM_STRB_WIDTH = KM_MEM_DATA_WIDTH / 8;  // Memory byte-enable width.
 
@@ -130,10 +130,10 @@ package km_intf_pkg;
   // register block, which is generated with --err-if-bad-addr and answers SLVERR.
 
   // Internal memory
-  localparam km_addr_t ROM_BASE_ADDR = 32'h0000_0000;   // ROM window base.
-  localparam km_addr_t ROM_END_ADDR = 32'h0000_3FFF;    // ROM window end (inclusive).
+  localparam km_addr_t ROM_BASE_ADDR = 32'h0000_0000;  // ROM window base.
+  localparam km_addr_t ROM_END_ADDR = 32'h0000_3FFF;  // ROM window end (inclusive).
   localparam km_addr_t SRAM_BASE_ADDR = 32'h0000_8000;  // SRAM window base.
-  localparam km_addr_t SRAM_END_ADDR = 32'h0000_FFFF;   // SRAM window end (inclusive).
+  localparam km_addr_t SRAM_END_ADDR = 32'h0000_FFFF;  // SRAM window end (inclusive).
 
   // Last address of a rule that spans one register block's decode window. A block keeps
   // only `addr_width` low address bits, so a rule any wider than its window would let the
@@ -167,7 +167,7 @@ package km_intf_pkg;
   // MMR (offset 0x500-0x56F). This rule is a full 4 KB page: the remap keeps addr[11:0]
   // and the sub-regions run to 0x56F.
   localparam km_addr_t OTP_BASE_ADDR = 32'h0001_1000;  // OTP/eFuse KM-local window base
-  localparam km_addr_t OTP_END_ADDR = 32'h0001_1FFF;   // OTP/eFuse KM-local window end
+  localparam km_addr_t OTP_END_ADDR = 32'h0001_1FFF;  // OTP/eFuse KM-local window end
 
   // External crypto engine ports
   localparam km_addr_t OTBN_BASE_ADDR = 32'h0001_8000;  // OTBN window base
@@ -193,7 +193,7 @@ package km_intf_pkg;
 
   // Testbench virtual ROM (rodata)
   localparam km_addr_t VROM_BASE_ADDR = 32'h1000_0000;  // Virtual ROM window base
-  localparam km_addr_t VROM_END_ADDR = 32'h1000_FFFF;   // Virtual ROM window end
+  localparam km_addr_t VROM_END_ADDR = 32'h1000_FFFF;  // Virtual ROM window end
 
   // Region sizes derived from the address ranges above.
   localparam int unsigned ROM_SIZE_BYTES = ROM_END_ADDR - ROM_BASE_ADDR + 1;  // 16 KB

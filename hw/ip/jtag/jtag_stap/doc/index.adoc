@@ -29,30 +29,12 @@ selection, host TDO, and 3DCR updates are blocked.
 Three timing parameters are available to optimise the STAP for different
 physical topologies, particularly die-boundary crossings.
 
-<<stap-configuration-parameters-table>> lists the three STAP timing parameters and their
-defaults.
-
-[[stap-configuration-parameters-table]]
-[width="100%",cols="<30%,<10%,<10%,<50%",options="header"]
-.STAP configuration parameters
-|===
-|Parameter |Type |Default |Description
-
-|`SCAN_IN_PIPE`
-|bit
-|0
-|Adds a pipeline stage to the client interface scan input for timing closure.
-
-|`TDI_LOCKUP`
-|bit
-|0
-|Adds a lockup latch to the STAP TDI input for die-boundary crossings.
-
-|`SCAN_OUT_LOCKUP`
-|bit
-|0
-|Adds a lockup latch to the STAP scan output for extended chain timing.
-|===
+ifdef::backend-html5[]
+The parameters of `jtag_stap` are listed in xref:ROOT:rtl-modules-reference/ip/jtag_stap/jtag_stap.adoc[jtag_stap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `jtag_stap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: assets

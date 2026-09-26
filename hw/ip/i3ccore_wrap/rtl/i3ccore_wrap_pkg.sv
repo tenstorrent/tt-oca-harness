@@ -3,7 +3,8 @@
 
 // Hold address-map constants for the multi-instance I3C core wrapper.
 //
-// Defines per-instance spacing and register address/data widths used by i3ccore_wrapper.
+// Defines per-instance spacing and register address/data widths used by i3ccore_wrapper,
+// the AXI-Lite axil request/response types, and MAX_NUM_I3CS.
 
 package i3ccore_wrap_pkg;
 

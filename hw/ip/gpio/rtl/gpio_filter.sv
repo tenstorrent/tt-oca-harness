@@ -4,21 +4,26 @@
 // Gate GPIO AXI-Lite register reads and writes by AxPROT.
 //
 // Independent enables and required AxPROT values apply on the AW and AR paths; failing
-// beats never reach the subordinate.
+// beats never reach the subordinate. An axi_lite_demux routes them to an error subordinate
+// that answers DECERR with read data 0xBADCAB1E.
 
 module gpio_filter
   import gpio_pkg::*;
 #(
-  parameter int unsigned MAX_TRANS = 32                     // AXI-Lite outstanding capacity.
+  parameter int unsigned MAX_TRANS = 32                     // Maximum open transactions per channel
+                                                            // in the demux.
 ) (
   input logic clk_i,                                        // System clock.
   input logic rst_ni,                                       // Async reset, active-low.
-  input logic test_en_i,                                    // DFT test enable.
+  input logic test_en_i,                                    // DFT test enable, driven to the demux
+                                                            // test input.
 
   input logic       write_filter_enable_i,                  // Enable AW AxPROT filter.
   input logic       read_filter_enable_i,                   // Enable AR AxPROT filter.
-  input logic [2:0] awprot_requirement_i,                   // Required AW AxPROT.
-  input logic [2:0] arprot_requirement_i,                   // Required AR AxPROT.
+  input logic [2:0] awprot_requirement_i,                   // AW AxPROT value that must match
+                                                            // exactly.
+  input logic [2:0] arprot_requirement_i,                   // AR AxPROT value that must match
+                                                            // exactly.
 
   input  gpio_axil_req_t  axil_req_i,                       // Manager-side AXI-Lite request.
   output gpio_axil_resp_t axil_resp_o,                      // Manager-side AXI-Lite response.

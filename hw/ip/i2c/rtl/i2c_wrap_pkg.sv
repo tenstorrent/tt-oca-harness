@@ -3,7 +3,9 @@
 
 // Hold address-map and AXI-Lite typedefs for the multi-instance I2C wrapper.
 //
-// Defines REG_ADDR_WIDTH and the axil request/response types used by i2c_wrap.
+// Defines the 32-bit REG_ADDR_WIDTH and data width, the axil request/response types used by
+// i2c_wrap, the instance limit MAX_NUM_I2CS that i2c_wrap asserts, and the default
+// I2C_INSTANCE_SPACING.
 
 package i2c_wrap_pkg;
 

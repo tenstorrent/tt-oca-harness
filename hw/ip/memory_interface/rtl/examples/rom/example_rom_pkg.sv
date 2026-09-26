@@ -3,7 +3,9 @@
 
 // Hold example ROM parameters for memory_interface bring-up.
 //
-// Supplies default widths and base addresses used by the ROM example binding.
+// Supplies the 32-bit address, 64-bit data and 1-bit ID and user widths, the mem_req_t and
+// mem_rsp_t memory-port structs, and the AXI4, AXI4-Lite and APB4 typedefs used by the ROM
+// example binding.
 
 package example_rom_pkg;
 

@@ -1,141 +1,173 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Wrap the four-core SMC cluster, mem swaps, and cpu_ctrl.
+// Wrap the four-core SMC CPU cluster with its cpu_ctrl register block and boot ROM bridge.
 //
-// Bridges fabric AXI front and MMIO ports into the Chipyard cluster and cpu_ctrl.
+// Splits the fabric AXI front port by address between the cluster L2 frontend and cpu_ctrl,
+// which it reaches through an AXI-to-AXI-Lite converter; the cluster MMIO master goes back out.
 // Surfaces per-core PC, WDT, and cluster error status back to smc_base.
-// Threads memory-interface types and bank counts into the mem-swap layer.
+// Converts the cluster boot ROM TileLink port to the ROM memory interface, and exposes the
+// scratch RAM and L1 cache bank interfaces; the memories themselves are outside this module.
 
 module smc_cpu_wrapper #(
-  parameter bit                       NO_ADDR_REMAP  = 1'b1,  // Disable alias address
-                                                              // remap when the
-                                                              // integration map is fixed.
+  parameter bit                       NO_ADDR_REMAP  = 1'b1,  // Reported by cpu_ctrl in
+                                                              // SMC_ATTRIBUTES.no_output_remap;
+                                                              // no other effect in this module.
 
-  parameter type rom_req_t            = chipyard_4core_mem_pkg::rom_req_t,  // Memory-interface
-                                                                            // types (cannot be
-                                                                            // localparams).
-  parameter type rom_rsp_t            = chipyard_4core_mem_pkg::rom_rsp_t,  // Memory-interface
-                                                                            // types (cannot be
-                                                                            // localparams).
-  parameter type scratch_ram_req_t    = chipyard_4core_mem_pkg::scratch_ram_req_t,  // Memory-interface
-                                                                                    // types (cannot be
-                                                                                    // localparams).
-  parameter type scratch_ram_rsp_t    = chipyard_4core_mem_pkg::scratch_ram_rsp_t,  // Memory-interface
-                                                                                    // types (cannot be
-                                                                                    // localparams).
-  parameter type l1_icache_tag_req_t  = chipyard_4core_mem_pkg::l1_icache_tag_req_t,  // Memory-interface
-                                                                                      // types (cannot be
-                                                                                      // localparams).
-  parameter type l1_icache_tag_rsp_t  = chipyard_4core_mem_pkg::l1_icache_tag_rsp_t,  // Memory-interface
-                                                                                      // types (cannot be
-                                                                                      // localparams).
-  parameter type l1_icache_data_req_t = chipyard_4core_mem_pkg::l1_icache_data_req_t,  // Memory-interface
-                                                                                       // types (cannot be
-                                                                                       // localparams).
-  parameter type l1_icache_data_rsp_t = chipyard_4core_mem_pkg::l1_icache_data_rsp_t,  // Memory-interface
-                                                                                       // types (cannot be
-                                                                                       // localparams).
-  parameter type l1_dcache_tag_req_t  = chipyard_4core_mem_pkg::l1_dcache_tag_req_t,  // Memory-interface
-                                                                                      // types (cannot be
-                                                                                      // localparams).
-  parameter type l1_dcache_tag_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t,  // Memory-interface
-                                                                                      // types (cannot be
-                                                                                      // localparams).
-  parameter type l1_dcache_data_req_t = chipyard_4core_mem_pkg::l1_dcache_data_req_t,  // Memory-interface
-                                                                                       // types (cannot be
-                                                                                       // localparams).
-  parameter type l1_dcache_data_rsp_t = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,  // Memory-interface
-                                                                                       // types (cannot be
-                                                                                       // localparams).
+  parameter type rom_req_t            = chipyard_4core_mem_pkg::rom_req_t,  // Boot ROM request type for
+                                                                            // rom_intf_req_o.
+  parameter type rom_rsp_t            = chipyard_4core_mem_pkg::rom_rsp_t,  // Boot ROM response type for
+                                                                            // rom_intf_rsp_i.
+  parameter type scratch_ram_req_t    = chipyard_4core_mem_pkg::scratch_ram_req_t,  // Scratch RAM bank request type
+                                                                                    // for scratch_ram_intf_req_o.
+  parameter type scratch_ram_rsp_t    = chipyard_4core_mem_pkg::scratch_ram_rsp_t,  // Scratch RAM bank response type
+                                                                                    // for scratch_ram_intf_rsp_i.
+  parameter type l1_icache_tag_req_t  = chipyard_4core_mem_pkg::l1_icache_tag_req_t,  // Instruction-cache tag bank
+                                                                                      // request type.
+  parameter type l1_icache_tag_rsp_t  = chipyard_4core_mem_pkg::l1_icache_tag_rsp_t,  // Instruction-cache tag bank
+                                                                                      // response type.
+  parameter type l1_icache_data_req_t = chipyard_4core_mem_pkg::l1_icache_data_req_t,  // Instruction-cache data bank
+                                                                                       // request type.
+  parameter type l1_icache_data_rsp_t = chipyard_4core_mem_pkg::l1_icache_data_rsp_t,  // Instruction-cache data bank
+                                                                                       // response type.
+  parameter type l1_dcache_tag_req_t  = chipyard_4core_mem_pkg::l1_dcache_tag_req_t,  // Data-cache tag bank request
+                                                                                      // type.
+  parameter type l1_dcache_tag_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t,  // Data-cache tag bank response
+                                                                                      // type.
+  parameter type l1_dcache_data_req_t = chipyard_4core_mem_pkg::l1_dcache_data_req_t,  // Data-cache data bank request
+                                                                                       // type.
+  parameter type l1_dcache_data_rsp_t = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,  // Data-cache data bank response
+                                                                                       // type.
 
-  localparam int unsigned NUM_CPU_CORES      = smc_4core_cpu_pkg::NUM_CPU_CORES,  // NUM CPU CORES.
-  localparam int unsigned NUM_CPU_INTERRUPTS = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,  // NUM CPU Interrupts.
+  localparam int unsigned NUM_CPU_CORES      = smc_4core_cpu_pkg::NUM_CPU_CORES,  // Number of cores in the cluster,
+                                                                                  // from smc_4core_cpu_pkg; sizes
+                                                                                  // the per-core PC and watchdog
+                                                                                  // ports.
+  localparam int unsigned NUM_CPU_INTERRUPTS = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,  // Number of interrupt lines into
+                                                                                       // the cluster, from
+                                                                                       // smc_4core_cpu_pkg.
 
-  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,  // NUM SRAM BANKS.
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,  // NUM Icache TAG
-                                                                                                 // BANKS.
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,  // NUM Icache DATA
-                                                                                                  // BANKS.
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,  // NUM Dcache TAG
-                                                                                                 // BANKS.
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS  // NUM Dcache DATA
-                                                                                                 // BANKS.
+  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,  // Number of scratch RAM banks;
+                                                                                           // sizes the scratch RAM port
+                                                                                           // arrays.
+  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,  // Number of instruction-cache tag
+                                                                                                 // banks; sizes the
+                                                                                                 // instruction-cache tag port
+                                                                                                 // arrays.
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,  // Number of instruction-cache data
+                                                                                                  // banks; sizes the
+                                                                                                  // instruction-cache data port
+                                                                                                  // arrays.
+  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,  // Number of data-cache tag banks;
+                                                                                                 // sizes the data-cache tag port
+                                                                                                 // arrays.
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS  // Number of data-cache data banks;
+                                                                                                 // sizes the data-cache data port
+                                                                                                 // arrays.
 
 ) (
-  input  wire logic clk_i,              // Clocks and resets.
-  input  wire logic clk_ref_i,          // Clocks and resets.
-  input  wire logic rst_isolate_ni,     // Clocks and resets.
-  input  wire logic rst_primary_smc_clk_ni,  // Clocks and resets.
-  input  wire logic rst_warm_smc_clk_ni,  // Clocks and resets.
-  input  wire logic fuse_reset_ni,      // Clocks and resets.
-  input  wire logic scan_rst_ni,        // Clocks and resets.
+  input  wire logic clk_i,              // SMC core clock for the cluster, the front-port demux,
+                                        // cpu_ctrl and the boot ROM interface.
+  input  wire logic clk_ref_i,          // Reference clock for the cpu_ctrl reference counter.
+  input  wire logic rst_isolate_ni,     // Active-low reset for the cluster-boundary AXI isolate
+                                        // modules.
+  input  wire logic rst_primary_smc_clk_ni,  // Active-low primary reset in the SMC clock domain for
+                                             // the front-port demux, AXI-Lite converter and
+                                             // cpu_ctrl.
+  input  wire logic rst_warm_smc_clk_ni,  // Active-low warm reset in the SMC clock domain; holds
+                                          // the cluster core and uncore resets asserted and
+                                          // selects the default core reset vector.
+  input  wire logic fuse_reset_ni,      // Active-low reset for the scratch RAM zero-fill sequencer;
+                                        // its release starts the zero-fill.
+  input  wire logic scan_rst_ni,        // Active-low scan reset, passed to cpu_ctrl, which does not
+                                        // use it.
 
-  input  wire logic chiplet_is_primary_i,  // Chiplet is primary.
+  input  wire logic chiplet_is_primary_i,  // High on the primary chiplet; reported by cpu_ctrl in
+                                           // SMC_ATTRIBUTES.
 
-  input  wire smc_pkg::smc_local_32_64_8_12_axi_req_t axi_front_port_req_i,  // AXI front port from
-                                                                             // smc_fabric (local
-                                                                             // crossbar to CPU L2
-                                                                             // frontend and the
-                                                                             // cpu_ctrl register
-                                                                             // block, demuxed by
-                                                                             // address below)
-                                                                             // request.
-  output smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_front_port_resp_o,  // AXI front port from
-                                                                              // smc_fabric (local
-                                                                              // crossbar to CPU L2
-                                                                              // frontend and the
-                                                                              // cpu_ctrl register
-                                                                              // block, demuxed by
-                                                                              // address below)
-                                                                              // response.
+  input  wire smc_pkg::smc_local_32_64_8_12_axi_req_t axi_front_port_req_i,  // Front-port AXI request
+                                                                             // from the local fabric;
+                                                                             // addresses in the
+                                                                             // SMC_CPU_CTRL window go
+                                                                             // to cpu_ctrl, all others
+                                                                             // to the cluster L2
+                                                                             // frontend.
+  output smc_pkg::smc_local_32_64_8_12_axi_resp_t     axi_front_port_resp_o,  // Front-port AXI response
+                                                                              // to the local fabric.
 
-  output smc_pkg::smc_cpu_mmio_axi_req_t       axi_mmio_port_req_o,  // AXI MMIO port to
-                                                                     // smc_fabric (CPU MMIO
-                                                                     // master) request.
-  input  wire smc_pkg::smc_cpu_mmio_axi_resp_t axi_mmio_port_resp_i,  // AXI MMIO port to
-                                                                      // smc_fabric (CPU MMIO
-                                                                      // master) response.
+  output smc_pkg::smc_cpu_mmio_axi_req_t       axi_mmio_port_req_o,  // Cluster MMIO AXI master
+                                                                     // request to the smc_fabric
+                                                                     // input fabric.
+  input  wire smc_pkg::smc_cpu_mmio_axi_resp_t axi_mmio_port_resp_i,  // Cluster MMIO AXI master
+                                                                      // response from the
+                                                                      // smc_fabric input fabric.
 
-  input  wire logic [NUM_CPU_INTERRUPTS-1:0] interrupts_i,  // Interrupts from smc_base.
+  input  wire logic [NUM_CPU_INTERRUPTS-1:0] interrupts_i,  // Interrupt vector from smc_base,
+                                                            // passed unchanged to the cluster.
 
-  output logic [NUM_CPU_CORES-1:0][57:0] wb_reg_pc_o,  // CPU status signals consumed in
-                                                       // smc_base.
-  output logic [NUM_CPU_CORES-1:0]       wdt_timeout_cluster_o,  // CPU status signals
-                                                                 // consumed in smc_base.
-  output logic                           wdt_second_timeout_o,  // CPU status signals
-                                                                // consumed in smc_base.
+  output logic [NUM_CPU_CORES-1:0][57:0] wb_reg_pc_o,  // Per-core writeback program counter from
+                                                       // the cluster, zero while the cluster
+                                                       // boundary is isolated.
+  output logic [NUM_CPU_CORES-1:0]       wdt_timeout_cluster_o,  // Per-core first-stage watchdog
+                                                                 // timeout from the cluster, low
+                                                                 // while the cluster boundary is
+                                                                 // isolated.
+  output logic                           wdt_second_timeout_o,  // Second-stage watchdog timeout
+                                                                // from cpu_ctrl, registered on
+                                                                // clk_i.
 
-  output logic cluster_ded_o,           // DED output.
+  output logic cluster_ded_o,           // Registered OR of the cluster's uncorrectable-error flags,
+                                        // cleared while the cluster uncore reset is asserted.
 
-  output rom_req_t            rom_intf_req_o,  // CPU Memory Signals.
-  input  rom_rsp_t            rom_intf_rsp_i,  // CPU Memory Signals.
-  output scratch_ram_req_t    scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],  // CPU Memory Signals.
-  input  scratch_ram_rsp_t    scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],  // CPU Memory Signals.
-  output l1_icache_tag_req_t  l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],  // CPU Memory Signals.
-  input  l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],  // CPU Memory Signals.
-  output l1_icache_data_req_t l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],  // CPU Memory Signals.
-  input  l1_icache_data_rsp_t l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],  // CPU Memory Signals.
-  output l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],  // CPU Memory Signals.
-  input  l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],  // CPU Memory Signals.
-  output l1_dcache_data_req_t l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],  // CPU Memory Signals.
-  input  l1_dcache_data_rsp_t l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],  // CPU Memory Signals.
+  output rom_req_t            rom_intf_req_o,  // Boot ROM read request from the TileLink-to-ROM
+                                               // bridge, clocked by clk_i, with the write
+                                               // fields tied to zero.
+  input  rom_rsp_t            rom_intf_rsp_i,  // Boot ROM read data for the TileLink-to-ROM bridge.
+  output scratch_ram_req_t    scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],  // Scratch RAM bank requests,
+                                                                            // driven by the zero-fill
+                                                                            // sequencer until the zero-fill
+                                                                            // completes.
+  input  scratch_ram_rsp_t    scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],  // Scratch RAM bank read data.
+  output l1_icache_tag_req_t  l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank
+                                                                                    // requests.
+  input  l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank read
+                                                                                    // data.
+  output l1_icache_data_req_t l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank
+                                                                                      // requests.
+  input  l1_icache_data_rsp_t l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank read
+                                                                                      // data.
+  output l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank requests.
+  input  l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank read data.
+  output l1_dcache_data_req_t l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank requests.
+  input  l1_dcache_data_rsp_t l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank read data.
 
-  input  wire logic disable_sram_auto_init_i,  // Disable sram auto init.
-  output logic      init_mem_done_o,    // Init mem done.
+  input  wire logic disable_sram_auto_init_i,  // High skips the scratch RAM zero-fill after
+                                               // fuse_reset_ni releases.
+  output logic      init_mem_done_o,    // High once the scratch RAM zero-fill has completed or been
+                                        // skipped.
 
-  input  wire logic rom_flip_endianness_i,  // ROM Flip Endianness.
+  input  wire logic rom_flip_endianness_i,  // High byte-reverses each ROM word returned to the
+                                            // cluster.
 
-  input  wire logic test_en_i,          // Test en.
+  input  wire logic test_en_i,          // Scan test mode enable for the front-port demux, AXI-Lite
+                                        // converter and cluster debug clock gate.
 
-  input  wire logic        smc_cpu_jtag_TCK_i,  // CPU Debug interfaces (JTAG).
-  input  wire logic        smc_cpu_jtag_TMS_i,  // CPU Debug interfaces (JTAG).
-  input  wire logic        smc_cpu_jtag_TDI_i,  // CPU Debug interfaces (JTAG).
-  output logic             smc_cpu_jtag_TDO_data_o,  // CPU Debug interfaces (JTAG).
-  input  wire logic        smc_cpu_jtag_reset_i,  // CPU Debug interfaces (JTAG).
-  input  wire logic [10:0] smc_cpu_jtag_mfr_id_i,  // CPU Debug interfaces (JTAG).
-  input  wire logic [15:0] smc_cpu_jtag_part_number_i,  // CPU Debug interfaces (JTAG).
-  input  wire logic [3:0]  smc_cpu_jtag_version_i  // CPU Debug interfaces (JTAG).
+  input  wire logic        smc_cpu_jtag_TCK_i,  // JTAG test clock for the cluster debug transport
+                                                // module.
+  input  wire logic        smc_cpu_jtag_TMS_i,  // JTAG test mode select for the cluster debug
+                                                // transport module.
+  input  wire logic        smc_cpu_jtag_TDI_i,  // JTAG test data into the cluster debug transport
+                                                // module.
+  output logic             smc_cpu_jtag_TDO_data_o,  // JTAG test data out of the cluster debug
+                                                     // transport module.
+  input  wire logic        smc_cpu_jtag_reset_i,  // Active-high asynchronous reset of the cluster
+                                                  // JTAG debug transport module (TAP) and of the
+                                                  // debug module's DMI interface.
+  input  wire logic [10:0] smc_cpu_jtag_mfr_id_i,  // Manufacturer ID reported in the cluster JTAG
+                                                   // IDCODE.
+  input  wire logic [15:0] smc_cpu_jtag_part_number_i,  // Part number reported in the cluster JTAG
+                                                        // IDCODE.
+  input  wire logic [3:0]  smc_cpu_jtag_version_i  // Version reported in the cluster JTAG IDCODE.
 );
 
   /////////////////////////

@@ -11,11 +11,16 @@
 module prim_pad_shim #(
   parameter bit InputOnly = 1'b0  // 1 instantiates InputStd; 0 instantiates BidirStd.
 ) (
-  input  logic                            core2pad_i,          // Core data driven toward the pad.
-  input  logic                            core2pad_en_i,       // Output enable toward the pad.
+  input  logic                            core2pad_i,          // Core data driven toward the pad;
+                                                               // unused when InputOnly.
+  input  logic                            core2pad_en_i,       // Output enable toward the pad;
+                                                               // unused when InputOnly.
   output logic                            pad2core_o,          // Pad data returned to the core.
-  input  logic                            pad2core_en_i,       // Input enable from the pad.
-  input  gpio_shim_pkg::gpio_model_ctrl_t gpio_ctrl_i,         // Pull, drive, and filter controls.
+  input  logic                            pad2core_en_i,       // Pad input enable; pad2core_o reads
+                                                               // 0 while low.
+  input  gpio_shim_pkg::gpio_model_ctrl_t gpio_ctrl_i,         // Pull, drive, and filter controls;
+                                                               // the glitch-filter enable drives
+                                                               // the pad Schmitt trigger.
   input  logic                            gpio_nandtree_in_i,  // NAND-tree input (pass-through).
   output logic                            gpio_nandtree_out_o, // NAND-tree output (pass-through).
   inout  wire                             pad_io               // Bidirectional pad pin.

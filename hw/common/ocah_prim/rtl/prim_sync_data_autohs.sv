@@ -3,22 +3,26 @@
 
 // Cross data_i from clk_src_i to clk_dst_i with an automatic req/ack toggle handshake.
 //
-// Sample data_i in the source domain and capture it in the destination after the handshake
-// closes.
-// DEPTH selects a 2-flop or 3-flop synchronizer on the toggle wires; the default of 2
-// preserves existing integrations.
-// Wait for the destination ack before accepting the next source change.
+// Sample data_i in the source domain at the start of every handshake round, whether or not it
+// changed, and capture the held sample in the destination when its request toggle arrives.
+// DEPTH of 2 selects 2-flop synchronizers on the toggle wires; any other value selects
+// 3-flop ones.
+// Wait for the destination ack before sampling again, so changes of data_i shorter than one
+// round trip can be missed.
 
 module prim_sync_data_autohs #(
   parameter int unsigned WIDTH = 1,  // Datapath width.
-  parameter int unsigned DEPTH = 2  // Sync depth on handshake toggles; default 2 preserves existing integrations.
+  parameter int unsigned DEPTH = 2  // Sync depth on handshake toggles; 2 gives two flops, any other
+                                    // value three.
 ) (
   input  logic             clk_src_i,  // Source clock.
-  input  logic             rst_src_ni,  // Async reset in the source domain, active-low.
+  input  logic             rst_src_ni,  // Active-low reset for the source domain; the source
+                                        // registers sample it synchronously.
   input  logic [WIDTH-1:0] data_i,  // Source-domain data.
   input  logic             clk_dst_i,  // Destination clock.
-  input  logic             rst_dst_ni,  // Async reset in the destination domain, active-low.
-  output logic [WIDTH-1:0] data_o  // Destination-domain captured data.
+  input  logic             rst_dst_ni,  // Active-low reset for the destination domain; the
+                                        // destination registers sample it synchronously.
+  output logic [WIDTH-1:0] data_o  // Destination-domain captured data; 0 after reset.
 );
 
   ////////////////////////////////////////////////////////////////////////////////

@@ -1,60 +1,82 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Wrap SMC design-for-debug and DFX sidebands.
+// Wrap the SMC design-for-debug logic: one CLA and one DST behind an APB register port.
 //
-// Exposes DFD/DFX control and status into the SMC register and debug fabric.
-// Bridges scan and debug buses between the SMC and the chiplet DFD logic.
+// Reduces the 64-lane debug bus to 16 lanes through eight level-3 and four level-2 debug-bus
+// muxes, and runs the muxes and the DFD IP on a locally gated copy of clk_smc_i.
+// Generates the CLA time tick from clk_ref_i edges, masks the CLA cross-trigger and
+// halt-clock outputs, and leaves the trace sink RAMs outside the block.
 
 module smc_dfd_wrap #(
-  parameter logic [22:0] BASE_ADDR       = 0,  // BASE ADDR.
-  parameter int unsigned NUM_INPUT_LANES = 64,  // NUM INPUT LANES.
+  parameter logic [22:0] BASE_ADDR       = 0,  // Base address of the CLA and DST registers, passed
+                                               // to the DFD IP as its MMR base address.
+  parameter int unsigned NUM_INPUT_LANES = 64,  // Number of lanes on debug_bus_i. The eight level-3
+                                                // muxes always read 64 lanes: a smaller value
+                                                // makes their part-selects run past the top of
+                                                // debug_bus_i, and lanes above 64 are ignored.
   parameter int unsigned REF_CNT_W  = 8,  // Width of the reference tick accounting
                                           // counters. Bounds how far clk_gated_i may fall
                                           // behind clk_ref_i before ticks are lost;
                                           // 2**REF_CNT_W ref cycles of slack.
-  localparam int unsigned LANE_WIDTH = 16  // Width of the reference tick accounting
-                                           // counters. Bounds how far clk_gated_i may
-                                           // fall behind clk_ref_i before ticks are lost;
-                                           // 2**REF_CNT_W ref cycles of slack.
+  localparam int unsigned LANE_WIDTH = 16  // Width of one debug-bus lane in the mux tree and the
+                                           // DFD IP.
 ) (
-  input  logic clk_smc_i,               // Smc clock.
-  input  logic clk_ref_i,               // Ref clock.
-  input  logic rst_primary_ni,          // Rst primary.
+  input  logic clk_smc_i,               // SMC core clock, gated locally to clock the debug-bus
+                                        // muxes, the DFD IP and the time-tick counter.
+  input  logic clk_ref_i,               // Reference clock; each rising edge produces one CLA time
+                                        // tick in the gated SMC clock domain.
+  input  logic rst_primary_ni,          // Active-low primary reset for the DFD logic, also
+                                        // synchronized into clk_ref_i for the reference counter.
 
-  input  smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_i,  // Apb smc dfd reg request.
-  output smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_o,  // Apb smc dfd reg response.
+  input  smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_i,  // APB request to the CLA and DST
+                                                             // registers.
+  output smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_o,  // APB response from the CLA and DST
+                                                              // registers.
 
-  input  smc_pkg::dfd_enable_t dfd_enables_i,  // Dfd enables.
+  input  smc_pkg::dfd_enable_t dfd_enables_i,  // DFD control fields: dfd_cg_en set stops the local
+                                               // clock unless dfd_force_clk_en is set; bit 0 of
+                                               // xtrig_clk_halt_mask passes the CLA cross-trigger
+                                               // and halt-clock outputs. The clock runs while
+                                               // rst_primary_ni is low.
 
-  output logic                                             external_action_debug_interrupt_o,  // External action
-                                                                                               // debug interrupt.
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] external_action_custom_o,  // External action
-                                                                                      // custom.
+  output logic                                             external_action_debug_interrupt_o,  // Debug interrupt raised by a CLA
+                                                                                               // external action.
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] external_action_custom_o,  // Custom CLA external-action
+                                                                                      // outputs, one bit per custom
+                                                                                      // action.
 
-  output smc_pkg::xtrigger_t xtrigger_ss_o,  // Xtrigger ss.
-  input  smc_pkg::xtrigger_t xtrigger_ss_i,  // Xtrigger ss.
-  input  logic               tdr_dbg_ctrl_clock_stop_en_i,  // Tdr dbg ctrl clock stop en.
-  output logic               tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // Tdr dbg ctrl clocks
-                                                                    // stopped by cla.
+  output smc_pkg::xtrigger_t xtrigger_ss_o,  // Cross-trigger lanes from the CLA, forced low unless
+                                             // bit 0 of the clock-halt trigger mask is set.
+  input  smc_pkg::xtrigger_t xtrigger_ss_i,  // Cross-trigger lanes into the CLA.
+  input  logic               tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock
+                                                            // action as a clock stop.
+  output logic               tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while a CLA halt-clock
+                                                                    // action, enabled by the mask and
+                                                                    // tdr_dbg_ctrl_clock_stop_en_i, is
+                                                                    // requesting a clock stop.
 
-  input  tt_dbm_pkg::DbgMuxSelMmr_s             dbg_mux_sel_csr_i,  // Dbg mux sel csr.
-  input  logic [NUM_INPUT_LANES*LANE_WIDTH-1:0] debug_bus_i,  // Debug bus.
-  output logic [7:0]                            debug_marker_o,  // Debug marker.
+  input  tt_dbm_pkg::DbgMuxSelMmr_s             dbg_mux_sel_csr_i,  // Debug-bus mux select register,
+                                                                    // shared by every level-2 and
+                                                                    // level-3 mux.
+  input  logic [NUM_INPUT_LANES*LANE_WIDTH-1:0] debug_bus_i,  // Debug-bus lanes from the SMC into
+                                                              // the level-3 mux stage.
+  output logic [7:0]                            debug_marker_o,  // Debug marker from the CLA.
 
-  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Trace sink RAMs live
-                                                                                          // outside the DFD
-                                                                                          // block
-                                                                                          // (EXTERNAL_SINK_MEM =
-                                                                                          // 1) request.
-  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,  // Trace sink RAMs live
-                                                                                           // outside the DFD
-                                                                                           // block
-                                                                                           // (EXTERNAL_SINK_MEM =
-                                                                                           // 1) response.
+  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Requests from the DST
+                                                                                          // trace sink to the trace
+                                                                                          // RAMs outside this
+                                                                                          // block, one per RAM
+                                                                                          // instance.
+  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,  // Read data from the
+                                                                                           // external trace RAMs to
+                                                                                           // the DST trace sink.
 
-  input  logic test_en_i,               // DFT.
-  input  logic scan_rst_ni              // DFT.
+  input  logic test_en_i,               // Active-high DFT test-mode enable: forces the DFD clock
+                                        // gates on and selects scan_rst_ni as the DFD IP and
+                                        // reference-counter reset.
+  input  logic scan_rst_ni              // Active-low scan reset used by the DFD IP and the
+                                        // reference-clock reset synchronizer in test mode.
 );
 
   /////////////////////////

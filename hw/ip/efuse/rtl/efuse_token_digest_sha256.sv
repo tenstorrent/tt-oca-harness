@@ -16,15 +16,21 @@ module efuse_token_digest_sha256
   import prim_sha2_pkg::*;
 (
   input logic clk_i,                    // System clock.
-  input logic rst_ni,                   // Active-low reset.
+  input logic rst_ni,                   // Active-low asynchronous reset of the feeder and the SHA
+                                        // engine; the digest and valid latches are not reset.
 
   input logic test_en_i,                // DFT test-enable: freeze the retained digest.
 
-  input logic             start_i,      // start a hash of token_i.
+  input logic             start_i,      // Starts a hash of token_i when the feeder and engine are
+                                        // idle; while high it also clears digest_vld_sticky_o.
   input logic [7:0][31:0] token_i,      // 256-bit token, MSW = token_i[7].
 
-  output logic         digest_vld_sticky_o,  // sticky valid when digest_o is valid.
-  output logic [255:0] sha_digest_sticky_o  // Sha digest sticky.
+  output logic         digest_vld_sticky_o,  // High when the retained digest is valid; cleared by
+                                             // start_i, set one cycle after the engine finishes,
+                                             // and held in a latch across reset.
+  output logic [255:0] sha_digest_sticky_o  // SHA-256 digest of the last hashed token, H0 in the
+                                            // MSBs; held in a latch across reset and frozen while
+                                            // test_en_i is high.
 );
 
   typedef enum logic [2:0] {

@@ -4,9 +4,12 @@
 
 // Respond to unmapped or rejected TL-UL requests with an error.
 //
-// Accept A-channel requests and return a one-cycle D-channel response with no stalling
-// unless the response is stuck on the way out. By default return a proper bus error. When
-// ReturnBlankResp is set, return a blank all-zero response without setting the error bit.
+// Accept one A-channel request at a time and present its D-channel response from the
+// next cycle until d_ready. a_ready is low while a response is pending, so requests are
+// accepted at most every other cycle. By default return d_error set with
+// DataWhenInstrError for instruction fetches and DataWhenError otherwise. When
+// ReturnBlankResp is set, return all-zero data without setting d_error. Response and data
+// integrity are generated in either mode.
 
 module tlul_err_resp #(
   parameter bit ReturnBlankResp = 0  // When set, return zeros without asserting d_error.

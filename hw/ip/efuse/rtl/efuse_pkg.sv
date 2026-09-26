@@ -5,7 +5,8 @@
 //
 // Provides rule_t, shadow_word_range_map_t, and related constants imported by the
 // controller, guard, shadow regs, and token processing.
-// Includes AXI typedef helpers used by interface blocks.
+// Also defines the lifecycle-state encoding, fuse commands, and address-decode selects, and
+// includes the AXI, APB, and fuse-command typedef macros used by interface blocks.
 
 package efuse_pkg;
 

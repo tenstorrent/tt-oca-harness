@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Program fuse bits or words through the fuse-command interface with optional read-back and timeouts.
+// Program one fuse bit through the fuse-command interface with optional read-back and timeouts.
 //
 // program_go_i starts a program to program_addr_i with program_data_in_i;
 // program_read_back_enable_i requests post-program read-back.
@@ -14,7 +14,8 @@
 `include "prim_assert.sv"
 
 module efuse_program_interface #(
-  parameter unsigned EFUSE_WORD_WIDTH = 32,  // Program/read data word width.
+  parameter unsigned EFUSE_WORD_WIDTH = 32,  // Program/read data word width; declared but not used
+                                             // in this module.
 
   parameter type efuse_addr_t = logic,  // Fuse bit-address type.
   parameter type efuse_data_t = logic,  // Fuse data-word type.
@@ -23,37 +24,51 @@ module efuse_program_interface #(
   parameter type fuse_command_resp_t = logic  // Fuse-command response type.
 ) (
   input logic clk_i,                    // System clock.
-  input logic rst_ni,                   // Active-low reset.
-  input logic test_en_i,                // DFT test enable.
+  input logic rst_ni,                   // Active-low asynchronous reset.
+  input logic test_en_i,                // DFT test enable; not used in this module.
 
-  input  logic        program_enable_i,  // Program enable.
-  output logic        is_programing_o,  // Is programing.
-  output efuse_addr_t program_target_addr_o,  // Program target addr.
+  input  logic        program_enable_i,  // Program operations allowed; a start while low completes
+                                         // immediately with an error.
+  output logic        is_programing_o,  // High while a program command is outstanding, for the
+                                        // guard.
+  output efuse_addr_t program_target_addr_o,  // Fuse bit address of the outstanding program
+                                              // command; zero when idle.
 
-  input efuse_addr_t program_addr_i,    // Program addr.
-  input logic        program_data_in_i,  // Program data in.
-  input logic        program_go_i,      // Program go.
-  input logic        program_read_back_enable_i,  // Program read back enable.
+  input efuse_addr_t program_addr_i,    // Fuse bit address to program, sampled on a start.
+  input logic        program_data_in_i,  // Bit value to program; a start with zero is rejected with
+                                         // an error.
+  input logic        program_go_i,      // Starts a program operation when high in the idle state.
+  input logic        program_read_back_enable_i,  // Selects the program-with-read-back command,
+                                                  // which returns the programmed word.
 
-  output logic        program_busy_o,   // Program busy.
-  output logic        program_done_o,   // Program done.
-  output logic        program_error_o,  // Program error.
-  output efuse_data_t program_read_back_data_o,  // Program read back data.
+  output logic        program_busy_o,   // High while a program operation waits for its response.
+  output logic        program_done_o,   // Set when the last program operation completed; cleared by
+                                        // the next start.
+  output logic        program_error_o,  // Set when the last program operation failed: rejected,
+                                        // blocked, errored by the bank, or timed out.
+  output efuse_data_t program_read_back_data_o,  // Data word returned with the last successful
+                                                 // program response.
 
-  input  logic program_addr_oob_i,      // Program addr oob.
-  output logic program_addr_error_o,    // Program addr error.
-  input  logic program_addr_error_clear_i,  // Program addr error clear.
+  input  logic program_addr_oob_i,      // High when the full-width CSR program address is beyond
+                                        // the fuse array; a start is then rejected.
+  output logic program_addr_error_o,    // Sticky out-of-bounds program address error.
+  input  logic program_addr_error_clear_i,  // Clears the sticky address error; a same-cycle new
+                                            // error takes priority.
 
-  input logic efuse_req_err_i,          // Efuse req err.
-  input logic secure_tm_blocked_i,      // Secure tm blocked.
+  input logic efuse_req_err_i,          // Guard lock error; ends an outstanding program with an
+                                        // error.
+  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; ends an outstanding program
+                                        // with an error.
 
-  input logic        program_req_timeout_en_i,  // Program req timeout en.
-  input logic [27:0] program_req_timeout_cycles_i,  // Program req timeout cycles.
+  input logic        program_req_timeout_en_i,  // Enables the response timeout for program
+                                                // operations.
+  input logic [27:0] program_req_timeout_cycles_i,  // Response timeout in clock cycles.
 
-  output fuse_command_req_t  fuse_command_req_o,  // Fuse command req.
-  input  fuse_command_resp_t fuse_command_resp_i,  // Fuse command resp.
+  output fuse_command_req_t  fuse_command_req_o,  // Program command to the guard; valid only while
+                                                  // waiting for the response.
+  input  fuse_command_resp_t fuse_command_resp_i,  // Filtered response to the program command.
 
-  output logic is_program_timeout_debug_o  // Is program timeout debug.
+  output logic is_program_timeout_debug_o  // One-cycle pulse when a program operation times out.
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;

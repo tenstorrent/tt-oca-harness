@@ -3,34 +3,48 @@
 
 // Bridge TileLink Gets to the SMC boot ROM memory interface.
 //
-// Converts TileLink Get traffic into a ROM address and chip-enable.
+// Converts TileLink Get traffic into a ROM address and chip-enable; every A-channel request is
+// answered as a read, since the port carries no opcode.
 // Optionally swaps response endianness before returning data on the D channel.
 
 module tilelink_to_rom_mem #(
-  parameter int unsigned ADDR_WIDTH = 14,  // Address width.
-  parameter int unsigned WORD_WIDTH = 64  // Word width.
+  parameter int unsigned ADDR_WIDTH = 14,  // Width of the ROM word address, taken from the TileLink
+                                           // byte address starting at bit 3.
+  parameter int unsigned WORD_WIDTH = 64  // Width of a ROM word and of the D-channel data; the
+                                          // endianness swap assumes 64.
 ) (
-  input  logic         clk_i,           // Clock.
-  input  logic         rst_i,           // Reset.
+  input  logic         clk_i,           // Clock of the cluster boot ROM TileLink port.
+  input  logic         rst_i,           // Active-high asynchronous reset from the cluster boot ROM
+                                        // TileLink port.
 
-  output logic         auto_in_a_ready,  // Auto in a ready.
-  input  logic         auto_in_a_valid,  // Auto in a valid.
-  input  logic  [1:0]  auto_in_a_bits_size,  // Auto in a bits size.
-  input  logic  [14:0] auto_in_a_bits_source,  // Auto in a bits source.
-  input  logic  [31:0] auto_in_a_bits_address,  // Auto in a bits address.
-  input  logic         auto_in_d_ready,  // Auto in d ready.
-  output logic         auto_in_d_valid,  // Auto in d valid.
-  output logic  [1:0]  auto_in_d_bits_size,  // Auto in d bits size.
-  output logic  [14:0] auto_in_d_bits_source,  // Auto in d bits source.
-  output logic  [WORD_WIDTH-1:0] auto_in_d_bits_data,  // Auto in d bits data.
+  output logic         auto_in_a_ready,  // A-channel ready; follows auto_in_d_ready.
+  input  logic         auto_in_a_valid,  // A-channel Get request valid.
+  input  logic  [1:0]  auto_in_a_bits_size,  // A-channel transfer size, returned on
+                                             // auto_in_d_bits_size.
+  input  logic  [14:0] auto_in_a_bits_source,  // A-channel source ID, returned on
+                                               // auto_in_d_bits_source.
+  input  logic  [31:0] auto_in_a_bits_address,  // A-channel byte address; bits 3 and up select the
+                                                // ROM word.
+  input  logic         auto_in_d_ready,  // D-channel ready from the cluster; also used as the
+                                         // A-channel ready.
+  output logic         auto_in_d_valid,  // D-channel response valid, set the cycle after a request
+                                         // is accepted and cleared by auto_in_d_ready.
+  output logic  [1:0]  auto_in_d_bits_size,  // Transfer size of the request being answered.
+  output logic  [14:0] auto_in_d_bits_source,  // Source ID of the request being answered.
+  output logic  [WORD_WIDTH-1:0] auto_in_d_bits_data,  // ROM word returned on the D channel,
+                                                       // byte-reversed when rom_flip_endianness_i
+                                                       // is high.
 
-  input  logic                  rom_flip_endianness_i,  // Rom flip endianness.
+  input  logic                  rom_flip_endianness_i,  // High byte-reverses rom_bank_data_i before
+                                                        // it is returned on the D channel.
 
-  output logic [ADDR_WIDTH-1:0] rom_address_o,  // Tilelink to generic memory interface
-                                                // conversion outputs.
-  output logic                  mem_chip_en_o,  // Tilelink to generic memory interface
-                                                // conversion outputs.
-  input  logic [63:0]           rom_bank_data_i  // Memory data response from ROM.
+  output logic [ADDR_WIDTH-1:0] rom_address_o,  // ROM word address: the incoming address while a
+                                                // request is accepted, otherwise the last accepted
+                                                // one.
+  output logic                  mem_chip_en_o,  // ROM chip enable, high while an A-channel request
+                                                // or D-channel response is valid; low in reset.
+  input  logic [63:0]           rom_bank_data_i  // ROM word read at rom_address_o, passed
+                                                 // combinationally to auto_in_d_bits_data.
 );
 
   // Flop the incoming request

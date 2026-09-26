@@ -1,25 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Turn iDMA ND requests into AXI master read and write traffic.
+// Turn 1-D iDMA transfer requests into AXI master read and write traffic.
 //
+// Each master interface has its own idma_backend_rw_axi with a hardware legalizer, zero-length
+// rejection and no error handling; an axi_mux merges its read and write ports and an axi_cut
+// registers the master port.
 // NUM_MST_INTERFACES must be >= 1.
-// BUFFER_DEPTH is the realignment buffer depth in beats and must be >= 2.
+// BUFFER_DEPTH is the realignment buffer depth in beats and must be >= 2; 3 handles misaligned
+// transfers efficiently.
 // EN_R_AW_COUPLING is recommended.
 
 module idma_backend_wrapper #(
   parameter int unsigned NUM_MST_INTERFACES = 1,            // Backend master count; must be >= 1.
 
-  parameter int unsigned DMA_MST_MAX_TXNS = 16,             // Max outstanding AXI master transactions.
+  parameter int unsigned DMA_MST_MAX_TXNS = 16,             // Max outstanding AXI transactions per
+                                                            // master interface.
 
-  parameter int unsigned M2B_FIFO_DEPTH = 0,                // Manager-to-backend FIFO depth.
-  parameter int unsigned BUFFER_DEPTH = 3,                  // Realignment buffer depth in beats; must be >= 2.
+  parameter int unsigned M2B_FIFO_DEPTH = 0,                // Depth of the request FIFO ahead of
+                                                            // each backend; 0 passes requests
+                                                            // straight through.
+  parameter int unsigned BUFFER_DEPTH = 3,                  // Realignment buffer depth in beats;
+                                                            // must be >= 2.
 
-  parameter bit EN_R_AW_COUPLING = 1,                       // Couple R and AW channels; recommended.
+  parameter bit EN_R_AW_COUPLING = 1,                       // Makes the backend's R-to-AW coupling
+                                                            // hardware available; recommended.
 
-  parameter bit BYPASS_DMA_MST_FLOPS  = 1'b0,               // Skip AXI master boundary flops.
+  parameter bit BYPASS_DMA_MST_FLOPS  = 1'b0,               // Bypasses the axi_cut registers on
+                                                            // each master port.
 
-  parameter int unsigned TFLenWidth = 32,                   // Transfer-length field width.
+  parameter int unsigned TFLenWidth = 32,                   // Transfer-length field width; the
+                                                            // maximum transfer is 2**TFLenWidth
+                                                            // bytes.
 
   parameter type idma_req_t = logic,                        // iDMA request type.
   parameter type idma_resp_t = logic,                       // iDMA response type.
@@ -28,16 +40,24 @@ module idma_backend_wrapper #(
   parameter type dma_mst_resp_t = logic,                    // AXI master response type.
 
   parameter int unsigned AXI_ADDR_WIDTH       = 56,         // AXI address width.
-  parameter int unsigned AXI_DATA_WIDTH       = 64,         // AXI data width.
-  parameter int unsigned AXI_USER_WIDTH       = 12,         // AXI user width.
-  parameter int unsigned MST_ID_WIDTH         = 3,          // AXI master ID width.
-  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // Internal backend ID width.
+  parameter int unsigned AXI_DATA_WIDTH       = 64,         // Data width of the AXI master port and
+                                                            // the backend transfer buffer.
+  parameter int unsigned AXI_USER_WIDTH       = 12,         // User-signal width of the AXI master
+                                                            // port.
+  parameter int unsigned MST_ID_WIDTH         = 3,          // AXI master ID width; must equal
+                                                            // BACKEND_INT_ID_WIDTH + 1.
+  parameter int unsigned BACKEND_INT_ID_WIDTH = 2           // ID width of the backend read and
+                                                            // write ports; axi_mux widens it by one
+                                                            // bit.
 ) (
   input  logic clk_i,                                       // System clock.
   input  logic rst_ni,                                      // Async reset, active-low.
-  input  logic test_en_i,                                   // DFT test enable.
+  input  logic test_en_i,                                   // DFT test enable for the request FIFO,
+                                                            // the backend and the AXI mux.
 
-  output logic dma_backend_busy_o,                          // Backend has work in flight.
+  output logic dma_backend_busy_o,                          // High while any request is pending,
+                                                            // any backend is busy, or any AW awaits
+                                                            // its B or AR its last R.
 
   input  idma_req_t  [NUM_MST_INTERFACES-1:0] req_i,        // Backend request payload.
   input  logic       [NUM_MST_INTERFACES-1:0] req_valid_i,  // Backend request valid.
@@ -47,7 +67,7 @@ module idma_backend_wrapper #(
   output logic       [NUM_MST_INTERFACES-1:0] resp_valid_o, // Backend response valid.
   input  logic       [NUM_MST_INTERFACES-1:0] resp_ready_i, // Backend response ready.
 
-  output dma_mst_req_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o, // AXI master request.
+  output dma_mst_req_t  [NUM_MST_INTERFACES-1:0] dma_mst_axi_req_o, // AXI master request, registered by axi_cut unless BYPASS_DMA_MST_FLOPS.
   input  dma_mst_resp_t [NUM_MST_INTERFACES-1:0] dma_mst_axi_resp_i // AXI master response.
 );
 

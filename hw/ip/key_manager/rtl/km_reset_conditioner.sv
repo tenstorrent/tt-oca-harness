@@ -19,15 +19,17 @@
 // - Cold source: rst_cold_aasd_no is the async reset of the warm counter flop, so any
 //   cold-reset event immediately asserts rst_warm_sync_no and clears all warm-reset-only
 //   state.
-// - Pulse extension: minimum hold time of MIN_RESET_CYCLES.
-// - Resets the PicoRV32 CPU, KPV lock bits, KMCSR warm subset, and DRBG sampler CSRs.
+// - Pulse extension: held for at least MIN_RESET_CYCLES after the last trigger cycle.
+// - In key_manager it resets the PicoRV32 CPU, the internal AXI fabric, and the warm fields
+//   of KMCSR, KPV, the DRBG sampler and the mailbox.
 //
 // DFT: scan_rst_ni / scanmode_i bypass both output paths consistently.
 
 module km_reset_conditioner
   import prim_mubi_pkg::*;
 #(
-  parameter int unsigned MIN_RESET_CYCLES = 10  // Minimum warm reset hold in clk_i cycles.
+  parameter int unsigned MIN_RESET_CYCLES = 10  // Minimum warm reset hold in clk_i cycles after the
+                                                // trigger releases; must be at least 2.
 ) (
   input  logic clk_i,  // System clock.
 
@@ -39,7 +41,8 @@ module km_reset_conditioner
   input  mubi4_t scanmode_i,   // Scan mode (MuBi4True enables scan override on both outputs).
 
   output logic        rst_cold_aasd_no,  // Cold reset: async-assert / sync-deassert (AASD).
-  output logic        rst_warm_sync_no   // Warm reset: fully synchronous to clk_i.
+  output logic        rst_warm_sync_no   // Warm reset: registered on clk_i, and asserted
+                                         // asynchronously while rst_cold_aasd_no is low.
 );
 
   `include "prim_assert.sv"

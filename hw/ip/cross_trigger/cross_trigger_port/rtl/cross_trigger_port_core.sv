@@ -3,43 +3,72 @@
 
 // Implement wire-OR and point-to-point cross-trigger pad protocols without a register block.
 //
-// mode_wire_or_i is 0 for wire-OR and 1 for point-to-point; invert_i inverts all I/O;
+// mode_wire_or_i is 1 for wire-OR and 0 for point-to-point; invert_i inverts the pad data levels;
 // stretch_mult_i sets wire-OR stretch; handshake_reset_i recovers P2P deadlock.
 // Synchronizes pad inputs, stretches or handshakes ct_src_i, and reports busy plus
 // REQ/ACK status for CSR readback.
+// ct_dst_o, busy_o, and the pad controls are registered and reset low.
 
 module cross_trigger_port_core (
-  input  logic        clk_i,            // System clock.
-  input  logic        rst_ni,           // Active-low reset.
+  input  logic        clk_i,            // System clock for the port logic.
+  input  logic        rst_ni,           // Active-low asynchronous system reset.
 
-  input  logic        mode_wire_or_i,   // 1'b0 = Wire-OR, 1'b1 = Point-to-Point.
-  input  logic        invert_i,         // Invert all I/O signals.
-  input  logic        handshake_reset_i,  // Reset handshake state machine.
-  input  logic [15:0] stretch_mult_i,   // Pulse stretch multiplier.
+  input  logic        mode_wire_or_i,   // Pad protocol select: 1'b1 = wire-OR, 1'b0 =
+                                        // point-to-point.
+  input  logic        invert_i,         // Inverts the synchronized pad inputs and the driven pad
+                                        // data outputs; pad enables are not inverted.
+  input  logic        handshake_reset_i,  // Resets the outgoing point-to-point handshake state
+                                          // machine.
+  input  logic [15:0] stretch_mult_i,   // Wire-OR pulse stretch: each outgoing pulse lasts
+                                        // stretch_mult_i+1 clk_i cycles.
 
-  input  logic        ct_src_i,         // Cross trigger source pulse (synchronous).
-  output logic        ct_dst_o,         // Cross trigger destination pulse (registered).
-  output logic        busy_o,           // Transfer in progress.
+  input  logic        ct_src_i,         // Core-side cross-trigger pulse to transmit, synchronous to
+                                        // clk_i.
+  output logic        ct_dst_o,         // Core-side received cross-trigger pulse, registered.
+  output logic        busy_o,           // High, one cycle late, while the stretched pulse is active
+                                        // in wire-OR mode, or while the outgoing or incoming
+                                        // handshake is active in point-to-point mode.
 
-  output logic        ct_req_out_dout_en_o,  // enable for CT_Req_out pad.
-  output logic        ct_req_out_din_en_o,  // enable for CT_Req_out pad.
-  output logic        ct_req_out_dout_o,  // data for CT_Req_out pad.
-  input  logic        ct_req_out_din_i,  // data from CT_Req_out pad.
+  output logic        ct_req_out_dout_en_o,  // Output enable for the CT_Req_out pad. Follows the
+                                             // stretched outgoing pulse in wire-OR mode; high in
+                                             // point-to-point mode.
+  output logic        ct_req_out_din_en_o,  // Input enable for the CT_Req_out pad.
+                                            // High in wire-OR mode; low in point-to-point mode.
+  output logic        ct_req_out_dout_o,  // Output data for the CT_Req_out pad. Carries the
+                                          // outgoing handshake request in point-to-point mode. Held
+                                          // low in wire-OR mode, or high when invert_i is set.
+  input  logic        ct_req_out_din_i,  // Input data from the CT_Req_out pad. In wire-OR mode its
+                                         // synchronized assertion edge, falling unless inverted,
+                                         // pulses ct_dst_o; unused in point-to-point mode.
 
-  output logic        ct_req_in_din_en_o,  // enable for CT_Req_in pad.
-  input  logic        ct_req_in_din_i,  // data from CT_Req_in pad.
+  output logic        ct_req_in_din_en_o,  // Input enable for the CT_Req_in pad.
+                                           // High in point-to-point mode; low in wire-OR mode.
+  input  logic        ct_req_in_din_i,  // Input data from the CT_Req_in pad. In point-to-point mode
+                                        // its synchronized request pulses ct_dst_o; unused in
+                                        // wire-OR mode.
 
-  output logic        ct_ack_in_din_en_o,  // enable for CT_Ack_in pad.
-  input  logic        ct_ack_in_din_i,  // data from CT_Ack_in pad.
+  output logic        ct_ack_in_din_en_o,  // Input enable for the CT_Ack_in pad.
+                                           // High in point-to-point mode; low in wire-OR mode.
+  input  logic        ct_ack_in_din_i,  // Input data from the CT_Ack_in pad. In point-to-point mode
+                                        // its synchronized acknowledge clears the outgoing request;
+                                        // unused in wire-OR mode.
 
-  output logic        ct_ack_out_dout_en_o,  // enable for CT_Ack_out pad.
-  output logic        ct_ack_out_dout_o,  // data for CT_Ack_out pad.
+  output logic        ct_ack_out_dout_en_o,  // Output enable for the CT_Ack_out pad.
+                                             // High in point-to-point mode; low in wire-OR mode.
+  output logic        ct_ack_out_dout_o,  // Output data for the CT_Ack_out pad. Acknowledges the
+                                          // synchronized CT_Req_in request in point-to-point mode;
+                                          // held low in wire-OR mode.
 
-  output logic        status_busy_o,    // Current BUSY status.
-  output logic        status_req_out_o,  // Current REQ_OUT status.
-  output logic        status_ack_in_o,  // Current ACK_IN status.
-  output logic        status_req_in_o,  // Current REQ_IN status.
-  output logic        status_ack_out_o  // Current ACK_OUT status.
+  output logic        status_busy_o,    // Copy of busy_o for the STATUS.BUSY field.
+  output logic        status_req_out_o,  // Registered CT_Req_out pad data with invert_i undone;
+                                         // always low in wire-OR mode.
+  output logic        status_ack_in_o,  // Synchronized CT_Ack_in pad input, polarity-corrected by
+                                        // invert_i.
+  output logic        status_req_in_o,  // Synchronized CT_Req_in pad input, polarity-corrected by
+                                        // invert_i.
+  output logic        status_ack_out_o  // Registered CT_Ack_out pad data with invert_i undone; in
+                                        // wire-OR mode it equals invert_i because the pad data is
+                                        // held low without inversion.
 );
 
   // Synchronizer module

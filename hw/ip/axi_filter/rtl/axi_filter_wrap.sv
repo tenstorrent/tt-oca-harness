@@ -3,13 +3,18 @@
 
 // Filter AXI traffic through programmable address, ID, and NS rules with an error-slave path.
 //
-// Each filter_ctrl_i entry programs one traffic_filter.
-// Denied hits steer to an error slave; filter_skip_i bypasses matching entirely.
+// Each filter_ctrl_i entry programs one write-path and one read-path traffic_filter.
+// The lowest-index entry that hits decides whether AW or AR traffic is allowed.
+// Denied traffic steers to an error slave that answers DECERR; filter_skip_i bypasses
+// matching entirely.
 // BlockByDefault denies traffic when no rule hits.
 
 module axi_filter_wrap #(
-  parameter int unsigned  NumFilters                = 16,   // Number of programmable filter entries.
-  parameter int unsigned  DebugOutput               = 0,    // Enables filter-hit debug outputs.
+  parameter int unsigned  NumFilters                = 16,   // Number of programmable filter
+                                                            // entries.
+  parameter int unsigned  DebugOutput               = 0,    // Value 1 drives the hit indices onto
+                                                            // the debug outputs; other values tie
+                                                            // them to zero.
 
   parameter bit           BlockByDefault            = 1'b0, // Deny traffic when no rule hits.
 
@@ -21,17 +26,23 @@ module axi_filter_wrap #(
   parameter int unsigned  GroupIdUserBitStart       = 4,    // User-bit index of the group ID.
   parameter int unsigned  GroupIdWidth              = 4,    // Group ID width in user bits.
 
-  parameter bit           EnNsFilter                = 1'b0, // Match on non-secure initiator.
+  parameter bit           EnNsFilter                = 1'b0, // Match on the non-secure initiator
+                                                            // flag, AxPROT[1].
 
   parameter int unsigned  AxiAddrWidth              = 64,   // AXI address width.
-  parameter int unsigned  AxiIdWidth                = 5,    // AXI ID width.
-  parameter int unsigned  AxiDataWidth              = 64,   // AXI data width.
+  parameter int unsigned  AxiIdWidth                = 5,    // ID width of the AXI ports, the demux
+                                                            // and the error slave.
+  parameter int unsigned  AxiDataWidth              = 64,   // Data-bus width; sets the address
+                                                            // granularity of single-beat rules.
 
-  parameter int unsigned  MaxTrans                  = 4,    // Outstanding transactions in the demux.
+  parameter int unsigned  MaxTrans                  = 4,    // Outstanding transactions in the
+                                                            // demux.
   parameter int unsigned  AxiLookBits               = (AxiIdWidth > 3) ? 3 : AxiIdWidth, // ID bits used for outstanding tracking.
   parameter int unsigned  ErrSlvMaxTrans            = 32,   // Error-slave outstanding capacity.
-  parameter bit           FlopReqEn                 = 1'b0, // Flop AXI requests at the filter boundary.
-  parameter bit           FlopRespEn                = 1'b0, // Flop AXI responses at the filter boundary.
+  parameter bit           FlopReqEn                 = 1'b0, // Adds spill registers on the demux AW,
+                                                            // W and AR channels.
+  parameter bit           FlopRespEn                = 1'b0, // Adds spill registers on the demux B
+                                                            // and R channels.
 
   parameter type          filter_axi_req_t          = logic, // Filtered AXI request type.
   parameter type          filter_axi_resp_t         = logic, // Filtered AXI response type.
@@ -46,15 +57,18 @@ module axi_filter_wrap #(
 
   localparam bit [2:0]    DbusWidthLog2            = AxiStrbWidth > 1 ? $clog2(AxiStrbWidth) : 0, // log2 of the data-bus byte width.
 
-  localparam type         select_t                 = logic [$clog2(NumFilters)-1:0] // Filter-select index type.
+  localparam type         select_t                 = logic [$clog2(NumFilters)-1:0] // Filter-select index type; declared but not used.
 ) (
   input  logic                                    clk_i,    // System clock.
   input  logic                                    rst_ni,   // Async reset, active-low.
   input  logic                                    test_en_i, // DFT test enable.
-  input  logic                                    filter_skip_i, // Bypass all filter matching.
+  input  logic                                    filter_skip_i, // Bypass all filter matching and
+                                                                 // route every request to
+                                                                 // axi_filtered_out_req_o.
 
   input  filter_ctrl_reg_pkg::filter_ctrl__out_t  filter_ctrl_i          [NumFilters-1:0], // Per-entry PeakRDL configuration.
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t   filter_status_o        [NumFilters-1:0], // Per-entry PeakRDL status.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t   filter_status_o        [NumFilters-1:0], // Per-entry PeakRDL status: the data-bus width and the programmed range widened to
+                                                                                           // the rule granularity when start and end share one granule.
 
   input  filter_axi_req_t                         axi_in_req_i, // Unfiltered AXI request.
   output filter_axi_resp_t                        axi_in_resp_o, // Unfiltered AXI response.
@@ -62,8 +76,8 @@ module axi_filter_wrap #(
   output filter_axi_req_t                         axi_filtered_out_req_o, // Allowed AXI request.
   input  filter_axi_resp_t                        axi_filtered_out_resp_i, // Allowed AXI response.
 
-  output logic [$clog2(NumFilters)-1:0]           write_filter_hit_debug_o, // Write-path hit index.
-  output logic [$clog2(NumFilters)-1:0]           read_filter_hit_debug_o // Read-path hit index.
+  output logic [$clog2(NumFilters)-1:0]           write_filter_hit_debug_o, // Lowest hitting entry index on the write path; zero when DebugOutput is not 1.
+  output logic [$clog2(NumFilters)-1:0]           read_filter_hit_debug_o // Lowest hitting entry index on the read path; zero when DebugOutput is not 1.
 );
 
   //////////////////////////

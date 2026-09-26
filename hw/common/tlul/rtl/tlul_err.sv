@@ -4,18 +4,20 @@
 
 // Check TL-UL A-channel protocol encodings.
 //
-// Raise err_o when the incoming A channel carries an illegal opcode, size, address
-// alignment, or mask encoding for this bus.
+// Raise err_o combinationally when the incoming A channel carries an illegal opcode, size,
+// address alignment, or mask encoding for a 32-bit bus, an invalid instr_type encoding, or
+// a write marked as an instruction fetch. err_o is also high while a_valid is low, so it
+// is meaningful only with a_valid.
 
 module tlul_err
   import tlul_pkg::*;
 (
-  input clk_i,           // System clock.
-  input rst_ni,          // Active-low reset.
+  input clk_i,           // Unused; the check is combinational.
+  input rst_ni,          // Unused; the check has no state.
 
   input tl_h2d_t tl_i,   // A-channel request under check.
 
-  output logic err_o     // High when the A-channel encoding is illegal.
+  output logic err_o     // High when the A-channel request is illegal.
 );
   `include "prim_assert.sv"
 

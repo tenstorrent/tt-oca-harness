@@ -5,7 +5,8 @@
 // Adapt TL-UL device traffic onto an SRAM-like memory port.
 //
 // Translate Get/Put into req/we/addr/wdata/wmask transactions and track Outstanding
-// responses.
+// responses. Responses return in request order: a write responds once accepted, a read
+// once rvalid_i returns its data, and a rejected request without an SRAM access.
 //
 // BaseAddr is intentionally omitted so multiple memory maps may be used in an SoC.
 // Aliasing can happen if the TL-UL crossbar target size is bigger than the SRAM.
@@ -18,14 +19,16 @@
 // The remaining parameters select optional features:
 //
 // - ByteAccess enables sub-word writes and results in read-modify-write for integrity
-//   regeneration when EnableDataIntgPt is set.
+//   regeneration when EnableDataIntgPt is set and ErrOnWrite is clear.
 // - ErrOnWrite and ErrOnRead automatically error disallowed accesses.
-// - CmdIntgCheck enables command integrity checking.
+// - CmdIntgCheck enables command and A-channel data integrity checking.
 // - EnableRspIntgGen and EnableDataIntgGen generate response and data integrity.
-// - EnableDataIntgPt passthroughs command/response data integrity.
-// - SecFifoPtr duplicates FIFO pointers.
+// - EnableDataIntgPt passes write data integrity to the SRAM and returns the stored
+//   integrity with read data.
+// - SecFifoPtr uses redundant FIFO pointers.
 // - EnableReadback reads back and checks written or read data.
-// - DataXorAddr XORs data and address for address protection.
+// - DataXorAddr removes an address XOR that the memory applied to read data, so a faulted
+//   read address shows up as an integrity error; it takes effect only with EnableDataIntgPt.
 // - SramBusBankAW is the SRAM bank address width, used only when DataXorAddr is set.
 
 module tlul_adapter_sram
@@ -41,16 +44,16 @@ module tlul_adapter_sram
   parameter bit ByteAccess        = 1,   // Allow sub-word writes; may RMW if EnableDataIntgPt.
   parameter bit ErrOnWrite        = 0,   // Reject writes with a bus error.
   parameter bit ErrOnRead         = 0,   // Reject reads with a bus error.
-  parameter bit CmdIntgCheck      = 0,   // Require passing A-channel command integrity.
+  parameter bit CmdIntgCheck      = 0,   // Check A-channel command and data integrity.
   parameter bit EnableRspIntgGen  = 0,   // Generate D-channel response integrity.
   parameter bit EnableDataIntgGen = 0,   // Generate D-channel data integrity.
   parameter bit EnableDataIntgPt  = 0,   // Pass data integrity through to the SRAM port.
-  parameter bit SecFifoPtr        = 0,   // Duplicate response-FIFO pointers.
+  parameter bit SecFifoPtr        = 0,   // Use redundant pointers in all three FIFOs.
   parameter bit EnableReadback    = 0,   // Read back and check written or read data.
-  parameter bit DataXorAddr       = 0,   // XOR data with address for address protection.
+  parameter bit DataXorAddr       = 0,   // XOR read data with the SRAM bank address.
   localparam int WidthMult        = SramDw / top_pkg::TL_DW,  // TL beats packed per SRAM word.
-  localparam int IntgWidth        = tlul_pkg::DataIntgWidth * WidthMult,  // Integrity when PT.
-  localparam int DataOutW         = EnableDataIntgPt ? SramDw + IntgWidth : SramDw  // Port width.
+  localparam int IntgWidth        = tlul_pkg::DataIntgWidth * WidthMult,  // Integrity bits per SRAM word with PT.
+  localparam int DataOutW         = EnableDataIntgPt ? SramDw + IntgWidth : SramDw  // Width of wdata_o, wmask_o and rdata_i.
 ) (
   input   clk_i,                            // System clock.
   input   rst_ni,                           // Active-low reset.
@@ -61,22 +64,24 @@ module tlul_adapter_sram
   input   mubi4_t en_ifetch_i,              // MuBi4True allows instruction-fetch Gets.
 
   output logic                 req_o,       // SRAM request valid.
-  output mubi4_t               req_type_o,  // MuBi4 request type toward the SRAM.
+  output mubi4_t               req_type_o,  // A_USER.INSTR_TYPE of the request.
   input                        gnt_i,       // SRAM grant.
   output logic                 we_o,        // SRAM write enable.
   output logic [SramAw-1:0]    addr_o,      // SRAM word address.
   output logic [DataOutW-1:0]  wdata_o,     // SRAM write data (and optional integrity).
   output logic [DataOutW-1:0]  wmask_o,     // SRAM write mask (and optional integrity).
-  output logic                 intg_error_o,// Command or data integrity error.
+  output logic                 intg_error_o,// Integrity or FIFO pointer error; sticky.
   output logic [RsvdWidth-1:0] user_rsvd_o, // Reserved user bits toward the SRAM side.
   input        [DataOutW-1:0]  rdata_i,     // SRAM read data (and optional integrity).
   input                        rvalid_i,    // SRAM read-data valid.
-  input        [1:0]           rerror_i,    // [1] uncorrectable, [0] correctable.
-  output logic                 compound_txn_in_progress_o,  // Multi-beat compound access active.
-  input  mubi4_t               readback_en_i,               // MuBi4 enable for readback checking.
-  output logic                 readback_error_o,            // Readback mismatch detected.
-  input  logic                 wr_collision_i,              // SRAM reports a write collision.
-  input  logic                 write_pending_i              // SRAM still has a write pending.
+  input        [1:0]           rerror_i,    // [1] uncorrectable, sets D_ERROR; [0] unused.
+  output logic                 compound_txn_in_progress_o,  // RMW write or readback request driven.
+  input  mubi4_t               readback_en_i,               // MuBi4 readback enable; needs
+                                                            // EnableReadback.
+  output logic                 readback_error_o,            // Readback failure; sticky until reset.
+  input  logic                 wr_collision_i,              // SRAM write collision; assertions
+                                                            // only.
+  input  logic                 write_pending_i              // SRAM write pending; assertions only.
 );
   localparam int SramByte = SramDw/8;
   localparam int DataBitWidth = prim_util_pkg::vbits(SramByte);

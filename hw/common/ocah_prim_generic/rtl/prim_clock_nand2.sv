@@ -3,8 +3,8 @@
 
 // NAND two inputs for clock-network use.
 //
-// Drive y_o with ~(a1_i & a2_i). Kept as a named cell so synthesis can map it to a clock-
-// capable NAND2.
+// Drive y_o with ~(a1_i & a2_i). A synthesis build replaces this behavioural model with a
+// clock-capable technology NAND2 cell of the same name and ports.
 
 module prim_clock_nand2 (
   input  a1_i,  // First NAND input.

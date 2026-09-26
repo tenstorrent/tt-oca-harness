@@ -16,64 +16,115 @@
 // counter's own fault.
 
 module entropy_generator_complex #(
-  parameter int unsigned NRINGS       = 12,  // Ring-oscillator lane count.
+  parameter int unsigned NRINGS       = 12,  // Ring-oscillator lane count; the extractor wiring and
+                                             // the per-lane status ports assume 12.
   parameter int unsigned CLKDIV_WIDTH = 24  // Downsample divider counter width.
 ) (
   input       logic                    clk_i,  // System clock.
-  input       logic                    rst_ni,  // Active-low reset.
-  input       logic                    sample_clk_i,  // Ring-oscillator sample clock.
-  output      logic [31:0]             entropy_stream_o,  // Entropy stream.
-  output      logic [NRINGS-1:0][7:0]  entropy_stream_uncompressed_o,  // Entropy stream uncompressed.
-  output      logic                    entropy_stream_valid_o,  // Entropy stream valid.
-  output      logic [NRINGS-1:0]       noise_bit_monitor_o,  // Noise bit monitor.
-  output      logic [NRINGS-1:0]       sample_clk_monitor_o,  // Sample clk monitor.
+  input       logic                    rst_ni,  // Active-low asynchronous reset.
+  input       logic                    sample_clk_i,  // External sample clock for lanes that do not
+                                                      // select the shared ring oscillator.
+  output      logic [31:0]             entropy_stream_o,  // GF(2^8) extractor output: byte k is
+                                                          // lane k times lane k+4 plus lane k+8,
+                                                          // byte 0 in bits 31:24.
+  output      logic [NRINGS-1:0][7:0]  entropy_stream_uncompressed_o,  // Latest decorrelator byte of every lane,
+                                                                       // before the extractor.
+  output      logic                    entropy_stream_valid_o,  // High in any cycle where at least
+                                                                // one lane emits a new byte.
+  output      logic [NRINGS-1:0]       noise_bit_monitor_o,  // Per-lane synchronized noise bit, for
+                                                             // debug observation.
+  output      logic [NRINGS-1:0]       sample_clk_monitor_o,  // Per-lane selected and divided
+                                                              // sample clock, for debug
+                                                              // observation.
 
-  output      logic [7:0]              generator_0_test_status_o,  // Generator 0 test status.
-  output      logic [7:0]              generator_1_test_status_o,  // Generator 1 test status.
-  output      logic [7:0]              generator_2_test_status_o,  // Generator 2 test status.
-  output      logic [7:0]              generator_3_test_status_o,  // Generator 3 test status.
-  output      logic [7:0]              generator_4_test_status_o,  // Generator 4 test status.
-  output      logic [7:0]              generator_5_test_status_o,  // Generator 5 test status.
-  output      logic [7:0]              generator_6_test_status_o,  // Generator 6 test status.
-  output      logic [7:0]              generator_7_test_status_o,  // Generator 7 test status.
-  output      logic [7:0]              generator_8_test_status_o,  // Generator 8 test status.
-  output      logic [7:0]              generator_9_test_status_o,  // Generator 9 test status.
-  output      logic [7:0]              generator_10_test_status_o,  // Generator 10 test status.
-  output      logic [7:0]              generator_11_test_status_o,  // Generator 11 test status.
+  output      logic [7:0]              generator_0_test_status_o,  // Lane 0 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_1_test_status_o,  // Lane 1 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_2_test_status_o,  // Lane 2 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_3_test_status_o,  // Lane 3 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_4_test_status_o,  // Lane 4 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_5_test_status_o,  // Lane 5 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_6_test_status_o,  // Lane 6 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_7_test_status_o,  // Lane 7 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_8_test_status_o,  // Lane 8 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_9_test_status_o,  // Lane 9 health-test status
+                                                                   // byte.
+  output      logic [7:0]              generator_10_test_status_o,  // Lane 10 health-test status byte.
+  output      logic [7:0]              generator_11_test_status_o,  // Lane 11 health-test status byte.
 
-  output      logic                    count_err_o,  // Count err.
+  output      logic                    count_err_o,  // Redundant-counter fault in any lane's health
+                                                     // tests or in the shared window counter.
 
-  input       logic [NRINGS-1:0]       jitter_ro_enable_i,  // Jitter ro enable.
-  input       logic [NRINGS-1:0]       jitter_ro_detune_i,  // Jitter ro detune.
-  input       logic [NRINGS-1:0]       jitter_ro_auto_tune_enable_i,  // Jitter ro auto tune enable.
+  input       logic [NRINGS-1:0]       jitter_ro_enable_i,  // Per-lane enable for the noise ring
+                                                            // oscillator and its decorrelator.
+  input       logic [NRINGS-1:0]       jitter_ro_detune_i,  // Per-lane manual detune used without
+                                                            // auto-tune: high selects the full
+                                                            // noise-ring feedback path, low the
+                                                            // shorter tap.
+  input       logic [NRINGS-1:0]       jitter_ro_auto_tune_enable_i,  // Per-lane selection of the tune FSM,
+                                                                      // rather than jitter_ro_detune_i, as the
+                                                                      // detune source.
 
-  input       logic [NRINGS-1:0]       sample_clk_select_i,  // Sample clk select.
-  input       logic [NRINGS-1:0]       sample_clk_ro_detune_i,  // Sample clk ro detune.
-  input       logic [NRINGS-1:0]       sample_clk_enable_i,  // Sample clk enable.
-  input       logic [NRINGS-1:0][4:0]  sample_clk_divide_i,  // Sample clk divide.
+  input       logic [NRINGS-1:0]       sample_clk_select_i,  // Per-lane sample clock source: high
+                                                             // for the shared internal ring
+                                                             // oscillator, low for sample_clk_i.
+  input       logic [NRINGS-1:0]       sample_clk_ro_detune_i,  // Detune requests for the shared
+                                                                // sample-clock ring oscillator; any
+                                                                // set bit selects its full-length
+                                                                // feedback path.
+  input       logic [NRINGS-1:0]       sample_clk_enable_i,  // Enable requests for the shared
+                                                             // sample-clock ring oscillator; any
+                                                             // set bit starts it.
+  input       logic [NRINGS-1:0][4:0]  sample_clk_divide_i,  // Per-lane sample clock divide
+                                                             // exponent, 0-5 for divide by 1 to 32.
 
-  input       logic [NRINGS-1:0]       decorrelator_bypass_i,  // Decorrelator bypass.
-  input       logic [CLKDIV_WIDTH-1:0] decorrelator_sample_clk_div_i,  // Decorrelator sample clk div.
-  input       logic [7:0]              decorrelator_entropy_byte_mask_i,  // Decorrelator entropy byte mask.
+  input       logic [NRINGS-1:0]       decorrelator_bypass_i,  // Per-lane removal of the
+                                                               // decorrelator XOR feedback.
+  input       logic [CLKDIV_WIDTH-1:0] decorrelator_sample_clk_div_i,  // Decorrelator downsample period minus one,
+                                                                       // shared by every lane.
+  input       logic [7:0]              decorrelator_entropy_byte_mask_i,  // AND mask on every lane's decorrelator
+                                                                          // byte.
 
-  input       logic                    module_enable_i,  // Module enable.
+  input       logic                    module_enable_i,  // Keeps the shared window counter running
+                                                         // while every health test is disabled.
 
-  input       logic [2:0]              health_test_enable_i,  // Health test enable.
-  input       logic [7:0]              health_test_repetition_limit_i,  // Health test repetition limit.
-  input       logic [15:0]             health_test_proportion_limit_1bit_i,  // Health test proportion limit 1bit.
-  input       logic [15:0]             health_test_proportion_limit_lo_i,  // Health test proportion limit lo.
-  input       logic [15:0]             health_test_markov_prob_01_threshold_i,  // Health test markov prob 01 threshold.
-  input       logic [15:0]             health_test_markov_prob_10_threshold_i,  // Health test markov prob 10 threshold.
-  input       logic [15:0]             health_test_window_size_i,  // Health test window size.
+  input       logic [2:0]              health_test_enable_i,  // Per-test enables for every lane:
+                                                              // bit 0 repetition, bit 1 APT, bit 2
+                                                              // Markov.
+  input       logic [7:0]              health_test_repetition_limit_i,  // Repetition-count failure threshold for
+                                                                        // every lane.
+  input       logic [15:0]             health_test_proportion_limit_1bit_i,  // APT high threshold on the per-bit
+                                                                             // ones count per window.
+  input       logic [15:0]             health_test_proportion_limit_lo_i,  // APT low threshold on the per-bit
+                                                                           // ones count per window.
+  input       logic [15:0]             health_test_markov_prob_01_threshold_i,  // Markov high threshold on the
+                                                                                // per-bit 01/10 pair count per
+                                                                                // window.
+  input       logic [15:0]             health_test_markov_prob_10_threshold_i,  // Markov low threshold on the
+                                                                                // per-bit 01/10 pair count per
+                                                                                // window.
+  input       logic [15:0]             health_test_window_size_i,  // Health-test window length,
+                                                                   // counted in cycles with at
+                                                                   // least one new lane byte.
 
-  output      logic                    window_wrap_pulse_o  // Window wrap pulse.
+  output      logic                    window_wrap_pulse_o  // Strobe when the shared window counter
+                                                            // reaches health_test_window_size_i;
+                                                            // ends every window.
 );
 
   /////////////////////
   // Local parameters
   /////////////////////
 
-  // Ring oscillator lengths (simulation-friendly primes for mixed-frequency entropy)
+  // Full ring lengths, selected while a lane's detune is high.
   localparam int unsigned TOTAL_LENGTH_0 = 5, TOTAL_LENGTH_1 = 7;
   localparam int unsigned TOTAL_LENGTH_2 = 11, TOTAL_LENGTH_3 = 13;
   localparam int unsigned TOTAL_LENGTH_4 = 17, TOTAL_LENGTH_5 = 19;
@@ -81,7 +132,7 @@ module entropy_generator_complex #(
   localparam int unsigned TOTAL_LENGTH_8 = 12, TOTAL_LENGTH_9 = 15;
   localparam int unsigned TOTAL_LENGTH_10 = 18, TOTAL_LENGTH_11 = 23;
 
-  // Detuned lengths (shorter → higher frequency)
+  // Shorter tapped lengths (higher frequency), selected while a lane's detune is low.
   localparam int unsigned TAPPED_LENGTH_0 = 3, TAPPED_LENGTH_1 = 5;
   localparam int unsigned TAPPED_LENGTH_2 = 9, TAPPED_LENGTH_3 = 10;
   localparam int unsigned TAPPED_LENGTH_4 = 14, TAPPED_LENGTH_5 = 16;

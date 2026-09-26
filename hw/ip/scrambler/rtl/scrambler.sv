@@ -17,19 +17,44 @@ module scrambler
   import scrambler_pkg::*;
 #(
   parameter int unsigned ADDR_WIDTH = 10,                   // SRAM address width.
-  parameter int unsigned DATA_WIDTH = 32,                   // SRAM data width; only 32-bit is supported.
-  parameter int unsigned BYTE_WISE  = 0                     // Use per-byte perm8 instead of full-word perm32.
+                                                            // Selects the address scramble function
+                                                            // for widths 6 through 13; any other
+                                                            // width passes the address through
+                                                            // unchanged.
+  parameter int unsigned DATA_WIDTH = 32,                   // SRAM data width; only 32-bit is
+                                                            // supported.
+  parameter int unsigned BYTE_WISE  = 0                     // Use per-byte perm8 instead of
+                                                            // full-word perm32. 0 applies perm32 to
+                                                            // the full word; 1 applies perm8 to
+                                                            // each byte lane.
 ) (
   input  logic [ADDR_WIDTH-1:0]   addr_i,                   // Plaintext SRAM address.
+                                                            // Keys both the address scramble and
+                                                            // the data round key, so on the read
+                                                            // path it must be the address the
+                                                            // read data was fetched from.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  logic [DATA_WIDTH/8-1:0] byte_mask_i,              // Byte enables; unused in word mode.
+  input  logic [DATA_WIDTH/8-1:0] byte_mask_i,              // Byte enables; unused in every mode.
+                                                            // Reserved for per-byte-lane gating.
   /* verilator lint_on UNUSEDSIGNAL */
   input  logic [31:0]             scrambler_key_i,          // 32-bit scrambler key.
-  output logic [ADDR_WIDTH-1:0]   scrambled_addr_o,         // Address after tweak.
+                                                            // XORed with the expanded address to
+                                                            // form the data round key; its low
+                                                            // ADDR_WIDTH bits key the address
+                                                            // scramble.
+  output logic [ADDR_WIDTH-1:0]   scrambled_addr_o,         // Scrambled address sent to the SRAM
+                                                            // macro. Combinational: addr_i XOR the
+                                                            // low key bits, S-boxes, then a bit
+                                                            // permutation.
   input  logic [DATA_WIDTH-1:0]   write_data_i,             // Plaintext write data.
   output logic [DATA_WIDTH-1:0]   scrambled_write_data_o,   // Scrambled write data.
+                                                            // Combinational function of
+                                                            // write_data_i, addr_i and the key;
+                                                            // stored in the SRAM macro.
   input  logic [DATA_WIDTH-1:0]   scrambled_read_data_i,    // Scrambled read data from the SRAM.
   output logic [DATA_WIDTH-1:0]   read_data_o               // Descrambled read data.
+                                                            // Combinational; descrambled with the
+                                                            // round key for addr_i.
 );
 
   logic [31:0] round_key;

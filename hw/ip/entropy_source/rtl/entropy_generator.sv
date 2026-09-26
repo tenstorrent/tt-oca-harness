@@ -19,35 +19,54 @@
 
 module entropy_generator #(
   parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
-  parameter int unsigned TAPPED_LENGTH = 13,  // Detuned tap stage count.
+  parameter int unsigned TAPPED_LENGTH = 13,  // Stage count of the shorter feedback tap, used while
+                                              // detune is low.
   parameter int unsigned CLKDIV_WIDTH  = 24  // Downsample divider counter width.
 ) (
   input       logic                    clk_i,  // System clock.
-  input       logic                    rst_ni,  // Active-low reset.
+  input       logic                    rst_ni,  // Active-low asynchronous reset.
 
   input       logic                    sample_clk_i,  // Ring-oscillator sample clock.
 
-  input       logic                    enable_i,  // Block enable.
-  input       logic                    auto_tune_enable_i,  // Auto tune enable.
-  input       logic                    detune_ro_i,  // Detune ro.
-  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,  // Sample clk div.
+  input       logic                    enable_i,  // Enables the noise ring oscillator and the
+                                                  // decorrelator.
+  input       logic                    auto_tune_enable_i,  // High lets the tune FSM drive the ring
+                                                            // detune in place of detune_ro_i.
+  input       logic                    detune_ro_i,  // Manual ring detune while auto-tune is off:
+                                                     // high selects the full TOTAL_LENGTH feedback
+                                                     // path, low the shorter tap.
+  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,  // Decorrelator downsample period minus
+                                                          // one, in clk_i cycles.
 
-  input       logic                    bypass_decorrelator_i,  // Bypass decorrelator.
-  input       logic [7:0]              entropy_byte_mask_i,  // Entropy byte mask.
+  input       logic                    bypass_decorrelator_i,  // High removes the decorrelator XOR
+                                                               // feedback.
+  input       logic [7:0]              entropy_byte_mask_i,  // AND mask on each decorrelator output
+                                                             // byte.
 
-  input       logic [2:0]              test_enable_i,  // Test enable.
-  input       logic [7:0]              repetition_limit_i,  // Repetition limit.
-  input       logic [15:0]             proportion_limit_1bit_i,  // Proportion limit 1bit.
-  input       logic [15:0]             proportion_limit_lo_i,  // Proportion limit lo.
-  input       logic [15:0]             markov_prob_01_threshold_i,  // Markov prob 01 threshold.
-  input       logic [15:0]             markov_prob_10_threshold_i,  // Markov prob 10 threshold.
-  input       logic                    window_wrap_pulse_i,  // Window wrap pulse.
+  input       logic [2:0]              test_enable_i,  // Health-test enables: bit 0 repetition, bit
+                                                       // 1 APT, bit 2 Markov.
+  input       logic [7:0]              repetition_limit_i,  // Repetition-count failure threshold.
+  input       logic [15:0]             proportion_limit_1bit_i,  // APT high threshold on the
+                                                                 // per-bit ones count per window.
+  input       logic [15:0]             proportion_limit_lo_i,  // APT low threshold on the per-bit
+                                                               // ones count per window.
+  input       logic [15:0]             markov_prob_01_threshold_i,  // Markov high threshold on the per-bit 01/10
+                                                                    // pair count per window.
+  input       logic [15:0]             markov_prob_10_threshold_i,  // Markov low threshold on the per-bit 01/10
+                                                                    // pair count per window.
+  input       logic                    window_wrap_pulse_i,  // Shared end-of-window strobe that
+                                                             // evaluates and restarts the APT and
+                                                             // Markov tests.
 
-  output      logic                    noise_bit_monitor_o,  // Noise bit monitor.
-  output      logic [7:0]              test_status_o,  // Test status.
-  output      logic [7:0]              entropy_byte_o,  // Entropy byte.
-  output      logic                    entropy_byte_valid_o,  // Entropy byte valid.
-  output      logic                    count_err_o  // Count err.
+  output      logic                    noise_bit_monitor_o,  // Synchronized noise-source bit, for
+                                                             // debug observation.
+  output      logic [7:0]              test_status_o,  // Health-test status byte, encoded as
+                                                       // entropy_health_test status_o.
+  output      logic [7:0]              entropy_byte_o,  // Masked decorrelator output byte.
+  output      logic                    entropy_byte_valid_o,  // Single-cycle strobe marking a new
+                                                              // entropy_byte_o.
+  output      logic                    count_err_o  // Redundant-counter fault in this lane's health
+                                                    // tests.
 );
 
   /////////////

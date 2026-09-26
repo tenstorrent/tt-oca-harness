@@ -4,7 +4,9 @@
 // Configure SMC peripheral instance counts and FIFO depths.
 //
 // Sets how many I3C, I2C, UART, telemetry, and AVSBus instances the SMC builds.
-// FIFO and delay parameters here size those peripheral wrappers.
+// FIFO and delay parameters here size those peripheral wrappers. Also sets the CPU
+// cluster count for NDM reset requests, the chip ID reported in chip_config, and whether
+// the output fabric omits the M-mode and Xvisor remap.
 
 `ifndef SMC_CONFIG_PACKAGE_DEFINED
 `define SMC_CONFIG_PACKAGE_DEFINED

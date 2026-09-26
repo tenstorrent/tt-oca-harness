@@ -7,7 +7,8 @@
 // KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC, HMAC, Adams Bridge, and the
 // OTP/eFuse pass-through at index 8. Uses the PULP axi_lite_xbar in zero-latency mode.
 // OTP addresses leave this block unchanged; key_manager remaps addr[31:12] before driving
-// efuse_req_o. The channel type parameters must match the req/resp types.
+// efuse_req_o. An address outside every rule is answered with DECERR by the xbar. The
+// channel type parameters must match the req/resp types.
 
 module km_axi_lite_xbar
   import km_intf_pkg::*;
@@ -22,7 +23,7 @@ module km_axi_lite_xbar
   parameter type axil_r_chan_t  = km_axil_r_chan_t    // Read data channel type.
 ) (
   input  logic clk_i,   // System clock.
-  input  logic rst_ni,  // Active-low reset.
+  input  logic rst_ni,  // Active-low asynchronous reset; the warm reset in key_manager.
   input  logic test_i,  // DFT test mode for the PULP xbar.
 
   input  axil_req_t slv_req_i,    // Slave port request from the KM CPU.

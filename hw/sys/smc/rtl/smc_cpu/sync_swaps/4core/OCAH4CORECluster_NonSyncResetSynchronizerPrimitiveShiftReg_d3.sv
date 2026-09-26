@@ -3,13 +3,13 @@
 
 // Replace the Chipyard non-sync reset shift-register black box.
 //
-// Substitutes an OCAH-compatible primitive for the generated non-sync reset box.
+// Substitutes prim_flop_3sync, a three-flop synchronizer without reset, for the generated box.
 // Preserves the three-stage depth the generated cluster expects.
 
 module OCAH4CORECluster_NonSyncResetSynchronizerPrimitiveShiftReg_d3 (
-  input  clock,                         // Clock.
-  io_d,  // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14].
-  output io_q                           // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14].
+  input  clock,                         // Destination clock for the three synchronizer flops.
+  io_d,  // Data bit to synchronize into the clock domain.
+  output io_q                           // Data bit after three clock-domain flops; not reset.
 );
 
   prim_flop_3sync u_prim_flop_3sync (

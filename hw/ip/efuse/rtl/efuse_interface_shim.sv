@@ -3,18 +3,18 @@
 
 // Turn fuse-command requests into foundry APB accesses for an example fuse-bank model.
 //
-// Hosts SHIM CSRs on fuse_bank_ctrl_*; SHADOW_REG_BITS sizes the emulated bank (default
-// 3KB of fuses).
-// Sequences fuse_command_req_i onto efuse_model_otp_* APB; debug_bus_o exposes shim
-// state.
+// Hosts SHIM CSRs on fuse_bank_ctrl_*.
+// Sequences fuse_command_req_i onto efuse_model_otp_* APB, waiting the programmed bank init
+// time before each command; debug_bus_o exposes shim state.
 // The APB macro interface is foundry-specific in real integrations.
 
 module efuse_interface_shim
   import efuse_pkg::*;
 #(
-  parameter int unsigned SHADOW_REG_BITS = 24576,  // 3KB of efuses.
-  parameter type addr_t = logic,        // Address type.
-  parameter type data_t = logic,        // Data type.
+  parameter int unsigned SHADOW_REG_BITS = 24576,  // Fuse array size in bits; declared but not used
+                                                   // in this module.
+  parameter type addr_t = logic,        // Type of the byte address register for read commands.
+  parameter type data_t = logic,        // Data type; declared but not used in this module.
   parameter type efuse_axil_req_t = logic,  // eFuse AXI-Lite request type.
   parameter type efuse_axil_resp_t = logic,  // eFuse AXI-Lite response type.
   parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
@@ -26,21 +26,34 @@ module efuse_interface_shim
   parameter type fuse_command_req_t = logic,  // Fuse-command request type.
   parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
-  localparam int unsigned COUNTER_WIDTH = 32  // Shim counter width.
+  localparam int unsigned COUNTER_WIDTH = 32  // Width of the read and write bank init-time
+                                              // counters.
 ) (
   input logic                      clk_i,  // System clock.
-  input logic                      rst_ni,  // Active-low reset.
+  input logic                      rst_ni,  // Active-low asynchronous reset.
 
-  input  efuse_axil_req_t          fuse_bank_ctrl_req_i,  // Fuse bank ctrl req (AXI4-Lite Register Interface - CSR for Fuse Bank Control).
-  output efuse_axil_resp_t         fuse_bank_ctrl_resp_o,  // Fuse bank ctrl resp.
+  input  efuse_axil_req_t          fuse_bank_ctrl_req_i,  // AXI4-Lite request to the fuse bank
+                                                          // control registers; only address bits
+                                                          // [2:0] are decoded.
+  output efuse_axil_resp_t         fuse_bank_ctrl_resp_o,  // AXI4-Lite response from the fuse bank
+                                                           // control registers, which hold the bank
+                                                           // init time.
 
-  input  fuse_command_req_t        fuse_command_req_i,  // Fuse command req.
-  output fuse_command_resp_t       fuse_command_resp_o,  // Fuse command resp.
+  input  fuse_command_req_t        fuse_command_req_i,  // Filtered fuse command from the interface
+                                                        // controller: read, program, or program
+                                                        // with read-back.
+  output fuse_command_resp_t       fuse_command_resp_o,  // Fuse command response, one valid pulse
+                                                         // per word read or per program.
 
-  output efuse_apb_req_t           efuse_model_otp_req_o,  // Efuse model otp req.
-  input  efuse_apb_resp_t          efuse_model_otp_resp_i,  // Efuse model otp resp.
+  output efuse_apb_req_t           efuse_model_otp_req_o,  // Registered APB request to the fuse
+                                                           // bank model, byte addressed; a program
+                                                           // writes one bit with one byte strobe.
+  input  efuse_apb_resp_t          efuse_model_otp_resp_i,  // APB response from the fuse bank
+                                                            // model.
 
-  output logic [15:0]              debug_bus_o  // Debug bus.
+  output logic [15:0]              debug_bus_o  // Shim status: {3'b0, write counter error, write
+                                                // FSM state, 3'b0, read counter error, read FSM
+                                                // state}.
 );
 
   localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;

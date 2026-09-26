@@ -20,22 +20,26 @@
 //
 // - USE_NON_RST_FF set: a non-reset chain.
 // - USE_ASYNC_RST_FF clear: a non-reset chain whose input is forced to ResetValue while
-//   rst_ni is low, which gives a synchronous reset.
+//   rst_ni is low, which gives a synchronous reset that reaches serial_o after STAGES
+//   clk_i cycles.
 // - USE_ASYNC_RST_FF set and ResetValue 0: an asynchronous-clear chain.
-// - USE_ASYNC_RST_FF set and ResetValue nonzero: an asynchronous-set chain.
+// - USE_ASYNC_RST_FF set and ResetValue nonzero: an asynchronous-set chain. With STAGES 2
+//   the chain resets to ResetValue; with STAGES 3 or 4 every bit sets to 1.
 //
 // Any other STAGES value falls back to a 2-flop chain with the synchronous reset.
 
 module sync #(
     parameter int unsigned WIDTH = 1,       // Number of independent bits synchronized.
     parameter int unsigned STAGES = 3,      // Chain length: 2, 3, or 4 flops.
-    parameter int unsigned ResetValue = 0,  // Reset value; nonzero selects the set cells.
+    parameter int unsigned ResetValue = 0,  // Reset value of serial_o; nonzero selects the
+                                            // set cells under asynchronous reset.
     parameter bit USE_ASYNC_RST_FF = 1'b1,  // 0: synchronous reset, 1: asynchronous reset.
     parameter bit USE_NON_RST_FF = 1'b0     // 1: non-reset FF; overrides USE_ASYNC_RST_FF.
                                             // 0: reset FF per the other parameters.
 ) (
     input  logic clk_i,                     // Destination clock.
-    input  logic rst_ni,                    // Active-low reset; see USE_ASYNC_RST_FF.
+    input  logic rst_ni,                    // Active-low reset; see USE_ASYNC_RST_FF. Unused
+                                            // when USE_NON_RST_FF is set and STAGES is 2 to 4.
     input  logic [WIDTH-1:0] serial_i,      // Asynchronous input bits.
     output logic [WIDTH-1:0] serial_o       // Synchronized bits in the clk_i domain.
 );

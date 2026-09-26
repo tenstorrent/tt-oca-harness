@@ -6,10 +6,12 @@
 // Bridge Key Manager CPU AXI4-Lite reads of the sampler registers to a DRBG AXI-Stream.
 //
 // Mapped at base 0x0001_5000. A CPU read of the DATA register either returns a prefetched
-// random word or initiates a new DRBG request via the AXI-Stream handshake. A
-// configurable timeout (CFG.TIMEOUT) protects against DRBG stalls during active reads. An
-// optional single-word prefetch (CFG.PREFETCH) reduces latency for the first DATA read
-// after configuration. drbg_error_o pulses on a timeout or a stream protocol violation.
+// random word or initiates a new DRBG request via the AXI-Stream handshake, packing the
+// TSTRB-valid bytes of successive beats from lane 0 upward until four are collected. A
+// configurable timeout (CFG.TIMEOUT, 0 disables) protects against DRBG stalls during active
+// reads; a timeout or stream protocol violation answers the DATA read with SLVERR and zero
+// data. While CFG.PREFETCH is set, one word is kept prefetched and refilled after each use.
+// drbg_error_o pulses on a timeout or a stream protocol violation.
 //
 // Register map:
 //
@@ -32,12 +34,14 @@ module km_drbg_sampler
   input  logic   warm_rst_ni,  // Warm reset: fully synchronous.
 
   input  axil_req_t axil_req_i,    // AXI4-Lite slave request from the crossbar (base
-                                   // 0x0001_5000).
+                                   // 0x0001_5000); only address bits [3:0] are decoded, and
+                                   // one read is outstanding at a time.
   output axil_resp_t axil_resp_o,  // AXI4-Lite slave response to the crossbar.
 
   input  km_drbg_axis_req_t drbg_axis_req_i,    // DRBG AXI-Stream TVALID, TDATA, TSTRB in (KM
-                                                // is slave).
-  output km_drbg_axis_resp_t drbg_axis_resp_o,  // DRBG AXI-Stream TREADY out.
+                                                // is slave); TUSER is ignored.
+  output km_drbg_axis_resp_t drbg_axis_resp_o,  // DRBG AXI-Stream TREADY out; high while a DATA
+                                                // read or a prefetch is collecting bytes.
 
   output logic        drbg_error_o  // Aggregated error pulse to KMCSR (sets
                                     // IRQ_STATUS.DRBG_ERR).

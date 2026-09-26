@@ -11,13 +11,16 @@
 // - Inbound FIFO (SEP -> KM): SEP writes via WRITE_DATA, KM reads via READ_DATA.
 // - Outbound FIFO (KM -> SEP): KM writes via WRITE_DATA, SEP reads via READ_DATA.
 //
-// Each FIFO word carries a 1-bit separator tag for message framing. WRITE_DATA /
+// Each FIFO word carries a 1-bit separator tag for message framing, taken from the
+// writer's WRITE_SEPARATOR register, which hardware clears after the next push, and
+// shown in both sides' STATUS when the reader pops the word. WRITE_DATA /
 // READ_DATA addresses are handled as direct FIFO push/pop; STATUS and IRQ registers are
 // served by RDL-generated register blocks.
 //
 // Overflow and underflow responses are configurable per side (SLVERR or OKAY). Both sides
-// can flush all FIFOs via CTRL.FLUSH. Each side aggregates its IRQ from data-available
-// (level) plus sticky overflow / underflow / flushed-by-peer events.
+// can flush all FIFOs via CTRL.FLUSH. Each side ORs its IRQ from data-available and
+// write-space-available (level) plus sticky overflow / underflow / flushed-by-peer events,
+// each masked by that side's IRQ_ENABLE.
 
 module km_mailbox
   import km_intf_pkg::*;
@@ -44,19 +47,23 @@ module km_mailbox
   input  logic clk_i,        // System clock.
   input  logic cold_rst_ni,  // Cold reset: AASD; resets the FIFOs and SEP-facing interfaces.
   input  logic warm_rst_ni,  // Warm reset: synchronous; resets the KM-CPU-facing interfaces.
-  input  logic test_en_i,    // DFT test-enable.
+  input  logic test_en_i,    // DFT test-enable; unused.
 
-  input  km_axil_req_t km_axil_req_i,    // KM CPU AXI4-Lite slave request (for the outbound
-                                         // FIFO).
+  input  km_axil_req_t km_axil_req_i,    // KM CPU AXI4-Lite slave request: pushes the outbound
+                                         // FIFO, pops the inbound FIFO and reaches the KM-side
+                                         // registers.
   output km_axil_resp_t km_axil_resp_o,  // KM CPU AXI4-Lite slave response.
 
-  input  sep_axil_req_t sep_axil_req_i,    // SEP host AXI4-Lite slave request (for the
-                                           // inbound FIFO).
+  input  sep_axil_req_t sep_axil_req_i,    // SEP host AXI4-Lite slave request: pushes the
+                                           // inbound FIFO, pops the outbound FIFO and reaches
+                                           // the SEP-side registers.
   output sep_axil_resp_t sep_axil_resp_o,  // SEP host AXI4-Lite slave response.
 
 
-  output logic        mbox_irq_to_km_o,  // Inbound IRQ to the KM CPU (level).
-  output logic        mbox_irq_to_sep_o  // Outbound IRQ to the SEP host (level).
+  output logic        mbox_irq_to_km_o,  // Level IRQ to the KM CPU: OR of the KM-side sources
+                                         // masked by KM_IRQ_ENABLE.
+  output logic        mbox_irq_to_sep_o  // Level IRQ to the SEP host: OR of the SEP-side sources
+                                         // masked by SEP_IRQ_ENABLE.
 );
 
   `include "prim_assert.sv"

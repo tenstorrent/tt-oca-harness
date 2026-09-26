@@ -6,21 +6,92 @@
 // Bring up clocks and cold reset, host the primary JTAG/DTP path, route the SMU AXI
 // crossbar toward SMN, and expose SMC and SEP memory, eFuse, GPIO, telemetry, reset-unit,
 // and debug interfaces to the integrator. When SEP is 0, SEP apertures and SEP-gated
-// ports are tied off.
+// ports are tied off, and the SMC connects to the external AXI ports through ID-width
+// converters instead of the crossbar.
 
 module smu #(
-  parameter int unsigned MAX_TRANS = 2,         // Max outstanding AXI transactions in SMU fabric converters.
-  parameter int unsigned SEP_EFUSE_SHIM_SIZE = 'h4,  // SEP eFuse shim address-map size.
-  parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h44,  // SMC eFuse shim address-map size.
-  parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,  // SMU feature configuration (JTAG, xtrig, pipelines, SEP options).
+  parameter int unsigned MAX_TRANS = 2,         // Maximum outstanding AXI-Lite transactions in the
+                                                // SMC pad-ring GPIO demux and GPIO blocks;
+                                                // forwarded to the SMC MAX_TRANS.
+  parameter int unsigned SEP_EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the vendor eFuse shim CSR
+                                                     // block in the SEP external window; forwarded
+                                                     // to the SEP EFUSE_SHIM_SIZE.
+  parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h44,  // Size in bytes of the vendor eFuse shim CSR
+                                                      // block carved off the base of the SMC
+                                                      // smc_external window; forwarded to the SMC
+                                                      // EFUSE_SHIM_SIZE.
+  parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,  // SMU feature configuration. Each JTAG_*
+                                                           // field is forwarded to the DTP
+                                                           // parameter of the same name, except
+                                                           // JTAG_IC_RESET_ENABLE, which drives the
+                                                           // DTP JTAG_IC_RESET_EXT_ENABLE and so
+                                                           // enables only the external IC_RESET
+                                                           // slice. JTAG_BSR_ENABLE enables the
+                                                           // mandatory boundary-scan instructions,
+                                                           // the other JTAG_*_ENABLE fields enable
+                                                           // the named optional instruction, the
+                                                           // TMP controller, the SMC debug
+                                                           // interface or the I/O STAP, and
+                                                           // JTAG_NUM_EXTRA_STAPS counts the
+                                                           // additional STAPs. JTAG_IDCODE_MFR_ID,
+                                                           // JTAG_IDCODE_PART_NUM and
+                                                           // JTAG_IDCODE_SI_REV also set the SMC
+                                                           // CPU and SEP JTAG ID codes, and
+                                                           // JTAG_OCH_VER is the DTP IP major
+                                                           // version. XTRIG_NUM_CTP is forwarded to
+                                                           // the DTP XTRIG_NUM_CTP.
+                                                           // XTRIG_NUM_INT_CT and
+                                                           // XTRIG_NUM_CLK_STOP_REQ count the
+                                                           // SMU-exposed lanes; the DTP
+                                                           // XTRIG_NUM_INT_CT and
+                                                           // XTRIG_NUM_CLK_STOP_REQ add the
+                                                           // SMC-reserved lanes below them. The low
+                                                           // XTRIG_NUM_INT_CT bits of the 32-bit
+                                                           // XTRIG_INT_CT_MODE select each exposed
+                                                           // lane's protocol, 0 for pulse sync and
+                                                           // 1 for req/ack, and form the DTP
+                                                           // XTRIG_INT_CT_MODE above zeroed SMC
+                                                           // lanes, so XTRIG_NUM_INT_CT must be at
+                                                           // most 32. SMC_OTP_RD_PL_DEPTH,
+                                                           // SMC_OTP_WR_PL_DEPTH, SMC_RD_PL_DEPTH
+                                                           // and SMC_WR_PL_DEPTH are forwarded to
+                                                           // the DTP parameters of the same name.
+                                                           // NUM_INT_TO_SMC sets the width of
+                                                           // smc_ext_interrupts_i.
+                                                           // SEP_KM_LATCHED_MEM_RDATA,
+                                                           // SEP_ABR_MASKING_EN and
+                                                           // SEP_ABR_SRAM_LATENCY are forwarded to
+                                                           // the SEP KM_LATCHED_MEM_RDATA,
+                                                           // ABR_MASKING_EN and ABR_SRAM_LATENCY
+                                                           // and are unused when SEP is 0.
+                                                           // DefaultCfg enables every JTAG feature
+                                                           // with one extra STAP and zero ID
+                                                           // fields, and sets 16 CTPs, 8 exposed
+                                                           // internal CT lanes, 8 exposed
+                                                           // clock-stop requests, all lanes in
+                                                           // pulse-sync mode, pipeline depths of 3,
+                                                           // 256 SMC interrupts, Adams Bridge
+                                                           // masking on and an Adams Bridge SRAM
+                                                           // latency of one cycle.
 
-  parameter int unsigned  SEP                   = 1,  // Non-zero includes the Secure Execution Processor
-                                                      // int unsigned so SpyGlass elaborate -param SEP=0 can override; -gfile cannot override bit.
+  parameter int unsigned  SEP                   = 1,  // Non-zero includes the Secure Execution
+                                                      // Processor and the SMU AXI crossbar, and
+                                                      // sets the DTP JTAG_IC_RESET_SEP_ENABLE and
+                                                      // JTAG_SEP_DBG_ENABLE. Zero ties the SEP
+                                                      // ports off and connects the SMC to the
+                                                      // external AXI ports through ID-width
+                                                      // converters. The type is int unsigned so
+                                                      // that SpyGlass elaborate -param SEP=0 can
+                                                      // override it; -gfile cannot override a bit
+                                                      // parameter.
 
-  parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,  // SEP security-disable token digest
-                                                           // Tied off to '0 at the SMU; replaced with the netlist digest at synthesis.
+  parameter bit [255:0]   SEP_SEC_DISABLE_TOKEN = 256'b0,  // SEP security-disable token digest,
+                                                           // forwarded to the SEP; synthesis
+                                                           // replaces it with the netlist digest.
 
-  parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,  // External-TRNG AXI-stream endpoint count between SEP crypto and TRNG.
+  parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,  // External-TRNG AXI-stream endpoint count
+                                                      // between SEP crypto and TRNG; forwarded to
+                                                      // the SEP EXT_TRNG_NUM_AXIS.
 
   parameter  type         smc_rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,  // SMC ROM request type (cannot live in a packed struct).
   parameter  type         smc_rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,  // SMC ROM response type.
@@ -45,27 +116,39 @@ module smu #(
   localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,  // SMC L1 D-cache tag bank count.
   localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS,  // SMC L1 D-cache data bank count.
 
-  parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // External IC_RESET TDR slice type exposed to the SMU caller.
+  parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // External IC_RESET TDR slice type,
+                                                                           // forwarded to the DTP ic_reset_ext_t; a
+                                                                           // packed struct with .ovrd and .val halves
+                                                                           // of equal width.
 
-  localparam int unsigned  XTRIG_NUM_CTP          = Cfg.XTRIG_NUM_CTP,  // External cross-trigger port count from Cfg.
+  localparam int unsigned  XTRIG_NUM_CTP          = Cfg.XTRIG_NUM_CTP,  // External cross-trigger port count from Cfg,
+                                                                        // forwarded to the DTP XTRIG_NUM_CTP.
   localparam int unsigned  XTRIG_NUM_INT_CT       = Cfg.XTRIG_NUM_INT_CT,  // SMU-exposed internal CT lane count from Cfg.
   localparam int unsigned  XTRIG_NUM_CLK_STOP_REQ = Cfg.XTRIG_NUM_CLK_STOP_REQ,  // SMU-exposed clock-stop request count from Cfg.
-  localparam int unsigned  DTP_XTRIG_NUM_INT_CT =  // DTP internal CT count including SMC-reserved lanes.
+  localparam int unsigned  DTP_XTRIG_NUM_INT_CT =  // Internal CT count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_INT_CT.
       Cfg.XTRIG_NUM_INT_CT + smu_pkg::XTRIG_SMC_INT_CT_LANES,
-  localparam int unsigned  DTP_XTRIG_NUM_CLK_STOP_REQ =  // DTP clock-stop count including SMC-reserved lanes.
+  localparam int unsigned  DTP_XTRIG_NUM_CLK_STOP_REQ =  // Clock-stop count including SMC-reserved lanes, forwarded to the DTP XTRIG_NUM_CLK_STOP_REQ.
       Cfg.XTRIG_NUM_CLK_STOP_REQ + smu_pkg::XTRIG_SMC_CLK_STOP_LANES,
   localparam int unsigned  JTAG_NUM_EXTRA_STAP_PORTS = (Cfg.JTAG_NUM_EXTRA_STAPS > 0) ? Cfg.JTAG_NUM_EXTRA_STAPS : 1,  // Extra STAP port count; at least one for tie-off.
-  localparam logic [DTP_XTRIG_NUM_INT_CT-1:0]  DTP_XTRIG_INT_CT_MODE =  // Per-lane CTM mode vector passed into DTP, SMC lanes forced to 0.
+  localparam logic [DTP_XTRIG_NUM_INT_CT-1:0]  DTP_XTRIG_INT_CT_MODE =  // Per-lane CTM mode vector with SMC lanes forced to 0, forwarded to the DTP XTRIG_INT_CT_MODE.
       {Cfg.XTRIG_INT_CT_MODE[XTRIG_NUM_INT_CT-1:0], {smu_pkg::XTRIG_SMC_INT_CT_LANES{1'b0}}}
 ) (
-  input  logic  clk_smu_i,                      // SMU fabric clock.
-  input  logic  clk_ref_i,                      // Reference clock for cold-reset and always-on logic.
-  input  logic  clk_periph_i,                   // Peripheral clock domain.
-  input  logic  rst_cold_ni,                    // Cold reset, active-low.
+  input  logic  clk_smu_i,                      // SMU clock; clocks the SMC core, the SEP, the DTP
+                                                // and the SMU AXI crossbar.
+  input  logic  clk_ref_i,                      // Reference clock for cold-reset and always-on
+                                                // logic; forwarded to the SMC and the SEP.
+  input  logic  clk_periph_i,                   // Peripheral clock, forwarded to the SMC.
+  input  logic  rst_cold_ni,                    // Cold reset, active-low; the SMC de-glitches and
+                                                // extends it.
 
-  output logic  rst_cold_stable_ref_clk_no,     // Cold reset synchronized/stable in the ref-clock domain.
+  output logic  rst_cold_stable_ref_clk_no,     // De-glitched and extended cold reset, active-low,
+                                                // synchronized to clk_ref_i.
 
-  input  logic  powergood_i,                    // Power-good; qualifies bring-up and reset release.
+  input  logic  powergood_i,                    // Chip power-good from the pad, active-high. While
+                                                // low it asynchronously resets the SMC powergood
+                                                // stretcher and cold-reset de-glitcher; the
+                                                // stretched copy is the DTP and SEP debug power-on
+                                                // reset.
 
   input  prim_jtag_pkg::jtag_tap_ctrl_t  jtag_ptap_client_tap_ctrl_i,  // Primary TAP control from the pad.
   input  logic            jtag_ptap_client_tdi_i,  // Primary TAP TDI.
@@ -102,21 +185,27 @@ module smu #(
   input  logic             jtag_dft_host_scan_in_i,  // Non-secure DFT iJTAG scan input.
   output logic             jtag_dft_host_scan_out_o,  // Non-secure DFT iJTAG scan output.
 
-  output logic  dtp_stop_clks_o,                // Clock-stop request from DTP/JTAG/CLA.
+  output logic  dtp_stop_clks_o,                // Registered OR of the DTP DEBUG_CONTROL clock stop
+                                                // and the DTP clock-stop request lanes, including
+                                                // the SMC CLA lane.
 
   output jtag_tap_pkg::tap_state_e                      jtag_ptap_state_o,  // Primary TAP FSM state.
   output jtag_inst_reg_pkg::jtag_instruction_decoded_e  jtag_ptap_inst_decoded_o,  // Decoded primary TAP instruction.
 
-  output ic_reset_ext_t  jtag_ic_reset_ext_o,   // External IC_RESET TDR slice toward the integrator
-                                                // Typed packed struct with .ovrd and .val halves.
+  output ic_reset_ext_t  jtag_ic_reset_ext_o,   // External IC_RESET TDR slice toward the
+                                                // integrator, a typed packed struct with .ovrd and
+                                                // .val halves.
 
-  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_req_o,  // CTM source requests toward sinks
-                                                             // SMC-reserved lanes stay inside the SMU.
+  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_req_o,  // CTM source requests toward sinks;
+                                                             // the SMC-reserved lanes stay inside
+                                                             // the SMU.
   input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_src_ack_i,  // CTM source acknowledges from sinks.
-  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_req_i,  // CTM destination requests from sources.
-  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_ack_o,  // CTM destination acknowledges toward sources.
+  input  logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_req_i,  // CTM destination requests from
+                                                             // sources.
+  output logic [XTRIG_NUM_INT_CT-1:0]  xtrig_ctm_dst_ack_o,  // CTM destination acknowledges toward
+                                                             // sources.
 
-  input  logic [XTRIG_NUM_CLK_STOP_REQ-1:0]  xtrig_clk_stop_req_i,  // Per-lane clock-stop requests into the CTN
+  input  logic [XTRIG_NUM_CLK_STOP_REQ-1:0]  xtrig_clk_stop_req_i,  // Per-lane clock-stop requests into the CTN; the
                                                                     // SMC-reserved lane stays inside the SMU.
 
   output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_req_out_dout_o,  // CTP req-out pad data.
@@ -136,17 +225,36 @@ module smu #(
   input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_i,  // CTP ack-out pad input.
   output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_en_o,  // CTP ack-out pad input enable.
 
-  output logic  rst_primary_ref_clk_no,         // Primary reset in the ref-clock domain.
-  output logic  rst_primary_smc_clk_no,         // Primary reset in the SMC clock domain.
-  output logic  rst_primary_periph_clk_no,      // Primary reset in the peripheral clock domain.
+  output logic  rst_primary_ref_clk_no,         // Primary reset, active-low, synchronized to
+                                                // clk_ref_i.
+  output logic  rst_primary_smc_clk_no,         // Primary reset, active-low, synchronized to
+                                                // clk_smu_i; it also resets the DTP, the SEP and
+                                                // the SMU AXI crossbar.
+  output logic  rst_primary_periph_clk_no,      // Primary reset, active-low, synchronized to
+                                                // clk_periph_i.
 
-  input  smu_axi_xbar_pkg::axi_56_64_req_t   smu_axi_in_req_i,  // External AXI request into the SMU crossbar (toward SMN).
-  output smu_axi_xbar_pkg::axi_56_64_resp_t  smu_axi_in_resp_o,  // External AXI response from the SMU crossbar.
-  output smu_axi_xbar_pkg::axi_out_req_t      smu_axi_out_req_o,  // SMU crossbar request toward the external system.
-  input  smu_axi_xbar_pkg::axi_out_resp_t     smu_axi_out_resp_i,  // External system response into the SMU crossbar.
+  input  smu_axi_xbar_pkg::axi_56_64_req_t   smu_axi_in_req_i,  // External AXI request into the
+                                                                // SMU. The crossbar routes it to
+                                                                // the SEP or SMC aperture and
+                                                                // returns a decode error for any
+                                                                // other address; when SEP is 0 it
+                                                                // goes to the SMC through an
+                                                                // ID-width converter.
+  output smu_axi_xbar_pkg::axi_56_64_resp_t  smu_axi_in_resp_o,  // External AXI response from the
+                                                                 // SMU.
+  output smu_axi_xbar_pkg::axi_out_req_t      smu_axi_out_req_o,  // Outbound AXI request toward the
+                                                                  // external system, carrying SEP
+                                                                  // and SMC requests that match
+                                                                  // neither aperture; when SEP is 0
+                                                                  // it carries every SMC outbound
+                                                                  // request.
+  input  smu_axi_xbar_pkg::axi_out_resp_t     smu_axi_out_resp_i,  // External system response to
+                                                                   // smu_axi_out_req_o.
 
-  output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,  // SMC AXI-Lite request toward adopter peripherals.
-  input  smc_pkg::smc_axil_32_32_resp_t smc_external_resp_i,  // Adopter peripheral AXI-Lite response.
+  output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,  // SMC AXI-Lite request toward adopter
+                                                             // peripherals.
+  input  smc_pkg::smc_axil_32_32_resp_t smc_external_resp_i,  // Adopter peripheral AXI-Lite
+                                                              // response.
 
   output smc_pkg::smc_axil_32_32_req_t      smc_efuse_bank_ctrl_req_o,  // SMC eFuse bank-control AXI-Lite request.
   input  smc_pkg::smc_axil_32_32_resp_t     smc_efuse_bank_ctrl_resp_i,  // SMC eFuse bank-control AXI-Lite response.
@@ -171,28 +279,48 @@ module smu #(
   output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afvalid_o,  // ATB flush valid toward telemetry sources.
   input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afready_i,  // ATB flush ready from telemetry sources.
 
-  output logic  smc_cluster_ded_o,              // SMC cluster double-error detect.
-  output logic  smc_wdt_first_timeout_o,        // SMC watchdog first-timeout pulse.
-  output logic  smc_wdt_second_timeout_o,       // SMC watchdog second-timeout pulse.
+  output logic  smc_cluster_ded_o,              // SMC CPU cluster uncorrectable
+                                                // (double-error-detected) memory error.
+  output logic  smc_wdt_first_timeout_o,        // SMC first-stage watchdog timeout, the OR of the
+                                                // per-core CPU watchdog timeouts.
+  output logic  smc_wdt_second_timeout_o,       // SMC second-stage watchdog timeout, which also
+                                                // asserts the SMC watchdog reset.
 
-  output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,  // SMC aperture base for external decoders / NoC routing
-                                                                                       // Surfaced so both halves of each aperture are observable symmetrically.
-  output logic [31:0]                                              smc_region_size_o,  // SMC aperture size for external decoders.
-  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_o,  // SEP aperture base for external decoders
-                                                                                       // Tied to '0 when SEP=0.
-  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,  // SEP aperture size for external decoders
-                                                                                       // Tied to '0 when SEP=0.
+  output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,  // SMC aperture base from the SMC
+                                                                                       // GLOBAL_BASE register for external
+                                                                                       // decoders and NoC routing; it also sets
+                                                                                       // the SMC aperture of the SMU crossbar.
+  output logic [31:0]                                              smc_region_size_o,  // SMC aperture size in bytes from the SMC
+                                                                                       // REGION_SIZE register; it also sets the
+                                                                                       // SMC aperture of the SMU crossbar.
+  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_o,  // SEP aperture base from the
+                                                                                       // SEP_GLOBAL_BASE_ADDR register for
+                                                                                       // external decoders; it also sets the SEP
+                                                                                       // aperture of the SMU crossbar. Tied to 0
+                                                                                       // when SEP is 0.
+  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,  // SEP aperture size in bytes from the
+                                                                                       // zero-extended SEP_REGION_SIZE register;
+                                                                                       // the SMU crossbar uses its low 32 bits.
+                                                                                       // Tied to 0 when SEP is 0.
 
-  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,  // External interrupts into the SMC.
+  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,  // External interrupts into the SMC,
+                                                                // zero-extended to the SMC's
+                                                                // NUM_EXT_INTERRUPTS inputs.
 
   output logic  smc_fuse_sense_done_o,          // SMC fuse sense complete.
-  output logic  smc_fuse_reset_n_delayed_o,     // Delayed SMC fuse reset release, active-low.
+  output logic  smc_fuse_reset_n_delayed_o,     // Fuse-released SMC reset, active-low, delayed by
+                                                // 16 SMC clock stages and held low while boot stall
+                                                // is asserted.
 
   output logic  skip_mem_repair_o,              // Skip memory repair during boot.
   input  logic  ext_boot_seq_done_i,            // External boot sequence complete.
 
-  output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,  // Lifecycle state driven by SEP.
-  output logic                                  lc_sigint_err_o,  // Lifecycle signal-integrity error.
+  output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,  // Lifecycle state driven by the SEP;
+                                                             // fixed at 8'hF0 when SEP is 0.
+  output logic                                  lc_sigint_err_o,  // Lifecycle signal-integrity
+                                                                  // error, the OR of the SEP and
+                                                                  // SMC eFuse differential-encoding
+                                                                  // errors.
 
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_request_i,  // Per-cluster NDM reset requests.
   output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_process_o,  // Per-cluster NDM reset in-progress.
@@ -203,7 +331,8 @@ module smu #(
   output logic [31:0]  isolate_req_o,           // Per-subsystem isolate requests.
   input  logic [31:0]  ss_reset_complete_i,     // Per-subsystem reset-complete status.
   output logic [31:0]  ss_config_o,             // Per-subsystem reset-unit configuration.
-  output smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_o[31:0],  // Per-subsystem reset control structs.
+  output smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_o[31:0],  // Per-subsystem reset control
+                                                                  // structs.
   output logic  sync_irq_o,                     // Synchronized reset-unit interrupt.
 
   output smc_rom_req_t             smc_rom_intf_req_o,  // SMC ROM hard-macro request.
@@ -228,8 +357,11 @@ module smu #(
   output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Trace-memory sink requests.
   input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_resp_i,  // Trace-memory sink responses.
 
-  input  logic  test_en_i,                      // DFT test enable.
-  input  logic  scan_rst_ni,                    // DFT scan reset, active-low.
+  input  logic  test_en_i,                      // Scan test mode enable, active-high; forwarded to
+                                                // the DTP, the SMC, the SEP and the SMU AXI
+                                                // crossbar.
+  input  logic  scan_rst_ni,                    // DFT scan reset, active-low, used in place of
+                                                // functional resets while test_en_i is high.
 
   input  logic mem_repair_done_i,               // Memory repair sequence done.
   input  logic mem_repair_success_i,            // Memory repair sequence succeeded.
@@ -240,10 +372,14 @@ module smu #(
 
   output sep_pkg::sep_sram_req_t     sep_sram_req_o,  // SEP SRAM request toward sep_ip_integration.
   input  sep_pkg::sep_sram_rsp_t     sep_sram_rsp_i,  // SEP SRAM response from sep_ip_integration.
-  output sep_pkg::sep_sram_req_t     sep_boot_rom_req_o,  // SEP boot-ROM request toward sep_ip_integration.
-  input  sep_pkg::sep_sram_rsp_t     sep_boot_rom_rsp_i,  // SEP boot-ROM response from sep_ip_integration.
-  output sep_pkg::sep_cpu_tcm_req_t  sep_cpu_tcm_req_o,  // SEP CPU TCM request toward sep_ip_integration.
-  input  sep_pkg::sep_cpu_tcm_rsp_t  sep_cpu_tcm_rsp_i,  // SEP CPU TCM response from sep_ip_integration.
+  output sep_pkg::sep_sram_req_t     sep_boot_rom_req_o,  // SEP boot-ROM request toward
+                                                          // sep_ip_integration.
+  input  sep_pkg::sep_sram_rsp_t     sep_boot_rom_rsp_i,  // SEP boot-ROM response from
+                                                          // sep_ip_integration.
+  output sep_pkg::sep_cpu_tcm_req_t  sep_cpu_tcm_req_o,  // SEP CPU TCM request toward
+                                                         // sep_ip_integration.
+  input  sep_pkg::sep_cpu_tcm_rsp_t  sep_cpu_tcm_rsp_i,  // SEP CPU TCM response from
+                                                         // sep_ip_integration.
 
   output sep_efuse_pkg::efuse_axil_req_t    sep_efuse_bank_ctrl_req_o,  // SEP eFuse bank-control AXI-Lite request.
   input  sep_efuse_pkg::efuse_axil_resp_t   sep_efuse_bank_ctrl_resp_i,  // SEP eFuse bank-control AXI-Lite response.
@@ -255,47 +391,61 @@ module smu #(
   output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t  sep_crypto_pka_dmem_sram_req_o,  // SEP crypto PKA data-memory SRAM request.
   input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t  sep_crypto_pka_dmem_sram_rsp_i,  // SEP crypto PKA data-memory SRAM response.
 
-  output sep_crypto_pkg::abr_mem_req_t                   abr_mem_req_o,  // Adams Bridge external SRAM request
-                                                                         // Tech macros live in sep_ip_integration.
+  output sep_crypto_pkg::abr_mem_req_t                   abr_mem_req_o,  // Adams Bridge external SRAM request; the
+                                                                         // technology macros live in
+                                                                         // sep_ip_integration.
   input  sep_crypto_pkg::abr_mem_rsp_t                   abr_mem_rsp_i,  // Adams Bridge external SRAM response.
 
-  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // External TRNG AXI-Lite request.
+  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // External TRNG AXI-Lite
+                                                                   // request.
   input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,  // External TRNG AXI-Lite response.
   input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-stream requests.
   output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-stream responses.
   input  logic                               ext_trng_irq_i,  // External TRNG interrupt.
 
-  input  logic                               entropy_rosc_sample_clk_i,  // Ring-oscillator sample clock for SEP entropy_source
-                                                                         // Async to clk_smu_i.
+  input  logic                               entropy_rosc_sample_clk_i,  // Ring-oscillator sample clock for the SEP
+                                                                         // entropy source, asynchronous to clk_smu_i.
 
   output sep_io_pkg::sep_io_spi_req_t        sep_io_spi_req_o,  // SEP OpenTitan SPI request.
 
-  output km_intf_pkg::km_rom_mem_req_t   sep_km_rom_mem_req_o,  // SEP Key Manager ROM memory request.
-  input  km_intf_pkg::km_rom_mem_rsp_t   sep_km_rom_mem_rsp_i,  // SEP Key Manager ROM memory response.
-  output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,  // SEP Key Manager SRAM memory request.
-  input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,  // SEP Key Manager SRAM memory response.
+  output km_intf_pkg::km_rom_mem_req_t   sep_km_rom_mem_req_o,  // SEP Key Manager ROM memory
+                                                                // request.
+  input  km_intf_pkg::km_rom_mem_rsp_t   sep_km_rom_mem_rsp_i,  // SEP Key Manager ROM memory
+                                                                // response.
+  output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,  // SEP Key Manager SRAM memory
+                                                                 // request.
+  input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,  // SEP Key Manager SRAM memory
+                                                                 // response.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t   sep_external_req_o,  // SEP external AXI request.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_external_resp_i,  // SEP external AXI response.
 
   output sep_pkg::sep_cpu_trace_t  sep_cpu_trace_o,  // SEP CPU trace bundle.
   input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,  // SEP lockstep control.
-  output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,  // SEP lockstep status.
+  output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,  // SEP CPU lockstep
+                                                                // corruption-detected status; zero
+                                                                // when SEP is 0 or the core is
+                                                                // built without lockstep.
 
   input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_ext_interrupts_i,  // External interrupts into the SEP.
 
   output logic [1:0]  lcc_demote_state_1_o,     // Lifecycle demote state 1.
   output logic [1:0]  lcc_demote_state_2_o,     // Lifecycle demote state 2.
-  output logic secure_tm_o,                     // Secure test-mode indication.
+  output logic secure_tm_o,                     // Secure test-mode indication from the SEP; low
+                                                // when SEP is 0.
 
-  output logic sep_fuse_dft_disable_o,          // Gate for DFT-inserted SEP OTP access paths
-                                                // Unconnected in the functional design; DFT insertion connects it.
-  output logic smc_fuse_dft_disable_o,          // Gate for DFT-inserted SMC OTP access paths
-                                                // Unconnected in the functional design; DFT insertion connects it.
+  output logic sep_fuse_dft_disable_o,          // Gate for DFT-inserted SEP OTP access paths,
+                                                // active-high and held high when SEP is 0.
+                                                // Unconnected in the functional design; DFT
+                                                // insertion connects it.
+  output logic smc_fuse_dft_disable_o,          // Gate for DFT-inserted SMC OTP access paths,
+                                                // active-high and held high when SEP is 0.
+                                                // Unconnected in the functional design; DFT
+                                                // insertion connects it.
 
   output logic  sep_fuse_sense_done_o,          // SEP fuse sense complete.
 
-  input  logic  clk_sep_wdt_i,                  // SEP WDT clock (passthrough from smu_wrapper).
+  input  logic  clk_sep_wdt_i,                  // SEP watchdog timer clock.
 
   input  logic                  secure_tm_req_i,  // SEP secure test-mode request strap.
 
@@ -307,7 +457,9 @@ module smu #(
   output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_sink_o,  // I3C RLT memory sink interfaces.
   output logic                                                  gated_clk_periph_i3c_o,  // Gated peripheral clock for I3C.
 
-  input  logic [127:0]  ext_debug_bus_i,        // External debug bus.
+  input  logic [127:0]  ext_debug_bus_i,        // External debug bus; the SMC receives it above the
+                                                // 384-bit SEP debug bus, which is zero when SEP is
+                                                // 0. Signals must be 16-bit aligned within it.
 
   output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,  // GPIO wrap interrupt outputs.
   output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o  // UART interrupt outputs.

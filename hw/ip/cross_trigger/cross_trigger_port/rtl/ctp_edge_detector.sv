@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Detect rising edges on an already-synchronized CTP request and emit a registered pulse.
+// Detect rising edges on an already-synchronized CTP request.
 //
-// Uses prim_edge_detector with EnSync disabled because signal_i is pre-synchronized.
-// posedge_pulse_o is the registered positive-edge pulse for point-to-point mode.
+// Uses prim_edge_detector with EnSync disabled because signal_i is pre-synchronized; the
+// primitive registers the previous level and derives the edge pulse combinationally from
+// signal_i.
 
 module ctp_edge_detector (
   input  logic clk_i,                   // System clock.
-  input  logic rst_ni,                  // Active-low reset.
+  input  logic rst_ni,                  // Active-low asynchronous reset; clears the stored previous
+                                        // level.
 
-  input  logic signal_i,                // Signal.
+  input  logic signal_i,                // Level to edge-detect, already synchronized to clk_i and
+                                        // polarity-corrected (the CT_Req_in pad input in the port
+                                        // core).
 
-  output logic posedge_pulse_o          // Posedge pulse.
+  output logic posedge_pulse_o          // One-cycle pulse on each rising edge of signal_i,
+                                        // combinational from signal_i; not consumed in
+                                        // cross_trigger_port_core.
 );
 
   // Use prim_edge_detector with synchronization disabled since input is already synchronized

@@ -6,8 +6,8 @@
 //
 // Entropy passes through these pipeline stages in order:
 //
-// - axis (32b) into prim_fifo_sync staging.
-// - prim_arbiter_ppc across N requesters.
+// - axis (32b) into a 4-entry prim_fifo_sync staging FIFO.
+// - prim_arbiter_ppc round-robin arbitration across N requesters.
 // - A per-endpoint 1-deep holding FIFO.
 // - edn_ack_sm driving edn_ack / edn_bus.
 //
@@ -26,20 +26,33 @@
 module drbg_axis_edn_adapter
   import drbg_pkg::*;
 #(
-  parameter int unsigned NUM_ENDPOINTS = 4                  // Number of native EDN clients (e.g. AES, KMAC, OTBN RND/URND).
+  parameter int unsigned NUM_ENDPOINTS = 4                  // Number of native EDN clients (e.g.
+                                                            // AES, KMAC, OTBN RND/URND).
 ) (
   input  wire logic clk_i,                                  // System clock.
   input  wire logic rst_ni,                                 // Async reset, active-low.
-  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_rst_ni,    // Per-client cancel.
-                                                            // Must assert whenever rst_ni asserts; does not disturb other clients.
-  input  wire logic clear_i,                                // Synchronous flush of staged entropy and every endpoint.
+  input  wire logic [NUM_ENDPOINTS-1:0] endpoint_rst_ni,    // Per-client cancel, active-low
+                                                            // asynchronous reset of that endpoint.
+                                                            // Must assert whenever rst_ni asserts;
+                                                            // does not disturb other clients.
+  input  wire logic clear_i,                                // Synchronous flush of staged entropy
+                                                            // and every endpoint, active-high.
 
-  input  wire drbg_axis_req_t axis_req_i,                   // 32b AXI-Stream sink from the producer (valid/data/strb).
-                                                            // Adapter drives tready.
-  output drbg_axis_rsp_t axis_rsp_o,                        // AXI-Stream ready toward the producer.
+  input  wire drbg_axis_req_t axis_req_i,                   // 32b AXI-Stream sink from the producer
+                                                            // (valid/data/strb/tuser). Adapter
+                                                            // drives tready; only beats with every
+                                                            // tstrb bit set are accepted, and tuser
+                                                            // is forwarded as edn_fips.
+  output drbg_axis_rsp_t axis_rsp_o,                        // AXI-Stream ready toward the producer;
+                                                            // high while the 4-entry staging FIFO
+                                                            // has space, all tstrb bits are set and
+                                                            // clear_i is low.
 
   input  wire edn_pkg::edn_req_t [NUM_ENDPOINTS-1:0] edn_req_i, // Native EDN requests from clients.
-  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o   // Native EDN responses to clients.
+  output edn_pkg::edn_rsp_t [NUM_ENDPOINTS-1:0] edn_rsp_o   // Native EDN responses to clients; ack,
+                                                            // bus and fips are forced to zero
+                                                            // during clear_i or that endpoint's
+                                                            // reset.
 );
 
   `include "prim_assert.sv"

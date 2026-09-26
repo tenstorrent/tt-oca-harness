@@ -3,8 +3,10 @@
 
 // Shift the JTAG instruction register and decode the current opcode.
 //
-// Captures and shifts the IR on the IR scan path between scan_in_i and scan_out_o.
-// inst_decoded_o is the decoded instruction enum consumed by PTAP muxes.
+// Captures 6'b000001 and shifts the IR on the IR scan path between scan_in_i and scan_out_o.
+// inst_decoded_o is the decoded instruction enum consumed by PTAP muxes, one-hot in the
+// opcode, loaded on the falling TCK edge while update_en is high and reset to
+// DEFAULT_INSTRUCTION (IDCODE).
 
 module jtag_inst_reg
   import prim_jtag_pkg::*;
@@ -16,7 +18,8 @@ module jtag_inst_reg
   input  logic             scan_in_i,   // Scan data in (TDI).
   output logic             scan_out_o,  // Scan data out (TDO).
 
-  output jtag_instruction_decoded_e  inst_decoded_o  // Current decoded instruction.
+  output jtag_instruction_decoded_e  inst_decoded_o  // Current decoded instruction, one-hot in the
+                                                     // opcode.
 );
   // Tie off unused fields to satisfy lint
   logic unused_scan_ctrl;

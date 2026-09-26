@@ -4,9 +4,11 @@
 // Hold System Management Unit configuration types and defaults.
 //
 // Define smu_cfg_t and DefaultCfg for JTAG feature enables, cross-trigger counts,
-// pipeline depths, and SEP/Adams-Bridge options consumed by the SMU and DTP
-// instantiations. XTRIG_NUM_INT_CT and XTRIG_NUM_CLK_STOP_REQ are the SMU-exposed counts;
-// DTP adds the SMC-reserved lanes.
+// pipeline depths, and SEP/Adams-Bridge options consumed by smu; the JTAG, cross-trigger
+// and pipeline fields configure its DTP instance. XTRIG_NUM_INT_CT and
+// XTRIG_NUM_CLK_STOP_REQ are the SMU-exposed counts; smu adds the SMC-reserved lanes
+// (XTRIG_SMC_INT_CT_LANES, XTRIG_SMC_CLK_STOP_LANES) before passing them to DTP.
+// NoSepCfg holds the same values as DefaultCfg, and SmuConfigs lists both.
 
 package smu_pkg;
 
@@ -42,7 +44,7 @@ package smu_pkg;
     logic [7:0]  JTAG_OCH_VER;
 
     // Cross-trigger configuration. XTRIG_NUM_INT_CT and XTRIG_NUM_CLK_STOP_REQ
-    // are the SMU-exposed counts; DTP adds the SMC-reserved lanes.
+    // are the SMU-exposed counts; smu adds the SMC-reserved lanes for DTP.
     int unsigned XTRIG_NUM_CTP;
     int unsigned XTRIG_NUM_INT_CT;
     int unsigned XTRIG_NUM_CLK_STOP_REQ;

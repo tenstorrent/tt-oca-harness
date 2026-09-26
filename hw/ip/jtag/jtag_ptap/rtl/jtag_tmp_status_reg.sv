@@ -3,8 +3,9 @@
 
 // Implement the TMP status TDR for persistence mode and bypass-escape enable.
 //
-// Captures persistence_mode_i into the shift path and updates bypass_escape_bit_o on
-// Update-DR.
+// Captures persistence_mode_i into bit 1 and the current bypass-escape value into bit 0, the
+// bit nearest TDO, and updates bypass_escape_bit_o on the falling TCK edge of Update-DR.
+// bypass_escape_bit_o resets low on the scan-control reset.
 // bypass_escape_bit_o feeds jtag_tmp so BYPASS can leave persistence-on when set.
 
 module jtag_tmp_status_reg
@@ -16,9 +17,11 @@ module jtag_tmp_status_reg
   input  logic             scan_in_i,   // Scan data in (TDI).
   output logic             scan_out_o,  // Scan data out (TDO).
 
-  input  logic             persistence_mode_i,  // TMP controller persistence mode.
+  input  logic             persistence_mode_i,  // TMP controller persistence mode, captured into
+                                                // bit 1.
 
-  output logic             bypass_escape_bit_o  // Bypass escape enable bit.
+  output logic             bypass_escape_bit_o  // Bypass escape enable bit; bit 0 of the update
+                                                // register, reset low.
 );
 
   //--------------------------------------------------------------------------

@@ -7,7 +7,10 @@
 // transaction on an upstream integrity fault.
 //
 // Delay writes one cycle so reads and writes share the PRINCE keystream unit. Hold a
-// pending write across a following read and detect address collisions.
+// pending write across a following read and detect address collisions; a colliding read
+// returns the masked bytes of the pending write data.
+// Read data returns one cycle after the grant. The inner RAM runs without ECC, so rerror_o
+// can only report parity errors.
 //
 // Keep cipher rounds low for latency. PRINCE's original 5 half-rounds are 2*5+1 effective
 // rounds; NumPrinceRoundsHalf of 3 is about 7 effective rounds and must be in [1..5].
@@ -22,9 +25,11 @@ module prim_ram_1p_scr_ext
   `include "prim_assert.sv"
   import prim_ram_1p_adv_ext_pkg::*;
 #(
-  parameter  int Depth               = 16*1024,  // Logical depth; must be a power of 2 if NumAddrScrRounds > 0.
+  parameter  int Depth               = 16*1024,  // Logical depth; must be a power of 2 if
+                                                 // NumAddrScrRounds > 0.
   parameter  int InstDepth           = Depth,  // Per-tile depth for RAM tiling.
-  parameter  int Width               = 32,  // Data width; must be byte-aligned when byte parity is enabled.
+  parameter  int Width               = 32,  // Data width; must be byte-aligned when byte parity is
+                                            // enabled.
   parameter  int DataBitsPerMask     = 8,  // Must be 8 when byte parity is enabled.
   parameter  bit EnableParity        = 0,  // Enables byte parity.
 
@@ -36,49 +41,73 @@ module prim_ram_1p_scr_ext
                                            // can interact adversely with end-to-end ECC;
                                            // enable only with full knowledge of that
                                            // interaction (for example with byte parity).
-  parameter  int DiffWidth           = DataBitsPerMask,  // Diffusion block width; use 8 for intra-byte diffusion.
-  parameter  int NumAddrScrRounds    = 2,  // Address scrambling rounds; 0 disables address scrambling.
-  parameter  bit ReplicateKeyStream  = 1'b0,  // 1 replicates the same 64-bit keystream across a wider data port;
-                                              // 0 replicates the cipher with a wider
-                                              // nonce for a unique keystream across the
-                                              // full width.
+  parameter  int DiffWidth           = DataBitsPerMask,  // Diffusion block width; at least 4, and 8
+                                                         // with parity. Use 8 for intra-byte
+                                                         // diffusion.
+  parameter  int NumAddrScrRounds    = 2,  // Address scrambling rounds; 0 disables address
+                                           // scrambling.
+  parameter  bit ReplicateKeyStream  = 1'b0,  // 1 replicates the same 64-bit keystream across a
+                                              // wider data port; 0 replicates the cipher with a
+                                              // wider nonce for a unique keystream across the full
+                                              // width.
 
-  parameter type ram_req_t           = prim_ram_1p_adv_ext_req_t,  // External RAM request struct; may override the package default.
-  parameter type ram_rsp_t           = prim_ram_1p_adv_ext_rsp_t,  // External RAM response struct; may override the package default.
+  parameter type ram_req_t           = prim_ram_1p_adv_ext_req_t,  // External RAM request struct;
+                                                                   // may override the package
+                                                                   // default.
+  parameter type ram_rsp_t           = prim_ram_1p_adv_ext_rsp_t,  // External RAM response struct;
+                                                                   // may override the package
+                                                                   // default.
 
   localparam int AddrWidth           = prim_util_pkg::vbits(Depth),  // Logical address width; derived.
   localparam int NumParScr           = (ReplicateKeyStream) ? 1 : (Width + 63) / 64,  // Parallel PRINCE instances so the keystream covers Width;
                                                                                       // PRINCE block size is 64 bits.
   localparam int NumParKeystr        = (ReplicateKeyStream) ? (Width + 63) / 64 : 1,  // Parallel keystream replicas when ReplicateKeyStream is set.
-  localparam int DataKeyWidth        = 128,  // Scrambling key width from PRINCE; all parallel ciphers share the key with different IVs.
-  localparam int NonceWidth          = 64 * NumParScr,  // Nonce width; each 64-bit scrambling primitive needs a 64-bit IV.
+  localparam int DataKeyWidth        = 128,  // Scrambling key width from PRINCE; all parallel
+                                             // ciphers share the key with different IVs.
+  localparam int NonceWidth          = 64 * NumParScr,  // Nonce width; each 64-bit scrambling
+                                                        // primitive needs a 64-bit IV.
   localparam int NumRamInst          = prim_util_pkg::ceil_div(Depth, InstDepth)  // Number of tiled RAM instances.
 ) (
   input                                    clk_i,  // Memory clock.
   input                                    rst_ni,  // Async reset, active-low.
 
-  input                                    key_valid_i,  // Scrambling key is live; requests are not granted while low.
+  input                                    key_valid_i,  // Scrambling key is live; requests are not
+                                                         // granted while low.
   input        [DataKeyWidth-1:0]          key_i,  // Scrambling key.
-  input        [NonceWidth-1:0]            nonce_i,  // Scrambling nonce.
+  input        [NonceWidth-1:0]            nonce_i,  // Scrambling nonce; the top AddrWidth bits key
+                                                     // address scrambling and the low bits form the
+                                                     // keystream IVs.
 
-  input                                    req_i,  // Unscrambled access request from the SRAM adapter.
-  output logic                             gnt_o,  // Request grant.
+  input                                    req_i,  // Unscrambled access request.
+  output logic                             gnt_o,  // Request grant; req_i gated combinationally by
+                                                   // key_valid_i.
   input                                    write_i,  // Write when high, read when low.
   input        [AddrWidth-1:0]             addr_i,  // Logical address before scramble.
   input        [Width-1:0]                 wdata_i,  // Plaintext write data.
   input        [Width-1:0]                 wmask_i,  // Write mask; must be byte-aligned for parity.
-  input                                    intg_error_i,  // Suppresses any real memory transaction on an integrity fault.
-  output logic [Width-1:0]                 rdata_o,  // Descrambled read data.
+  input                                    intg_error_i,  // Suppresses any real memory transaction
+                                                          // on an integrity fault and kills the
+                                                          // matching read response.
+  output logic [Width-1:0]                 rdata_o,  // Descrambled read data; 0 while rvalid_o is
+                                                     // low.
   output logic                             rvalid_o,  // Read response (rdata_o) is valid.
-  output logic [1:0]                       rerror_o,  // Bit1 uncorrectable, bit0 correctable.
-  output logic [AddrWidth-1:0]             raddr_o,  // Read address for error reporting.
+  output logic [1:0]                       rerror_o,  // Bit1 flags a parity error; bit0,
+                                                      // correctable, is always 0.
+  output logic [AddrWidth-1:0]             raddr_o,  // Unscrambled address of the last granted
+                                                     // read, for error reporting.
 
-  output logic                             wr_collision_o,  // Read hits a pending write address.
-  output logic                             write_pending_o,  // A delayed write is still held.
+  output logic                             wr_collision_o,  // Read hits a pending write address;
+                                                            // valid with rvalid_o.
+  output logic                             write_pending_o,  // High while a write is granted or a
+                                                             // delayed write is being committed to
+                                                             // memory.
 
-  output logic                             alert_o,  // Multi-bit encoding-error alert.
+  output logic                             alert_o,  // Invalid MuBi4 encoding on an internal
+                                                     // control signal, including those of the inner
+                                                     // RAM.
 
-  output ram_req_t         [NumRamInst-1:0] ram_req_o,  // Per-tile external RAM requests from the inner prim_ram_1p_adv_ext.
+  output ram_req_t         [NumRamInst-1:0] ram_req_o,  // Per-tile external RAM requests from the
+                                                        // inner prim_ram_1p_adv_ext.
   input  ram_rsp_t         [NumRamInst-1:0] ram_rsp_i  // Per-tile external RAM responses.
 );
 

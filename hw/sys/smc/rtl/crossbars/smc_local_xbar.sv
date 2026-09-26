@@ -3,8 +3,13 @@
 
 // Route the SMC local AXI crossbar.
 //
-// Connects CPU and fabric initiators to local SMC targets over full AXI.
-// Address rules come from smc_local_xbar_pkg and smc_top_addrmap_pkg.
+// Connects the system, SEP and local initiators from the SMC input fabric to local SMC
+// targets over full AXI, without atomic operations. The CSR targets are converted on the
+// way out: the internal-register port to 64-bit AXI-Lite, the peripheral port to 32-bit
+// AXI-Lite and the DFD port to 32-bit APB. Addresses outside every rule, including gaps
+// between CPU-cluster resources, receive DECERR.
+// Address rules are built here from smc_top_addrmap_pkg; types and crossbar
+// configuration come from smc_local_xbar_pkg.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -13,35 +18,46 @@ module smc_local_xbar
   import axi_pkg::*;
   import smc_local_xbar_pkg::*;
 (
-  input  logic clk_i,                   // Clock.
-  input  logic rst_ni,                  // Reset.
-  input  logic test_i,                  // Test.
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock.
+  input  logic test_i,                  // Scan test mode enable, forwarded to the test input of the
+                                        // AXI crossbar.
 
-  input  axi64_req_t  system_req_i,     // system (AXI4, 64-bit) request.
-  output axi64_resp_t system_resp_o,    // system (AXI4, 64-bit) response.
+  input  axi64_req_t  system_req_i,     // System request from the input fabric, rebased into
+                                        // the local SMC aperture.
+  output axi64_resp_t system_resp_o,    // Response to the system initiator.
 
-  input  axi64_req_t  sep_in_req_i,     // sep_in (AXI4, 64-bit) request.
-  output axi64_resp_t sep_in_resp_o,    // sep_in (AXI4, 64-bit) response.
+  input  axi64_req_t  sep_in_req_i,     // SEP request from the input fabric, rebased into the
+                                        // local SMC aperture.
+  output axi64_resp_t sep_in_resp_o,    // Response to the SEP initiator.
 
-  input  axi64_req_t  local_in_req_i,   // local_in (AXI4, 64-bit) request.
-  output axi64_resp_t local_in_resp_o,  // local_in (AXI4, 64-bit) response.
+  input  axi64_req_t  local_in_req_i,   // Request from the input fabric's local port, rebased
+                                        // into the local SMC aperture.
+  output axi64_resp_t local_in_resp_o,  // Response to the input fabric's local port.
 
-  output axi_out_req_t  front_port_req_o,  // front_port (AXI4, 64-bit) request.
-  input  axi_out_resp_t front_port_resp_i,  // front_port (AXI4, 64-bit) response.
+  output axi_out_req_t  front_port_req_o,  // Request to the CPU cluster front port for the
+                                           // core watchdogs, CPU control, SPM ROM and SPM,
+                                           // PLIC, CLINT and core bus-error units.
+  input  axi_out_resp_t front_port_resp_i,  // Response from the CPU cluster front port.
 
-  output axi_out_req_t  data_accel_ctrl_req_o,  // data_accel_ctrl (AXI4, 64-bit) request.
-  input  axi_out_resp_t data_accel_ctrl_resp_i,  // data_accel_ctrl (AXI4, 64-bit)
-                                                 // response.
+  output axi_out_req_t  data_accel_ctrl_req_o,  // Request for the DMA and zeroer control
+                                                // windows of the data accelerator.
+  input  axi_out_resp_t data_accel_ctrl_resp_i,  // Response from the data accelerator
+                                                 // control port.
 
-  output axi_lite64_req_t  local_reg_req_o,  // local_reg (AXI4_LITE, 64-bit) request.
-  input  axi_lite64_resp_t local_reg_resp_i,  // local_reg (AXI4_LITE, 64-bit) response.
+  output axi_lite64_req_t  local_reg_req_o,  // Request to the internal CSR crossbar for the
+                                             // base config through mailbox windows and the
+                                             // DFX control window.
+  input  axi_lite64_resp_t local_reg_resp_i,  // Response from the internal CSR crossbar.
 
-  output axi_lite32_req_t  periph_reg_req_o,  // periph_reg (AXI4_LITE, 32-bit) request.
-  input  axi_lite32_resp_t periph_reg_resp_i,  // periph_reg (AXI4_LITE, 32-bit) response.
+  output axi_lite32_req_t  periph_reg_req_o,  // Request to the peripheral CSR crossbar for
+                                              // the reset unit through DTP control windows,
+                                              // the I3C wrapper and smc_external.
+  input  axi_lite32_resp_t periph_reg_resp_i,  // Response from the peripheral CSR crossbar.
 
-  output apb32_req_t  smc_dfd_reg_req_o,  // smc_dfd_reg (APB4, 32-bit) request.
-  input  apb32_resp_t smc_dfd_reg_resp_i  // smc_dfd_reg (APB4, 32-bit) response.
-
+  output apb32_req_t  smc_dfd_reg_req_o,  // Request for the SMC CLA window.
+  input  apb32_resp_t smc_dfd_reg_resp_i  // Response from the SMC CLA.
 );
 
   // ===========================================================================

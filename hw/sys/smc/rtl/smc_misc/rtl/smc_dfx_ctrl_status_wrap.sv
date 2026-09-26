@@ -4,35 +4,47 @@
 // Expose SMC DFX control and status CSRs.
 //
 // Bridges software-visible DFX controls onto the internal AXI-Lite map.
-// Feeds DFX bits used by smc_dfd_wrap and fabric debug paths.
+// Reports memory-repair and MBIST status in STATUS_SMU and drives the DEBUG_CTRL and
+// DEBUG_BUS_MUX fields that configure smc_dfd_wrap; debug-bus mux segments 8 to 15 and
+// the fine-grain time field have no register and are tied to zero.
 
 module smc_dfx_ctrl_status_wrap (
-  input  logic                                clk_i,  // Clock.
-  input  logic                                rst_ni,  // Reset.
+  input  logic                                clk_i,  // SMC core clock.
+  input  logic                                rst_ni,  // Primary reset, active-low, synchronized to
+                                                       // the SMC core clock; returns the DFX
+                                                       // control and status registers to their
+                                                       // reset values.
 
-  input  smc_pkg::smc_axil_32_64_req_t        axil_dfx_csr_req_i,  // AXI-Lite interface
-                                                                   // to DFT CSR request.
-  output smc_pkg::smc_axil_32_64_resp_t       axil_dfx_csr_resp_o,  // AXI-Lite interface
-                                                                    // to DFT CSR response.
+  input  smc_pkg::smc_axil_32_64_req_t        axil_dfx_csr_req_i,  // Request from the internal
+                                                                   // CSR crossbar for the DFX
+                                                                   // control window.
+  output smc_pkg::smc_axil_32_64_resp_t       axil_dfx_csr_resp_o,  // Response to the internal
+                                                                    // CSR crossbar.
 
-  input  logic                                mem_repair_done_i,  // indicators for DFT
-                                                                  // status.
-  input  logic                                mem_repair_success_i,  // indicators for DFT
-                                                                     // status.
-  input  logic                                mem_repair_abort_i,  // indicators for DFT
-                                                                   // status.
-  input  logic                                mbist_done_i,  // indicators for DFT status.
-  input  logic                                mbist_pass_i,  // indicators for DFT status.
-  input  logic                                mbist_abort_i,  // indicators for DFT
-                                                              // status.
+  input  logic                                mem_repair_done_i,  // Memory repair has finished;
+                                                                  // reported in STATUS_SMU.
+  input  logic                                mem_repair_success_i,  // Memory repair succeeded;
+                                                                     // reported in STATUS_SMU.
+  input  logic                                mem_repair_abort_i,  // Memory repair was aborted;
+                                                                   // reported in STATUS_SMU.
+  input  logic                                mbist_done_i,  // Memory BIST has finished;
+                                                             // reported in STATUS_SMU.
+  input  logic                                mbist_pass_i,  // Memory BIST passed; reported
+                                                             // in STATUS_SMU.
+  input  logic                                mbist_abort_i,  // Memory BIST was aborted;
+                                                              // reported in STATUS_SMU.
 
-  output logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable_o,  // DFD config
-                                                                      // (DEBUG_CTRL /
-                                                                      // DEBUG_BUS_MUX).
-  output smc_pkg::dfd_enable_t                dfd_enables_o,  // DFD config (DEBUG_CTRL /
-                                                              // DEBUG_BUS_MUX).
-  output tt_dbm_pkg::DbgMuxSelMmr_s           dbg_mux_sel_csr_o  // DFD config (DEBUG_CTRL
-                                                                 // / DEBUG_BUS_MUX).
+  output logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable_o,  // DEBUG_CTRL
+                                                                      // chiplet_enable field;
+                                                                      // left unconnected in
+                                                                      // smc_internal_regs.
+  output smc_pkg::dfd_enable_t                dfd_enables_o,  // DEBUG_CTRL clock-gate,
+                                                              // force-clock, GPIO, DTB,
+                                                              // cross-trigger halt mask and
+                                                              // debug marker fields.
+  output tt_dbm_pkg::DbgMuxSelMmr_s           dbg_mux_sel_csr_o  // Debug-bus mux mode, ID
+                                                                 // and segment selects from
+                                                                 // DEBUG_BUS_MUX.
 );
 
   dfx_ctrl_status_reg_pkg::dfx_ctrl_status__in_t  dfx_csr_hwif_in;

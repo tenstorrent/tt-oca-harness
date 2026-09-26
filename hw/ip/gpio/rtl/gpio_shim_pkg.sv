@@ -3,7 +3,8 @@
 
 // Hold types for the GPIO pad shim and model control/status structs.
 //
-// Bundles the fields the shim drives into gpio_model and reads back as status.
+// gpio_model_ctrl_t bundles the electrical controls gpio_shim drives to the pad model;
+// gpio_model_status_t is the one-bit status that gpio_shim accepts but does not use.
 
 package gpio_shim_pkg;
 

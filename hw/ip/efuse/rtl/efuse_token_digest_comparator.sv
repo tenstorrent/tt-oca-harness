@@ -10,9 +10,11 @@
 
 module efuse_token_digest_comparator #(
   localparam int unsigned TokenWidth = 256,  // Token digest width in bits.
-  localparam int unsigned L0Width    = TokenWidth / 4,  // Token digest width in bits.
-  localparam int unsigned L1Width    = L0Width / 4,  // First reduction-tree width.
-  localparam int unsigned L2Width    = L1Width / 4  // Second reduction-tree width.
+  localparam int unsigned L0Width    = TokenWidth / 4,  // Width of reduction level L0, one bit per
+                                                        // four digest bits.
+  localparam int unsigned L1Width    = L0Width / 4,  // Width of reduction level L1.
+  localparam int unsigned L2Width    = L1Width / 4  // Width of reduction level L2, which feeds the
+                                                    // final four-input gate.
 ) (
   input  logic [TokenWidth-1:0] token_digest_i,  // Computed 256-bit token digest.
   input  logic [TokenWidth-1:0] token_expected_i,  // Expected 256-bit token digest.

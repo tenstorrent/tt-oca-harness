@@ -6,14 +6,16 @@
 // Pack data_i as {diff_n[W-1:0], diff_p[W-1:0]}; matching levels assert a per-bit integrity
 // fault.
 // OR every per-bit integrity fault onto sigint_o.
-// AsyncOn inserts synchronizers on the differential inputs into clk_i.
+// AsyncOn inserts two-flop synchronizers on the differential inputs into clk_i and tolerates
+// a one-cycle skew between the wires of a pair before flagging a fault. Without AsyncOn the
+// decode is combinational: data_o follows diff_p and clk_i and rst_ni are unused.
 
 module prim_diff_decode_multi #(
   parameter int unsigned Width = 4,  // Number of differential pairs.
   parameter bit AsyncOn = 1'b0  // Synchronizes data_i into clk_i when set.
 ) (
-  input  logic               clk_i,  // Decode clock.
-  input  logic               rst_ni,  // Async reset, active-low.
+  input  logic               clk_i,  // Decode clock; used only when AsyncOn is set.
+  input  logic               rst_ni,  // Async reset, active-low; used only when AsyncOn is set.
   input  logic [2*Width-1:0] data_i,  // Packed {diff_n[W-1:0], diff_p[W-1:0]}.
   output logic [Width-1:0]   data_o,  // Decoded single-ended levels.
   output logic               sigint_o  // OR of all per-bit integrity errors.

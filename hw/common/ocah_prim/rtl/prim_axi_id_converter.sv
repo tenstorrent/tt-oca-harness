@@ -1,18 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Remap AXI IDs when the upstream ID width exceeds the downstream width.
+// Adapt AXI IDs between an upstream and a downstream port of different ID widths.
 //
-// When AXI_ID_WIDTH_IN is not greater than AXI_ID_WIDTH_OUT, pass requests through.
-// Otherwise prepend IDs through prim_axi_id_prepend_wrap with MAX_INFLIGHT_IDS and
-// MAX_TXNS_PER_ID limits.
-// test_en_i is the DFT enable on the remap path.
+// When AXI_ID_WIDTH_IN exceeds AXI_ID_WIDTH_OUT, remap IDs through axi_id_remap within the
+// MAX_INFLIGHT_IDS and MAX_TXNS_PER_ID limits.
+// When AXI_ID_WIDTH_IN is less than AXI_ID_WIDTH_OUT, zero-extend IDs combinationally
+// through prim_axi_id_prepend_wrap.
+// When the widths are equal, pass requests and responses straight through.
+// test_en_i is not used.
 
 module prim_axi_id_converter #(
 
-  parameter int unsigned AXI_ADDR_WIDTH = 64,  // AXI address width.
-  parameter int unsigned AXI_DATA_WIDTH = 64,  // AXI data width.
-  parameter int unsigned AXI_USER_WIDTH = 1,  // AXI user width.
+  parameter int unsigned AXI_ADDR_WIDTH = 64,  // Address width of both AXI ports; forwarded to the
+                                               // ID-padding path.
+  parameter int unsigned AXI_DATA_WIDTH = 64,  // Data-channel width of both AXI ports; forwarded to
+                                               // the ID-padding path.
+  parameter int unsigned AXI_USER_WIDTH = 1,  // User-signal width of both AXI ports; forwarded to
+                                              // the ID-padding path.
 
   parameter int unsigned AXI_ID_WIDTH_IN  = 16,  // Upstream AXI ID width.
   parameter int unsigned AXI_ID_WIDTH_OUT = 8,  // Downstream AXI ID width.
@@ -22,12 +27,14 @@ module prim_axi_id_converter #(
   parameter type output_axi_req_t = logic,  // Downstream request struct.
   parameter type output_axi_resp_t = logic,  // Downstream response struct.
 
-  parameter int unsigned MAX_INFLIGHT_IDS = 4,  // Max distinct remapped IDs in flight.
-  parameter int unsigned MAX_TXNS_PER_ID  = 4  // Max outstanding beats per remapped ID.
+  parameter int unsigned MAX_INFLIGHT_IDS = 4,  // Max distinct upstream IDs in flight; used only by
+                                                // the remap path.
+  parameter int unsigned MAX_TXNS_PER_ID  = 4  // Max outstanding transactions per upstream ID; used
+                                               // only by the remap path.
 ) (
-  input logic clk_i,  // AXI clock.
-  input logic rst_ni,  // Async reset, active-low.
-  input logic test_en_i,  // DFT/test enable.
+  input logic clk_i,  // AXI clock; used only by the remap path.
+  input logic rst_ni,  // Async reset, active-low; used only by the remap path.
+  input logic test_en_i,  // Not used.
 
   input  input_axi_req_t  axi_in_req_i,  // Upstream AXI request.
   output input_axi_resp_t axi_in_resp_o,  // Upstream AXI response.

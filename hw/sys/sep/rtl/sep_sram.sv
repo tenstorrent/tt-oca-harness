@@ -1,34 +1,40 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Drive an external technology SRAM macro from the SEP SRAM controller front-end.
+// Declare the port list of a SEP SRAM controller front-end for an external technology SRAM
+// macro.
 //
-// All macro operations are synchronous to sram_ck_o. sram_cs_no is active-low chip enable;
-// sram_wen_o is active-low write enable.
-// stall_i gates the macro clock. wipe_i clears data memory and may raise irq_o. error_o
-// encoding is TBD.
+// The module body is empty: no output is driven and no input is used. The port clauses
+// describe the intended interface: macro pins synchronous to sram_ck_o, an active-low chip
+// enable and write enable, a clock stall, and a wipe command for the data memory.
 
 module sep_sram #(
-  parameter int unsigned DWIDTH = 32,         // SRAM data width.
-  parameter int unsigned PWIDTH = 5,          // SRAM parity width.
-  parameter int unsigned AWIDTH = 14          // SRAM address width.
+  parameter int unsigned DWIDTH = 32,         // Intended SRAM data width in bits; sizes the macro
+                                              // ports only.
+  parameter int unsigned PWIDTH = 5,          // Intended SRAM parity width in bits; sizes the macro
+                                              // data ports only.
+  parameter int unsigned AWIDTH = 14          // Intended SRAM address width in bits; sizes sram_a_o
+                                              // only.
 ) (
-  input  logic       clk_i,                   // System clock.
-  input  logic       rst_ni,                  // Active-low reset.
-  input  logic       stall_i,                 // clock stall.
-  input  logic       wipe_i,                  // command to clear data memory.
-  output logic       irq_o,                   // interrupt request.
-  output logic [7:0] error_o,                 // encoding TBD.
+  input  logic       clk_i,                   // System clock; unused.
+  input  logic       rst_ni,                  // Active-low reset; unused.
+  input  logic       stall_i,                 // Intended macro clock stall; unused.
+  input  logic       wipe_i,                  // Intended command to clear the data memory; unused.
+  output logic       irq_o,                   // Intended interrupt request; undriven.
+  output logic [7:0] error_o,                 // Intended error status with no defined encoding;
+                                              // undriven.
 
-  output logic                     sram_ck_o,  // AXI4-lite slave interface for data and CSR access
-                                               // external memory macro function interface
-                                               // all operations synchronous.
-  output logic                     sram_cs_no,  // chip enable, active low.
-  output logic                     sram_wen_o,  // write enable, active low.
-  output logic [DWIDTH-1:0]        sram_bwen_o,  // bit-write mask.
-  output logic [AWIDTH-1:0]        sram_a_o,  // read/write address.
-  output logic [DWIDTH+PWIDTH-1:0] sram_di_o,  // data input bus.
-  input  logic [DWIDTH+PWIDTH-1:0] sram_dout_i  // data output bus.
+  output logic                     sram_ck_o,  // Intended macro clock to which all macro operations
+                                               // are synchronous; undriven.
+  output logic                     sram_cs_no,  // Intended macro chip enable, active-low; undriven.
+  output logic                     sram_wen_o,  // Intended macro write enable, active-low;
+                                                // undriven.
+  output logic [DWIDTH-1:0]        sram_bwen_o,  // Intended macro bit-write mask; undriven.
+  output logic [AWIDTH-1:0]        sram_a_o,  // Intended macro read/write address; undriven.
+  output logic [DWIDTH+PWIDTH-1:0] sram_di_o,  // Intended macro write data including parity;
+                                               // undriven.
+  input  logic [DWIDTH+PWIDTH-1:0] sram_dout_i  // Intended macro read data including parity;
+                                                // unused.
 );
 
 endmodule

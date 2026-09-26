@@ -4,9 +4,13 @@
 
 // Filter 64-bit AXI-Lite traffic down to aligned single-lane 32-bit accesses.
 //
-// Forwards supported beats into the existing 32-bit AXI-Lite to TL-UL bridge.
-// Unsupported multi-lane or unaligned accesses return AXI SLVERR and emit no downstream
-// request.
+// Forwards supported beats into the existing 32-bit AXI-Lite to TL-UL bridge, one
+// transaction at a time; a read accepted in the same cycle as a write is served first,
+// and no read is accepted while write address or data is held. A read must be
+// 4-byte aligned and returns the addressed 32-bit lane with the other lane zero; a write
+// must be 4-byte aligned with WSTRB exactly 0x0F for the lower lane or 0xF0 for the upper
+// lane, selected by address bit 2. Unsupported accesses return AXI SLVERR and emit no
+// downstream request.
 
 module drbg_axil64_lane_adapter
   import drbg_pkg::*;
@@ -24,9 +28,13 @@ module drbg_axil64_lane_adapter
   output axil64_rsp_t axil64_rsp_o,                         // 64-bit AXI-Lite response out.
 
   output axil32_req_t axil32_req_o,                         // Forwarded 32-bit AXI-Lite request.
-  input  axil32_rsp_t axil32_rsp_i,                         // 32-bit AXI-Lite response from the bridge.
+  input  axil32_rsp_t axil32_rsp_i,                         // 32-bit AXI-Lite response from the
+                                                            // bridge.
 
-  output logic        unsupported_access_pulse_o,           // Pulse on SLVERR for an illegal access.
+  output logic        unsupported_access_pulse_o,           // One-cycle pulse when an unsupported
+                                                            // access is rejected with SLVERR; a
+                                                            // SLVERR returned by the bridge does
+                                                            // not pulse it.
   output logic        forwarded_read_pulse_o,               // Pulse when a read is forwarded.
   output logic        forwarded_write_pulse_o               // Pulse when a write is forwarded.
 );

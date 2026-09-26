@@ -9,13 +9,18 @@
 
 module ctp_pulse_stretcher (
   input  logic        clk_i,            // System clock.
-  input  logic        rst_ni,           // Active-low reset.
+  input  logic        rst_ni,           // Active-low asynchronous reset; clears the counter and the
+                                        // output.
 
-  input  logic        pulse_i,          // Pulse.
+  input  logic        pulse_i,          // Outgoing core-side cross-trigger pulse, synchronous to
+                                        // clk_i; each assertion reloads the stretch counter.
 
-  input  logic [15:0] stretch_mult_i,   // Stretch mult.
+  input  logic [15:0] stretch_mult_i,   // Stretch length: the output stays high for
+                                        // stretch_mult_i+1 clk_i cycles after the most recent
+                                        // pulse_i.
 
-  output logic        stretched_pulse_o  // Stretched pulse.
+  output logic        stretched_pulse_o  // Stretched pulse, registered and reset low; drives the
+                                         // CT_Req_out output enable in wire-OR mode.
 );
 
   logic [15:0] counter_q, counter_d;

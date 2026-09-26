@@ -3,55 +3,119 @@
 
 // Wrap CPU control CSRs for the SMC cluster.
 //
-// Decodes cpu_ctrl CSRs that gate resets, clocks, and debug for the four cores.
-// Sits on the local fabric front-port address range beside the L2 frontend.
+// Implements the cpu_ctrl registers behind an AXI-Lite port: core, uncore and debug reset
+// control with a drain handshake and timeout, per-core reset vectors and reset pulses, a
+// second watchdog stage, an eight-entry writeback PC history per core, the reference counter,
+// mutexes, semaphores, scratch registers and SMC_ATTRIBUTES.
+// In smc_cpu_wrapper it sits behind the front-port demux beside the L2 frontend.
 
 module smc_cpu_ctrl_wrap #(
-  parameter bit NO_ADDR_REMAP = 1'b1,   // Disable alias address remap when the
-                                        // integration map is fixed.
-  parameter int unsigned NumCPUCores                 = 4,  // Numcpucores.
+  parameter bit NO_ADDR_REMAP = 1'b1,   // Reported in SMC_ATTRIBUTES.no_output_remap; no other
+                                        // effect in this module.
+  parameter int unsigned NumCPUCores                 = 4,  // Number of CPU cores this block drives
+                                                           // resets, reset vectors and watchdog
+                                                           // counters for; at most MaxCPUCores.
 
-  localparam int unsigned MaxCPUCores                = 4  // Maxcpucores.
+  localparam int unsigned MaxCPUCores                = 4  // Number of cores the cpu_ctrl register
+                                                          // map provides per-core fields for; sizes
+                                                          // the internal per-core arrays.
 ) (
-  input  logic                                    clk_ref_i,  // Ref clock.
-  input  logic                                    clk_smc_i,  // Smc clock.
-  input  logic                                    rst_warm_smc_clk_ni,  // Rst warm smc clk.
-  input  logic                                    rst_primary_ni,  // Rst primary.
+  input  logic                                    clk_ref_i,  // Reference clock for the
+                                                              // free-running REFERENCE_COUNTER
+                                                              // counter.
+  input  logic                                    clk_smc_i,  // SMC core clock for the CSR block,
+                                                              // reset control and watchdog logic.
+  input  logic                                    rst_warm_smc_clk_ni,  // Active-low warm reset in
+                                                                        // the clk_smc_i domain;
+                                                                        // while low, holds the core
+                                                                        // and uncore resets
+                                                                        // asserted and drives
+                                                                        // core_reset_vector_o to
+                                                                        // the default boot address
+                                                                        // 0xC0040000.
+  input  logic                                    rst_primary_ni,  // Active-low primary reset in
+                                                                   // the clk_smc_i domain; resets
+                                                                   // the CSR block, reference
+                                                                   // counter, watchdog, PC history,
+                                                                   // reset-control state, mutexes
+                                                                   // and semaphores.
 
-  input  logic                                    test_en_i,  // Test en.
-  input  logic                                    scan_rst_ni,  // Scan rst.
+  input  logic                                    test_en_i,  // Scan test mode enable; not used in
+                                                              // this module.
+  input  logic                                    scan_rst_ni,  // Active-low scan reset; not used
+                                                                // in this module.
 
-  input  smc_pkg::smc_axil_32_64_req_t            axil_req_i,  // Axil request.
-  output smc_pkg::smc_axil_32_64_resp_t           axil_resp_o,  // Axil response.
+  input  smc_pkg::smc_axil_32_64_req_t            axil_req_i,  // AXI-Lite request to the cpu_ctrl
+                                                               // CSR block from the SMC front-port
+                                                               // demux.
+  output smc_pkg::smc_axil_32_64_resp_t           axil_resp_o,  // AXI-Lite response from the
+                                                                // cpu_ctrl CSR block.
 
-  input  logic [NumCPUCores-1:0][57:0]            wb_reg_pc_i,  // Wb reg pc.
-  input  logic [NumCPUCores-1:0]                  wb_pc_valid_i,  // Wb pc valid.
+  input  logic [NumCPUCores-1:0][57:0]            wb_reg_pc_i,  // Per-core writeback program
+                                                                // counter from the cluster, sampled
+                                                                // on clk_smc_i into the eight-entry
+                                                                // WB_PC_CORE history; a value equal
+                                                                // to the newest entry is not added
+                                                                // again.
+  input  logic [NumCPUCores-1:0]                  wb_pc_valid_i,  // Per-core qualifier for
+                                                                  // wb_reg_pc_i; a new PC enters
+                                                                  // the history only while this is
+                                                                  // high.
 
-  input  logic [NumCPUCores-1:0]                  wdt_timeout_cluster_i,  // Wdt timeout cluster.
-  input  logic                                    chiplet_is_primary_i,  // Chiplet is primary.
-  output logic                                    wdt_second_timeout_o,  // Wdt second timeout.
+  input  logic [NumCPUCores-1:0]                  wdt_timeout_cluster_i,  // Per-core first-stage watchdog
+                                                                          // timeout; while high, that core's
+                                                                          // second-stage counter counts
+                                                                          // down, and while low it reloads
+                                                                          // from WDT_TIMEOUT.
+  input  logic                                    chiplet_is_primary_i,  // High on the primary chiplet;
+                                                                         // read back through
+                                                                         // SMC_ATTRIBUTES.
+  output logic                                    wdt_second_timeout_o,  // Registered second-stage watchdog
+                                                                         // timeout; high while any core's
+                                                                         // counter is zero.
 
-  output logic [NumCPUCores-1:0]                  core_reset_n_n0_scan_o,  // Core reset n n0
-                                                                           // scan.
-  output logic [NumCPUCores-1:0][55:0]            core_reset_vector_o,  // Core reset vector.
-  output logic                                    cluster_uncore_reset_n_n0_scan_o,  // Cluster uncore reset
-                                                                                     // n n0 scan.
-  output logic                                    debug_reset_n_o,  // Debug reset n.
+  output logic [NumCPUCores-1:0]                  core_reset_n_n0_scan_o,  // Active-low per-core reset from
+                                                                           // RESET_CTRL or a reset pulse,
+                                                                           // registered on clk_smc_i and low
+                                                                           // while warm reset is asserted; a
+                                                                           // software assertion waits for the
+                                                                           // cluster to drain or, in timeout
+                                                                           // mode, for the RESET_TIMEOUT
+                                                                           // timeout.
+  output logic [NumCPUCores-1:0][55:0]            core_reset_vector_o,  // Per-core boot address
+                                                                        // from the RESET_VECTOR
+                                                                        // registers; the default
+                                                                        // boot address while warm
+                                                                        // reset is asserted.
+  output logic                                    cluster_uncore_reset_n_n0_scan_o,  // Active-low uncore reset from
+                                                                                     // RESET_CTRL, registered on
+                                                                                     // clk_smc_i and low while warm
+                                                                                     // reset is asserted; a software
+                                                                                     // assertion waits for the cluster
+                                                                                     // to drain or, in timeout mode,
+                                                                                     // for the RESET_TIMEOUT timeout.
+  output logic                                    debug_reset_n_o,  // Active-low debug-module
+                                                                    // reset, driven directly from
+                                                                    // the RESET_CTRL debug reset
+                                                                    // field, which resets to 0
+                                                                    // (asserted); not held by the
+                                                                    // drain handshake.
 
-  output logic                                    isolate_req_o,  // Reset-drain handshake
-                                                                  // to/from the CPU
-                                                                  // cluster (always-on
-                                                                  // rst_cold domain)
-                                                                  // request.
-  input  logic                                    drained_i,  // Reset-drain handshake
-                                                              // to/from the CPU cluster
-                                                              // (always-on rst_cold
-                                                              // domain).
+  output logic                                    isolate_req_o,  // Drain request to the cluster:
+                                                                  // high while RESET_CTRL holds a
+                                                                  // core or the uncore in reset,
+                                                                  // or a core reset pulse is
+                                                                  // pending or in flight.
+  input  logic                                    drained_i,  // High once the cluster boundary
+                                                              // has drained and isolated;
+                                                              // releases a withheld software
+                                                              // reset.
 
-  output logic                                    isolate_flush_o  // Timeout-forced
-                                                                   // reset: flush request
-                                                                   // to the cluster AXI
-                                                                   // isolates.
+  output logic                                    isolate_flush_o  // Flush request to the cluster
+                                                                   // AXI isolate modules, high
+                                                                   // while the RESET_TIMEOUT
+                                                                   // timeout forces a withheld
+                                                                   // reset in timeout mode.
 );
 
   localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS =

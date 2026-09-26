@@ -7,91 +7,132 @@
 // and Key Manager error interfaces to the integrator.
 // sep_global_base_addr_o and sep_region_size_o publish the SEP aperture from sep_cpu_ctrl
 // CSRs for the SMU AXI crossbar SEP-target rule.
+// External-aperture requests inside the eFuse shim CSR window are diverted to the eFuse
+// wrapper; the rest leave on sep_external_axi_req_o. PIC source i+1 is internal interrupt i
+// for the NUM_INTERNAL_IRQS internal sources (mailbox, DMA, WDT, SPI, crypto, eFuse and
+// bridge faults), followed by extintsrc_req_i. The WDT bark drives the CPU NMI, which jumps
+// to SEP_NMI_VEC.
 // When unused, tie test_en_i to 1'b0 and scan_rst_ni to 1'b1.
 
 `include "axi/assign.svh"
 `include "prim_assert.sv"
 
 module sep #(
-  parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for look-ahead.
+  parameter bit KM_LATCHED_MEM_RDATA = 1'b1,  // 1 if Key Manager ROM/SRAM latch read data for
+                                              // look-ahead.
   parameter bit ABR_MASKING_EN = 1'b1,        // Enable Adams Bridge 2-share DOM masking.
   parameter int unsigned ABR_SRAM_LATENCY = 1,  // Adams Bridge SRAM read latency in cycles.
-  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports.
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size of the vendor eFuse shim CSR block.
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token digest; replace at synthesis.
+  parameter int unsigned EXT_TRNG_NUM_AXIS = 3,  // Number of external TRNG AXI-Stream ports; must
+                                                 // be 3, one per entropy mux leg.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the eFuse shim CSR window
+                                                 // diverted from the external aperture to the eFuse
+                                                 // wrapper.
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
+                                                        // digest; replace at synthesis.
 ) (
   input  logic clk_i,                         // System clock.
   input  logic clk_ref_i,                     // Free-running reference clock for REFERENCE_COUNTER.
-  input  logic clk_wdt_i,                     // 200 kHz clock for the WDT timer.
-  input  logic rst_ni,                        // Active-low reset.
-  input  logic dbg_rstb_i,                    // EL2 debugger reset.
-  input  logic wdt_rst_ni,                    // Aggregated WDT resets from SMC and SEP, active-low.
+  input  logic clk_wdt_i,                     // 200 kHz watchdog counter clock, asynchronous to
+                                              // clk_i.
+  input  logic rst_ni,                        // Active-low reset. Unless the JTAG override forces
+                                              // it, the SEP reset derived from it is released only
+                                              // after fuse sensing and ext_boot_seq_done_i.
+  input  logic dbg_rstb_i,                    // EL2 debug-module reset, active-low.
+  input  logic wdt_rst_ni,                    // Aggregated WDT resets from SMC and SEP, active-low;
+                                              // resets only the CPU.
 
-  output logic wdt_timer_rst_req_o,           // SEP WDT bite reset request, active-high, to the SMC reset unit.
+  output logic wdt_timer_rst_req_o,           // SEP WDT bite reset request, active-high, to the SMC
+                                              // reset unit.
 
   input  logic jtag_tck_i,                    // JTAG clock.
-  input  logic jtag_tms_i,                    // JTAG TMS.
-  input  logic jtag_tdi_i,                    // JTAG TDI.
+  input  logic jtag_tms_i,                    // JTAG test mode select, sampled on jtag_tck_i.
+  input  logic jtag_tdi_i,                    // JTAG test data input, sampled on jtag_tck_i.
   input  logic jtag_trst_ni,                  // JTAG reset, active-low.
-  output logic jtag_tdo_o,                    // JTAG TDO.
+  output logic jtag_tdo_o,                    // JTAG test data output; valid while jtag_tdoEn_o is
+                                              // high.
   output logic jtag_tdoEn_o,                  // JTAG TDO output enable.
 
-  input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,  // JTAG SEP reset control.
+  input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,  // JTAG IC_RESET override and value
+                                                                // bits for the SEP reset and the
+                                                                // per-engine crypto resets, in the
+                                                                // TCK domain.
 
-  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager request.
+  input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager request to the eFuse wrapper; answered with DECERR in
+                                                                    // restricted lifecycle states.
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,  // OTP debug AXI-Lite manager response.
 
   input  logic mpc_debug_halt_req_i,          // Async MPC debug halt request.
   input  logic mpc_debug_run_req_i,           // Async MPC debug run request.
-  input  logic mpc_reset_run_req_i,           // Run/halt after reset.
+  input  logic mpc_reset_run_req_i,           // 1 to run and 0 to halt in debug mode after reset.
 
   input  logic cpu_halt_req_i,                // Async halt request to the CPU.
   input  logic cpu_run_req_i,                 // Async restart request to the CPU.
 
-  input  logic test_en_i,                     // DFT test-enable / scan-enable; tie 1'b0 when unused.
-  input  logic scan_rst_ni,                   // DFT scan reset, active-low, for reset synchronizer bypass; tie 1'b1 when unused.
+  input  logic test_en_i,                     // DFT test-enable / scan-enable; tie 1'b0 when
+                                              // unused.
+  input  logic scan_rst_ni,                   // DFT scan reset, active-low, for reset synchronizer
+                                              // bypass; tie 1'b1 when unused.
 
-  input  logic ext_boot_seq_done_i,           // External boot sequence done.
+  input  logic ext_boot_seq_done_i,           // Integration boot-sequence completion (memory repair
+                                              // and SMC straps); gates release of the SEP reset.
 
-  input  logic        dmi_core_enable_i,      // DMI core enable.
-  input  logic        dmi_uncore_enable_i,    // DMI uncore enable.
-  output logic        dmi_uncore_en_o,        // DMI uncore access enable.
-  output logic        dmi_uncore_wr_en_o,     // DMI uncore write enable.
-  output logic [6:0]  dmi_uncore_addr_o,      // DMI uncore address.
-  output logic [31:0] dmi_uncore_wdata_o,     // DMI uncore write data.
-  input  logic [31:0] dmi_uncore_rdata_i,     // DMI uncore read data.
-  output logic        dmi_active_o,           // DMI active.
+  input  logic        dmi_core_enable_i,      // Enables DMI accesses to the core debug module
+                                              // registers.
+  input  logic        dmi_uncore_enable_i,    // Enables DMI accesses to the uncore aperture of the
+                                              // DMI address space.
+  output logic        dmi_uncore_en_o,        // DMI access strobe to the uncore aperture, gated by
+                                              // dmi_uncore_enable_i.
+  output logic        dmi_uncore_wr_en_o,     // Write qualifier for the uncore DMI access; low for
+                                              // reads.
+  output logic [6:0]  dmi_uncore_addr_o,      // DMI register address of the uncore access.
+  output logic [31:0] dmi_uncore_wdata_o,     // Write data of the uncore DMI access.
+  input  logic [31:0] dmi_uncore_rdata_i,     // Read data returned by the uncore for the addressed
+                                              // DMI register.
+  output logic        dmi_active_o,           // High while the debug transport drives a DMI access
+                                              // to the core or uncore.
 
-  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,  // SEP CPU trace bundle.
+  output sep_pkg::sep_cpu_trace_t sep_cpu_trace_o,  // Core instruction trace: retired instruction,
+                                                    // address, valid, exception, cause, interrupt,
+                                                    // and tval.
 
-  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,  // CPU lockstep control; inert unless built with RV_LOCKSTEP_ENABLE.
-  output sep_pkg::sep_lockstep_status_t lockstep_status_o,  // CPU lockstep status; inert unless built with RV_LOCKSTEP_ENABLE.
+  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,  // CPU lockstep control; inert unless
+                                                          // built with RV_LOCKSTEP_ENABLE.
+  output sep_pkg::sep_lockstep_status_t lockstep_status_o,  // CPU lockstep status; inert unless
+                                                            // built with RV_LOCKSTEP_ENABLE.
 
-  input logic [31:1] jtag_id_i,               // JTAG ID.
+  input logic [31:1] jtag_id_i,               // JTAG IDCODE bits [31:1] reported by the core debug
+                                              // TAP; bit 0 is fixed at 1.
 
-  input logic                      timer_int_i,  // Timer interrupt.
-  input logic                      soft_int_i,  // Software interrupt.
-  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req_i,  // External interrupt requests.
+  input logic                      timer_int_i,  // Machine timer interrupt to the core.
+  input logic                      soft_int_i,  // Machine software interrupt to the core.
+  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req_i,  // External interrupt requests; bit
+                                                                 // i is PIC source
+                                                                 // NUM_INTERNAL_IRQS + i + 1.
 
-  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,  // CPU TCM memory-macro request.
-  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,  // CPU TCM memory-macro response.
+  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,  // Per-bank ICCM and DCCM macro requests,
+                                                        // with the macro clock, to sep_tcm_wrapper.
+  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,  // Per-bank ICCM and DCCM read data and ECC
+                                                        // from sep_tcm_wrapper.
 
-  output sep_pkg::sep_sram_req_t    sep_sram_req_o,  // SEP SRAM memory-macro request.
-  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,  // SEP SRAM memory-macro response.
+  output sep_pkg::sep_sram_req_t    sep_sram_req_o,  // Request from the SEP SRAM memory interface
+                                                     // to the SRAM macro.
+  input  sep_pkg::sep_sram_rsp_t    sep_sram_rsp_i,  // Read data from the SEP SRAM macro.
 
-  output sep_pkg::sep_sram_req_t    sep_boot_rom_req_o,  // Boot ROM memory-macro request.
-  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp_i,  // Boot ROM memory-macro response.
+  output sep_pkg::sep_sram_req_t    sep_boot_rom_req_o,  // Request from the boot ROM memory
+                                                         // interface to the ROM macro.
+  input  sep_pkg::sep_sram_rsp_t    sep_boot_rom_rsp_i,  // Read data from the boot ROM macro.
 
-  output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // SMN outbound AXI request.
-  input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,  // SMN outbound AXI response.
+  output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // Outbound request to the SMN after the outbound filter.
+  input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,  // Outbound response from the SMN.
 
-  input  sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_axi_req_i,  // SMN inbound AXI request.
-  output sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_axi_resp_o,  // SMN inbound AXI response.
+  input  sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_axi_req_i,  // SMN inbound request with a 56-bit global address, before the inbound filter.
+  output sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_axi_resp_o,  // SMN inbound response.
 
-  output sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ext_to_smc_axi_req_o,  // SEP external-to-SMC AXI request.
-  input  sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ext_to_smc_axi_resp_i,  // SEP external-to-SMC AXI response.
+  output sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ext_to_smc_axi_req_o,  // SEP request in the SMC aperture, after the alias remap; not filtered.
+  input  sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ext_to_smc_axi_resp_i,  // Response from the SMC to sep_ext_to_smc_axi_req_o.
 
-  input logic entropy_rosc_sample_clk_i,      // Ring-oscillator sample clock for entropy_source; async vs clk_i, ~100-400 MHz typical.
+  input logic entropy_rosc_sample_clk_i,      // Ring-oscillator sample clock for entropy_source;
+                                              // async vs clk_i, ~100-400 MHz typical.
 
   output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req_o,  // OTBN IMEM SRAM request from prim_ram_1p_scr_ext.
   input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp_i,  // OTBN IMEM SRAM response.
@@ -102,58 +143,96 @@ module sep #(
   output sep_crypto_pkg::abr_mem_req_t                  abr_mem_req_o,  // Adams Bridge external SRAM request; tech macros in sep_ip_integration.
   input  sep_crypto_pkg::abr_mem_rsp_t                  abr_mem_rsp_i,  // Adams Bridge external SRAM response.
 
-  output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,  // External TRNG AXI-Lite passthrough request to sep_ip_integration.
-  input  sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_i,  // External TRNG AXI-Lite passthrough response.
+  output sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_o,  // External TRNG register request for
+                                                              // 0x1091_7000-0x1091_7FFF, passed
+                                                              // through to sep_ip_integration.
+  input  sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_i,  // External TRNG AXI-Lite passthrough
+                                                               // response.
 
-  input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-Stream request from sep_ip_integration.
-  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG AXI-Stream response.
+  input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],  // External TRNG streams from sep_ip_integration; stream i feeds entropy mux leg i
+                                                                                           // (0 Key Manager, 1 AES/KMAC/OTBN, 2 entropy pool).
+  output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],  // tready to each external TRNG stream: the consumer's tready when selected,
+                                                                                           // held high to drain the stream when not.
 
-  input logic ext_trng_irq_i,                 // External TRNG interrupt to the PIC.
+  input logic ext_trng_irq_i,                 // External TRNG interrupt; PIC source 17.
 
-  output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,  // Key Manager ROM hard-macro request.
-  input  km_intf_pkg::km_rom_mem_rsp_t   km_rom_mem_rsp_i,  // Key Manager ROM hard-macro response.
-  output km_intf_pkg::km_sram_mem_req_t  km_sram_mem_req_o,  // Key Manager SRAM hard-macro request.
-  input  km_intf_pkg::km_sram_mem_rsp_t  km_sram_mem_rsp_i,  // Key Manager SRAM hard-macro response.
+  output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,  // Key Manager request to its 16 KiB ROM
+                                                            // hard macro.
+  input  km_intf_pkg::km_rom_mem_rsp_t   km_rom_mem_rsp_i,  // Read data from the Key Manager ROM
+                                                            // hard macro.
+  output km_intf_pkg::km_sram_mem_req_t  km_sram_mem_req_o,  // Key Manager request to its 32 KiB
+                                                             // SRAM hard macro.
+  input  km_intf_pkg::km_sram_mem_rsp_t  km_sram_mem_rsp_i,  // Read data from the Key Manager SRAM
+                                                             // hard macro.
 
   output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,  // eFuse bank control AXI-Lite request to the shim CSR.
   input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,  // eFuse bank control AXI-Lite response.
-  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,  // eFuse shim command request.
-  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,  // eFuse shim command response.
+  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,  // eFuse read and program commands on the custom shim command interface.
+  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,  // Shim response to the eFuse commands.
 
-  output logic [1:0] lcc_demote_state_1_o,    // Lifecycle demote state 1 to SMC.
-  output logic [1:0] lcc_demote_state_2_o,    // Lifecycle demote state 2 to SMC.
+  output logic [1:0] lcc_demote_state_1_o,    // Differentially encoded DEMOTE_1.demote bit, which
+                                              // re-opens debug feature bits [23:0] in TEST_DEV and
+                                              // PROD; to the SMC.
+  output logic [1:0] lcc_demote_state_2_o,    // Differentially encoded DEMOTE_2.demote bit, which
+                                              // re-opens debug feature bits [47:24] in TEST_DEV and
+                                              // PROD; to the SMC.
 
-  output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,  // SPI pad request.
-  input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,  // SPI pad response.
+  output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,  // SPI pad outputs (clock, chip select, 4
+                                                         // data lanes and their output enables),
+                                                         // plus the SPI interrupt and DMA trigger.
+  input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,  // SPI data-lane inputs from the pads.
 
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // Lifecycle state.
-  output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,  // Debug disable bundle.
-  output logic sep_fuse_dft_disable_o,        // SEP fuse DFT disable.
-  output logic smc_fuse_dft_disable_o,        // SMC fuse DFT disable.
-  output logic lc_sigint_err_o,               // Lifecycle signal-integrity error.
-  output logic security_disable_o,            // Security disable.
-  output logic secure_tm_o,                   // Secure test mode latched status.
+  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // Differentially encoded lifecycle
+                                                                // state from the eFuse shadow
+                                                                // registers.
+  output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,  // Per-interface debug disables for
+                                                               // the DTP, active-high (1 =
+                                                               // disabled).
+  output logic sep_fuse_dft_disable_o,        // Disables the SEP fuse DFT access path, active-high;
+                                              // no functional consumer, provided for DFT insertion.
+  output logic smc_fuse_dft_disable_o,        // Disables the SMC fuse DFT access path, active-high;
+                                              // no functional consumer, provided for DFT insertion.
+  output logic lc_sigint_err_o,               // Integrity error on the differentially encoded LC
+                                              // state; forces every feature enable off unless
+                                              // security is disabled.
+  output logic security_disable_o,            // Security-disable status from eFuse token
+                                              // processing, active-high.
+  output logic secure_tm_o,                   // Latched secure test mode, active-high; captured on
+                                              // the second clock edge after rst_ni release when
+                                              // security is disabled, otherwise when fuse sensing
+                                              // finishes.
 
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] smc_mailbox_interrupt_o,  // SMC mailbox interrupts.
+  output logic [sep_pkg::NUM_MAILBOXES-1:0] smc_mailbox_interrupt_o,  // Per-mailbox outbound-data interrupts to the SMC.
 
-  input  logic smc_fuse_sense_done_i,         // SMC fuse sense done.
-  output logic sep_fuse_sense_done_o,         // SEP fuse sense done.
+  input  logic smc_fuse_sense_done_i,         // SMC fuse sense completion, reflected in
+                                              // SMC_FUSE_SENSE_STATUS; requests to the SMC hang
+                                              // while it is low.
+  output logic sep_fuse_sense_done_o,         // High once the SEP eFuse shadow registers have been
+                                              // loaded from the fuses.
 
-  input logic secure_tm_req_i,                // Secure test mode request strap.
+  input logic secure_tm_req_i,                // Secure test mode request strap, latched into
+                                              // secure_tm_o.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req_o,  // SEP external AXI extension request.
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_axi_resp_i,  // SEP external AXI extension response.
+  output sep_pkg::sep_32_64_6_12_axi_req_t  sep_external_axi_req_o,  // Request for the external aperture 0x2000_0000-0x3FFF_FFFF outside the eFuse
+                                                                     // shim window.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t sep_external_axi_resp_i,  // Response to sep_external_axi_req_o.
 
-  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_global_base_addr_i,  // SMC global base address.
-  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_region_size_i,  // SMC region size.
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_global_base_addr_i,  // Base of the SMC aperture in the global address map; SEP requests inside it
+                                                                                                   // leave on sep_ext_to_smc_axi_req_o.
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        smc_region_size_i,  // Size in bytes of the SMC aperture at smc_global_base_addr_i.
 
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_global_base_addr_o,  // SEP global base address from sep_cpu_ctrl; SMU crossbar SEP-target rule.
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0]        sep_region_size_o,  // SEP region size from sep_cpu_ctrl; SMU crossbar SEP-target rule.
 
-  output logic km_unrecoverable_err_o,        // Key Manager unrecoverable error.
-  output logic km_recoverable_err_o,          // Key Manager recoverable error.
+  output logic km_unrecoverable_err_o,        // Key Manager unrecoverable fault, active-high: its
+                                              // CPU is in the trap state and no longer executing;
+                                              // also PIC source 31.
+  output logic km_recoverable_err_o,          // Key Manager recoverable-fault indication; also PIC
+                                              // source 32.
 
-  output logic [383:0] ext_debug_bus_o        // External debug bus.
+  output logic [383:0] ext_debug_bus_o        // 24 lanes of 16 bits: CPU trace and control status,
+                                              // interrupts, reset and security status, eFuse, remap
+                                              // and filter debug; bits [159:0] are 0.
 );
 
   /////////////////////////
@@ -499,8 +578,9 @@ NUM_EXT_DEMUX_PORTS
     sep_internal_interrupts[35]     = intr_abr_notif;
     // Entropy-pool FIFO: separate PIC lines so firmware can distinguish a
     // transient low-water condition (informational, pool draining faster than
-    // it fills) from a sustained EDN stall (fault, fill path not making progress)
-    // and a pool pointer-integrity fault
+    // it fills) from a sustained EDN stall (fault, fill path not making progress).
+    // Line 38 carries the pool pointer-integrity error, which is always 0 because
+    // the pool FIFO is built without hardened pointers.
     sep_internal_interrupts[36]     = entropy_pool_low;
     sep_internal_interrupts[37]     = entropy_pool_fill_stall;
     sep_internal_interrupts[38]     = entropy_pool_err;

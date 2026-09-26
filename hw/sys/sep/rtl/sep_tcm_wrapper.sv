@@ -4,7 +4,10 @@
 // Instantiate ICCM and DCCM RAM macros for the SEP CPU TCM interface.
 //
 // Uses the sep_cpu_tcm_req_t / sep_cpu_tcm_rsp_t struct interface from sep_cpu.
-// Bank geometry comes from el2_param.vh via the EL2 parameter include.
+// Bank geometry comes from el2_param.vh via the EL2 parameter include. Each bank is one
+// 39-bit RAM macro (32 data plus 7 ECC bits) chosen by the DCCM bank depth or the ICCM index
+// width; an unsupported value is an elaboration error. The macro test and power pins are tied
+// off, and a memory is built only when DCCM_ENABLE or ICCM_ENABLE is set.
 
 module sep_tcm_wrapper
     import el2_pkg::*;
@@ -13,8 +16,9 @@ module sep_tcm_wrapper
 `include "el2_param.vh"
 )
 (
-    input  sep_cpu_tcm_req_t tcm_req_i,       // TCM request.
-    output sep_cpu_tcm_rsp_t tcm_rsp_o        // TCM response.
+    input  sep_cpu_tcm_req_t tcm_req_i,       // Per-bank ICCM and DCCM enables, addresses and write data plus ECC from sep_cpu,
+                                              // with the macro clock.
+    output sep_cpu_tcm_rsp_t tcm_rsp_o        // Per-bank ICCM and DCCM read data and ECC to sep_cpu.
 );
 
   //////////

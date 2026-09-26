@@ -1,51 +1,71 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Stage SMC cool-reset entry and exit across primary clocks.
+// Generate the FLR cool reset and the subsystem isolation requests.
 //
-// Coordinates cool reset with warm and cold trees so domain release does not race.
-// Distributes cool-reset controls used for FLR and multi-chiplet reset.
+// On a rising edge of cfg_flr_pf_active_i, counts down ISOLATE_REQ_FLR_COUNTER_VALUE
+// reference clock cycles, then holds rst_cool_no low while counting down
+// ISOLATE_REQ_FLR_RESET_COUNTER_VALUE cycles; no sequence starts while the reset count is
+// zero. Implements the ISOLATE_REQ_* registers on the SMC clock, reset only by the cold
+// reset so they survive the cool reset.
 
 module smc_cool_reset_wrap (
-  input  logic                                   clk_ref_i,  // Ref clock.
-  input  logic                                   rst_cold_ref_ni,  // cold reset,
-                                                                   // reference clock
-                                                                   // domain.
+  input  logic                                   clk_ref_i,  // Reference clock for the FLR counters
+                                                             // and rst_cool_no.
+  input  logic                                   rst_cold_ref_ni,  // Stable cold reset, active-low,
+                                                                   // synchronized to clk_ref_i;
+                                                                   // resets the FLR counters and
+                                                                   // releases rst_cool_no.
 
-  input  logic                                   clk_smc_i,  // Smc clock.
-  input  logic                                   rst_cold_smc_ni,  // cold reset, SMC
-                                                                   // clock domain.
+  input  logic                                   clk_smc_i,  // SMC core clock for the ISOLATE_REQ_*
+                                                             // registers and input synchronizers.
+  input  logic                                   rst_cold_smc_ni,  // Stable cold reset, active-low,
+                                                                   // synchronized to clk_smc_i;
+                                                                   // resets the ISOLATE_REQ_*
+                                                                   // registers.
 
-  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,  // Register Interface.
-  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in_o,  // Register Interface.
+  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,  // Reset-unit register outputs: the
+                                                              // access strobes and write data of
+                                                              // the external ISOLATE_REQ_*
+                                                              // registers.
+  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in_o,  // Reset-unit register inputs for
+                                                             // ISOLATE_REQ_VIS and the external
+                                                             // ISOLATE_REQ_* registers; every other
+                                                             // field is zero.
 
-  input  logic                                   isolate_req_pin_i,  // FLR Resets.
-                                                                     // Set which subsystems
-                                                                     // are isolated from
-                                                                     // cool reset from
-                                                                     // external pin.
-  input  logic                                   cfg_flr_pf_active_i,  // Indicates that FLR
-                                                                       // is requested from
-                                                                       // PCIe.
-                                                                       // FLR Resets.
+  input  logic                                   isolate_req_pin_i,  // Isolation request pin,
+                                                                     // active-high, synchronized to
+                                                                     // clk_smc_i; raises the
+                                                                     // isolate_req_o bits enabled in
+                                                                     // ISOLATE_REQ_PINEN_REG and
+                                                                     // preserves that register across
+                                                                     // cold reset while high.
+  input  logic                                   cfg_flr_pf_active_i,  // PCIe function-level reset
+                                                                       // request, active-high; its
+                                                                       // synchronized rising edge sets
+                                                                       // ISOLATE_REQ_SMC and starts
+                                                                       // the FLR counters.
   input  logic                                   rst_cool_ni,  // Incoming cool reset
                                                                // request from primary
                                                                // chiplet to place in
                                                                // internal register for
                                                                // visibility.
-                                                               // FLR Resets.
   output logic [31:0]                            isolate_req_o,  // Controls isolation of
                                                                  // subsystems like PCIe
-                                                                 // and/or ETH during FLR.
-                                                                 // FLR Resets.
+                                                                 // and/or ETH during FLR:
+                                                                 // ISOLATE_REQ_REG, OR the
+                                                                 // pin-enabled bits while the
+                                                                 // pin is high, OR the
+                                                                 // SMCEN-enabled bits while
+                                                                 // ISOLATE_REQ_SMC is set.
   output logic                                   skip_mem_repair_o,  // Signal to skip
                                                                      // memory repair &
-                                                                     // MBIST during FLR.
-                                                                     // FLR Resets.
-  output logic                                   rst_cool_no  // Cool reset from primary
-                                                              // chiplet to other
-                                                              // chiplets.
-                                                              // FLR Resets.
+                                                                     // MBIST during FLR; high
+                                                                     // while the pin or
+                                                                     // ISOLATE_REQ_SMC is set.
+  output logic                                   rst_cool_no  // FLR cool reset, active-low, on
+                                                              // clk_ref_i; also visible in
+                                                              // ISOLATE_REQ_VIS.
 );
 
   /////////////////////////

@@ -3,7 +3,8 @@
 
 // Hold typedefs and AXI-Lite types for the OCTS system timer.
 //
-// Defines DATA_WIDTH and the axil request/response structs used by the wrapper.
+// Defines the 32-bit ADDR_WIDTH and DATA_WIDTH and the axil request/response structs used by
+// the wrapper.
 
 package system_timer_octs_pkg;
 

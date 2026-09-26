@@ -12,14 +12,18 @@
 
 module km_crc_engine (
   input  logic        clk_i,    // System clock.
-  input  logic        rst_ni,   // Active-low reset.
-  input  logic        start_i,  // Pulse that begins a CRC operation when idle.
-  input  logic [1:0]  mode_i,   // CRC mode select (32C word, 32C byte, or 8/ROHC).
-  input  logic [31:0] state_i,  // Incoming CRC state / seed.
-  input  logic [31:0] data_i,   // Data word or byte (little-endian byte order).
+  input  logic        rst_ni,   // Active-low asynchronous reset.
+  input  logic        start_i,  // Pulse that begins a CRC operation; ignored while busy_o is high.
+  input  logic [1:0]  mode_i,   // CRC mode: 2'b00 CRC-32C word, 2'b01 CRC-32C byte, 2'b10
+                                // CRC-8/ROHC; 2'b11 is illegal.
+  input  logic [31:0] state_i,  // Incoming CRC state / seed, used without inversion; CRC-8 uses
+                                // bits [7:0].
+  input  logic [31:0] data_i,   // Data word, folded least-significant byte first; byte modes
+                                // use bits [7:0].
   output logic        busy_o,   // High while a CRC operation is in progress.
   output logic        done_o,   // One-cycle pulse when result_o is valid.
-  output logic [31:0] result_o  // Final CRC value (CRC-8 zero-extended).
+  output logic [31:0] result_o  // Final CRC value (CRC-8 zero-extended), held until the next
+                                // completion.
 );
 
   `include "prim_assert.sv"

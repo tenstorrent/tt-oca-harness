@@ -13,22 +13,21 @@ module sep_system_peripherals_xbar_wrapper
 (
     input  logic                                       clk_i,  // System clock.
     input  logic                                       rst_ni,  // Active-low reset.
-    input  logic                                       test_i,  // axi_xbar test mode.
+    input  logic                                       test_i,  // DFT test mode to axi_xbar.
 
-    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   sep_local_from_remap_req_i,  // Local-from-remap request; 6-bit ID, 56-bit address
-                                                                                             // sep_local_from_remap: 6-bit ID, 56-bit addr.
-    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  sep_local_from_remap_resp_o,  // Local-from-remap response.
-    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   smn_inbound_req_i,  // SMN inbound request; 6-bit ID, 56-bit address
-                                                                                    // smn_inbound: 6-bit ID, 56-bit addr.
-    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  smn_inbound_resp_o,  // SMN inbound response.
+    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   sep_local_from_remap_req_i,  // Local-master request after the alias remap and SEP_LOCAL decode in
+                                                                                             // sep_system_peripherals.
+    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  sep_local_from_remap_resp_o,  // Response to the local-master request.
+    input  sep_pkg::sep_system_peripherals_internal_axi_req_t   smn_inbound_req_i,  // SMN inbound request after the inbound filter and global-to-local rebase.
+    output sep_pkg::sep_system_peripherals_internal_axi_resp_t  smn_inbound_resp_o,  // Response to the SMN inbound request.
 
-    output sep_pkg::sep_system_peripherals_xbar_slv_axi_req_t          smn_inbound_from_xbar_axi_req_o,  // SMN inbound-from-xbar request; 7-bit ID, 56-bit address
-                                                                                                         // Output ports (7-bit ID, 56-bit addr).
-    input  sep_pkg::sep_system_peripherals_xbar_slv_axi_resp_t         smn_inbound_from_xbar_axi_resp_i,  // SMN inbound-from-xbar response.
-    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   mailbox_req_o,  // Mailbox AXI4-Lite request.
-    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  mailbox_resp_i,  // Mailbox AXI4-Lite response.
-    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   system_csr_req_o,  // System CSR AXI4-Lite request.
-    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  system_csr_resp_i  // System CSR AXI4-Lite response.
+    output sep_pkg::sep_system_peripherals_xbar_slv_axi_req_t          smn_inbound_from_xbar_axi_req_o,  // Request for any address below 0x4000_0000 outside the mailbox and system CSR
+                                                                                                         // windows, forwarded to the SEP local xbar in sep_system_peripherals.
+    input  sep_pkg::sep_system_peripherals_xbar_slv_axi_resp_t         smn_inbound_from_xbar_axi_resp_i,  // Response to smn_inbound_from_xbar_axi_req_o.
+    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   mailbox_req_o,  // Mailbox request for 0x10A0_0000-0x10A0_FFFF.
+    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  mailbox_resp_i,  // Mailbox response.
+    output sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t   system_csr_req_o,  // System CSR request for 0x10A1_0000-0x10A4_FFFF or 0x1080_2000-0x1080_20FF.
+    input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t  system_csr_resp_i  // System CSR response.
 );
 
     // =========================================================================

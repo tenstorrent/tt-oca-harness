@@ -4,8 +4,9 @@
 // Remap AXI addresses inside one alias window onto a target base.
 //
 // Addresses in [local_alias_base_i, local_alias_base_i + region_size_i) rewrite to
-// target_base_i plus the offset; all others pass through unchanged. All window parameters
-// are runtime inputs. The remap supports both local-alias and global-to-local remapping.
+// target_base_i plus the offset; all others pass through unchanged. Only AW and AR addresses
+// change, the module is combinational, and all window parameters are runtime inputs. The
+// remap supports both local-alias and global-to-local remapping.
 //
 // For example, local_alias_base 0xC000_0000, target_base 0x1000_0000 and region_size
 // 0x50000 map 0xC000_1234 to 0x1000_1234 and leave 0x2000_0000 unchanged.
@@ -15,15 +16,19 @@ module axi_window_remap #(
   parameter type axi_resp_t = logic,                        // AXI response type.
   parameter int unsigned AXI_ADDR_WIDTH = 32                // AXI address width.
 ) (
-  input  axi_req_t                   slv_req_i,             // Slave-side AXI request (from CPU).
+  input  axi_req_t                   slv_req_i,             // Slave-side AXI request, before the
+                                                            // remap.
   output axi_resp_t                  slv_resp_o,            // Slave-side AXI response.
 
-  output axi_req_t                   mst_req_o,             // Master-side AXI request (to fabric).
+  output axi_req_t                   mst_req_o,             // Master-side AXI request, after the
+                                                            // remap.
   input  axi_resp_t                  mst_resp_i,            // Master-side AXI response.
 
-  input  logic [AXI_ADDR_WIDTH-1:0]  local_alias_base_i,    // Start of the alias region (e.g. 0xC000_0000).
-  input  logic [AXI_ADDR_WIDTH-1:0]  region_size_i,         // Size of the alias region.
-  input  logic [AXI_ADDR_WIDTH-1:0]  target_base_i          // Remap destination base (e.g. 0x1000_0000).
+  input  logic [AXI_ADDR_WIDTH-1:0]  local_alias_base_i,    // Start of the alias region (e.g.
+                                                            // 0xC000_0000).
+  input  logic [AXI_ADDR_WIDTH-1:0]  region_size_i,         // Size of the alias region in bytes.
+  input  logic [AXI_ADDR_WIDTH-1:0]  target_base_i          // Remap destination base (e.g.
+                                                            // 0x1000_0000).
 );
 
   // Calculate region bounds and adjustment

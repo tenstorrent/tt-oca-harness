@@ -3,21 +3,23 @@
 
 // Replace Chipyard memory black boxes for the four-core cluster.
 //
-// Maps generated *_ext memory modules onto OCAH SRAM and ROM primitives.
+// Maps generated *_ext memory modules onto prim_ram_1p and prim_rom.
 // MEM_CFG_WIDTH sizes the foundry config bus threaded to each macro.
+// In simulation the ROM is zero-filled and then loaded from the +rom_bin64 or +rom_hex plusarg.
 
 module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [7:0]   RW0_addr,              // RW0 addr.
-  input          RW0_clk,               // RW0 clk.
-  input  [143:0] RW0_wdata,             // RW0 wdata.
-  output [143:0] RW0_rdata,             // RW0 rdata.
-  input          RW0_en,                // RW0 en.
-  input          RW0_wmode,             // RW0 wmode.
-  input  [1:0]   RW0_wmask,             // RW0 wmask.
+  input  [7:0]   RW0_addr,              // Word address of the access.
+  input          RW0_clk,               // Memory clock, supplied by the cluster with the request.
+  input  [143:0] RW0_wdata,             // Data stored at RW0_addr on a write access.
+  output [143:0] RW0_rdata,             // Read data from RW0_addr, valid one cycle after a read.
+  input          RW0_en,                // Access enable; starts a read or write in this cycle.
+  input          RW0_wmode,             // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]   RW0_wmask,             // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
@@ -42,17 +44,18 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
-  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [4:0]   RW0_addr,              // RW0 addr.
-  input          RW0_clk,               // RW0 clk.
-  input  [107:0] RW0_wdata,             // RW0 wdata.
-  output [107:0] RW0_rdata,             // RW0 rdata.
-  input          RW0_en,                // RW0 en.
-  input          RW0_wmode,             // RW0 wmode.
-  input  [1:0]   RW0_wmask,             // RW0 wmask.
+  input  [4:0]   RW0_addr,              // Word address of the access.
+  input          RW0_clk,               // Memory clock, supplied by the cluster with the request.
+  input  [107:0] RW0_wdata,             // Data stored at RW0_addr on a write access.
+  output [107:0] RW0_rdata,             // Read data from RW0_addr, valid one cycle after a read.
+  input          RW0_en,                // Access enable; starts a read or write in this cycle.
+  input          RW0_wmode,             // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]   RW0_wmask,             // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
@@ -77,17 +80,18 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
-  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [4:0]   RW0_addr,              // RW0 addr.
-  input          RW0_clk,               // RW0 clk.
-  input  [93:0]  RW0_wdata,             // RW0 wdata.
-  output [93:0]  RW0_rdata,             // RW0 rdata.
-  input          RW0_en,                // RW0 en.
-  input          RW0_wmode,             // RW0 wmode.
-  input  [1:0]   RW0_wmask,             // RW0 wmask.
+  input  [4:0]   RW0_addr,              // Word address of the access.
+  input          RW0_clk,               // Memory clock, supplied by the cluster with the request.
+  input  [93:0]  RW0_wdata,             // Data stored at RW0_addr on a write access.
+  output [93:0]  RW0_rdata,             // Read data from RW0_addr, valid one cycle after a read.
+  input          RW0_en,                // Access enable; starts a read or write in this cycle.
+  input          RW0_wmode,             // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]   RW0_wmask,             // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
@@ -112,17 +116,18 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [7:0]  RW0_addr,               // RW0 addr.
-  input         RW0_clk,                // RW0 clk.
-  input  [65:0] RW0_wdata,              // RW0 wdata.
-  output [65:0] RW0_rdata,              // RW0 rdata.
-  input         RW0_en,                 // RW0 en.
-  input         RW0_wmode,              // RW0 wmode.
-  input  [1:0]  RW0_wmask,              // RW0 wmask.
+  input  [7:0]  RW0_addr,               // Word address of the access.
+  input         RW0_clk,                // Memory clock, supplied by the cluster with the request.
+  input  [65:0] RW0_wdata,              // Data stored at RW0_addr on a write access.
+  output [65:0] RW0_rdata,              // Read data from RW0_addr, valid one cycle after a read.
+  input         RW0_en,                 // Access enable; starts a read or write in this cycle.
+  input         RW0_wmode,              // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]  RW0_wmask,              // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
@@ -147,16 +152,16 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
 endmodule
 
 module OCAH4CORECluster_mem_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [11:0] RW0_addr,               // RW0 addr.
-  input         RW0_clk,                // RW0 clk.
-  input  [71:0] RW0_wdata,              // RW0 wdata.
-  output [71:0] RW0_rdata,              // RW0 rdata.
-  input         RW0_en,                 // RW0 en.
-  input         RW0_wmode,              // RW0 wmode.
+  input  [11:0] RW0_addr,               // Word address of the access.
+  input         RW0_clk,                // Memory clock, supplied by the cluster with the request.
+  input  [71:0] RW0_wdata,              // Data stored at RW0_addr on a write access.
+  output [71:0] RW0_rdata,              // Read data from RW0_addr, valid one cycle after a read.
+  input         RW0_en,                 // Access enable; starts a read or write in this cycle.
+  input         RW0_wmode,              // Access type while RW0_en is high: 1 writes, 0 reads.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
@@ -181,14 +186,14 @@ module OCAH4CORECluster_mem_0_ext #(
 endmodule
 
 module OCAH4CORECluster_rom_ext #(
-  parameter int MEM_CFG_WIDTH = 11      // Foundry memory config bus width.
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [13:0] R0_addr,                // R0 addr.
-  input         R0_clk,                 // R0 clk.
-  input         R0_en,                  // R0 en.
-  output [63:0] R0_rdata,               // R0 rdata.
+  input  [13:0] R0_addr,                // Word address of the read access.
+  input         R0_clk,                 // ROM clock, supplied by the cluster with the request.
+  input         R0_en,                  // Read enable; starts a read of R0_addr in this cycle.
+  output [63:0] R0_rdata,               // Read data from R0_addr, valid one cycle after a read.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Mem cfg.
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the ROM primitive.
 );
 
   prim_rom #(

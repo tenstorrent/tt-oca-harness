@@ -8,48 +8,68 @@
 // host, debug, or an external agent) drains the pool through a 64-bit read-only AXI-Lite
 // aperture on sep_local_axi_xbar.
 // Datapath: EDN handshake adapter (req_pending_q) into prim_packer_fifo (InW=32, OutW=64,
-// ClearOnRead=0), then prim_fifo_sync (Width=64, Depth=FifoDepth). AXI-Lite decode is 0x00
-// status, 0x08 irq-cause, 0x10 data pop.
+// ClearOnRead=0), then prim_fifo_sync (Width=64, Depth=FifoDepth). AXI-Lite decode of the
+// 16-bit offset is 0x00 status, 0x08 irq-cause, 0x10 data pop; a pop of an empty pool and
+// any other offset return SLVERR with zero data. One read is outstanding at a time.
+// The pool FIFO has no hardened pointers, so pool_err_o is always 0.
 // The AXI connectivity matrix grants a (master, slave) pair as a single bit and cannot
 // mask direction, so AW/W/B arrive whenever any master has read access. Every write
 // terminates in place with BRESP=SLVERR and no state change; that SLVERR is the read-only
 // enforcement because entropy enters only via the native EDN bus.
 // FifoDepth defaults to 32 packed 64-bit entries. LowWatermark defaults to 8. StallThresh
 // defaults to 4096 cycles (~20 us at 200 MHz) with a request outstanding and no EDN
-// acknowledge, and clears on the next ack.
+// acknowledge, and clears on the next ack; the stall detector arms on the first acknowledge
+// after reset or entropy_clear_i.
 
 `include "prim_assert.sv"
 
 module sep_entropy_fifo
   import edn_pkg::*;
 #(
-  parameter int unsigned FifoDepth    = 32,   // Pool depth in packed 64-bit entries (default 32).
-  parameter int unsigned LowWatermark = 8,    // Occupancy below which pool_low_o asserts (default 8).
-  parameter int unsigned StallThresh  = 4096,  // Outstanding EDN cycles before fill_stall_o (default 4096, ~20 us at 200 MHz); clears on next ack.
-  parameter type axi_req_t   = sep_pkg::sep_32_64_6_12_axi_req_t,  // Full AXI4 slave request type from sep_local_axi_xbar.
+  parameter int unsigned FifoDepth    = 32,   // Pool depth in packed 64-bit entries (default 32);
+                                              // at most 63 to fit the status occupancy field.
+  parameter int unsigned LowWatermark = 8,    // Occupancy below which pool_low_o asserts (default
+                                              // 8).
+  parameter int unsigned StallThresh  = 4096,  // Outstanding EDN cycles before fill_stall_o
+                                               // (default 4096, ~20 us at 200 MHz); clears on next
+                                               // ack.
+  parameter type axi_req_t   = sep_pkg::sep_32_64_6_12_axi_req_t,  // Full AXI4 slave request type
+                                                                   // from sep_local_axi_xbar.
   parameter type axi_resp_t  = sep_pkg::sep_32_64_6_12_axi_resp_t,  // Full AXI4 slave response type to sep_local_axi_xbar.
-  parameter type axil_req_t  = sep_pkg::sep_32_64_axil_req_t,  // Internal AXI-Lite request type after conversion.
-  parameter type axil_resp_t = sep_pkg::sep_32_64_axil_resp_t  // Internal AXI-Lite response type after conversion.
+  parameter type axil_req_t  = sep_pkg::sep_32_64_axil_req_t,  // Internal AXI-Lite request type
+                                                               // after conversion.
+  parameter type axil_resp_t = sep_pkg::sep_32_64_axil_resp_t  // Internal AXI-Lite response type
+                                                               // after conversion.
 ) (
   input  logic       clk_i,                   // System clock.
   input  logic       rst_ni,                  // Active-low reset.
 
-  input  logic       entropy_clear_i,         // Synchronous clear from the internal TRNG reset domain
-                                              // Scrubs only entropy-path state; the AXI responder stays alive and reports empty.
+  input  logic       entropy_clear_i,         // Synchronous clear, active-high, while the internal
+                                              // TRNG is in reset. Scrubs only entropy-path state;
+                                              // the AXI responder stays alive and reports empty.
 
-  input  logic       test_en_i,               // Test-mode enable for the internal AXI to AXI-Lite converter.
+  input  logic       test_en_i,               // Test-mode enable for the internal AXI to AXI-Lite
+                                              // converter.
 
-  output edn_req_t   edn_req_o,               // Native EDN fill request
-                                              // Hardware pull from the DRBG native endpoint routed out of sep_crypto; not an AXI bus.
-  input  edn_rsp_t   edn_rsp_i,               // Native EDN fill response.
+  output edn_req_t   edn_req_o,               // Native EDN fill request, raised only while both the
+                                              // pool and the packer have room; a hardware pull, not
+                                              // an AXI bus.
+  input  edn_rsp_t   edn_rsp_i,               // Native EDN fill response; each acknowledge delivers
+                                              // one 32-bit word.
 
-  input  axi_req_t   entropy_fifo_axi_req_i,  // Full AXI4 read-only drain request from sep_local_axi_xbar.
+  input  axi_req_t   entropy_fifo_axi_req_i,  // Full AXI4 drain request from sep_local_axi_xbar;
+                                              // every write completes with SLVERR and no state
+                                              // change.
   output axi_resp_t  entropy_fifo_axi_resp_o,  // Full AXI4 drain response to sep_local_axi_xbar.
 
-  output logic       pool_low_o,              // Occupancy below LowWatermark; routed to the SEP PIC.
-  output logic       fill_stall_o,            // EDN not acknowledging for more than StallThresh cycles; fault to the SEP PIC.
-  output logic       pool_err_o,              // Pool pointer-integrity fault; routed to the SEP PIC.
-  output logic [$clog2(FifoDepth+1)-1:0] fifo_level_o  // Current occupancy in packed 64-bit entries.
+  output logic       pool_low_o,              // Occupancy below LowWatermark, and high during
+                                              // entropy_clear_i; routed to the SEP PIC.
+  output logic       fill_stall_o,            // EDN not acknowledging for more than StallThresh
+                                              // cycles; fault to the SEP PIC.
+  output logic       pool_err_o,              // Pool pointer-integrity fault; always 0 because the
+                                              // pool FIFO has no hardened pointers.
+  output logic [$clog2(FifoDepth+1)-1:0] fifo_level_o  // Current occupancy in packed 64-bit
+                                                       // entries; 0 during entropy_clear_i.
 );
 
   // The status-word occupancy field is a fixed 6-bit slot (status_word[5:0]);

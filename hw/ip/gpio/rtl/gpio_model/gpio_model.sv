@@ -3,22 +3,26 @@
 
 // Model a bidirectional GPIO pad between core2pad/pad2core wires and GPIO_PAD.
 //
-// gpio_ctrl programs pull and drive; gpio_status reports the sampled pad level.
+// The pad is driven while core2pad_en_i is high and floats otherwise; pad2core_o reads the
+// pad while pad2core_en_i is high and is low otherwise. gpio_ctrl is unused and gpio_status
+// is tied to zero, so no pull or drive-strength behaviour is modelled.
 
 module gpio_model #(
   parameter type ctrl_t = logic,                            // Pad control struct type.
   parameter type status_t = logic                           // Pad status struct type.
 ) (
   input  wire             core2pad_i,                       // Core-to-pad data.
-  input  wire             core2pad_en_i,                    // Core-to-pad output enable.
+  input  wire             core2pad_en_i,                    // Core-to-pad output enable; the pad
+                                                            // floats while low.
 
-  output wire             pad2core_o,                       // Pad-to-core data.
+  output wire             pad2core_o,                       // Pad level while pad2core_en_i is
+                                                            // high; low otherwise.
   input  wire             pad2core_en_i,                    // Pad-to-core input enable.
 
   inout  wire             GPIO_PAD,                         // Bidirectional pad pin.
 
-  input  ctrl_t           gpio_ctrl,                        // Pad drive and pull control.
-  output status_t         gpio_status                       // Sampled pad status.
+  input  ctrl_t           gpio_ctrl,                        // Pad drive and pull control; unused.
+  output status_t         gpio_status                       // Pad status, tied to zero.
 );
 
   // Internal signals

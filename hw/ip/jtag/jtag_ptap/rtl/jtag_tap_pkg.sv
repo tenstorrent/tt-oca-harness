@@ -3,8 +3,9 @@
 
 // Define TAP state enums and default IC_RESET slice typedefs for the primary TAP.
 //
-// Provides tap_state_e and stub IC_RESET packed structs overridden by integrators with
-// real slice widths.
+// Provides the one-hot tap_state_e, state-classification functions, and the stub IC_RESET
+// packed struct jtag_ic_reset_default_t (ovrd, val) overridden by integrators with real
+// slice widths.
 // Stub defaults exist so the IP elaborates standalone.
 
 package jtag_tap_pkg;

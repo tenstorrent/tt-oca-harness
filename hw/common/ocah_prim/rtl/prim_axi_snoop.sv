@@ -3,14 +3,17 @@
 
 // Snoop AXI handshakes and report bus activity plus outstanding counts.
 //
-// Drive bus_active_o high while any tracked write or read remains open.
-// Pulse complete_aw_o and complete_ar_o when AW or AR handshakes accept.
+// Count a request when AW or AR valid rises, or stays high in the cycle after a handshake,
+// and retire it on the B handshake or the R handshake carrying last.
+// Drive bus_active_o high while AW, W or AR valid is asserted or any counted request is open.
+// Pulse complete_aw_o on each B handshake and complete_ar_o on each last-beat R handshake.
 // Export req_count_q_o for downstream hang detectors such as axi_hang_detector.
 
 module prim_axi_snoop #(
-  parameter int unsigned OutstandingTx = 1,  // Max outstanding transactions tracked.
+  parameter int unsigned OutstandingTx = 1,  // Max outstanding transactions tracked; sizes the
+                                             // counter.
 
-  localparam int unsigned OutstandingTxW = OutstandingTx > 1 ? $clog2(OutstandingTx) + 1 : 1  // Counter width from OutstandingTx; derived.
+  localparam int unsigned OutstandingTxW = OutstandingTx > 1 ? $clog2(OutstandingTx) + 1 : 1  // Derived from OutstandingTx; the counter is one bit wider.
 ) (
   input  logic        clk_i,  // AXI clock.
   input  logic        rst_ni,  // Async reset, active-low.
@@ -18,7 +21,7 @@ module prim_axi_snoop #(
   input  logic        snoop_aw_valid_i,  // Snooped AW valid.
   input  logic        snoop_aw_ready_i,  // Snooped AW ready.
 
-  input  logic        snoop_w_valid_i,  // Snooped W valid.
+  input  logic        snoop_w_valid_i,  // Snooped W valid; only keeps bus_active_o high.
 
   input  logic        snoop_b_valid_i,  // Snooped B valid.
   input  logic        snoop_b_ready_i,  // Snooped B ready.
@@ -30,11 +33,14 @@ module prim_axi_snoop #(
   input  logic        snoop_r_ready_i,  // Snooped R ready.
   input  logic        snoop_r_last_i,  // Snooped R last.
 
-  output logic                    bus_active_o,  // High while any snooped transaction is open.
+  output logic                    bus_active_o,  // High while AW, W or AR valid is high or the
+                                                 // count is nonzero.
 
-  output logic                    complete_aw_o,  // AW-accept probe for hang detection.
-  output logic                    complete_ar_o,  // AR-accept probe for hang detection.
-  output logic [OutstandingTxW:0] req_count_q_o  // Outstanding request count for hang detection.
+  output logic                    complete_aw_o,  // Combinational pulse on each B handshake.
+  output logic                    complete_ar_o,  // Combinational pulse on each R handshake with
+                                                  // last set.
+  output logic [OutstandingTxW:0] req_count_q_o  // Registered count of open write and read
+                                                 // requests.
 );
 
   `include "prim_assert.sv"

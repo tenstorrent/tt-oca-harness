@@ -11,21 +11,20 @@ package prim_ram_1p_adv_ext_pkg;
 
   import prim_ram_1p_pkg::*;
 
-  // Default external RAM request struct
-  // Can be overridden with custom types in module instantiation
+  // Default external RAM request; an instantiation can override it with its own type.
   typedef struct packed {
     logic         clk;      // Clock for external RAM.
     logic         enable;   // RAM request enable.
     logic         write;    // Write enable.
-    logic [31:0]  addr;     // Address (32-bit default, parameterizable).
-    logic [38:0]  wdata;    // Write data (32-bit default, parameterizable).
-    logic [31:0]  wmask;    // Write mask (32-bit default, parameterizable).
+    logic [31:0]  addr;     // Word address.
+    logic [38:0]  wdata;    // Write data with its check bits; 39 bits holds 32 data
+                            // bits plus 7 ECC bits.
+    logic [31:0]  wmask;    // Per-bit write mask.
   } prim_ram_1p_adv_ext_req_t;
 
-  // Default external RAM response struct
-  // Can be overridden with custom types in module instantiation
+  // Default external RAM response; an instantiation can override it with its own type.
   typedef struct packed {
-    logic [31:0] rdata;  // Read data (32-bit default, parameterizable).
+    logic [31:0] rdata;  // Read data.
   } prim_ram_1p_adv_ext_rsp_t;
 
 endpackage : prim_ram_1p_adv_ext_pkg

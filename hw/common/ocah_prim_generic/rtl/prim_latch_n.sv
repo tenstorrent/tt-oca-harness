@@ -3,10 +3,10 @@
 
 // Latch d_i while g_ni is low.
 //
-// Capture d_i onto q_o while g_ni is low and hold the last value while g_ni is high.
+// Pass d_i through to q_o while g_ni is low and hold the last value while g_ni is high.
 
 module prim_latch_n (
-  input  d_i,   // Data sampled while the latch is open.
+  input  d_i,   // Data passed to q_o while the latch is open.
   input  g_ni,  // Active-low gate; open when low.
   output q_o    // Latched data.
 );

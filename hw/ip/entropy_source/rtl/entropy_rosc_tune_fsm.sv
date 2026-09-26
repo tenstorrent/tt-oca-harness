@@ -11,8 +11,10 @@
 module entropy_rosc_tune_fsm (
   input       logic clk_i,              // System clock.
   input       logic rst_ni,             // Active-low reset.
-  input       logic health_error_i,     // Health error.
-  output      logic tune_state_o        // Tune state.
+  input       logic health_error_i,     // Any health-test failure; each rising edge toggles
+                                        // tune_state_o.
+  output      logic tune_state_o        // Detune selection for the ring oscillator; low after
+                                        // reset.
 );
 
   /////////////

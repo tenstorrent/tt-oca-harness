@@ -5,16 +5,18 @@
 // Steer one TL-UL host onto N device ports.
 //
 // Route each A-channel request to tl_d_o[dev_select_i] through optional host and
-// per-device FIFOs. Maximum N is 63.
+// per-device FIFOs; dev_select_i travels through the host FIFO with its request. Ports
+// that are not selected see a_valid low, blanked a_data and deliberately bad integrity.
+// Maximum N is 63.
 //
 // Stall switching to another device until all outstanding responses from other devices
 // have returned: keep a counter of outstanding requests and wait until it is zero before
 // switching.
 //
-// Return a request error when dev_select_i is outside 0..N-1. The instantiator may force
-// an error with any illegal select; 4'b1111 is recommended for visibility. When
-// ExplicitErrs is set, widen dev_select_i so value N is representable and can request
-// that error response.
+// Return an error response from an internal tlul_err_resp when dev_select_i is outside
+// 0..N-1. The instantiator may force an error with any illegal select; all ones is
+// recommended for visibility. When ExplicitErrs is set, size dev_select_i as
+// $clog2(N+1) bits so value N is always representable and can request that error.
 //
 // FIFO parameters:
 //
@@ -43,7 +45,7 @@ module tlul_socket_1n #(
   output tlul_pkg::tl_d2h_t tl_h_o,        // Host-side TL-UL response.
   output tlul_pkg::tl_h2d_t tl_d_o    [N], // Per-device TL-UL requests.
   input  tlul_pkg::tl_d2h_t tl_d_i    [N], // Per-device TL-UL responses.
-  input  [NWD-1:0]          dev_select_i   // Device index; out of range (or N) means error.
+  input  [NWD-1:0]          dev_select_i   // Device index; N and above return an error.
 );
   `include "prim_assert.sv"
 

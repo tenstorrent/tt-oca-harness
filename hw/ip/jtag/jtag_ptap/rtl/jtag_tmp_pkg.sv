@@ -3,8 +3,8 @@
 
 // Name the test-mode persistence controller states from IEEE 1149.1 §6.2.
 //
-// Defines persistence-on and persistence-off constants for jtag_tmp and the status
-// register.
+// Defines tmp_state_e with persistence-off (0) and persistence-on (1) for the jtag_tmp
+// state register.
 
 package jtag_tmp_pkg;
 

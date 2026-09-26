@@ -4,18 +4,22 @@
 // Expose a read-only TDR for JTAG2AXI bridge pipeline depths and bus type.
 //
 // Encodes RD_PL_DEPTH and WR_PL_DEPTH where 0 means a single outstanding transaction.
-// IS_AXI4_LITE is 0 for AXI4 typedefs and 1 for AXI4-Lite typedefs; axi_req_t sizes
-// related fields.
+// IS_AXI4_LITE is 0 for AXI4 typedefs and 1 for AXI4-Lite typedefs. The address width
+// (bits [6:1]) and the log2 data size in bytes (bits [9:7]) are derived from the aw.addr and
+// w.data fields of axi_req_t.
 
 module jtag_jtag2axi_caps_reg
   import prim_jtag_pkg::*;
 #(
-  parameter type axi_req_t = logic,     // AXI request struct type.
+  parameter type axi_req_t = logic,     // AXI request struct type; its aw.addr and w.data widths
+                                        // set the addr_size and data_size fields.
 
-  parameter logic [1:0] RD_PL_DEPTH = 2'h3,  // Read pipeline depth (0 = single outstanding transaction).
-  parameter logic [1:0] WR_PL_DEPTH = 2'h3,  // Write pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0] RD_PL_DEPTH = 2'h3,  // Read pipeline depth (0 = single outstanding
+                                             // transaction), bits [13:12].
+  parameter logic [1:0] WR_PL_DEPTH = 2'h3,  // Write pipeline depth (0 = single outstanding
+                                             // transaction), bits [11:10].
 
-  parameter bit IS_AXI4_LITE = 1'b0     // 0=AXI4, 1=AXI4-Lite.
+  parameter bit IS_AXI4_LITE = 1'b0     // Bus type in bit 0: 0=AXI4, 1=AXI4-Lite.
 ) (
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
   input  logic             scan_in_i,   // Scan data in (TDI).

@@ -4,24 +4,27 @@
 
 // Handle TL-UL byte writes with integrity-aware read-modify-write.
 //
-// When a byte write arrives and EnableIntg is set, generate a TL-UL read first so the
-// integrity constant can be rebuilt, then complete the write. When RMW is not required,
-// mux the incoming transaction straight through. compound_txn_in_progress_o is high while
-// an RMW compound access is active.
+// When a write with a partial mask arrives and EnableIntg is set, read the full word
+// first, merge the written bytes, regenerate data integrity, and write the full word back.
+// When RMW is not required, mux the incoming transaction straight through.
+// compound_txn_in_progress_o is high while this module drives its own RMW write or
+// readback request downstream.
 //
 // If error_i is set on an incoming transaction, do not attempt byte-write handling. Feed
 // the transaction through and allow the system to error back, and feed the error
 // indication through on error_o.
 //
-// EnableReadback enables readback checks on all transactions and requires
-// EnableIntg == 1. alert_o reports integrity or readback failures.
+// EnableReadback enables readback checks on all transactions while readback_en_i is
+// MuBi4True, and requires EnableIntg == 1. alert_o reports readback mismatches and invalid
+// FSM states. When EnableIntg is clear, every signal passes straight through and alert_o
+// and compound_txn_in_progress_o are 0.
 
 module tlul_sram_byte
   import tlul_pkg::*;
 #(
-  parameter bit EnableIntg     = 0,  // Handle byte writes with integrity-aware RMW.
-  parameter int Outstanding    = 1,  // Outstanding transactions tracked through the helper.
-  parameter bit EnableReadback = 0   // Readback-check all transactions; requires EnableIntg.
+  parameter bit EnableIntg     = 0,  // Handle partial-mask writes with integrity RMW.
+  parameter int Outstanding    = 1,  // Maximum outstanding transactions tracked.
+  parameter bit EnableReadback = 0   // Readback-check transactions; needs EnableIntg.
 ) (
   input clk_i,                                          // System clock.
   input rst_ni,                                         // Active-low reset.
@@ -29,20 +32,25 @@ module tlul_sram_byte
   input tl_h2d_t tl_i,                                  // Upstream TL-UL request.
   output tl_d2h_t tl_o,                                 // Upstream TL-UL response.
 
-  output tl_h2d_t tl_sram_o,                            // Downstream request to the SRAM adapter.
-  input tl_d2h_t tl_sram_i,                             // Downstream response from the SRAM adapter.
+  output tl_h2d_t tl_sram_o,                            // Downstream request toward the memory.
+  input tl_d2h_t tl_sram_i,                             // Downstream response from the memory.
 
-  input error_i,                                        // Upstream already-errored; feed through
-                                                        // without RMW and allow a direct error.
-  output logic error_o,                                 // Error indication fed through.
-  output logic alert_o,                                 // Alert for integrity or readback failures.
+  input error_i,                                        // Error detected on the incoming request;
+                                                        // it passes through without RMW.
+  output logic error_o,                                 // error_i, masked while the host is
+                                                        // stalled.
+  output logic alert_o,                                 // Readback mismatch or invalid FSM state.
 
-  output logic compound_txn_in_progress_o,              // High while an RMW compound access runs.
+  output logic compound_txn_in_progress_o,              // High while an RMW write or readback
+                                                        // request is driven downstream.
 
-  input prim_mubi_pkg::mubi4_t readback_en_i,           // MuBi4 enable for readback checking.
+  input prim_mubi_pkg::mubi4_t readback_en_i,           // MuBi4 readback enable; sampled while the
+                                                        // bus is idle.
 
-  input logic wr_collision_i,                           // SRAM reports a write collision.
-  input logic write_pending_i                           // SRAM still has a write pending.
+  input logic wr_collision_i,                           // SRAM write collision; used only by
+                                                        // assertions.
+  input logic write_pending_i                           // SRAM write pending; used only by
+                                                        // assertions.
 );
   `include "prim_assert.sv"
 

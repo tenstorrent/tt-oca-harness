@@ -1,8 +1,8 @@
 diff --git a/RTL/AOU_TOP.sv b/RTL/AOU_TOP.sv
-index a54197072..cc8b9511d 100644
+index a54197072..d48e93a6e 100644
 --- a/RTL/AOU_TOP.sv
 +++ b/RTL/AOU_TOP.sv
-@@ -16,306 +16,286 @@
+@@ -16,306 +16,296 @@
  //  See the License for the specific language governing permissions and
  //  limitations under the License.
  // *****************************************************************************
@@ -68,7 +68,9 @@ index a54197072..cc8b9511d 100644
  import packet_def_pkg::*;
  #(
 -    parameter   RP_COUNT                    = 1,
--
++    parameter   RP_COUNT                    = 1,  // Number of receive ports (AXI master/slave
++                                                  // pairs), up to 4.
+ 
 -    // FDI configuration selector. Single integer that picks the FDI data
 -    // bus widths for both PHYs and (in two-PHY builds) the per-PHY pairing.
 -    // See packet_def_pkg::FDI_CFG_* for the enumeration. Forwarded
@@ -78,13 +80,11 @@ index a54197072..cc8b9511d 100644
 -    // legacy +define+FDI_32B single-PHY configuration. Consistency between
 -    // FDI_CONFIG and +define+TWO_PHY is the integrator's responsibility.
 -    parameter int FDI_CONFIG                = FDI_CFG_SP_32B,
--
++    parameter int FDI_CONFIG                = FDI_CFG_SP_32B,  // FDI configuration, one of
++                                                               // packet_def_pkg::FDI_CFG_*.
+ 
 -    // Derived FDI data bus widths (bits). Local-only; not forwarded.
 -    localparam int FDI_IF_WD0 = (FDI_CONFIG == FDI_CFG_SP_32B     ) ? 256  :
-+    parameter   RP_COUNT                    = 1,  // Number of receive ports (AXI master/slave pairs), up to 4.
-+
-+    parameter int FDI_CONFIG                = FDI_CFG_SP_32B,  // FDI configuration, one of packet_def_pkg::FDI_CFG_*.
-+
 +    localparam int FDI_IF_WD0 = (FDI_CONFIG == FDI_CFG_SP_32B     ) ? 256  :  // PHY0 FDI data bus width, in bits. Local only.
                                  (FDI_CONFIG == FDI_CFG_SP_64B     ) ? 512  :
                                  (FDI_CONFIG == FDI_CFG_SP_128B    ) ? 1024 :
@@ -176,18 +176,23 @@ index a54197072..cc8b9511d 100644
 +    parameter   RP3_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP3 RX read-data FIFO depth.
 +    parameter   RP3_RX_B_FIFO_DEPTH         = 44,  // RP3 RX write-response FIFO depth.
 +
-+    parameter   RX_AW_FIFO_RS_EN            = 1,  // Register slice on the RX write-address FIFO output.
-+    parameter   RX_AR_FIFO_RS_EN            = 1,  // Register slice on the RX read-address FIFO output.
-+    parameter   RX_W_FIFO_RS_EN             = 1,  // Register slice on the RX write-data FIFO output.
++    parameter   RX_AW_FIFO_RS_EN            = 1,  // Register slice on the RX write-address FIFO
++                                                  // output.
++    parameter   RX_AR_FIFO_RS_EN            = 1,  // Register slice on the RX read-address FIFO
++                                                  // output.
++    parameter   RX_W_FIFO_RS_EN             = 1,  // Register slice on the RX write-data FIFO
++                                                  // output.
 +    parameter   RX_R_FIFO_RS_EN             = 1,  // Register slice on the RX read-data FIFO output.
-+    parameter   RX_B_FIFO_RS_EN             = 1,  // Register slice on the RX write-response FIFO output.
++    parameter   RX_B_FIFO_RS_EN             = 1,  // Register slice on the RX write-response FIFO
++                                                  // output.
 +
 +    parameter   RP0_AXI_DATA_WD             = 512,  // RP0 AXI data width, in bits.
 +    parameter   RP1_AXI_DATA_WD             = 512,  // RP1 AXI data width, in bits.
 +    parameter   RP2_AXI_DATA_WD             = 512,  // RP2 AXI data width, in bits.
 +    parameter   RP3_AXI_DATA_WD             = 512,  // RP3 AXI data width, in bits.
 +
-+    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AXI data width on the peer die, in bits.
++    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AXI data width on the peer die, in
++                                                     // bits.
 +
 +    parameter   APB_ADDR_WD                 = 32,  // APB address width.
 +    parameter   APB_DATA_WD                 = 32,  // APB data width.
@@ -196,7 +201,8 @@ index a54197072..cc8b9511d 100644
 +    parameter   S_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI slave interface.
 +
 +    parameter   M_RD_MO_CNT                 = 32,  // Outstanding reads on the AXI master interface.
-+    parameter   M_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI master interface.
++    parameter   M_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI master
++                                                   // interface.
 +
 +    localparam  RP_AXI_DATA_WD_MAX          = max4(RP0_AXI_DATA_WD, RP1_AXI_DATA_WD, RP2_AXI_DATA_WD, RP3_AXI_DATA_WD),  // Widest RPn AXI data width; sizes the AXI data ports.
 +    localparam  RP_AXI_STRB_WD_MAX          = RP_AXI_DATA_WD_MAX / 8,  // AXI write-strobe width for that data width.
@@ -208,10 +214,14 @@ index a54197072..cc8b9511d 100644
  (
 -    input  logic                                        I_CLK,
 -    input  logic                                        I_RESETN,
--
++    input  logic                                        I_CLK,  // Clock for the AOU core and the FDI bringup controller.
++    input  logic                                        I_RESETN,  // Active-low asynchronous reset for the I_CLK domain.
+ 
 -    input  logic                                        I_PCLK,
 -    input  logic                                        I_PRESETN,
--
++    input  logic                                        I_PCLK,  // APB clock, asynchronous to I_CLK.
++    input  logic                                        I_PRESETN,  // Active-low reset for the I_PCLK domain.
+ 
 -    // ================================================================
 -    // APB slave interface
 -    // ================================================================
@@ -224,12 +234,51 @@ index a54197072..cc8b9511d 100644
 -    output logic [APB_DATA_WD-1:0]                      O_AOU_APB_SI0_PRDATA,
 -    output logic                                        O_AOU_APB_SI0_PREADY,
 -    output logic                                        O_AOU_APB_SI0_PSLVERR,
-+    input  logic                                        I_CLK,  // Clock for the AOU core and the FDI bringup controller.
-+    input  logic                                        I_RESETN,  // Active-low asynchronous reset for the I_CLK domain.
-+
-+    input  logic                                        I_PCLK,  // APB clock, asynchronous to I_CLK.
-+    input  logic                                        I_PRESETN,  // Active-low reset for the I_PCLK domain.
-+
+-
+-    // ================================================================
+-    // AXI master interface (RX → downstream)
+-    // ================================================================
+-    output logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          O_AOU_RX_AXI_M_ARID,
+-    output logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]        O_AOU_RX_AXI_M_ARADDR,
+-    output logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]         O_AOU_RX_AXI_M_ARLEN,
+-    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_ARSIZE,
+-    output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_M_ARBURST,
+-    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_ARLOCK,
+-    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARCACHE,
+-    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_ARPROT,
+-    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARQOS,
+-    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_ARVALID,
+-    input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_ARREADY,
+-
+-    input  logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_AXI_M_RID,
+-    input  logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] I_AOU_TX_AXI_M_RDATA,
+-    input  logic [RP_COUNT-1:0][1:0]                    I_AOU_TX_AXI_M_RRESP,
+-    input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_RLAST,
+-    input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_RVALID,
+-    output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_M_RREADY,
+-
+-    output logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          O_AOU_RX_AXI_M_AWID,
+-    output logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]        O_AOU_RX_AXI_M_AWADDR,
+-    output logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]         O_AOU_RX_AXI_M_AWLEN,
+-    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_AWSIZE,
+-    output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_M_AWBURST,
+-    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_AWLOCK,
+-    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWCACHE,
+-    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_AWPROT,
+-    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWQOS,
+-    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_AWVALID,
+-    input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_AWREADY,
+-
+-    output logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] O_AOU_RX_AXI_M_WDATA,
+-    output logic [RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0] O_AOU_RX_AXI_M_WSTRB,
+-    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WLAST,
+-    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WVALID,
+-    input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_WREADY,
+-
+-    input  logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_AXI_M_BID,
+-    input  logic [RP_COUNT-1:0][1:0]                    I_AOU_TX_AXI_M_BRESP,
+-    input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_BVALID,
+-    output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_M_BREADY,
 +    input  logic                                        I_AOU_APB_SI0_PSEL,  // APB select.
 +    input  logic                                        I_AOU_APB_SI0_PENABLE,  // APB enable.
 +    input  logic [APB_ADDR_WD-1:0]                      I_AOU_APB_SI0_PADDR,  // APB address.
@@ -325,51 +374,6 @@ index a54197072..cc8b9511d 100644
 +    input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_S_BREADY,  // AXI slave write-response ready.
  
 -    // ================================================================
--    // AXI master interface (RX → downstream)
--    // ================================================================
--    output logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          O_AOU_RX_AXI_M_ARID,
--    output logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]        O_AOU_RX_AXI_M_ARADDR,
--    output logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]         O_AOU_RX_AXI_M_ARLEN,
--    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_ARSIZE,
--    output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_M_ARBURST,
--    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_ARLOCK,
--    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARCACHE,
--    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_ARPROT,
--    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_ARQOS,
--    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_ARVALID,
--    input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_ARREADY,
--
--    input  logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_AXI_M_RID,
--    input  logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] I_AOU_TX_AXI_M_RDATA,
--    input  logic [RP_COUNT-1:0][1:0]                    I_AOU_TX_AXI_M_RRESP,
--    input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_RLAST,
--    input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_RVALID,
--    output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_M_RREADY,
--
--    output logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          O_AOU_RX_AXI_M_AWID,
--    output logic [RP_COUNT-1:0][AXI_ADDR_WD-1:0]        O_AOU_RX_AXI_M_AWADDR,
--    output logic [RP_COUNT-1:0][AXI_LEN_WD-1:0]         O_AOU_RX_AXI_M_AWLEN,
--    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_AWSIZE,
--    output logic [RP_COUNT-1:0][1:0]                    O_AOU_RX_AXI_M_AWBURST,
--    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_AWLOCK,
--    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWCACHE,
--    output logic [RP_COUNT-1:0][2:0]                    O_AOU_RX_AXI_M_AWPROT,
--    output logic [RP_COUNT-1:0][3:0]                    O_AOU_RX_AXI_M_AWQOS,
--    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_AWVALID,
--    input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_AWREADY,
--
--    output logic [RP_COUNT-1:0][RP_AXI_DATA_WD_MAX-1:0] O_AOU_RX_AXI_M_WDATA,
--    output logic [RP_COUNT-1:0][RP_AXI_STRB_WD_MAX-1:0] O_AOU_RX_AXI_M_WSTRB,
--    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WLAST,
--    output logic [RP_COUNT-1:0]                         O_AOU_RX_AXI_M_WVALID,
--    input  logic [RP_COUNT-1:0]                         I_AOU_RX_AXI_M_WREADY,
--
--    input  logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_AXI_M_BID,
--    input  logic [RP_COUNT-1:0][1:0]                    I_AOU_TX_AXI_M_BRESP,
--    input  logic [RP_COUNT-1:0]                         I_AOU_TX_AXI_M_BVALID,
--    output logic [RP_COUNT-1:0]                         O_AOU_TX_AXI_M_BREADY,
--
--    // ================================================================
 -    // AXI slave interface (TX → upstream)
 -    // ================================================================
 -    input  logic [RP_COUNT-1:0][AXI_ID_WD-1:0]          I_AOU_TX_AXI_S_ARID,
@@ -420,8 +424,10 @@ index a54197072..cc8b9511d 100644
  `ifdef TWO_PHY
 -    input  logic                                        I_PHY_TYPE,
 +    input  logic                                        I_PHY_TYPE,  // Active PHY: 0 selects PHY0, 1 selects PHY1.
-+                                                                     // Picks the PHY whose state status and stall request
-+                                                                     // reach the bringup controller.
++                                                                     // Routes the flit data path through that PHY; PHY0
++                                                                     // carries each core flit as two half-width beats.
++                                                                     // Also picks the PHY whose state status and stall
++                                                                     // request reach the bringup controller.
  `endif
  
 -    // ================================================================
@@ -504,27 +510,6 @@ index a54197072..cc8b9511d 100644
 -    // ================================================================
 -    output logic [3:0]                                  O_FDI_FSM_STATE,
 -    output logic                                        O_FDI_LINK_UP,
--
--    // ================================================================
--    // Interrupt outputs
--    // ================================================================
--    output logic                                        INT_REQ_LINKRESET,
--    output logic                                        INT_SI0_ID_MISMATCH,
--    output logic                                        INT_MI0_ID_MISMATCH,
--    output logic                                        INT_EARLY_RESP_ERR,
--    output logic                                        INT_ACTIVATE_START,
--    output logic                                        INT_DEACTIVATE_START,
--
--    // ================================================================
--    // Bus quiescence (from external transaction monitors)
--    // ================================================================
--    input  logic                                        I_MST_BUS_CLEANY_COMPLETE,
--    input  logic                                        I_SLV_BUS_CLEANY_COMPLETE,
--
--    // ================================================================
--    // DFT
--    // ================================================================
--    input  logic                                        TIEL_DFT_MODESCAN
 +    input  logic                                        I_PL_INBAND_PRES,  // PHY in-band presence.
 +    input  logic                                        I_PL_CLK_REQ,  // PHY clock request.
 +    input  logic                                        I_PL_WAKE_ACK,  // PHY wake acknowledge.
@@ -556,7 +541,27 @@ index a54197072..cc8b9511d 100644
 +                                                                                    // Tie to 1 when BUS_CLEANY is not used.
 +    input  logic                                        I_SLV_BUS_CLEANY_COMPLETE,  // All remote-die responses to local requests have arrived.
 +                                                                                    // Tie to 1 when BUS_CLEANY is not used.
-+
+ 
+-    // ================================================================
+-    // Interrupt outputs
+-    // ================================================================
+-    output logic                                        INT_REQ_LINKRESET,
+-    output logic                                        INT_SI0_ID_MISMATCH,
+-    output logic                                        INT_MI0_ID_MISMATCH,
+-    output logic                                        INT_EARLY_RESP_ERR,
+-    output logic                                        INT_ACTIVATE_START,
+-    output logic                                        INT_DEACTIVATE_START,
+-
+-    // ================================================================
+-    // Bus quiescence (from external transaction monitors)
+-    // ================================================================
+-    input  logic                                        I_MST_BUS_CLEANY_COMPLETE,
+-    input  logic                                        I_SLV_BUS_CLEANY_COMPLETE,
+-
+-    // ================================================================
+-    // DFT
+-    // ================================================================
+-    input  logic                                        TIEL_DFT_MODESCAN
 +    input  logic                                        TIEL_DFT_MODESCAN  // DFT scan mode. Tie low for functional operation.
  );
  

@@ -3,7 +3,9 @@
 
 // Define types and configuration for the SEP local AXI crossbar.
 //
-// Address decode rules live in sep_local_axi_xbar rather than this package.
+// Address decode rules live in sep_local_axi_xbar rather than this package. Connectivity
+// row i is initiator i (ifu_sram, lsu, dbg, dma, ext) and bit j is target j in the
+// sep_local_axi_xbar port order.
 
 `include "axi/typedef.svh"
 

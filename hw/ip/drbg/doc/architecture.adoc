@@ -17,19 +17,15 @@ The `drbg` top-level module wraps the OpenTitan CSRNG and EDN blocks with bus-pr
 
 == Parameters
 
-<<drbg-parameters-table>> lists the seed FIFO, endpoint-count, and endpoint FIFO
-parameters.
+The DRBG is configured through its seed FIFO depth, its AXI-Stream and native EDN
+endpoint counts, and the depth of each AXI-Stream endpoint FIFO.
 
-[[drbg-parameters-table]]
-[cols="<25%,<15%,<15%,<45%",options="header"]
-.DRBG parameters
-|===
-|Parameter |Type |Default |Description
-|`SEED_FIFO_DEPTH` |`int unsigned` |1 |Depth of the seed FIFO in `drbg_csrng_seed_adapter`. Holds packed seeds awaiting CSRNG consumption.
-|`EDN_ENDPOINT_COUNT` |`int unsigned` |1 |Number of EDN output endpoints. Each endpoint produces an independent AXI-Stream of random data.
-|`EDN_NATIVE_ENDPOINT_COUNT` |`int unsigned` |0 |Number of native EDN req/rsp endpoints. Each exposes a raw `edn_pkg` bundle that bypasses AXI-Stream buffering.
-|`ENDPOINT_FIFO_DEPTH` |`int unsigned` |8 |Depth of the per-endpoint FIFO in `drbg_edn_axis_adapter`.
-|===
+ifdef::backend-html5[]
+The parameters of `drbg` are listed in xref:ROOT:rtl-modules-reference/ip/drbg/drbg.adoc[drbg].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `drbg` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 == External Interfaces
 

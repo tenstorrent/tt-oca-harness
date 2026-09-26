@@ -4,15 +4,17 @@
 // Zero-extend AW and AR IDs from AxiInIdWidth to AxiOutIdWidth on struct AXI ports.
 //
 // Truncate response IDs back to the upstream width.
-// Pass every non-ID channel field through unchanged.
-// AxiOutIdWidth must be at least AxiInIdWidth.
+// Pass every non-ID channel field through unchanged; the module is purely combinational.
+// AxiOutIdWidth must be at least AxiInIdWidth, checked by a simulation assertion at time zero.
 
 module prim_axi_id_prepend_wrap #(
   parameter int unsigned AxiInIdWidth  = 6,  // Upstream AXI ID width.
   parameter int unsigned AxiOutIdWidth = 8,  // Downstream AXI ID width after prepend.
-  parameter int unsigned AxiDataWidth  = 32,  // AXI data width.
-  parameter int unsigned AxiAddrWidth  = 32,  // AXI address width.
-  parameter int unsigned AxiUserWidth  = 8,  // AXI user width.
+  parameter int unsigned AxiDataWidth  = 32,  // Data-channel width of both ports; declared but not
+                                              // used.
+  parameter int unsigned AxiAddrWidth  = 32,  // Address width of both ports; declared but not used.
+  parameter int unsigned AxiUserWidth  = 8,  // User-signal width of both ports; declared but not
+                                             // used.
 
   parameter type axi_in_req_t   = logic,  // Upstream request struct.
   parameter type axi_in_resp_t  = logic,  // Upstream response struct.

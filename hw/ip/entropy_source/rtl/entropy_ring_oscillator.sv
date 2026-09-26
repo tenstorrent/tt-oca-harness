@@ -5,17 +5,19 @@
 //
 // enable_i high closes the delay chain so it oscillates; frequency follows the number of
 // buffer stages.
-// detune_i high selects the shorter TAPPED_LENGTH feedback path through an internal mux
-// and lowers frequency.
-// TOTAL_LENGTH is the full stage count; TAPPED_LENGTH is the detune tap point.
+// detune_i high selects the full TOTAL_LENGTH feedback path through an internal mux, which
+// lowers frequency; detune_i low selects the shorter TAPPED_LENGTH tap.
 
 module entropy_ring_oscillator #(
   parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
-  parameter int unsigned TAPPED_LENGTH = 13  // Detuned tap stage count.
+  parameter int unsigned TAPPED_LENGTH = 13  // Stage count of the shorter feedback tap, used while
+                                             // detune_i is low.
 ) (
-  input  logic enable_i,                // program with config register.
-  input  logic detune_i,                // program with config register.
-  output logic noise_o                  // Noise.
+  input  logic enable_i,                // High lets the ring oscillate; low holds the NAND stage
+                                        // output high.
+  input  logic detune_i,                // Feedback select: high for the full TOTAL_LENGTH ring, low
+                                        // for the TAPPED_LENGTH tap.
+  output logic noise_o                  // Buffered, asynchronous ring-oscillator output.
 );
 
   logic [TOTAL_LENGTH-1:0] stage_o;

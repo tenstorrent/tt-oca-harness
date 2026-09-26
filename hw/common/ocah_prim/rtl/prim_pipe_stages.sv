@@ -45,14 +45,14 @@ endmodule
 
 
 module prim_pipe_stage #(
-  parameter int unsigned WIDTH = 8
+  parameter int unsigned WIDTH = 8  // Register width.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic en_i,
-  input logic [WIDTH-1:0] d_i,
+  input logic clk_i,  // Register clock.
+  input logic rst_ni,  // Async reset, active-low; clears q_o.
+  input logic en_i,  // Load enable; q_o holds while low.
+  input logic [WIDTH-1:0] d_i,  // Data loaded while en_i is high.
 
-  output logic [WIDTH-1:0] q_o
+  output logic [WIDTH-1:0] q_o  // Registered data.
 );
 
   always_ff @(posedge clk_i or negedge rst_ni) begin

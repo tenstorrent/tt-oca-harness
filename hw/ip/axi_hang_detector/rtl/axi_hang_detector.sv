@@ -6,21 +6,26 @@
 //
 // Monitors an AXI bus via an internally instantiated prim_axi_snoop.
 // Counts cycles with outstanding transactions and no completion; when the counter reaches
-// the SW-programmable threshold, asserts irq_o.
+// the SW-programmable threshold, asserts irq_o. The threshold is loaded whenever the
+// detector is disabled, the bus is idle or a transaction completes, so a new value takes
+// effect at the next stall window, and a threshold of zero disables detection.
 // irq_o is a direct combinational level with no status latch, gated by enable_i and
 // irq_en_i.
-// irq_test_i forces irq_o high for firmware bring-up without a real bus stall.
-// Configuration inputs come from the cpu_ctrl register block in the clk_i domain.
+// irq_test_i forces irq_o high for firmware bring-up without a real bus stall, while enable_i
+// and irq_en_i are set.
+// Configuration inputs are in the clk_i domain; in smc_base they come from the
+// smc_base_config register block.
 
 `include "prim_assert.sv"
 
 module axi_hang_detector #(
-  parameter int unsigned OutstandingTx = 6                  // Max outstanding tracked by the snoop.
+  parameter int unsigned OutstandingTx = 6  // Max outstanding tracked by the snoop.
 ) (
   input  logic           clk_i,                             // System clock.
   input  logic           rst_ni,                            // Async reset, active-low.
 
-  input  logic           snoop_aw_valid_i,                  // Snooped AW valid (same as prim_axi_snoop).
+  input  logic           snoop_aw_valid_i,                  // Snooped AW valid (same as
+                                                            // prim_axi_snoop).
   input  logic           snoop_aw_ready_i,                  // Snooped AW ready.
   input  logic           snoop_w_valid_i,                   // Snooped W valid.
   input  logic           snoop_b_valid_i,                   // Snooped B valid.
@@ -31,15 +36,24 @@ module axi_hang_detector #(
   input  logic           snoop_r_ready_i,                   // Snooped R ready.
   input  logic           snoop_r_last_i,                    // Snooped R last.
 
-  input  logic           enable_i,                          // CTRL.enable; detector enable.
+  input  logic           enable_i,                          // CTRL.enable; detector enable. Low
+                                                            // reloads the counter and holds irq_o
+                                                            // low.
   input  logic           irq_en_i,                          // CTRL.irq_en; interrupt enable.
-  input  logic           irq_test_i,                        // CTRL.irq_test; force irq_o for bring-up.
-  input  logic [19:0]    threshold_i,                       // TIMEOUT_THRESHOLD.value; stall-cycle threshold.
+  input  logic           irq_test_i,                        // CTRL.irq_test; forces irq_o while
+                                                            // enable_i and irq_en_i are set.
+  input  logic [19:0]    threshold_i,                       // TIMEOUT_THRESHOLD.value; stalled
+                                                            // clk_i cycles before irq_o asserts;
+                                                            // zero disables detection.
 
-  output logic           bus_active_o,                      // Pass-through bus_active from the snoop.
+  output logic           bus_active_o,                      // Pass-through bus_active from the
+                                                            // snoop.
 
-  output logic           irq_o                              // Hang interrupt as a direct combinational level.
-                                                            // Asserts when enable_i and irq_en_i are set and the stall counter reaches threshold_i, or when irq_test_i is set.
+  output logic           irq_o                              // Hang interrupt as a direct
+                                                            // combinational level. Asserts when
+                                                            // enable_i and irq_en_i are set and
+                                                            // either the stall counter reaches
+                                                            // threshold_i or irq_test_i is set.
 );
 
   /////////////////////////////

@@ -3,8 +3,10 @@
 
 // Implement the DEBUG_CONTROL TDR for clock-stop and boot-stall controls.
 //
-// Captures cla_clock_stop_i into the shift path and updates control outputs on Update-DR.
-// Drives jtag_clock_stop_o, cla_clock_stop_en_o, boot_stall_ovrd_o, and boot_stall_o.
+// Captures cla_clock_stop_i, synchronized to TCK through two flops, into bit 4 and updates
+// the control outputs from bits [3:0] on the falling TCK edge of Update-DR; bit 0 is nearest
+// TDO. Drives jtag_clock_stop_o, cla_clock_stop_en_o, boot_stall_ovrd_o, and boot_stall_o,
+// which reset low on the scan-control reset.
 
 module jtag_debug_ctrl_reg
   import prim_jtag_pkg::*;
@@ -13,12 +15,13 @@ module jtag_debug_ctrl_reg
   input  logic             scan_in_i,   // Scan data in (TDI).
   output logic             scan_out_o,  // Scan data out (TDO).
 
-  input  logic             cla_clock_stop_i,  // CLA clock stop status.
+  input  logic             cla_clock_stop_i,  // CLA clock stop status; asynchronous, synchronized
+                                              // to TCK.
 
-  output logic             jtag_clock_stop_o,  // JTAG stop clock control.
-  output logic             cla_clock_stop_en_o,  // CLA clock stop enable.
-  output logic             boot_stall_ovrd_o,  // Boot stall override enable.
-  output logic             boot_stall_o  // Boot stall control value.
+  output logic             jtag_clock_stop_o,  // JTAG stop clock control, bit 3.
+  output logic             cla_clock_stop_en_o,  // CLA clock stop enable, bit 2.
+  output logic             boot_stall_ovrd_o,  // Boot stall override enable, bit 1.
+  output logic             boot_stall_o  // Boot stall control value, bit 0.
 );
 
   //--------------------------------------------------------------------------

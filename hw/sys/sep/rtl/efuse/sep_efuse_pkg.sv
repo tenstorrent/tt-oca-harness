@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Define SEP eFuse map, AXI-Lite, and fuse-command typedefs.
+// Define SEP eFuse map, AXI-Lite, APB, and fuse-command typedefs.
 //
-// Shadow-register and command structs feed sep_efuse_wrapper and lifecycle control.
+// Describes the 8192-bit fuse array as per-register shadow structs and the efuse_map_t
+// union, and derives the 96-bit lock field and the Class 1 shadow ranges from the generated
+// register map. Used by sep_efuse_wrapper, sep_lifecycle_ctrl, sep_crypto and sep.
 
 package sep_efuse_pkg;
   import och_sep_top_addrmap_pkg::*;

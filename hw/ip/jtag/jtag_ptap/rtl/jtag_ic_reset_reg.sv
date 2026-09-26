@@ -6,7 +6,8 @@
 // Present the override controls to consumers with conventional polarity.
 //
 // Per reset port the TDR stores reset_enable and reset_control, plus a single reset_hold
-// bit nearest TDO:
+// bit nearest TDO. reset_hold resets to 1 only on tap_ctrl_i.trst_n; while it is 0 the
+// scan-control reset does not clear reset_enable and reset_control:
 //
 // - Despite its name, reset_enable is active-low: POR/TRST default 1 means JTAG override
 //   disabled so the normal reset path passes through; writing 0 enables override for
@@ -36,11 +37,14 @@ module jtag_ic_reset_reg
   output logic             scan_out_o,  // Scan data out (TDO).
 
   /* verilator lint_off UNUSEDSIGNAL */
-  input  jtag_tap_ctrl_t   tap_ctrl_i,  // JTAG TAP control (tms, trst_n, tck).
+  input  jtag_tap_ctrl_t   tap_ctrl_i,  // JTAG TAP control; only trst_n is used, as the reset of
+                                        // reset_hold.
   /* verilator lint_on UNUSEDSIGNAL */
 
-  output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ovrd_o,  // 1 ⇒ JTAG overriding this port (== !reset_enable).
-  output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_o  // Active-low reset value (== reset_control TDR field).
+  output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ovrd_o,  // 1 ⇒ JTAG overriding this port (==
+                                                           // !reset_enable).
+  output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_o  // Active-low reset value (==
+                                                            // reset_control TDR field).
 );
   logic unused_tap_ctrl;
   assign unused_tap_ctrl = tap_ctrl_i.tms;

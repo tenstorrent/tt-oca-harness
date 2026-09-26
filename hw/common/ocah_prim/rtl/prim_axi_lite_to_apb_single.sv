@@ -21,28 +21,29 @@ module prim_axi_lite_to_apb_single #(
   localparam type data_t = logic [AXI_DATA_WIDTH-1:0],  // Data type alias.
   localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]  // Strobe type alias.
 ) (
-  input logic clk_i,  // Clock.
+  input logic clk_i,  // Clock shared by the AXI-Lite and APB sides of the bridge.
   input logic rst_ni,  // Async reset, active-low.
 
-  input  logic            axi_lite_awvalid_i,  // AXI-Lite awvalid.
-  input  addr_t           axi_lite_awaddr_i,  // AXI-Lite awaddr.
-  input  axi_pkg::prot_t  axi_lite_awprot_i,  // AXI-Lite awprot.
-  output logic            axi_lite_awready_o,  // AXI-Lite awready.
-  input  logic            axi_lite_wvalid_i,  // AXI-Lite wvalid.
-  input  data_t           axi_lite_wdata_i,  // AXI-Lite wdata.
-  input  strb_t           axi_lite_wstrb_i,  // AXI-Lite wstrb.
-  output logic            axi_lite_wready_o,  // AXI-Lite wready.
-  output logic            axi_lite_bvalid_o,  // AXI-Lite bvalid.
-  output axi_pkg::resp_t  axi_lite_bresp_o,  // AXI-Lite bresp.
-  input  logic            axi_lite_bready_i,  // AXI-Lite bready.
-  input  logic            axi_lite_arvalid_i,  // AXI-Lite arvalid.
-  input  addr_t           axi_lite_araddr_i,  // AXI-Lite araddr.
-  input  axi_pkg::prot_t  axi_lite_arprot_i,  // AXI-Lite arprot.
-  output logic            axi_lite_arready_o,  // AXI-Lite arready.
-  output logic            axi_lite_rvalid_o,  // AXI-Lite rvalid.
-  output data_t           axi_lite_rdata_o,  // AXI-Lite rdata.
-  output axi_pkg::resp_t  axi_lite_rresp_o,  // AXI-Lite rresp.
-  input  logic            axi_lite_rready_i,  // AXI-Lite rready.
+  input  logic            axi_lite_awvalid_i,  // Write-address valid from the AXI-Lite manager.
+  input  addr_t           axi_lite_awaddr_i,  // Write byte address, decoded against [ADDR_START,
+                                              // ADDR_END).
+  input  axi_pkg::prot_t  axi_lite_awprot_i,  // Write protection attributes, forwarded to pprot_o.
+  output logic            axi_lite_awready_o,  // Write-address ready to the AXI-Lite manager.
+  input  logic            axi_lite_wvalid_i,  // Write-data valid from the AXI-Lite manager.
+  input  data_t           axi_lite_wdata_i,  // Write data, forwarded to pwdata_o.
+  input  strb_t           axi_lite_wstrb_i,  // Write byte strobes, forwarded to pstrb_o.
+  output logic            axi_lite_wready_o,  // Write-data ready to the AXI-Lite manager.
+  output logic            axi_lite_bvalid_o,  // Write-response valid to the AXI-Lite manager.
+  output axi_pkg::resp_t  axi_lite_bresp_o,  // Write response; SLVERR on pslverr_i, DECERR outside the decode range.
+  input  logic            axi_lite_bready_i,  // Write-response ready from the AXI-Lite manager.
+  input  logic            axi_lite_arvalid_i,  // Read-address valid from the AXI-Lite manager.
+  input  addr_t           axi_lite_araddr_i,  // Read byte address, decoded against [ADDR_START, ADDR_END).
+  input  axi_pkg::prot_t  axi_lite_arprot_i,  // Read protection attributes, forwarded to pprot_o.
+  output logic            axi_lite_arready_o,  // Read-address ready to the AXI-Lite manager.
+  output logic            axi_lite_rvalid_o,  // Read-data valid to the AXI-Lite manager.
+  output data_t           axi_lite_rdata_o,  // Read data returned from prdata_i.
+  output axi_pkg::resp_t  axi_lite_rresp_o,  // Read response; SLVERR on pslverr_i, DECERR outside the decode range.
+  input  logic            axi_lite_rready_i,  // Read-data ready from the AXI-Lite manager.
 
   output logic       psel_o,  // APB PSEL.
   output logic       penable_o,  // APB PENABLE.

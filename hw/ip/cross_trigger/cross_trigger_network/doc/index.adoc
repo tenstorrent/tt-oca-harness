@@ -28,46 +28,14 @@ The CTN serves four purposes:
 
 == Configuration Parameters
 
-<<ctn-configuration-parameters-table>> lists the port-count and internal-trigger
-configuration parameters.
+The CTN is configured through its external and internal port counts, the number of
+clock-stop request inputs, and the protocol of each internal CTP.
 
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="CTN configuration parameters" tabindex="0">
-++++
+The parameters of `cross_trigger_network` are listed in xref:ROOT:rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.adoc[cross_trigger_network].
 endif::backend-html5[]
-
-[[ctn-configuration-parameters-table]]
-[cols="<28,<12,<12,<48",options="header",role="port-reference"]
-.CTN configuration parameters
-|===
-|Parameter |Range |Default |Description
-
-|`NUM_CTP`
-|1–32
-|16
-|Number of external Cross Trigger Ports.
-
-|`NUM_INT_CT`
-|0–32
-|10
-|Number of internal cross triggers.
-
-|`NUM_CLK_STOP_REQ`
-|1–32
-|9
-|Number of clock-stop request inputs (`xtrig_clk_stop_req_i` width).
-
-|`INT_CT_MODE`
-|bit vector
-|`'0`
-|Operating mode per internal CTP: 0 = pulse/wire-OR, 1 = handshake/P2P.
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters of `cross_trigger_network` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 The DTP passes these counts through as `XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and

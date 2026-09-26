@@ -6,21 +6,25 @@
 //
 // Stores NUM_SLOTS x WORDS_PER_SLOT entries of DATA_WIDTH bits.
 //
-// - Write port: KM (Key Manager CPU).
+// - Write port: KM; in km_kpv it carries CPU writes and, while an erase runs, the
+//   eraser's writes.
 // - Read port: KM only (combinational, zero-latency).
 //
 // Key data storage has no reset: the power-up value is undefined for security. The wipe
-// input provides a synchronous bulk-clear of all entries.
+// input provides a synchronous bulk-clear of all entries and takes priority over a write
+// in the same cycle.
 
 module km_kpv_regfile #(
   parameter int unsigned NUM_SLOTS      = 64,  // Number of key slots.
-  parameter int unsigned WORDS_PER_SLOT = 16,  // Words per slot.
+  parameter int unsigned WORDS_PER_SLOT = 16,  // Key-data words in each slot; the file holds
+                                               // NUM_SLOTS * WORDS_PER_SLOT entries.
   parameter int unsigned DATA_WIDTH     = 32   // Data width in bits.
 ) (
   input  logic                                    clk_i,  // System clock.
 
   input  logic                                    wipe_i,  // Bulk wipe: zeroes ALL entries on
-                                                           // the next clock edge.
+                                                           // the next clock edge, overriding
+                                                           // any write.
 
   input  logic                                    wr_a_en_i,        // KM write port enable.
   input  logic [$clog2(NUM_SLOTS*WORDS_PER_SLOT)-1:0] wr_a_addr_i,  // KM write port flat address.

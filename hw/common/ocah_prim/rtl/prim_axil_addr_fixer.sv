@@ -4,7 +4,8 @@
 // Widen or truncate AXI-Lite AW and AR addresses between two struct interfaces.
 //
 // Pass every other AXI-Lite field through unchanged.
-// INPUT_ADDR_W and OUTPUT_ADDR_W set whether the path pads or trims the address.
+// INPUT_ADDR_W and OUTPUT_ADDR_W set whether the path zero-pads the upper address bits or
+// drops them. The module is purely combinational.
 
 module prim_axil_addr_fixer #(
   parameter int unsigned INPUT_ADDR_W  = 64,  // Address width on the input AXI-Lite side.

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Run OpenTitan Repetition, Adaptive Proportion, and Markov health tests with a unified status byte.
+// Run OpenTitan Repetition, Adaptive Proportion, and Markov health tests with a unified status
+// byte.
 //
 // enable_i selects which tests run; window_wrap_pulse_i closes each window. The block
 // exposes raw repetition/APT/Markov counts and apt_fail_hi_o/apt_fail_lo_o pulses.
@@ -19,29 +20,54 @@
 // path because a glitched counter can stop reporting real failures.
 
 module entropy_health_test #(
-  parameter int unsigned DATA_WIDTH = 32  // Data width.
+  parameter int unsigned DATA_WIDTH = 32  // Number of parallel entropy bit streams tested, one
+                                          // counter set per bit.
 ) (
   input       logic                  clk_i,  // System clock.
   input       logic                  rst_ni,  // Active-low reset.
-  input       logic [DATA_WIDTH-1:0] entropy_i,  // Entropy.
-  input       logic                  entropy_valid_i,  // Entropy valid.
-  input       logic [2:0]            enable_i,  // Block enable.
-  input       logic [7:0]            repetition_limit_i,  // Repetition limit.
-  input       logic [15:0]           proportion_limit_1bit_i,  // Proportion limit 1bit.
-  input       logic [15:0]           proportion_limit_lo_i,  // Proportion limit lo.
-  input       logic [15:0]           markov_prob_01_threshold_i,  // Markov prob 01 threshold.
-  input       logic [15:0]           markov_prob_10_threshold_i,  // Markov prob 10 threshold.
-  input       logic                  window_wrap_pulse_i,  // Window wrap pulse.
+  input       logic [DATA_WIDTH-1:0] entropy_i,  // Entropy word; each bit is tested as its own
+                                                 // stream.
+  input       logic                  entropy_valid_i,  // Qualifies entropy_i for one sample.
+  input       logic [2:0]            enable_i,  // Per-test enables: bit 0 repetition, bit 1 APT,
+                                                // bit 2 Markov; a clear bit holds that test's
+                                                // counters cleared.
+  input       logic [7:0]            repetition_limit_i,  // Repetition-count failure threshold: a
+                                                          // bit repeating this many consecutive
+                                                          // samples fails.
+  input       logic [15:0]           proportion_limit_1bit_i,  // APT high threshold; fails when the
+                                                               // largest per-bit ones count in a
+                                                               // window exceeds it.
+  input       logic [15:0]           proportion_limit_lo_i,  // APT low threshold; fails when the
+                                                             // smallest per-bit ones count in a
+                                                             // window falls below it.
+  input       logic [15:0]           markov_prob_01_threshold_i,  // Markov high threshold; fails
+                                                                  // when the largest per-bit 01/10
+                                                                  // pair count exceeds it.
+  input       logic [15:0]           markov_prob_10_threshold_i,  // Markov low threshold; fails
+                                                                  // when the smallest per-bit 01/10
+                                                                  // pair count falls below it.
+  input       logic                  window_wrap_pulse_i,  // End-of-window strobe that evaluates
+                                                           // and restarts the APT and Markov
+                                                           // counts.
 
-  output      logic [15:0]           ctr_repetition_o,  // Ctr repetition.
-  output      logic [15:0]           apt_pattern_count_1bit_o,  // Apt pattern count 1bit.
-  output      logic [15:0]           apt_pattern_count_2bit_o,  // Apt pattern count 2bit.
-  output      logic [15:0]           count_01_o,  // Count 01.
-  output      logic [15:0]           count_10_o,  // Count 10.
-  output      logic                  apt_fail_hi_o,  // Apt fail hi.
-  output      logic                  apt_fail_lo_o,  // Apt fail lo.
-  output      logic [7:0]            status_o,  // Status.
-  output      logic                  count_err_o  // Count err.
+  output      logic [15:0]           ctr_repetition_o,  // Longest current run of identical samples
+                                                        // across all bit streams.
+  output      logic [15:0]           apt_pattern_count_1bit_o,  // Largest per-bit ones count in the
+                                                                // current APT window.
+  output      logic [15:0]           apt_pattern_count_2bit_o,  // Smallest per-bit ones count in
+                                                                // the current APT window.
+  output      logic [15:0]           count_01_o,  // Largest per-bit Markov 01/10 pair count in the
+                                                  // current window.
+  output      logic [15:0]           count_10_o,  // Smallest per-bit Markov 01/10 pair count in the
+                                                  // current window.
+  output      logic                  apt_fail_hi_o,  // Single-cycle pulse at a window end where the
+                                                     // APT high threshold is exceeded.
+  output      logic                  apt_fail_lo_o,  // Single-cycle pulse at a window end where the
+                                                     // APT low threshold is undershot.
+  output      logic [7:0]            status_o,  // Health-test failure pulses, encoded as listed
+                                                // above.
+  output      logic                  count_err_o  // Redundant-counter disagreement in any of the
+                                                  // three tests.
 );
 
   /////////////////////

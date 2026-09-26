@@ -3,7 +3,7 @@
 
 // Synchronize d_i into the clk_i domain through 3 flops.
 //
-// Chain 3 positive-edge flops so q_o is a metastability-hardened copy of d_i. Async
+// Chain 3 positive-edge flops so q_o is d_i delayed by three clk_i cycles. Async
 // active-low rst_ni clears the chain to 0.
 
 module prim_flop_3sync_r (

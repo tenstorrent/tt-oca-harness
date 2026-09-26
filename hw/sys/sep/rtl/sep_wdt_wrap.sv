@@ -1,31 +1,51 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Wrap the watchdog timer with an AXI register interface.
+// Wrap the OpenTitan aon_timer watchdog with an AXI register interface.
 //
-// clk_wdt_i times the bark and bite counters. wdt_timer_rst_req_o requests a system reset
-// bite.
+// The 64-bit AXI4 slave is downsized to 32 bits, rebased by subtracting the WDT base
+// address, converted to AXI-Lite, and bridged to the aon_timer TL-UL port.
+// clk_wdt_i times the bark and bite counters; rst_ni is synchronized into that domain.
+// wdt_timer_rst_req_o requests a system reset bite.
 // wdt_alert_o aggregates the fatal alert pulse with integ_fail of all channels.
 // wdt_debug_sleep_mode_i pauses the watchdog in debug sleep.
+// RACL is compiled out, lifecycle escalation is tied off, and the wakeup timer outputs are
+// unused.
 
 module sep_wdt_wrap (
   input  logic                         clk_i,  // System clock.
-  input  logic                         clk_wdt_i,  // 200 kHz clock for the WDT timer.
-  input  logic                         rst_ni,  // Active-low reset.
+  input  logic                         clk_wdt_i,  // Watchdog counter clock, asynchronous to clk_i;
+                                                   // 200 kHz in sep.
+  input  logic                         rst_ni,  // Active-low reset; also synchronized into the
+                                                // clk_wdt_i domain.
 
   input  logic                         test_en_i,  // DFT test-enable (scan-enable).
-  input  logic                         scan_rst_ni,  // DFT scan reset, active-low; bypasses the reset synchronizer.
+  input  logic                         scan_rst_ni,  // DFT scan reset, active-low; bypasses the
+                                                     // reset synchronizer.
 
-  input  sep_pkg::sep_32_64_6_12_axi_req_t    sep_wdt_axi_req_i,  // AXI4 Slave Interface.
-  output sep_pkg::sep_32_64_6_12_axi_resp_t   sep_wdt_axi_resp_o,  // SEP WDT AXI response.
+  input  sep_pkg::sep_32_64_6_12_axi_req_t    sep_wdt_axi_req_i,  // 64-bit AXI4 slave for the
+                                                                  // watchdog registers, at system
+                                                                  // addresses.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t   sep_wdt_axi_resp_o,  // Response on the watchdog
+                                                                   // register slave.
 
-  output logic                         intr_wdog_timer_bark_o,  // intr wdog timer bark.
-  output logic                         wdt_timer_rst_req_o,  // WDT timer rst request.
-  output logic                         wdt_alert_o,  // Aggregated fatal alert (alert pulse | integ_fail of all channels).
-  input  logic                         wdt_debug_sleep_mode_i,  // WDT debug sleep mode.
+  output logic                         intr_wdog_timer_bark_o,  // Watchdog bark interrupt; in sep,
+                                                                // drives the SEP CPU non-maskable
+                                                                // interrupt.
+  output logic                         wdt_timer_rst_req_o,  // Watchdog bite reset request,
+                                                             // active-high, from the clk_wdt_i
+                                                             // domain.
+  output logic                         wdt_alert_o,  // Aggregated fatal alert (alert pulse |
+                                                     // integ_fail of all channels).
+  input  logic                         wdt_debug_sleep_mode_i,  // Sleep indication to the watchdog,
+                                                                // which pauses while it is high if
+                                                                // configured to pause in sleep.
 
-  output logic                         bus_err_o,  // bus err o.
-  input  logic                         bus_err_clr_i  // bus err clr.
+  output logic                         bus_err_o,  // Set by a TL-UL error response on the register
+                                                   // bridge; sticky until bus_err_clr_i.
+  input  logic                         bus_err_clr_i  // Single-cycle clear for bus_err_o, pulsed by
+                                                      // PERIPH_BUS_ERR_CLEAR.wdt in sep; a fault in
+                                                      // the same cycle still latches.
 );
 
   localparam int unsigned NumAlerts = aon_timer_reg_pkg::NumAlerts;

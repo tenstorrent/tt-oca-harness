@@ -19,10 +19,13 @@ module drbg_edn_axis_adapter
   input  wire logic                                                   clk_i, // System clock.
   input  wire logic                                                   rst_ni, // Async reset, active-low.
 
-  output edn_pkg::edn_req_t [EDN_ENDPOINT_COUNT-1:0]                  edn_req_o, // Native EDN requests toward EDN.
-  input  wire edn_pkg::edn_rsp_t [EDN_ENDPOINT_COUNT-1:0]             edn_rsp_i, // Native EDN responses from EDN.
+  output edn_pkg::edn_req_t [EDN_ENDPOINT_COUNT-1:0]                  edn_req_o, // Native EDN requests toward EDN; edn_req is high
+                                                                                 // outside reset while the endpoint FIFO is not full.
+  input  wire edn_pkg::edn_rsp_t [EDN_ENDPOINT_COUNT-1:0]             edn_rsp_i, // Native EDN responses from EDN; each edn_ack writes
+                                                                                 // {edn_fips, edn_bus} into the endpoint FIFO.
 
-  output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0]                     edn_axis_o, // Per-endpoint AXI-Stream out.
+  output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0]                     edn_axis_o, // Per-endpoint AXI-Stream out; tstrb is all ones and
+                                                                                  // tuser carries the word's edn_fips bit.
   input  wire drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0]                edn_axis_i, // Per-endpoint AXI-Stream ready.
 
   output logic [EDN_ENDPOINT_COUNT-1:0]                               endpoint_fifo_full_o, // Per-endpoint FIFO full.

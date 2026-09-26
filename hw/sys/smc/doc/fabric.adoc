@@ -30,60 +30,55 @@ image::SMC_OutputFabric_FIG006.png[alt="SMC output fabric and remapping paths",w
 
 == Configuration Parameters
 
-The fabric supports the following configuration parameters to tune
-performance and area (<<smc-fabric-configuration-parameters-table>>).
+The fabric modules take parameters for the number of inbound and outbound
+filter entries, filter pipelining, the outstanding-transaction limit of the
+output fabric remap path, alias address remap enablement, and the M-mode and
+Xvisor remap region bases.
+
+ifdef::backend-html5[]
+The parameters of `smc_fabric` are listed in xref:ROOT:rtl-modules-reference/sys/smc/smc_fabric.adoc[smc_fabric].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `smc_fabric` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+ifdef::backend-html5[]
+The parameters of `smc_output_fabric` are listed in xref:ROOT:rtl-modules-reference/sys/smc/smc_output_fabric.adoc[smc_output_fabric].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `smc_output_fabric` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+Further outstanding-transaction limits are fixed by package constants rather
+than module parameters (<<smc-fabric-configuration-parameters-table>>).
 
 [[smc-fabric-configuration-parameters-table]]
-.SMC Fabric Configuration Parameters
+.SMC Fabric Transaction Limits
 [width="100%",cols="30%,15%,55%",options="header",]
 |=======================================================================
-|Parameter |Default |Description
-|*AXI4 Network Parameters* | |
+|Constant |Value |Description
+|*AXI4 Network* | |
 
-|MaxTrans |32 |Maximum outstanding transactions per AXI ID in output
-fabric
+|`smc_pkg::FABRIC_MAX_TRANS` |32 |Maximum outstanding transactions per
+AXI ID bucket in the fabric demultiplexers and traffic filters
 
-|MAX_INFLIGHT_IDS |4 |Maximum number of in-flight transaction IDs for ID
-remapping
+|`smc_pkg::ERR_SLV_MAX_TRANS` |32 |Maximum outstanding transactions for
+each error subordinate, across all IDs
 
-|FABRIC_MAX_TRANS |32 |Maximum outstanding transactions per AXI ID in
-fabric crossbars
+|*AXI4-Lite Network* | |
 
-|ERR_SLV_MAX_TRANS |32 |Maximum outstanding transactions for error slave
-(across all IDs)
+|`smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxMstTrans` |4 |Maximum
+outstanding transactions each manager connected to the local fabric
+AXI4-Lite crossbar can have in flight
 
-|NumFilters |16 |Number of inbound and outbound traffic filter instances
-
-|FilterReqPipelineEnable |0 |Enable request path pipelining in filters
-(timing vs. latency trade-off)
-
-|FilterRspPipelineEnable |0 |Enable response path pipelining in filters
-(timing vs. latency trade-off)
-
-|*AXI4-Lite Network Parameters* | |
-
-|AXI_MAX_WRITE_TXNS |4 |Maximum outstanding write transactions in local
-fabric crossbar
-
-|AXI_MAX_READ_TXNS |4 |Maximum outstanding read transactions in local
-fabric crossbar
-
-|*Address Remap Parameters* | |
-
-|MmodeBaseAddr |0x100_0000 |Base address for M-mode remapped region
-(relative to SMC base)
-
-|XvisorBaseAddr |0x180_0000 |Base address for Xvisor remapped region
-(relative to SMC base)
-
-|NoRemap |0 |Disable address remapping when set (reduces area)
+|`smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans` |4 |Maximum
+outstanding transactions each subordinate connected to the local fabric
+AXI4-Lite crossbar can have in flight
 |=======================================================================
 
-These parameters control fabric throughput, buffering depth, and feature
-enablement. The AXI4 network parameters (MaxTrans, FABRIC_MAX_TRANS)
-define the pipeline depth for high-performance traffic, while AXI4-Lite
-parameters (AXI_MAX_WRITE_TXNS, AXI_MAX_READ_TXNS) control outstanding
-transactions to peripherals.
+These limits set the buffering depth of the fabric. The AXI4 limits bound
+the outstanding high-performance traffic, while the AXI4-Lite limits bound
+outstanding transactions to peripherals and configuration registers.
 
 == Dual-Network Architecture
 

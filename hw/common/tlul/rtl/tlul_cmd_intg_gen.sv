@@ -4,13 +4,13 @@
 
 // Generate TL-UL A-channel command integrity.
 //
-// Copy tl_i to tl_o and fill in the command integrity fields. When EnableDataIntgGen is
-// set, also generate A-channel data integrity.
+// Copy tl_i to tl_o and fill in a_user.cmd_intg. When EnableDataIntgGen is set, also
+// generate a_user.data_intg from a_data; otherwise pass it through from tl_i.
 
 module tlul_cmd_intg_gen
   import tlul_pkg::*;
 #(
-  parameter bit EnableDataIntgGen = 1'b1  // When set, also generate A-channel data integrity.
+  parameter bit EnableDataIntgGen = 1'b1  // Generate data_intg; clear passes it through.
 ) (
   input  tl_h2d_t tl_i,  // A-channel request before integrity insertion.
   output tl_h2d_t tl_o   // A-channel request with integrity fields filled.

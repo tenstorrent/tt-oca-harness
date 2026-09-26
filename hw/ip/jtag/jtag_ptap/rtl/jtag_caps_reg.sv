@@ -4,7 +4,8 @@
 // Expose a read-only capabilities TDR built from elaboration-time feature parameters.
 //
 // Packs enable bits for BSR and optional instructions, IC_RESET port counts, STAP counts,
-// cross-trigger counts, and OCH_VER into the shift register.
+// cross-trigger counts, and OCH_VER into the 60-bit shift register, OCH_VER nearest TDO.
+// The parameters only set the reported bits; they enable nothing in this module.
 // Contents are fixed from parameters; scan_ctrl_i and scan_in_i/scan_out_o form the DR
 // scan path.
 
@@ -13,28 +14,34 @@ module jtag_caps_reg
 
     `include "prim_assert.sv"
 #(
-    parameter bit  BSR_ENABLE          = 1,  // Enable mandatory boundary-scan instructions.
-    parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Enable optional EXTEST_TRAIN.
-    parameter bit  EXTEST_PULSE_ENABLE = 1,  // Enable optional EXTEST_PULSE.
-    parameter bit  INTEST_ENABLE       = 1,  // Enable optional INTEST.
-    parameter bit  CLAMP_ENABLE        = 1,  // Enable optional CLAMP.
-    parameter bit  HIGHZ_ENABLE        = 1,  // Enable optional HIGHZ.
-    parameter bit  RUNBIST_ENABLE      = 1,  // Enable optional RUNBIST.
-    parameter bit  TMP_ENABLE          = 1,  // Enable TMP controller and instructions.
-    parameter bit  IC_RESET_ENABLE     = 1,  // Enable the IC_RESET TDR.
-    parameter bit  SMC_DBG_ENABLE      = 1,  // Enable SMC debug JTAG2AXI ports.
-    parameter bit  SEP_DBG_ENABLE      = 1,  // Enable SEP debug STAP.
-    parameter bit  STAP_IO_ENABLE      = 1,  // Enable chiplet-to-chiplet STAP.
+    parameter bit  BSR_ENABLE          = 1,  // Mandatory boundary-scan instructions present; bit 8.
+    parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Optional EXTEST_TRAIN present; bit 9.
+    parameter bit  EXTEST_PULSE_ENABLE = 1,  // Optional EXTEST_PULSE present; bit 10.
+    parameter bit  INTEST_ENABLE       = 1,  // Optional INTEST present; bit 11.
+    parameter bit  CLAMP_ENABLE        = 1,  // Optional CLAMP present; bit 12.
+    parameter bit  HIGHZ_ENABLE        = 1,  // Optional HIGHZ present; bit 13.
+    parameter bit  RUNBIST_ENABLE      = 1,  // Optional RUNBIST present; bit 14.
+    parameter bit  TMP_ENABLE          = 1,  // TMP controller and instructions present; bit 15.
+    parameter bit  IC_RESET_ENABLE     = 1,  // IC_RESET TDR present; bit 16.
+    parameter bit  SMC_DBG_ENABLE      = 1,  // SMC debug JTAG2AXI ports present; bit 41.
+    parameter bit  SEP_DBG_ENABLE      = 1,  // SEP debug STAP present; bit 42.
+    parameter bit  STAP_IO_ENABLE      = 1,  // Chiplet-to-chiplet STAP present; bit 43.
 
-    parameter int unsigned  NUM_SMC_IC_RESET = 0,  // Port count of SMC IC_RESET slice (0..255).
-    parameter int unsigned  NUM_SEP_IC_RESET = 0,  // Port count of SEP IC_RESET slice (0..255).
-    parameter int unsigned  NUM_EXT_IC_RESET = 0,  // Port count of external IC_RESET slice (0..255).
-    parameter int unsigned  NUM_EXTRA_STAPS  = 0,  // Additional DTP STAP count.
+    parameter int unsigned  NUM_SMC_IC_RESET = 0,  // Port count of SMC IC_RESET slice (0..255);
+                                                   // bits [40:33].
+    parameter int unsigned  NUM_SEP_IC_RESET = 0,  // Port count of SEP IC_RESET slice (0..255);
+                                                   // bits [32:25].
+    parameter int unsigned  NUM_EXT_IC_RESET = 0,  // Port count of external IC_RESET slice
+                                                   // (0..255); bits [24:17].
+    parameter int unsigned  NUM_EXTRA_STAPS  = 0,  // Additional DTP STAP count (0..15); bits
+                                                   // [47:44].
 
-    parameter int unsigned  NUM_XTRIG_CTP     = 8,  // Cross-trigger port count in CAPS.
-    parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Internal cross-trigger count in CAPS.
+    parameter int unsigned  NUM_XTRIG_CTP     = 8,  // Cross-trigger port count (0..63); bits
+                                                    // [53:48].
+    parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Internal cross-trigger count (0..63); bits
+                                                    // [59:54].
 
-    parameter logic [7:0]   OCH_VER = 8'h00  // DTP IP major version number.
+    parameter logic [7:0]   OCH_VER = 8'h00  // DTP IP major version number; bits [7:0].
 ) (
     /* verilator lint_off UNUSEDSIGNAL */
     input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.

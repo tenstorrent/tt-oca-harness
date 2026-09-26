@@ -9,13 +9,20 @@
 
 module entropy_debug_monitor #(
   parameter int unsigned NSIGNALS       = 32,  // Selectable monitor input count.
-  parameter int unsigned FREQ_DIV_WIDTH = 8  // Frequency-divider stage count.
+  parameter int unsigned FREQ_DIV_WIDTH = 8  // Divider tap count including the undivided signal;
+                                             // the ripple divider has FREQ_DIV_WIDTH-1 stages.
 ) (
-  input       logic                                rst_ni,  // Active-low reset.
-  input       logic [$clog2(NSIGNALS)-1:0]         select_signal_i,  // Selecross-trigger signal.
-  input       logic [NSIGNALS-1:0]                 signal_i,  // Signal.
-  input       logic [$clog2(FREQ_DIV_WIDTH-1)-1:0] select_freq_div_i,  // Selecross-trigger freq div.
-  output      logic                                sig_monitor_o  // Sig monitor.
+  input       logic                                rst_ni,  // Active-low asynchronous reset of the
+                                                            // ripple divider.
+  input       logic [$clog2(NSIGNALS)-1:0]         select_signal_i,  // Binary index of the signal_i bit to observe.
+  input       logic [NSIGNALS-1:0]                 signal_i,  // Candidate observe signals; bit
+                                                              // select_signal_i clocks the ripple
+                                                              // divider.
+  input       logic [$clog2(FREQ_DIV_WIDTH-1)-1:0] select_freq_div_i,  // Divider tap index; value k observes the selected
+                                                                       // signal divided by 2^k.
+  output      logic                                sig_monitor_o  // Selected signal after the
+                                                                  // chosen power-of-two divider,
+                                                                  // for an off-chip observe pin.
 );
 
   /////////////

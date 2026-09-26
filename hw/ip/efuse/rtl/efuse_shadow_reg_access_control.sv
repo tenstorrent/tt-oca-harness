@@ -14,48 +14,82 @@
 // locked_field_access_interrupt_o signals locked-field hits.
 
 module efuse_shadow_reg_access_control #(
-  parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // eFuse byte-address width.
+  parameter int unsigned EFUSE_ADDR_WIDTH = 12,  // Width of the MAP window byte offset on
+                                                 // apb_req_paddr_i.
   parameter int unsigned EFUSE_FIELDS = 1,  // eFuse field-map entry count.
-  parameter bit HAS_LC_STATE = 1'b0,    // B0.
+  parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: field index 0 is the lifecycle-state field,
+                                        // exempt from hardware locks and reported on
+                                        // lc_state_access_o.
 
   parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
   parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
-  parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+  parameter type efuse_addr_t = logic,  // Fuse bit-address type; here it only widens the APB byte
+                                        // offset for the field-range lookups.
   parameter type efuse_data_t = logic,  // Fuse data-word type.
 
   localparam type efuse_strb_t = logic [3:0],  // APB write-strobe type.
 
-  localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1)  // eFuse field-map entry count.
+  localparam int unsigned LOCK_VECTOR_BITS = 2 * (EFUSE_FIELDS - 1)  // Hardware lock bits: a write and a read lock
+                                                                     // per field, excluding the LOCKS meta-field.
 ) (
-  input  logic                                  clk_i,  // System clock.
-  input  logic                                  rst_ni,  // Active-low reset.
+  input  logic                                  clk_i,  // System clock; not used, the module is
+                                                        // combinational.
+  input  logic                                  rst_ni,  // Active-low reset; not used, the module
+                                                         // is combinational.
 
-  input  logic                                  secure_tm_i,  // Secure tm.
+  input  logic                                  secure_tm_i,  // Secure test mode, active-high; adds
+                                                              // each field's secure-test-mode lock
+                                                              // to the write check.
 
-  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Efuse field map.
+  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Per-field byte ranges, lock indices, and
+                                                                    // software lock bits.
 
-  input  logic [EFUSE_ADDR_WIDTH-1:0]           apb_req_paddr_i,  // Apb req paddr (APB Register Interface).
-  input  logic [2:0]                            apb_req_pprot_i,  // Apb req pprot.
-  input  logic                                  apb_req_psel_i,  // Apb req psel.
-  input  logic                                  apb_req_penable_i,  // Apb req penable.
-  input  logic                                  apb_req_pwrite_i,  // Apb req pwrite.
-  input  logic [31:0]                           apb_req_pwdata_i,  // Apb req pwdata.
-  input  logic [3:0]                            apb_req_pstrb_i,  // Apb req pstrb.
+  input  logic [EFUSE_ADDR_WIDTH-1:0]           apb_req_paddr_i,  // Byte offset within the MAP
+                                                                  // window, matched against the
+                                                                  // field byte ranges.
+  input  logic [2:0]                            apb_req_pprot_i,  // APB protection attributes,
+                                                                  // forwarded unchanged.
+  input  logic                                  apb_req_psel_i,  // APB select for the MAP window.
+  input  logic                                  apb_req_penable_i,  // APB access phase; lock checks apply only while
+                                                                    // it and the select are high.
+  input  logic                                  apb_req_pwrite_i,  // APB transfer direction, high
+                                                                   // for a write.
+  input  logic [31:0]                           apb_req_pwdata_i,  // Write data forwarded to the
+                                                                   // shadow registers when the
+                                                                   // access is allowed.
+  input  logic [3:0]                            apb_req_pstrb_i,  // Byte lane enables for the
+                                                                  // write.
 
-  output efuse_apb_resp_t                       apb_resp_o,  // Apb resp.
+  output efuse_apb_resp_t                       apb_resp_o,  // APB response; a locked access
+                                                             // completes with read data 0xBADCAB1E
+                                                             // and no slave error.
 
-  output efuse_apb_req_t                        apb_req_from_ac_o,  // Apb req from ac (APB Interface to/from Access Control).
-  input  efuse_apb_resp_t                       apb_resp_from_ac_i,  // Apb resp from ac.
+  output efuse_apb_req_t                        apb_req_from_ac_o,  // APB request forwarded to the shadow registers;
+                                                                    // zero unless the access passes the lock checks.
+  input  efuse_apb_resp_t                       apb_resp_from_ac_i,  // APB response from the shadow registers for
+                                                                     // accesses that pass the lock checks.
 
-  output logic                                  write_locked_o,  // Write locked (Access Control Status Outputs).
-  output logic                                  write_setup_only_o,  // Write setup only.
-  output logic                                  lc_state_access_o,  // Lc state access.
-  output logic                                  read_locked_o,  // Read locked.
+  output logic                                  write_locked_o,  // High during an APB write access
+                                                                 // to a field that is write locked
+                                                                 // by its hardware lock bit, its
+                                                                 // software lock bits, or its
+                                                                 // secure-test-mode lock.
+  output logic                                  write_setup_only_o,  // High when the addressed field is set-only:
+                                                                     // writes may set bits but not clear them; low
+                                                                     // when its hardware write lock is set.
+  output logic                                  lc_state_access_o,  // High when the address falls in the
+                                                                    // lifecycle-state field.
+  output logic                                  read_locked_o,  // High when the addressed field is
+                                                                // read locked by its hardware or
+                                                                // software lock bit.
 
-  input  logic [LOCK_VECTOR_BITS-1:0]           locks_i,  // Locks.
+  input  logic [LOCK_VECTOR_BITS-1:0]           locks_i,  // Hardware lock bits from the shadow
+                                                          // LOCKS words: write lock at 2n, read
+                                                          // lock at 2n+1 for field n.
 
-  output logic                                  locked_field_access_interrupt_o  // Locked field access interrupt.
+  output logic                                  locked_field_access_interrupt_o  // High during an APB access that a
+                                                                                 // lock blocks.
 );
 
   `include "prim_assert.sv"

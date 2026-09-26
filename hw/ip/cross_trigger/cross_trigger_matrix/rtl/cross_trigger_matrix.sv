@@ -16,15 +16,20 @@ module cross_trigger_matrix
   parameter type axil_req_t = cross_trigger_matrix_pkg::ctm_axil_req_t,  // CTM AXI-Lite request type.
   parameter type axil_resp_t = cross_trigger_matrix_pkg::ctm_axil_resp_t  // CTM AXI-Lite response type.
 ) (
-  input  logic                    clk_i,  // System clock.
-  input  logic                    rst_ni,  // Active-low reset.
+  input  logic                    clk_i,  // System clock for the AXI-Lite CSRs and the routing
+                                          // logic.
+  input  logic                    rst_ni,  // Active-low asynchronous system reset.
 
-  input  axil_req_t               axil_req_i,  // AXI-Lite req (AXI4-Lite Register Interface).
-  output axil_resp_t              axil_resp_o,  // AXI-Lite resp.
+  input  axil_req_t               axil_req_i,  // AXI-Lite CSR request that programs the per-source
+                                               // routing masks; only address bits [7:0] are
+                                               // decoded.
+  output axil_resp_t              axil_resp_o,  // AXI-Lite CSR response.
 
-  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger dst.
+  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger pulses into the routing matrix, one
+                                             // bit per CT_Dst port.
 
-  output logic [NUM_CT_SRC-1:0]   ct_src_o  // Cross-trigger src.
+  output logic [NUM_CT_SRC-1:0]   ct_src_o  // Routed cross-trigger pulses, one registered bit per
+                                            // CT_Src port.
 );
 
   `include "prim_assert.sv"

@@ -6,7 +6,7 @@
 // REG_ADDR_WIDTH/REG_DATA_WIDTH/REG_STRB_WIDTH and reg_addr_t/reg_data_t/reg_strb_t serve
 // register access; NRINGS is the generator-lane count.
 // entropy_source_err_bus_t collects every error and fault that drives INTR_STATUS sticky
-// bits; irq_o is the single OR of those bits.
+// bits; irq_o is the single OR of those bits masked by INTR_ENABLE.
 
 package entropy_source_pkg;
 

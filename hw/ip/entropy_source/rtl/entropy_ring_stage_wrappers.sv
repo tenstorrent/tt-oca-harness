@@ -34,8 +34,8 @@ module entropy_ring_nand2_wrapper (
 endmodule
 
 module entropy_ring_buf_wrapper (
-  input  a_i,                           // Buffer or mux data input
-  output y_o                            // Cell output
+  input  a_i,                           // Buffer data input.
+  output y_o                            // Cell output.
 );
   logic y_cell;
 
@@ -52,10 +52,10 @@ module entropy_ring_buf_wrapper (
 endmodule
 
 module entropy_ring_mux2_wrapper (
-  input  i0_i,                          // I0
-  input  i1_i,                          // I1
-  input  sel_i,                         // Sel
-  output y_o                            // Cell output
+  input  i0_i,                          // Data driven onto y_o while sel_i is low.
+  input  i1_i,                          // Data driven onto y_o while sel_i is high.
+  input  sel_i,                         // Input select: high picks i1_i, low picks i0_i.
+  output y_o                            // Cell output.
 );
   logic y_cell;
 

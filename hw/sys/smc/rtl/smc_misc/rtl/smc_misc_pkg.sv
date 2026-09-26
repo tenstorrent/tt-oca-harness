@@ -3,8 +3,10 @@
 
 // Declare register-map select types for the SMC miscellaneous block.
 //
-// Enumerates the misc register targets the misc wrapper demultiplexes.
-// Exposes NumRegMaps for address decode in smc_misc_wrap.
+// Enumerates the misc register targets the misc wrapper demultiplexes: cold scratch,
+// cold-and-warm scratch, chip_config, NDM reset and the error slave.
+// Exposes NumRegMaps for address decode in smc_misc_wrap; the max() helper is unused by
+// the SMC RTL.
 
 package smc_misc_pkg;
 

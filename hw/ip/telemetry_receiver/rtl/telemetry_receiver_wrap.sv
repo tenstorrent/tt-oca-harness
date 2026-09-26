@@ -3,19 +3,28 @@
 
 // Demux one AXI-Lite slave onto NUM_TELEMETRY_RECEIVERS with dual clocks.
 //
-// Register accesses use clk_i / rst_ni; ATB streams use clk_telemetry_i /
+// Register accesses and the receivers use clk_i / rst_ni; ATB streams use clk_telemetry_i /
 // rst_telemetry_ni.
+// Receiver i decodes at TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times
+// TELEMETRY_RECEIVER_0__REG_MAP_SIZE; other addresses get DECERR with read data 0xBADCAB1E.
+// The demux allows one outstanding transaction per channel.
+// Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes
+// through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one
+// clocked by clk_i.
+// NUM_TELEMETRY_RECEIVERS must be between 1 and MAX_NUM_TELEMETRY_RECEIVERS.
 // TELEMETRY_RECEIVER_BUFFER_DEPTH must be greater than or equal to 2.
 // NUM_REG_MAPS is NUM_TELEMETRY_RECEIVERS plus one for the error slave.
 // Each receiver's debug nibble matches telemetry_receiver's four-bit debug bus.
 
 module telemetry_receiver_wrap #(
   parameter int unsigned NUM_TELEMETRY_RECEIVERS         = 3, // Receiver instance count.
-  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 8, // Per-receiver message FIFO depth; must be >= 2.
+  parameter int unsigned TELEMETRY_RECEIVER_BUFFER_DEPTH = 8, // Per-receiver message FIFO depth;
+                                                              // must be a power of two and >= 2.
   parameter int unsigned TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE [NUM_TELEMETRY_RECEIVERS-1:0] = '{default: 4}, // Per-receiver max counters.
 
-  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0, // Instance 0 register-map base.
-  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
+  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR = 0, // Instance 0 register-map byte base address.
+  parameter bit [telemetry_receiver_wrap_pkg::REG_ADDR_WIDTH-1:0] TELEMETRY_RECEIVER_0__REG_MAP_SIZE      = 0, // Per-instance register-map size in bytes; instances are
+                                                                                                               // contiguous.
 
   localparam int unsigned NUM_REG_MAPS                             = NUM_TELEMETRY_RECEIVERS + 1, // Decode targets: instances + error slave.
   localparam type         telemetry_receiver_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0], // Register-map select type.
@@ -23,8 +32,10 @@ module telemetry_receiver_wrap #(
   localparam telemetry_receiver_wrap_reg_map_select_t UNDEFINED_REG_MAP = // Select index for the error slave.
         telemetry_receiver_wrap_reg_map_select_t'(NUM_REG_MAPS-1)
 ) (
-  input  logic clk_i,                                       // Register-domain clock.
-  input  logic rst_ni,                                      // Register-domain async reset, active-low.
+  input  logic clk_i,                                       // Register-domain clock; also clocks
+                                                            // the receivers.
+  input  logic rst_ni,                                      // Register-domain async reset,
+                                                            // active-low.
 
   input  logic clk_telemetry_i,                             // ATB-domain clock.
   input  logic rst_telemetry_ni,                            // ATB-domain async reset, active-low.
@@ -32,9 +43,9 @@ module telemetry_receiver_wrap #(
   input  telemetry_receiver_wrap_pkg::axil_req_t  axil_req_i, // Shared AXI-Lite request.
   output telemetry_receiver_wrap_pkg::axil_resp_t axil_resp_o, // Shared AXI-Lite response.
 
-  input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i, // Per-receiver ATB data.
-  input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i, // Per-receiver ATB ID.
-  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o, // Per-receiver ATB ready.
+  input  telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0] atdata_i, // Per-receiver ATB data, in the clk_telemetry_i domain.
+  input  telemetry_receiver_pkg::atb_id_t         [NUM_TELEMETRY_RECEIVERS-1:0] atid_i, // Per-receiver ATB ID; crosses into clk_i but the receiver ignores it.
+  output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atready_o, // Per-receiver ATB ready; high while the crossing FIFO has space.
   input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] atvalid_i, // Per-receiver ATB valid.
   output logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afvalid_o, // Per-receiver ATB flush valid.
   input  logic                                    [NUM_TELEMETRY_RECEIVERS-1:0] afready_i, // Per-receiver ATB flush ready.

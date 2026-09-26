@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Wrap axi_alias_remap with register-programmed SMC regions.
+// Apply the register-programmed SMC alias remap to the four input fabric initiators.
 //
-// Converts misc/CSR remap programming into the remap_table the alias engine consumes.
-// Sits on fabric paths that need programmable address aliasing.
+// Converts the alias remap CSR fields into one remap_table, with the address bits below
+// ALIAS_REMAP_IDX_START tied to zero, and feeds it to four combinational axi_alias_remap
+// instances: MMIO, JTAG, log and data accelerator. A request that hits a valid region has
+// its address rebased by the region offset and its AxCACHE set from the region's cacheable
+// bit; a miss passes through unchanged.
 
 module smc_alias_remap_wrap (
   input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_jtag_req_i,  // JTAG AXI Input
@@ -49,14 +52,25 @@ module smc_alias_remap_wrap (
   input  smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_out_remapped_log_resp_i,  // Remapped Log AXI
                                                                                        // Output response.
 
-  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Config struct from
-                                                                                                    // register block --
-                                                                                                    // alias remap.
+  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Alias remap region
+                                                                                                    // start, end, offset,
+                                                                                                    // cacheable and valid
+                                                                                                    // fields from the
+                                                                                                    // register block, shared
+                                                                                                    // by all four paths.
 
-  output smc_pkg::remap_debug_t remap_debug_mmio_o,  // debug structs.
-  output smc_pkg::remap_debug_t remap_debug_jtag_o,  // debug structs.
-  output smc_pkg::remap_debug_t remap_debug_log_o,  // debug structs.
-  output smc_pkg::remap_debug_t remap_debug_dma_o  // debug structs.
+  output smc_pkg::remap_debug_t remap_debug_mmio_o,  // Lowest alias region index hit by the MMIO
+                                                     // path's AW and AR addresses; a miss also
+                                                     // reads as the highest index.
+  output smc_pkg::remap_debug_t remap_debug_jtag_o,  // Lowest alias region index hit by the JTAG
+                                                     // path's AW and AR addresses; a miss also
+                                                     // reads as the highest index.
+  output smc_pkg::remap_debug_t remap_debug_log_o,  // Lowest alias region index hit by the log
+                                                    // path's AW and AR addresses; a miss also reads
+                                                    // as the highest index.
+  output smc_pkg::remap_debug_t remap_debug_dma_o  // Lowest alias region index hit by the data
+                                                   // accelerator path's AW and AR addresses; a miss
+                                                   // also reads as the highest index.
 );
 
   smc_pkg::remap_region_t remap_table[smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0];

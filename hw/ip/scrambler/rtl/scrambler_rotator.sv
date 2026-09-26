@@ -2,13 +2,17 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// Right-rotate data_i by rotate_amt_i modulo DATA_WIDTH.
+// Right-rotate data_i by rotate_amt_i.
 //
-// ROT_WIDTH is clog2(DATA_WIDTH); the rotate amount wraps within the word.
+// The rotate amount is reduced modulo DATA_WIDTH for widths 9, 10 and 12 and wraps
+// naturally when DATA_WIDTH is a power of two; for any other width an amount of DATA_WIDTH
+// or more shifts zeros in instead of rotating.
 
 module scrambler_rotator #(
   parameter int unsigned DATA_WIDTH = 9,                    // Word width to rotate.
-  parameter int unsigned ROT_WIDTH = $clog2(DATA_WIDTH)     // clog2(DATA_WIDTH) rotate-amount width.
+  parameter int unsigned ROT_WIDTH = $clog2(DATA_WIDTH)     // Rotate-amount width;
+                                                            // clog2(DATA_WIDTH) reaches every
+                                                            // rotation.
 ) (
   input  logic [DATA_WIDTH-1:0]     data_i,                 // Value to rotate.
   input  logic [ROT_WIDTH-1:0]      rotate_amt_i,           // Right-rotate amount.

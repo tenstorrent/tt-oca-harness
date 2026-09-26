@@ -367,44 +367,14 @@ cross-trigger network.
 The `ctn_clock_stop_ctrl` module aggregates clock stop requests from multiple
 sources using a two-stage OR-tree architecture. The module separates CLA-only
 status from the combined functional halt signal to support independent JTAG
-visibility and chiplet clock gating control.
-
-<<ctn-clock-stop-signals-table>> identifies the clock-stop requests, enables, and status
-signals.
+visibility and chiplet clock gating control. The CTN sizes its request input
+with its own `NUM_CLK_STOP_REQ` parameter, which defaults to 9.
 
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="CTN clock stop signals" tabindex="0">
-++++
+The parameters and ports of `ctn_clock_stop_ctrl` are listed in xref:ROOT:rtl-modules-reference/ip/cross_trigger_network/ctn_clock_stop_ctrl.adoc[ctn_clock_stop_ctrl].
 endif::backend-html5[]
-
-[[ctn-clock-stop-signals-table]]
-[cols="<28,<27,<45",options="header",role="port-reference"]
-.CTN clock-stop signals
-|===
-|Signal |Width |Description
-
-|`clk_stop_req_i`
-|NUM_CLK_STOP_REQ (default=9)
-|Clock stop requests from individual CLAs or other on-chip sources
-
-|`jtag_clock_stop_i`
-|1
-|Direct clock stop from JTAG DEBUG_CONTROL register
-
-|`cla_clock_stop_o`
-|1
-|CLA requests only (OR-reduction of `clk_stop_req_i`), fed back to JTAG for DEBUG_CONTROL status readback
-
-|`stop_clks_o`
-|1
-|Registered functional halt (JTAG OR CLA requests), drives chiplet clock gating
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters and ports of `ctn_clock_stop_ctrl` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 The aggregation logic operates as follows:

@@ -3,8 +3,10 @@
 
 // Define AXI-Lite typedefs and constants for the log engine.
 //
-// Types the CSR, log-fetch, and log-write AXI-Lite ports shared with the generated
-// register block.
+// Types the CSR port (register-block minimum address width, 32-bit data), the log-fetch port
+// (56-bit address, 64-bit data) and the log-write port (32-bit address and data).
+// Also defines the 16-entry log ring, the 512 KiB maximum log region and its alignment,
+// the derived length, index and counter types, and the fetch and write FSM states.
 
 package log_engine_pkg;
 

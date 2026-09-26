@@ -14,7 +14,8 @@
 module prim_rst_mux2_hf_n (
   input  logic rst0_ni,  // Active-low reset selected when sel_i is low.
   input  logic rst1_ni,  // Active-low reset selected when sel_i is high.
-  input  logic sel_i,  // Selects rst1_ni when high; must change only after rst0_ni and rst1_ni settle.
+  input  logic sel_i,  // Selects rst1_ni when high; must change only after rst0_ni and rst1_ni
+                       // settle.
   output logic rst_no  // Hazard-free muxed reset, active-low.
 );
 

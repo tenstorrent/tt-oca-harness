@@ -3,8 +3,9 @@
 
 // Declare CPU-cluster sizing constants for the four-core SMC Rocket cluster.
 //
-// Defines core count and interrupt widths consumed by smc_4core_cpu and wrappers.
-// Keeps these values aligned with the Chipyard DigitalTop configuration.
+// Defines the core count, the interrupt counts and the default RESET_CTRL value (cores and
+// uncore out of reset, debug module in reset) consumed by smc_4core_cpu and wrappers.
+// The values must match the Chipyard DigitalTop configuration.
 
 `ifndef SMC_4CORE_CPU_PACKAGE_DEFINED
 `define SMC_4CORE_CPU_PACKAGE_DEFINED

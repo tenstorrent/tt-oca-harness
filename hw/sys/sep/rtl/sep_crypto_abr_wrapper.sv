@@ -4,7 +4,10 @@
 // Integrate Caliptra Adams Bridge into the SEP crypto subsystem as the PQC engine.
 //
 // Convert host AXI (64-bit) to 32-bit AXI to AXI4-Lite to axi_lite_to_ahb for abr_top AHB
-// (64-bit data / 32-bit addr), one transfer on the AHB at a time.
+// (64-bit data / 32-bit addr), one transfer on the AHB at a time. The AXCACHE modifiable
+// bit is forced so 64-bit beats can be split; only full-word writes reach abr_top, and
+// writes with all byte strobes low complete with OKAY without an AHB transfer.
+// abr_top has no entropy port and its scan-mode zeroize input is tied low.
 //
 // Terminate the Key Manager private 32-bit AXI4-Lite key bus on abr_wrapper_key_reg here;
 // sep_abr_kv_shim turns that hwif into Caliptra KV ports. The shim serves:
@@ -28,32 +31,46 @@ module sep_crypto_abr_wrapper
   import abr_params_pkg::*;
   import abr_wrapper_key_reg_pkg::*;
 #(
-  parameter bit          MASKING_EN   = 1,    // Enable 2-share DOM masking.
-  parameter int unsigned SRAM_LATENCY = 1     // SRAM read latency in cycles.
+  parameter bit          MASKING_EN   = 1,    // Enables 2-share DOM masking in abr_top.
+  parameter int unsigned SRAM_LATENCY = 1     // Read latency of the external Adams Bridge SRAMs in
+                                              // cycles, passed to abr_top.
 ) (
-  input  wire logic clk_i,                    // System clock.
+  input  wire logic clk_i,                    // System clock; also forwarded to the SRAM macros in
+                                              // abr_mem_req_o.
   input  wire logic rst_ni,                   // Active-low reset.
 
-  input  wire sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_i,  // Control/status path: 64-bit AXI from the sep_crypto demux.
-  output      sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_o,  // ABR AXI response.
+  input  wire sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_req_i,  // Host 64-bit AXI4 control/status
+                                                                 // request, bridged to the abr_top
+                                                                 // AHB slave; in sep_crypto the
+                                                                 // demux rejects bursts before this
+                                                                 // port.
+  output      sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_resp_o,  // Response on the host
+                                                                  // control/status port.
 
-  input  wire km_intf_pkg::km_axil_req_t  abr_key_axil_req_i,  // Key path: KM private 32-bit AXI4-Lite key bus
-                                                               // Terminates on the internal abr_wrapper_key_reg CSR block (u_abr_key_csr),
-                                                               // matching the aes/otbn wrapper convention.
-  output      km_intf_pkg::km_axil_resp_t abr_key_axil_resp_o,  // ABR key AXIL response.
+  input  wire km_intf_pkg::km_axil_req_t  abr_key_axil_req_i,  // Key Manager private 32-bit
+                                                               // AXI4-Lite key bus; terminates on
+                                                               // the internal abr_wrapper_key_reg
+                                                               // CSR block (u_abr_key_csr).
+  output      km_intf_pkg::km_axil_resp_t abr_key_axil_resp_o,  // Response from the Adams Bridge
+                                                                // key CSR block to the Key Manager.
 
-  output      abr_mem_req_t abr_mem_req_o,    // AB internal SRAMs: technology macros live in sep_ip_integration
-                                              // Packed req/rsp structs (OTBN convention). abr_top is the memory requester
-                                              // unpacks abr_mem_rsp_i back onto the interface read-data signals.
-  input       abr_mem_rsp_t abr_mem_rsp_i,    // ABR mem response.
+  output      abr_mem_req_t abr_mem_req_o,    // abr_top requests to its external SRAM macros, which
+                                              // live in sep_ip_integration, packed into one struct
+                                              // together with the macro clock.
+  input       abr_mem_rsp_t abr_mem_rsp_i,    // Read data from the external Adams Bridge SRAM
+                                              // macros.
 
-  input  wire logic scan_mode_i,              // DFT scan mode.
+  input  wire logic scan_mode_i,              // DFT scan mode; drives only the test input of the
+                                              // AXI-to-AXI-Lite converter.
 
-  output      logic mlkem_sharedkey_irq_o,    // Interrupts + status
-                                              // ML-KEM shared-key ready (gated).
-  output      logic error_intr_o,             // error intr.
-  output      logic notif_intr_o,             // notif intr.
-  output      logic busy_o                    // busy.
+  output      logic mlkem_sharedkey_irq_o,    // Level ML-KEM shared-key-ready interrupt:
+                                              // IRQ_STATUS.key_valid gated by
+                                              // IRQ_ENABLE.key_valid_en.
+  output      logic error_intr_o,             // Adams Bridge global error interrupt, from the
+                                              // abr_top interrupt block.
+  output      logic notif_intr_o,             // Adams Bridge global notification interrupt; set on
+                                              // command completion.
+  output      logic busy_o                    // High while the Adams Bridge engine is not idle.
 );
 
   `include "prim_assert.sv"

@@ -6,10 +6,10 @@
 // An FSM walks the WORDS_PER_SLOT (16 by default) words of the selected slot, emitting a
 // logical {slot, word} address and a pseudo-random data word sourced from a
 // maximal-length LFSR (prim_lfsr, GAL_XOR). The parent (km_kpv) routes these through the
-// shared KPV scrambler and into the key register file, so the slot is overwritten with
-// scrambled random data. When the last word is written a one-cycle erase_done pulse is
-// emitted so the parent can clear the slot CTRL register, including the self-clearing
-// erase bit and the lock bits.
+// shared KPV scrambler, when enabled, and into the key register file, so the slot is
+// overwritten with random data. A one-cycle erase_done pulse accompanies the last word
+// write; km_kpv then clears the self-clearing erase bit and either frees an unsealed slot
+// by clearing its lock bits or retires a sealed slot by setting lock_use.
 //
 // Multiple pending erase requests are serviced sequentially, lowest slot index first.
 // Erase is intentionally not gated by the slot lock_write/lock_use bits.
@@ -19,11 +19,13 @@
 
 module km_kpv_eraser #(
   parameter int unsigned NUM_SLOTS      = 64,  // Number of key slots.
-  parameter int unsigned WORDS_PER_SLOT = 16,  // Words per slot.
+  parameter int unsigned WORDS_PER_SLOT = 16,  // Key-data words in each slot; one erase writes word
+                                               // indices 0 to WORDS_PER_SLOT - 1.
   parameter int unsigned DATA_WIDTH     = 32   // Key-data word width; also sizes the LFSR.
 ) (
   input  logic                 clk_i,        // System clock.
-  input  logic                 cold_rst_ni,  // Cold reset (AASD); seeds LFSR all-ones.
+  input  logic                 cold_rst_ni,  // Cold reset (AASD); seeds LFSR all-ones and returns
+                                             // the FSM to idle.
 
   input  logic [NUM_SLOTS-1:0] erase_req_i,  // Per-slot erase requests (CTRL[i].erase.value).
 

@@ -267,7 +267,11 @@ Check a tree with:
 python3 tools/doc/check_sv_comments.py hw/ip/key_manager/rtl/*.sv
 ----
 
-The checker fails when the two-part `//` block is missing, when a parameter
-or port has no same-line `//` clause, when a `//` line that is not a
-continuation sits between two of those declarations, or when a banned
-banner or tag is present.
+The checker covers every module in a file. It fails when the two-part `//`
+block is missing, when a parameter or port has no same-line `//` clause, when
+a `//` line that is not a continuation sits between two of those
+declarations, when a clause only restates the declared name, repeats a
+literal default, is a single word, or repeats another clause of the same
+module word for word, or when a banned banner or tag is present. A group
+label such as "Debug outputs." shared by several ports is such a repeat:
+give each port its own clause.

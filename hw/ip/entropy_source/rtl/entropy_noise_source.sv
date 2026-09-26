@@ -3,21 +3,26 @@
 
 // Sample an asynchronous ring oscillator through a metastable flop into the system clock domain.
 //
-// TOTAL_LENGTH and TAPPED_LENGTH size the RO; enable_i starts oscillation; detune_i
-// selects the shorter feedback tap.
+// TOTAL_LENGTH and TAPPED_LENGTH size the RO; enable_i starts oscillation; detune_i high
+// selects the full-length feedback path and low the shorter tap.
 // sample_clk_i clocks the metastable sample; the bit is double-synchronized onto clk_i as
 // noise_o.
 
 module entropy_noise_source #(
   parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
-  parameter int unsigned TAPPED_LENGTH = 13  // Detuned tap stage count.
+  parameter int unsigned TAPPED_LENGTH = 13  // Stage count of the shorter feedback tap, used while
+                                             // detune_i is low.
 ) (
   input       logic clk_i,              // System clock.
-  input       logic rst_ni,             // Active-low reset.
-  input       logic sample_clk_i,       // Ring-oscillator sample clock.
-  input       logic enable_i,           // Block enable.
-  input       logic detune_i,           // Detune.
-  output      logic noise_o             // Noise.
+  input       logic rst_ni,             // Active-low asynchronous reset of the sample and
+                                        // synchronizer flops.
+  input       logic sample_clk_i,       // Clock of the flop that samples the asynchronous ring
+                                        // output.
+  input       logic enable_i,           // Enables the ring oscillator; while low its output is
+                                        // static.
+  input       logic detune_i,           // High selects the ring's full TOTAL_LENGTH feedback path,
+                                        // low the shorter TAPPED_LENGTH tap.
+  output      logic noise_o             // Ring-oscillator sample, double-synchronized onto clk_i.
 );
 
   /////////////

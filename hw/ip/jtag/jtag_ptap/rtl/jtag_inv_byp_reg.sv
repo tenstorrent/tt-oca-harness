@@ -4,7 +4,7 @@
 // Implement a one-bit inverted bypass TDR on the DR scan path.
 //
 // Returns the complement of the shifted bit between scan_in_i and scan_out_o under
-// scan_ctrl_i.
+// scan_ctrl_i; the bit captures 0, so scan_out_o reads 1 after Capture-DR.
 
 module jtag_inv_byp_reg
   import prim_jtag_pkg::*;
@@ -13,7 +13,7 @@ module jtag_inv_byp_reg
   input  jtag_scan_ctrl_t  scan_ctrl_i,  // JTAG DR/IR scan control.
   /* verilator lint_on UNUSEDSIGNAL */
   input  logic             scan_in_i,   // Scan data in (TDI).
-  output logic             scan_out_o   // Scan data out (TDO).
+  output logic             scan_out_o   // Inverted scan data out (TDO).
 );
 
   //--------------------------------------------------------------------------

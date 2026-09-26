@@ -5,8 +5,9 @@
 //
 // ResetValue can be nonzero so a down-counter need not start at 0.
 // incr_en_i and decr_en_i together do not count; either alone steps by step_i.
+// clear_i takes priority over set_i, which takes priority over counting.
 // commit_i freezes cnt_after_commit_o into count_o; without it the next value stays
-// speculative.
+// speculative, so clear_i and set_i also take effect only with commit_i.
 
 module prim_updown_counter #(
   parameter int               Width      = 16,  // Counter width.
@@ -17,9 +18,9 @@ module prim_updown_counter #(
   localparam type ctr_t = logic [Width-1:0]  // Counter type alias.
 ) (
   input        clk_i,  // Counter clock.
-  input        rst_ni,  // Async reset, active-low.
-  input        clear_i,  // Loads ResetValue.
-  input        set_i,  // Loads set_cnt_i.
+  input        rst_ni,  // Active-low reset, sampled synchronously; loads ResetValue.
+  input        clear_i,  // Loads ResetValue when committed.
+  input        set_i,  // Loads set_cnt_i when committed.
   input  ctr_t set_cnt_i,  // Value loaded when set_i is high.
   input        incr_en_i,  // Counts up by step_i.
   input        decr_en_i,  // Counts down by step_i.
@@ -27,7 +28,7 @@ module prim_updown_counter #(
   input        commit_i,  // Commits the pending next value.
   output ctr_t count_o,  // Current committed counter state.
   output ctr_t cnt_after_commit_o,  // Next counter state if commit_i is taken.
-  output logic err_o  // Hardening error output.
+  output logic err_o  // Hardening error output; tied to 0.
 );
 
   ///////////////////

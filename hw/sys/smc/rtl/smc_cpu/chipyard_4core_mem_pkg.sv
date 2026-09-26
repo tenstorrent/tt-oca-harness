@@ -3,7 +3,8 @@
 
 // Declare memory-interface typedefs for the four-core Chipyard cluster.
 //
-// Declares ROM, scratch RAM, and L1 cache request/response structs.
+// Declares ROM, scratch RAM, and L1 cache request/response structs, and the TileLink structs
+// of the cluster boot ROM port.
 // Bank-count localparams size the mem-swap and CPU wrapper port arrays.
 
 `ifndef CHIPYARD_4CORE_MEMORY_INTERFACE

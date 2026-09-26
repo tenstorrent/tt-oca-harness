@@ -13,8 +13,9 @@
 module entropy_ripple_divider #(
   parameter int unsigned NUM_STAGES = 7  // Number of divide-by-2 stages.
 ) (
-  input  logic                  rst_ni,  // Async reset (active low).
-  input  logic                  clk_i,  // clock to divide.
+  input  logic                  rst_ni,  // Active-low asynchronous reset; clears every divider
+                                         // stage.
+  input  logic                  clk_i,  // Clock to divide.
   output logic [NUM_STAGES:0]   div_o   // Divided outputs [0]=clk_i, [1]=÷2, [2]=÷4, etc.
 );
 

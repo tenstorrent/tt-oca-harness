@@ -3,12 +3,14 @@
 
 // Stretch and synchronize an async active-low reset into clk_i.
 //
-// WIDTH is the minimum asserted length in clk_i cycles after rst_ni deasserts.
-// test_mode_i, active-high, swaps scan_rst_ni onto the bypass mux.
+// sync_rst_no asserts asynchronously with rst_ni and deasserts after WIDTH clk_i cycles of
+// rst_ni deasserted, through a chain of metastability-hardened flops.
+// test_mode_i, active-high, swaps scan_rst_ni onto the hazard-free bypass mux.
 // sync_rst_no is the synchronized active-low reset output.
 
 module prim_sync_reset #(
-  parameter int unsigned WIDTH = 16  // Minimum reset hold in clk_i cycles.
+  parameter int unsigned WIDTH = 16  // Synchronizer stages; clk_i cycles from rst_ni deasserting to
+                                     // sync_rst_no deasserting.
 ) (
   input logic clk_i,  // Destination clock.
   input logic rst_ni,  // Async reset to synchronize, active-low.

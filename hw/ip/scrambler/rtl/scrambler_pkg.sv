@@ -2,9 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// Hold PRESENT sbox and permute helpers for SRAM data and address scrambling.
+// Hold S-box, permutation and address-scramble helpers for SRAM data and address scrambling.
 //
-// Provides the nibble S-box, 32-bit and 8-bit permutations, and their inverses.
+// Provides the PRESENT 4-bit and Pyjamask 3-bit S-boxes, the PRESENT 32-bit permutation and
+// 6- to 16-bit bit permutations, each with its inverse, 6- to 16-bit rotate-left helpers,
+// and the 6- to 13-bit address scramble functions (key XOR, S-boxes, then permutation).
 
 package scrambler_pkg;
   // Pyjamask lightweight cipher substitution function

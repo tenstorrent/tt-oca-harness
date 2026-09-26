@@ -4,8 +4,8 @@
 
 // Drive the I2C controller FSM from the FMT FIFO onto SCL and SDA.
 //
-// Issues START and STOP around fmt_byte_i per FMT flags, stretches on target clock hold,
-// and reports NAK, arbitration-loss, and stretch-timeout events.
+// Issues START and STOP around fmt_byte_i per FMT flags, waits while the target stretches
+// SCL, and reports NAK, arbitration-loss, and stretch-timeout events.
 
 module i2c_controller_fsm
   import i2c_pkg::*;
@@ -29,10 +29,11 @@ module i2c_controller_fsm
   input  logic                                      fmt_fifo_rvalid_i, // FMT FIFO has valid data.
   input  logic [CONTROLLER_TX_FIFO_DEPTH_WIDTH-1:0] fmt_fifo_depth_i, // FMT FIFO fill level.
   output logic                                      fmt_fifo_rready_o, // Pop FMT FIFO.
-  input  logic [7:0]                                fmt_byte_i, // Byte in FMT FIFO to send to the target.
+  input  logic [7:0]                                fmt_byte_i, // Byte in FMT FIFO to send to the
+                                                                // target.
   input  logic                                      fmt_flag_start_before_i, // Issue START before sending the byte.
   input  logic                                      fmt_flag_stop_after_i, // Issue STOP after sending the byte.
-  input  logic                                      fmt_flag_read_bytes_i, // Byte is a number of reads.
+  input  logic                                      fmt_flag_read_bytes_i, // Byte is a number of reads; zero means 256.
   input  logic                                      fmt_flag_read_continue_i, // Host sends Ack to the final read byte.
   input  logic                                      fmt_flag_nak_ok_i, // No ACK is expected.
   input  logic                                      unhandled_unexp_nak_i, // Unexpected-NACK IRQ still pending.
@@ -45,21 +46,30 @@ module i2c_controller_fsm
 
   input  logic [12:0]                               thigh_i, // SCL high period in clock units.
   input  logic [12:0]                               tlow_i, // SCL low period in clock units.
-  input  logic [12:0]                               t_r_i,  // Rise time of SDA and SCL in clock units.
-  input  logic [12:0]                               t_f_i,  // Fall time of SDA and SCL in clock units.
-  input  logic [12:0]                               thd_sta_i, // Hold time for (repeated) START in clock units.
-  input  logic [12:0]                               tsu_sta_i, // Setup time for repeated START in clock units.
-  input  logic [12:0]                               tsu_sto_i, // Setup time for STOP in clock units.
+  input  logic [12:0]                               t_r_i,  // Rise time of SDA and SCL in clock
+                                                            // units.
+  input  logic [12:0]                               t_f_i,  // Fall time of SDA and SCL in clock
+                                                            // units.
+  input  logic [12:0]                               thd_sta_i, // Hold time for (repeated) START in
+                                                               // clock units.
+  input  logic [12:0]                               tsu_sta_i, // Setup time for repeated START in
+                                                               // clock units.
+  input  logic [12:0]                               tsu_sto_i, // Setup time for STOP in clock
+                                                               // units.
   input  logic [12:0]                               thd_dat_i, // Data hold time in clock units.
   input  logic                                      sda_interference_i, // SCL high and SDA does not match while transmitting.
-  input  logic [29:0]                               stretch_timeout_i, // Max time a target may stretch the clock.
-  input  logic                                      timeout_enable_i, // Assert if the target stretches past max.
-  input  logic [30:0]                               host_nack_handler_timeout_i, // Timeout threshold for unhandled Host-Mode nak IRQ.
+  input  logic [29:0]                               stretch_timeout_i, // Max clocks a target may stretch the clock.
+  input  logic                                      timeout_enable_i, // Enables event_stretch_timeout_o.
+  input  logic [30:0]                               host_nack_handler_timeout_i, // Clocks the FSM may stay halted on an unhandled
+                                                                                 // Host-Mode NACK before it issues a STOP.
   input  logic                                      host_nack_handler_timeout_en_i, // Enable unhandled-NACK timeout.
 
-  output logic                                      event_nak_o, // Target did not Ack when expected.
-  output logic                                      event_unhandled_nak_timeout_o, // SW did not handle the NACK in time.
-  output logic                                      event_arbitration_lost_o, // Lost arbitration after beginning a transaction.
+  output logic                                      event_nak_o, // Target did not Ack when
+                                                                 // expected.
+  output logic                                      event_unhandled_nak_timeout_o, // SW did not handle the NACK in time; held while
+                                                                                   // the FSM stays halted.
+  output logic                                      event_arbitration_lost_o, // SDA unstable, SDA interference, or a failed START
+                                                                              // or STOP symbol.
   output logic                                      event_scl_interference_o, // Other device forcing SCL low.
   output logic                                      event_stretch_timeout_o, // Target stretches clock past max time.
   output logic                                      event_sda_unstable_o, // SDA is not constant during an SCL pulse.

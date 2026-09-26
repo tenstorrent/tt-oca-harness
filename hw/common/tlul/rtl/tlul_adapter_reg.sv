@@ -6,23 +6,27 @@
 //
 // Act as a TL-UL device. Accept Get, PutPartialData, and PutFullData on the A channel and
 // pass each read or write to the register interface in the same cycle. Return the register
-// response on the D channel in the next cycle, whatever AccessLatency is.
+// response on the D channel in the next cycle, whatever AccessLatency is. One request is
+// outstanding at a time: A_READY stays low until the response is accepted.
 //
 // Forward a request only when every check passes:
 //
 // - A_OPCODE is Get, PutPartialData, or PutFullData.
 // - A_SIZE is 0, 1, or 2 (a 1-, 2-, or 4-byte operation).
-// - A_ADDRESS is naturally aligned for the A_SIZE byte width.
+// - A_ADDRESS is naturally aligned for the A_SIZE byte width, and word aligned for writes.
 // - A_MASK is true only for active byte lanes. The first active lane is the address modulo
 //   the TL-UL data-bus width.
+// - A_USER.INSTR_TYPE is a valid MuBi4 encoding.
 // - A_OPCODE is Get when A_USER.INSTR_TYPE is MuBi4True.
 // - A_USER.INSTR_TYPE is not MuBi4True, or en_ifetch_i is MuBi4True.
-// - The command integrity check passes, when CmdIntgCheck is set.
+// - The command and A-channel data integrity checks pass, when CmdIntgCheck is set.
 //
-// A request that fails a check reaches no register and gets D_ERROR on the response.
+// A request that fails a check reaches no register and gets D_ERROR on the response. D_DATA
+// is all ones for writes and errored requests.
 //
 // Besides the generated reg_top modules, this adapter serves modules with special needs,
-// such as the vendored RV_DM, which is why its parameter set is broader than reg_top needs.
+// such as the vendored prim_reg_cdc and spi_host_window, which is why its parameter set is
+// broader than reg_top needs.
 
 module tlul_adapter_reg
   import tlul_pkg::*;
@@ -30,11 +34,12 @@ module tlul_adapter_reg
   `include "prim_assert.sv"
   import prim_mubi_pkg::mubi4_t;
 #(
-  parameter  bit CmdIntgCheck      = 0,  // Check A-channel command integrity with tlul_cmd_intg_chk.
-                                         // On a mismatch, re_o and we_o stay low, D_ERROR is
-                                         // set, and intg_error_o rises.
-  parameter  bit EnableRspIntgGen  = 0,  // Generate the response integrity in D_USER.RSP_INTG.
-  parameter  bit EnableDataIntgGen = 0,  // Generate the data integrity in D_USER.DATA_INTG.
+  parameter  bit CmdIntgCheck      = 0,  // Check A-channel command integrity with
+                                         // tlul_cmd_intg_chk. On a mismatch, re_o and we_o stay
+                                         // low, D_ERROR is set, and intg_error_o rises the next
+                                         // cycle.
+  parameter  bit EnableRspIntgGen  = 0,  // Generate D_USER.RSP_INTG; zero when clear.
+  parameter  bit EnableDataIntgGen = 0,  // Generate D_USER.DATA_INTG; zero when clear.
   parameter  int RegAw             = 8,  // Register address width. Higher A_ADDRESS bits are
                                          // ignored.
   parameter  int RegDw             = 32, // Register data width. Must match the TL-UL data width
@@ -52,11 +57,12 @@ module tlul_adapter_reg
 
   input  mubi4_t  en_ifetch_i,       // MuBi4True allows Gets whose A_USER.INSTR_TYPE is MuBi4True
                                      // (processor fetches).
-  output logic    intg_error_o,      // Command integrity error. Only rises when CmdIntgCheck is set.
+  output logic    intg_error_o,      // Integrity error, sticky until reset. Only rises when
+                                     // CmdIntgCheck is set.
 
   output logic             re_o,     // Register read enable.
   output logic             we_o,     // Register write enable.
-  output logic [RegAw-1:0] addr_o,   // Register address.
+  output logic [RegAw-1:0] addr_o,   // A_ADDRESS[RegAw-1:0], bits 1:0 cleared; 0 if RegAw <= 2.
   output logic [RegDw-1:0] wdata_o,  // Register write data.
   output logic [RegBw-1:0] be_o,     // Register byte enables from the TL-UL mask.
   input                    busy_i,   // Stall: A_READY drops and no new operation is accepted.

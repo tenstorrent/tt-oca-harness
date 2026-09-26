@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Bridge isolated AXI-Lite CSR and key buses onto TL-UL OTBN.
+// Wrap the OpenTitan OTBN core with an AXI-Lite CSR bridge and a Key Manager key CSR block.
 //
+// axi_lite_to_tlul bridges the 32-bit AXI-Lite CSR interface onto the OTBN TL-UL port. The
+// AXI4-Lite key interface terminates in the generated otbn_wrapper_key_reg block, whose two
+// 384-bit key shares and valid bit drive the OTBN keymgr_key_i sideload port.
 // AXCACHE forcing and the AXI 64 to AXI 32 to AXI-Lite 32 conversion chain live in
 // sep_crypto_axi_interconnect.
-// Exposes RND and URND EDN clients, the done interrupt, recoverable and fatal alerts, and
-// external IMEM/DMEM SRAM structs from prim_ram_1p_scr_ext.
-// bus_err_o sticks on a register-bridge fault until bus_err_clr_i.
+// OTBN is built with the flip-flop register file and the MAI stubbed. Its OTP scrambling-key
+// request is answered locally with a fixed key and nonce, acknowledged one cycle after the
+// request; lifecycle escalation and RMA requests are tied off.
+// Exposes RND and URND EDN clients, the done interrupt, two alerts (index 0 fatal, index 1
+// recoverable), and external IMEM/DMEM SRAM structs from prim_ram_1p_scr_ext.
+// bus_err_o sticks on a TL-UL error response until bus_err_clr_i.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
@@ -16,29 +22,45 @@ module sep_crypto_otbn_wrapper (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.
 
-  input  sep_pkg::sep_32_32_axil_req_t  otbn_axil_req_i,  // 32-bit AXI-Lite CSR side from the sep_crypto interconnect (isolated).
-  output sep_pkg::sep_32_32_axil_resp_t otbn_axil_resp_o,  // OTBN AXIL response.
+  input  sep_pkg::sep_32_32_axil_req_t  otbn_axil_req_i,  // OTBN CSR request, bridged to the OTBN
+                                                          // TL-UL port; the isolated interconnect
+                                                          // leg in sep_crypto.
+  output sep_pkg::sep_32_32_axil_resp_t otbn_axil_resp_o,  // OTBN CSR response from the TL-UL
+                                                           // bridge.
 
-  input  sep_pkg::sep_32_32_axil_req_t  otbn_key_axil_req_i,  // otbn key axil req i.
-  output sep_pkg::sep_32_32_axil_resp_t otbn_key_axil_resp_o,  // OTBN key AXIL response.
+  input  sep_pkg::sep_32_32_axil_req_t  otbn_key_axil_req_i,  // Key Manager private-bus request to
+                                                              // the OTBN key CSR block, which
+                                                              // drives the OTBN key sideload
+                                                              // interface.
+  output sep_pkg::sep_32_32_axil_resp_t otbn_key_axil_resp_o,  // Response from the OTBN key CSR
+                                                               // block to the Key Manager.
 
-  output edn_pkg::edn_req_t edn_rnd_req_o,    // edn rnd req o.
-  input  edn_pkg::edn_rsp_t edn_rnd_rsp_i,    // EDN rnd response.
-  output edn_pkg::edn_req_t edn_urnd_req_o,   // EDN urnd request.
-  input  edn_pkg::edn_rsp_t edn_urnd_rsp_i,   // EDN urnd response.
+  output edn_pkg::edn_req_t edn_rnd_req_o,    // OTBN RND entropy request; in sep_crypto, a native
+                                              // EDN client of the crypto EDN adapter.
+  input  edn_pkg::edn_rsp_t edn_rnd_rsp_i,    // Entropy response for the OTBN RND request.
+  output edn_pkg::edn_req_t edn_urnd_req_o,   // OTBN URND reseed request; in sep_crypto, a native
+                                              // EDN client of the crypto EDN adapter.
+  input  edn_pkg::edn_rsp_t edn_urnd_rsp_i,   // Entropy response for the OTBN URND reseed request.
 
   output logic intr_done_o,                   // OTBN done interrupt.
 
-  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,  // alert rx i.
-  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,  // alert tx.
+  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,  // Alert receiver handshakes; index 0 fatal
+                                                       // (fatal), index 1 recoverable (recov).
+  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,  // Differential alert senders; index 0 fatal
+                                                       // (fatal), index 1 recoverable (recov).
 
-  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t imem_sram_req_o,  // External SRAM interfaces (from upstream OTBN via prim_ram_1p_scr_ext).
-  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t imem_sram_rsp_i,  // IMEM SRAM response.
-  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t dmem_sram_req_o,  // DMEM SRAM request.
-  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i,  // DMEM SRAM response.
+  output sep_crypto_pkg::sep_crypto_pka_imem_sram_req_t imem_sram_req_o,  // OTBN instruction-memory request to the external IMEM SRAM, from the scrambled
+                                                                          // RAM (prim_ram_1p_scr_ext) inside OTBN.
+  input  sep_crypto_pkg::sep_crypto_pka_imem_sram_rsp_t imem_sram_rsp_i,  // Read data from the external IMEM SRAM.
+  output sep_crypto_pkg::sep_crypto_pka_dmem_sram_req_t dmem_sram_req_o,  // OTBN data-memory request to the external DMEM SRAM, from the scrambled RAM
+                                                                          // inside OTBN.
+  input  sep_crypto_pkg::sep_crypto_pka_dmem_sram_rsp_t dmem_sram_rsp_i,  // Read data from the external DMEM SRAM.
 
-  output logic bus_err_o,                     // bus err o.
-  input  logic bus_err_clr_i                  // bus err clr.
+  output logic bus_err_o,                     // Set by a TL-UL error response on the CSR bridge;
+                                              // sticky until bus_err_clr_i.
+  input  logic bus_err_clr_i                  // Clears bus_err_o; a fault in the same cycle still
+                                              // sets it. Pulsed by PERIPH_BUS_ERR_CLEAR.otbn in
+                                              // sep.
 );
 
   // ========================================================================

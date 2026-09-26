@@ -5,9 +5,9 @@
 // Store Key Manager key material in the Key and Policy Vault (KPV) behind a PeakRDL CSR
 // block.
 //
-// Key data lives in a dedicated register file (km_kpv_regfile) with one write port (KM
-// CPU) and one read port (KM only). A PeakRDL-generated CSR block exposes per-slot
-// external req/ack interfaces (no internal flops for key data), which this module bridges
+// Key data lives in a dedicated register file (km_kpv_regfile) with one write port (KM CPU, or the
+// slot eraser while it runs) and one read port (KM only). A PeakRDL-generated CSR block exposes
+// per-slot external req/ack interfaces (no internal flops for key data), which this module bridges
 // to the register file through an optional 1024x32 scrambler.
 //
 // Per-slot CTRL registers implement:
@@ -25,10 +25,12 @@
 //
 // Wipe: wipe_pulse_i zeroes key data, CTRL sticky bits (via hwclr), and scrambler
 // key/ctrl. It releases a sealed or retired slot, which is sound only because no KM CPU
-// execution follows a wipe before warm reset: a trap halts the CPU, and wipe_state_i is a
-// tamper input.
+// execution follows a wipe before warm reset: in key_manager a wipe comes from a CPU trap,
+// which halts the CPU, or from the wipe_state_i tamper input.
 //
-// Cold reset clears the entire KPV; warm reset clears the KM-port CPUIF and lock bits.
+// Cold reset clears the entire KPV except key data and the scrambler key CSR, which have no
+// reset; warm reset clears the KM-port CPUIF, the SLVERR tracking and every slot's CTRL
+// register.
 
 module km_kpv
   import km_intf_pkg::*;
@@ -42,12 +44,15 @@ module km_kpv
 ) (
   input  logic clk_i,        // System clock.
   input  logic cold_rst_ni,  // Cold reset: AASD; resets the entire KPV.
-  input  logic warm_rst_ni,  // Warm reset: synchronous; resets the KM-port CPUIF and lock
-                             // bits.
+  input  logic warm_rst_ni,  // Warm reset: synchronous; resets the KM-port CPUIF, the SLVERR
+                             // tracking and every slot's CTRL register.
 
   input  axil_req_t  km_axil_req_i,        // KM port request from the crossbar (base
-                                           // 0x0001_2000).
-  output axil_resp_t      km_axil_resp_o,  // KM port response to the crossbar.
+                                           // 0x0001_2000); only address bits [12:0] are
+                                           // decoded.
+  output axil_resp_t      km_axil_resp_o,  // KM port response to the crossbar; SLVERR on a
+                                           // key-data write to a write-locked or sealed slot
+                                           // and on a key-data read of a use-locked slot.
 
   input  logic        wipe_pulse_i  // Wipe: pulse high for one cycle to zero the entire KPV
                                     // on the next cycle.

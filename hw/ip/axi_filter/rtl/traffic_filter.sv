@@ -3,40 +3,69 @@
 
 // Decide whether one AXI address beat matches a filter rule and may pass.
 //
-// Compares address range, optional source and group IDs, and NS against the cfg_* inputs.
+// Compares the address range, the burst length, and the optional source ID, group ID, and
+// NS checks against the cfg_* inputs; the module is purely combinational.
 // filter_hit_o marks a match; tx_rule_pass_o is the allow decision for that beat.
 
 module traffic_filter #(
   parameter bit EnSrcIdFilter = 1'b0,                       // Match on source ID.
-  parameter bit EnNsFilter = 1'b0,                          // Match on non-secure initiator.
+  parameter bit EnNsFilter = 1'b0,                          // Requires the beat NS flag to equal
+                                                            // cfg_allow_ns_i.
   parameter bit EnGroupIdFilter = 1'b0,                     // Match on group ID.
   parameter int unsigned AddrWidth = 64,                    // Address compare width.
   parameter int unsigned SrcIdWidth = 4,                    // Source ID width.
-  parameter int unsigned GroupIdWidth = 4,                  // Group ID width.
-  parameter int unsigned DataBusWidthLog2 = 3,              // log2 of data-bus bytes for burst end calc.
+  parameter int unsigned GroupIdWidth = 4,                  // Width of the rule and beat group IDs
+                                                            // compared under EnGroupIdFilter.
+  parameter int unsigned DataBusWidthLog2 = 3,              // log2 of data-bus bytes; address
+                                                            // compare granularity when bursts are
+                                                            // disabled.
 
   localparam type addr_t     = logic [AddrWidth-1:0],       // Address type.
   localparam type src_id_t   = logic [SrcIdWidth-1:0],      // Source ID type.
   localparam type group_id_t = logic [GroupIdWidth-1:0]     // Group ID type.
 ) (
   input logic             cfg_allow_traffic_type_i,         // Allow when this rule hits.
-  input addr_t            cfg_start_addr_i,                 // Inclusive start of the address window; spyglass disable W240.
-  input addr_t            cfg_end_addr_i,                   // Inclusive end of the address window; spyglass disable W240.
-  input logic             cfg_entry_enabled_i,              // Rule enable.
-  input logic             cfg_burst_en_i,                   // Include burst end address in the match.
-  input src_id_t          cfg_src_id_i,                     // Required source ID.
-  input group_id_t        cfg_group_id_i,                   // Required group ID.
-  input logic             cfg_allow_ns_i,                   // Allow non-secure initiators.
+  input addr_t            cfg_start_addr_i,                 // Inclusive start of the address
+                                                            // window, compared at 4 KiB granularity
+                                                            // with cfg_burst_en_i and at bus-width
+                                                            // granularity otherwise; spyglass
+                                                            // disable W240.
+  input addr_t            cfg_end_addr_i,                   // Inclusive end of the address window,
+                                                            // at the same granularity as
+                                                            // cfg_start_addr_i; spyglass disable
+                                                            // W240.
+  input logic             cfg_entry_enabled_i,              // Rule enable; when low, filter_hit_o
+                                                            // stays low.
+  input logic             cfg_burst_en_i,                   // Admits multi-beat bursts and coarsens
+                                                            // the range compare to 4 KiB; when low,
+                                                            // only single-beat transfers match.
+  input src_id_t          cfg_src_id_i,                     // Source ID a beat must carry under
+                                                            // EnSrcIdFilter; all zeros matches any
+                                                            // source.
+  input group_id_t        cfg_group_id_i,                   // Group ID a beat must carry under
+                                                            // EnGroupIdFilter.
+  input logic             cfg_allow_ns_i,                   // NS value a beat must carry under
+                                                            // EnNsFilter: 1 matches non-secure, 0
+                                                            // secure initiators.
 
-  input logic             tx_valid_i,                       // Address-beat valid.
-  input addr_t            tx_addr_i,                        // Address-beat address; spyglass disable W240.
+  input logic             tx_valid_i,                       // Address-beat valid; gates
+                                                            // tx_rule_pass_o but not filter_hit_o.
+  input addr_t            tx_addr_i,                        // Address-beat address; spyglass
+                                                            // disable W240.
   input src_id_t          tx_src_id_i,                      // Address-beat source ID.
-  input group_id_t        tx_group_id_i,                    // Address-beat group ID.
-  input logic             tx_ns_initiator_i,                // Address-beat non-secure flag.
-  input axi_pkg::len_t    tx_len_i,                         // AXI burst length.
+  input group_id_t        tx_group_id_i,                    // Address-beat group ID; all zeros
+                                                            // passes the group check regardless of
+                                                            // cfg_group_id_i.
+  input logic             tx_ns_initiator_i,                // Address-beat non-secure flag, high
+                                                            // for a non-secure initiator.
+  input axi_pkg::len_t    tx_len_i,                         // AXI burst length; nonzero values
+                                                            // match only with cfg_burst_en_i.
 
-  output logic            filter_hit_o,                     // Rule matched this beat.
-  output logic            tx_rule_pass_o                    // Beat is allowed by this rule.
+  output logic            filter_hit_o,                     // Rule matched this beat; independent
+                                                            // of tx_valid_i.
+  output logic            tx_rule_pass_o                    // Beat is valid and the rule allows
+                                                            // this traffic type; meaningful when
+                                                            // filter_hit_o is set.
 );
 
   logic tx_in_range;

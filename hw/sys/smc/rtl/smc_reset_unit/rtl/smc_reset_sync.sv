@@ -9,27 +9,54 @@
 
 module smc_reset_sync (
 
-  input  logic                                   clk_smc_i,  // Smc clock.
-  input  logic                                   clk_ref_i,  // Ref clock.
-  input  logic                                   clk_periph_i,  // Periph clock.
+  input  logic                                   clk_smc_i,  // SMC core clock; destination of the
+                                                             // cold, primary, warm and WDT
+                                                             // synchronizers.
+  input  logic                                   clk_ref_i,  // Reference clock; destination of the
+                                                             // cold and primary synchronizers.
+  input  logic                                   clk_periph_i,  // Peripheral clock; destination of
+                                                                // the primary synchronizer.
 
-  input  logic                                   rst_cold_stable_ni,  // Rst cold stable.
-  input  logic                                   rst_primary_ni,  // Rst primary.
-  input  logic                                   rst_warm_ni,  // Rst warm.
-  input  logic                                   rst_wdt_ni,  // Rst wdt.
+  input  logic                                   rst_cold_stable_ni,  // De-glitched and extended cold reset from
+                                                                      // the reset controller, active-low.
+  input  logic                                   rst_primary_ni,  // Primary reset from the reset
+                                                                  // controller, active-low and
+                                                                  // asynchronous.
+  input  logic                                   rst_warm_ni,  // Warm reset after the JTAG
+                                                               // override, active-low and
+                                                               // asynchronous.
+  input  logic                                   rst_wdt_ni,  // Watchdog reset from the reset
+                                                              // controller, active-low and
+                                                              // asynchronous.
 
-  output logic                                   rst_cold_smc_no,  // Rst cold smc.
-  output logic                                   rst_primary_smc_clk_no,  // Rst primary smc clk.
-  output logic                                   rst_warm_smc_clk_no,  // Rst warm smc clk.
-  output logic                                   rst_wdt_smc_clk_no,  // Rst wdt smc clk.
+  output logic                                   rst_cold_smc_no,  // Stable cold reset, active-low,
+                                                                   // with deassertion synchronized
+                                                                   // to the SMC core clock.
+  output logic                                   rst_primary_smc_clk_no,  // Primary reset, active-low, with
+                                                                          // deassertion synchronized to the SMC core
+                                                                          // clock.
+  output logic                                   rst_warm_smc_clk_no,  // Warm reset, active-low, with deassertion
+                                                                       // synchronized to the SMC core clock.
+  output logic                                   rst_wdt_smc_clk_no,  // Watchdog reset, active-low, with
+                                                                      // deassertion synchronized to the SMC core
+                                                                      // clock.
 
-  output logic                                   rst_cold_ref_clk_no,  // Rst cold ref clk.
-  output logic                                   rst_primary_ref_clk_no,  // Rst primary ref clk.
-  output logic                                   rst_primary_periph_clk_no,  // Rst primary periph
-                                                                             // clk.
+  output logic                                   rst_cold_ref_clk_no,  // Stable cold reset, active-low, with
+                                                                       // deassertion synchronized to the reference
+                                                                       // clock.
+  output logic                                   rst_primary_ref_clk_no,  // Primary reset, active-low, with
+                                                                          // deassertion synchronized to the reference
+                                                                          // clock.
+  output logic                                   rst_primary_periph_clk_no,  // Primary reset, active-low, with
+                                                                             // deassertion synchronized to the peripheral
+                                                                             // clock.
 
-  input  logic                                   test_en_i,  // Test en.
-  input  logic                                   scan_rst_ni  // Scan rst.
+  input  logic                                   test_en_i,  // Scan test mode enable, active-high;
+                                                             // selects scan_rst_ni in place of
+                                                             // every reset this module generates.
+  input  logic                                   scan_rst_ni  // Scan reset, active-low, that
+                                                              // replaces the generated resets while
+                                                              // test_en_i is high.
 );
 
   // Cold reset synchronization to SMC clock

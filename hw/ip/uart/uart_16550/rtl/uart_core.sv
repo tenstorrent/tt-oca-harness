@@ -8,53 +8,74 @@
 // depth/threshold, timeout, and trigger-level types.
 // reg_out_i/reg_in_o are the generated register HW outputs and inputs.
 // Exposes serial, modem, DMA ready, err_o, and irq_o.
+// A zero divisor latch (DLM:DLL) disables both the transmitter and the receiver.
 
 module uart_core
   import uart_16550_pkg::*;
 #(
-  parameter int unsigned TX_FIFO_DEPTH = 16,  // Transmit FIFO depth.
-  parameter int unsigned RX_FIFO_DEPTH = 16,  // Receive FIFO depth.
+  parameter int unsigned TX_FIFO_DEPTH = 16,  // Transmit FIFO depth. In uart_16550, a power of 2
+                                              // from 4 to 4096.
+  parameter int unsigned RX_FIFO_DEPTH = 16,  // Receive FIFO depth. In uart_16550, a power of 2
+                                              // from 4 to 4096.
 
   localparam int unsigned BAUD_CNT_WIDTH = 16,  // Baud-rate divider counter width.
   localparam type         baud_cnt_t = logic [BAUD_CNT_WIDTH-1:0],  // Baud divider counter type.
 
-  localparam int unsigned RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH + 1),  // Receive FIFO depth.
+  localparam int unsigned RX_FIFO_DEPTH_WIDTH = $clog2(RX_FIFO_DEPTH + 1),  // Bits to hold an RX FIFO fill level of 0 to RX_FIFO_DEPTH.
   localparam type         rx_fifo_depth_t = logic [RX_FIFO_DEPTH_WIDTH-1:0],  // RX FIFO fill-level type.
 
-  localparam int unsigned RX_FIFO_THRESHOLD_WIDTH = $clog2(4096 + 1),  // Clog2.
+  localparam int unsigned RX_FIFO_THRESHOLD_WIDTH = $clog2(4096 + 1),  // Bits to hold the largest RX trigger level, 4096 entries.
   localparam type         rx_fifo_threshold_t = logic [RX_FIFO_THRESHOLD_WIDTH-1:0],  // RX FIFO threshold type.
 
-  localparam int unsigned TIMEOUT_CNT_WIDTH = $clog2(MAX_FRAME_LEN * TIMEOUT_CHAR_CNT),  // TIMEOUT CHAR CNT.
+  localparam int unsigned TIMEOUT_CNT_WIDTH = $clog2(MAX_FRAME_LEN * TIMEOUT_CHAR_CNT),  // Bits to count baud ticks over four maximum-length frames.
   localparam type         timeout_cnt_t = logic [TIMEOUT_CNT_WIDTH-1:0],  // Character-timeout counter type.
 
-  localparam int unsigned TRIGGER_LEVEL_WIDTH = $clog2(NUM_TRIGGER_LEVELS),  // NUM TRIGGER LEVELS.
+  localparam int unsigned TRIGGER_LEVEL_WIDTH = $clog2(NUM_TRIGGER_LEVELS),  // Bits to encode one of the RX trigger levels.
   localparam type         trigger_level_t = logic [TRIGGER_LEVEL_WIDTH-1:0]  // RX trigger-level select type.
 ) (
   input  logic                clk_i,    // System clock.
   input  logic                rst_ni,   // Active-low reset.
 
-  input  uart_16550_reg_out_t reg_out_i,  // Reg out (Register Interface).
-  output uart_16550_reg_in_t  reg_in_o,  // Reg in.
+  input  uart_16550_reg_out_t reg_out_i,  // Software-programmed register fields from the generated
+                                          // register block.
+  output uart_16550_reg_in_t  reg_in_o,  // Hardware-driven inputs to the generated register block.
 
-  input  logic                rx_i,     // Serial receive line.
-  output logic                tx_o,     // Serial transmit line.
+  input  logic                rx_i,     // Asynchronous; two-flop synchronized and 3-sample majority
+                                        // filtered. Ignored in system or line loopback.
+  output logic                tx_o,     // Registered; low during a set break. Held high in system
+                                        // loopback and equal to rx_i in line loopback.
 
-  input  logic                cts_ni,   // cts, active-low (Modem Interface).
-  input  logic                dsr_ni,   // dsr, active-low.
-  input  logic                ri_ni,    // ri, active-low.
-  input  logic                dcd_ni,   // dcd, active-low.
+  input  logic                cts_ni,   // Clear To Send, active-low; synchronized into MSR. Drives
+                                        // rts_no in line loopback.
+  input  logic                dsr_ni,   // Data Set Ready, active-low; synchronized into MSR. Drives
+                                        // dtr_no in line loopback.
+  input  logic                ri_ni,    // Ring Indicator, active-low; synchronized into MSR. Drives
+                                        // out1_no in line loopback.
+  input  logic                dcd_ni,   // Data Carrier Detect, active-low; synchronized into MSR.
+                                        // Drives out2_no in line loopback.
 
-  output logic                rts_no,   // rts, active-low.
-  output logic                dtr_no,   // dtr, active-low.
-  output logic                out1_no,  // out1, active-low.
-  output logic                out2_no,  // out2, active-low.
+  output logic                rts_no,   // Request To Send, active-low; the inverted MCR RTS bit,
+                                        // high in system loopback.
+  output logic                dtr_no,   // Data Terminal Ready, active-low; the inverted MCR DTR
+                                        // bit, high in system loopback.
+  output logic                out1_no,  // Inverted MCR OUT1 bit, active-low; high in system
+                                        // loopback.
+  output logic                out2_no,  // Inverted MCR OUT2 bit, active-low; high in system
+                                        // loopback.
 
-  output logic                rxrdy_o,  // Rxrdy (DMA Interface).
-  output logic                txrdy_o,  // Txrdy.
+  output logic                rxrdy_o,  // Active-high DMA receive request: in mode 0 while the RX
+                                        // FIFO is not empty; in mode 1 from the trigger level or a
+                                        // character timeout until the FIFO empties.
+  output logic                txrdy_o,  // Active-high DMA transmit request: in mode 0 while the TX
+                                        // FIFO is empty; in mode 1 until it fills, then again once
+                                        // it drains.
 
-  output logic                err_o,    // Error status.
+  output logic                err_o,    // High on a data-parity or pointer integrity error in the
+                                        // TX or RX FIFO, or a parity error in the holding register
+                                        // used in non-FIFO mode.
 
-  output logic                irq_o     // Interrupt request.
+  output logic                irq_o     // Interrupt request, active-high; the OR of the enabled
+                                        // interrupt sources.
 );
 
   //////////////////////////////////

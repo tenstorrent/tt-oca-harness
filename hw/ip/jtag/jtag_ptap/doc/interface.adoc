@@ -47,65 +47,14 @@ to the BYPASS instruction.
 
 === Signal Interface
 
-These are the ports of `jtag_ptap`. Packed control and bus types remain
-bundles at the module boundary; their members are not separate scalar ports.
-
-<<ptap-signal-interface-table>> lists the PTAP ports and the types of its bundled
-interfaces.
+Packed control and bus types remain bundles at the `jtag_ptap` boundary; their
+members are not separate scalar ports.
 
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="PTAP signal interface" tabindex="0">
-++++
+The parameters and ports of `jtag_ptap` are listed in xref:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
 endif::backend-html5[]
-
-[[ptap-signal-interface-table]]
-[cols="<30,<14,<25,<31",options="header",role="port-reference"]
-.PTAP signal interface
-|===
-|Signal |Direction |Type / dimensions |Description
-|`client_tap_ctrl_i` |Input |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
-|`client_tdi_i` |Input |`logic` |Serial data input from the named TAP interface.
-|`client_tdo_o` |Output |`logic` |Serial data output to the named TAP interface.
-|`client_tdo_oen_o` |Output |`logic` |TDO output enable for the named TAP interface.
-|`host_tap_ctrl_o` |Output |`jtag_tap_ctrl_t` |TAP-control bundle: TCK, TMS, and active-low TRST.
-|`bsr_host_scan_ctrl_o` |Output |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
-|`bsr_host_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
-|`bsr_host_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
-|`ijtag_host_scan_ctrl_o` |Output |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
-|`ijtag_host_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
-|`ijtag_host_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
-|`stap_host_scan_ctrl_o` |Output |`jtag_scan_ctrl_t` |Scan-control bundle: clock, resets, selection, capture, shift, and update.
-|`stap_host_scan_in_i` |Input |`logic` |Scan data entering this module from the named interface.
-|`stap_host_scan_out_o` |Output |`logic` |Scan data leaving this module at the named interface.
-|`inst_decoded_o` |Output |`jtag_instruction_decoded_e` |Decoded PTAP instruction.
-|`current_state_o` |Output |`tap_state_e` |Current TAP controller state.
-|`ic_reset_smc_o` |Output |`ic_reset_smc_t` |Reset slice with active-high `.ovrd` and active-low `.val` fields.
-|`ic_reset_sep_o` |Output |`ic_reset_sep_t` |Reset slice with active-high `.ovrd` and active-low `.val` fields.
-|`ic_reset_ext_o` |Output |`ic_reset_ext_t` |Reset slice with active-high `.ovrd` and active-low `.val` fields.
-|`cla_clock_stop_i` |Input |`logic` |CLA clock-stop status for readback.
-|`jtag_clock_stop_o` |Output |`logic` |Clock-stop request from DEBUG_CONTROL.
-|`cla_clock_stop_en_o` |Output |`logic` |CLA clock-stop enable.
-|`boot_stall_ovrd_o` |Output |`logic` |Enable the JTAG boot-stall override.
-|`boot_stall_o` |Output |`logic` |Boot-stall value while the override is enabled.
-|`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.
-|`rst_n_i` |Input |`logic` |Active-low system reset for the AXI bridges.
-|`pwr_on_rst_ni` |Input |`logic` |Power-on reset for the JTAG logic.
-|`smc_jtag2axi_security_disable_i` |Input |`logic` |Active-high disable of the corresponding JTAG2AXI bridge.
-|`smc_otp_jtag2axi_security_disable_i` |Input |`logic` |Active-high disable of the corresponding JTAG2AXI bridge.
-|`sep_otp_jtag2axi_security_disable_i` |Input |`logic` |Active-high disable of the corresponding JTAG2AXI bridge.
-|`axi_smc_dbg_req_o` |Output |`smc_jtag_axi_req_t` |Debug bus request to the target.
-|`axi_smc_dbg_resp_i` |Input |`smc_jtag_axi_resp_t` |Debug bus response from the target.
-|`axil_smc_otp_jtag_req_o` |Output |`smc_otp_axil_req_t` |Debug bus request to the target.
-|`axil_smc_otp_jtag_resp_i` |Input |`smc_otp_axil_resp_t` |Debug bus response from the target.
-|`axil_sep_otp_jtag_req_o` |Output |`sep_otp_axil_req_t` |Debug bus request to the target.
-|`axil_sep_otp_jtag_resp_i` |Input |`sep_otp_axil_resp_t` |Debug bus response from the target.
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters and ports of `jtag_ptap` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 === Dependencies

@@ -23,45 +23,64 @@ module efuse_guard #(
   parameter type         fuse_command_req_t      = logic,  // Fuse-command request type.
   parameter type         fuse_command_resp_t      = logic,  // Fuse-command response type.
 
-  parameter bit HAS_LC_STATE = 1'b0,    // B0.
+  parameter bit HAS_LC_STATE = 1'b0,    // Set for SEP: exempts field index 0 from locks and gates
+                                        // the RMA token bits on token matches; clear for SMC.
   parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
-  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // B010101.
+  parameter logic [5:0] TOKEN_MATCH_CODE = 6'b010101,  // Token-match status code that permits
+                                                       // programming the corresponding RMA token
+                                                       // bit.
 
   parameter type efuse_addr_t = logic,  // Fuse bit-address type.
-  parameter type efuse_data_t = logic [31:0],  // Fuse data-word type.
+  parameter type efuse_data_t = logic [31:0],  // Fuse data-word type; declared but not used in this
+                                               // module.
 
   localparam type efuse_byte_addr_t = logic [EFUSE_ADDR_WIDTH-1:0],  // Fuse byte-address type.
-  localparam efuse_addr_t SIP_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),  // Bit address of the lifecycle-state field.
-  localparam efuse_addr_t CHIPLET_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)  // Bit address of the lifecycle-state field.
+  localparam efuse_addr_t SIP_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 1),  // Bit address of the RMA SiP token bit.
+  localparam efuse_addr_t CHIPLET_TOKEN_BIT_ADDR = efuse_addr_t'(LC_STATE_BIT_POSITION + 2)  // Bit address of the RMA chiplet token bit.
 ) (
   input logic clk_i,                    // System clock.
-  input logic rst_ni,                   // Active-low reset.
-  input logic secure_tm_i,              // Secure tm.
+  input logic rst_ni,                   // Active-low synchronous reset; clears efuse_err_o.
+  input logic secure_tm_i,              // Secure test mode, active-high; blocks all fuse traffic
+                                        // without raising the error.
 
-  input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Efuse field map.
+  input efuse_pkg::rule_t [EFUSE_FIELDS-1:0] efuse_field_map_i,  // Per-field byte ranges and lock
+                                                                 // indices used to find the lock
+                                                                 // bits for a target address.
 
-  input logic [5:0] rma_sip_token_match_i,  // Rma sip token match.
-  input logic [5:0] rma_chiplet_token_match_i,  // Rma chiplet token match.
+  input logic [5:0] rma_sip_token_match_i,  // RMA SiP token-match status code from token
+                                            // processing.
+  input logic [5:0] rma_chiplet_token_match_i,  // RMA chiplet token-match status code from token
+                                                // processing.
 
-  output logic efuse_err_o,             // Efuse err.
-  input  logic error_clear_i,           // Error clear.
+  output logic efuse_err_o,             // Sticky error set when a program or read is blocked by a
+                                        // lock or, for a program, by a missing RMA token match; not
+                                        // set by secure test mode.
+  input  logic error_clear_i,           // Clears the sticky error; a same-cycle new error takes
+                                        // priority.
 
-  input fuse_command_req_t fuse_command_req_i,  // Fuse command req.
-  output fuse_command_req_t fuse_command_req_filtered_o,  // Fuse command req filtered.
+  input fuse_command_req_t fuse_command_req_i,  // Fuse command selected by the controller, before
+                                                // filtering.
+  output fuse_command_req_t fuse_command_req_filtered_o,  // Fuse command to the SHIM; zero when
+                                                          // blocked.
 
-  input fuse_command_resp_t fuse_command_resp_i,  // Fuse command resp.
-  output fuse_command_resp_t fuse_command_resp_filtered_o,  // Fuse command resp filtered.
+  input fuse_command_resp_t fuse_command_resp_i,  // Fuse command response from the SHIM.
+  output fuse_command_resp_t fuse_command_resp_filtered_o,  // Fuse command response to the
+                                                            // controller; zero when blocked.
 
-  input efuse_map_t shadow_regs_i,      // Shadow regs.
-  input logic is_programing_i,          // Is programing.
-  input efuse_addr_t program_target_addr_i,  // Program target addr.
-  input logic is_reading_i,             // Is reading.
-  input efuse_addr_t read_target_addr_i,  // Read target addr.
+  input efuse_map_t shadow_regs_i,      // Shadow eFuse map supplying the per-field read and write
+                                        // lock bits.
+  input logic is_programing_i,          // High while the program interface has a command
+                                        // outstanding.
+  input efuse_addr_t program_target_addr_i,  // Fuse bit address of the outstanding program command.
+  input logic is_reading_i,             // High while the read interface has a command outstanding.
+  input efuse_addr_t read_target_addr_i,  // Fuse bit address of the outstanding read command.
 
-  output logic is_read_locked_o,        // Is read locked.
-  output logic is_program_locked_o,     // Is program locked.
-  output logic secure_tm_blocked_o      // Secure tm blocked.
+  output logic is_read_locked_o,        // High when the read target address falls in a read-locked
+                                        // field.
+  output logic is_program_locked_o,     // High when the program target address is write locked or
+                                        // is an RMA token bit without a token match.
+  output logic secure_tm_blocked_o      // High while secure test mode blocks fuse traffic.
 );
 
   logic is_program_locked;

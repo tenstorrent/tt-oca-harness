@@ -3,21 +3,25 @@
 
 // Arbitrate MASTER_NUM APB masters onto one slave port.
 //
-// Forward only addresses in [SLAVE_ADDR_START, SLAVE_ADDR_END) to the slave; complete other
-// accesses with an error response.
+// Register every master's request, pick one with a fair round-robin prim_fair_rr_arb, and
+// replay it on the registered slave port; forward every address without decoding.
 // When SIM_APB_ARB is defined, splice a test master in at the highest index.
-// Grant one master at a time and steer the slave response back to that master.
+// Grant one master at a time and steer the slave response back to that master through a
+// register stage. Mask the master just served for one cycle after its response so its
+// still-asserted PSEL and PENABLE do not start a second transfer.
 
 module prim_apb_arb #(
   parameter int unsigned ADDR_WIDTH = 32,  // APB address width.
   parameter int unsigned DATA_WIDTH = 32,  // APB data width.
   parameter int unsigned MASTER_NUM = 8,  // Number of APB master ports.
-  parameter bit [31:0] SLAVE_ADDR_START = 32'h0000,  // Inclusive decoded address base.
-  parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,  // Exclusive decoded address limit.
+  parameter bit [31:0] SLAVE_ADDR_START = 32'h0000,  // Declared but unused; no address decoding.
+  parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,  // Declared but unused; addresses reach
+                                                   // the slave port unchecked.
   localparam int unsigned DATA_STRB_WIDTH = DATA_WIDTH / 8  // Write-strobe width from DATA_WIDTH.
 ) (
   input logic clk_i,  // APB clock.
-  input logic rst_ni,  // Async reset, active-low.
+  input logic rst_ni,  // Active-low reset, sampled synchronously; clears requests and
+                       // controls, while datapath registers are not reset.
 
 `ifdef SIM_APB_ARB
   input  logic                        test_psel_i,  // SIM test-master PSEL.
@@ -32,7 +36,8 @@ module prim_apb_arb #(
 `endif
 
   input  logic [MASTER_NUM-1:0]                       mst_psel_i,  // APB master PSELs.
-  input  logic [MASTER_NUM-1:0]                       mst_penable_i,  // APB master PENABLEs.
+  input  logic [MASTER_NUM-1:0]                       mst_penable_i,  // APB master PENABLEs; a master requests once its PSEL
+                                                                      // and PENABLE are both high.
   input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      mst_paddr_i,  // APB master PADDRs.
   input  logic [MASTER_NUM-1:0]                       mst_pwrite_i,  // APB master PWRITEs.
   input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_pwdata_i,  // APB master PWDATAs.

@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Expose SMC version and identity CSRs.
+// Generate the SMC version identifier from metal-programmable revision cells.
 //
-// Returns fixed version and chip-identity fields firmware uses to recognize the SMC
-// image.
-// Sits on the misc AXI-Lite map as the version/identity target.
+// Eight prim_rev_cell instances each produce one byte, so a metal-only respin can change
+// the version; the current ties give 0x00000000_000100A0. The module has no bus
+// interface: smc_misc_wrap reports the value through the chip_config VERSION_LO and
+// VERSION_HI registers.
 
 module smc_version_id_wrap (
-  output logic [63:0] version_id_o      // Version id.
+  output logic [63:0] version_id_o      // Version identifier from eight metal-programmable revision
+                                        // cells, one byte per cell; read back through the
+                                        // chip_config VERSION_LO and VERSION_HI registers.
 );
 
   // rev cell, pulls tie signals to top metal layer to allow for easy re-spin

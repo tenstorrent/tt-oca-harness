@@ -3,9 +3,11 @@
 
 // Divide clk_i on the positive edge with a programmable ratio and duty cycle.
 //
-// update_settings_i samples divider_i and duty_cycle_i into the divider.
-// use_clk_div_i selects the divided clock; otherwise clk_o follows clk_i.
-// test_en_i muxes scan_rst_ni onto the reset path and can bypass the divider.
+// update_settings_i samples divider_i and duty_cycle_i into the divider; after reset the
+// divider is INITIAL_DIVIDER_VAL with a 50% duty cycle.
+// use_clk_div_i selects the divided clock through a glitch-free mux; otherwise clk_o follows
+// clk_i.
+// test_en_i muxes scan_rst_ni onto the reset path; it does not bypass the divider.
 // RESET_WIDTH stretches the synchronized reset in clk_i cycles.
 
 module prim_prog_clk_div_posedge #(
@@ -14,12 +16,13 @@ module prim_prog_clk_div_posedge #(
   parameter bit DIVIDED_CLOCK_ON_RESET = 1'b0  // Starts with the divider engaged after reset.
 ) (
   input logic clk_i,  // Source clock.
-  input logic rst_ni,  // Async reset, active-low.
+  input logic rst_ni,  // Async reset, active-low; synchronized to clk_i internally.
   input logic update_settings_i,  // Samples divider_i and duty_cycle_i.
-  input logic [7:0] divider_i,  // Divide ratio.
-  input logic [7:0] duty_cycle_i,  // High-time numerator over divider_i.
+  input logic [7:0] divider_i,  // Divide ratio in clk_i cycles; values below 2 act as 2.
+  input logic [7:0] duty_cycle_i,  // High time in 1/256 of the divided period, clamped to 1 to
+                                   // divider-1 clk_i cycles; 0 acts as 1.
   input logic use_clk_div_i,  // Selects the divided clock when high.
-  input logic test_en_i,  // Scan/test bypass of the divider.
+  input logic test_en_i,  // Test mode; selects scan_rst_ni as the internal reset.
   input logic scan_rst_ni,  // DFT scan reset, active-low.
 
   output logic clk_o  // Divided or bypassed clock.

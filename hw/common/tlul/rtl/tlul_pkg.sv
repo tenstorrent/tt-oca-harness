@@ -4,8 +4,9 @@
 
 // Hold TileLink Uncached Lightweight types, opcodes, and integrity widths.
 //
-// Define the A/D opcodes, packed channel structs, integrity and reserved-user widths, and
-// the ArbiterImpl selection shared by the TL-UL adapters and sockets.
+// Define the A/D opcodes, packed channel structs and their default values, integrity and
+// reserved-user widths, helpers that extract and compute command and data integrity, and
+// an ArbiterImpl selection that no module in this tree reads.
 //
 // ArbiterImpl may be PPC or BINTREE. Both are functionally equivalent, but timing and
 // area differ:
@@ -13,7 +14,8 @@
 // - PPC can be smaller when timing is not critical.
 // - BINTREE is favorable under timing pressure, and on FPGA for both area and timing.
 //
-// Two constants give the data returned on a TL-UL error, each with correct bus integrity:
+// Two constants give the data returned on a TL-UL error; responders return each with
+// matching data integrity:
 //
 // - DataWhenInstrError is returned for an instruction fetch.
 // - DataWhenError is returned for any access that is not an instruction fetch.

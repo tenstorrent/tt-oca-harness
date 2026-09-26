@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Serialize wr_data_i onto tx_o at the baud tick rate.
+// A frame is a low start bit, the data bits LSB first, the optional parity bit and high stop
+// bits; the baud tick is every sixteenth tick_baud_x16_i.
 //
 // wr_i loads a frame from wr_data_i and wr_parity_i using word_length_i, parity_enable_i,
 // and extra_stop_bit_i.
@@ -14,20 +16,24 @@ module uart_tx
 #(
 ) (
   input  logic       clk_i,             // System clock.
-  input  logic       rst_ni,            // Active-low reset.
+  input  logic       rst_ni,            // Async reset, active-low.
 
-  input  logic       tx_enable_i,       // Transmitter enable.
+  input  logic       tx_enable_i,       // Transmitter enable. Low clears the shifter and holds tx_o
+                                        // high.
   input  logic       tick_baud_x16_i,   // 16× baud oversample tick.
   input  logic       parity_enable_i,   // Include a parity bit in the frame.
-  input  logic [3:0] word_length_i,     // Data bits per frame.
+  input  logic [3:0] word_length_i,     // Data bits per frame, 5 to 8.
   input  logic       extra_stop_bit_i,  // Add a second stop bit when high.
 
-  input  logic       wr_i,              // Pulse that loads wr_data_i into the shifter.
-  input  logic       wr_parity_i,       // Parity bit loaded with wr_data_i.
+  input  logic       wr_i,              // Pulse that loads wr_data_i into the shifter. A load while
+                                        // busy replaces the frame in progress, so assert it only
+                                        // while idle_o is high.
+  input  logic       wr_parity_i,       // Parity bit loaded with wr_data_i; used only when
+                                        // parity_enable_i is high.
   input  logic [7:0] wr_data_i,         // Transmit data byte.
   output logic       idle_o,            // High when the shifter is empty or tx_enable_i is low.
 
-  output logic       tx_o               // Serial transmit line.
+  output logic       tx_o               // Serial transmit line; registered, idles high.
 );
 
   logic  [3:0] baud_div_q;

@@ -20,34 +20,45 @@ module efuse_read_interface #(
   parameter type efuse_data_t = logic   // Fuse data-word type.
 ) (
   input logic clk_i,                    // System clock.
-  input logic rst_ni,                   // Active-low reset.
-  input logic test_en_i,                // DFT test enable.
+  input logic rst_ni,                   // Active-low asynchronous reset.
+  input logic test_en_i,                // DFT test enable; not used in this module.
 
-  input  logic        read_enable_i,    // Read enable.
-  output logic        is_reading_o,     // Is reading.
-  output efuse_addr_t read_target_addr_o,  // Read target addr.
+  input  logic        read_enable_i,    // Read operations allowed; a start while low completes
+                                        // immediately with an error.
+  output logic        is_reading_o,     // High while a read command is outstanding, for the guard.
+  output efuse_addr_t read_target_addr_o,  // Fuse bit address of the outstanding read command; zero
+                                           // when idle.
 
-  input  efuse_addr_t read_addr_i,      // Read addr.
-  input  logic        read_go_i,        // Read go.
-  output logic        read_busy_o,      // Read busy.
-  output logic        read_done_o,      // Read done.
-  output logic        read_error_o,     // Read error.
-  output efuse_data_t read_back_data_o,  // Read back data.
+  input  efuse_addr_t read_addr_i,      // Fuse bit address to read, sampled on a start.
+  input  logic        read_go_i,        // Starts a read operation when high in the idle state.
+  output logic        read_busy_o,      // High while a read operation waits for its response.
+  output logic        read_done_o,      // Set when the last read operation completed; cleared by
+                                        // the next start.
+  output logic        read_error_o,     // Set when the last read operation failed: rejected,
+                                        // blocked, errored by the bank, or timed out.
+  output efuse_data_t read_back_data_o,  // Data word from the last read; zero after an
+                                         // out-of-bounds, blocked, errored or timed-out read, and
+                                         // unchanged when a start is rejected because read_enable_i
+                                         // is low.
 
-  input  logic read_addr_oob_i,         // Read addr oob.
-  output logic read_addr_error_o,       // Read addr error.
-  input  logic read_addr_error_clear_i,  // Read addr error clear.
+  input  logic read_addr_oob_i,         // High when the full-width CSR read address is beyond the
+                                        // fuse array; a start is then rejected.
+  output logic read_addr_error_o,       // Sticky out-of-bounds read address error.
+  input  logic read_addr_error_clear_i,  // Clears the sticky address error; a same-cycle new error
+                                         // takes priority.
 
-  input logic efuse_req_err_i,          // Efuse req err.
-  input logic secure_tm_blocked_i,      // Secure tm blocked.
+  input logic efuse_req_err_i,          // Guard lock error; ends an outstanding read with an error.
+  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; ends an outstanding read
+                                        // with an error.
 
-  input logic        read_req_timeout_en_i,  // Read req timeout en.
-  input logic [27:0] read_req_timeout_cycles_i,  // Read req timeout cycles.
+  input logic        read_req_timeout_en_i,  // Enables the response timeout for read operations.
+  input logic [27:0] read_req_timeout_cycles_i,  // Response timeout in clock cycles.
 
-  output fuse_command_req_t  fuse_command_req_o,  // Fuse command req.
-  input  fuse_command_resp_t fuse_command_resp_i,  // Fuse command resp.
+  output fuse_command_req_t  fuse_command_req_o,  // Read command to the guard; valid only while
+                                                  // waiting for the response.
+  input  fuse_command_resp_t fuse_command_resp_i,  // Filtered response to the read command.
 
-  output logic is_read_timeout_debug_o  // Is read timeout debug.
+  output logic is_read_timeout_debug_o  // One-cycle pulse when a read operation times out.
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;

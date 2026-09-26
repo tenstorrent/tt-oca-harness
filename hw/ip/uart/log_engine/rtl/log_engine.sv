@@ -3,31 +3,42 @@
 
 // DMA buffered log bytes to a UART under AXI-Lite CSR control.
 //
-// CSR port programs the engine; log_fetch_axil fetches source data; log_write_axil writes
-// payload toward the UART path.
-// uart_tx_ready_i paces DMA into the UART; irq_o signals completion or error; FIFO_DEPTH
-// sizes the internal FIFO.
+// The log region is split into NUM_LOG_ENTRIES equal slots. Each non-zero LOG_CTRL LOG_LEN
+// requests a transfer from its slot; an arbiter tree serves one entry at a time, and
+// LOG_LEN clears when that transfer completes.
+// log_fetch_axil reads log words from the slot; log_write_axil writes them to
+// LOG_WRITE_ADDR.
+// uart_tx_ready_i paces the writes; irq_o signals fetch or write errors; FIFO_DEPTH
+// sizes the read-data FIFO.
 
 module log_engine
   import log_engine_pkg::*;
 #(
-  parameter int unsigned FIFO_DEPTH = 4  // FIFO depth.
+  parameter int unsigned FIFO_DEPTH = 4  // Entries in the read-data FIFO between log fetch and UART
+                                         // write.
 ) (
-  input  logic                 clk_i,   // System clock.
-  input  logic                 rst_ni,  // Active-low reset.
+  input  logic                 clk_i,   // System clock, rising-edge triggered.
+  input  logic                 rst_ni,  // Active-low reset. Assert asynchronously; deassert
+                                        // synchronously to clk_i. Resets all state machines,
+                                        // counters and the FIFO.
 
   input  csr_axil_req_t        csr_axil_req_i,  // Csr AXI-Lite req (AXI4-Lite Register Interface).
   output csr_axil_resp_t       csr_axil_resp_o,  // Csr AXI-Lite resp.
 
-  output log_fetch_axil_req_t  log_fetch_axil_req_o,  // Log fetch AXI-Lite req (AXI4-Lite Log Fetch Interface).
+  output log_fetch_axil_req_t  log_fetch_axil_req_o,  // Log fetch AXI-Lite req (AXI4-Lite Log Fetch
+                                                      // Interface).
   input  log_fetch_axil_resp_t log_fetch_axil_resp_i,  // Log fetch AXI-Lite resp.
 
-  output log_write_axil_req_t  log_write_axil_req_o,  // Log write AXI-Lite req (AXI4-Lite Log Write Interface).
+  output log_write_axil_req_t  log_write_axil_req_o,  // Log write AXI-Lite req (AXI4-Lite Log Write
+                                                      // Interface).
   input  log_write_axil_resp_t log_write_axil_resp_i,  // Log write AXI-Lite resp.
 
-  input  logic                 uart_tx_ready_i,  // Uart tx ready (DMA Interface).
+  input  logic                 uart_tx_ready_i,  // Uart tx ready, active-high (DMA Interface). The
+                                                 // engine writes a log word only while it is high,
+                                                 // so the UART TX FIFO never overflows.
 
-  output logic                 irq_o    // Interrupt request.
+  output logic                 irq_o    // Interrupt request, active-high. High while any
+                                        // INTR_STATUS bit enabled in INTR_ENABLE is set.
 );
 
   `include "prim_assert.sv"

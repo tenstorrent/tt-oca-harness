@@ -4,13 +4,14 @@
 
 // Expand a narrow address and XOR it with the scrambler key to form a round key.
 //
-// If the address is less than 32 bits, it is repeatedly concatenated with itself until 32
-// bits are formed, dropping any excess bits.
+// For ADDR_WIDTH 8 through 13 and 16 the address is concatenated with itself until 32 bits
+// are formed, the last copy keeping only its most significant bits; a 32-bit address is
+// used as is, and any other width is zero-extended.
 // The address must be 32 bits wide or less.
 // round_key_o is that expansion XORed with scrambler_key_i.
 
 module scrambler_addr_tweak #(
-  parameter int unsigned ADDR_WIDTH = 32                    // Input address width; must be <= 32.
+  parameter int unsigned ADDR_WIDTH = 32  // Input address width; must be <= 32.
 ) (
   input  logic [ADDR_WIDTH-1:0] addr_i,                     // Plaintext address to expand.
   input  logic [31:0]           scrambler_key_i,            // 32-bit scrambler key.

@@ -10,16 +10,19 @@
 //   fields via tlul_pkg::extract_d2h_rsp_intg.
 // - When EnableDataIntgGen is true, generate data_intg from d_data.
 //
-// When either parameter is false, take that field from tl_i if UserInIsZero is false,
-// otherwise wire it to zero. RspIntgInIsZero defaults to UserInIsZero.
+// When EnableRspIntgGen is false, rsp_intg is zero if RspIntgInIsZero is set and taken
+// from tl_i otherwise. When EnableDataIntgGen is false, data_intg is zero if UserInIsZero
+// is set and taken from tl_i otherwise.
 
 module tlul_rsp_intg_gen
   import tlul_pkg::*;
 #(
   parameter bit EnableRspIntgGen = 1'b1,           // Generate rsp_intg from opcode/size/error.
   parameter bit EnableDataIntgGen = 1'b1,          // Generate data_intg from d_data.
-  parameter bit UserInIsZero = 1'b0,               // Treat incoming user bits as tied to zero.
-  parameter bit RspIntgInIsZero = UserInIsZero     // Treat incoming rsp_intg as tied to zero.
+  parameter bit UserInIsZero = 1'b0,               // Zero data_intg when not generated;
+                                                   // simulation asserts d_user is zero.
+  parameter bit RspIntgInIsZero = UserInIsZero     // Zero rsp_intg when not generated;
+                                                   // simulation asserts it is zero.
 ) (
   input  tl_d2h_t tl_i,  // D-channel response before integrity insertion.
   output tl_d2h_t tl_o   // D-channel response with integrity fields filled.

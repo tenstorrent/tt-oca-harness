@@ -3,24 +3,29 @@
 
 // Gate clk_i with a programmable hysteresis after busy_i falls.
 //
-// Require enable_i high to open the gate; kick_i forces an immediate ungating.
-// hysteresis_i is the idle wait in clk_i cycles before gated_clk_o stops.
+// Gating happens only while enable_i is high; enable_i low or reset keeps the clock running.
+// kick_i forces an immediate ungating.
+// hysteresis_i is the idle wait in clk_i cycles before gated_clk_o stops. The count reloads
+// on busy_i or kick_i and restarts at all ones after reset. With hysteresis_i all ones a kick
+// is sticky: the countdown waits until busy_i has been seen after the kick.
 // test_clk_en_i forces the clock on for scan.
 
 module prim_clk_gater_hysteresis #(
   parameter int unsigned HYST_WIDTH = 6  // Width of hysteresis_i.
 ) (
   input logic clk_i,  // Clock to gate.
-  input logic rst_ni,  // Async reset, active-low.
+  input logic rst_ni,  // Active-low reset, sampled synchronously; forces the clock on while low.
 
-  input logic busy_i,  // Keeps the clock running while high.
-  input logic enable_i,  // Allows ungating when high.
-  input logic kick_i,  // Forces an immediate ungating pulse.
+  input logic busy_i,  // Reloads the hysteresis count each cycle it is high, keeping the clock
+                       // running when hysteresis_i is nonzero.
+  input logic enable_i,  // Enables clock gating when high; low keeps the clock running.
+  input logic kick_i,  // Ungates the clock immediately and reloads the hysteresis count.
   input logic test_clk_en_i,  // Scan force-clock enable.
 
-  input logic [HYST_WIDTH-1:0] hysteresis_i,  // Idle cycles before the gate closes.
+  input logic [HYST_WIDTH-1:0] hysteresis_i,  // Idle cycles before the gate closes; all ones makes
+                                              // kicks sticky.
 
-  output logic clk_active_o,  // High while the gated clock is running.
+  output logic clk_active_o,  // High while the gate is enabled; ignores test_clk_en_i.
   output logic gated_clk_o  // Gated clock output.
 );
   logic sticky_kick_en;

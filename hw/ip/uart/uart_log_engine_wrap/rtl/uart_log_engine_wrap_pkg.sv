@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Define address-map constants and AXI-Lite typedefs for the UART plus log-engine wrap.
+// Define register-map selects and AXI-Lite typedefs for the UART plus log-engine wrap.
 //
-// Places UART and log-engine CTRL/windows and defines select typedefs shared with
-// generated collateral.
+// Defines the 32-bit csr_axil types and uart_log_engine_wrap_reg_map_e, which selects the
+// UART, log-engine, CTRL or undefined register map.
 
 package uart_log_engine_wrap_pkg;
 

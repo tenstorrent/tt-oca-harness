@@ -21,66 +21,16 @@ The features of this design include:
 * Configurable APB4 or AXI4-Lite register interface
 
 [#sec-parameters]
-== Parameters
+== Parameters and Ports
 
-The table below lists the design's overridable parameters.
+ifdef::backend-html5[]
+The parameters and ports of `uart_log_engine_wrap` are listed in xref:ROOT:rtl-modules-reference/ip/uart_log_engine_wrap/uart_log_engine_wrap.adoc[uart_log_engine_wrap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `uart_log_engine_wrap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
-[cols="1,1,1,3", options="header"]
-.Parameters
-|===
-| Parameter               | Type           | Default Value | Description
-| `UART_TX_FIFO_DEPTH`    | `int unsigned` | `32`          | UART Transmitter FIFO depth. Must be a
-power of 2 between 4 and 4096 (inclusive).
-| `UART_RX_FIFO_DEPTH`    | `int unsigned` | `32`          | UART Receiver FIFO depth. Must be a
-power of 2 between 4 and 4096 (inclusive).
-| `GEN_LOG_ENGINE`        | `bit`          | `1'b1`        | Instantiates a Log Engine.
-| `LOG_ENGINE_FIFO_DEPTH` | `int unsigned` | `64`          | FIFO depth for the log engine. Must be
-a power of 2 greater than or equal to 16.
-|===
-
-[#sec-input-and-output-ports]
-== Input and Output Ports
-
-The table below lists the design's input and output ports.
-
-[cols="1,1,1,1,4", options="header"]
-.Input and Output Ports
-|===
-| Port Name | Width | Direction | Active | Description
-5+| *_Global Interface_*
-| `clk_i`   | 1     | Input     | Rising | System clock.
-| `rst_ni`  | 1     | Input     | Low    | System reset. Asynchronous assertion and synchronous
-deassertion.
-5+| *_APB4 or AXI4-Lite CSR interface_*
-| Address   | 10    | Input        | High | Control and status register (CSR) address.
-| Data      | 32    | Input/Output | High | Control and status register (CSR) data.
-5+| *_AXI4-Lite Log Fetch Interface_*
-| Read Address | 64 | Output    | High | Log fetch address.
-| Read Data    | 64 | Input     | High | Log fetch data.
-5+| *_Control Interface_*
-| `uart_en_o` | 1   | Output    | High   | UART enable signal.
-5+| *_UART Interface_*
-| `uart_rx_i` | 1   | Input     | High   | UART receive port. Asynchronous.
-| `uart_tx_o` | 1   | Output    | High   | UART transmit port.
-5+| *_UART Modem Interface_*
-| `uart_cts_ni`  | 1 | Input    | Low    | UART Clear to send. Asynchronous.
-| `uart_dsr_ni`  | 1 | Input    | Low    | UART Data set ready. Asynchronous.
-| `uart_ri_ni`   | 1 | Input    | Low    | UART Ring indicator. Asynchronous.
-| `uart_dcd_ni`  | 1 | Input    | Low    | UART Data carrier detect. Asynchronous.
-| `uart_rts_no`  | 1 | Output   | Low    | UART Request to send.
-| `uart_dtr_no`  | 1 | Output   | Low    | UART Data terminal ready.
-| `uart_out1_no` | 1 | Output   | Low    | UART General-purpose output 1.
-| `uart_out2_no` | 1 | Output   | Low    | UART General-purpose output 2.
-5+| *_UART DMA Interface_*
-| `uart_rxrdy_o`  | 1 | Output  | High   | UART Received character(s) ready to be read.
-| `uart_txrdy_o`  | 1 | Output  | High   | Transmitter ready to accept new characters.
-5+| *_UART Error Interface_*
-| `uart_err_o` | 1  | Output    | High   | UART FIFO parity error. This is NOT related to the
-parity of the received character.
-5+| *_Interrupt Interface_*
-| `uart_irq_o`       | 1 | Output | High | UART interrupt request.
-| `log_engine_irq_o` | 1 | Output | High | Log engine interrupt request.
-|===
+`LOG_ENGINE_FIFO_DEPTH` must be a power of 2 greater than or equal to 16.
 
 [#sec-registers]
 == Registers

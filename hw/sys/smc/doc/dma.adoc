@@ -23,7 +23,7 @@ integration.
 |=====================================================================
 |Parameter |Description
 |Address Range |0xC003_8000 - 0xC003_81FF (512 bytes)
-|Control Interface |AXI4-Lite (9-bit address space, 64-bit data width)
+|Control Interface |AXI4 (9-bit address, 64-bit data, 8-bit ID), converted to 32-bit register accesses
 |Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
 |Stream Support |Register map exposes 16 stream banks; SMC instantiates 1
 |Security |Integration with SMC fabric filtering mechanisms
@@ -53,44 +53,18 @@ control plane and data plane operations.
 
 == Configuration Parameters
 
-<<smc-dma-configuration-parameters-table>> lists the DMA frontend and backend
-configuration parameters.
+ifdef::backend-html5[]
+The parameters of `idma_wrapper` are listed in xref:ROOT:rtl-modules-reference/ip/idma_wrapper/idma_wrapper.adoc[idma_wrapper].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `idma_wrapper` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
-[[smc-dma-configuration-parameters-table]]
-.SMC DMA Configuration Parameters
-[width="100%",cols="30%,15%,55%",options="header",]
-|=======================================================================
-|Parameter |Default |Description
-|NUM_CTRL_INTERFACES |1 |Number of independent control/register
-interfaces (must be ≥ 1)
-
-|NUM_CTRL_STREAMS |1 |Number of control streams per interface (must be ≥
-1, maximum 16). SMC fixes this at 1; see <<dma-stream-support>>
-
-|NUM_MST_INTERFACES |1 |Number of independent AXI master interfaces
-(must be ≥ 1)
-
-|DMA_MST_MAX_TXNS |16 |Maximum outstanding AXI transactions per master
-interface
-
-|F2M_FIFO_DEPTH |4 |Frontend-to-midend FIFO depth (minimum 1 to avoid
-stalls)
-
-|M2B_FIFO_DEPTH |0 |Midend-to-backend FIFO depth (0 = passthrough, no
-FIFO)
-
-|EN_R_AW_COUPLING |1 |Enable read/write address coupling (recommended
-for performance)
-
-|BYPASS_DMA_CTRL_FLOPS |0 |Bypass register cut stages on control
-interface (timing optimization)
-
-|BYPASS_DMA_MST_FLOPS |0 |Bypass register cut stages on master interface
-(timing optimization)
-
-|CG_HYSTERESIS_W |6 |Clock gating hysteresis width in bits (6-bit = 0-63
-cycle delay)
-|=======================================================================
+SMC instantiates `idma_wrapper` with one control port, one stream (see
+<<dma-stream-support>>), and one master port, up to 32 outstanding master
+transactions, a 4-entry frontend-to-midend FIFO, no manager-to-backend FIFO, a
+16-beat realignment buffer, R-AW coupling enabled, both register slices kept, and
+a 6-bit clock-gating hysteresis.
 
 == DMA Frontend
 
@@ -106,7 +80,7 @@ processing, and transfer descriptor handling.
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Feature |Description
-|Register Interface |AXI4-Lite (9-bit address, 64-bit data)
+|Register Interface |AXI4 (9-bit address, 64-bit data), converted to 32-bit register accesses
 
 |Control Interfaces |Multiple configurable control interfaces for
 independent DMA access
@@ -237,12 +211,13 @@ iDMA.
 
 |Data Width |64-bit data path
 
-|ID Width |4-bit external (3-bit internal to iDMA backend)
+|ID Width |4-bit on the SMC fabric. The DMA master port is 3-bit, and the
+SMC mux that merges the DMA and the zeroer adds 1 bit. The backend's separate
+read and write managers use 2-bit IDs
 
-|Outstanding Transactions |Configurable maximum (default 16 via
-DMA_MST_MAX_TXNS)
+|Outstanding Transactions |Up to 32 (SMC sets DMA_MST_MAX_TXNS to 32)
 
-|Buffer Depth |Internal re-order buffer depth of 3
+|Buffer Depth |16-beat realignment buffer
 
 |R/AW Coupling |Optional read/write address coupling (default enabled)
 
@@ -265,13 +240,19 @@ DMA backend.
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Parameter |Description
-|Source Address |64-bit source address with byte-level granularity
-|Destination Address |64-bit destination address with full range support
-|Transfer Size |64-bit transfer size supporting large transfers
+|Source Address |Byte address in a 64-bit register pair; the DMA uses the
+low 56 bits
+|Destination Address |Byte address in a 64-bit register pair; the DMA uses
+the low 56 bits
+|Transfer Size |Length in bytes in a 64-bit register pair; the DMA uses the
+low 56 bits. Zero-length transfers are rejected
 |Alignment Handling |Automatic handling of unaligned transfers
-|Source Stride |64-bit source stride for 2D transfer patterns
-|Destination Stride |64-bit destination stride configuration
-|Repeat Count |Configurable repeat count for pattern transfers
+|Source Stride |Source stride for 2D transfer patterns in a 64-bit register
+pair; the DMA uses the low 56 bits
+|Destination Stride |Destination stride for 2D transfer patterns in a 64-bit
+register pair; the DMA uses the low 56 bits
+|Repeat Count |Repetition count in a 64-bit register pair; the DMA uses the
+low 32 bits
 |=======================================================================
 
 === Status and Control
@@ -322,16 +303,16 @@ optimizations.
 |Page Boundary Handling |Automatic burst fragmentation at page
 boundaries
 
-|Outstanding Transactions |Up to 16 concurrent AXI transactions
-(configurable via DMA_MST_MAX_TXNS)
+|Outstanding Transactions |Up to 32 concurrent AXI transactions
+(DMA_MST_MAX_TXNS)
 
 |Pipeline Efficiency |Overlapped command processing and data movement
 
 |Request Manager |Round-robin arbitration distributes requests across
 multiple master interfaces
 
-|FIFO Buffering |Frontend-to-midend FIFO (F2M_FIFO_DEPTH=4), optional
-midend-to-backend FIFO (M2B_FIFO_DEPTH)
+|FIFO Buffering |Frontend-to-midend FIFO (F2M_FIFO_DEPTH=4); the optional
+manager-to-backend FIFO is absent in SMC (M2B_FIFO_DEPTH=0)
 
 |R/AW Coupling |Optional read/write address coupling for memory
 controller optimization
@@ -345,12 +326,15 @@ and controls.
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Feature |Description
-|Clock Gating Implementation |Single prim_clk_gater_hysteresis gates
-clock to frontend, request manager, and backend
+|Clock Gating Implementation |Two gated clocks: an AXI-snooping gate
+(axi_cg_snoop) clocks the frontend, and a prim_clk_gater_hysteresis clocks
+the request manager and backend
 
 |Hysteresis Width |6-bit configurable hysteresis (CG_HYSTERESIS_W=6)
 
-|Activity Detection |Clock enabled when frontend wakeup or backend busy
+|Activity Detection |The request manager and backend clock runs while the
+frontend or backend is busy. The frontend clock also runs while the control
+port has an AXI transaction outstanding
 
 |Gating Control |cg_enable_i input enables/disables clock gating
 
@@ -366,7 +350,7 @@ through hardware execution.
 
 === Request Path
 
-Transfer requests enter through AXI4-Lite control interfaces, where the
+Transfer requests enter through AXI4 control interfaces, where the
 frontend receives configuration and commands from software. The frontend
 processes these N-dimensional transfer descriptors, converting complex
 2D patterns into linear iDMA requests. The request manager sits between

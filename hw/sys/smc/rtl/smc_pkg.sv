@@ -3,9 +3,10 @@
 
 // Share SMC types, address-map helpers, and fabric typedefs.
 //
-// Packages AXI and AXI-Lite request/response types used across the SMC hierarchy.
+// Packages AXI, AXI-Lite and APB request/response types used across the SMC hierarchy.
 // Holds mailbox counts, GPIO wrap counts, and other constants the top-level and fabrics
-// share.
+// share, the M-mode and Xvisor remap windows taken from smc_top_addrmap_pkg, the JTAG
+// reset-control override type, and the address-width adjustment assignment macros.
 
 `ifndef SMC_PACKAGE_DEFINED
 `define SMC_PACKAGE_DEFINED

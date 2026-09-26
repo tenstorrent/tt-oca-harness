@@ -3,7 +3,9 @@
 
 // Define types and configuration for the SEP system-peripherals AXI crossbar.
 //
-// Address decode rules live in sep_system_peripherals_xbar rather than this package.
+// Address decode rules live in sep_system_peripherals_xbar rather than this package; the
+// named address-range constants here mirror them and are not referenced by the crossbar.
+// Both initiators connect to all three targets.
 
 `include "axi/typedef.svh"
 

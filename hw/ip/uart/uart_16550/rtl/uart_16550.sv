@@ -7,38 +7,67 @@
 // TX_FIFO_DEPTH and RX_FIFO_DEPTH size the FIFOs.
 // Exposes rx/tx, modem controls (cts/dsr/ri/dcd in, rts/dtr/out1/out2 out), DMA
 // rxrdy/txrdy, err_o, and irq_o.
+// An AXI-Lite demux with one outstanding transaction per channel splits the bus over three
+// register maps: while LCR.DLAB is set, DLL and DLM go to the divisor-latch map; writes to
+// THR and FCR go to the write-only map; everything else goes to the main map.
+// In MCR.LOOP system loopback the modem outputs are held high, and in MCR.LINE_LOOPBACK
+// rts_no, dtr_no, out1_no and out2_no follow cts_ni, dsr_ni, ri_ni and dcd_ni.
 
 module uart_16550
   import uart_16550_pkg::*;
 #(
-  parameter int unsigned TX_FIFO_DEPTH = 16,  // Transmit FIFO depth.
-  parameter int unsigned RX_FIFO_DEPTH = 16  // Receive FIFO depth.
+  parameter int unsigned TX_FIFO_DEPTH = 16,  // Transmit FIFO depth in characters. Must be a power
+                                              // of 2 from 4 to 4096 inclusive.
+  parameter int unsigned RX_FIFO_DEPTH = 16  // Receive FIFO depth in characters. Must be a power of
+                                             // 2 from 4 to 4096 inclusive.
 ) (
-  input logic            clk_i,         // System clock.
-  input logic            rst_ni,        // Active-low reset.
+  input logic            clk_i,         // System clock, rising-edge triggered.
+  input logic            rst_ni,        // Active-low reset. Assert asynchronously; deassert
+                                        // synchronously to clk_i. Resets all registers to their
+                                        // defaults and clears the FIFOs.
 
   input  axil_req_t      axil_req_i,    // AXI-Lite req (AXI4-Lite Register Interface).
   output axil_resp_t     axil_resp_o,   // AXI-Lite resp.
 
-  input  logic           rx_i,          // Serial receive line.
-  output logic           tx_o,          // Serial transmit line.
+  input  logic           rx_i,          // Serial receive line; idles high. Asynchronous;
+                                        // synchronized internally.
+  output logic           tx_o,          // Serial transmit line; idles high.
 
-  input  logic           cts_ni,        // cts, active-low (Modem Interface).
-  input  logic           dsr_ni,        // dsr, active-low.
-  input  logic           ri_ni,         // ri, active-low.
-  input  logic           dcd_ni,        // dcd, active-low.
+  input  logic           cts_ni,        // Clear To Send, active-low (Modem Interface).
+                                        // Asynchronous; synchronized internally. Reported in
+                                        // MSR.CTS; a change sets MSR.DCTS and raises the modem
+                                        // status interrupt. Does not stall the transmitter.
+  input  logic           dsr_ni,        // Data Set Ready, active-low. Asynchronous; synchronized
+                                        // internally. Reported in MSR.DSR; a change sets MSR.DDSR.
+  input  logic           ri_ni,         // Ring Indicator, active-low. Asynchronous; synchronized
+                                        // internally. Reported in MSR.RI; a trailing edge sets
+                                        // MSR.TERI.
+  input  logic           dcd_ni,        // Data Carrier Detect, active-low. Asynchronous;
+                                        // synchronized internally. Reported in MSR.DCD; a change
+                                        // sets MSR.DDCD.
 
-  output logic           rts_no,        // rts, active-low.
-  output logic           dtr_no,        // dtr, active-low.
-  output logic           out1_no,       // out1, active-low.
-  output logic           out2_no,       // out2, active-low.
+  output logic           rts_no,        // Request To Send, active-low; driven from MCR.RTS outside
+                                        // loopback. The
+                                        // receiver never deasserts it on its own when the RX FIFO
+                                        // fills.
+  output logic           dtr_no,        // Data Terminal Ready, active-low; driven from MCR.DTR.
+  output logic           out1_no,       // General-purpose output 1, active-low; driven from
+                                        // MCR.OUT1.
+  output logic           out2_no,       // General-purpose output 2, active-low; driven from
+                                        // MCR.OUT2.
 
-  output logic           rxrdy_o,       // Rxrdy (DMA Interface).
-  output logic           txrdy_o,       // Txrdy.
+  output logic           rxrdy_o,       // Receiver ready, active-high (DMA Interface).
+                                        // FCR.DMA_MODE_SELECT chooses mode 0 or mode 1 signalling.
+  output logic           txrdy_o,       // Transmitter ready, active-high. FCR.DMA_MODE_SELECT
+                                        // chooses mode 0 or mode 1 signalling.
 
-  output logic           err_o,         // Error status.
+  output logic           err_o,         // Storage integrity error, active-high: a data parity or
+                                        // pointer error in the TX or RX FIFO, or a parity error in
+                                        // the non-FIFO holding register. Unrelated to the parity of
+                                        // received characters.
 
-  output logic           irq_o          // Interrupt request.
+  output logic           irq_o          // Interrupt request, active-high. High while any of the six
+                                        // enabled interrupt sources is pending.
 );
 
   `include "prim_assert.sv"

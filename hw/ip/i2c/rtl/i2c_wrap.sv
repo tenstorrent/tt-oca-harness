@@ -4,16 +4,31 @@
 // Demux one AXI-Lite slave onto NUM_I2CS I2C cores and a shared ctrl map.
 //
 // NUM_REG_MAPS is NUM_I2CS plus one for ctrl and one for the error slave.
+// Addresses outside every map reach the error slave, which answers DECERR with read data
+// 0xBADCAB1E.
+// The ctrl map holds one I2C_CTRL register per instance, which drives i2c_en_o,
+// i2c_controller_mode_en_o and that instance's SMBus enable.
 // SMBus, DMA ready, IRQ, and debug ports are vectors with one slice per instance.
 // Each instance's debug nibble matches i2c_core's four-bit debug bus.
 
 module i2c_wrap #(
-  parameter int unsigned NUM_I2CS                 = 3,      // Number of I2C instances.
-  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Controller TX FIFO depth.
-  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,     // Controller RX FIFO depth.
-  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,     // Target TX FIFO depth.
-  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,    // Target RX FIFO depth.
-  parameter int unsigned INPUT_DELAY_CYCLES       = 0,      // Extra input-pipeline cycles.
+  parameter int unsigned NUM_I2CS                 = 3,      // Number of I2C instances; 1 to
+                                                            // i2c_wrap_pkg::MAX_NUM_I2CS.
+  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Entries in the controller format
+                                                            // (FMT) FIFO in each instance; 1 to
+                                                            // 4095.
+  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,     // Entries in the controller receive
+                                                            // (RX) FIFO in each instance; 1 to
+                                                            // 4095.
+  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,     // Entries in the target transmit (TX)
+                                                            // FIFO in each instance; 1 to 4095.
+  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,    // Entries in the target acquisition
+                                                            // (ACQ) FIFO in each instance; 1 to
+                                                            // 4095.
+  parameter int unsigned INPUT_DELAY_CYCLES       = 0,      // External SCL/SDA input delay in clk_i
+                                                            // cycles; lengthens the
+                                                            // interference-detection blanking
+                                                            // window after each output change.
 
   parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_BASE_ADDR = 0, // Shared ctrl register-map base.
   parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_CTRL_REG_MAP_SIZE      = 0, // Shared ctrl register-map size.
@@ -22,7 +37,8 @@ module i2c_wrap #(
   parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_0__REG_MAP_SIZE      = 0, // Per-instance register-map size.
   parameter bit [i2c_wrap_pkg::REG_ADDR_WIDTH-1:0] I2C_INSTANCE_SPACING     = 0, // Byte spacing between instances.
 
-  localparam int unsigned NUM_REG_MAPS = NUM_I2CS + 2,      // Decode targets: instances + ctrl + error slave.
+  localparam int unsigned NUM_REG_MAPS = NUM_I2CS + 2,      // Decode targets: instances + ctrl +
+                                                            // error slave.
   localparam type i2c_wrap_reg_map_select_t = logic [$clog2(NUM_REG_MAPS)-1:0], // Register-map select type.
   localparam i2c_wrap_reg_map_select_t CTRL_REG_MAP =       // Select index for the ctrl map.
         i2c_wrap_reg_map_select_t'(NUM_REG_MAPS - 2),
@@ -35,27 +51,55 @@ module i2c_wrap #(
   input  i2c_wrap_pkg::axil_req_t           axil_req_i,     // Shared AXI-Lite request.
   output i2c_wrap_pkg::axil_resp_t          axil_resp_o,    // Shared AXI-Lite response.
 
-  output logic [NUM_I2CS-1:0] i2c_en_o,                     // Per-instance enable.
-  output logic [NUM_I2CS-1:0] i2c_controller_mode_en_o,     // Per-instance controller-mode enable.
+  output logic [NUM_I2CS-1:0] i2c_en_o,                     // Per-instance I2C_CTRL.I2C_EN value;
+                                                            // not consumed by the I2C instance.
+  output logic [NUM_I2CS-1:0] i2c_controller_mode_en_o,     // Per-instance
+                                                            // I2C_CTRL.I2C_CONTROLLER_MODE_EN
+                                                            // value; not consumed by the I2C
+                                                            // instance.
 
-  input  logic [NUM_I2CS-1:0] scl_i,                        // Per-instance SCL in.
-  output logic [NUM_I2CS-1:0] scl_o,                        // Per-instance SCL out.
-  input  logic [NUM_I2CS-1:0] sda_i,                        // Per-instance SDA in.
-  output logic [NUM_I2CS-1:0] sda_o,                        // Per-instance SDA out.
+  input  logic [NUM_I2CS-1:0] scl_i,                        // Per-instance SCL pad input,
+                                                            // synchronized to clk_i inside each
+                                                            // instance.
+  output logic [NUM_I2CS-1:0] scl_o,                        // Per-instance SCL pad output; 0 pulls
+                                                            // the line low, 1 releases it.
+  input  logic [NUM_I2CS-1:0] sda_i,                        // Per-instance SDA pad input,
+                                                            // synchronized to clk_i inside each
+                                                            // instance.
+  output logic [NUM_I2CS-1:0] sda_o,                        // Per-instance SDA pad output; 0 pulls
+                                                            // the line low, 1 releases it.
 
-  input  logic [NUM_I2CS-1:0] smbsus_ni,                    // Per-instance SMBus SUS in, active-low.
-  output logic [NUM_I2CS-1:0] smbsus_no,                    // Per-instance SMBus SUS out, active-low.
-  input  logic [NUM_I2CS-1:0] smbalert_ni,                  // Per-instance SMBus ALERT in, active-low.
-  output logic [NUM_I2CS-1:0] smbalert_no,                  // Per-instance SMBus ALERT out, active-low.
+  input  logic [NUM_I2CS-1:0] smbsus_ni,                    // Per-instance SMBus SUS in,
+                                                            // active-low; synchronized and reported
+                                                            // in SMBUS_STATUS.
+  output logic [NUM_I2CS-1:0] smbsus_no,                    // Per-instance SMBus SUS out,
+                                                            // active-low; high unless the instance
+                                                            // is in host mode.
+  input  logic [NUM_I2CS-1:0] smbalert_ni,                  // Per-instance SMBus ALERT in,
+                                                            // active-low; masked while
+                                                            // I2C_CTRL.SMBUS_EN is low.
+  output logic [NUM_I2CS-1:0] smbalert_no,                  // Per-instance SMBus ALERT out,
+                                                            // active-low; high unless the instance
+                                                            // is in target mode.
 
-  output logic [NUM_I2CS-1:0] controller_tx_ready_o,        // Per-instance controller TX DMA ready.
-  output logic [NUM_I2CS-1:0] controller_rx_ready_o,        // Per-instance controller RX DMA ready.
-  output logic [NUM_I2CS-1:0] target_tx_ready_o,            // Per-instance target TX DMA ready.
-  output logic [NUM_I2CS-1:0] target_rx_ready_o,            // Per-instance target RX DMA ready.
+  output logic [NUM_I2CS-1:0] controller_tx_ready_o,        // Per-instance controller TX DMA ready;
+                                                            // low from FMT FIFO full until below
+                                                            // threshold.
+  output logic [NUM_I2CS-1:0] controller_rx_ready_o,        // Per-instance controller RX DMA ready;
+                                                            // high from above RX threshold until
+                                                            // empty.
+  output logic [NUM_I2CS-1:0] target_tx_ready_o,            // Per-instance target TX DMA ready; low
+                                                            // from TX FIFO full until below
+                                                            // threshold.
+  output logic [NUM_I2CS-1:0] target_rx_ready_o,            // Per-instance target RX DMA ready;
+                                                            // high from above ACQ threshold until
+                                                            // empty.
 
-  output logic [NUM_I2CS-1:0] i2c_irq_o,                    // Per-instance interrupt.
+  output logic [NUM_I2CS-1:0] i2c_irq_o,                    // Per-instance level interrupt; OR of
+                                                            // the enabled INTR_STATE sources.
 
-  output logic [NUM_I2CS-1:0][3:0] i2c_debug_o              // Per-instance four-bit debug; see i2c_core.
+  output logic [NUM_I2CS-1:0][3:0] i2c_debug_o              // Per-instance four-bit debug; see
+                                                            // i2c_core.
 );
 
   `include "axi/assign.svh"

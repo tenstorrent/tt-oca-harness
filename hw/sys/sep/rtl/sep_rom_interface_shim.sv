@@ -3,8 +3,10 @@
 
 // Forward the SEP ROM memory_interface struct onto a prim_rom macro.
 //
-// ROM_ADDR_WIDTH defaults to 10 (1K entries). Forwards mem_req_i into macro_req_o /
-// macro_addr_o and returns macro_rdata_i on mem_rsp_o.
+// ROM_ADDR_WIDTH defaults to 10 (1K 64-bit entries). Forwards read requests from mem_req_i
+// into macro_req_o / macro_addr_o and returns macro_rdata_i on mem_rsp_o.
+// Every request is granted at once and answered with rvalid one cycle later. Writes never
+// reach the macro; they are acknowledged and otherwise ignored.
 
 module sep_rom_interface_shim
   import sep_pkg::*;
@@ -14,12 +16,18 @@ module sep_rom_interface_shim
   input  logic                        clk_i,  // System clock.
   input  logic                        rst_ni,  // Active-low reset.
 
-  input  sep_sram_req_t               mem_req_i,  // Memory Interface (from memory_interface module).
-  output sep_sram_rsp_t               mem_rsp_o,  // mem response.
+  input  sep_sram_req_t               mem_req_i,  // Memory request from the SEP memory_interface;
+                                                  // byte address, 64-bit data.
+  output sep_sram_rsp_t               mem_rsp_o,  // Memory response: gnt always high, rvalid one
+                                                  // cycle after any request, rdata from the ROM
+                                                  // macro.
 
-  output logic                        macro_req_o,  // Macro Interface (to ROM primitive - prim_rom).
-  output logic [ROM_ADDR_WIDTH-1:0]   macro_addr_o,  // macro addr.
-  input  logic [SEP_MEM_DATA_WIDTH-1:0] macro_rdata_i  // macro rdata i.
+  output logic                        macro_req_o,  // Read request to the ROM macro (prim_rom);
+                                                    // high only for read requests.
+  output logic [ROM_ADDR_WIDTH-1:0]   macro_addr_o,  // ROM word address: the request byte address
+                                                     // divided by eight.
+  input  logic [SEP_MEM_DATA_WIDTH-1:0] macro_rdata_i  // ROM read data, returned one cycle after
+                                                       // macro_req_o.
 );
 
   // Generate rvalid by delaying req by one cycle (ROM has 1 cycle latency)

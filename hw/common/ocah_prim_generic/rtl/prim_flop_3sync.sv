@@ -3,8 +3,8 @@
 
 // Synchronize d_i into the clk_i domain through 3 flops.
 //
-// Chain 3 positive-edge flops so q_o is a metastability-hardened copy of d_i. The chain
-// has no reset and powers up undefined until d_i is sampled.
+// Chain 3 positive-edge flops so q_o is d_i delayed by three clk_i cycles. The chain has
+// no reset, so q_o is undefined until three clk_i edges after power-up.
 
 module prim_flop_3sync (
   input clk_i,       // Destination-domain clock.

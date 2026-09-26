@@ -6,26 +6,34 @@
 // Enters and leaves persistence-on from CLAMP_HOLD, CLAMP_RELEASE, and BYPASS instruction
 // selects.
 // bypass_escape_enable_i from the status TDR allows BYPASS to leave persistence-on.
-// update_ir_i marks IR updates; test_logic_reset_i marks Test-Logic-Reset entry.
+// update_ir_i marks IR updates; test_logic_reset_i is not used, so the mode persists
+// through Test-Logic-Reset and only trst_n returns it to Persistence-Off.
 // persistence_mode_o is 1 for Persistence-On and 0 for Persistence-Off.
 
 module jtag_tmp
   import prim_jtag_pkg::*;
   import jtag_tmp_pkg::*;
 (
-  input  jtag_tap_ctrl_t  tap_ctrl_i,   // JTAG TAP control (tms, trst_n, tck).
+  input  jtag_tap_ctrl_t  tap_ctrl_i,   // JTAG TAP control; tck clocks the state, trst_n resets it,
+                                        // and tms is not used.
 
-  input  logic             update_ir_i,  // Update ir.
+  input  logic             update_ir_i,  // IR update enable from the TAP, high in Update-IR;
+                                         // qualifies the BYPASS escape from persistence-on.
 
-  input  logic             test_logic_reset_i,  // Test logic reset (Test logic reset (from TAP controller state)).
+  input  logic             test_logic_reset_i,  // Test-Logic-Reset state from the TAP controller;
+                                                // not used.
 
-  input  logic             clamp_hold_selected_i,  // CLAMP_HOLD instruction selected.
-  input  logic             clamp_release_selected_i,  // CLAMP_RELEASE instruction selected.
-  input  logic             bypass_selected_i,  // BYPASS instruction selected.
+  input  logic             clamp_hold_selected_i,  // CLAMP_HOLD instruction selected; enters
+                                                   // Persistence-On on the next rising TCK.
+  input  logic             clamp_release_selected_i,  // CLAMP_RELEASE instruction selected; leaves
+                                                      // Persistence-On on the next rising TCK.
+  input  logic             bypass_selected_i,  // BYPASS instruction selected; leaves Persistence-On
+                                               // in Update-IR when bypass_escape_enable_i is set.
 
   output logic             persistence_mode_o,  // 1 = Persistence-On, 0 = Persistence-Off.
 
-  input  logic             bypass_escape_enable_i  // Bypass escape enable from status register.
+  input  logic             bypass_escape_enable_i  // Bypass escape enable from the status register;
+                                                   // lets BYPASS leave Persistence-On.
 );
   // Tie off unused fields to satisfy lint
   logic unused_tap;

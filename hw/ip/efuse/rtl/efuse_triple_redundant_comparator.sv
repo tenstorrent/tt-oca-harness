@@ -13,13 +13,17 @@
 `include "prim_assert.sv"
 
 module efuse_triple_redundant_comparator #(
-  localparam int TokenWidth = 256       // Token digest width in bits.
+  localparam int TokenWidth = 256  // Token digest width in bits.
 ) (
-  input  logic                   compute_comparison_vld_i,  // 1 publishes match codes; 0 forces idle 6'b000000.
+  input  logic                   compute_comparison_vld_i,  // 1 publishes match codes; 0 forces
+                                                            // idle 6'b000000.
   input  logic [TokenWidth-1:0]  token_digest_i,  // Computed 256-bit token digest.
   input  logic [TokenWidth-1:0]  token_expected_i,  // Expected 256-bit token digest.
-  output logic [5:0]             token_match_o,  // Encoded {match_n,match_p}×3 match/fault/idle code.
-  output logic                   redundancy_fault_o  // High when the three comparators disagree or pair illegally.
+  output logic [5:0]             token_match_o,  // Encoded {match_n,match_p}×3 match/fault/idle
+                                                 // code.
+  output logic                   redundancy_fault_o  // High when the three comparators disagree or
+                                                     // pair illegally; held low while
+                                                     // compute_comparison_vld_i is low.
 );
 
   logic [2:0] match_p_raw, match_n_raw;

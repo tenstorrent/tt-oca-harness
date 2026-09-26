@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Hold SMU AXI crossbar types, fabric widths, and connectivity typedefs.
+// Hold SMU AXI crossbar types, fabric widths, configuration, and connectivity matrix.
 //
-// Declare the 56/64 slave and expanded-ID master channel types used by smu_axi_xbar.
-// Runtime address rules live in the crossbar module itself.
+// Declare the 56/64 slave and expanded-ID master channel types used by smu_axi_xbar, the
+// address rule type whose end address is one bit wider than the address, the axi_xbar
+// configuration, and the input-to-output connectivity matrix. The runtime address rule
+// values live in the crossbar module itself.
 
 package smu_axi_xbar_pkg;
 

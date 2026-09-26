@@ -11,7 +11,7 @@
 // - ROM (read-only, via km_rom_interface with parity checking).
 // - SRAM (read/write, via km_sram_interface with scrambling, parity, and write-lock
 //   enforcement).
-// - Peripherals (via picorv32_axi_adapter to an AXI4-Lite master).
+// - Peripherals: every other address, via picorv32_axi_adapter to an AXI4-Lite master.
 //
 // A virtual ROM region (testbench-only) is exposed for simulation.
 //
@@ -19,7 +19,7 @@
 // inputs:
 //
 // - Bit 3: KMCSR aggregated interrupt (sticky error sources).
-// - Bit 4: Mailbox inbound data available (direct level).
+// - Bit 4: Mailbox interrupt (level); in key_manager the mailbox's aggregated KM-side IRQ.
 // - Bit 5: Adams Bridge ML-KEM shared-key valid.
 //
 // AXI bus errors (SLVERR, DECERR) on the write and read response channels are detected
@@ -31,14 +31,15 @@
 //
 // - 0 (ROM mode): ROM and VROM only.
 // - 1 (SRAM mode): VROM and write-locked SRAM regions, plus the ROM until the lockout
-//   engages (see the ROM Lockout section).
+//   engages on the first fetch from a write-locked SRAM region. The lockout holds until
+//   rst_sync_ni; afterwards ROM fetches and data reads complete at once with zero data.
 //
 // Any fetch outside the whitelist pulses exec_violation_o, except a blocked ROM access,
 // which pulses rom_access_violation_o instead.
 //
 // LATCHED_MEM_RDATA is 1 when ROM/SRAM latch read data, so it stays valid after the
 // request deasserts, and 0 when read data is valid only while rvalid is asserted. Setting
-// it lets the CPU use look-ahead optimization when the memory supports it.
+// it makes the core use mem_rdata directly instead of its own capture register.
 
 module picorv32_wrapper
   import km_intf_pkg::*;
@@ -55,8 +56,8 @@ module picorv32_wrapper
   input  logic clk_i,        // System clock.
   input  logic rst_ni,       // Active-low async reset for the memory interfaces, PCPI CRC,
                              // read-data select and AXI error logic.
-  input  logic rst_sync_ni,  // Active-low synchronous reset for the PicoRV32 core and the ROM
-                             // lockout latch.
+  input  logic rst_sync_ni,  // Active-low synchronous reset for the PicoRV32 core, the AXI
+                             // adapter and the ROM lockout latch.
 
   output km_rom_mem_req_t rom_mem_req_o,     // ROM interface request (with parity checking).
   input  km_rom_mem_rsp_t rom_mem_rsp_i,     // ROM interface response.
@@ -92,13 +93,14 @@ module picorv32_wrapper
   input  axil_resp_t axi_mst_resp_i,  // AXI4-Lite master response from the crossbar.
 
   input  logic irq_i,                // KMCSR aggregated interrupt (sticky error sources).
-  input  logic mbox_irq_i,           // Mailbox inbound data available (level-sensitive).
+  input  logic mbox_irq_i,           // Mailbox interrupt (level-sensitive).
   input  logic abr_sharedkey_irq_i,  // ML-KEM shared-key valid (level-sensitive).
 
   input  logic [31:0] irq_entry_addr_i,  // Runtime IRQ handler entry PC from KMCSR (reset
                                          // default 0x0000_0010).
 
-  output logic trap_o,  // PicoRV32 trap output (for debugging).
+  output logic trap_o,  // PicoRV32 trap output; in key_manager it wipes the KPV and drives
+                        // unrecoverable_err_o.
 
   output logic axi_slverr_o,  // AXI SLVERR error detected (pulse to KMCSR IRQ).
   output logic axi_decerr_o   // AXI DECERR error detected (pulse to KMCSR IRQ).

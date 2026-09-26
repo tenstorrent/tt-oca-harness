@@ -3,8 +3,9 @@
 
 // Register d_i in a metastability-hardened flop with async reset to 0.
 //
-// Behave as a positive-edge D flip-flop with async active-low reset to 0. Synthesis maps
-// this wrapper to a hardened cell when the library provides one.
+// Behave as a positive-edge D flip-flop with async active-low reset to 0. A synthesis
+// build replaces this behavioural model with a metastability-hardened technology cell
+// of the same name and ports.
 
 module prim_metastab_hardened_dffr (
   input clk_i,       // Sampling clock.

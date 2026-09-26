@@ -13,8 +13,9 @@
 // mem_la_addr_i arrive one cycle before mem_valid_i, allowing the ROM to begin the fetch
 // early.
 //
-// Odd parity is checked per byte on every read response; mismatches generate a
-// single-cycle parity_error_o pulse to KMCSR.
+// Odd parity is checked per byte on the read-strobe lanes of every read response; a
+// mismatch raises parity_error_o for the cycle the response is valid. Requests are held
+// off for two cycles after reset release.
 
 module km_rom_interface
   import km_intf_pkg::*;
@@ -22,26 +23,31 @@ module km_rom_interface
   parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH  // Word-address width for the ROM.
 ) (
   input  logic clk_i,   // System clock.
-  input  logic rst_ni,  // Active-low reset.
+  input  logic rst_ni,  // Active-low asynchronous reset.
 
   input  logic        mem_valid_i,  // PicoRV32 native memory request valid (from CPU).
-  output logic        mem_ready_o,  // Memory ready (data available).
+  output logic        mem_ready_o,  // Memory ready: read data valid, or immediately for a write.
   input  logic [31:0] mem_addr_i,   // Byte address.
   input  logic [31:0] mem_wdata_i,  // Write data (unused, ROM is read-only).
-  input  logic [3:0]  mem_wstrb_i,  // Write strobe (unused, ROM is read-only).
-  input  logic [3:0]  mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU).
+  input  logic [3:0]  mem_wstrb_i,  // Write strobe; any set bit marks a write, which is
+                                    // acknowledged without effect and flagged on rom_write_err_o.
+  input  logic [3:0]  mem_rstrb_i,  // Read strobe: byte lanes consumed by the CPU, which select the
+                                    // parity-checked lanes.
   output logic [31:0] mem_rdata_o,  // Read data.
 
   input  logic        mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid).
   input  logic [31:0] mem_la_addr_i,   // Look-ahead address.
-  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe.
+  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe; selects the parity-checked lanes
+                                       // of a look-ahead fetch.
 
   output km_rom_mem_req_t rom_mem_req_o,  // ROM memory request, exposed at the subsystem
                                           // boundary.
   input  km_rom_mem_rsp_t rom_mem_rsp_i,  // ROM memory response.
 
-  output logic parity_error_o,  // Parity error detected (pulse to KMCSR).
-  output logic rom_write_err_o  // ROM write attempt detected (pulse to KMCSR).
+  output logic parity_error_o,  // Combinational; high while a valid read response fails parity on
+                                // a strobed lane.
+  output logic rom_write_err_o  // Combinational; high while mem_valid_i is high with a nonzero
+                                // write strobe.
 );
 
   `include "prim_assert.sv"

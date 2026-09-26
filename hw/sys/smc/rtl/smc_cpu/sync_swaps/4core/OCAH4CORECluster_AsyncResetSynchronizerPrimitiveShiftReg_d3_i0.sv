@@ -4,13 +4,15 @@
 // Replace the Chipyard async-reset shift-register black box.
 //
 // Substitutes an OCAH synchronizer for the generated async reset primitive.
-// Three stages synchronize the async reset into the local clock domain.
+// Three flops synchronize io_d into the local clock domain; reset clears them asynchronously
+// and also forces io_q low combinationally.
 
 module OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0 (
-  input  clock,                         // Clock.
-  reset,
-  io_d,  // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14].
-  output io_q                           // @[generators/rocket-chip/src/main/scala/util/ShiftReg.scala:36:14].
+  input  clock,                         // Destination clock for the three synchronizer flops.
+  reset,                                // Active-high reset; asynchronously clears the synchronizer
+                                        // flops and forces io_q low.
+  io_d,  // Data bit to synchronize into the clock domain.
+  output io_q                           // Synchronized data bit, held low while reset is high.
 );
 
   wire io_rstbypass, io_rst_synced, reset_n;

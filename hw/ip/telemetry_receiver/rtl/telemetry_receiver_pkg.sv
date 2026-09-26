@@ -5,6 +5,9 @@
 //
 // Defines packet and block sizes and the axil_req_t / axil_resp_t used by
 // telemetry_receiver.
+// A 64-bit packet holds a last_packet bit above seven 9-bit blocks, each a valid bit and a
+// data byte. The AXI-Lite address width is the register block's minimum, data is 32 bits,
+// and NUM_COUNTER_REGS is 32.
 
 package telemetry_receiver_pkg;
 

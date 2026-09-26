@@ -9,9 +9,8 @@
 //
 // Controls:
 //
-// - LFSR_MODE selects prime-length versus LFSR feedback.
-// - bypass_i breaks the feedback path and halves the downsampling period for raw-output
-//   testing.
+// - LFSR_MODE is declared but not read; the feedback is always prime-length.
+// - bypass_i breaks the feedback path for raw-output testing.
 // - byte_mask_i masks the emitted byte.
 //
 // entropy_byte_valid_o deasserts whenever enable_i is low so stale data cannot overflow
@@ -20,17 +19,28 @@
 module entropy_decorrelator #(
   parameter int unsigned LENGTH       = 29,  // Decorrelator delay-chain length.
   parameter int unsigned CLKDIV_WIDTH = 24,  // Downsample divider counter width.
-  parameter bit          LFSR_MODE    = 1'b0  // B0.
+  parameter bit          LFSR_MODE    = 1'b0  // Intended to select LFSR rather than prime-length
+                                              // feedback; the feedback logic does not read it.
 ) (
   input       logic                    clk_i,  // System clock.
-  input       logic                    rst_ni,  // Active-low reset.
-  input       logic                    enable_i,  // Block enable.
-  input       logic                    noise_i,  // Noise.
-  input       logic                    bypass_i,  // Bypass.
-  input       logic [7:0]              byte_mask_i,  // Byte mask.
-  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,  // Sample clk div.
-  output      logic [7:0]              entropy_byte_sample_o,  // Entropy byte sample.
-  output      logic                    entropy_byte_valid_o  // Entropy byte valid.
+  input       logic                    rst_ni,  // Active-low asynchronous reset.
+  input       logic                    enable_i,  // Enables shifting and sampling; while low the
+                                                  // chain holds and the divider reloads from
+                                                  // sample_clk_div_i.
+  input       logic                    noise_i,  // Synchronized ring-oscillator noise bit shifted
+                                                 // into the delay chain each clk_i cycle.
+  input       logic                    bypass_i,  // High removes the XOR feedback so raw noise
+                                                  // shifts through the chain unmixed.
+  input       logic [7:0]              byte_mask_i,  // AND mask applied to each emitted byte; a
+                                                     // clear bit forces that output bit to zero.
+  input       logic [CLKDIV_WIDTH-1:0] sample_clk_div_i,  // Downsample period minus one, in clk_i
+                                                          // cycles between emitted bytes.
+  output      logic [7:0]              entropy_byte_sample_o,  // Masked top eight delay-chain
+                                                               // stages, held until the next
+                                                               // sample.
+  output      logic                    entropy_byte_valid_o  // Single-cycle strobe marking a new
+                                                             // entropy_byte_sample_o; low while
+                                                             // enable_i is low.
 );
 
   /////////////

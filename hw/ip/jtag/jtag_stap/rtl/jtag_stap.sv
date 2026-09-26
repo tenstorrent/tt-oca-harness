@@ -3,31 +3,55 @@
 
 // Bridge a secondary TAP link with optional pipeline and lockup stages.
 //
-// Forwards client scan and TAP control to the host when security_disable_i is low.
-// SCAN_IN_PIPE adds a pipeline stage on the client scan input; TDI_LOCKUP and
-// SCAN_OUT_LOCKUP add lockup latches on TDI and scan out.
+// A SIB on the client scan chain gives access to a 3-bit 3DCR scan register holding
+// {tms_hold, stap_sel, config_hold}. TCK and TRST always pass to the host side; while
+// stap_sel is set, host TMS follows the client and host_tdi_i replaces the client scan data
+// at the SIB input, splicing the secondary TAP into the chain; otherwise host TMS is held at
+// tms_hold. config_hold keeps the 3DCR from being reset by the scan reset, leaving only
+// TRST. security_disable_i high forces the STAP deselected, drives host_tdo_o low and blocks
+// 3DCR updates.
+// Host TDO always leaves through a TCK falling-edge lockup flop. SCAN_IN_PIPE adds a
+// pipeline stage on the client scan input; TDI_LOCKUP and SCAN_OUT_LOCKUP add lockup
+// latches on TDI and scan out.
 
 module jtag_stap
   import prim_jtag_pkg::*;
 #(
-  parameter bit  SCAN_IN_PIPE = 0,      // Adds a pipeline stage to the client interface scan.
-  parameter bit  TDI_LOCKUP = 0,        // Adds a lockup latch to the STAP TDI.
-  parameter bit  SCAN_OUT_LOCKUP = 0,   // Adds a lockup latch to the STAP scan out.
+  parameter bit  SCAN_IN_PIPE = 0,      // Adds a TCK pipeline stage on the client scan input for
+                                        // timing closure.
+  parameter bit  TDI_LOCKUP = 0,        // Adds a lockup stage, clocked on the falling edge of TCK,
+                                        // on host_tdi_i. Use it where the host TDI crosses a die
+                                        // boundary.
+  parameter bit  SCAN_OUT_LOCKUP = 0,   // Adds a lockup latch on the client scan output for
+                                        // extended scan-chain timing.
 
   parameter type jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,  // JTAG scan-control struct type.
   parameter type jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t  // JTAG TAP-control struct type.
 ) (
-  input  jtag_scan_ctrl_t  client_scan_ctrl_i,  // Client scan ctrl.
-  input  logic             client_scan_in_i,  // Client scan in.
-  output logic             client_scan_out_o,  // Client scan out.
+  input  jtag_scan_ctrl_t  client_scan_ctrl_i,  // Client scan-control bundle: clock, resets,
+                                                // selection, capture, shift, and update.
+  input  logic             client_scan_in_i,  // Client scan data; forwarded to host_tdo_o and,
+                                              // while the STAP is deselected, fed to the SIB input.
+  output logic             client_scan_out_o,  // Scan output of the STAP's SIB, back onto the
+                                               // client chain.
 
-  input  jtag_tap_ctrl_t  client_tap_ctrl_i,  // Client tap ctrl.
-  input  logic            security_disable_i,  // Active-high bridge/security disable.
+  input  jtag_tap_ctrl_t  client_tap_ctrl_i,  // Client TAP-control bundle: TCK, TMS, and active-low
+                                              // TRST.
+  input  logic            security_disable_i,  // Active-high disable of this STAP: forces it
+                                               // deselected, drives host_tdo_o low and blocks 3DCR
+                                               // updates.
 
-  output jtag_tap_ctrl_t  host_tap_ctrl_o,  // Host tap ctrl.
-  output logic            host_tdo_oen_o,  // Host tdo oen.
-  output logic            host_tdo_o,   // Host tdo.
-  input  logic            host_tdi_i    // Host tdi.
+  output jtag_tap_ctrl_t  host_tap_ctrl_o,  // Host TAP-control bundle: TCK and TRST pass through;
+                                            // TMS follows the client while selected and is
+                                            // otherwise the 3DCR tms_hold bit.
+  output logic            host_tdo_oen_o,  // Host TDO output enable, active-high while this STAP is
+                                           // selected and shifting.
+  output logic            host_tdo_o,   // Client scan data through the TCK falling-edge lockup
+                                        // flop, toward the secondary TAP's TDI; low while
+                                        // security_disable_i is high.
+  input  logic            host_tdi_i    // Serial data from the secondary TAP's TDO; replaces the
+                                        // client scan data at the SIB input while the STAP is
+                                        // selected.
 );
 
   logic stap_scan_in, sib_client_scan_in;

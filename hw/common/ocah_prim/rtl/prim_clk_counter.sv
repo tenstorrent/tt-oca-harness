@@ -3,22 +3,28 @@
 
 // Count clk_i edges while a reference window on refclk_i is open.
 //
-// Close the window on refclk_cnt_done_i and make clk_cnt_o valid.
+// Close the window on refclk_cnt_done_i and make clk_cnt_o valid; the counter restarts from
+// zero at each window end and saturates at all ones.
 // test_mode_i swaps scan_rst_ni onto the reset path.
-// cnt_en_i must be high for the counter to run.
+// cnt_en_i must be high for the counter to run; it crosses from refclk_i to clk_i through a
+// 4-phase handshake, and refclk_cnt_done_i through a toggle pulse synchronizer.
 
 module prim_clk_counter #(
   parameter int unsigned WIDTH = 24  // Counter width.
 ) (
   input  logic             refclk_i,  // Reference clock for the measurement window.
-  input  logic             refclk_cnt_done_i,  // Reference window complete, sync to refclk_i.
-  input  logic             refclk_rst_ni,  // Async reset in the reference domain, active-low.
+  input  logic             refclk_cnt_done_i,  // Single-cycle pulse on refclk_i that ends each
+                                               // window.
+  input  logic             refclk_rst_ni,  // Active-low reset for the refclk_i-side logic and both
+                                           // CDC source sides.
   input  logic             clk_i,  // Clock under measurement.
-  input  logic             rst_ni,  // Async reset in the clk_i domain, active-low.
+  input  logic             rst_ni,  // Active-low reset for the clk_i domain; asserts
+                                    // asynchronously, deasserts after four clk_i cycles.
   input  logic             test_mode_i,  // Selects scan_rst_ni on the reset mux.
   input  logic             scan_rst_ni,  // DFT scan reset, active-low.
-  input  logic             cnt_en_i,  // Enables counting on clk_i.
-  output logic [WIDTH-1:0] clk_cnt_o,  // Measured clk_i edge count.
+  input  logic             cnt_en_i,  // Enables counting; in the refclk_i domain. Low clears the
+                                      // count and clk_cnt_valid_o.
+  output logic [WIDTH-1:0] clk_cnt_o,  // clk_i cycles counted in the last closed window.
   output logic             clk_cnt_valid_o  // clk_cnt_o is valid after the window closes.
 );
 

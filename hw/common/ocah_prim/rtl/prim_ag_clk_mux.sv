@@ -7,7 +7,7 @@
 // the other, and combine the gated clocks onto clk_o.
 // SelectOnReset chooses which clock is enabled while reset is asserted: 0 selects clk0_i
 // during reset, 1 selects clk1_i.
-// test_en_i forces a combinatorial bypass for scan.
+// test_en_i forces both clock gates open, so clk_o is the OR of clk0_i and clk1_i.
 
 module prim_ag_clk_mux #(
   parameter bit SelectOnReset = 1'b0  // 0 selects clk0_i during reset; 1 selects clk1_i.
@@ -16,8 +16,9 @@ module prim_ag_clk_mux #(
   input  logic clk1_i,  // Second clock source.
   input  logic rst_clk0_ni,  // Async active-low reset in the clk0_i domain.
   input  logic rst_clk1_ni,  // Async active-low reset in the clk1_i domain.
-  input  logic test_en_i,  // Scan/test bypass of the glitch-free path.
-  input  logic sel_i,  // Selects clk1_i when high, clk0_i when low.
+  input  logic test_en_i,  // Scan/test enable; forces both clock gates open.
+  input  logic sel_i,  // Selects clk1_i when high, clk0_i when low; asynchronous,
+                       // synchronized into each clock domain through four flops.
   output logic clk_o  // Glitch-free muxed clock.
 );
 

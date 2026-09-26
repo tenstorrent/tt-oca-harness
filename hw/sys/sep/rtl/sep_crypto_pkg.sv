@@ -3,8 +3,9 @@
 
 // Define typedefs and parameters for the SEP cryptographic subsystem.
 //
-// Covers ABR memory structs, external TRNG AXI-Stream types, OTBN SRAM packs, and EDN
-// endpoint counts.
+// Covers the sep_crypto_axi_interconnect address rules and port enum, ABR memory structs,
+// external TRNG AXI-Stream types, OTBN IMEM and DMEM structs, and EDN endpoint and client
+// counts.
 
 package sep_crypto_pkg;
 

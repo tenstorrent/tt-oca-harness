@@ -3,8 +3,8 @@
 
 // Hold shared types and constants for the AVSBus controller.
 //
-// Defines the AXI-Lite request and response typedefs for the controller CSR port and the
-// AVS command and status encodings used by the bit-bang FSM.
+// Defines the 32-bit address and data AXI-Lite typedefs for the controller CSR port, the
+// matching APB typedefs, and the address-rule type for its axi_lite_to_apb bridge.
 
 package avsbus_controller_pkg;
 

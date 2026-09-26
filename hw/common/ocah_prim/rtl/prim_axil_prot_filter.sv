@@ -4,9 +4,9 @@
 // Block AXI-Lite accesses whose AxPROT fails a programmable requirement.
 //
 // write_filter_enable_i and read_filter_enable_i arm the AW and AR checks against
-// awprot_requirement_i and arprot_requirement_i.
-// Complete failing writes or reads locally with an error and do not forward them to the
-// subordinate.
+// awprot_requirement_i and arprot_requirement_i; an access passes only on an exact match.
+// Complete failing writes or reads locally with DECERR, reads returning 'hBADCAB1E sized to
+// DATA_WIDTH, and do not forward them to the subordinate.
 // MAX_TRANS bounds outstanding filtered traffic.
 
 module prim_axil_prot_filter #(
@@ -24,7 +24,7 @@ module prim_axil_prot_filter #(
 ) (
   input logic clk_i,  // AXI-Lite clock.
   input logic rst_ni,  // Async reset, active-low.
-  input logic test_en_i,  // DFT/test enable.
+  input logic test_en_i,  // DFT/test enable for the internal AXI-Lite demux.
 
   input logic       write_filter_enable_i,  // Enables AWPROT filtering.
   input logic       read_filter_enable_i,  // Enables ARPROT filtering.

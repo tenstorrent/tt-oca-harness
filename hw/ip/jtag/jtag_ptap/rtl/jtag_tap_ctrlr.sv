@@ -3,32 +3,46 @@
 
 // Advance the IEEE 1149.1 TAP FSM and generate IR/DR scan controls.
 //
-// Tracks tap_state_e from TMS on TCK and drives host TAP control plus IR and DR scan
-// controls.
-// TMP persistence_mode_i and runbist_i adjust when test logic remains active across
-// Test-Logic-Reset.
+// Tracks tap_state_e from TMS on rising TCK, passes the TAP control through to the host,
+// and drives IR and DR scan controls.
+// Capture, shift and Test-Logic-Reset controls are registered on falling TCK; update and
+// Run-Test/Idle controls decode the current state.
+// With TMP_ENABLE, persistence_mode_i keeps the scan chrst_n released through
+// Test-Logic-Reset; runbist_i is forwarded to both scan controls.
 // tdo_oen_o enables TDO in Shift-IR and Shift-DR.
 
 module jtag_tap_ctrlr
   import prim_jtag_pkg::*;
   import jtag_tap_pkg::*;
 #(
-  parameter bit TMP_ENABLE = 1          // Enables TMP controller functionality and instructions.
+  parameter bit TMP_ENABLE = 1          // Lets persistence_mode_i hold chrst_n released through
+                                        // Test-Logic-Reset.
 ) (
-  input  jtag_tap_ctrl_t          client_tap_ctrl_i,  // TAP control inputs (tms, trst_n, tck).
+  input  jtag_tap_ctrl_t          client_tap_ctrl_i,  // TAP control inputs (tms, trst_n, tck);
+                                                      // trst_n asynchronously resets the FSM to
+                                                      // Test-Logic-Reset.
 
-  input  logic                    persistence_mode_i,  // TMP persistence mode (1=On, 0=Off).
+  input  logic                    persistence_mode_i,  // TMP persistence mode (1=On, 0=Off); when
+                                                       // on with TMP_ENABLE, chrst_n stays high in
+                                                       // Test-Logic-Reset.
 
-  input  logic                    runbist_i,  // RUNBIST instruction decoded.
+  input  logic                    runbist_i,  // RUNBIST instruction decoded; forwarded to the
+                                              // runbist field of both scan controls.
 
-  output jtag_tap_ctrl_t          host_tap_ctrl_o,  // TAP control outputs (tms, trst_n, tck).
+  output jtag_tap_ctrl_t          host_tap_ctrl_o,  // TAP control outputs (tms, trst_n, tck),
+                                                    // passed through unchanged from
+                                                    // client_tap_ctrl_i.
 
-  output jtag_scan_ctrl_t         host_dr_scan_ctrl_o,  // DR scan control outputs.
-  output jtag_scan_ctrl_t         host_ir_scan_ctrl_o,  // IR scan control outputs.
+  output jtag_scan_ctrl_t         host_dr_scan_ctrl_o,  // DR scan control outputs; rst_n is low in
+                                                        // Test-Logic-Reset.
+  output jtag_scan_ctrl_t         host_ir_scan_ctrl_o,  // IR scan control outputs; rst_n is low in
+                                                        // Test-Logic-Reset.
 
   output tap_state_e              current_state_o,  // Current state (Debug and status signals).
 
-  output logic                    tdo_oen_o  // Tdo oen.
+  output logic                    tdo_oen_o  // Active-high TDO output enable, set in Shift-DR and
+                                             // Shift-IR; registered on the falling TCK edge and
+                                             // cleared by trst_n.
 );
 
   //--------------------------------------------------------------------------

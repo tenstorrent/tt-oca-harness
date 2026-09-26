@@ -3,8 +3,9 @@
 
 // Define types and constants for the 16550 UART core and register map.
 //
-// Provides AXI-Lite typedefs, FIFO helpers, frame constants, and register struct types
-// for uart_16550, uart_core, uart_tx, and uart_rx.
+// Provides AXI-Lite typedefs, frame constants and frame packing helpers, the three
+// register-map selects and register struct types, DMA mode and interrupt ID encodings, and
+// is_pow_of_2 and count_ones, for uart_16550, uart_core, uart_tx, and uart_rx.
 
 package uart_16550_pkg;
 

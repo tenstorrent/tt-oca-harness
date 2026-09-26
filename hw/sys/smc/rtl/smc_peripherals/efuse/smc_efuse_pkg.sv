@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Declare types and constants for the SMC eFuse shim.
+// Declare types and constants for the SMC eFuse map.
 //
-// Describes the vendor eFuse CSR window carved from smc_external.
-// Shared by smc_efuse_wrapper and the peripheral AXI-Lite address map.
+// Sizes the 8192-bit fuse array as 256 32-bit words and defines efuse_map_t, the
+// shadow-register layout of the SMC eFuse map, together with the fuse command types.
+// Builds EfuseFieldMap, the per-field lock rules and address ranges, and the Class 1
+// shadow range that covers the LOCKS field. Used by smc_efuse_wrapper and by the SMC
+// ports that carry the shadow registers and fuse commands.
 
 package smc_efuse_pkg;
   import smc_top_addrmap_pkg::*;

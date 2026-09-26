@@ -8,10 +8,10 @@
 // Used by the BIW extractor to mix per-lane entropy bytes.
 
 module gf_muladd (
-  input       logic [7:0] a_i,          // Buffer or mux data input.
-  input       logic [7:0] b_i,          // B.
-  input       logic [7:0] c_i,          // C.
-  output      logic [7:0] y_o           // Cell output.
+  input       logic [7:0] a_i,          // Multiplicand in GF(2^8).
+  input       logic [7:0] b_i,          // Multiplier in GF(2^8).
+  input       logic [7:0] c_i,          // Addend, XORed onto the product.
+  output      logic [7:0] y_o           // Result a_i * b_i + c_i in GF(2^8).
 );
 
   /////////////////////

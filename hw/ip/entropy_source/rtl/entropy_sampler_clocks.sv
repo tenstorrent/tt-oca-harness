@@ -7,20 +7,33 @@
 // divides by powers of two from ÷1 through ÷32.
 //
 // The shared RO enables when any generator enables and detunes when any generator
-// requests detune (OR aggregation). It is about 10× longer than the noise ROs to hit the
-// target frequency ratio; detuned length preserves that ratio.
+// requests detune (OR aggregation); detune selects its full 109-stage path and otherwise
+// it runs on its 53-stage tap. It is about 10× longer than the noise ROs to hit the
+// target frequency ratio.
 
 module entropy_sampler_clocks #(
-  parameter int unsigned NRINGS = 12    // Ring-oscillator lane count.
+  parameter int unsigned NRINGS = 12  // Ring-oscillator lane count.
 ) (
-  input       logic                   clk_i,  // System clock.
-  input       logic                   rst_ni,  // Active-low reset.
-  input       logic                   sample_clk_i,  // Ring-oscillator sample clock.
-  input       logic [NRINGS-1:0]      sample_clk_select_i,  // Sample clk select.
-  input       logic [NRINGS-1:0]      enable_i,  // Block enable.
-  input       logic [NRINGS-1:0]      detune_ro_i,  // Detune ro.
-  input       logic [NRINGS-1:0][4:0] sample_clk_divide_i,  // Sample clk divide.
-  output      logic [NRINGS-1:0]      sample_clk_o  // Sample clk.
+  input       logic                   clk_i,  // System clock; not used in this module.
+  input       logic                   rst_ni,  // Active-low asynchronous reset of the ripple
+                                               // dividers.
+  input       logic                   sample_clk_i,  // External sample clock for lanes whose
+                                                     // sample_clk_select_i bit is low.
+  input       logic [NRINGS-1:0]      sample_clk_select_i,  // Per-lane clock source: high for the
+                                                            // shared ring oscillator, low for
+                                                            // sample_clk_i; change only while that
+                                                            // lane's enable_i is low.
+  input       logic [NRINGS-1:0]      enable_i,  // Per-lane enable requests; any set bit starts the
+                                                 // shared ring oscillator.
+  input       logic [NRINGS-1:0]      detune_ro_i,  // Detune requests for the shared ring
+                                                    // oscillator; any set bit selects its
+                                                    // full-length feedback path.
+  input       logic [NRINGS-1:0][4:0] sample_clk_divide_i,  // Per-lane divide exponent: 0-5 divide
+                                                            // by 1 to 32, other values divide by 4;
+                                                            // change only while that lane's
+                                                            // enable_i is low.
+  output      logic [NRINGS-1:0]      sample_clk_o  // Per-lane selected and divided sample clock
+                                                    // for the noise-source sampling flop.
 );
 
   /////////////////////

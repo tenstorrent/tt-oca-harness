@@ -3,43 +3,93 @@
 
 // Bridge AXI-Lite CSR traffic onto an AVSBus V1.3.1 serial link.
 //
-// Command and readback FIFOs cross between the register clock (clk_reg_i) and the AVS
-// reference clock (clk_ref_i).
+// AXI-Lite requests reach the register block through axi_lite_to_apb. Command and readback
+// FIFOs cross between the register clock (clk_reg_i) and the AVS clock, which a programmable
+// divider derives from clk_reg_i or clk_ref_i.
 // Release rst_clk_div_ni before the rest of the AVS logic so the generated avs_clock_o is
 // stable before transactions begin.
-// rst_ref_ni and rst_reg_ni assert asynchronously and deassert synchronously to their
-// respective clocks.
+// rst_reg_ni is synchronized internally into clk_reg_i, the pre-divider clock and the AVS
+// clock. rst_reg_ni and rst_ref_ni also reset the clock-source mux directly, so each must
+// assert asynchronously and deassert synchronously to its own clock.
 
 `begin_keywords "1800-2005"
 
 module avsbus_controller #(
   parameter int unsigned COMMAND_FIFO_DEPTH = 8,            // Depth of the AVS command FIFO.
+                                                            // In entries; must be a power of two.
+                                                            // Depths of 16 or more can overflow the
+                                                            // 4-bit AVS_FIFOS_STATUS slot counts.
   parameter int unsigned READBACK_FIFO_DEPTH = 8            // Depth of the AVS readback FIFO.
+                                                            // In entries; must be a power of two.
+                                                            // Depths of 16 or more can overflow the
+                                                            // 4-bit AVS_FIFOS_STATUS slot counts.
 ) (
   input  logic            clk_reg_i,                        // Register-domain clock.
-  input  logic            clk_ref_i,                        // AVS bit-bang reference clock.
-  input  logic            rst_ref_ni,                       // Active-low.
-                                                            // Async assert; deassert synchronously to clk_ref_i.
-  input  logic            rst_reg_ni,                       // Active-low.
-                                                            // Async assert; deassert synchronously to clk_reg_i.
+                                                            // Also selectable as the AVS clock
+                                                            // source.
+  input  logic            clk_ref_i,                        // Reference clock.
+                                                            // The alternative AVS clock source;
+                                                            // the clock-source mux selects it
+                                                            // during reset.
+  input  logic            rst_ref_ni,                       // Active-low. Async assert; deassert
+                                                            // synchronously to clk_ref_i. Resets
+                                                            // the clk_ref_i leg of the anti-glitch
+                                                            // clock source mux.
+  input  logic            rst_reg_ni,                       // Active-low. Async assert; deassert
+                                                            // synchronously to clk_reg_i. Resets
+                                                            // the clk_reg_i leg of the clock-source
+                                                            // mux and, through reset synchronizers,
+                                                            // the rest of the controller.
   input  logic            rst_clk_div_ni,                   // Active-low clock-divider reset.
-                                                            // Release before the rest of the AVS logic.
+                                                            // Release before the rest of the AVS
+                                                            // logic. Asynchronous; resets the
+                                                            // programmable clock divider.
 
   input  logic            avs_sdata_i,                      // AVS slave data in.
+                                                            // Serial response from the target
+                                                            // device, sampled on the falling edge
+                                                            // of the AVS clock.
   output logic            avs_mdata_o,                      // AVS master data out.
+                                                            // Serial command transmission, driven
+                                                            // on the rising edge of the AVS clock;
+                                                            // high when idle and during reset.
   output logic            avs_clock_o,                      // AVS serial clock out.
-  output logic            avs_gpio_enable_o,                // Enables the AVS GPIO pad drivers.
+                                                            // The divided AVS clock through a clock
+                                                            // gate, closed while idle when
+                                                            // STOP_AVS_CLOCK_ON_IDLE is set.
+  output logic            avs_gpio_enable_o,                // AVS_CONFIG.AVS_GPIO_ENABLE value.
+                                                            // Output enable for the avs_clock and
+                                                            // avs_mdata pads and input enable for
+                                                            // the avs_sdata pad.
 
   input  avsbus_controller_pkg::avsbus_axil_req_t              axil_req_i, // AXI-Lite CSR request.
+                                                                           // 32-bit address, 32-bit
+                                                                           // data, 4-bit strobe.
   output avsbus_controller_pkg::avsbus_axil_resp_t             axil_resp_o, // AXI-Lite CSR response.
 
   output logic interrupt_o,                                 // Controller interrupt.
+                                                            // Level-sensitive, active high; the OR
+                                                            // of the unmasked AVS_INTERRUPT bits.
 
   input logic scan_rst_ni,                                  // DFT scan reset, active-low.
+                                                            // Replaces the synchronized resets
+                                                            // while test_en_i is high and resets
+                                                            // the clock divider in test mode.
   input logic test_en_i,                                    // DFT test enable.
+                                                            // Active high. Selects clk_test_i,
+                                                            // forces the clock source muxes to
+                                                            // their test setting and enables the
+                                                            // clock-gate test inputs, and selects
+                                                            // scan_rst_ni in place of the
+                                                            // synchronized resets.
   input logic clk_test_i,                                   // DFT test clock.
+                                                            // Replaces the pre-divider clock while
+                                                            // test_en_i is high.
 
   output logic [16:0] cur_state_debug_o                     // FSM state debug bus.
+                                                            // One-hot protocol FSM state,
+                                                            // resynchronized from the AVS clock to
+                                                            // clk_reg_i.
 );
 
   localparam int unsigned SlaveResyncCycles = 34;

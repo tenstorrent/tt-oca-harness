@@ -3,7 +3,11 @@
 
 // Declare SMC internal AXI-Lite crossbar types and configuration.
 //
-// Defines initiator/target counts and AXI-Lite typedefs for the internal CSR xbar.
+// Defines initiator/target counts and AXI-Lite typedefs for the internal CSR xbar: one
+// initiator, 8 targets and 8 address rules on a 32-bit address and 64-bit data bus, with
+// four outstanding transactions per port, every port cut and full connectivity. The rule
+// type carries a 33-bit end address so a window can end at 2^32; apb_addr_rule_t is
+// declared but unused.
 // Address rules are defined by smc_internal_axi_lite_xbar.
 
 `include "axi/typedef.svh"

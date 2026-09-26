@@ -3,10 +3,14 @@
 
 // Decode, width-convert, and isolate the SEP crypto AXI fabric.
 //
-// Provide a 13-port host decode with bus-width conversion and transaction-draining
-// isolation for internal TRNG, accelerator, and Key Manager paths.
+// Provide a 13-port host demux (12 targets plus a DECERR slave) with bus-width conversion
+// and transaction-draining isolation for internal TRNG, accelerator, and Key Manager paths.
+// Host bursts (AxLEN != 0) and unmapped addresses receive DECERR.
 // isolate_req_i / isolated_o handshake with sep_reset_ctrl before domain software reset.
-// KM mailbox AXI-Lite is converted from the host path and is not isolated.
+// While a path isolates, new transactions on it complete with SLVERR and read data
+// 0x1501A7ED.
+// KM mailbox AXI-Lite and the external TRNG AXI-Lite are converted from the host path and
+// are not isolated; the eFuse and lifecycle legs leave as full AXI4 without isolation.
 
 `include "axi/typedef.svh"
 
@@ -16,66 +20,103 @@ module sep_crypto_axi_interconnect (
   input  logic test_en_i,                     // DFT test-enable (scan-enable).
 
   input  sep_pkg::sep_32_64_6_12_axi_req_t   sep_crypto_axi_req_i,  // Full AXI4 slave from local crossbar.
-  output sep_pkg::sep_32_64_6_12_axi_resp_t  sep_crypto_axi_resp_o,  // SEP crypto AXI response.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t  sep_crypto_axi_resp_o,  // Response to the local crossbar.
 
-  input  sep_pkg::sep_crypto_isolate_t       isolate_req_i,  // Isolation handshake with sep_reset_ctrl.
-  output sep_pkg::sep_crypto_isolate_t       isolated_o,  // isolated.
+  input  sep_pkg::sep_crypto_isolate_t       isolate_req_i,  // Per-path isolation requests from
+                                                             // sep_reset_ctrl, active-high.
+  output sep_pkg::sep_crypto_isolate_t       isolated_o,  // Per-path isolation acknowledge to
+                                                          // sep_reset_ctrl, same layout as
+                                                          // isolate_req_i; a bit is high once that
+                                                          // path is isolated and its outstanding
+                                                          // transactions have drained.
 
-  output sep_pkg::sep_32_32_axil_req_t       otbn_axil_isolated_req_o,  // Isolated host CSR buses to the accelerator wrappers (32-bit AXI-Lite).
-  input  sep_pkg::sep_32_32_axil_resp_t      otbn_axil_isolated_resp_i,  // OTBN AXIL isolated response.
-  output sep_pkg::sep_32_32_axil_req_t       hmac_axil_isolated_req_o,  // HMAC AXIL isolated request.
-  input  sep_pkg::sep_32_32_axil_resp_t      hmac_axil_isolated_resp_i,  // HMAC AXIL isolated response.
-  output sep_pkg::sep_32_32_axil_req_t       aes_axil_isolated_req_o,  // AES AXIL isolated request.
-  input  sep_pkg::sep_32_32_axil_resp_t      aes_axil_isolated_resp_i,  // AES AXIL isolated response.
-  output sep_pkg::sep_32_32_axil_req_t       kmac_axil_isolated_req_o,  // KMAC AXIL isolated request.
-  input  sep_pkg::sep_32_32_axil_resp_t      kmac_axil_isolated_resp_i,  // KMAC AXIL isolated response.
+  output sep_pkg::sep_32_32_axil_req_t       otbn_axil_isolated_req_o,  // Host CSR request to the OTBN wrapper after 64-to-32-bit conversion to AXI-Lite
+                                                                        // and isolation; AXCACHE modifiable is forced on this path.
+  input  sep_pkg::sep_32_32_axil_resp_t      otbn_axil_isolated_resp_i,  // Response from the OTBN wrapper CSR port.
+  output sep_pkg::sep_32_32_axil_req_t       hmac_axil_isolated_req_o,  // Host CSR request to the HMAC wrapper after 64-to-32-bit conversion to AXI-Lite
+                                                                        // and isolation.
+  input  sep_pkg::sep_32_32_axil_resp_t      hmac_axil_isolated_resp_i,  // Response from the HMAC wrapper CSR port.
+  output sep_pkg::sep_32_32_axil_req_t       aes_axil_isolated_req_o,  // Host CSR request to the AES wrapper after 64-to-32-bit conversion to AXI-Lite
+                                                                       // and isolation.
+  input  sep_pkg::sep_32_32_axil_resp_t      aes_axil_isolated_resp_i,  // Response from the AES wrapper CSR port.
+  output sep_pkg::sep_32_32_axil_req_t       kmac_axil_isolated_req_o,  // Host CSR request to the KMAC wrapper after 64-to-32-bit conversion to AXI-Lite
+                                                                        // and isolation.
+  input  sep_pkg::sep_32_32_axil_resp_t      kmac_axil_isolated_resp_i,  // Response from the KMAC wrapper CSR port.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t   abr_axi_isolated_req_o,  // Isolated full-AXI host bus to Adams Bridge.
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t  abr_axi_isolated_resp_i,  // ABR AXI isolated response.
+  output sep_pkg::sep_32_64_6_12_axi_req_t   abr_axi_isolated_req_o,  // Host AXI4 request to Adams Bridge, isolated but not width-converted.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t  abr_axi_isolated_resp_i,  // Response from the Adams Bridge AXI4 port.
 
-  input  sep_pkg::sep_32_32_axil_req_t       otbn_key_axil_req_i,  // KM key-bus slave ports (from key_manager master ports).
-  output sep_pkg::sep_32_32_axil_resp_t      otbn_key_axil_resp_o,  // OTBN key AXIL response.
-  input  sep_pkg::sep_32_32_axil_req_t       aes_key_axil_req_i,  // AES key AXIL request.
-  output sep_pkg::sep_32_32_axil_resp_t      aes_key_axil_resp_o,  // AES key AXIL response.
-  input  sep_pkg::sep_32_32_axil_req_t       hmac_key_axil_req_i,  // HMAC key AXIL request.
-  output sep_pkg::sep_32_32_axil_resp_t      hmac_key_axil_resp_o,  // HMAC key AXIL response.
-  input  sep_pkg::sep_32_32_axil_req_t       kmac_key_axil_req_i,  // KMAC key AXIL request.
-  output sep_pkg::sep_32_32_axil_resp_t      kmac_key_axil_resp_o,  // KMAC key AXIL response.
-  input  km_intf_pkg::km_axil_req_t          abr_key_axil_req_i,  // ABR key AXIL request.
-  output km_intf_pkg::km_axil_resp_t         abr_key_axil_resp_o,  // ABR key AXIL response.
-  input  km_intf_pkg::km_axil_req_t          km_efuse_axil_req_i,  // KM efuse AXIL request.
-  output km_intf_pkg::km_axil_resp_t         km_efuse_axil_resp_o,  // KM efuse AXIL response.
+  input  sep_pkg::sep_32_32_axil_req_t       otbn_key_axil_req_i,  // Key Manager key-bus request
+                                                                   // for the OTBN key CSRs, before
+                                                                   // isolation.
+  output sep_pkg::sep_32_32_axil_resp_t      otbn_key_axil_resp_o,  // Response to the Key Manager for the OTBN key CSRs.
+  input  sep_pkg::sep_32_32_axil_req_t       aes_key_axil_req_i,  // Key Manager key-bus request for
+                                                                  // the AES key CSRs, before
+                                                                  // isolation.
+  output sep_pkg::sep_32_32_axil_resp_t      aes_key_axil_resp_o,  // Response to the Key Manager
+                                                                   // for the AES key CSRs.
+  input  sep_pkg::sep_32_32_axil_req_t       hmac_key_axil_req_i,  // Key Manager key-bus request
+                                                                   // for the HMAC key CSRs, before
+                                                                   // isolation.
+  output sep_pkg::sep_32_32_axil_resp_t      hmac_key_axil_resp_o,  // Response to the Key Manager for the HMAC key CSRs.
+  input  sep_pkg::sep_32_32_axil_req_t       kmac_key_axil_req_i,  // Key Manager key-bus request
+                                                                   // for the KMAC key CSRs, before
+                                                                   // isolation.
+  output sep_pkg::sep_32_32_axil_resp_t      kmac_key_axil_resp_o,  // Response to the Key Manager for the KMAC key CSRs.
+  input  km_intf_pkg::km_axil_req_t          abr_key_axil_req_i,  // Key Manager key-bus request for
+                                                                  // the Adams Bridge key CSRs,
+                                                                  // before isolation.
+  output km_intf_pkg::km_axil_resp_t         abr_key_axil_resp_o,  // Response to the Key Manager
+                                                                   // for the Adams Bridge key CSRs.
+  input  km_intf_pkg::km_axil_req_t          km_efuse_axil_req_i,  // Key Manager request to the
+                                                                   // eFuse wrapper, before
+                                                                   // isolation.
+  output km_intf_pkg::km_axil_resp_t         km_efuse_axil_resp_o,  // Response to the Key Manager from the eFuse wrapper.
 
-  output sep_pkg::sep_32_32_axil_req_t       otbn_key_axil_isolated_req_o,  // Isolated KM key buses (to the wrapper key CSRs / ABR key CSR / efuse).
-  input  sep_pkg::sep_32_32_axil_resp_t      otbn_key_axil_isolated_resp_i,  // OTBN key AXIL isolated response.
-  output sep_pkg::sep_32_32_axil_req_t       aes_key_axil_isolated_req_o,  // AES key AXIL isolated request.
-  input  sep_pkg::sep_32_32_axil_resp_t      aes_key_axil_isolated_resp_i,  // AES key AXIL isolated response.
-  output sep_pkg::sep_32_32_axil_req_t       hmac_key_axil_isolated_req_o,  // HMAC key AXIL isolated request.
-  input  sep_pkg::sep_32_32_axil_resp_t      hmac_key_axil_isolated_resp_i,  // HMAC key AXIL isolated response.
-  output sep_pkg::sep_32_32_axil_req_t       kmac_key_axil_isolated_req_o,  // KMAC key AXIL isolated request.
-  input  sep_pkg::sep_32_32_axil_resp_t      kmac_key_axil_isolated_resp_i,  // KMAC key AXIL isolated response.
-  output km_intf_pkg::km_axil_req_t          abr_key_axil_isolated_req_o,  // ABR key AXIL isolated request.
-  input  km_intf_pkg::km_axil_resp_t         abr_key_axil_isolated_resp_i,  // ABR key AXIL isolated response.
-  output km_intf_pkg::km_axil_req_t          km_efuse_axil_isolated_req_o,  // KM efuse AXIL isolated request.
-  input  km_intf_pkg::km_axil_resp_t         km_efuse_axil_isolated_resp_i,  // KM efuse AXIL isolated response.
+  output sep_pkg::sep_32_32_axil_req_t       otbn_key_axil_isolated_req_o,  // Key Manager key-bus request to the OTBN wrapper key CSRs, after isolation.
+  input  sep_pkg::sep_32_32_axil_resp_t      otbn_key_axil_isolated_resp_i,  // Response from the OTBN wrapper key CSRs.
+  output sep_pkg::sep_32_32_axil_req_t       aes_key_axil_isolated_req_o,  // Key Manager key-bus request to the AES wrapper key CSRs, after isolation.
+  input  sep_pkg::sep_32_32_axil_resp_t      aes_key_axil_isolated_resp_i,  // Response from the AES wrapper key CSRs.
+  output sep_pkg::sep_32_32_axil_req_t       hmac_key_axil_isolated_req_o,  // Key Manager key-bus request to the HMAC wrapper key CSRs, after isolation.
+  input  sep_pkg::sep_32_32_axil_resp_t      hmac_key_axil_isolated_resp_i,  // Response from the HMAC wrapper key CSRs.
+  output sep_pkg::sep_32_32_axil_req_t       kmac_key_axil_isolated_req_o,  // Key Manager key-bus request to the KMAC wrapper key CSRs, after isolation.
+  input  sep_pkg::sep_32_32_axil_resp_t      kmac_key_axil_isolated_resp_i,  // Response from the KMAC wrapper key CSRs.
+  output km_intf_pkg::km_axil_req_t          abr_key_axil_isolated_req_o,  // Key Manager key-bus request to the Adams Bridge key CSRs, after isolation.
+  input  km_intf_pkg::km_axil_resp_t         abr_key_axil_isolated_resp_i,  // Response from the Adams Bridge key CSRs.
+  output km_intf_pkg::km_axil_req_t          km_efuse_axil_isolated_req_o,  // Key Manager request to the eFuse wrapper, after isolation.
+  input  km_intf_pkg::km_axil_resp_t         km_efuse_axil_isolated_resp_i,  // Response from the eFuse wrapper to the isolated Key Manager path.
 
-  output km_intf_pkg::km_axil_req_t          km_mbox_axil_req_o,  // KM mailbox AXI-Lite master (converted host path, not isolated).
-  input  km_intf_pkg::km_axil_resp_t         km_mbox_axil_resp_i,  // KM mbox AXIL response.
+  output km_intf_pkg::km_axil_req_t          km_mbox_axil_req_o,  // Host request to the Key Manager
+                                                                  // mailbox, converted from 64-bit
+                                                                  // AXI4 to 32-bit AXI-Lite and not
+                                                                  // isolated.
+  input  km_intf_pkg::km_axil_resp_t         km_mbox_axil_resp_i,  // Response from the Key Manager
+                                                                   // mailbox.
 
-  output sep_pkg::sep_32_32_axil_req_t       esrc_axil_isolated_req_o,  // Converted and isolated AXI-Lite CSR buses to the internal TRNG complex.
-  input  sep_pkg::sep_32_32_axil_resp_t      esrc_axil_isolated_resp_i,  // esrc AXIL isolated response.
-  output drbg_pkg::drbg_axil64_req_t         csrng_axil_isolated_req_o,  // csrng AXIL isolated request.
-  input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_isolated_resp_i,  // csrng AXIL isolated response.
-  output drbg_pkg::drbg_axil64_req_t         edn_axil_isolated_req_o,  // EDN AXIL isolated request.
-  input  drbg_pkg::drbg_axil64_resp_t        edn_axil_isolated_resp_i,  // EDN AXIL isolated response.
+  output sep_pkg::sep_32_32_axil_req_t       esrc_axil_isolated_req_o,  // Host request to entropy_source, converted to 32-bit AXI-Lite and isolated.
+  input  sep_pkg::sep_32_32_axil_resp_t      esrc_axil_isolated_resp_i,  // Response from entropy_source.
+  output drbg_pkg::drbg_axil64_req_t         csrng_axil_isolated_req_o,  // Host request to CSRNG, converted to 64-bit AXI-Lite and isolated.
+  input  drbg_pkg::drbg_axil64_resp_t        csrng_axil_isolated_resp_i,  // Response from CSRNG.
+  output drbg_pkg::drbg_axil64_req_t         edn_axil_isolated_req_o,  // Host request to EDN, converted to 64-bit AXI-Lite and isolated.
+  input  drbg_pkg::drbg_axil64_resp_t        edn_axil_isolated_resp_i,  // Response from EDN.
 
-  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // ext TRNG AXIL request.
-  input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,  // ext TRNG AXIL response.
+  output sep_pkg::sep_32_32_axil_req_t       ext_trng_axil_req_o,  // Host request to the external
+                                                                   // TRNG registers, converted to
+                                                                   // 32-bit AXI-Lite and registered
+                                                                   // through an axi_cut; not
+                                                                   // isolated.
+  input  sep_pkg::sep_32_32_axil_resp_t      ext_trng_axil_resp_i,  // Response from the external TRNG registers.
 
-  output sep_pkg::sep_32_64_6_12_axi_req_t   fuse_axi_req_o,  // fuse AXI request.
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t  fuse_axi_resp_i,  // fuse AXI response.
-  output sep_pkg::sep_32_64_6_12_axi_req_t   lifecycle_axi_req_o,  // lifecycle AXI request.
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t  lifecycle_axi_resp_i  // lifecycle AXI response.
+  output sep_pkg::sep_32_64_6_12_axi_req_t   fuse_axi_req_o,  // Host AXI4 request to the eFuse
+                                                              // wrapper, passed through without
+                                                              // conversion or isolation.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t  fuse_axi_resp_i,  // Response from the eFuse wrapper.
+  output sep_pkg::sep_32_64_6_12_axi_req_t   lifecycle_axi_req_o,  // Host AXI4 request to the
+                                                                   // lifecycle registers, passed
+                                                                   // through without conversion or
+                                                                   // isolation.
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t  lifecycle_axi_resp_i  // Response from the lifecycle
+                                                                   // registers.
 );
 
   // Drain depth of every isolate matches the crypto demux transaction limit.

@@ -7,7 +7,9 @@
 // tick_baud_x16_i paces oversampling; word_length_i, parity_enable_i, parity_odd_i, and
 // extra_stop_bit_i shape the expected frame.
 // rx_valid_o pulses with rx_data_o; frame_err_o and rx_parity_err_o report framing and
-// parity faults.
+// parity faults with the same pulse.
+// rx_i is not synchronized here; uart_core synchronizes and filters it.
+// A start bit that is no longer low at mid-bit is discarded as a glitch.
 
 module uart_rx
   import uart_16550_pkg::*;
@@ -16,20 +18,27 @@ module uart_rx
   input  logic       clk_i,             // System clock.
   input  logic       rst_ni,            // Active-low reset.
 
-  input  logic       rx_enable_i,       // Receiver enable.
+  input  logic       rx_enable_i,       // Low clears the receiver and holds it idle.
   input  logic       tick_baud_x16_i,   // 16× baud oversample tick.
   input  logic       parity_enable_i,   // Include a parity bit in the frame.
   input  logic       parity_odd_i,      // 1 selects odd parity; 0 selects even.
-  input  logic       parity_force_i,    // Force parity value for testing.
+  input  logic       parity_force_i,    // Stick parity. When set with parity_enable_i, the check
+                                        // flags data with an odd number of ones and ignores the
+                                        // received parity bit.
   input  logic [3:0] word_length_i,     // Data bits per frame.
   input  logic       extra_stop_bit_i,  // Add a second stop bit when high.
 
-  output logic       tick_baud_o,       // Tick baud.
-  output logic       rx_valid_o,        // Pulse when rx_data_o is valid.
-  output logic [7:0] rx_data_o,         // Received data byte.
-  output logic       idle_o,            // High when the shifter is empty or tx_enable_i is low.
-  output logic       frame_err_o,       // Framing error.
-  output logic       rx_parity_err_o,   // Parity error.
+  output logic       tick_baud_o,       // One-cycle pulse per bit period from the receive baud
+                                        // divider, realigned to mid-bit at each start bit.
+  output logic       rx_valid_o,        // One-cycle pulse at the end of each received frame.
+  output logic [7:0] rx_data_o,         // Received data, valid with rx_valid_o.
+  output logic       idle_o,            // High when no frame is being received or rx_enable_i is
+                                        // low.
+  output logic       frame_err_o,       // Pulses with rx_valid_o when a stop bit is sampled low.
+                                        // Two stop bits are checked when extra_stop_bit_i is set
+                                        // and the word length is not 5.
+  output logic       rx_parity_err_o,   // Pulses with rx_valid_o when parity_enable_i is set and
+                                        // the parity check fails.
 
   input logic        rx_i               // Serial receive line.
 );

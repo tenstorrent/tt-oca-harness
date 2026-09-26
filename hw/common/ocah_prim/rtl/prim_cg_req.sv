@@ -3,22 +3,25 @@
 
 // Drive Q-Channel qreq_no from qactive_i, qaccept_ni, and qdeny_i.
 //
-// Hold a denied request low for DenyDelay cycles before retrying.
-// qreq_no is active-low toward the clock controller.
+// qreq_no is the active-low quiescence request: it follows qactive_i, so it falls, asking
+// for the clock to stop, once the device is idle.
+// After a deny, hold qreq_no high (request withdrawn) for DenyDelay cycles before it
+// follows qactive_i again; an accept clears the hold.
 // HysteresisW sizes the deny-hold counter.
 
 module prim_cg_req #(
   parameter int unsigned DenyDelay = 1,  // Cycles to hold after a deny before reasserting.
 
-  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)  // Deny-hold counter width; derived.
+  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)  // Deny-hold counter width; derived. Too narrow to hold DenyDelay when DenyDelay is a power of two above 1.
 ) (
   input  logic clk_i,  // Q-Channel clock.
   input  logic rst_ni,  // Async reset, active-low.
 
   input  logic qactive_i,  // Device wants the clock.
-  input  logic qaccept_ni,  // Controller accepted the request, active-low.
-  input  logic qdeny_i,  // Controller denied the request.
-  output logic qreq_no  // Clock request to the controller, active-low.
+  input  logic qaccept_ni,  // Device accepted the quiescence request, active-low.
+  input  logic qdeny_i,  // Device denied the quiescence request; starts the deny hold.
+  output logic qreq_no  // Quiescence request to the device, active-low; low asks for
+                        // the clock to stop.
 );
 
   `include "prim_assert.sv"

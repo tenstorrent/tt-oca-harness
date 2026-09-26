@@ -13,10 +13,19 @@
 // - IC_RESET slice types carry .ovrd and .val members; stub defaults exist only for
 //   standalone elaboration.
 //
-// Optional JTAG2AXI bridges reach SMC fabric AXI and SMC/SEP OTP AXI-Lite with
-// programmable pipeline depths.
+// jtag_ptap receives every parameter. Optional JTAG2AXI bridges in it reach SMC fabric AXI
+// and SMC/SEP OTP AXI-Lite with programmable pipeline depths.
 //
-// dbg_disable_i comes from the SEP lifecycle controller; pwr_on_rst_ni resets JTAG logic.
+// The STAP chain runs from the PTAP STAP scan output through the I/O STAP (TDI lockup latch
+// for the die crossing), the SMC debug STAP, the SEP debug STAP and the additional STAPs to
+// stap_host_scan_out_o, and returns to the PTAP on stap_host_scan_in_i. A STAP whose enable is
+// 0 is bypassed, and its host port drives only TCK with every other output low. The iJTAG chain
+// runs from the PTAP through the secure DFT, non-secure DFT and DFD SIBs back to the PTAP.
+//
+// dbg_disable_i comes from the SEP lifecycle controller. Each bit passes through a two-flop TCK
+// synchronizer kept out of scan and reset to 1 (disabled) by pwr_on_rst_ni, and disables one
+// STAP class, SIB, JTAG2AXI bridge or the extended STAP scan interface. pwr_on_rst_ni is also
+// ANDed with TRST inside the PTAP; clk_i and rst_n_i reach only the PTAP's JTAG2AXI bridges.
 //
 // Exported controls:
 //
@@ -31,39 +40,60 @@ module jtag_intf_unit
   import jtag_inst_reg_pkg::*;
 #(
   /* verilator lint_off UNUSEDPARAM */
-  parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory JTAG boundary scan instructions.
-  parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Enables optional JTAG EXTEST_TRAIN instruction.
-  parameter bit  EXTEST_PULSE_ENABLE = 1,  // Enables optional JTAG EXTEST_PULSE instruction.
-  parameter bit  INTEST_ENABLE       = 1,  // Enables optional JTAG INTEST instruction.
-  parameter bit  CLAMP_ENABLE        = 1,  // Enables optional JTAG CLAMP instruction.
-  parameter bit  HIGHZ_ENABLE        = 1,  // Enables optional JTAG HIGHZ instruction.
-  parameter bit  RUNBIST_ENABLE      = 1,  // Enables optional JTAG RUNBIST instruction.
-  parameter bit  TMP_ENABLE          = 1,  // Enables TMP controller functionality and instructions.
+  parameter bit  BSR_ENABLE          = 1,  // Enables all mandatory IEEE 1149.1 boundary-scan
+                                           // instructions.
+  parameter bit  EXTEST_TRAIN_ENABLE = 1,  // Enables the optional EXTEST_TRAIN instruction;
+                                           // requires BSR_ENABLE.
+  parameter bit  EXTEST_PULSE_ENABLE = 1,  // Enables the optional EXTEST_PULSE instruction;
+                                           // requires BSR_ENABLE.
+  parameter bit  INTEST_ENABLE       = 1,  // Enables the optional INTEST instruction; requires
+                                           // BSR_ENABLE.
+  parameter bit  CLAMP_ENABLE        = 1,  // Reports optional CLAMP support in JTAG_CAPS. CLAMP is
+                                           // decoded on ptap_inst_decoded_o regardless of this
+                                           // setting.
+  parameter bit  HIGHZ_ENABLE        = 1,  // Reports optional HIGHZ support in JTAG_CAPS. HIGHZ is
+                                           // decoded on ptap_inst_decoded_o regardless of this
+                                           // setting.
+  parameter bit  RUNBIST_ENABLE      = 1,  // Enables the optional RUNBIST instruction.
+  parameter bit  TMP_ENABLE          = 1,  // Enables the TMP controller and its instructions.
   parameter bit  IC_RESET_SMC_ENABLE = 0,  // Enables the SMC slice of the IC_RESET TDR.
   parameter bit  IC_RESET_SEP_ENABLE = 0,  // Enables the SEP slice of the IC_RESET TDR.
   parameter bit  IC_RESET_EXT_ENABLE = 0,  // Enables the external slice of the IC_RESET TDR.
-  parameter bit  SMC_DBG_ENABLE      = 1,  // Enables optional JTAG2AXI ports for the SMC debug interface.
-  parameter bit  SEP_DBG_ENABLE      = 1,  // Enables optional STAP for the SEP debug interface.
-  parameter bit  STAP_IO_ENABLE      = 1,  // Enables the STAP for chiplet-to-chiplet connectivity.
+  parameter bit  SMC_DBG_ENABLE      = 1,  // Enables the SMC debug STAP and the JTAG2AXI bridges to
+                                           // the SMC fabric and the SMC OTP.
+  parameter bit  SEP_DBG_ENABLE      = 1,  // Enables the SEP debug STAP and the JTAG2AXI bridge to
+                                           // the SEP OTP.
+  parameter bit  STAP_IO_ENABLE      = 1,  // Enables the I/O STAP for chiplet-to-chiplet
+                                           // connectivity.
 
-  parameter int unsigned  NUM_EXTRA_STAPS = 0,  // The number of additional STAPs included in the DTP for local connectivity.
+  parameter int unsigned  NUM_EXTRA_STAPS = 0,  // Number of additional STAPs in the DTP for local
+                                                // connectivity; at most 15.
 
-  parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,  // JTAG IDCODE manufacturer ID (11 bits).
-  parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // JTAG IDCODE part number (16 bits).
-  parameter logic [3:0]   IDCODE_SI_REV   = 4'h0,  // JTAG IDCODE silicon revision (4 bits).
+  parameter logic [10:0]  IDCODE_MFR_ID   = 11'h000,  // JEDEC manufacturer ID reported in IDCODE.
+  parameter logic [15:0]  IDCODE_PART_NUM = 16'h0000,  // Part number reported in IDCODE,
+                                                       // identifying the chiplet model.
+  parameter logic [3:0]   IDCODE_SI_REV   = 4'h0,  // Silicon revision reported in IDCODE.
 
-  parameter int unsigned  NUM_XTRIG_CTP     = 8,  // The number of cross trigger ports.
-  parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Number of internal cross triggers.
-  parameter logic [7:0]   OCH_VER           = 8'h00,  // DTP IP major version number.
+  parameter int unsigned  NUM_XTRIG_CTP     = 8,  // Number of cross-trigger ports reported in
+                                                  // JTAG_CAPS; at most 63.
+  parameter int unsigned  NUM_XTRIG_INT_CT  = 1,  // Number of internal cross triggers reported in
+                                                  // JTAG_CAPS; at most 63.
+  parameter logic [7:0]   OCH_VER           = 8'h00,  // DTP IP major version number reported in
+                                                      // JTAG_CAPS.
 
-  localparam int unsigned  NUM_EXTRA_STAP_PORTS = (NUM_EXTRA_STAPS > 0) ? NUM_EXTRA_STAPS : 1,  // Minimum of 1 for tie-off case.
+  localparam int unsigned  NUM_EXTRA_STAP_PORTS = (NUM_EXTRA_STAPS > 0) ? NUM_EXTRA_STAPS : 1,  // Width of the additional-STAP port arrays.
+                                                                                                // It is 1 when NUM_EXTRA_STAPS is 0, and that
+                                                                                                // single slot is then unused.
 
   parameter type  jtag_tap_ctrl_t = prim_jtag_pkg::jtag_tap_ctrl_t,  // JTAG TAP-control struct type.
   parameter type  jtag_scan_ctrl_t = prim_jtag_pkg::jtag_scan_ctrl_t,  // JTAG scan-control struct type.
 
-  parameter type  ic_reset_smc_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // jtag ic reset default t type.
-  parameter type  ic_reset_sep_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // jtag ic reset default t type.
-  parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // jtag ic reset default t type.
+  parameter type  ic_reset_smc_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // SMC IC_RESET slice packed struct type.
+                                                                           // Its .ovrd and .val members must have equal widths.
+  parameter type  ic_reset_sep_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // SEP IC_RESET slice packed struct type.
+                                                                           // Its .ovrd and .val members must have equal widths.
+  parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,  // External IC_RESET slice packed struct type.
+                                                                           // Its .ovrd and .val members must have equal widths.
 
   parameter type  smc_jtag_axi_req_t = logic,  // SMC fabric debug AXI request type.
   parameter type  smc_jtag_axi_resp_t = logic,  // SMC fabric debug AXI response type.
@@ -74,91 +104,169 @@ module jtag_intf_unit
   parameter type  sep_otp_axil_req_t = logic,  // SEP OTP debug AXI-Lite request type.
   parameter type  sep_otp_axil_resp_t = logic,  // SEP OTP debug AXI-Lite response type.
 
-  parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth (0 = single outstanding transaction).
-  parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth (0 = single outstanding transaction).
-  parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth (0 = single outstanding transaction).
-  parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth (0 = single outstanding transaction).
-  parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth (0 = single outstanding transaction).
-  parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3  // SMC fabric write pipeline depth (0 = single outstanding transaction).
+  parameter logic [1:0]  SMC_OTP_RD_PL_DEPTH = 2'h3,  // SMC OTP read pipeline depth (0 = single
+                                                      // outstanding transaction), reported in
+                                                      // SMC_OTP_JTAG2AXI_CAPS. Also sets the
+                                                      // bridge's largest programmable series
+                                                      // pipeline depth.
+  parameter logic [1:0]  SMC_OTP_WR_PL_DEPTH = 2'h3,  // SMC OTP write pipeline depth (0 = single
+                                                      // outstanding transaction), reported in
+                                                      // SMC_OTP_JTAG2AXI_CAPS only; it does not
+                                                      // configure the bridge.
+  parameter logic [1:0]  SEP_OTP_RD_PL_DEPTH = 2'h3,  // SEP OTP read pipeline depth (0 = single
+                                                      // outstanding transaction), reported in
+                                                      // SEP_OTP_JTAG2AXI_CAPS. Also sets the
+                                                      // bridge's largest programmable series
+                                                      // pipeline depth.
+  parameter logic [1:0]  SEP_OTP_WR_PL_DEPTH = 2'h3,  // SEP OTP write pipeline depth (0 = single
+                                                      // outstanding transaction), reported in
+                                                      // SEP_OTP_JTAG2AXI_CAPS only; it does not
+                                                      // configure the bridge.
+  parameter logic [1:0]  SMC_RD_PL_DEPTH     = 2'h3,  // SMC fabric read pipeline depth (0 = single
+                                                      // outstanding transaction), reported in
+                                                      // SMC_JTAG2AXI_CAPS. Also sets the bridge's
+                                                      // largest programmable series pipeline depth.
+  parameter logic [1:0]  SMC_WR_PL_DEPTH     = 2'h3  // SMC fabric write pipeline depth (0 = single
+                                                     // outstanding transaction), reported in
+                                                     // SMC_JTAG2AXI_CAPS only; it does not
+                                                     // configure the bridge.
   /* verilator lint_on UNUSEDPARAM */
 ) (
-  input  logic clk_i,                   // System clock.
-  input  logic rst_n_i,                 // Active-low system reset.
+  input  logic clk_i,                   // System clock for the JTAG2AXI bridges.
+  input  logic rst_n_i,                 // Active-low system reset for the JTAG2AXI bridges.
 
-  input  logic pwr_on_rst_ni,           // Power-on reset for JTAG logic.
+  input  logic pwr_on_rst_ni,           // Active-low power-on reset, ANDed with TRST for the PTAP
+                                        // and STAPs; sets the dbg_disable_i synchronizers to
+                                        // disabled.
 
-  input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,  // Dbg disable.
+  input  sep_lifecycle_ctrl_pkg::dbg_disable_t  dbg_disable_i,  // Active-high per-path lifecycle
+                                                                // disables, synchronized to TCK
+                                                                // inside this module; all disabled
+                                                                // out of reset.
 
-  input  jtag_tap_ctrl_t  ptap_client_tap_ctrl_i,  // Ptap client tap ctrl (Primary JTAG TAP interface).
-  input  logic            ptap_client_tdi_i,  // Ptap client tdi.
-  output logic            ptap_client_tdo_o,  // Ptap client tdo.
-  output logic            ptap_client_tdo_oen_o,  // Ptap client tdo oen.
+  input  jtag_tap_ctrl_t  ptap_client_tap_ctrl_i,  // PTAP client TAP-control bundle: TCK, TMS, and
+                                                   // active-low TRST.
+  input  logic            ptap_client_tdi_i,  // PTAP client serial test data input.
+  output logic            ptap_client_tdo_o,  // PTAP client serial test data output, retimed on the
+                                              // falling TCK edge except during a ZERO_LENGTH_BYPASS
+                                              // DR shift.
+  output logic            ptap_client_tdo_oen_o,  // PTAP client TDO output enable, active-high
+                                                  // during Shift-IR and Shift-DR.
 
-  output jtag_scan_ctrl_t  bsr_host_scan_ctrl_o,  // Bsr host scan ctrl (Boundary scan interface).
-  input  logic             bsr_host_scan_in_i,  // Bsr host scan in.
-  output logic             bsr_host_scan_out_o,  // Bsr host scan out.
+  output jtag_scan_ctrl_t  bsr_host_scan_ctrl_o,  // Boundary-scan DR control, selected under EXTEST
+                                                  // and SAMPLE/PRELOAD and, when enabled,
+                                                  // EXTEST_TRAIN, EXTEST_PULSE and INTEST.
+  input  logic             bsr_host_scan_in_i,  // Boundary-scan return, used as the PTAP TDR under
+                                                // those instructions.
+  output logic             bsr_host_scan_out_o,  // PTAP client TDI forwarded to the boundary-scan
+                                                 // chain.
 
-  output jtag_tap_ctrl_t  stap_io_host_tap_ctrl_o,  // Stap io host tap ctrl (I/O STAP interface (chiplet-to-chiplet connectivity)).
-  input  logic            stap_io_host_tdi_i,  // Stap io host tdi.
-  output logic            stap_io_host_tdo_o,  // Stap io host tdo.
-  output logic            stap_io_host_tdo_oen_o,  // Stap io host tdo oen.
+  output jtag_tap_ctrl_t  stap_io_host_tap_ctrl_o,  // I/O STAP host (chiplet-to-chiplet)
+                                                    // TAP-control bundle: TCK, TMS, and active-low
+                                                    // TRST. Only TCK is driven when STAP_IO_ENABLE
+                                                    // is 0.
+  input  logic            stap_io_host_tdi_i,  // I/O STAP host serial test data input.
+  output logic            stap_io_host_tdo_o,  // I/O STAP host serial test data output.
+  output logic            stap_io_host_tdo_oen_o,  // I/O STAP host TDO output enable, active-high
+                                                   // while that STAP is selected and shifting.
 
-  output jtag_tap_ctrl_t  stap_smc_host_tap_ctrl_o,  // Stap smc host tap ctrl (SMC Debug STAP interface).
-  input  logic            stap_smc_host_tdi_i,  // Stap smc host tdi.
-  output logic            stap_smc_host_tdo_o,  // Stap smc host tdo.
-  output logic            stap_smc_host_tdo_oen_o,  // Stap smc host tdo oen.
+  output jtag_tap_ctrl_t  stap_smc_host_tap_ctrl_o,  // SMC debug STAP host TAP-control bundle: TCK,
+                                                     // TMS, and active-low TRST. Only TCK is driven
+                                                     // when SMC_DBG_ENABLE is 0.
+  input  logic            stap_smc_host_tdi_i,  // SMC debug STAP host serial test data input.
+  output logic            stap_smc_host_tdo_o,  // SMC debug STAP host serial test data output.
+  output logic            stap_smc_host_tdo_oen_o,  // SMC debug STAP host TDO output enable,
+                                                    // active-high while that STAP is selected and
+                                                    // shifting.
 
-  output jtag_tap_ctrl_t  stap_sep_host_tap_ctrl_o,  // Stap sep host tap ctrl (SEP Debug STAP interface).
-  input  logic            stap_sep_host_tdi_i,  // Stap sep host tdi.
-  output logic            stap_sep_host_tdo_o,  // Stap sep host tdo.
-  output logic            stap_sep_host_tdo_oen_o,  // Stap sep host tdo oen.
+  output jtag_tap_ctrl_t  stap_sep_host_tap_ctrl_o,  // SEP debug STAP host TAP-control bundle: TCK,
+                                                     // TMS, and active-low TRST. Only TCK is driven
+                                                     // when SEP_DBG_ENABLE is 0.
+  input  logic            stap_sep_host_tdi_i,  // SEP debug STAP host serial test data input.
+  output logic            stap_sep_host_tdo_o,  // SEP debug STAP host serial test data output.
+  output logic            stap_sep_host_tdo_oen_o,  // SEP debug STAP host TDO output enable,
+                                                    // active-high while that STAP is selected and
+                                                    // shifting.
 
-  output jtag_tap_ctrl_t  stap_extra_host_tap_ctrl_o [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tap ctrl.
+  output jtag_tap_ctrl_t  stap_extra_host_tap_ctrl_o [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host TAP-control
+                                                                                  // bundle: TCK, TMS, and active-low TRST.
+                                                                                  // Only TCK is driven when NUM_EXTRA_STAPS is 0.
   /* verilator lint_off UNUSEDSIGNAL */
-  input  logic            stap_extra_host_tdi_i      [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tdi.
+  input  logic            stap_extra_host_tdi_i      [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host serial test data input; unused
+                                                                                  // when NUM_EXTRA_STAPS is 0.
   /* verilator lint_on UNUSEDSIGNAL */
-  output logic            stap_extra_host_tdo_o      [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tdo.
-  output logic            stap_extra_host_tdo_oen_o  [NUM_EXTRA_STAP_PORTS-1:0],  // Stap extra host tdo oen.
+  output logic            stap_extra_host_tdo_o      [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host serial test data output.
+  output logic            stap_extra_host_tdo_oen_o  [NUM_EXTRA_STAP_PORTS-1:0],  // Additional DTP STAP host TDO output
+                                                                                  // enable, active-high while that STAP is
+                                                                                  // selected and shifting.
 
-  output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,  // Stap host scan ctrl (Extended JTAG STAP scan interface).
-  input  logic             stap_host_scan_in_i,  // Stap host scan in.
-  output logic             stap_host_scan_out_o,  // Stap host scan out.
+  output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,  // PTAP STAP scan control for an external STAP
+                                                   // chain; select, the enables, runbist and the
+                                                   // TAP-state flags are forced low while
+                                                   // dbg_disable_i.stap_host is set.
+  input  logic             stap_host_scan_in_i,  // External STAP chain return to the PTAP; ignored
+                                                 // while dbg_disable_i.stap_host is set, when
+                                                 // stap_host_scan_out_o loops back instead.
+  output logic             stap_host_scan_out_o,  // Scan output of the last internal STAP, toward
+                                                  // the external STAP chain.
 
-  output jtag_scan_ctrl_t  dfd_host_scan_ctrl_o,  // Dfd host scan ctrl (JTAG (TCK domain)).
-  input  logic             dfd_host_scan_in_i,  // Dfd host scan in.
-  output logic             dfd_host_scan_out_o,  // Dfd host scan out.
+  output jtag_scan_ctrl_t  dfd_host_scan_ctrl_o,  // DFD (TCK domain) scan control from the third
+                                                  // iJTAG SIB; selected while that SIB is open,
+                                                  // enables gated off by dbg_disable_i.dfd.
+  input  logic             dfd_host_scan_in_i,  // DFD (TCK domain) segment return, used while the
+                                                // DFD SIB is open.
+  output logic             dfd_host_scan_out_o,  // DFD SIB bit toward the DFD segment; low while
+                                                 // dbg_disable_i.dfd is set.
 
-  output jtag_scan_ctrl_t  dft_secure_host_scan_ctrl_o,  // Dft secure host scan ctrl (JTAG (TCK domain)).
-  input  logic             dft_secure_host_scan_in_i,  // Dft secure host scan in.
-  output logic             dft_secure_host_scan_out_o,  // Dft secure host scan out.
+  output jtag_scan_ctrl_t  dft_secure_host_scan_ctrl_o,  // Secure DFT (TCK domain) scan control
+                                                         // from the first iJTAG SIB; selected while
+                                                         // that SIB is open, enables gated off by
+                                                         // dbg_disable_i.dft_secure.
+  input  logic             dft_secure_host_scan_in_i,  // Secure DFT (TCK domain) segment return,
+                                                       // used while its SIB is open.
+  output logic             dft_secure_host_scan_out_o,  // Secure DFT SIB bit toward the segment;
+                                                        // low while dbg_disable_i.dft_secure is
+                                                        // set.
 
-  output jtag_scan_ctrl_t  dft_host_scan_ctrl_o,  // Dft host scan ctrl (JTAG (TCK domain)).
-  input  logic             dft_host_scan_in_i,  // Dft host scan in.
-  output logic             dft_host_scan_out_o,  // Dft host scan out.
+  output jtag_scan_ctrl_t  dft_host_scan_ctrl_o,  // Non-secure DFT (TCK domain) scan control from
+                                                  // the second iJTAG SIB; selected while that SIB
+                                                  // is open, enables gated off by
+                                                  // dbg_disable_i.dft_nonsecure.
+  input  logic             dft_host_scan_in_i,  // Non-secure DFT (TCK domain) segment return, used
+                                                // while its SIB is open.
+  output logic             dft_host_scan_out_o,  // Non-secure DFT SIB bit toward the segment; low
+                                                 // while dbg_disable_i.dft_nonsecure is set.
 
-  output smc_jtag_axi_req_t   axi_smc_dbg_req_o,  // AXI smc dbg req (SMC fabric debug AXI manager interface).
-  input  smc_jtag_axi_resp_t  axi_smc_dbg_resp_i,  // AXI smc dbg resp.
+  output smc_jtag_axi_req_t   axi_smc_dbg_req_o,  // SMC fabric debug AXI request to the target.
+  input  smc_jtag_axi_resp_t  axi_smc_dbg_resp_i,  // SMC fabric debug AXI response from the target.
 
-  output smc_otp_axil_req_t   axil_smc_otp_jtag_req_o,  // AXI-Lite smc otp jtag req (SMC OTP debug AXI-Lite manager interface).
-  input  smc_otp_axil_resp_t  axil_smc_otp_jtag_resp_i,  // AXI-Lite smc otp jtag resp.
+  output smc_otp_axil_req_t   axil_smc_otp_jtag_req_o,  // SMC OTP debug AXI-Lite request to the
+                                                        // target.
+  input  smc_otp_axil_resp_t  axil_smc_otp_jtag_resp_i,  // SMC OTP debug AXI-Lite response from the
+                                                         // target.
 
-  output sep_otp_axil_req_t   axil_sep_otp_jtag_req_o,  // AXI-Lite sep otp jtag req (SEP OTP debug AXI-Lite manager interface).
-  input  sep_otp_axil_resp_t  axil_sep_otp_jtag_resp_i,  // AXI-Lite sep otp jtag resp.
+  output sep_otp_axil_req_t   axil_sep_otp_jtag_req_o,  // SEP OTP debug AXI-Lite request to the
+                                                        // target.
+  input  sep_otp_axil_resp_t  axil_sep_otp_jtag_resp_i,  // SEP OTP debug AXI-Lite response from the
+                                                         // target.
 
-  output logic  jtag_clock_stop_o,      // JTAG stop clocks signal.
+  output logic  jtag_clock_stop_o,      // Clock-stop request from DEBUG_CONTROL.
 
-  input  logic  cla_clock_stop_i,       // CLA clock stop status.
-  output logic  cla_clock_stop_en_o,    // CLA clock stop enable.
+  input  logic  cla_clock_stop_i,       // CLA clock-stop status, read back through DEBUG_CONTROL.
+  output logic  cla_clock_stop_en_o,    // CLA clock-stop enable from DEBUG_CONTROL.
 
-  output logic  boot_stall_ovrd_o,      // Gives the JTAG interface control over boot stall.
-  output logic  boot_stall_o,           // Cause a boot stall if jtag_boot_stall_ovrd is asserted.
+  output logic  boot_stall_ovrd_o,      // Enable the JTAG boot-stall override, active-high.
+  output logic  boot_stall_o,           // Boot-stall value applied while boot_stall_ovrd_o is high.
 
-  output ic_reset_smc_t  ic_reset_smc_o,  // SMC slice (closest to TDI in IC_RESET TDR).
-  output ic_reset_sep_t  ic_reset_sep_o,  // SEP slice (middle of IC_RESET TDR).
-  output ic_reset_ext_t  ic_reset_ext_o,  // External slice (closest to TDO in IC_RESET TDR).
+  output ic_reset_smc_t  ic_reset_smc_o,  // SMC slice (closest to TDI in IC_RESET TDR); .ovrd is
+                                          // active-high and .val is active-low.
+  output ic_reset_sep_t  ic_reset_sep_o,  // SEP slice (middle of IC_RESET TDR); .ovrd is
+                                          // active-high and .val is active-low.
+  output ic_reset_ext_t  ic_reset_ext_o,  // External slice (closest to TDO in IC_RESET TDR); .ovrd
+                                          // is active-high and .val is active-low.
 
-  output tap_state_e                 ptap_state_o,  // Current PTAP state.
-  output jtag_instruction_decoded_e  ptap_inst_decoded_o  // Current PTAP instruction (decoded).
+  output tap_state_e                 ptap_state_o,  // Current PTAP controller state.
+  output jtag_instruction_decoded_e  ptap_inst_decoded_o  // Decoded PTAP instruction.
 );
 
   //--------------------------------------------------------------------------

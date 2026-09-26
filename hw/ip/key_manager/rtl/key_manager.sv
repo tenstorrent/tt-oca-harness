@@ -42,31 +42,45 @@ module key_manager
   import axi_pkg::*;
   import prim_mubi_pkg::*;
 #(
-  parameter int unsigned ROM_SIZE_BYTES   = 16384,          // ROM size in bytes (16 KB).
-  parameter int unsigned SRAM_SIZE_BYTES  = 32768,          // SRAM size in bytes (32 KB).
-  parameter int unsigned MAILBOX_DEPTH    = 16,             // Words per mailbox FIFO
-                                                            // direction.
-  parameter bit          LATCHED_MEM_RDATA = 1'b0,          // 1 if ROM/SRAM latch read data;
-                                                            // enables look-ahead.
+  parameter int unsigned ROM_SIZE_BYTES   = 16384,          // Size of the KM boot ROM in bytes.
+                                                            // Must equal the ROM window of the
+                                                            // KM memory map in km_intf_pkg.
+  parameter int unsigned SRAM_SIZE_BYTES  = 32768,          // Size of the KM data SRAM in bytes.
+                                                            // Must equal the SRAM window of the
+                                                            // KM memory map in km_intf_pkg.
+  parameter int unsigned MAILBOX_DEPTH    = 16,             // Words per mailbox FIFO direction.
+                                                            // Must be a power of two from 16
+                                                            // to 256.
+  parameter bit          LATCHED_MEM_RDATA = 1'b0,          // 1 if ROM/SRAM keep read data valid
+                                                            // after the request deasserts, which
+                                                            // lets the CPU use it directly for
+                                                            // look-ahead.
   parameter km_addr_t OTP_EFUSE_REMAP_BASE = 32'h1093_0000  // Absolute eFuse controller
                                                             // address on efuse_req_o;
                                                             // replaces addr[31:12].
 ) (
   input  logic   clk_i,        // System clock.
-  input  logic   cold_rst_ni,  // Cold reset, asynchronous active-low.
-  input  logic   warm_rst_ni,  // Warm reset, synchronous active-low.
+  input  logic   cold_rst_ni,  // Cold reset, asynchronous active-low; the conditioner releases
+                               // it synchronously to clk_i.
+  input  logic   warm_rst_ni,  // Warm reset, active-low and synchronous to clk_i; the warm
+                               // reset stays asserted at least 10 clk_i cycles after it
+                               // releases.
 
   input  km_axil_req_t mbox_sep_req_i,    // Mailbox AXI4-Lite slave request from the SEP
                                           // host, which sends and receives messages to and
                                           // from KM here.
   output km_axil_resp_t mbox_sep_resp_o,  // Mailbox AXI4-Lite slave response to the SEP host.
 
-  output logic        mbox_irq_to_sep_o,  // Mailbox interrupt: outbound data available
-                                          // (KM→SEP).
+  output logic        mbox_irq_to_sep_o,  // Level mailbox interrupt to the SEP: OR of the
+                                          // SEP-side sources (outbound data available,
+                                          // inbound space available, inbound overflow,
+                                          // outbound underflow, flushed by KM) masked by
+                                          // SEP_IRQ_ENABLE.
 
   output logic        unrecoverable_err_o,  // Active-high: KM is in trap state (no longer
                                             // executing).
-  output logic        recoverable_err_o,    // Recoverable fault occurred (KMCSR register bit).
+  output logic        recoverable_err_o,    // Level of the firmware-written KMCSR
+                                            // RECOVERABLE_ERR register bit.
 
   output km_axil_req_t  otbn_req_o,   // External crypto AXI4-Lite master to OTBN (Big Number
                                       // Accelerator).
@@ -108,10 +122,15 @@ module key_manager
   input  km_otp_data_t otp_data_i,  // Differentially encoded SEP OTP data.
 
   input  logic    wipe_state_i,  // Wipe state. A rising edge sets IRQ_STATUS.WIPE_STATE and
-                                 // zeros the entire KPV on the next cycle.
+                                 // zeros the entire KPV on the next cycle. It is ORed with
+                                 // the CPU trap before edge detection, so a CPU trap wipes
+                                 // the same way and masks this input while it lasts.
 
-  input  logic   test_en_i,   // DFT test-enable.
-  input  logic   scan_rst_ni  // Scan reset, active-low; bypasses the reset synchronizer.
+  input  logic   test_en_i,   // DFT test-enable, active-high; selects scan_rst_ni for both
+                              // conditioned resets and drives the crossbar and mailbox test
+                              // inputs.
+  input  logic   scan_rst_ni  // Scan reset, active-low; replaces both the cold and warm
+                              // conditioned resets while test_en_i is high.
 );
 
   `include "prim_assert.sv"
@@ -144,7 +163,7 @@ module key_manager
 
   // CPU IRQ inputs
   logic cpu_irq;       // KMCSR aggregated (sticky error sources)
-  logic cpu_mbox_irq;  // Mailbox inbound (direct level)
+  logic cpu_mbox_irq;  // Mailbox IRQ to the KM CPU: level OR of its masked KM-side sources
 
   // ROM/SRAM parity errors (from CPU wrapper)
   logic cpu_rom_parity_err;

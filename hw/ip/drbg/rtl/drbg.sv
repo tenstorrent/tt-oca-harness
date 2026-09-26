@@ -22,27 +22,40 @@
 module drbg
   import drbg_pkg::*;
 #(
-  parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH, // Depth of the complete-seed queue feeding CSRNG.
-  parameter int unsigned EDN_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_ENDPOINT_COUNT, // Number of exposed EDN endpoint AXI-Stream outputs.
-  parameter int unsigned EDN_NATIVE_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_NATIVE_ENDPOINT_COUNT, // Number of native EDN req/rsp endpoints (bypass AXI-Stream).
-  localparam int unsigned EDN_NATIVE_PORT_WIDTH =           // Port-width proxy that stays >= 1 when EDN_NATIVE_ENDPOINT_COUNT is 0.
-                                                            // Avoids unsigned (N-1) underflow in a packed-array bound; tie the unused slot off when COUNT is 0.
+  parameter int unsigned SEED_FIFO_DEPTH = DRBG_DEFAULT_SEED_FIFO_DEPTH, // Number of complete packed seeds queued for CSRNG.
+                                                                         // Must be at least 1.
+  parameter int unsigned EDN_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_ENDPOINT_COUNT, // Number of EDN endpoints exposed as AXI-Stream outputs.
+                                                                               // Each output carries an independent random-data stream.
+                                                                               // Must be at least 1.
+  parameter int unsigned EDN_NATIVE_ENDPOINT_COUNT = DRBG_DEFAULT_EDN_NATIVE_ENDPOINT_COUNT, // Number of native EDN req/rsp endpoints.
+                                                                                             // Each exposes a raw edn_pkg bundle that bypasses
+                                                                                             // the AXI-Stream FIFOs.
+  localparam int unsigned EDN_NATIVE_PORT_WIDTH =           // Width of the native EDN ports, which is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0. The single slot is then unused and its request should be tied off.
         (EDN_NATIVE_ENDPOINT_COUNT == 0) ? 1 : EDN_NATIVE_ENDPOINT_COUNT,
-  parameter int unsigned ENDPOINT_FIFO_DEPTH = DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH, // Depth of each EDN endpoint AXI-Stream FIFO.
+  parameter int unsigned ENDPOINT_FIFO_DEPTH = DRBG_DEFAULT_ENDPOINT_FIFO_DEPTH, // Depth of the FIFO on each AXI-Stream EDN endpoint.
+                                                                                 // Must be at least 1.
   parameter type csrng_axil_req_t = drbg_axil64_req_t,      // CSRNG AXI-Lite request type.
   parameter type csrng_axil_rsp_t = drbg_axil64_resp_t,     // CSRNG AXI-Lite response type.
   parameter type edn_axil_req_t = drbg_axil64_req_t,        // EDN AXI-Lite request type.
   parameter type edn_axil_rsp_t = drbg_axil64_resp_t        // EDN AXI-Lite response type.
 ) (
   input  logic clk_i,                                       // System clock.
-  input  logic rst_ni,                                      // Active-low.
-                                                            // May assert asynchronously; must deassert synchronously to clk_i.
+  input  logic rst_ni,                                      // Active-low. May assert
+                                                            // asynchronously; must deassert
+                                                            // synchronously to clk_i.
 
-  input  logic [31:0] entropy_stream_data_i,                // Producer entropy word into the seed packer.
-  input  logic   entropy_stream_vld_i,                      // Producer entropy valid; drops when the seed path is full.
+  input  logic [31:0] entropy_stream_data_i,                // Producer entropy word into the seed
+                                                            // packer.
+  input  logic   entropy_stream_vld_i,                      // Producer entropy valid, with no
+                                                            // back-pressure; a word offered while
+                                                            // the packer holds a complete seed is
+                                                            // dropped.
 
-  output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_o, // EDN AXI-Stream requests toward consumers.
-  input  drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_i, // EDN AXI-Stream ready from consumers.
+  output drbg_axis_req_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_o, // EDN AXI-Stream requests toward
+                                                              // consumers; tuser carries the EDN
+                                                              // FIPS bit of each word.
+  input  drbg_axis_rsp_t [EDN_ENDPOINT_COUNT-1:0] edn_axis_i, // EDN AXI-Stream ready from
+                                                              // consumers.
 
   input  edn_pkg::edn_req_t [EDN_NATIVE_PORT_WIDTH-1:0] edn_native_req_i, // Native EDN client requests (bypass AXI-Stream).
                                                                           // Port width is 1 when EDN_NATIVE_ENDPOINT_COUNT is 0.
@@ -63,17 +76,26 @@ module drbg
 
   output logic intr_cs_cmd_req_done_o,                      // CSRNG cmd-req-done interrupt.
   output logic intr_cs_entropy_req_o,                       // CSRNG entropy-req interrupt.
-  output logic intr_cs_hw_inst_exc_o,                       // CSRNG HW-instance exception interrupt.
+  output logic intr_cs_hw_inst_exc_o,                       // CSRNG HW-instance exception
+                                                            // interrupt.
   output logic intr_cs_fatal_err_o,                         // CSRNG fatal-error interrupt.
   output logic intr_edn_cmd_req_done_o,                     // EDN cmd-req-done interrupt.
   output logic intr_edn_fatal_err_o,                        // EDN fatal-error interrupt.
 
-  output logic csrng_bus_err_o,                             // Sticky CSRNG register-bridge fault.
-                                                            // Held until csrng_bus_err_clr_i.
-  input  logic csrng_bus_err_clr_i,                         // Clear the CSRNG bus-fault sticky.
-  output logic edn_bus_err_o,                               // Sticky EDN register-bridge fault.
-                                                            // Held until edn_bus_err_clr_i.
-  input  logic edn_bus_err_clr_i                            // Clear the EDN bus-fault sticky.
+  output logic csrng_bus_err_o,                             // Sticky CSRNG register-bridge fault,
+                                                            // set when a TL-UL response from CSRNG
+                                                            // carries d_error. Held until
+                                                            // csrng_bus_err_clr_i.
+  input  logic csrng_bus_err_clr_i,                         // Clear the CSRNG bus-fault sticky,
+                                                            // active-high; a fault in the same
+                                                            // cycle still sets it.
+  output logic edn_bus_err_o,                               // Sticky EDN register-bridge fault, set
+                                                            // when a TL-UL response from EDN
+                                                            // carries d_error. Held until
+                                                            // edn_bus_err_clr_i.
+  input  logic edn_bus_err_clr_i                            // Clear the EDN bus-fault sticky,
+                                                            // active-high; a fault in the same
+                                                            // cycle still sets it.
 );
 
   `include "prim_assert.sv"

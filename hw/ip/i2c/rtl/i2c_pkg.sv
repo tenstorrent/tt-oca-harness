@@ -4,8 +4,8 @@
 
 // Hold I2C shared parameters, FIFO widths, and AXI-Lite typedefs.
 //
-// Defines controller and target FIFO data widths and the axil_req_t / axil_resp_t used by
-// i2c.
+// Defines controller and target FIFO data widths, the ACQ FIFO entry identifiers, timeout
+// mode, read/write and ACK/NACK encodings, and the axil_req_t / axil_resp_t used by i2c.
 
 package i2c_pkg;
 

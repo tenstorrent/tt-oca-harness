@@ -3,9 +3,12 @@
 
 // Route system-peripherals AXI traffic to mailbox, system CSR, and SMN paths.
 //
-// Address rules are explicit integration apertures in AddrMap below.
+// Address rules are explicit integration apertures in AddrMap below:
+// 0x10A0_0000-0x10A0_FFFF to the mailbox, 0x10A1_0000-0x10A4_FFFF and 0x1080_2000-0x1080_20FF
+// to the system CSRs, every other address below 0x4000_0000 to smn_inbound_from_xbar, and
+// anything above to the axi_xbar DECERR responder. Both initiators reach every target.
 // Initiators are full AXI4 64-bit. mailbox and system_csr targets are AXI4-Lite 64-bit;
-// smn_inbound_from_xbar stays full AXI4.
+// smn_inbound_from_xbar stays full AXI4, with one more ID bit than the initiators.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -16,26 +19,29 @@ module sep_system_peripherals_xbar
 (
   input  logic clk_i,                         // System clock.
   input  logic rst_ni,                        // Active-low reset.
-  input  logic test_i,                        // axi_xbar test mode.
+  input  logic test_i,                        // DFT test mode to axi_xbar.
 
-  input  axi64_req_t  sep_local_from_remap_req_i,  // Local-from-remap initiator request (AXI4, 64-bit)
-                                                   // sep_local_from_remap (AXI4, 64-bit).
-  output axi64_resp_t sep_local_from_remap_resp_o,  // Local-from-remap initiator response.
+  input  axi64_req_t  sep_local_from_remap_req_i,  // Local-master request after the alias remap and
+                                                   // SEP_LOCAL decode in sep_system_peripherals.
+  output axi64_resp_t sep_local_from_remap_resp_o,  // Response to the local-master request.
 
-  input  axi64_req_t  smn_inbound_req_i,      // SMN inbound initiator request (AXI4, 64-bit)
-                                              // smn_inbound (AXI4, 64-bit).
-  output axi64_resp_t smn_inbound_resp_o,     // SMN inbound initiator response.
+  input  axi64_req_t  smn_inbound_req_i,      // SMN inbound request after the inbound filter and
+                                              // global-to-local rebase.
+  output axi64_resp_t smn_inbound_resp_o,     // Response to the SMN inbound request.
 
-  output axi_out_req_t  smn_inbound_from_xbar_req_o,  // SMN inbound-from-xbar target request (AXI4, 64-bit)
-                                                      // smn_inbound_from_xbar (AXI4, 64-bit).
-  input  axi_out_resp_t smn_inbound_from_xbar_resp_i,  // SMN inbound-from-xbar target response.
+  output axi_out_req_t  smn_inbound_from_xbar_req_o,  // Request for any address below 0x4000_0000
+                                                      // outside the mailbox and system CSR windows,
+                                                      // forwarded to the SEP local xbar in
+                                                      // sep_system_peripherals.
+  input  axi_out_resp_t smn_inbound_from_xbar_resp_i,  // Response to smn_inbound_from_xbar_req_o.
 
-  output axi_lite64_req_t  mailbox_req_o,     // Mailbox target request (AXI4-Lite, 64-bit).
-  input  axi_lite64_resp_t mailbox_resp_i,    // Mailbox target response.
+  output axi_lite64_req_t  mailbox_req_o,     // Request for 0x10A0_0000-0x10A0_FFFF, converted to
+                                              // AXI-Lite.
+  input  axi_lite64_resp_t mailbox_resp_i,    // Mailbox AXI-Lite response.
 
-  output axi_lite64_req_t  system_csr_req_o,  // System CSR target request (AXI4-Lite, 64-bit)
-                                              // system_csr (AXI4_LITE, 64-bit).
-  input  axi_lite64_resp_t system_csr_resp_i  // System CSR target response.
+  output axi_lite64_req_t  system_csr_req_o,  // Request for 0x10A1_0000-0x10A4_FFFF or
+                                              // 0x1080_2000-0x1080_20FF, converted to AXI-Lite.
+  input  axi_lite64_resp_t system_csr_resp_i  // System CSR AXI-Lite response.
 );
 
   // ===========================================================================

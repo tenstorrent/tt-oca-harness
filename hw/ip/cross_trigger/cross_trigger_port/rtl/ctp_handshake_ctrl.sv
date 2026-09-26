@@ -6,25 +6,39 @@
 // Asserts and releases ct_req_out_o from ct_src_i against synchronized ct_ack_in_sync_i.
 // Asserts and releases ct_ack_out_o from synchronized ct_req_in_sync_i and pulses
 // ct_dst_o.
-// reset_i recovers handshake deadlock; busy_o is high while a handshake is in progress.
+// reset_i recovers a sender deadlock and leaves the receiver untouched; busy_o is high while
+// either side's handshake is in progress.
 // Pad outputs are registered.
 
 module ctp_handshake_ctrl (
   input  logic clk_i,                   // System clock.
-  input  logic rst_ni,                  // Active-low reset.
+  input  logic rst_ni,                  // Active-low asynchronous reset; returns both state
+                                        // machines to idle.
 
-  input  logic ct_src_i,                // Cross trigger source pulse (synchronous).
-  output logic ct_dst_o,                // Cross trigger destination pulse (registered).
+  input  logic ct_src_i,                // Core-side pulse, synchronous to clk_i, that starts an
+                                        // outgoing handshake; ignored unless the sender state
+                                        // machine is idle.
+  output logic ct_dst_o,                // Registered pulse raised when the receiver accepts a new
+                                        // CT_Req_in request.
 
-  input  logic reset_i,                 // Reset (Handshake reset (from CONFIG.RESET register)).
+  input  logic reset_i,                 // Level-sensitive sender reset, from CONFIG.RESET in
+                                        // cross_trigger_port; while high it holds the sender idle
+                                        // with ct_req_out_o low.
 
-  input  logic ct_req_in_sync_i,        // Synchronized CT_Req_in.
-  input  logic ct_ack_in_sync_i,        // Synchronized CT_Ack_in.
+  input  logic ct_req_in_sync_i,        // Incoming request level, synchronized to clk_i and
+                                        // polarity-corrected.
+  input  logic ct_ack_in_sync_i,        // Incoming acknowledge level, synchronized to clk_i and
+                                        // polarity-corrected.
 
-  output logic ct_req_out_o,            // CT_Req_out.
-  output logic ct_ack_out_o,            // CT_Ack_out.
+  output logic ct_req_out_o,            // Outgoing request level for the CT_Req_out pad, before pad
+                                        // inversion; set by ct_src_i and cleared when
+                                        // ct_ack_in_sync_i asserts or on reset_i.
+  output logic ct_ack_out_o,            // Outgoing acknowledge level for the CT_Ack_out pad, before
+                                        // pad inversion; set when ct_req_in_sync_i asserts and
+                                        // cleared when it deasserts.
 
-  output logic busy_o                   // Handshake in progress.
+  output logic busy_o                   // High while the sender or receiver state machine is not
+                                        // idle; registered.
 );
 
   // Sender state machine states

@@ -62,9 +62,11 @@
 module AOU_TOP
 import packet_def_pkg::*;
 #(
-    parameter   RP_COUNT                    = 1,  // Number of receive ports (AXI master/slave pairs), up to 4.
+    parameter   RP_COUNT                    = 1,  // Number of receive ports (AXI master/slave
+                                                  // pairs), up to 4.
 
-    parameter int FDI_CONFIG                = FDI_CFG_SP_32B,  // FDI configuration, one of packet_def_pkg::FDI_CFG_*.
+    parameter int FDI_CONFIG                = FDI_CFG_SP_32B,  // FDI configuration, one of
+                                                               // packet_def_pkg::FDI_CFG_*.
 
     localparam int FDI_IF_WD0 = (FDI_CONFIG == FDI_CFG_SP_32B     ) ? 256  :  // PHY0 FDI data bus width, in bits. Local only.
                                 (FDI_CONFIG == FDI_CFG_SP_64B     ) ? 512  :
@@ -101,18 +103,23 @@ import packet_def_pkg::*;
     parameter   RP3_RX_R_FIFO_DEPTH         = ((FDI_IF_WD0 == 1024) || (FDI_IF_WD1 == 1024)) ? 140 : 88,  // RP3 RX read-data FIFO depth.
     parameter   RP3_RX_B_FIFO_DEPTH         = 44,  // RP3 RX write-response FIFO depth.
 
-    parameter   RX_AW_FIFO_RS_EN            = 1,  // Register slice on the RX write-address FIFO output.
-    parameter   RX_AR_FIFO_RS_EN            = 1,  // Register slice on the RX read-address FIFO output.
-    parameter   RX_W_FIFO_RS_EN             = 1,  // Register slice on the RX write-data FIFO output.
+    parameter   RX_AW_FIFO_RS_EN            = 1,  // Register slice on the RX write-address FIFO
+                                                  // output.
+    parameter   RX_AR_FIFO_RS_EN            = 1,  // Register slice on the RX read-address FIFO
+                                                  // output.
+    parameter   RX_W_FIFO_RS_EN             = 1,  // Register slice on the RX write-data FIFO
+                                                  // output.
     parameter   RX_R_FIFO_RS_EN             = 1,  // Register slice on the RX read-data FIFO output.
-    parameter   RX_B_FIFO_RS_EN             = 1,  // Register slice on the RX write-response FIFO output.
+    parameter   RX_B_FIFO_RS_EN             = 1,  // Register slice on the RX write-response FIFO
+                                                  // output.
 
     parameter   RP0_AXI_DATA_WD             = 512,  // RP0 AXI data width, in bits.
     parameter   RP1_AXI_DATA_WD             = 512,  // RP1 AXI data width, in bits.
     parameter   RP2_AXI_DATA_WD             = 512,  // RP2 AXI data width, in bits.
     parameter   RP3_AXI_DATA_WD             = 512,  // RP3 AXI data width, in bits.
 
-    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AXI data width on the peer die, in bits.
+    parameter   AXI_PEER_DIE_MAX_DATA_WD    = 1024,  // Widest AXI data width on the peer die, in
+                                                     // bits.
 
     parameter   APB_ADDR_WD                 = 32,  // APB address width.
     parameter   APB_DATA_WD                 = 32,  // APB data width.
@@ -121,7 +128,8 @@ import packet_def_pkg::*;
     parameter   S_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI slave interface.
 
     parameter   M_RD_MO_CNT                 = 32,  // Outstanding reads on the AXI master interface.
-    parameter   M_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI master interface.
+    parameter   M_WR_MO_CNT                 = 32,  // Outstanding writes on the AXI master
+                                                   // interface.
 
     localparam  RP_AXI_DATA_WD_MAX          = max4(RP0_AXI_DATA_WD, RP1_AXI_DATA_WD, RP2_AXI_DATA_WD, RP3_AXI_DATA_WD),  // Widest RPn AXI data width; sizes the AXI data ports.
     localparam  RP_AXI_STRB_WD_MAX          = RP_AXI_DATA_WD_MAX / 8,  // AXI write-strobe width for that data width.
@@ -233,8 +241,10 @@ import packet_def_pkg::*;
 
 `ifdef TWO_PHY
     input  logic                                        I_PHY_TYPE,  // Active PHY: 0 selects PHY0, 1 selects PHY1.
-                                                                     // Picks the PHY whose state status and stall request
-                                                                     // reach the bringup controller.
+                                                                     // Routes the flit data path through that PHY; PHY0
+                                                                     // carries each core flit as two half-width beats.
+                                                                     // Also picks the PHY whose state status and stall
+                                                                     // request reach the bringup controller.
 `endif
 
     input  logic                                        I_FDI_PL_0_VALID,  // PHY0 received-flit valid.

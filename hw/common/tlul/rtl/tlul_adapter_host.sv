@@ -4,8 +4,10 @@
 
 // Convert a host req/gnt/rvalid bus into TL-UL.
 //
-// When MAX_REQS == 1 the path is purely combinatorial; when MAX_REQS > 1 flops track
-// outstanding requests. The host must not have more requests in flight than MAX_REQS.
+// Requests and responses pass combinationally. When MAX_REQS > 1 a counter assigns
+// a_source IDs 0 to MAX_REQS-1 in rotation; when MAX_REQS == 1 a_source is always 0. The
+// host must not have more requests in flight than MAX_REQS. d_ready is tied high, so the
+// host must accept every response in the cycle it arrives.
 //
 // The adapter does not reorder responses when MAX_REQS > 1. The host must either target an
 // address space that returns in order or not depend on order.
@@ -19,8 +21,10 @@
 //
 // Integrity handling is optional:
 //
-// - When EnableDataIntgGen is set, compute data integrity on host write data.
-// - When EnableRspDataIntgCheck is set, check integrity on returned read data.
+// - When EnableDataIntgGen is set, compute data integrity on host write data; otherwise
+//   send wdata_intg_i.
+// - Response integrity is always checked. When EnableRspDataIntgCheck is set, also check
+//   integrity on returned read data.
 
 module tlul_adapter_host
   import tlul_pkg::*;
@@ -40,7 +44,8 @@ module tlul_adapter_host
   input  logic [top_pkg::TL_AW-1:0]  addr_i,        // Host byte address; word-aligned on tl_o.
   input  logic                       we_i,          // Host write enable.
   input  logic [top_pkg::TL_DW-1:0]  wdata_i,       // Host write data.
-  input  logic [DataIntgWidth-1:0]   wdata_intg_i,  // Optional integrity bits for wdata_i.
+  input  logic [DataIntgWidth-1:0]   wdata_intg_i,  // Integrity bits sent with wdata_i when
+                                                    // EnableDataIntgGen is clear.
   input  logic [top_pkg::TL_DBW-1:0] be_i,          // Host byte enables; form the TL-UL mask.
   input  mubi4_t                     instr_type_i,  // MuBi4 instruction-type user bit.
   input  logic [RsvdWidth-1:0]       user_rsvd_i,   // Reserved A-channel user bits.
@@ -48,8 +53,9 @@ module tlul_adapter_host
   output logic                       valid_o,       // Host response valid.
   output logic [top_pkg::TL_DW-1:0]  rdata_o,       // Host read data.
   output logic [DataIntgWidth-1:0]   rdata_intg_o,  // Integrity bits with rdata_o.
-  output logic                       err_o,         // Host-visible transaction error.
-  output logic                       intg_err_o,    // Integrity-check failure on the response.
+  output logic                       err_o,         // d_error or an integrity failure on this
+                                                    // response.
+  output logic                       intg_err_o,    // Integrity failure; sticky until reset.
 
   output tl_h2d_t                    tl_o,          // TL-UL host-to-device toward the fabric.
   input  tl_d2h_t                    tl_i           // TL-UL device-to-host from the fabric.

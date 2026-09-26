@@ -3,7 +3,7 @@
 
 // Implement the one-bit IEEE 1149.1 bypass TDR on the DR scan path.
 //
-// Captures and shifts a single bit between scan_in_i and scan_out_o under scan_ctrl_i.
+// Captures 0 and shifts a single bit between scan_in_i and scan_out_o under scan_ctrl_i.
 
 module jtag_byp_reg
   import prim_jtag_pkg::*;

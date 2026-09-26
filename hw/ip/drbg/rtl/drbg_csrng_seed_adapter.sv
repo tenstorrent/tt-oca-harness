@@ -20,16 +20,21 @@ module drbg_csrng_seed_adapter
 
   input  wire logic                               csrng_word_valid_i, // Incoming entropy-word valid.
   input  wire logic [31:0]                        csrng_word_data_i, // Incoming 32-bit entropy word.
-  output logic                                    csrng_word_ready_o, // Packer ready for a word.
+  output logic                                    csrng_word_ready_o, // Packer ready for a word; low while the packer holds a
+                                                                      // complete seed that the seed FIFO has not accepted.
 
   input  wire entropy_src_pkg::entropy_src_hw_if_req_t entropy_src_hw_if_req_i, // CSRNG seed-request handshake.
-  output entropy_src_pkg::entropy_src_hw_if_rsp_t entropy_src_hw_if_rsp_o, // CSRNG seed response with bits and fips.
+  output entropy_src_pkg::entropy_src_hw_if_rsp_t entropy_src_hw_if_rsp_o, // CSRNG seed response with bits and fips; es_ack
+                                                                           // is combinational, high when es_req is high and a
+                                                                           // seed is queued.
 
   output logic                                    seed_queue_valid_o, // Seed FIFO not empty.
-  output logic [383:0]                            seed_queue_bits_o, // Next queued 384-bit seed.
-  output logic                                    seed_queue_fips_o, // FIPS flag for the next seed.
+  output logic [383:0]                            seed_queue_bits_o, // Next queued 384-bit seed; zero when the FIFO is empty.
+  output logic                                    seed_queue_fips_o, // FIPS flag for the next seed, the provisional policy
+                                                                     // constant DRBG_CSRNG_SEED_FIPS_PROVISIONAL; zero when
+                                                                     // the FIFO is empty.
   output logic                                    seed_push_o, // Pulse when a seed is pushed.
-  output logic [4:0]                              packer_word_count_o, // Words accumulated in the packer.
+  output logic [4:0]                              packer_word_count_o, // Words accumulated in the packer, 0 to 12.
   output logic [$clog2(SEED_FIFO_DEPTH + 1)-1:0]  seed_queue_depth_o // Current seed-FIFO fill.
 );
 

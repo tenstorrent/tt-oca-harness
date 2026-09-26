@@ -3,8 +3,8 @@
 
 // OR three 2-input AND products onto out_o.
 //
-// Compute (a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i). Maps to a technology AO222 when
-// the library provides one.
+// Compute (a0_i & a1_i) | (b0_i & b1_i) | (c0_i & c1_i). A synthesis build replaces this
+// behavioural model with a technology AO222 cell of the same name and ports.
 
 module prim_ao222 (
   input  a0_i,  // First input of AND term A.

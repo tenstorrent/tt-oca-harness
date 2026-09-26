@@ -3,8 +3,7 @@
 
 // Define address-map constants and AXI-Lite typedefs for the multi-UART wrap.
 //
-// Defines per-UART base/size spacing and uart_wrap_reg_map_select_t shared with generated
-// collateral.
+// Defines the 32-bit csr_axil types, MAX_NUM_UARTS and the per-UART address spacing.
 
 package uart_wrap_pkg;
 

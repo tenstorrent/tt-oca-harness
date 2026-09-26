@@ -6,6 +6,8 @@
 // On a software reset request, request isolation of the domain's AXI paths, wait until all
 // report isolated, then assert the domain reset.
 // Hold isolation until the software reset request is released.
+// Out of rst_ni the domain starts in reset with isolation requested, and leaves it on the
+// first clock edge at which sw_rst_req_ni is high.
 
 `include "ocah_assert.svh"
 
@@ -14,8 +16,12 @@ module sep_isolate_rst_seq (
   input  logic rst_ni,                        // Active-low reset.
   input  logic sw_rst_req_ni,                 // Software reset request (active low).
   input  logic isolated_i,                    // All of the domain's isolate units report isolated.
-  output logic isolate_req_o,                 // Isolation request to the domain's isolate units.
-  output logic gated_rst_no                   // Sequenced reset to the domain (active low).
+  output logic isolate_req_o,                 // Isolation request to the domain's isolate units,
+                                              // active-high; high whenever the domain is draining
+                                              // or in reset.
+  output logic gated_rst_no                   // Registered sequenced reset to the domain (active
+                                              // low); asserted while rst_ni is asserted and only
+                                              // after isolated_i.
 );
 
   typedef enum logic [1:0] {

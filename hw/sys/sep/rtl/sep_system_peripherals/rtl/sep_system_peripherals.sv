@@ -6,65 +6,95 @@
 // Bridges local and SMN AXI into mailbox, system CSR, and filtered outbound/inbound paths.
 // Publishes mailbox interrupts, remap debug, filter hit debug, NMI vector, TRNG source
 // select, KM wipe, and DMA/peripheral bus-error clear.
+//
+// Local-master requests are widened from 32 to 56 address bits, pass the 16-region alias
+// remap and a register cut, and are decoded in priority order: the SMC aperture to
+// sep_ext_to_smc_axi_req_o unfiltered; the SMU aperture or any address at or above
+// 0x1_0000_0000 to the outbound filter; the AP and STEE regions through output remaps that
+// set AxUSER to OTHERS_SOURCE_ID, then to the outbound filter; everything else to the
+// peripheral xbar. SMN inbound requests pass the inbound filter, have SEP_GLOBAL_BASE_ADDR
+// within SEP_REGION_SIZE rebased to 0, and enter the same xbar. The xbar serves the mailbox
+// and system CSR windows and forwards other addresses below 0x4000_0000, truncated to 32
+// address bits with a 3-bit ID, on smn_inbound_to_sep_axi_req_o. Both filters block by
+// default and check the 4-bit source ID and the non-secure bit.
 
 module sep_system_peripherals (
   input  logic clk_i,                         // System clock.
   input  logic clk_ref_i,                     // Free-running reference clock for REFERENCE_COUNTER.
   input  logic rst_ni,                        // Active-low reset.
-  input  logic rst_warm_ni,                   // Active-low warm reset.
+  input  logic rst_warm_ni,                   // Active-low warm reset of the warm scratch registers
+                                              // only.
 
   input  logic test_en_i,                     // DFT test-enable (scan-enable).
-  input  logic scan_rst_ni,                   // DFT scan reset, active-low; bypasses the reset synchronizer.
-  input  logic inbound_filter_skip_i,         // inbound filter skip.
-  input  logic outbound_filter_skip_i,        // outbound filter skip.
+  input  logic scan_rst_ni,                   // DFT scan reset, active-low; unused.
+  input  logic inbound_filter_skip_i,         // Bypasses all inbound filter matching while high;
+                                              // feat_ctrl.sep_debug in sep.
+  input  logic outbound_filter_skip_i,        // Bypasses all outbound filter matching while high.
 
-  input  sep_pkg::sep_axi_xbar_slv_req_t  sep_system_peripheral_axi_req_i,  // AXI4 Slave Interface.
-  output sep_pkg::sep_axi_xbar_slv_resp_t sep_system_peripheral_axi_resp_o,  // SEP system peripheral AXI response.
+  input  sep_pkg::sep_axi_xbar_slv_req_t  sep_system_peripheral_axi_req_i,  // AXI request from local masters via the SEP local xbar, with 32-bit addresses.
+  output sep_pkg::sep_axi_xbar_slv_resp_t sep_system_peripheral_axi_resp_o,  // AXI response to the SEP local xbar.
 
-  input  sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_axi_req_i,  // SMN inbound AXI request.
-  output sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_axi_resp_o,  // SMN inbound AXI response.
+  input  sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_axi_req_i,  // SMN inbound AXI request with a 56-bit global address, before the inbound filter.
+  output sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_axi_resp_o,  // SMN inbound AXI response; blocked requests get the filter's error response.
 
-  output sep_pkg::sep_system_peripherals_inbound_to_sep_axi_req_t  smn_inbound_to_sep_axi_req_o,  // AXI4 Master Interface.
-  input  sep_pkg::sep_system_peripherals_inbound_to_sep_axi_resp_t smn_inbound_to_sep_axi_resp_i,  // SMN inbound to SEP AXI response.
+  output sep_pkg::sep_system_peripherals_inbound_to_sep_axi_req_t  smn_inbound_to_sep_axi_req_o,  // Peripheral-xbar request outside the mailbox and system CSR windows, from either
+                                                                                                  // initiator, with a 32-bit address and 3-bit ID, to the SEP local xbar.
+  input  sep_pkg::sep_system_peripherals_inbound_to_sep_axi_resp_t smn_inbound_to_sep_axi_resp_i,  // Response from the SEP local xbar to smn_inbound_to_sep_axi_req_o.
 
-  output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // SMN outbound AXI request.
-  input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,  // SMN outbound AXI response.
+  output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,  // Outbound request to the SMN after the outbound filter.
+  input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,  // Outbound response from the SMN.
 
-  output sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ext_to_smc_axi_req_o,  // SEP ext to SMC AXI request.
-  input  sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ext_to_smc_axi_resp_i,  // SEP ext to SMC AXI response.
+  output sep_pkg::sep_system_peripherals_internal_axi_req_t  sep_ext_to_smc_axi_req_o,  // Local-master request in the SMC aperture, after the alias remap; not filtered.
+  input  sep_pkg::sep_system_peripherals_internal_axi_resp_t sep_ext_to_smc_axi_resp_i,  // Response from the SMC to sep_ext_to_smc_axi_req_o.
 
-  output sep_pkg::remap_debug_t local_masters_remap_debug_o,  // local masters remap debug.
+  output sep_pkg::remap_debug_t local_masters_remap_debug_o,  // Alias-remap hit region indices for
+                                                              // local-master write and read
+                                                              // requests.
 
-  output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_write_filter_hit_debug_o,  // outbound write filter hit debug.
-  output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_read_filter_hit_debug_o,  // outbound read filter hit debug.
-  output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_write_filter_hit_debug_o,  // inbound write filter hit debug.
-  output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_read_filter_hit_debug_o,  // inbound read filter hit debug.
+  output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_write_filter_hit_debug_o,  // Index of the outbound filter matched by the current write request.
+  output logic [$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)-1:0] outbound_read_filter_hit_debug_o,  // Index of the outbound filter matched by the current read request.
+  output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_write_filter_hit_debug_o,  // Index of the inbound filter matched by the current write request.
+  output logic [$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)-1:0]  inbound_read_filter_hit_debug_o,  // Index of the inbound filter matched by the current read request.
 
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] mailbox_inbound_interrupt_o,  // mailbox inbound interrupt.
-  output logic [sep_pkg::NUM_MAILBOXES-1:0] mailbox_outbound_interrupt_o,  // mailbox outbound interrupt.
+  output logic [sep_pkg::NUM_MAILBOXES-1:0] mailbox_inbound_interrupt_o,  // Per-mailbox inbound-data interrupts.
+  output logic [sep_pkg::NUM_MAILBOXES-1:0] mailbox_outbound_interrupt_o,  // Per-mailbox outbound-data interrupts.
 
-  input  logic smc_fuse_sense_done_i,         // SMC fuse sense done.
-  input  logic sep_fuse_sense_done_i,         // SEP fuse sense done.
+  input  logic smc_fuse_sense_done_i,         // SMC fuse sense completion, reflected in
+                                              // SMC_FUSE_SENSE_STATUS; requests to the SMC hang
+                                              // while it is low.
+  input  logic sep_fuse_sense_done_i,         // SEP fuse sense completion, reflected in
+                                              // SEP_FUSE_SENSE_STATUS.
 
-  output logic [31:1] nmi_vec_o,              // NMI vec.
+  output logic [31:1] nmi_vec_o,              // SEP_NMI_VEC register value: the address the CPU
+                                              // jumps to on a non-maskable interrupt.
 
-  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_global_base_addr_i,  // SMC global base addr.
-  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_region_size_i,  // SMC region size.
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_global_base_addr_i,  // Base of the SMC aperture in the global address map; local-master requests
+                                                                                            // inside it leave on sep_ext_to_smc_axi_req_o.
+  input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_region_size_i,  // Size in bytes of the SMC aperture at smc_global_base_addr_i.
 
-  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_local_base_addr_o,  // SEP local base addr.
-  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_addr_o,  // SEP global base addr.
-  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,  // SEP region size.
+  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_local_base_addr_o,  // SEP_LOCAL_BASE_ADDR register value: base of the SEP local alias window.
+  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_global_base_addr_o,  // SEP_GLOBAL_BASE_ADDR register value: base of the SEP aperture in the global
+                                                                                            // address map; inbound SMN addresses inside it are remapped to local addresses.
+  output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,  // SEP_REGION_SIZE register value, zero-extended: size of the SEP aperture in bytes.
 
-  output logic [2:0] ext_trng_src_sel_o,      // External TRNG source selection (from sep_cpu_ctrl).
+  output logic [2:0] ext_trng_src_sel_o,      // EXT_TRNG_SRC_SEL register value: bit i selects
+                                              // external TRNG (1) or internal DRBG (0) for stream
+                                              // i.
 
-  output logic km_wipe_state_o,               // Key Manager emergency wipe control (from sep_cpu_ctrl).
+  output logic km_wipe_state_o,               // KM_WIPE_CTRL.wipe_state register value; a rising
+                                              // edge wipes the Key Manager.
 
-  input  logic dma_reg_bus_err_i,             // Secure DMA bridge fault status/clear (from sep_cpu_ctrl).
-  input  logic dma_host_intg_err_i,           // DMA host intg err.
-  output logic dma_err_clr_o,                 // DMA err clr.
+  input  logic dma_reg_bus_err_i,             // Secure DMA register-path fault, reflected in
+                                              // DMA_BUS_ERR_STATUS.reg_path_err.
+  input  logic dma_host_intg_err_i,           // DMA-master-path fault, latched into
+                                              // DMA_BUS_ERR_STATUS.host_path_err.
+  output logic dma_err_clr_o,                 // Single-cycle clear pulse from DMA_BUS_ERR_CLEAR to
+                                              // both DMA bridge-fault latches.
 
-  input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_i,  // Peripheral register-bridge fault status/clear (from sep_cpu_ctrl).
-  output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_clr_o  // periph bus err clr.
+  input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_i,  // Per-block peripheral register-bridge faults, reflected in PERIPH_BUS_ERR_STATUS, in
+                                                                     // sep_pkg::periph_bus_err_e bit order.
+  output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_clr_o  // Per-block single-cycle clear pulses from PERIPH_BUS_ERR_CLEAR, in
+                                                                        // sep_pkg::periph_bus_err_e bit order.
 );
 
   /////////////////////////

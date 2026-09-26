@@ -4,15 +4,18 @@
 
 // Buffer a TL-UL link with synchronous request and response FIFOs.
 //
-// Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus.
+// Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus. The
+// response FIFO stores d_data as zero for any opcode other than AccessAckData.
 // ReqPass and RspPass allow fall-through when the corresponding FIFO is empty. SpareReqW
 // and SpareRspW carry optional sideband bits alongside each channel.
 
 module tlul_fifo_sync #(
   parameter bit          ReqPass = 1'b1,     // Allow A-channel fall-through when empty.
   parameter bit          RspPass = 1'b1,     // Allow D-channel fall-through when empty.
-  parameter int unsigned ReqDepth = 2,       // Depth of the host-to-device request FIFO.
-  parameter int unsigned RspDepth = 2,       // Depth of the device-to-host response FIFO.
+  parameter int unsigned ReqDepth = 2,       // Depth of the host-to-device request FIFO;
+                                             // 0 bypasses it and requires ReqPass.
+  parameter int unsigned RspDepth = 2,       // Depth of the device-to-host response FIFO;
+                                             // 0 bypasses it and requires RspPass.
   parameter int unsigned SpareReqW = 1,      // Width of spare bits with each request.
   parameter int unsigned SpareRspW = 1       // Width of spare bits with each response.
 ) (
