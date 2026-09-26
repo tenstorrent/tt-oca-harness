@@ -27,8 +27,8 @@ from seq_lib.sep_km_mailbox_seq import (
     crc32c,
 )
 
-# hw/ip/key_manager/dv/fw/tests/common/test_mutable_fw_blob.h
-# mutable_fw_blob_small -- 14 words so image+CRC fits the 16-word FIFO.
+# mutable_fw_blob_small -- a minimal mutable firmware image loaded at 0x8000;
+# 14 words so image+CRC fits the 16-word FIFO.
 _MUTABLE_FW_BLOB_SMALL = (
     0x0140006F,
     0x00000013,

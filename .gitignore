@@ -93,7 +93,7 @@ node_modules/
 vendor/**/Bender.lock
 
 # Cocotb testbench transient outputs: Bender-generated filelists, simulation
-# build/log trees, and cached cycle counts (e.g. hw/ip/key_manager/dv/tb).
+# build/log trees, and cached cycle counts.
 **/dv/tb/rtl.f
 **/dv/tb/tb.f
 **/dv/tb/i3ccore_filelist.f
