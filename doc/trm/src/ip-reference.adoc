@@ -26,7 +26,7 @@ ifdef::backend-pdf[]
 * <<mailbox-unit,AXI-Lite Mailbox Unit>>
 * <<gpio-peripheral,GPIO>>
 * <<i2c-controller,I2C>>
-* I3C Controller
+* <<i3c-controller,I3C Controller>>
 * <<log-engine,Log Engine>>
 * <<system-timer-octs,System Timer OCTS>>
 * <<telemetry-receiver,Telemetry Receiver>>

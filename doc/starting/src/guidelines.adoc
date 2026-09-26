@@ -197,12 +197,11 @@ header, after the SPDX lines. Generated register RTL and
 `vendor/**/upstream/**` stay as their generator or upstream left them.
 
 The header is two parts. The first line is one imperative sentence: the RTL
-job of this module. It does not repeat the IP chapter. One blank `//` line
-follows, then the behavior the declarations do not carry: resets, clock
-domains, ordering, and constraints an integrator or reviewer would
-otherwise have to rediscover. Keep it concise, but keep every fact. The
-same paragraphs are the text at the top of that module's page in RTL
-Modules Reference.
+job of this module. One blank `//` line follows, then the behavior the
+declarations do not carry: resets, clock domains, ordering, and constraints
+an integrator or reviewer would otherwise have to rediscover. Keep it
+concise, but keep every fact. The same paragraphs are the text at the top of
+that module's page in RTL Modules Reference.
 
 Every parameter, input, and output has a `//` clause that starts on the
 same line as the declaration. The clause is that item's role in this
