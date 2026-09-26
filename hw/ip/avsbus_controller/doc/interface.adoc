@@ -10,7 +10,7 @@ system integration. The register file itself is APB4; the controller contains
 an `axi_lite_to_apb` bridge, so APB4 is not exposed at the module boundary.
 
 ifdef::backend-html5[]
-The parameters and ports of `avsbus_controller` are listed in xref:ROOT:rtl-modules-reference/ip/avsbus_controller/avsbus_controller.adoc[avsbus_controller].
+The parameters and ports of `avsbus_controller` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/avsbus_controller/avsbus_controller.adoc[avsbus_controller].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `avsbus_controller` are listed in the HTML edition of this manual, under RTL Modules Reference.

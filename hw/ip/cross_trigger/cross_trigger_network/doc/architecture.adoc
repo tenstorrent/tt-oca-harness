@@ -371,7 +371,7 @@ visibility and chiplet clock gating control. The CTN sizes its request input
 with its own `NUM_CLK_STOP_REQ` parameter, which defaults to 9.
 
 ifdef::backend-html5[]
-The parameters and ports of `ctn_clock_stop_ctrl` are listed in xref:ROOT:rtl-modules-reference/ip/cross_trigger_network/ctn_clock_stop_ctrl.adoc[ctn_clock_stop_ctrl].
+The parameters and ports of `ctn_clock_stop_ctrl` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_network/ctn_clock_stop_ctrl.adoc[ctn_clock_stop_ctrl].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `ctn_clock_stop_ctrl` are listed in the HTML edition of this manual, under RTL Modules Reference.

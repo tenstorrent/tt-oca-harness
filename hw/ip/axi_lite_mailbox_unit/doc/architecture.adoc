@@ -12,7 +12,7 @@ the two FIFOs that carry data between its two apertures.
 === Configuration Parameters
 
 ifdef::backend-html5[]
-The parameters and ports of `axi_lite_mailbox_unit` are listed in xref:ROOT:rtl-modules-reference/ip/axi_lite_mailbox_unit/axi_lite_mailbox_unit.adoc[axi_lite_mailbox_unit].
+The parameters and ports of `axi_lite_mailbox_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/axi_lite_mailbox_unit/axi_lite_mailbox_unit.adoc[axi_lite_mailbox_unit].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `axi_lite_mailbox_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.

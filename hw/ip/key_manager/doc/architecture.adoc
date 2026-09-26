@@ -61,7 +61,7 @@ The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO d
 the read-data behaviour of its memories, and the address of the eFuse controller.
 
 ifdef::backend-html5[]
-The parameters of `key_manager` are listed in xref:ROOT:rtl-modules-reference/ip/key_manager/key_manager.adoc[key_manager].
+The parameters of `key_manager` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/key_manager/key_manager.adoc[key_manager].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters of `key_manager` are listed in the HTML edition of this manual, under RTL Modules Reference.

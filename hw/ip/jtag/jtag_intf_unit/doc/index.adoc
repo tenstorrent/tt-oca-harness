@@ -33,7 +33,7 @@ debug STAP enables, the number of additional STAPs, the IDCODE and JTAG_CAPS val
 and the JTAG2AXI pipeline depths.
 
 ifdef::backend-html5[]
-The parameters of `jtag_intf_unit` are listed in xref:ROOT:rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.adoc[jtag_intf_unit].
+The parameters of `jtag_intf_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.adoc[jtag_intf_unit].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters of `jtag_intf_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.

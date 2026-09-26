@@ -11,7 +11,7 @@ Each `gpio` instance drives one pad. The peripheral comprises 65 pads: 61 bonded
 unbonded.
 
 ifdef::backend-html5[]
-The parameters and ports of `gpio` are listed in xref:ROOT:rtl-modules-reference/ip/gpio/gpio.adoc[gpio].
+The parameters and ports of `gpio` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/gpio/gpio.adoc[gpio].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `gpio` are listed in the HTML edition of this manual, under RTL Modules Reference.

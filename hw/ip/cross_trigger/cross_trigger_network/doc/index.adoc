@@ -32,7 +32,7 @@ The CTN is configured through its external and internal port counts, the number 
 clock-stop request inputs, and the protocol of each internal CTP.
 
 ifdef::backend-html5[]
-The parameters of `cross_trigger_network` are listed in xref:ROOT:rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.adoc[cross_trigger_network].
+The parameters of `cross_trigger_network` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.adoc[cross_trigger_network].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters of `cross_trigger_network` are listed in the HTML edition of this manual, under RTL Modules Reference.

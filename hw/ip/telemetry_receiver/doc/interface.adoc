@@ -10,7 +10,7 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.
 === Configuration Parameters
 
 ifdef::backend-html5[]
-The parameters and ports of `telemetry_receiver` are listed in xref:ROOT:rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.adoc[telemetry_receiver].
+The parameters and ports of `telemetry_receiver` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.adoc[telemetry_receiver].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `telemetry_receiver` are listed in the HTML edition of this manual, under RTL Modules Reference.

@@ -31,7 +31,7 @@ IC_RESET slices and debug bridges, the IC_RESET slice types, the IDCODE and JTAG
 values, and the JTAG2AXI pipeline depths.
 
 ifdef::backend-html5[]
-The parameters of `jtag_ptap` are listed in xref:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
+The parameters of `jtag_ptap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters of `jtag_ptap` are listed in the HTML edition of this manual, under RTL Modules Reference.

@@ -10,7 +10,7 @@ The UART 16550 module provides configurable parameters to customize FIFO
 sizes according to system requirements.
 
 ifdef::backend-html5[]
-The parameters and ports of `uart_16550` are listed in xref:ROOT:rtl-modules-reference/ip/uart_16550/uart_16550.adoc[uart_16550].
+The parameters and ports of `uart_16550` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/uart_16550/uart_16550.adoc[uart_16550].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `uart_16550` are listed in the HTML edition of this manual, under RTL Modules Reference.

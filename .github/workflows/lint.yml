@@ -265,7 +265,7 @@ jobs:
         with: { log-file: lint_spelling.log, efm: '%f:%l: %m', level: error, name: lint-spelling }
 
   lint-sv-comments:
-    needs: [diff-class]
+    needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }

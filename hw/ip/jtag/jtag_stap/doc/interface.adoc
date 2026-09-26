@@ -9,7 +9,7 @@ Packed control and bus types remain bundles at the `jtag_stap` boundary; their
 members are not separate scalar ports.
 
 ifdef::backend-html5[]
-The parameters and ports of `jtag_stap` are listed in xref:ROOT:rtl-modules-reference/ip/jtag_stap/jtag_stap.adoc[jtag_stap].
+The parameters and ports of `jtag_stap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_stap/jtag_stap.adoc[jtag_stap].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `jtag_stap` are listed in the HTML edition of this manual, under RTL Modules Reference.

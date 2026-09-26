@@ -54,7 +54,7 @@ control plane and data plane operations.
 == Configuration Parameters
 
 ifdef::backend-html5[]
-The parameters of `idma_wrapper` are listed in xref:ROOT:rtl-modules-reference/ip/idma_wrapper/idma_wrapper.adoc[idma_wrapper].
+The parameters of `idma_wrapper` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/idma_wrapper/idma_wrapper.adoc[idma_wrapper].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters of `idma_wrapper` are listed in the HTML edition of this manual, under RTL Modules Reference.

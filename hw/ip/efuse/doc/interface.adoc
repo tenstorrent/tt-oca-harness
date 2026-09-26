@@ -9,7 +9,7 @@
 The OTP has a total storage capacity of 3 KB, organized as 768 words of 32 bits.
 
 ifdef::backend-html5[]
-The parameters and ports of `efuse_interface_controller` are listed in xref:ROOT:rtl-modules-reference/ip/efuse/efuse_interface_controller.adoc[efuse_interface_controller].
+The parameters and ports of `efuse_interface_controller` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/efuse/efuse_interface_controller.adoc[efuse_interface_controller].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `efuse_interface_controller` are listed in the HTML edition of this manual, under RTL Modules Reference.

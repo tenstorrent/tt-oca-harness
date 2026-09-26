@@ -32,7 +32,7 @@ The scrambler IP consists of a generic top-level module (`scrambler`) and a set 
 The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.
 
 ifdef::backend-html5[]
-The parameters and ports of `scrambler` are listed in xref:ROOT:rtl-modules-reference/ip/scrambler/scrambler.adoc[scrambler].
+The parameters and ports of `scrambler` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/scrambler/scrambler.adoc[scrambler].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `scrambler` are listed in the HTML edition of this manual, under RTL Modules Reference.

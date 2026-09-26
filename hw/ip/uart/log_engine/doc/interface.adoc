@@ -10,7 +10,7 @@ access, memory fetching, and UART communication.
 The engine serves 16 independent log entries, set by `NUM_LOG_ENTRIES` in `log_engine_pkg`.
 
 ifdef::backend-html5[]
-The parameters and ports of `log_engine` are listed in xref:ROOT:rtl-modules-reference/ip/log_engine/log_engine.adoc[log_engine].
+The parameters and ports of `log_engine` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/log_engine/log_engine.adoc[log_engine].
 endif::backend-html5[]
 ifndef::backend-html5[]
 The parameters and ports of `log_engine` are listed in the HTML edition of this manual, under RTL Modules Reference.
