@@ -260,12 +260,15 @@ This header is the one to reject. The banner repeats the filename, and each
  */
 ----
 
-Check a tree with:
+Check files with:
 
 [source,shell]
 ----
 python3 tools/doc/check_sv_comments.py hw/ip/key_manager/rtl/*.sv
 ----
+
+`make lint-sv-comments` checks every source the RTL Modules Reference
+documents, except the generated CPU RTL, and is the `lint-sv-comments` CI job.
 
 The checker covers every module in a file. It fails when the two-part `//`
 block is missing, when a parameter or port has no same-line `//` clause, when
