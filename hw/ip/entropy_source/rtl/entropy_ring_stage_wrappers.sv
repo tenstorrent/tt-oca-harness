@@ -6,10 +6,12 @@
 // entropy_ring_oscillator is a free-running combinational loop; without delay, RTL
 // simulation never advances time because every stage settles in the same delta cycle.
 //
-// Real delay comes from whichever prim_clock_nand2 / prim_stdbuf / prim_stdmux2 flavor
-// synthesis binds; those prims cannot grow a delay parameter without breaking every other
-// consumer. Each wrapper instances an unmodified prim and adds #1 delay under
-// `ifndef SYNTHESIS` so synthesis and other consumers see zero-delay cells.
+// Real delay comes from whichever prim_clock_nand2 / prim_buf / prim_stdmux2 flavor
+// synthesis binds each stage to. The generic and technology-specific flavors are swapped
+// in as a group per build target, so every flavor keeps the same port list and none
+// carries a delay parameter. Each wrapper instances one unmodified prim and adds a #1
+// delay under `ifndef SYNTHESIS`, so synthesis and every other consumer of those prims
+// see the ordinary zero-delay cell.
 
 module entropy_ring_nand2_wrapper (
   input  a1_i,                          // First NAND input.
@@ -37,9 +39,9 @@ module entropy_ring_buf_wrapper (
 );
   logic y_cell;
 
-  prim_stdbuf u_cell (
-    .a_i (a_i),
-    .y_o (y_cell)
+  prim_buf u_cell (
+    .in_i (a_i),
+    .out_o(y_cell)
   );
 
 `ifndef SYNTHESIS

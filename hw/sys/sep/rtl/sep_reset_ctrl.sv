@@ -53,11 +53,11 @@ module sep_reset_ctrl (
     .out_o (sep_cpu_func_reset_n)
   );
 
-  prim_rstbypass_stdmux2 u_sep_cpu_rst_scan_bypass (
-    .rst_ni      (sep_cpu_func_reset_n),
-    .test_rst_ni (scan_rst_ni),
-    .test_mode_i (test_en_i),
-    .rst_no      (sep_cpu_reset_no)
+  prim_rst_mux2_hf_n u_sep_cpu_rst_scan_bypass (
+    .rst0_ni(sep_cpu_func_reset_n),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_cpu_reset_no)
   );
 
   // =========================================================================
@@ -266,8 +266,8 @@ module sep_reset_ctrl (
     jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val
   };
 
-  prim_sync2r #(
-    .WIDTH(NUM_JTAG_IP_RST)
+  prim_flop_2sync #(
+    .Width(NUM_JTAG_IP_RST)
   ) u_jtag_ip_ovrd_sync (
     .clk_i (clk_i),
     .d_i   (jtag_ip_ovrd_tck),
@@ -275,8 +275,8 @@ module sep_reset_ctrl (
     .q_o   (jtag_ip_ovrd_sync)
   );
 
-  prim_sync2r #(
-    .WIDTH(NUM_JTAG_IP_RST)
+  prim_flop_2sync #(
+    .Width(NUM_JTAG_IP_RST)
   ) u_jtag_ip_val_sync (
     .clk_i (clk_i),
     .d_i   (jtag_ip_val_tck),
@@ -419,53 +419,53 @@ module sep_reset_ctrl (
 
   // Test mode substitutes scan_rst_ni after each override mux, so scan reset
   // reaches the flops these outputs reset.
-  prim_rstbypass_stdmux2 u_abr_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.abr),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.abr)
+  prim_rst_mux2_hf_n u_abr_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.abr),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.abr)
   );
 
-  prim_rstbypass_stdmux2 u_kmac_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.kmac),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.kmac)
+  prim_rst_mux2_hf_n u_kmac_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.kmac),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.kmac)
   );
 
-  prim_rstbypass_stdmux2 u_hmac_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.hmac),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.hmac)
+  prim_rst_mux2_hf_n u_hmac_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.hmac),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.hmac)
   );
 
-  prim_rstbypass_stdmux2 u_aes_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.aes),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.aes)
+  prim_rst_mux2_hf_n u_aes_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.aes),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.aes)
   );
 
-  prim_rstbypass_stdmux2 u_otbn_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.otbn),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.otbn)
+  prim_rst_mux2_hf_n u_otbn_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.otbn),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.otbn)
   );
 
-  prim_rstbypass_stdmux2 u_km_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.km),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.km)
+  prim_rst_mux2_hf_n u_km_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.km),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.km)
   );
 
-  prim_rstbypass_stdmux2 u_trng_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.trng),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.trng)
+  prim_rst_mux2_hf_n u_trng_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.trng),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.trng)
   );
 
   assign sep_reset_no = sep_reset_n;

@@ -343,10 +343,10 @@ module entropy_source
     assign health_test_enable      = ~reg_out.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
     assign health_test_valid_gated = entropy_stream_valid & health_test_enable;
 
-    prim_clkgater u_health_test_clk_gate (
+    prim_clock_gating u_health_test_clk_gate (
         .clk_i  (clk_i),
         .en_i   (health_test_enable),
-        .te_i   (1'b0),
+        .test_en_i (1'b0),
         .clk_o  (health_test_clk)
     );
 

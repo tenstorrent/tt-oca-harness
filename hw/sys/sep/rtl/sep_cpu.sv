@@ -135,8 +135,8 @@ module sep_cpu (
   // dbg_rstb_i deasserts well before rst_ni, so the value is stable when sampled.
   logic mpc_reset_run_req_sync;
 
-  prim_sync2r #(
-    .WIDTH(1)
+  prim_flop_2sync #(
+    .Width(1)
   ) u_mpc_reset_run_req_sync (
     .clk_i  (clk_i),
     .d_i    (mpc_reset_run_req_i),

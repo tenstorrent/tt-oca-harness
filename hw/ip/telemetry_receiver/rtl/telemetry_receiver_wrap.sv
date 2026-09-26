@@ -187,9 +187,8 @@ module telemetry_receiver_wrap #(
     // ATB AF CDC //
     ////////////////
 
-    prim_sync2r #(
-      .WIDTH                  (1),
-      .RANDOM_DELAY_GRAY_CODE (1'b0)
+    prim_flop_2sync #(
+      .Width(1)
     ) u_afready_sync2r (
       .clk_i                  (clk_telemetry_i),
       .d_i                    (afready_i[i]),
@@ -197,9 +196,8 @@ module telemetry_receiver_wrap #(
       .q_o                    (afready)
     );
 
-    prim_sync2r #(
-      .WIDTH                  (1),
-      .RANDOM_DELAY_GRAY_CODE (1'b0)
+    prim_flop_2sync #(
+      .Width(1)
     ) u_afvalid_sync2r (
       .clk_i                  (clk_i),
       .d_i                    (afvalid),

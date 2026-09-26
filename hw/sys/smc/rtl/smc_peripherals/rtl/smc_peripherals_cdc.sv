@@ -364,97 +364,124 @@ module smc_peripherals_cdc #(
     if (SYNC_STAGES == 2) begin : gen_sync2
 
       // I2C Enable
-      prim_sync2 #(
-        .WIDTH(smc_config_pkg::NUM_I2C)
+      prim_flop_2sync #(
+        .Width(smc_config_pkg::NUM_I2C)
       ) u_i2c_enable_sync (
         .clk_i (clk_smc_i),
+        .rst_ni(1'b1),
         .d_i   (i2c_enable_periph_clk_flopped),
         .q_o   (i2c_enable_smc_clk_o)
       );
       // I2C Interrupts
-      prim_sync2 #(
-        .WIDTH(smc_config_pkg::NUM_I2C)
+      prim_flop_2sync #(
+        .Width(smc_config_pkg::NUM_I2C)
       ) u_i2c_irq_sync (
         .clk_i (clk_smc_i),
+        .rst_ni(1'b1),
         .d_i   (i2c_irqs_periph_clk_flopped),
         .q_o   (i2c_irqs_smc_clk_o)
       );
 
       // I2C Debug Bus (per-bit sync; visibility-only path)
-      prim_sync2 #(
-        .WIDTH(smc_config_pkg::NUM_I2C * 4)
+      prim_flop_2sync #(
+        .Width(smc_config_pkg::NUM_I2C * 4)
       ) u_i2c_debug_sync (
         .clk_i (clk_smc_i),
+        .rst_ni(1'b1),
         .d_i   (i2c_debug_periph_clk_flopped),
         .q_o   (i2c_debug_smc_clk_o)
       );
 
       // UART Enable
-      prim_sync2 #(
-        .WIDTH(smc_config_pkg::NUM_UART)
+      prim_flop_2sync #(
+        .Width(smc_config_pkg::NUM_UART)
       ) u_uart_enable_sync (
         .clk_i (clk_smc_i),
+        .rst_ni(1'b1),
         .d_i   (uart_enable_periph_clk_flopped),
         .q_o   (uart_enable_smc_clk_o)
       );
 
       // UART Combined Interrupts
-      prim_sync2 #(
-        .WIDTH(smc_config_pkg::NUM_UART)
+      prim_flop_2sync #(
+        .Width(smc_config_pkg::NUM_UART)
       ) u_uart_combined_irq_sync (
         .clk_i (clk_smc_i),
+        .rst_ni(1'b1),
         .d_i   (uart_irq_combined_periph_clk_flopped),
         .q_o   (uart_irq_combined_smc_clk_o)
       );
 
       // I3C Interrupts
-      prim_sync2 #(
-        .WIDTH(smc_config_pkg::NUM_I3C)
+      prim_flop_2sync #(
+        .Width(smc_config_pkg::NUM_I3C)
       ) u_i3c_irq_sync (
         .clk_i (clk_smc_i),
+        .rst_ni(1'b1),
         .d_i   (i3c_irqs_periph_clk_flopped),
         .q_o   (i3c_irqs_smc_clk_o)
       );
 
       // AVSBus Interrupt
-      prim_sync2 u_avsbus_irq_sync (
+      prim_flop_2sync #(
+        .Width(1)
+      ) u_avsbus_irq_sync (
         .clk_i (clk_smc_i),
+        .rst_ni(1'b1),
         .d_i   (avsbus_irq_periph_clk_flopped),
         .q_o   (avsbus_irq_smc_clk_o)
       );
 
       // Clock gate enables (SMC -> Periph, synced to ungated clk_periph_i)
-      prim_sync2 u_i2c_cg_en_sync (
+      prim_flop_2sync #(
+        .Width(1)
+      ) u_i2c_cg_en_sync (
         .clk_i (clk_periph_i),
+        .rst_ni(1'b1),
         .d_i   (i2c_cg_en_smc_clk_flopped),
         .q_o   (i2c_cg_en_periph_clk_o)
       );
-      prim_sync2 u_uart_cg_en_sync (
+      prim_flop_2sync #(
+        .Width(1)
+      ) u_uart_cg_en_sync (
         .clk_i (clk_periph_i),
+        .rst_ni(1'b1),
         .d_i   (uart_cg_en_smc_clk_flopped),
         .q_o   (uart_cg_en_periph_clk_o)
       );
-      prim_sync2 u_avs_cg_en_periph_sync (
+      prim_flop_2sync #(
+        .Width(1)
+      ) u_avs_cg_en_periph_sync (
         .clk_i (clk_periph_i),
+        .rst_ni(1'b1),
         .d_i   (avs_cg_en_smc_clk_flopped),
         .q_o   (avs_cg_en_periph_clk_o)
       );
-      prim_sync2 u_i3c_cg_en_sync (
+      prim_flop_2sync #(
+        .Width(1)
+      ) u_i3c_cg_en_sync (
         .clk_i (clk_periph_i),
+        .rst_ni(1'b1),
         .d_i   (i3c_cg_en_smc_clk_flopped),
         .q_o   (i3c_cg_en_periph_clk_o)
       );
 
       // Clock gate enable (SMC -> Ref, synced to ungated clk_ref_i)
-      prim_sync2 u_avs_cg_en_ref_sync (
+      prim_flop_2sync #(
+        .Width(1)
+      ) u_avs_cg_en_ref_sync (
         .clk_i (clk_ref_i),
+        .rst_ni(1'b1),
         .d_i   (avs_cg_en_smc_clk_flopped),
         .q_o   (avs_cg_en_ref_clk_o)
       );
 
       // Clock gate enable (SMC -> Telemetry, synced to ungated clk_telemetry_i)
-      prim_sync2 u_tel_cg_en_sync (
+      prim_flop_2sync #(
+        .Width(1)
+      ) u_tel_cg_en_sync (
         .clk_i (clk_telemetry_i),
+        .rst_ni(1'b1),
         .d_i   (tel_cg_en_smc_clk_flopped),
         .q_o   (tel_cg_en_telemetry_clk_o)
       );

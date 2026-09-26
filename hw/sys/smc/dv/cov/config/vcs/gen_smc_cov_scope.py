@@ -43,7 +43,7 @@ DROPPED: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("cpu subtree", re.compile(r"chipyard_generated_files/")),
     ("library cells", re.compile(r"/vendor/pulp-platform/common_cells/")),
     ("library cells", re.compile(r"/vendor/lowRISC/opentitan/.*/prim[^/]*/")),
-    ("library cells", re.compile(r"/hw/common/och_prim/")),
+    ("library cells", re.compile(r"/hw/common/ocah_prim/")),
     (
         "interconnect cells",
         re.compile(r"/vendor/pulp-platform/(axi|apb|register_interface|axi_stream|obi)/"),

@@ -3,7 +3,7 @@
 
 // Gate clocks for Chipyard-generated SMC CPU designs.
 //
-// Adapts prim_clkgater to the EICG_wrapper port names Chipyard emits.
+// Adapts prim_clock_gating to the EICG_wrapper port names Chipyard emits.
 // test_en bypasses gating so scan and DFT can drive the clock freely.
 
 module EICG_wrapper (
@@ -13,10 +13,10 @@ module EICG_wrapper (
     output logic out                    // Gated clock output.
 );
 
-    prim_clkgater u_clkgater (
+    prim_clock_gating u_clkgater (
         .clk_i  (in),
         .en_i   (en),
-        .te_i   (test_en),
+        .test_en_i (test_en),
         .clk_o  (out)
     );
 

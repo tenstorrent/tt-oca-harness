@@ -346,8 +346,8 @@ _TITLES = {
     "drbg": "DRBG",
     "gpio": "GPIO",
     "tlul": "TL-UL",
-    "och_prim": "och_prim",
-    "och_prim_generic": "och_prim_generic",
+    "ocah_prim": "ocah_prim",
+    "ocah_prim_generic": "ocah_prim_generic",
     "idma_wrapper": "iDMA",
     "jtag2axi": "JTAG to AXI",
     "jtag_intf_unit": "JTAG Interface Unit",
@@ -515,7 +515,7 @@ def generate(root: Path, pages: Path, partials: Path, nav: Path = None) -> int:
     sys.append(("AXI-over-UCIe", "rtl-modules-reference/sys/aou.adoc"))
 
     common = []
-    for name in ("och_prim", "och_prim_generic", "tlul"):
+    for name in ("ocah_prim", "ocah_prim_generic", "tlul"):
         rtl = root / "hw/common" / name / "rtl"
         if rtl.is_dir() and _sources(rtl):
             common.append(_emit_block(root, pages, partials, rtl, name, "common"))

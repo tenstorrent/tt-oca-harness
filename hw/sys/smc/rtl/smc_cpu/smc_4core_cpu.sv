@@ -147,10 +147,10 @@ module smc_4core_cpu (
     end
   end
 
-  prim_clkgater u_debug_clock_gate (
+  prim_clock_gating u_debug_clock_gate (
     .clk_i    (clk_i),
     .en_i     (clock_en),
-    .te_i     (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o    (gated_debug_clock)
   );
 
