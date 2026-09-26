@@ -38,8 +38,10 @@ sibling leaf does, with a second bench pad driver as the other device:
 * **A repeated START set up too briefly.** With `TIMING1.T_R` 0 and
   `TIMING2.TSU_STA` 1 the setup of a repeated START ends before the SCL the
   controller has just released is seen high, so the hold that follows starts
-  with SCL still low. The controller has to return to idle with no event;
-  how many STARTs the bench target counts is recorded.
+  with SCL still low. The stretch timeout is enabled with a value of 0, so the
+  setup ends with the stretch count past it. The controller has to return to
+  idle with no event; how many STARTs the bench target counts, and whether
+  `INTR_STATE.STRETCH_TIMEOUT` is set, are recorded.
 """
 
 from __future__ import annotations
@@ -47,7 +49,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, Timer
 
-from .smc_addr_map import I2C_CG_EN
+from .smc_addr_map import I2C_CG_EN, smc_indexed_addr
 from .smc_i2c_controller_scl_events_test_seq import (
     CLOCK_GATE_CONTROL,
     EEPROM_ADDR,
@@ -80,6 +82,11 @@ from .smc_i2c_master_target_test_seq import (
 )
 
 INTR_CMD_COMPLETE = _i2c_u32("I2C__INTR_STATE__CMD_COMPLETE_bm")
+INTR_STRETCH_TIMEOUT = _i2c_u32("I2C__INTR_STATE__STRETCH_TIMEOUT_bm")
+I2C0_TIMEOUT_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMEOUT_CTRL_BASE_ADDR", 0)
+#: TIMEOUT_CTRL in stretch-timeout mode (MODE 0) with VAL 0: any SCL the
+#: controller has released and still sees low counts as a stretch past it.
+STRETCH_TIMEOUT_ZERO = _i2c_u32("I2C__TIMEOUT_CTRL__EN_bm")
 ABSENT_ADDR = 0x51
 
 #: How far into a high window the lines are moved: past the two samples of
@@ -287,6 +294,7 @@ class smc_i2c_controller_edge_timing_test_seq(smc_i2c_controller_scl_events_test
         await self.csr_write(f"{name}_TIMING1", I2C0_TIMING1, timing1)
         await self.csr_write(f"{name}_TIMING2", I2C0_TIMING2, timing2)
         await self.csr_read(f"{name}_TIMING2_RB", I2C0_TIMING2, expected=timing2)
+        await self.csr_write(f"{name}_STRETCH_TIMEOUT", I2C0_TIMEOUT_CTRL, STRETCH_TIMEOUT_ZERO)
         self.slave.write_mem(0x70, bytes((0x61, 0x62)))
         starts = self.slave.starts
         await self._queue(name, "WRR")
@@ -297,15 +305,19 @@ class smc_i2c_controller_edge_timing_test_seq(smc_i2c_controller_scl_events_test
             f"{name}: CONTROLLER_EVENTS=0x{events:08x} after a repeated START set up with "
             f"T_R 0 and TSU_STA {SHORT_TSU_STA}; nothing on the bus contended with it"
         )
+        intr = await self.csr_read(f"{name}_INTR", I2C0_INTR_STATE)
+        await self.csr_write(f"{name}_STRETCH_TIMEOUT_OFF", I2C0_TIMEOUT_CTRL, 0)
+        await self.csr_write(f"{name}_INTR_CLR_END", I2C0_INTR_STATE, 0xFFFF_FFFF)
         await self.csr_write(f"{name}_HOST_OFF", I2C0_CTRL, 0)
         await self._recover_bus(name)
         cocotb.log.info(
             "CHK-I2C-CTRL-EDGE-SHORT-SETUP: a write, repeated START and read with TIMING1.T_R "
-            "0 and TIMING2.TSU_STA %d, too short for SCL to be seen high again before the "
-            "hold, returned the controller to idle with no event; the bench target counted "
-            "%d START(s) for it",
+            "0, TIMING2.TSU_STA %d and a stretch timeout of 0, too short for SCL to be seen "
+            "high again before the hold, returned the controller to idle with no event; the "
+            "bench target counted %d START(s) for it, and INTR_STATE.STRETCH_TIMEOUT read %d",
             SHORT_TSU_STA,
             seen,
+            1 if intr & INTR_STRETCH_TIMEOUT else 0,
         )
 
     async def body(self) -> None:

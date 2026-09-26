@@ -97,6 +97,47 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "responder holds the word and the B response returns OKAY",
         ),
     ],
+    "smu_aperture_map_walk_test": [
+        (
+            "CHK-SMCMAP-WALK-PORT",
+            "CHK-SMCMAP-WALK-PORT",
+            "every programmed GLOBAL_BASE and REGION_SIZE reaches smc_global_base_o and "
+            "smc_region_size_o and reads back over JTAG2AXI",
+        ),
+        (
+            "CHK-SMCMAP-WALK-INSIDE",
+            "CHK-SMCMAP-WALK-INSIDE",
+            "at every setting the rebased VERSION_LO read returns its RDL reset value and "
+            "the rebased SCRATCH_COLD write reads back, all OKAY",
+        ),
+        (
+            "CHK-SMCMAP-WALK-EDGE",
+            "CHK-SMCMAP-WALK-EDGE",
+            "at every setting the first address of the window reaches the SMC once and the word "
+            "below and the address past it do not and return DECERR",
+        ),
+        (
+            "CHK-SMCMAP-RESTORE",
+            "CHK-SMCMAP-RESTORE",
+            "GLOBAL_BASE and REGION_SIZE written back to LOCAL_BASE and the RDL reset "
+            "reach the ports and read back",
+        ),
+    ],
+    "smu_axi_out_addr_len_size_test": [
+        (
+            "CHK-AXIOUT-SIZE",
+            "CHK-AXIOUT-SIZE",
+            "each JTAG2AXI write and read of 1, 2, 4 and 8 bytes at two 56-bit addresses "
+            "crosses smu_axi_out once with its address, AxSIZE, AxLEN 0 and INCR, and the "
+            "bytes land and read back",
+        ),
+        (
+            "CHK-AXIOUT-LEN",
+            "CHK-AXIOUT-LEN",
+            "a 2 KiB iDMA copy crosses smu_axi_out as INCR bursts covering the block both "
+            "ways, the longest at AxLEN 255, and the destination holds the source",
+        ),
+    ],
     "smu_axi_in_burst_outstanding_test": [
         (
             "CHK-AXIIN-DEPTH",
