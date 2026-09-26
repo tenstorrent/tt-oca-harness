@@ -3,6 +3,8 @@
 
 = Introduction
 
+// Retain this page for existing introduction.html bookmarks.
+// Overview owns the content; this compatibility page stays out of nav and PDF.
 [[sep-introduction]]
 
 The SEP responsibilities and services are described in
