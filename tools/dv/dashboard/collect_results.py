@@ -471,6 +471,17 @@ def _test_details_from_layout(
     return details, junit_entries, warnings
 
 
+def _final_attempts(details: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One entry per (name, seed): its highest attempt, the one that decides the leaf's status."""
+    final: dict[tuple[Any, Any], dict[str, Any]] = {}
+    for detail in details:
+        key = (detail.get("name"), detail.get("seed"))
+        kept = final.get(key)
+        if kept is None or int(detail.get("attempt") or 0) >= int(kept.get("attempt") or 0):
+            final[key] = detail
+    return list(final.values())
+
+
 def _collect_test_details(
     repo_root: Path,
     run_root: Path,
@@ -478,6 +489,8 @@ def _collect_test_details(
     result: dict[str, Any],
     regression: dict[str, Any] | None,
     recorded_run_root: Path | None,
+    *,
+    all_attempts: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     catalog = load_test_catalog(flow, repo_root)
     groups_by_test = _groups_by_test(catalog)
@@ -538,6 +551,8 @@ def _collect_test_details(
         junit_entries.extend(layout_junit)
         warnings.extend(layout_warnings)
 
+    if not all_attempts:
+        details = _final_attempts(details)
     dedup_junit = list(
         {
             (entry.get("item"), entry.get("seed"), entry.get("attempt"), entry.get("path")): entry
@@ -637,7 +652,7 @@ def _run_metadata(
 
 
 def _collect_native_result(
-    repo_root: Path, flow: Flow, run_dir: Path | None
+    repo_root: Path, flow: Flow, run_dir: Path | None, *, all_attempts: bool = False
 ) -> dict[str, Any] | None:
     """Consume a normalized `run_dv.py` result.json. Returns None if no native result exists."""
     path = _native_result_path(repo_root, flow, run_dir)
@@ -660,6 +675,7 @@ def _collect_native_result(
         result,
         regression,
         recorded_run_root,
+        all_attempts=all_attempts,
     )
 
     raw_status = str(result.get("status", STATUS_UNKNOWN))
@@ -748,9 +764,14 @@ def _collect_native_result(
     )
 
 
-def collect_flow_result(repo_root: Path, flow: Flow, run_dir: Path | None) -> dict[str, Any]:
-    """Normalize one DUT's native result.json; UNKNOWN if the DUT has not produced one yet."""
-    native = _collect_native_result(repo_root, flow, run_dir)
+def collect_flow_result(
+    repo_root: Path, flow: Flow, run_dir: Path | None, *, all_attempts: bool = False
+) -> dict[str, Any]:
+    """Normalize one DUT's native result.json; UNKNOWN if the DUT has not produced one yet.
+
+    ``tests_detail`` holds each leaf's final attempt, or every attempt with ``all_attempts``.
+    """
+    native = _collect_native_result(repo_root, flow, run_dir, all_attempts=all_attempts)
     if native is not None:
         return native
 
@@ -839,6 +860,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--run-dir", help="run directory or result.json to parse")
     parser.add_argument("--output", help="output result.json path")
+    parser.add_argument(
+        "--all-attempts",
+        action="store_true",
+        help="keep every attempt of a retried leaf in tests_detail (default: its final attempt)",
+    )
     return parser.parse_args(argv)
 
 
@@ -848,7 +874,7 @@ def main(argv: list[str] | None = None) -> int:
         repo_root_path = repo_root(Path(__file__))
         flow = resolve_dut(repo_root_path, args.dut, framework=args.framework)
         run_dir = Path(args.run_dir).resolve() if args.run_dir else None
-        result = collect_flow_result(repo_root_path, flow, run_dir)
+        result = collect_flow_result(repo_root_path, flow, run_dir, all_attempts=args.all_attempts)
         collected_framework = str(result.get("framework", ""))
         if (
             args.framework
