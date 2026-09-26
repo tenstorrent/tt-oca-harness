@@ -5,12 +5,13 @@
 
 [[sep-peripherals]]
 
-SEP peripherals provide data movement, external I/O and watchdog services.
+SEP peripherals provide data movement, mailboxes, external I/O and watchdog services.
 Reset control is described in Clocks and Resets; OTP and lifecycle controls
 are described in Security and Lifecycle.
 
 ifdef::backend-html5[]
 * xref:dma.adoc[Direct Memory Access (DMA)]
+* xref:mailbox.adoc[Mailboxes]
 * xref:peripheral_subsystem.adoc[Peripheral Subsystem]
 * xref:spi.adoc[Serial Peripheral Interface (SPI)]
 * xref:watchdog.adoc[Watchdog Timer (WDT)]

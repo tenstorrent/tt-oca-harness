@@ -9,7 +9,13 @@ The SEP maps a 64 KiB immutable Boot ROM aperture at `0x1004_0000` through
 the base of this region, so a cold boot begins in the BL0 Root-of-Trust
 firmware.
 
-== ROM architecture
+ifdef::backend-html5[]
+++++
+<span id="rom-architecture"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-rom-architecture]]
+== ROM Architecture
 
 The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
 dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
@@ -36,14 +42,29 @@ BL0 stages the selected manifest and payload in SEP SRAM beginning at
 The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
 ordinary software copy.
 
-== Integrity features
+ifdef::backend-html5[]
+++++
+<span id="integrity-features"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-integrity-features]]
+== Hardware Configuration and Integrity
+
+A future ROM patching facility using OTP backup storage is planned for the
+second generation; it is not implemented in the first generation.
 
 The open generic ROM model has a 64-bit data path and no ECC or integrity-error
 sideband. Technology-specific integrity behavior is therefore outside this
 integration's visible hardware contract. The first-generation SEP has no ROM
 patching facility.
 
-== Firmware behavior
+ifdef::backend-html5[]
+++++
+<span id="firmware-behavior"></span>
+++++
+endif::backend-html5[]
+[[sep-rom-firmware-behavior]]
+== Boot Flow
 
 The production BL0 firmware selects SPI flash or an SMC-staged image from the
 captured boot straps. It validates the manifest, applies the lifecycle and
@@ -53,7 +74,7 @@ transfers control to BL1. The production ROM firmware documentation under
 in detail.
 
 [[bl0-secure-boot-and-bl1-execution-unlock]]
-== BL0 Secure Boot and BL1 Execution Unlock
+=== BL0 Secure Boot and BL1 Execution Unlock
 
 The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
 SEP system into a runnable state after power on reset (PoR) and running
@@ -85,12 +106,11 @@ recovers from is a warning; exhausting every slot is an error, after
 which the processor enters a fail loop requiring a reset to exit
 
 
+== Firmware Reference
+
 ifdef::backend-html5[]
 xref:sep-bootrom-prod:index.adoc[Production ROM Manual]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 `hw/sys/sep/bootrom/prod/doc/index.adoc` (Production ROM Manual)
 endif::backend-pdf[]
-
-A future ROM patching facility using OTP backup storage is planned for the
-second generation; it is not implemented in the first generation.

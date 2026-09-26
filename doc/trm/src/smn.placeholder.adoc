@@ -2,14 +2,47 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = System Management Network (SMN)
-:description: The internal management fabric connecting the SMU, user logic and D2D interfaces.
+:description: System fabric access to and from the SMU.
 
+// Keep the published filename for existing links.
 [[system-management-network]]
 
-The SMN components are described in this document.
+The System Management Network (SMN) is the system fabric outside the SMU.
+It carries transactions between the SMU and resources elsewhere in the chiplet.
+SEP, SMC and DTP belong to the SMU; the SMN is a separate platform component.
 
-[WARNING]
-====
-This section is currently under development. More content will be added
-as the project matures.
-====
+== SMU Interface
+
+The SMU exposes two AXI interfaces toward the SMN:
+
+* `smu_axi_in_req_i` / `smu_axi_in_resp_o`: external requests entering the
+  SMU and their responses.
+* `smu_axi_out_req_o` / `smu_axi_out_resp_i`: requests leaving the SMU and
+  responses from the external fabric.
+
+The internal SMU crossbar connects SEP, SMC and these external interfaces.
+It routes incoming requests to the programmed SEP or SMC global aperture.
+SEP and SMC requests that match neither aperture leave through the external
+output. External requests cannot loop back to that output; an unmatched
+incoming address produces a decode error.
+
+== Addressing and Integration
+
+SEP and SMC firmware program their global base addresses and region sizes.
+The surrounding system must use the same address assignments when accessing
+those subsystems. Subsystem remapping and filtering are described in their
+Interconnect chapters.
+
+This chapter describes the SMU boundary. Network topology, routing beyond that
+boundary and connections to other chiplets depend on the enclosing system.
+
+ifdef::backend-html5[]
+* xref:smu:index.adoc#smu-axi-crossbar[SMU AXI Crossbar]
+* xref:memory_map.adoc[OCAH Memory Map]
+* xref:sep:fabric.adoc[SEP Interconnect]
+* xref:smc:fabric.adoc[SMC Interconnect]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<smu-axi-crossbar,SMU AXI Crossbar>>, <<ocah-memory-map,OCAH Memory Map>>,
+<<sep-interconnect,SEP Interconnect>> and <<fabric,SMC Interconnect>>.
+endif::backend-pdf[]

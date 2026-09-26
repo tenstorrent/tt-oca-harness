@@ -70,6 +70,46 @@ class Structure(unittest.TestCase):
                 )
                 self.assertEqual(actual, expected)
 
+    def test_shared_chapter_sections(self):
+        outlines = {
+            "rom": [
+                "ROM Architecture",
+                "Hardware Configuration and Integrity",
+                "Boot Flow",
+                "Firmware Reference",
+            ],
+            "interrupts": [
+                "Controllers",
+                "Sources and Routing",
+                "Software Handling",
+                "Register Reference",
+            ],
+            "fabric": [
+                "Topology",
+                "Interfaces",
+                "Address Remapping",
+                "Filtering and Protection",
+                "Routing",
+                "Register Reference",
+            ],
+        }
+        for chapter, expected in outlines.items():
+            for module in ("sep", "smc"):
+                with self.subTest(module=module, chapter=chapter):
+                    text = (ROOT / f"hw/sys/{module}/doc/{chapter}.adoc").read_text()
+                    self.assertEqual(re.findall(r"^== (.+)$", text, re.M), expected)
+
+    def test_rom_manuals_and_mailbox_navigation(self):
+        nav = (ROOT / "doc/trm/modules/ROOT/nav.adoc").read_text()
+        for module in ("sep", "smc"):
+            manual = f"xref:{module}-bootrom-prod:index.adoc[Production ROM Manual]"
+            self.assertIn(f"**** xref:{module}:rom.adoc[Boot ROM]\n***** {manual}", nav)
+            landing = (ROOT / f"hw/sys/{module}/doc/index.adoc").read_text()
+            self.assertIn(f"* xref:rom.adoc[Boot ROM]\n** {manual}", landing)
+        self.assertIn("***** xref:sep:mailbox.adoc[Mailboxes]", nav)
+        pdf = (ROOT / "doc/trm/src/index.adoc").read_text()
+        self.assertIn("include::../../../hw/sys/sep/doc/mailbox.adoc[leveloffset=+5]", pdf)
+
     def test_register_owners(self):
         for page, maps in OWNERS.items():
             with self.subTest(page=page):

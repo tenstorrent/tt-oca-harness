@@ -91,7 +91,8 @@ software-interrupt and memory-error paths.
 
 == Peripherals
 
-DMA provides data movement and inline hashing. SPI supplies flash access; the
+DMA provides data movement and inline hashing. Mailboxes carry host service
+requests. SPI supplies flash access; the
 watchdog provides bark and bite events. The peripheral subsystem chapter
 describes their integration and extension interface.
 
