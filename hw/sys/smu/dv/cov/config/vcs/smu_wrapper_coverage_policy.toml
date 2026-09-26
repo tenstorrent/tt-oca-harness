@@ -12,18 +12,17 @@
 # Properties`, `Summary for Assertions` in cov/report/asserts.txt).
 #
 # `toggle` is the runner's native family, urg's TOGGLE column: every bit of
-# every port of smu_wrapper, both directions, after the exclusions named
-# below have left the population. The wrapper is wiring, so its ports are
-# what it owns, and this is the same family and the same reading every other
-# DUT is graded on. The floor is set from the measured `all` database
-# (102 leaves: toggle 96.27, assertion 89.72 effective).
+# every net of the units smu_wrapper_cov_scope.hier keeps -- smu_wrapper,
+# smu, smu_axi_xbar, axi_window_remap and the other SMU-owned units under
+# u_smu -- both directions, after the exclusions named below have left the
+# population.
 #
 # Two DUTs share this DV root, so the policy is named per DUT rather than
 # discovered at cov/config/vcs/coverage_policy.toml.
 
 schema_version = 1
 dut = "smu"
-scope_epoch = "smu-vcs-cov-v1"
+scope_epoch = "smu-vcs-cov-v2"
 
 [[thresholds]]
 id = "assertion"
@@ -46,6 +45,18 @@ minimum_percent = 80.0
 tool = "vcs"
 role = "exclude"
 path = "smu_wrapper_toggle_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Toggle points of smu, smu_wrapper, smu_axi_xbar and axi_window_remap, and
+# the condition rows and branch arms two classes name, each class with its
+# fact in the file's ANNOTATION lines. Regenerated from urg's exclusion
+# templates and the raw report of an `all` run by
+# gen_smu_cov_toggle_exclusions.py; README.md lists the classes.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "smu_toggle_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
 

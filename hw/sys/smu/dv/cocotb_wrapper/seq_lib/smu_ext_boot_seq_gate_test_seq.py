@@ -255,4 +255,7 @@ class smu_ext_boot_seq_gate_test_seq:
             [True] * len(fence),
             evidence="CHK-NONVAC",
         )
+        # The poll sees the release on the edge that made it; the cov/sv monitors
+        # sample it on the next one, which the simulation has to reach.
+        await ClockCycles(self.dut.clk_smu_i, 2)
         self._log("SMU_006 sequence complete")

@@ -261,7 +261,7 @@ Outputs land under `hw/ip/key_manager/approm/prod/build/` (or `BUILD_DIR`):
 * `rom_main.elf` — linked ELF, with `rom_main.map` and `rom_main.dis` beside it.
 * `rom_main.rom.hex` — address-zero-based Verilog hex for the ROM responder.
 * `rom_main.rom.parhex` — parity-annotated hex (used by the KM RTL's ROM model).
-* `rom_main.sym` — symbol table, from which testbenches resolve firmware symbols.
+* `rom_main.sym` — address-sorted symbol table.
 
 SEP DV builds its own wipe-disabled copy through `hw/sys/sep/dv/cocotb/tests/km_fw` (`make rom_main`), which `run_dv.py` drives for tests that declare `mode = "km_rom_main"`.
 

@@ -286,11 +286,19 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # OCAH_ROOT="$PWD" does not resolve inside the container. Unset
 # RISCV_TOOLCHAIN/RISCV_PREFIX on the container fallback so compile.mk uses
 # the image gcc on PATH.
+#
+# bwrap forwards the caller environment. `uv run` exports UV as the host
+# binary and preamble.mk keeps it, so the rom_only post-process
+# (elf-to-vmem.py, which imports pyelftools) cannot use that path. Drop UV
+# and VIRTUAL_ENV, and keep uv's project environment, cache and interpreters
+# under local/. The container engine does not forward those variables; that
+# image has no uv, so this post-process still needs the sandbox uv on PATH
+# rather than python3.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u UV -u VIRTUAL_ENV UV_PROJECT_ENVIRONMENT=\"$PWD/local/bwrap-venv\" UV_CACHE_DIR=\"$PWD/local/bwrap-uv-cache\" UV_PYTHON_INSTALL_DIR=\"$PWD/local/bwrap-uv-python\" ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",

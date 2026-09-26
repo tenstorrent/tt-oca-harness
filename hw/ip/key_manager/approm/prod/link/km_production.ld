@@ -49,8 +49,7 @@ SECTIONS {
         *(.srodata.*)
     } > rom
 
-    /* SRAM: .rom_persist, .bss, .data, stack -- shared with every testbench
-     * layout via km_sram_layout.ld. */
+    /* SRAM: .rom_persist, .bss, .data, stack. */
     INCLUDE km_sram_layout.ld
 
     /* Overflow assertion */
