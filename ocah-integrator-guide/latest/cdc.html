@@ -207,32 +207,43 @@ are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.</p>
 </div>
 <div class="paragraph">
-<p>The collateral ships with the harness. <code>integration/constraint/&lt;block&gt;/synth/</code>
-groups it by system while preserving the original filenames and relative path
-depth:</p>
+<p>To give the different systems a unified view of how the constraints are defined,
+these constraints are collected with symlinks under <code>integration/constraint</code>
+using a common hierarchy, described below. If the collateral inventory changes,
+run <code>scripts/update_integration_symlinks.py</code> to regenerate the index.</p>
+</div>
+<div class="paragraph">
+<p>The constraints for each system can build on some shared code, linked at
+<code>integration/constraint/shared</code>. This consists of two files:
+<code>async_clock_groups.tcl</code> (which defines clock groups with default bounds) and
+<code>cdc_max_delay_procs.tcl</code> (which defines procs for emitting CDC constraints).</p>
+</div>
+<div class="paragraph">
+<p>The constraints for each system can use this shared code and are visible through
+symlinks at <code>integration/constraint/&lt;block&gt;/synth</code>. This directory contains the
+following files:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><code>constraints.sdc</code>&#8201;&#8212;&#8201;the block&#8217;s full timing intent, including the clock
-definitions and the asynchronous clock groups. It sources the two files below.</p>
+<p><code>constraints.sdc</code>:
+The block&#8217;s full timing intent, including the clock definitions and the
+asynchronous clock groups. This sources <code>cdc_max_delay_procs.tcl</code> from the
+shared code and then sources the next script.</p>
 </li>
 <li>
-<p><code>&lt;block&gt;_cdc_max_delay.tcl</code>&#8201;&#8212;&#8201;generated-clock periods and any hand-written
-overrides.</p>
+<p><code>&lt;block&gt;_cdc_max_delay.tcl</code>:
+This defines periods for generated clocks and any hand-written overrides and
+then sources the next script.</p>
 </li>
 <li>
-<p><code>&lt;block&gt;_cdc_max_delay_generated.tcl</code>&#8201;&#8212;&#8201;the per-instance calls.</p>
+<p><code>&lt;block&gt;_cdc_max_delay_generated.tcl</code>:
+This auto-generated file defines maximum delays for instances of
+synchronization structures in the system. It expects to be sourced by a file
+that has already sourced <code>cdc_max_delay_procs.tcl</code> to define the procs that
+it uses.</p>
 </li>
 </ul>
-</div>
-<div class="paragraph">
-<p>The shared <code>async_clock_groups.tcl</code> and <code>cdc_max_delay_procs.tcl</code> helpers are
-under <code>integration/constraint/shared/</code>. These are symlink indexes: the
-canonical per-system files remain under <code>hw/sys/&lt;block&gt;/synth/</code>, and the
-canonical shared helpers remain under <code>flows/synth/constraints/</code>. Regenerate
-the index with <code>python3 scripts/update_integration_symlinks.py</code> after changing the
-collateral inventory.</p>
 </div>
 </div>
 </div>
@@ -246,9 +257,9 @@ element assumes the data reaches the receiver within a bounded time.</p>
 </div>
 <div class="paragraph">
 <p>OCAH therefore keeps the crossings visible to the tool and gives each one an
-explicit upper bound, sized from the clock that captures it. This asserts no phase
-relationship&#8201;&#8212;&#8201;it states only how much delay the crossing tolerates while its CDC
-element&#8217;s guarantee still holds.</p>
+explicit upper bound, sized from the clock that captures it. This doesn&#8217;t assert
+any phase relationship. It only states how much delay the crossing tolerates
+while its CDC element&#8217;s guarantee still holds.</p>
 </div>
 </div>
 </div>
@@ -256,13 +267,16 @@ element&#8217;s guarantee still holds.</p>
 <h2 id="what-is-constrained"><a class="anchor" href="#what-is-constrained"></a><a class="link" href="#what-is-constrained">2. What is constrained</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Each enumerated CDC element in each block is given its own <code>set_max_delay</code>,
-sized from the clock that actually captures it as read from the netlist. Muxed
-domains resolve to several clocks; the tightest period wins.</p>
+<p>Any CDC element has at least one capture clock. For every CDC element whose type
+is listed below, the generated constraints give the element its own
+<code>set_max_delay</code>. This is sized from the capture clock, as read from the netlist.
+When the capture clock is muxed from several sources, the bound must hold for
+whichever source the mux selects at runtime; as such, the shortest period among
+the mux inputs is used.</p>
 </div>
 <div class="paragraph">
-<p>The elements covered are <code>prim_sync2/3/4</code> and their reset and set variants, the
-pulp <code>sync</code> shim, <code>prim_sync_reset</code>, <code>prim_sync3_pulse</code>, <code>prim_fifo_async</code>,
+<p>The elements covered are <code>prim_flop_2sync</code>, <code>prim_sync3/4</code> and their reset
+variants, the pulp <code>sync</code> shim, <code>prim_sync_reset</code>, <code>prim_sync3_pulse</code>, <code>prim_fifo_async</code>,
 <code>avsbus_async_fifo</code>, <code>cdc_fifo_gray</code>, <code>axi_cdc</code>, <code>prim_reg_cdc</code>,
 <code>prim_sync_reqack_data</code>, <code>prim_sync_data_autohs</code>, <code>cdc_2phase</code>, <code>dmi_wrapper</code> and
 Rocket <code>AsyncQueue</code>.</p>
@@ -272,9 +286,9 @@ Rocket <code>AsyncQueue</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
+<col style="width: 27.2727%;">
+<col style="width: 27.2727%;">
+<col style="width: 45.4546%;">
 </colgroup>
 <thead>
 <tr>
@@ -317,13 +331,14 @@ why a single blanket bound covering every crossing in the design would not be
 enough.</p>
 </div>
 <div class="paragraph">
-<p>Because the protocol guarantees <strong>ordering</strong>, not <strong>arrival</strong>. The read side will not
-look at an entry until the write pointer has crossed, which takes <code>SYNC_STAGES</code>
-destination cycles, where <code>SYNC_STAGES</code> is the depth of the pointer
-synchronizer. Nothing in the protocol ensures the data physically arrived within
-that window; that is a timing property, and only a <code>max_delay</code> states it. Miss it
-and the consumer samples the entry&#8217;s previous contents. There is no violation
-report and no metastability event, just wrong data.</p>
+<p>The bound is needed because the protocol guarantees <strong>ordering</strong>, not <strong>arrival</strong>.
+The read side will not look at an entry until the write pointer has crossed,
+which takes <code>SYNC_STAGES</code> destination cycles, where <code>SYNC_STAGES</code> is the depth
+of the pointer synchronizer. Nothing in the protocol ensures the data has
+physically arrived within that window; that is a timing property, and only a
+<code>max_delay</code> states it. Miss it and the consumer samples the entry&#8217;s previous
+contents. There is no violation report and no metastability event, just wrong
+data.</p>
 </div>
 <div class="paragraph">
 <p>So the requirement is <code>data path &lt; SYNC_STAGES * T_dst</code>. It is not a fixed number
@@ -358,25 +373,24 @@ destination periods within one design span an order of magnitude.</p>
 </table>
 <div class="paragraph">
 <p>That is why the bound is applied per instance rather than as one global value. A
-single blanket <code>max_delay</code> has to be chosen once for the whole design: loose
-enough to be feasible on the slowest domains, it permits several times more delay
-than a fast crossing&#8217;s pointer scheme tolerates; tight enough for the fastest
-domain, it over-constrains every slow crossing and burns effort closing paths
-that were never at risk. Sizing each crossing from its own capturing clock is the
-only bound that tracks the requirement.</p>
+single blanket <code>max_delay</code> would have to be loose enough to be feasible on the
+slowest domains. But this would permit several times more delay than a fast
+crossing&#8217;s pointer scheme tolerates. To ensure that fast crossings are properly
+constrained, each crossing is sized from its own capturing clock.</p>
 </div>
 <div class="paragraph">
-<p>The blanket default that the clock-group layer applies (see <a href="#cdc-two-layers">The
-two layers</a>) is deliberately on the loose side, and for slow destination domains
-it is already sufficient&#8201;&#8212;&#8201;there the explicit per-instance constraint is
-redundant. It is the fast crossings that need it.</p>
+<p>The blanket default applied by the clock-group layer (see <a href="#cdc-two-layers">The
+two layers</a>) deliberately applies this looser constraint. For slow domains, it
+is already sufficient and an explicit per-instance constraint is redundant. It
+is the fast crossings that need a per-instance constraint.</p>
 </div>
 <div class="paragraph">
 <p><code>1.0 * T_dst</code> is therefore conservative by a factor of two to three. It is kept
-simple deliberately, but if wide payloads such as AXI data will not close, raising
-<code>cdc_data_delay</code> to <code>2.0 * T_dst</code> stays inside a three-stage guarantee with a
-cycle to spare. An adopter whose synchronizer cells use a different depth should
-recompute from their own <code>SYNC_STAGES</code> rather than inheriting this factor.</p>
+simple deliberately, but if wide payloads such as AXI data will not close then
+raising <code>cdc_data_delay</code> to <code>2.0 * T_dst</code> stays inside a three-stage guarantee
+with a cycle to spare. An adopter whose synchronizer cells use a different depth
+should recompute from their own <code>SYNC_STAGES</code> rather than inheriting this
+factor.</p>
 </div>
 <div class="paragraph">
 <p>Enumeration and clock resolution run once, offline, against an elaborated design,
@@ -397,7 +411,7 @@ listed (see <a href="#cdc-integration-checklist">Integration checklist</a> item 
 <h2 id="cdc-two-layers"><a class="anchor" href="#cdc-two-layers"></a><a class="link" href="#cdc-two-layers">3. The two layers</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The per-instance bounds take effect only on top of a correctly configured
+<p>The per-instance bounds only take effect on top of a correctly configured
 clock-group layer. That layer decides whether the tool considers inter-domain
 paths at all, so it must be established first; the per-instance exceptions then
 refine it.</p>
@@ -500,9 +514,11 @@ that are separate domains upstream but share a clock in SEP.</p>
 </table>
 <div class="paragraph">
 <p>SMU is a flat build containing the other three, so its instance paths carry
-<code>u_smc/</code>, <code>gen_sep.u_sep/</code> and <code>u_dtp/</code> prefixes. It is not the sum of the parts:
-DTP contributes 375 elements inside SMU against 250 standalone, because it
-instantiates three JTAG2AXI bridges in the SMU configuration and two on its own.</p>
+<code>u_smc/</code>, <code>gen_sep.u_sep/</code> and <code>u_dtp/</code> prefixes. The SMU row has more CDC
+elements than the sum of the other three rows because the SMU instantiates a
+larger DTP. The DTP contains three JTAG2AXI bridges in the SMU configuration and
+only two when it is on its own. These configurations give the DTP 375 and 250
+elements, respectively.</p>
 </div>
 </div>
 </div>
@@ -511,7 +527,7 @@ instantiates three JTAG2AXI bridges in the SMU configuration and two on its own.
 <div class="sectionbody">
 <div class="paragraph">
 <p>Five things must change, three should be checked. None of them requires editing
-per-instance data by hand; every change is either a one-line policy edit or a
+per-instance data by hand. Every change is either a one-line policy edit or a
 regeneration.</p>
 </div>
 <div class="sect2">
@@ -521,8 +537,8 @@ regeneration.</p>
 </div>
 <div class="paragraph">
 <p>As shipped, the procs target the prim wrapper&#8217;s own port, <code>prim_sync3/d_i</code>. That
-port exists only as long as the wrapper survives as a hierarchical boundary, and a
-prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
+port exists only as long as the wrapper survives as a hierarchical boundary, and
+a prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
 dissolving its ports.</p>
 </div>
 <div class="admonitionblock warning">
@@ -770,7 +786,7 @@ the constraints did not load, not that the design has no crossings.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The 20 ns default is loose by design. Against a 1 ns clock it permits twenty clock
-periods of delay into a synchronizer input. It is a safety net that keeps
+periods of delay into a synchronizer input. This is a safety net that keeps
 <code>-allow_paths</code> usable, not a real constraint; any crossing that matters belongs in
 layer 2.</p>
 </div>
