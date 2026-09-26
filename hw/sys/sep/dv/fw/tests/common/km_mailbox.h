@@ -16,7 +16,7 @@
  * bit. This client mirrors the frame sequence sep_cpu_sram_aes_sram_test drives
  * inline and is shared by the KM sideload tests.
  *
- * Command / destination encodings match hw/ip/key_manager/dv/fw
+ * Command / destination encodings match hw/ip/key_manager/approm/prod
  * (rom_defs.h rom_km_cmd_id_t / rom_km_dest_bits_t).
  */
 

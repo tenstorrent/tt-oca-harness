@@ -65,8 +65,6 @@ filelist = "hw/sys/smu/dv/build/smu_wrapper_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_wrapper_bender.f"
 work_dir = "hw/sys/smu/dv/build/work_wrapper"
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",
