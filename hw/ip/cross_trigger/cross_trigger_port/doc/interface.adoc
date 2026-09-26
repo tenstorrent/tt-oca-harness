@@ -57,4 +57,4 @@ point-to-point; the CSR MODE field is inverted before reaching it.
 
 The CTP depends on the following components:
 
-* `hw/common/och_prim` - Primitive cells (synchronizers, pulse stretcher)
+* `hw/common/ocah_prim` - Primitive cells (synchronizers, pulse stretcher)

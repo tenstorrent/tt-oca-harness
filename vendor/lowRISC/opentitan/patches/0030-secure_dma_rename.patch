@@ -63,22 +63,17 @@ index e4d5abd..056fae0 100644
    // Stretch out CR writes to make sure new value can propagate through logic
    logic sw_reg_wr_extended;
    assign sw_reg_wr_extended = sw_reg_wr || sw_reg_wr1 || sw_reg_wr2;
-@@ -149,23 +161,21 @@ module dma
+@@ -149,23 +161,23 @@ module dma
                          (ctrl_state_q != DmaIdle) ||
                          sw_reg_wr_extended;
  
--  prim_clock_gating #(
--    .FpgaBufGlobal(1'b0) // Instantiate a local instead of a global clock buffer on FPGAs
--  ) dma_clk_gate (
--    .clk_i    ( clk_i        ),
--    .en_i     ( gated_clk_en ),
--    .test_en_i( scanmode     ),     ///< Test On to turn off the clock gating during test
--    .clk_o    ( gated_clk    )
-+  prim_clkgater dma_clk_gate (
-+    .i_clk ( clk_i        ),
-+    .i_en  ( gated_clk_en ),
-+    .i_te  ( scanmode     ),     ///< Test On to turn off the clock gating during test
-+    .o_clk ( gated_clk    )
+   prim_clock_gating #(
+     .FpgaBufGlobal(1'b0) // Instantiate a local instead of a global clock buffer on FPGAs
+   ) dma_clk_gate (
+     .clk_i    ( clk_i        ),
+     .en_i     ( gated_clk_en ),
+     .test_en_i( scanmode     ),     ///< Test On to turn off the clock gating during test
+     .clk_o    ( gated_clk    )
    );
  
    logic reg_intg_error;
@@ -94,7 +89,7 @@ index e4d5abd..056fae0 100644
      .clk_i     ( clk_i          ),
      .rst_ni    ( rst_ni         ),
      .tl_i      ( tl_d_i         ),
-@@ -1142,7 +1152,6 @@ module dma
+@@ -1142,7 +1154,6 @@ module dma
                             (ctrl_state_q == DmaShaFinalize);
  
  
@@ -102,7 +97,7 @@ index e4d5abd..056fae0 100644
    // Calculate the number of bytes remaining until the end of the current chunk.
    // Note that the total transfer size may be a non-integral multiple of the programmed chunk size,
    // so we must consider the `total_data_size` here too; this is important in determining the
-@@ -1320,7 +1329,7 @@ module dma
+@@ -1320,7 +1331,7 @@ module dma
      end
  
      // Clear the error code if the error flag is cleared (RW1C)
@@ -111,7 +106,7 @@ index e4d5abd..056fae0 100644
        // Clear all errors
        hw2reg.error_code.src_addr_error.de = 1'b1;
        hw2reg.error_code.dst_addr_error.de = 1'b1;
-@@ -1552,7 +1561,7 @@ module dma
+@@ -1552,7 +1563,7 @@ module dma
    `OCAH_OT_ASSERT_KNOWN(SysValidKnownO_A, sys_o.vld_vec)
  
    // Alert assertions for reg_we onehot check

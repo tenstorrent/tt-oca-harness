@@ -85,7 +85,6 @@ ignore = ["E501"]
 "**/dv/tb_vcs/**/*.py" = ["E722", "E741", "F403", "F405", "F841"]
 "**/cocotb/**/*.py" = ["E402"]
 "hw/ip/i3ccore_wrap/dv/tb/*.py" = ["E402"]
-"hw/ip/key_manager/dv/tb/test_firmware.py" = ["E402", "E722", "F841"]
 # sep_reg_meta must import before sep_reg (it puts regs/gen/py on sys.path as
 # a side effect); isort's alphabetical sort would put sep_reg first and break it.
 "hw/sys/sep/dv/cocotb/env/sep_efuse_image.py" = ["I001"]

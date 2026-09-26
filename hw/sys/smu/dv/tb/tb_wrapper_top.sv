@@ -1935,13 +1935,12 @@ module smu_wrapper_uvm_top (
     .dbg_disable_sep_otp_i       (u_dut.u_smu.sep_dbg_disable.sep_otp_jtag2axi)
   );
 
-  // The SEP-to-SMC alias remap port and the crossbar SEP initiator port are
+  // The SEP-to-SMC dedicated port and the crossbar SEP initiator port are
   // inside the SEP=1 generate branch, so the no-SEP profile ties the alias
   // observation nets off and the points stay unhit there.
   logic alias_awvalid_w, alias_awready_w, alias_arvalid_w, alias_arready_w;
   logic alias_bvalid_w, alias_bready_w, alias_rvalid_w, alias_rready_w, alias_rlast_w;
   logic [55:0] alias_awaddr_w, alias_araddr_w;
-  logic [55:0] alias_remapped_awaddr_w, alias_remapped_araddr_w;
   logic xbar_sep_out_awvalid_w, xbar_sep_out_awready_w;
   logic xbar_sep_out_arvalid_w, xbar_sep_out_arready_w;
   logic [55:0] xbar_sep_out_awaddr_w, xbar_sep_out_araddr_w;
@@ -1957,8 +1956,6 @@ module smu_wrapper_uvm_top (
   assign alias_rvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r_valid;
   assign alias_rready_w = u_dut.u_smu.sep_ext_to_smc_axi_req.r_ready;
   assign alias_rlast_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r.last;
-  assign alias_remapped_awaddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.aw.addr);
-  assign alias_remapped_araddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.ar.addr);
   assign xbar_sep_out_awvalid_w = u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid;
   assign xbar_sep_out_awready_w = u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready;
   assign xbar_sep_out_awaddr_w = 56'(u_dut.u_smu.gen_sep.sep_out_xbar_req.aw.addr);
@@ -1972,6 +1969,8 @@ module smu_wrapper_uvm_top (
   ) u_smu_alias_fcov (
     .clk_smu_i                 (clk_smu_i),
     .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),
+    .smc_global_base_i         (56'(u_dut.u_smu.smc_global_base_o)),
+    .smc_region_size_i         (u_dut.u_smu.smc_region_size_o),
     .alias_awvalid_i           (alias_awvalid_w),
     .alias_awready_i           (alias_awready_w),
     .alias_awaddr_i            (alias_awaddr_w),
@@ -1983,8 +1982,6 @@ module smu_wrapper_uvm_top (
     .alias_rvalid_i            (alias_rvalid_w),
     .alias_rready_i            (alias_rready_w),
     .alias_rlast_i             (alias_rlast_w),
-    .alias_remapped_awaddr_i   (alias_remapped_awaddr_w),
-    .alias_remapped_araddr_i   (alias_remapped_araddr_w),
     .xbar_sep_out_awvalid_i    (xbar_sep_out_awvalid_w),
     .xbar_sep_out_awready_i    (xbar_sep_out_awready_w),
     .xbar_sep_out_awaddr_i     (xbar_sep_out_awaddr_w),

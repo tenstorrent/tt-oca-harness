@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from random import Random
+from typing import ClassVar
 
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
@@ -128,6 +129,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # Cycles the window stays open after the last expected output, so a late
     # or stretched pulse on any port is inside it.
     ISOLATION_TAIL_CYCLES = 6
+    # Routes of a random mix not yet driven, as (source, destination) in a
+    # seeded order, kept across the passes of the test: each iteration starts
+    # from the first pending route, so every route of the mix's classes is
+    # driven within one test.
+    _route_pending: ClassVar[dict[str, list[tuple[int, int]]]] = {}
     # STRETCH_MULT the route helpers program on every external CTP they use;
     # the internal CTPs carry the same multiplier (cross_trigger_network), so
     # every routed pulse is two cycles wide.
@@ -2038,6 +2044,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     async def run_p2p_pair_isolation(
         self,
         rng: Random,
+        name: str,
         input_mask: int,
         output_mask: int,
         *,
@@ -2049,18 +2056,29 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
 
         Programmed without clearing the first and each pulsed alone: a request
         on either route reaches only its own destination while the other stays
-        live.
+        live. A pending route of the mix on free ports is preferred.
         """
         used = input_mask | output_mask
         free_src = [port for port in source_pool if not (used >> port) & 1]
-        if not free_src:
-            return
-        in2 = rng.choice(free_src)
-        used |= 1 << in2
         free_dst = [port for port in dest_pool if not (used >> port) & 1]
-        if not free_dst:
-            return
-        out2 = rng.choice(free_dst)
+        pending = self._route_pending.get(name, [])
+        candidates = [
+            (src, dst)
+            for (src, dst) in pending
+            if src in free_src and dst in free_dst and src != dst
+        ]
+        if candidates:
+            in2, out2 = rng.choice(candidates)
+        else:
+            if not free_src:
+                return
+            in2 = rng.choice(free_src)
+            free_dst = [port for port in free_dst if port != in2]
+            if not free_dst:
+                return
+            out2 = rng.choice(free_dst)
+        if (in2, out2) in pending:
+            pending.remove((in2, out2))
         self.log.info("%s: second P2P route input=%d output=%d alongside", label, in2, out2)
         await self.configure_ctp_modes_for_route_mask(1 << in2, 1 << out2, XTRIG_CTP_MODE_P2P)
         await self.program_ctm_src(out2, 1 << in2)
@@ -2078,9 +2096,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
 
         A wire-OR iteration selects one or two sources on two to four outputs;
         a point-to-point iteration adds a second, disjoint route alongside its
-        own and pulses each alone. Each iteration draws its trigger timing: the
-        pulse width and the idle lead before it. The floor of two cycles keeps
-        a P2P request held into its handshake.
+        own and pulses each alone. Each iteration starts from the first pending
+        route of the mix, adds a second source that shares its destination and
+        further outputs of its source that are still pending, and draws its
+        trigger timing: the pulse width and the idle lead before it. The floor
+        of two cycles keeps a P2P request held into its handshake.
         """
         self.log_banner(f"DTP CTM seeded random routing {name}")
         rng = self.rng(f"ctm_random_{name}")
@@ -2095,15 +2115,32 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             n_inputs = 2 if mode == XTRIG_CTP_MODE_WIRE_OR and rng.randrange(2) else 1
             pulse_cycles = rng.randint(2, CTM_RAND_PULSE_MAX_CYCLES)
             lead_cycles = rng.randint(0, CTM_RAND_LEAD_MAX_CYCLES)
-            inputs = rng.sample(source_pool, min(n_inputs, len(source_pool)))
+            pending = self._route_pending.get(name)
+            if not pending:
+                pending = [(s, d) for s in source_pool for d in dest_pool if s != d]
+                rng.shuffle(pending)
+                self._route_pending[name] = pending
+            head_src, head_dst = pending[0]
+            inputs = [head_src]
+            if n_inputs == 2:
+                others = [s for s in source_pool if s not in (head_src, head_dst)]
+                partners = [s for s in others if (s, head_dst) in pending]
+                if partners or others:
+                    inputs.append(rng.choice(partners or others))
             input_mask = sum(1 << port for port in inputs)
-            choices = [d for d in dest_pool if d not in inputs] or dest_pool
-            if mode == XTRIG_CTP_MODE_P2P:
-                selected = [rng.choice(choices)]
-            else:
-                rng.shuffle(choices)
-                selected = choices[: rng.randint(min(2, len(choices)), min(4, len(choices)))]
+            selected = [head_dst]
+            if mode == XTRIG_CTP_MODE_WIRE_OR:
+                rest = [d for d in dest_pool if d != head_dst and d not in inputs]
+                pending_dst = [d for d in rest if (head_src, d) in pending]
+                other_dst = [d for d in rest if (head_src, d) not in pending]
+                rng.shuffle(pending_dst)
+                rng.shuffle(other_dst)
+                extra = pending_dst + other_dst
+                k = min(4, len(extra) + 1)
+                selected += extra[: rng.randint(min(2, k), k) - 1]
             output_mask = sum(1 << port for port in selected)
+            driven = {(s, d) for s in inputs for d in selected}
+            pending[:] = [route for route in pending if route not in driven]
             self.log_iteration(
                 idx + 1,
                 self.random_count,
@@ -2125,6 +2162,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             if mode == XTRIG_CTP_MODE_P2P:
                 await self.run_p2p_pair_isolation(
                     rng,
+                    name,
                     input_mask,
                     output_mask,
                     source_pool=source_pool,

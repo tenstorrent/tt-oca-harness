@@ -65,8 +65,6 @@ filelist = "hw/sys/smu/dv/build/smu_wrapper_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_wrapper_bender.f"
 work_dir = "hw/sys/smu/dv/build/work_wrapper"
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",
@@ -110,14 +108,13 @@ exclude_files = [
   "meta/models/spi",
 ]
 stubs = [
-  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
-  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks it on Verilator. On
   # VCS only, the runner drops any stub whose basename the Bender graph
-  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # supplies, so the product prim_sync3 elaborates there; Xcelium
   # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the record that keeps those claims honest, are
   # in docs/SMU_VPLAN.adoc, Known Limitations (Bench stand-ins).
-  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [

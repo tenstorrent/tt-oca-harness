@@ -10,7 +10,7 @@
 // as its input, so the loop re-evaluates forever at a single $time.
 //
 // Real propagation delay comes from whichever prim_clock_nand2 /
-// prim_stdbuf / prim_stdmux2 flavor synthesis binds each stage to, and none
+// prim_buf / prim_stdmux2 flavor synthesis binds each stage to, and none
 // of those flavors carry a delay parameter: they are swapped in as a group
 // per build target (see the generic vs. tech-specific implementations of
 // these prims), so every flavor must keep the exact same port list. These
@@ -18,7 +18,7 @@
 // entropy_source instead of adding a parameter to the shared prims: each
 // wraps one stage's unmodified prim instance and adds a #1 delay under
 // `ifndef SYNTHESIS`, so synthesis - and every other prim_clock_nand2 /
-// prim_stdbuf / prim_stdmux2 consumer - sees the ordinary zero-delay cell.
+// prim_buf / prim_stdmux2 consumer - sees the ordinary zero-delay cell.
 //--------------------------------------------------
 
 module entropy_ring_nand2_wrapper (
@@ -47,9 +47,9 @@ module entropy_ring_buf_wrapper (
 );
   logic y_cell;
 
-  prim_stdbuf u_cell (
-    .a_i (a_i),
-    .y_o (y_cell)
+  prim_buf u_cell (
+    .in_i (a_i),
+    .out_o(y_cell)
   );
 
 `ifndef SYNTHESIS

@@ -1065,7 +1065,6 @@ module dtp_uvm_top
     .ctp_req_out_dout_en_i (xtrig_ctp_req_out_dout_en),
     .ctp_req_out_din_en_i  (xtrig_ctp_req_out_din_en),
     .ctp_ct_dst_i          (xtrig_ctp_ct_dst),
-    .ctp_req_in_din_i      (xtrig_ctp_req_in_din),
     .ctp_ack_in_din_i      (xtrig_ctp_ack_in_din)
   );
 
