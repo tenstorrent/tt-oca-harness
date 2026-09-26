@@ -130,7 +130,7 @@ metric_family = "toggle"
 native_locator = "*|o=scan_ctrl_i.run_test_idle:0->1|*"
 """
 
-SOURCE = "hw/common/och_prim/rtl/prim_jtag_scan_reg.sv"
+SOURCE = "hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv"
 HIERARCHY = "fixture_top.u_dut.u_jtag_intf_unit.*_scan_reg"
 # Verilator coverage points as (line, column, type, comment, statement span, count); the page
 # is derived from the type. Six toggles, three lines, two branches, three expressions.

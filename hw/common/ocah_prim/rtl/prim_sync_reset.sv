@@ -19,11 +19,11 @@ module prim_sync_reset #(
 
   logic [WIDTH-1:0] sync_reg;
 
-  prim_rstbypass_stdmux2 u_sync_rst_n_bypass (
-    .rst_ni(sync_reg[WIDTH-1]),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_mode_i),
-    .rst_no(sync_rst_no)
+  prim_rst_mux2_hf_n u_sync_rst_n_bypass (
+    .rst0_ni(sync_reg[WIDTH-1]),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_mode_i),
+    .rst_no (sync_rst_no)
   );
 
   prim_metastab_hardened_dffr u_sync_dffr (

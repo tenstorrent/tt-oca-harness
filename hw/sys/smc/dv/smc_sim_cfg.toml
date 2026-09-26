@@ -88,14 +88,13 @@ exclude_files = [
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
 ]
 stubs = [
-  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
-  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks it on Verilator. On
   # VCS only, the runner drops any stub whose basename the Bender graph
-  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # supplies, so the product prim_sync3 elaborates there; Xcelium
   # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the VCS control that keeps those claims honest, are
   # in docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
-  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
@@ -104,7 +103,7 @@ sources = [
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
-  #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
+  #   prim_fifo_async <- hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv:79
   #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
   #   prim_rst_sync   <- hw/ip/efuse/rtl/efuse_interface_controller.sv:159
   #                      (Bender.yml:64,  target any(opentitan_smu, sep, smu, key_manager))

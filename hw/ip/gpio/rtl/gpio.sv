@@ -241,8 +241,7 @@ module gpio
   logic interrupt, nxt_interrupt;
 
   prim_sync3r #(
-    .WIDTH(1),
-    .RANDOM_DELAY_GRAY_CODE(1'b0)
+    .WIDTH(1)
   ) u_pad2core_sync (
     .clk_i(clk_i),
     .d_i(pad2core),

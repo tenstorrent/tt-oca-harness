@@ -97,8 +97,7 @@ sources = [
 # To make a stub bind under VCS too, drop the real file via `exclude_files`, the way the
 # abr_wrapper_key_reg stub above does.
 #
-# SEP uses the product prim_sync2 (hw/common/och_prim/rtl/prim_sync2.sv); its port-remap shim
-# was retired, so nothing stubs it here any more. The analog entropy_ring_oscillator supplies
+# SEP's two-stage synchronizers are OpenTitan prim_flop_2sync, which nothing stubs here. The analog entropy_ring_oscillator supplies
 # a defined idle value under Verilator, which ignores the `#1` stage delays the ring needs to
 # oscillate.
 #

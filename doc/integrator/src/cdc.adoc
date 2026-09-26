@@ -59,8 +59,8 @@ When the capture clock is muxed from several sources, the bound must hold for
 whichever source the mux selects at runtime; as such, the shortest period among
 the mux inputs is used.
 
-The elements covered are `prim_sync2/3/4` and their reset and set variants, the
-pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
+The elements covered are `prim_flop_2sync`, `prim_sync3/4` and their reset
+variants, the pulp `sync` shim, `prim_sync_reset`, `prim_sync3_pulse`, `prim_fifo_async`,
 `avsbus_async_fifo`, `cdc_fifo_gray`, `axi_cdc`, `prim_reg_cdc`,
 `prim_sync_reqack_data`, `prim_sync_data_autohs`, `cdc_2phase`, `dmi_wrapper` and
 Rocket `AsyncQueue`.

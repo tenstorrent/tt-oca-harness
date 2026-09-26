@@ -64,53 +64,53 @@ module prim_ag_clk_mux #(
   // Clock selection flops - reset behavior based on SelectOnReset parameter
   generate
     if (SelectOnReset == 1'b0) begin : gen_sel_clk0_selected
-      prim_dffsxq u_clk0_sel (
+      prim_flop #(
+        .ResetValue(1'b1)
+      ) u_clk0_sel (
         .clk_i(clk0_i),
-        .set_ni(rst_clk0_ni),
+        .rst_ni(rst_clk0_ni),
         .d_i(sel_sync_clk0),
         .q_o(sel_clk0)
       );
-      prim_dffrxq u_clk1_sel (
+      prim_flop u_clk1_sel (
         .clk_i(clk1_i),
         .rst_ni(rst_clk1_ni),
         .d_i(sel_sync_clk1),
         .q_o(sel_clk1)
       );
     end else begin : gen_sel_clk1_selected
-      prim_dffrxq u_clk0_sel (
+      prim_flop u_clk0_sel (
         .clk_i(clk0_i),
         .rst_ni(rst_clk0_ni),
         .d_i(sel_sync_clk0),
         .q_o(sel_clk0)
       );
-      prim_dffsxq u_clk1_sel (
+      prim_flop #(
+        .ResetValue(1'b1)
+      ) u_clk1_sel (
         .clk_i(clk1_i),
-        .set_ni(rst_clk1_ni),
+        .rst_ni(rst_clk1_ni),
         .d_i(sel_sync_clk1),
         .q_o(sel_clk1)
       );
     end
   endgenerate
 
-  prim_clkgater u_clk0_gate (
+  prim_clock_gating u_clk0_gate (
     .clk_i(clk0_i),
     .en_i(sel_sync_clk0),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk0)
   );
 
-  prim_clkgater u_clk1_gate (
+  prim_clock_gating u_clk1_gate (
     .clk_i(clk1_i),
     .en_i(sel_sync_clk1),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk1)
   );
 
-  prim_clock_or2 u_clk_out_or (
-    .in0_i(gated_clk0),
-    .in1_i(gated_clk1),
-    .out_o(clk_o)
-  );
+  assign clk_o = gated_clk0 | gated_clk1;
 
   // Mutual exclusion of selected clocks. Disabled while either domain is in
   // reset to avoid X-propagation across asymmetric reset deassertion windows.

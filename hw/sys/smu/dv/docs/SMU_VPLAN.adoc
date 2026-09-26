@@ -4642,21 +4642,21 @@ covered above. SEP=1 3×3 xbar receives no release credit.
   metric choice and what this plan may claim from a database are in
   `SMU_FCOV.adoc`; the wrapper's policy file is
   `cov/config/verilator/smu_wrapper_coverage_policy.toml`.
-* *Verilator replaces the `och_prim` `prim_sync2` / `prim_sync3`
-  cells with the behavioural stand-ins in
-  `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops them. Xcelium receives
+* *Verilator replaces the `ocah_prim` `prim_sync3`
+  cell with the behavioural stand-in in
+  `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops it. Xcelium receives
   both files; which of the pair it elaborates is not established. The
   leaves that observe a crossing are named in <<smu-bench-standins>>.
 
 [[smu-bench-standins]]
 ==== Bench stand-ins
 
-The `prim_sync2` / `prim_sync3` files listed in `smu_sim_cfg.toml`
-`[build].stubs` are product-module stand-ins, not tooling shims. They
-elaborate ahead of the Bender filelist so Verilator's `-Wno-MODDUP`
-first-definition-wins selects them; when `tool == "vcs"` the
+The `prim_sync3` file listed in `smu_sim_cfg.toml`
+`[build].stubs` is a product-module stand-in, not a tooling shim. It
+elaborates ahead of the Bender filelist so Verilator's `-Wno-MODDUP`
+first-definition-wins selects it; when `tool == "vcs"` the
 runner drops any stub whose basename the Bender graph supplies, and the
-product cells elaborate. Xcelium receives both files like Verilator does;
+product cell elaborates. Xcelium receives both files like Verilator does;
 no Xcelium build of this bench is recorded, so which of the pair Xcelium
 elaborates is not established by this record. The behaviour the stand-in
 adds (`initial '0` on
@@ -4665,7 +4665,7 @@ each stage), the leaves that observe a crossing
 reset-release observes of `smu_smc_reset_ctrl_test` and
 `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five
 boot-stall leaves), and the condition that closes the entry are the
-`prim_sync2` / `prim_sync3` stand-ins row of
+`prim_sync3` stand-in row of
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` (*Bench stand-ins and
 exceptions*). No VCS control run with the product cells is recorded on
 this composition.
