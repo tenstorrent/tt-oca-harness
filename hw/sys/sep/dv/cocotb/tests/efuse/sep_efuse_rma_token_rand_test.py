@@ -76,10 +76,14 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             "FEAT_CTRL golden below would follow the DUT rather than grade it"
         )
         seq = sep_lcc_stitch_check_seq(image, sec_dis=0)
+        mark = self.sb_mark()
         await self.start_seq(seq)
         assert seq.observed_lc_raw == raw, (
             f"{tag}: observed LC 0x{seq.observed_lc_raw:x} != {lc_state_name(raw)}"
         )
+        # FEAT_CTRL is graded by the scoreboard against item.expected; the PASS
+        # line below rests on that judgment, not on the deferred check_phase.
+        self.assert_sb_judged(mark, f"CHK-LC-FEAT {tag}")
         self.logger.info(
             "CHK-LC-FEAT PASS: %s LC=%s FEAT_CTRL=0x%016x",
             tag,
