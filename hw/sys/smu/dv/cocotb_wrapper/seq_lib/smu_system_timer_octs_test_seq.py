@@ -5,6 +5,9 @@
 S1: SMC_ATTRIBUTES.chiplet_is_primary vs tb_top hardwire.
 S2: PRESET + TIMER_START → STATUS.RUNNING; tb_timer_count advances.
 S3: Larger PRESET + START; pin reloads to the new PRESET then advances.
+S4: the 64-bit PRESET (TIMER_PRESET_HI/LO, read-write) at a value with every
+    bit from 13 up set, then at zero; after each START the pin sits at the
+    preset, so every bit of the 64-bit count output rises and falls.
 
 TIMER_COUNT_{HI,LO} is read over J2A and bracketed between two samples of
 the product pin ``tb_timer_count`` (``timer_count_o``) taken either side of
@@ -51,6 +54,9 @@ PIN_POLL_STEP = 8
 POLL_STEP = 32
 # Cycles of STATUS/J2A overhead after START before pin sample.
 RELOAD_PIN_SLACK = 4096
+# Every bit from 13 up set, and 8192 counts short of the 64-bit wrap, so the
+# count cannot wrap inside RELOAD_PIN_SLACK.
+PRESET_HIGH = ((1 << 64) - 1) & ~((1 << 13) - 1)
 
 
 class smu_system_timer_octs_test_seq:
@@ -63,6 +69,7 @@ class smu_system_timer_octs_test_seq:
         self.s1_ok = False
         self.s2_ok = False
         self.s3_ok = False
+        self.s4_ok = False
         self.pin_ok = False
 
     def _log(self, msg: str) -> None:
@@ -257,6 +264,28 @@ class smu_system_timer_octs_test_seq:
         )
         sb.expect_true("CHK-OCTS-PRESET-RELOAD-ADVANCE", pin3 > pin2)
 
+        pins = []
+        for preset in (PRESET_HIGH, 0):
+            await self._j2a_wr32(jtag, ADDR_PRESET_LO, preset & 0xFFFFFFFF, "PRESET_LO_EXTREME")
+            await self._j2a_wr32(jtag, ADDR_PRESET_HI, preset >> 32, "PRESET_HI_EXTREME")
+            await self._j2a_wr32(jtag, ADDR_START, 1, "TIMER_START_EXTREME")
+            await self._poll_status_running(jtag, f"after TIMER_START preset=0x{preset:x}")
+            pin = self._sample_pin_count()
+            if pin is None:
+                raise AssertionError("tb_timer_count unobservable after extreme preset")
+            pins.append((preset, pin))
         self._log(
-            f"PASS SYS-TIMER-OCTS s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} pin={self.pin_ok}"
+            "CHK-OCTS-PRESET-EXTREMES "
+            + " ".join(f"preset=0x{p:016x} pin=0x{v:016x}" for p, v in pins)
+        )
+        sb.expect_true(
+            "CHK-OCTS-PRESET-EXTREMES",
+            all(p <= v <= p + RELOAD_PIN_SLACK for p, v in pins),
+            evidence="CHK-OCTS-PRESET-EXTREMES",
+        )
+        self.s4_ok = True
+
+        self._log(
+            f"PASS SYS-TIMER-OCTS s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "
+            f"s4={self.s4_ok} pin={self.pin_ok}"
         )

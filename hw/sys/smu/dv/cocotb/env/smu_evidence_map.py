@@ -887,6 +887,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "TIMER_COUNT_{HI,LO} read over J2A lands between the tb_timer_count "
             "samples taken either side of the read",
         ),
+        (
+            "CHK-OCTS-PRESET-EXTREMES",
+            "CHK-OCTS-PRESET-EXTREMES",
+            "an all-high and a zero PRESET each load timer_count_o within the reload slack",
+        ),
     ],
     # --- P0 composition and bring-up leaves on the production wrapper ---
     # These set use_shared_env = True, so prove_mapped_features runs for them

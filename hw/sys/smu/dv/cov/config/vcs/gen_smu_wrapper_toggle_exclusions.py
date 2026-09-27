@@ -104,14 +104,6 @@ PARTIAL: list[tuple[str, str, str, str]] = [
         "zero-extended and bits [55:32] cannot move. Bits [31:0] stay graded. Retired by "
         "SEP_REGION_SIZE.size widening past bit 31.",
     ),
-    (
-        "OCTS-COUNT-DEPTH",
-        "timer_count_o",
-        "[63:20]",
-        "the OCTS system timer counts reference clocks; bit k first rises after 2^k cycles, "
-        "and no leaf runs the 2^20 cycles bit 20 needs. Bits [19:0] stay graded. Retired "
-        "by a leaf that runs 2^20 reference clocks past the timer's reset.",
-    ),
 ]
 
 TOGGLE_RE = re.compile(r'^// Toggle (\S+) "(.*)"$')

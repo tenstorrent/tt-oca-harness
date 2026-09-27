@@ -91,7 +91,6 @@ whether the committed file is stale.
 | `RTL-CONSTANT` | `lsio_interface_select_o` | driven from a constant inside the SMU |
 | `UNION-ALIAS` | `smc_shadow_regs_o.locks.*`, `smc_shadow_regs_o.fields.*` | `efuse_map_t` is a packed union; urg lists the same 8192 flops under three views, and `values` carries every bit once |
 | `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
-| `OCTS-COUNT-DEPTH` | `timer_count_o[63:20]` | bit k first rises after 2^k reference clocks |
 | `REGISTER-WIDTH` | `sep_region_size_o[55:32]` | `sep_cpu_ctrl` SEP_REGION_SIZE carries its size in [31:0] and reserves [63:32], so the port's upper bits are zero-extension; `smu_toggle_exclusions.el` takes the same bits of `smu`'s port |
 
 Everything else on the port list is graded per field, both directions, and a

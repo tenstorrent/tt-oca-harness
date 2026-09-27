@@ -1633,6 +1633,7 @@ row's EXPECT sentence is worth, read the check.
 * S1: SMC_ATTRIBUTES.chiplet_is_primary vs tb_top hardwire.
 * S2: PRESET + TIMER_START → STATUS.RUNNING; tb_timer_count advances.
 * S3: Larger PRESET + START; pin reloads to the new PRESET then advances.
+* S4: TIMER_PRESET_HI/LO is a read-write 64-bit preset (generated `system_timer_octs` description), so START loads it whole: a preset with every bit from 13 up set, 8192 counts short of the wrap, then a preset of zero, each followed by START, put `timer_count_o` at the preset within the reload slack. Every count bit therefore rises and falls on the pin, which a free-running count would take 2^64 reference cycles to show.
 * TIMER_COUNT_{HI,LO} is read over J2A and required to land between two samples of the product pin `tb_timer_count` (`timer_count_o`) taken either side of that read, so the CSR view and the pin view of the same counter are compared. The bracket is as tight as the J2A read latency allows; a COUNT CSR left at its reset value, or one aliasing another register, falls below the lower sample.
 * 32-bit CSRs at addr[2]=1 use the upper 64b J2A lane (wstrb=0xF0), matching `wdt_unlock`.
 
@@ -1654,7 +1655,8 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-OCTS-CSR-COUNT` |Evidence token, emitted only after the compares it names have held
 |`CHK-OCTS-PRESET-RELOAD` |Evidence token, emitted only after the compares it names have held
 |`CHK-OCTS-PRESET-RELOAD-ADVANCE` |Evidence token, emitted only after the compares it names have held
-|assertion |octs incomplete s1=<value> s2=<value> s3=<value>
+|`CHK-OCTS-PRESET-EXTREMES` |after each extreme PRESET and START, `tb_timer_count` sits between the preset and the preset plus the reload slack
+|assertion |octs incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |assertion |tb_timer_count pin observe missing or not advancing
 |===
 
