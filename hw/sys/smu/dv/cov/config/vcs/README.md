@@ -27,8 +27,8 @@ bench of its own leaves as an instance tree, and the rest stays graded.
 | `u_dut.u_smu.u_smc`, `u_dut.u_smu.u_dtp`, `u_dut.u_smu.gen_sep.u_sep` | `-tree` | SMC, DTP and SEP are graded on their own benches (`hw/sys/smc/dv`, `hw/sys/dtp/dv`, `hw/sys/sep/dv`); grading them here attributes their holes to SMU, the argument SMC uses to drop its I3C controllers |
 | `u_dut.u_smc_ip_integration`, `u_dut.u_sep_ip_integration` | `-tree` | adopter-side collateral of SMC and SEP, owned by those packages |
 | `u_axi_out_bridge`, `u_axi_out_cut`, `u_axi_out_if` | `-tree` | bench-side AXI egress glue carrying the outbound port to the bench slave |
-| bench units (`hw/sys/{smu,smc}/dv/{tb,models}`, `hw/common/dv/vip`, `hw/ip/*/dv`) | `-module` | testbench models and interfaces |
-| library cells (pulp `common_cells`, OpenTitan `prim*`, OCAH `och_prim`) | `-module` | leaf primitives whose behaviour is the same in every design; the same list SMC drops |
+| bench units (every unit compiled from a `dv/` directory: testbench tops, models, VIP and the `hw/common/dv/shims` wire models such as the open-drain cross-trigger wire) | `-module` | testbench code, wherever the bench instantiates it; no DUT source lives under `dv/`. A bench stand-in named like the product cell it replaces is listed once, as the product |
+| library cells (pulp `common_cells`, OpenTitan `prim*`, OCAH `ocah_prim`) | `-module` | leaf primitives whose behaviour is the same in every design; the same list SMC drops |
 | interconnect cells (vendored pulp AXI, APB, register_interface, AXI-Stream, OBI) | `-module` | the pulp `axi_xbar` inside `smu_axi_xbar` and the `axi_iw_converter` ID adapters; `smu_axi_xbar`, which configures and wraps them, stays graded, so a decode fault lands on SMU's own module |
 | `axi_pkg` | `-module` | a package, which would report an assertion row with no logic behind it |
 | `cov/sv` monitors | `-module` inside `begin line+cond+fsm+branch+tgl` | bench code for the code and toggle metrics; outside that block they stay in the assertion metric, which carries their `cover property` points, and their covergroups are outside `-cm_hier` altogether |
@@ -41,7 +41,8 @@ that is the list being a superset of one build, not an error.
 What stays graded is the SMU's own logic: `hw/top/smu_wrapper.sv`,
 `hw/sys/smu/rtl/smu.sv`, `smu_axi_xbar.sv`, `hw/ip/axi_window_remap` and any
 other unit instantiated under `u_smu` outside the three subsystem trees.
-urg's `hierarchy.txt` for a finished run is the check: under `u_dut` it lists
+urg's `hierarchy.txt` for a finished run is the check: at the top it lists
+`u_dut` and the `cov/sv` monitors and nothing else, and under `u_dut` it lists
 `u_smu` and, below it, only those units.
 
 ## Two populations
