@@ -1,35 +1,83 @@
 {
   "artifacts": {
-    "coverage_report": "vcs/smc_cocotb/runs/cov/report",
-    "log": "vcs/smc_cocotb/runs/smc_address_map_region_decode_test/seed_1029186888/attempt_1/logs/smc_address_map_region_decode_test.log",
+    "coverage_manifest": "artifacts/smc/coverage/coverage.json",
+    "coverage_policy_application": "artifacts/smc/coverage/report/policy-application.json",
+    "coverage_report": "artifacts/smc/coverage/report",
+    "coverage_summary": "artifacts/smc/coverage/report/summary.json",
+    "log": "vcs/smc_cocotb/runs/smc_address_map_region_decode_test/seed_1512057920/attempt_1/logs/smc_address_map_region_decode_test.log",
     "regression_json": "vcs/smc_cocotb/runs/stages/regress/regression.json",
     "result_json": "vcs/smc_cocotb/runs/result.json",
     "run_dir": "vcs/smc_cocotb/runs"
   },
   "coverage": {
-    "comparison_key": null,
-    "details_available": null,
-    "effective_metrics": {},
-    "holes_summary": {
-      "details_available": false
+    "comparison_key": "COVCMP-3e352fcf0724bc4b",
+    "details_available": true,
+    "effective_metrics": {
+      "assertion": 91.89,
+      "branch": 86.26,
+      "condition": 81.86,
+      "fsm_state": 89.66,
+      "functional": 95.29,
+      "line": 95.23,
+      "toggle": 36.53,
+      "user": 89.3204
     },
-    "manifest": null,
-    "policy_application": null,
+    "holes_summary": {
+      "accepted": 30,
+      "by_category": {
+        "missing_stimulus": 21,
+        "needs_review": 21,
+        "unreachable": 9,
+        "user": 4
+      },
+      "by_disposition": {
+        "cover": 25,
+        "waive": 30
+      },
+      "by_metric": {
+        "user": 55
+      },
+      "by_status": {
+        "accepted": 30,
+        "open": 25
+      },
+      "details_available": true,
+      "hole_group_count": 47,
+      "native_point_count": 55,
+      "observations_complete": false,
+      "open": 25,
+      "unclassified": 4
+    },
+    "manifest": "artifacts/smc/coverage/coverage.json",
+    "policy_application": "artifacts/smc/coverage/report/policy-application.json",
     "policy_thresholds": [],
-    "raw_metrics": {},
-    "report": "vcs/smc_cocotb/runs/cov/report",
-    "status": "ERROR",
-    "summary": null,
-    "target": null,
-    "threshold": null,
-    "threshold_met": null,
-    "total_percent": null
+    "raw_metrics": {
+      "assertion": 91.89,
+      "branch": 83.5,
+      "condition": 68.76,
+      "fsm_state": 56.18,
+      "functional": 76.85,
+      "line": 95.23,
+      "toggle": 36.87,
+      "user": 89.3204
+    },
+    "report": "artifacts/smc/coverage/report",
+    "source_manifest": "vcs/smc_cocotb/runs/cov/coverage.json",
+    "source_policy_application": "vcs/smc_cocotb/runs/cov/report/policy-application.json",
+    "source_report": "vcs/smc_cocotb/runs/cov/report",
+    "source_summary": "vcs/smc_cocotb/runs/cov/report/summary.json",
+    "status": "PASS",
+    "summary": "artifacts/smc/coverage/report/summary.json",
+    "target": "default",
+    "threshold": 0.0,
+    "threshold_met": true,
+    "total_percent": 82.39
   },
   "failure_buckets": [
     {
-      "count": 8,
+      "count": 10,
       "examples": [
-        "vcs/smc_cocotb/runs/smc_address_map_region_decode_test/seed_1029186888/attempt_1/logs/smc_address_map_region_decode_test.log"
+        "vcs/smc_cocotb/runs/smc_address_map_region_decode_test/seed_1512057920/attempt_1/logs/smc_address_map_region_decode_test.log"
       ],
       "kind": "sim_failure",
       "signature": "1 testcase failure/error node(s)"
@@ -37,114 +85,31 @@
     {
       "count": 2,
       "examples": [
-        "vcs/smc_cocotb/runs/smc_cpu_l2_read_wedge_test/seed_1935433642/attempt_1/logs/smc_cpu_l2_read_wedge_test.log"
+        "vcs/smc_cocotb/runs/smc_cpu_l2_read_wedge_test/seed_1275067633/attempt_1/logs/smc_cpu_l2_read_wedge_test.log"
       ],
       "kind": "sim_failure",
       "signature": "fail pattern matched: Error: \"/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/vendor/pulp-platform/common_cel"
     },
     {
-      "count": 1,
+      "count": 2,
       "examples": [
-        "vcs/smc_cocotb/runs/stages/cov_merge/logs/cov_merge.log"
+        "vcs/smc_cocotb/runs/smc_fw_i2c_p1_fifo_depth_xfer_test/seed_442513197/attempt_1/logs/smc_fw_i2c_p1_fifo_depth_xfer_test.log"
       ],
-      "kind": "tool_error",
-      "signature": "coverage inputs span incompatible build fingerprints: 0af6208f4295, a0d507918aae"
-    },
-    {
-      "count": 1,
-      "examples": [
-        "vcs/smc_cocotb/runs/stages/cov_report/logs/cov_report.log"
-      ],
-      "kind": "tool_error",
-      "signature": "coverage manifest is missing or malformed: /proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/vcs/smc_cocotb/run"
-    },
-    {
-      "affected": [
-        {
-          "item": "smc_dfd_cla_node_eap_sweep_test",
-          "seed": 754112345,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000059-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000059-a1 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "smc_dma_sanity_test",
-          "seed": 1963805974,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000084-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000084-a1 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "smc_dual_axi_sram_probe_test",
-          "seed": 1849268339,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000085-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000085-a1 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "smc_dual_base_addressing_test",
-          "seed": 511251797,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000086-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000086-a1 ended failed: failed reported but no result.json appeared within 120s"
-    },
-    {
-      "affected": [
-        {
-          "item": "smc_fw_uart_log_engine_fetch_err_test",
-          "seed": 1698888751,
-          "status": "ERROR",
-          "target": "default"
-        }
-      ],
-      "count": 1,
-      "examples": [],
-      "kind": "unknown",
-      "reason": "environment_error: attempt sim-000127-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "signature": "environment_error: attempt sim-000127-a1 ended failed: failed reported but no result.json appeared within 120s"
+      "kind": "timeout",
+      "signature": "`/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/.venv/bin/python3` exceeded timeout of 3600s"
     }
   ],
   "flow": "smc",
   "framework": "cocotb",
-  "generated_at": "2026-09-27T16:08:10+00:00",
+  "generated_at": "2026-09-27T21:20:07+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "6adc255b88ae19e92d9728ac141bdea5b75172dd",
-    "short_sha": "6adc255b8"
+    "sha": "ac509661271246244bb94c118d41dbeda5b882bb",
+    "short_sha": "ac5096612"
   },
   "junit_xml": {
     "missing": 0,
-    "total": 298
+    "total": 304
   },
   "kind": "dv",
   "regression": {
@@ -152,195 +117,61 @@
       {
         "item": "smc_address_map_region_decode_test",
         "reason": "1 testcase failure/error node(s)",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_address_map_region_decode_test --stage sim --tool vcs --seed 1029186888 --target default --cov",
-        "seed": 1029186888,
+        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_address_map_region_decode_test --stage sim --tool vcs --seed 1512057920 --target default --cov",
+        "seed": 1512057920,
         "status": "FAIL"
       },
       {
         "item": "smc_cpu_l2_read_wedge_test",
-        "reason": "fail pattern matched: Error: \"/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/vendor/pulp-platform/common_cells/upstream/src/rr_arb_tree.sv\", 317: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_front_port_demux.i_demux_simple.genblk1.i_r_mux.gen_arbiter.req1: at time 12295000000 fs",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_cpu_l2_read_wedge_test --stage sim --tool vcs --seed 1935433642 --target default --cov",
-        "seed": 1935433642,
+        "reason": "fail pattern matched: Error: \"/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/vendor/pulp-platform/common_cells/upstream/src/rr_arb_tree.sv\", 317: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_front_port_demux.i_demux_simple.genblk1.i_r_mux.gen_arbiter.req1: at time 11700000000 fs",
+        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_cpu_l2_read_wedge_test --stage sim --tool vcs --seed 1275067633 --target default --cov",
+        "seed": 1275067633,
         "status": "FAIL"
       },
       {
         "item": "smc_dfd_mmr_lane_test",
         "reason": "1 testcase failure/error node(s)",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dfd_mmr_lane_test --stage sim --tool vcs --seed 1791537930 --target default --cov",
-        "seed": 1791537930,
+        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dfd_mmr_lane_test --stage sim --tool vcs --seed 1536351544 --target default --cov",
+        "seed": 1536351544,
         "status": "FAIL"
       },
       {
-        "item": "smc_dfd_cla_node_eap_sweep_test",
-        "reason": "environment_error: attempt sim-000059-a1 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dfd_cla_node_eap_sweep_test --stage sim --tool vcs --seed 754112345 --target default --cov",
-        "seed": 754112345,
-        "status": "ERROR"
-      },
-      {
         "item": "smc_dual_axi_sram_probe_test",
-        "reason": "environment_error: attempt sim-000085-a1 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dual_axi_sram_probe_test --stage sim --tool vcs --seed 1849268339 --target default --cov",
-        "seed": 1849268339,
-        "status": "ERROR"
+        "reason": "1 testcase failure/error node(s)",
+        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dual_axi_sram_probe_test --stage sim --tool vcs --seed 561678840 --target default --cov",
+        "seed": 561678840,
+        "status": "FAIL"
       },
       {
         "item": "smc_dual_elaboration_test",
         "reason": "1 testcase failure/error node(s)",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dual_elaboration_test --stage sim --tool vcs --seed 662788313 --target default --cov",
-        "seed": 662788313,
+        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dual_elaboration_test --stage sim --tool vcs --seed 1301112181 --target default --cov",
+        "seed": 1301112181,
         "status": "FAIL"
-      },
-      {
-        "item": "smc_dma_sanity_test",
-        "reason": "environment_error: attempt sim-000084-a1 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dma_sanity_test --stage sim --tool vcs --seed 1963805974 --target default --cov",
-        "seed": 1963805974,
-        "status": "ERROR"
-      },
-      {
-        "item": "smc_dual_base_addressing_test",
-        "reason": "environment_error: attempt sim-000086-a1 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dual_base_addressing_test --stage sim --tool vcs --seed 511251797 --target default --cov",
-        "seed": 511251797,
-        "status": "ERROR"
-      },
-      {
-        "item": "smc_fw_uart_log_engine_fetch_err_test",
-        "reason": "environment_error: attempt sim-000127-a1 ended failed: failed reported but no result.json appeared within 120s",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_fw_uart_log_engine_fetch_err_test --stage sim --tool vcs --seed 1698888751 --target default --cov",
-        "seed": 1698888751,
-        "status": "ERROR"
       },
       {
         "item": "smc_occp_sanity_test",
         "reason": "1 testcase failure/error node(s)",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_occp_sanity_test --stage sim --tool vcs --seed 1797119142 --target default --cov",
-        "seed": 1797119142,
+        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_occp_sanity_test --stage sim --tool vcs --seed 317915571 --target default --cov",
+        "seed": 317915571,
         "status": "FAIL"
+      },
+      {
+        "item": "smc_fw_i2c_p1_fifo_depth_xfer_test",
+        "reason": "`/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/.venv/bin/python3` exceeded timeout of 3600s",
+        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_fw_i2c_p1_fifo_depth_xfer_test --stage sim --tool vcs --seed 442513197 --target default --cov",
+        "seed": 442513197,
+        "status": "TIMEOUT"
       }
     ],
-    "flaky_tests": [
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_dfd_trace_accumulator_fill_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dfd_trace_accumulator_fill_test --stage sim --tool vcs --seed 758689421 --target default --cov",
-        "seed": 758689421
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_dfd_trace_sink_concurrent_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dfd_trace_sink_concurrent_test --stage sim --tool vcs --seed 1696243249 --target default --cov",
-        "seed": 1696243249
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_dma_cg_activity_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dma_cg_activity_test --stage sim --tool vcs --seed 1137728685 --target default --cov",
-        "seed": 1137728685
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_dma_reg_byte_enable_error_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_dma_reg_byte_enable_error_test --stage sim --tool vcs --seed 1554882612 --target default --cov",
-        "seed": 1554882612
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_ecc_codeword_ded_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_ecc_codeword_ded_test --stage sim --tool vcs --seed 65672259 --target default --cov",
-        "seed": 65672259
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_efuse_boundary_signals_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_efuse_boundary_signals_test --stage sim --tool vcs --seed 1602293672 --target default --cov",
-        "seed": 1602293672
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_efuse_jtag_lc_negative_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_efuse_jtag_lc_negative_test --stage sim --tool vcs --seed 1635957526 --target default --cov",
-        "seed": 1635957526
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_efuse_otp_burn_shadow_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_efuse_otp_burn_shadow_test --stage sim --tool vcs --seed 1476392419 --target default --cov",
-        "seed": 1476392419
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_efuse_permission_boundary_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_efuse_permission_boundary_test --stage sim --tool vcs --seed 1603754095 --target default --cov",
-        "seed": 1603754095
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_efuse_read_timeout_status_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_efuse_read_timeout_status_test --stage sim --tool vcs --seed 2045280625 --target default --cov",
-        "seed": 2045280625
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_ext_interrupts_pin_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_ext_interrupts_pin_test --stage sim --tool vcs --seed 2110572947 --target default --cov",
-        "seed": 2110572947
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_filter_field_sweep_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_filter_field_sweep_test --stage sim --tool vcs --seed 1182259332 --target default --cov",
-        "seed": 1182259332
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_gpio_filter_access_sep_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_gpio_filter_access_sep_test --stage sim --tool vcs --seed 1741070163 --target default --cov",
-        "seed": 1741070163
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_gpio_multi_sample_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_gpio_multi_sample_test --stage sim --tool vcs --seed 1501778429 --target default --cov",
-        "seed": 1501778429
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_hang_detector_sys_timeout_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_hang_detector_sys_timeout_test --stage sim --tool vcs --seed 306961767 --target default --cov",
-        "seed": 306961767
-      },
-      {
-        "attempt_count": 2,
-        "final_status": "PASS",
-        "item": "smc_occp_sanity_secure_error_test",
-        "rerun": "python3 tools/dv/run_dv.py --dut smc --items smc_occp_sanity_secure_error_test --stage sim --tool vcs --seed 1387249221 --target default --cov",
-        "seed": 1387249221
-      }
-    ]
+    "flaky_tests": []
   },
   "run_metadata": {
     "executor": "lsf",
-    "generated_at": "2026-09-27T16:08:08.630213+00:00",
+    "generated_at": "2026-09-27T21:20:06.023898+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "6adc255b88ae19e92d9728ac141bdea5b75172dd",
+      "commit": "ac509661271246244bb94c118d41dbeda5b882bb",
       "dirty": "false"
     },
     "label": "all",
@@ -353,2884 +184,1474 @@
   "source": {
     "collector": "run_dv-result",
     "label": "all",
-    "native_status": "ERROR"
+    "native_status": "TIMEOUT"
   },
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 10,
-    "pass_rate": 96.63,
-    "passing": 287,
+    "failing": 7,
+    "pass_rate": 97.64,
+    "passing": 290,
     "total": 297
   },
   "tests_detail": [
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 16.866,
+      "duration_sec": 13.919,
       "name": "smc_5agent_observability_test",
       "reason": "positive pass evidence matched",
-      "seed": 494032449,
+      "seed": 1998717260,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 17.013,
+      "duration_sec": 15.936,
       "name": "smc_6agent_observability_test",
       "reason": "positive pass evidence matched",
-      "seed": 1104570706,
+      "seed": 301285246,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 16.773,
+      "duration_sec": 15.487,
       "name": "smc_decode_hole_test",
       "reason": "positive pass evidence matched",
-      "seed": 1631206039,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.383,
-      "name": "smc_address_window_top_decode_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1655769313,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 26.397,
-      "name": "smc_alias_remap_region_attrs_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1981354806,
+      "seed": 1233642775,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 1,
       "category": "ci",
-      "duration_sec": 19.832,
+      "duration_sec": 17.093,
       "name": "smc_address_map_region_decode_test",
       "reason": "1 testcase failure/error node(s)",
-      "seed": 1029186888,
+      "seed": 1512057920,
       "stage": "sim",
       "status": "FAIL"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 59.606,
+      "duration_sec": 15.4,
+      "name": "smc_address_window_top_decode_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2025323445,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.073,
+      "name": "smc_alias_remap_region_attrs_test",
+      "reason": "positive pass evidence matched",
+      "seed": 880938177,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 52.166,
       "name": "smc_cpuif_handshake_test",
       "reason": "positive pass evidence matched",
-      "seed": 134457084,
+      "seed": 1599202164,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 23.89,
+      "duration_sec": 14.904,
       "name": "smc_cpuif_external_stall_test",
       "reason": "positive pass evidence matched",
-      "seed": 963143774,
+      "seed": 371764488,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 23.68,
+      "duration_sec": 18.238,
       "name": "smc_cpuif_wrong_direction_test",
       "reason": "positive pass evidence matched",
-      "seed": 414868340,
+      "seed": 978440062,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 21.406,
+      "duration_sec": 15.745,
       "name": "smc_alias_remap_spare_block_decode_test",
       "reason": "positive pass evidence matched",
-      "seed": 239724289,
+      "seed": 722977744,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 24.629,
+      "duration_sec": 14.67,
       "name": "smc_avsbus_clock_config_proxy_test",
       "reason": "positive pass evidence matched",
-      "seed": 1565208816,
+      "seed": 960114163,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 21.88,
+      "duration_sec": 16.407,
       "name": "smc_avsbus_clock_divider_test",
       "reason": "positive pass evidence matched",
-      "seed": 1647110120,
+      "seed": 2080786663,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 38.162,
+      "duration_sec": 17.704,
       "name": "smc_avsbus_frame_transaction_test",
       "reason": "positive pass evidence matched",
-      "seed": 1021407415,
+      "seed": 22921367,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 26.511,
-      "name": "smc_avsbus_interrupt_sources_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1529727357,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 32.535,
-      "name": "smc_avsbus_retry_exhaust_test",
-      "reason": "positive pass evidence matched",
-      "seed": 356275408,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 93.709,
+      "duration_sec": 46.495,
       "name": "smc_avsbus_frame_sequencing_test",
       "reason": "positive pass evidence matched",
-      "seed": 999858410,
+      "seed": 518411498,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 47.777,
+      "duration_sec": 19.705,
+      "name": "smc_avsbus_interrupt_sources_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1417871618,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 18.153,
+      "name": "smc_avsbus_retry_exhaust_test",
+      "reason": "positive pass evidence matched",
+      "seed": 152728710,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 17.17,
       "name": "smc_avsbus_retry_suppressed_test",
       "reason": "positive pass evidence matched",
-      "seed": 1049224582,
+      "seed": 1431358609,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 21.588,
-      "name": "smc_avsbus_status_depth_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1097780609,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.891,
-      "name": "smc_axi_error_response_depth_test",
-      "reason": "positive pass evidence matched",
-      "seed": 296274147,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 39.016,
-      "name": "smc_axil_burst_idle_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1624831052,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.546,
-      "name": "smc_axil_downstream_concurrency_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1062597900,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 142.109,
-      "name": "smc_avsbus_slave_reply_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1924467465,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.89,
-      "name": "smc_axil_idle_test",
-      "reason": "positive pass evidence matched",
-      "seed": 502170454,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 24.682,
-      "name": "smc_canonical_smoke_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1098038097,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "clock",
-      "duration_sec": 21.239,
-      "name": "smc_cg_dft_reset_bringup_test",
-      "reason": "positive pass evidence matched",
-      "seed": 673229945,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "clock",
-      "duration_sec": 24.282,
-      "name": "smc_cg_test_mode_bypass_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1008586066,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "clock",
-      "duration_sec": 17.466,
-      "name": "smc_cg_zeroer_activity_bringup_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1935302817,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 28.849,
-      "name": "smc_clk_multi_window_test",
-      "reason": "positive pass evidence matched",
-      "seed": 367509955,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 26.647,
-      "name": "smc_clock_domain_connectivity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1153661654,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 286.216,
+      "duration_sec": 15.051,
       "name": "smc_avsbus_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 91858826,
+      "seed": 1538725588,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 53.563,
+      "duration_sec": 14.048,
+      "name": "smc_avsbus_status_depth_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1007225143,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.613,
+      "name": "smc_axi_error_response_depth_test",
+      "reason": "positive pass evidence matched",
+      "seed": 257279355,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.917,
+      "name": "smc_axil_burst_idle_test",
+      "reason": "positive pass evidence matched",
+      "seed": 757007745,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.484,
+      "name": "smc_axil_downstream_concurrency_test",
+      "reason": "positive pass evidence matched",
+      "seed": 383000309,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.593,
+      "name": "smc_axil_idle_test",
+      "reason": "positive pass evidence matched",
+      "seed": 638289971,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 17.836,
+      "name": "smc_canonical_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 283142673,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "clock",
+      "duration_sec": 14.203,
+      "name": "smc_cg_dft_reset_bringup_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1422776077,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "clock",
+      "duration_sec": 14.181,
+      "name": "smc_cg_test_mode_bypass_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1951635284,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 110.184,
+      "name": "smc_avsbus_slave_reply_test",
+      "reason": "positive pass evidence matched",
+      "seed": 854344674,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "clock",
+      "duration_sec": 13.654,
+      "name": "smc_cg_zeroer_activity_bringup_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1319076279,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 18.362,
+      "name": "smc_clk_multi_window_test",
+      "reason": "positive pass evidence matched",
+      "seed": 47717199,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.114,
       "name": "smc_clk_running_test",
       "reason": "positive pass evidence matched",
-      "seed": 587617223,
+      "seed": 731991894,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 18.032,
+      "duration_sec": 19.095,
+      "name": "smc_clock_domain_connectivity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1477264001,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.971,
       "name": "smc_cluster_beu_test",
       "reason": "positive pass evidence matched",
-      "seed": 888067461,
+      "seed": 367801055,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 27.574,
+      "duration_sec": 15.884,
       "name": "smc_cold_boot_chain_order_test",
       "reason": "positive pass evidence matched",
-      "seed": 1433234003,
+      "seed": 840651263,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 22.169,
+      "duration_sec": 16.745,
       "name": "smc_cold_reset_repeated_test",
       "reason": "positive pass evidence matched",
-      "seed": 1119119165,
+      "seed": 1093534460,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "smoke",
-      "duration_sec": 30.551,
+      "duration_sec": 16.39,
       "name": "smc_cold_reset_test",
       "reason": "positive pass evidence matched",
-      "seed": 665815537,
+      "seed": 1908311460,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 17.748,
-      "name": "smc_cool_reset_from_pcie_test",
-      "reason": "positive pass evidence matched",
-      "seed": 871246468,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 24.913,
-      "name": "smc_cool_reset_x_cold_reset_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1256764576,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.085,
-      "name": "smc_cool_reset_zero_delay_test",
-      "reason": "positive pass evidence matched",
-      "seed": 807814024,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.144,
-      "name": "smc_cpu_ctrl_map_depth_test",
-      "reason": "positive pass evidence matched",
-      "seed": 671592681,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 20.486,
-      "name": "smc_cpu_ctrl_read_only_write_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1398482553,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 15.861,
-      "name": "smc_cpu_ctrl_scratch_window_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1347896699,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.191,
-      "name": "smc_cpu_firmware_boot_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1158770884,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 24.752,
-      "name": "smc_cpu_ecc_lint_pint_depth_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1691526933,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "cpu",
-      "duration_sec": 31.053,
-      "name": "smc_cpu_l2_write_wedge_test",
-      "reason": "positive pass evidence matched",
-      "seed": 347805536,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "cpu",
-      "duration_sec": 25.868,
-      "name": "smc_cpu_l2_read_wedge_test",
-      "reason": "fail pattern matched: Error: \"/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/vendor/pulp-platform/common_cells/upstream/src/rr_arb_tree.sv\", 317: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_front_port_demux.i_demux_simple.genblk1.i_r_mux.gen_arbiter.req1: at time 12295000000 fs",
-      "seed": 1935433642,
-      "stage": "sim",
-      "status": "FAIL"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 26.242,
-      "name": "smc_cpu_reset_pulse_test",
-      "reason": "positive pass evidence matched",
-      "seed": 477453032,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 65.267,
-      "name": "smc_cpu_mmio_read_wedge_test",
-      "reason": "positive pass evidence matched",
-      "seed": 838157910,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 35.983,
-      "name": "smc_cpu_mmio_write_wedge_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1529591764,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.6,
-      "name": "smc_cpu_uncore_reset_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1784169958,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 25.956,
-      "name": "smc_cpu_reset_source_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1399970462,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.64,
-      "name": "smc_cpu_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1612809638,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.97,
-      "name": "smc_cpu_to_sep_axi_test",
-      "reason": "positive pass evidence matched",
-      "seed": 734569688,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 21.665,
-      "name": "smc_dbs_idle_test",
-      "reason": "positive pass evidence matched",
-      "seed": 779906385,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 39.282,
-      "name": "smc_default_reg_rd_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1741489084,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 54.352,
-      "name": "smc_deadspace_decode_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1017012520,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 38.342,
-      "name": "smc_dfd_cla_counter_edge_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1027544359,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 404.145,
+      "duration_sec": 13.445,
       "name": "smc_combined_observability_test",
       "reason": "positive pass evidence matched",
-      "seed": 824609861,
+      "seed": 709094080,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 42.057,
+      "duration_sec": 15.93,
+      "name": "smc_cool_reset_from_pcie_test",
+      "reason": "positive pass evidence matched",
+      "seed": 769235974,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 17.278,
+      "name": "smc_cool_reset_x_cold_reset_test",
+      "reason": "positive pass evidence matched",
+      "seed": 635809731,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 16.386,
+      "name": "smc_cool_reset_zero_delay_test",
+      "reason": "positive pass evidence matched",
+      "seed": 728484044,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.917,
+      "name": "smc_cpu_ctrl_map_depth_test",
+      "reason": "positive pass evidence matched",
+      "seed": 813746810,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.349,
+      "name": "smc_cpu_ctrl_read_only_write_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1448179501,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.609,
+      "name": "smc_cpu_ctrl_scratch_window_test",
+      "reason": "positive pass evidence matched",
+      "seed": 348445700,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.411,
+      "name": "smc_cpu_ecc_lint_pint_depth_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1383181738,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.142,
+      "name": "smc_cpu_firmware_boot_test",
+      "reason": "positive pass evidence matched",
+      "seed": 741440347,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "cpu",
+      "duration_sec": 14.777,
+      "name": "smc_cpu_l2_write_wedge_test",
+      "reason": "positive pass evidence matched",
+      "seed": 200328892,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 1,
+      "category": "cpu",
+      "duration_sec": 16.938,
+      "name": "smc_cpu_l2_read_wedge_test",
+      "reason": "fail pattern matched: Error: \"/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/vendor/pulp-platform/common_cells/upstream/src/rr_arb_tree.sv\", 317: smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.u_front_port_demux.i_demux_simple.genblk1.i_r_mux.gen_arbiter.req1: at time 11700000000 fs",
+      "seed": 1275067633,
+      "stage": "sim",
+      "status": "FAIL"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.709,
+      "name": "smc_cpu_reset_pulse_test",
+      "reason": "positive pass evidence matched",
+      "seed": 845507649,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 32.489,
+      "name": "smc_cpu_mmio_read_wedge_test",
+      "reason": "positive pass evidence matched",
+      "seed": 902290877,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 31.31,
+      "name": "smc_cpu_mmio_write_wedge_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1955391586,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.262,
+      "name": "smc_cpu_uncore_reset_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1043908767,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.083,
+      "name": "smc_cpu_reset_source_test",
+      "reason": "positive pass evidence matched",
+      "seed": 462729702,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.871,
+      "name": "smc_cpu_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1934024117,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.427,
+      "name": "smc_cpu_to_sep_axi_test",
+      "reason": "positive pass evidence matched",
+      "seed": 866816112,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.327,
+      "name": "smc_dbs_idle_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1488775305,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.342,
+      "name": "smc_deadspace_decode_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1977543519,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.844,
+      "name": "smc_default_reg_rd_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2113744711,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 32.451,
+      "name": "smc_dfd_cla_counter_edge_test",
+      "reason": "positive pass evidence matched",
+      "seed": 500645485,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 30.705,
       "name": "smc_dfd_cla_mmr_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 1904074321,
+      "seed": 1194608696,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 114.6,
-      "name": "smc_dfd_cla_event_type_sweep_test",
+      "duration_sec": 25.34,
+      "name": "smc_dfd_cla_node_eap_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 2011210510,
+      "seed": 484294712,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 42.727,
+      "duration_sec": 21.532,
       "name": "smc_dfd_dbm_mode_lock_test",
       "reason": "positive pass evidence matched",
-      "seed": 779401489,
+      "seed": 383950129,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 72.923,
-      "name": "smc_dfd_cla_snapshot_capture_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1326289873,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 25.534,
+      "duration_sec": 18.129,
       "name": "smc_dfd_ro_mmr_write_test",
       "reason": "positive pass evidence matched",
-      "seed": 1761672805,
+      "seed": 2017202933,
       "stage": "sim",
       "status": "PASS"
     },
     {
-      "attempt": 1,
+      "attempt": 0,
       "category": "ci",
-      "duration_sec": 22.587,
-      "name": "smc_dfd_mmr_lane_test",
-      "reason": "1 testcase failure/error node(s)",
-      "seed": 1791537930,
+      "duration_sec": 91.226,
+      "name": "smc_dfd_cla_event_type_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 5182127,
       "stage": "sim",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 55.685,
+      "duration_sec": 61.218,
+      "name": "smc_dfd_cla_snapshot_capture_test",
+      "reason": "positive pass evidence matched",
+      "seed": 794968299,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 48.372,
       "name": "smc_dfd_cla_live_bus_test",
       "reason": "positive pass evidence matched",
-      "seed": 1676212355,
+      "seed": 228332504,
       "stage": "sim",
       "status": "PASS"
     },
     {
+      "attempt": 1,
+      "category": "ci",
+      "duration_sec": 18.192,
+      "name": "smc_dfd_mmr_lane_test",
+      "reason": "1 testcase failure/error node(s)",
+      "seed": 1536351544,
+      "stage": "sim",
+      "status": "FAIL"
+    },
+    {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 28.755,
+      "duration_sec": 23.5,
       "name": "smc_dfd_trace_reset_test",
       "reason": "positive pass evidence matched",
-      "seed": 1671232389,
+      "seed": 48445447,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 17.916,
+      "duration_sec": 13.468,
       "name": "smc_dfd_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 932325689,
+      "seed": 883437127,
       "stage": "sim",
       "status": "PASS"
     },
     {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 0.0,
-      "name": "smc_dfd_cla_node_eap_sweep_test",
-      "reason": "environment_error: attempt sim-000059-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 754112345,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 21.401,
+      "duration_sec": 16.798,
       "name": "smc_dfd_sink_mmr_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 1219331643,
+      "seed": 1028121918,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 180.601,
-      "name": "smc_dfd_trace_flush_corner_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1288021734,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 42.603,
-      "name": "smc_dfd_trace_format_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1657202170,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 189.53,
-      "name": "smc_dfd_trace_writeout_phase_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1588626969,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 40.087,
-      "name": "smc_dfd_trace_sink_readout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 313532032,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 44.033,
-      "name": "smc_dfd_trace_sink_window_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1226046036,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 50.269,
-      "name": "smc_dfd_trace_vlt_format_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1104992570,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 32.733,
+      "duration_sec": 26.191,
       "name": "smc_dfd_trace_accumulator_fill_test",
       "reason": "positive pass evidence matched",
-      "seed": 758689421,
+      "seed": 1635162728,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 20.355,
-      "name": "smc_dfx_status_abort_test",
+      "duration_sec": 24.848,
+      "name": "smc_dfd_trace_format_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 1193751527,
+      "seed": 1858191230,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 30.252,
-      "name": "smc_dfd_trace_xor_format_test",
+      "duration_sec": 152.733,
+      "name": "smc_dfd_trace_flush_corner_test",
       "reason": "positive pass evidence matched",
-      "seed": 1552344342,
+      "seed": 835725319,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 20.82,
-      "name": "smc_zeroer_size_corners_test",
+      "duration_sec": 170.429,
+      "name": "smc_dfd_trace_writeout_phase_test",
       "reason": "positive pass evidence matched",
-      "seed": 1490031198,
+      "seed": 1431668395,
       "stage": "sim",
       "status": "PASS"
     },
     {
-      "attempt": 1,
+      "attempt": 0,
       "category": "ci",
-      "duration_sec": 89.447,
+      "duration_sec": 86.776,
       "name": "smc_dfd_trace_sink_concurrent_test",
       "reason": "positive pass evidence matched",
-      "seed": 1696243249,
+      "seed": 708709055,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 34.964,
-      "name": "smc_dma_backpressure_test",
+      "duration_sec": 34.648,
+      "name": "smc_dfd_trace_sink_readout_test",
       "reason": "positive pass evidence matched",
-      "seed": 197551037,
+      "seed": 536838591,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 127.382,
-      "name": "smc_dma_decouple_rw_test",
+      "duration_sec": 39.652,
+      "name": "smc_dfd_trace_sink_window_test",
       "reason": "positive pass evidence matched",
-      "seed": 518261481,
+      "seed": 1968060786,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 47.054,
-      "name": "smc_dma_reserved_stream_banks_test",
+      "duration_sec": 24.503,
+      "name": "smc_dfd_trace_vlt_format_test",
       "reason": "positive pass evidence matched",
-      "seed": 1490962272,
+      "seed": 1744407201,
       "stage": "sim",
       "status": "PASS"
     },
     {
-      "attempt": 1,
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 25.817,
+      "name": "smc_dfd_trace_xor_format_test",
+      "reason": "positive pass evidence matched",
+      "seed": 110368076,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.494,
+      "name": "smc_dfx_status_abort_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1540381873,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
       "category": "clock",
-      "duration_sec": 22.647,
+      "duration_sec": 17.75,
       "name": "smc_dma_cg_activity_test",
       "reason": "positive pass evidence matched",
-      "seed": 1137728685,
+      "seed": 1466996947,
       "stage": "sim",
       "status": "PASS"
     },
     {
-      "attempt": 1,
+      "attempt": 0,
       "category": "ci",
-      "duration_sec": 24.412,
+      "duration_sec": 14.587,
+      "name": "smc_zeroer_size_corners_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1467152363,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 28.774,
+      "name": "smc_dma_backpressure_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1884384338,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.028,
       "name": "smc_dma_reg_byte_enable_error_test",
       "reason": "positive pass evidence matched",
-      "seed": 1554882612,
+      "seed": 13246444,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.41,
+      "name": "smc_dma_reserved_stream_banks_test",
+      "reason": "positive pass evidence matched",
+      "seed": 610167747,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.909,
+      "name": "smc_dma_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 578381708,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.01,
+      "name": "smc_dual_base_addressing_test",
+      "reason": "positive pass evidence matched",
+      "seed": 752405908,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 1,
       "category": "dual",
-      "duration_sec": 0.0,
+      "duration_sec": 8.107,
       "name": "smc_dual_axi_sram_probe_test",
-      "reason": "environment_error: attempt sim-000085-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1849268339,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 1,
-      "category": "dual",
-      "duration_sec": 21.935,
-      "name": "smc_dual_elaboration_test",
       "reason": "1 testcase failure/error node(s)",
-      "seed": 662788313,
+      "seed": 561678840,
       "stage": "sim",
       "status": "FAIL"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 45.782,
-      "name": "smc_ecc_codeword_sec_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1431395264,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 0.0,
-      "name": "smc_dma_sanity_test",
-      "reason": "environment_error: attempt sim-000084-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1963805974,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.317,
-      "name": "smc_ecc_dfd_dbs_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 236472939,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 0.0,
-      "name": "smc_dual_base_addressing_test",
-      "reason": "environment_error: attempt sim-000086-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 511251797,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.631,
-      "name": "smc_ecc_fault_inject_test",
-      "reason": "positive pass evidence matched",
-      "seed": 134706226,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.45,
-      "name": "smc_efuse_chip_config_read_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2125303177,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 45.682,
-      "name": "smc_efuse_jtag_lc_access_matrix_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2126720898,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 17.996,
+      "duration_sec": 14.583,
       "name": "smc_ecc_codeword_ded_test",
       "reason": "positive pass evidence matched",
-      "seed": 65672259,
+      "seed": 850282336,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 21.355,
-      "name": "smc_efuse_guard_target_test",
+      "duration_sec": 137.396,
+      "name": "smc_dma_decouple_rw_test",
       "reason": "positive pass evidence matched",
-      "seed": 448092057,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 44.453,
-      "name": "smc_efuse_lock_guard_test",
-      "reason": "positive pass evidence matched",
-      "seed": 440138133,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.79,
-      "name": "smc_efuse_locked_access_interrupt_test",
-      "reason": "positive pass evidence matched",
-      "seed": 995325909,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 18.843,
-      "name": "smc_efuse_boundary_signals_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1602293672,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.783,
-      "name": "smc_efuse_map_read_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1570242559,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.263,
-      "name": "smc_efuse_otp_clock_config_depth_test",
-      "reason": "positive pass evidence matched",
-      "seed": 560737758,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 21.315,
-      "name": "smc_efuse_otp_clock_test",
-      "reason": "positive pass evidence matched",
-      "seed": 714138020,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 20.411,
-      "name": "smc_efuse_jtag_lc_negative_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1635957526,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 23.674,
-      "name": "smc_efuse_read_program_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1139737175,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 43.203,
-      "name": "smc_efuse_shim_ctrl_test",
-      "reason": "positive pass evidence matched",
-      "seed": 166746645,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 43.944,
-      "name": "smc_efuse_otp_burn_shadow_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1476392419,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 18.641,
-      "name": "smc_efuse_permission_boundary_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1603754095,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 20.388,
-      "name": "smc_external_window_pad_ctrl_decode_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1569271053,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 18.605,
-      "name": "smc_efuse_read_timeout_status_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2045280625,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 32.619,
-      "name": "smc_filter_config_field_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 674300562,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 24.26,
-      "name": "smc_filter_multi_entry_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1057200523,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 19.043,
-      "name": "smc_ext_interrupts_pin_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2110572947,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 25.138,
-      "name": "smc_filter_region_span_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2116970810,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 21.534,
-      "name": "smc_flr_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 473871127,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 22.324,
-      "name": "smc_fw_hello_world_multicore_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1531816469,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 22.966,
-      "name": "smc_fw_hello_world_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1010667721,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 18.375,
-      "name": "smc_filter_field_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1182259332,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 211.519,
-      "name": "smc_fw_i2c_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1004506040,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 529.448,
-      "name": "smc_fw_i2c_fifo_full_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1580943526,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 627.269,
-      "name": "smc_fw_i2c_tx_stretch_timeout_recovery_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1986007010,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 941.035,
-      "name": "smc_fw_i2c_target_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 207667592,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 33.375,
-      "name": "smc_fw_narrow_store_lane_test",
-      "reason": "positive pass evidence matched",
-      "seed": 575595264,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 63.385,
-      "name": "smc_fw_octs_p0_primary_test",
-      "reason": "positive pass evidence matched",
-      "seed": 702399740,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 1666.547,
-      "name": "smc_fw_i2c_acq_fifo_stretch_reset_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1051439167,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 508.342,
-      "name": "smc_fw_plic_claim_test",
-      "reason": "positive pass evidence matched",
-      "seed": 898773204,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 2371.959,
-      "name": "smc_fw_i2c_p1_fifo_depth_xfer_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2079326091,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 132.666,
-      "name": "smc_fw_uart_log_engine_single_entry_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1754656055,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 56.731,
-      "name": "smc_gpio_boot_stall_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1201326263,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 290.975,
-      "name": "smc_fw_uart_log_engine_boundary_backpressure_test",
-      "reason": "positive pass evidence matched",
-      "seed": 185479894,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "firmware",
-      "duration_sec": 0.0,
-      "name": "smc_fw_uart_log_engine_fetch_err_test",
-      "reason": "environment_error: attempt sim-000127-a1 ended failed: failed reported but no result.json appeared within 120s",
-      "seed": 1698888751,
-      "stage": "sim",
-      "status": "ERROR"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 47.052,
-      "name": "smc_gpio_ctrl_full_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 387664104,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 21.606,
-      "name": "smc_gpio_data_ctrl_field_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1121185298,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 45.248,
-      "name": "smc_gpio_intf_full_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1275523290,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 57.668,
-      "name": "smc_gpio_intf_regblock_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 996528195,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 48.83,
-      "name": "smc_gpio_irq_active_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1886523702,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 43.948,
-      "name": "smc_gpio_irq_mask_deassert_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2029090600,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 25.528,
-      "name": "smc_gpio_filter_access_sep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1741070163,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.513,
-      "name": "smc_gpio_irq_type_matrix_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1360259443,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 44.557,
-      "name": "smc_gpio_observe_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1826827076,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.874,
-      "name": "smc_gpio_output_driveback_test",
-      "reason": "positive pass evidence matched",
-      "seed": 823957254,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.503,
-      "name": "smc_gpio_p0_int_test",
-      "reason": "positive pass evidence matched",
-      "seed": 416161814,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 20.927,
-      "name": "smc_gpio_p0_mux_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1169689753,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.905,
-      "name": "smc_gpio_pad_input_readback_test",
-      "reason": "positive pass evidence matched",
-      "seed": 168312009,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 45.286,
-      "name": "smc_hang_detector_data_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2023056063,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.311,
-      "name": "smc_hang_detector_plic_route_test",
-      "reason": "positive pass evidence matched",
-      "seed": 462715793,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 25.046,
-      "name": "smc_gpio_multi_sample_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1501778429,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 21.91,
-      "name": "smc_hang_detector_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1484506381,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 19.851,
-      "name": "smc_hang_detector_disable_test",
-      "reason": "positive pass evidence matched",
-      "seed": 196905873,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 22.547,
-      "name": "smc_hang_detector_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1795908335,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 41.223,
-      "name": "smc_i2c2_controller_rdwr_test",
-      "reason": "positive pass evidence matched",
-      "seed": 374887146,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 20.12,
-      "name": "smc_i2c_cg_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 348580394,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 51.398,
-      "name": "smc_i2c_config_regblock_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1506267835,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 177.557,
-      "name": "smc_i2c_bus_monitor_idle_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1121147515,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 55.738,
-      "name": "smc_hang_detector_sys_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 306961767,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 67.454,
-      "name": "smc_i2c_controller_control_symbol_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1892875735,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "firmware",
-      "duration_sec": 1167.897,
-      "name": "smc_fw_uart_log_engine_disable_during_xfer_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1688408472,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 297.019,
-      "name": "smc_i2c_controller_disable_stop_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1420985964,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 179.177,
-      "name": "smc_i2c_controller_edge_timing_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1238674254,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 134.627,
-      "name": "smc_i2c_controller_exits_test",
-      "reason": "positive pass evidence matched",
-      "seed": 258452319,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 123.225,
-      "name": "smc_i2c_controller_queue_shapes_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1484126758,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 171.583,
-      "name": "smc_i2c_controller_scl_events_test",
-      "reason": "positive pass evidence matched",
-      "seed": 690401108,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 75.038,
-      "name": "smc_i2c_error_fifo_depth_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1234461667,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 109.841,
-      "name": "smc_i2c_controller_sda_interference_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1688289748,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 40.84,
-      "name": "smc_i2c_event_retain_test",
-      "reason": "positive pass evidence matched",
-      "seed": 246644506,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 156.619,
-      "name": "smc_i2c_controller_stretch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 68956120,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 25.288,
-      "name": "smc_i2c_fifo_reset_pulse_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1597687984,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 223.438,
-      "name": "smc_i2c_window_landing_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1427630225,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 346.175,
-      "name": "smc_i2c_bus_corners_test",
-      "reason": "positive pass evidence matched",
-      "seed": 763398694,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 428.949,
-      "name": "smc_i2c_fifo_full_test",
-      "reason": "positive pass evidence matched",
-      "seed": 505502084,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 49.906,
-      "name": "smc_i2c_intr_reg_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 843762673,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 59.949,
-      "name": "smc_i2c_master_target_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1606895551,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 33.456,
-      "name": "smc_i2c_multi_instance_test",
-      "reason": "positive pass evidence matched",
-      "seed": 111342471,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.385,
-      "name": "smc_i2c_multi_sample_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1539655553,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 139.245,
-      "name": "smc_i2c_intr_mask_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1839013074,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 24.039,
-      "name": "smc_i2c_p0_cfifo_test",
-      "reason": "positive pass evidence matched",
-      "seed": 463865718,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 91.002,
-      "name": "smc_i2c_p0_conti_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1455100498,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 67.112,
-      "name": "smc_i2c_p0_fifo_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1084966131,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 63.694,
-      "name": "smc_i2c_p0_multictrl_test",
-      "reason": "positive pass evidence matched",
-      "seed": 56108088,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 37.38,
-      "name": "smc_i2c_p0_nack_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1218870069,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 35.657,
-      "name": "smc_i2c_p0_rdwr_test",
-      "reason": "positive pass evidence matched",
-      "seed": 860335544,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 37.344,
-      "name": "smc_i2c_p0_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1184138968,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 77.621,
-      "name": "smc_i2c_p1_rdwr_protocol_test",
-      "reason": "positive pass evidence matched",
-      "seed": 943499709,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 617.236,
-      "name": "smc_i2c_p0_stretch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1573957427,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 1028.151,
-      "name": "smc_i2c_protocol_interruption_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2117150181,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 50.281,
-      "name": "smc_i2c_target_ack_ctrl_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1705353925,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 263.463,
-      "name": "smc_i2c_target_acq_stretch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 932014514,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 288.385,
-      "name": "smc_i2c0_target_addr_stretch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1726990633,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 330.396,
-      "name": "smc_i2c1_target_addr_stretch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2068591970,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 243.106,
-      "name": "smc_i2c0_target_fast_controller_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1978538895,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 213.274,
-      "name": "smc_i2c1_target_fast_controller_test",
-      "reason": "positive pass evidence matched",
-      "seed": 218125267,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 507.136,
-      "name": "smc_i2c2_target_addr_stretch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1746303916,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 223.122,
-      "name": "smc_i2c2_target_fast_controller_test",
-      "reason": "positive pass evidence matched",
-      "seed": 191751404,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 123.358,
-      "name": "smc_i2c_target_nack_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1572461907,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 385.082,
-      "name": "smc_i2c_target_multi_instance_stretch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 864162029,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 224.564,
-      "name": "smc_i2c_target_loopback_test",
-      "reason": "positive pass evidence matched",
-      "seed": 385296150,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 31.063,
-      "name": "smc_i2c_target_read_abort_test",
-      "reason": "positive pass evidence matched",
-      "seed": 198839687,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 47.908,
-      "name": "smc_i3c_dxt_table_test",
-      "reason": "positive pass evidence matched",
-      "seed": 593024567,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 43.023,
-      "name": "smc_i3c_private_write_test",
-      "reason": "positive pass evidence matched",
-      "seed": 149504021,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 121.404,
-      "name": "smc_i2c_target_smbus_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1025001003,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 977.649,
-      "name": "smc_i2c_target_bus_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1846497173,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "all",
-      "duration_sec": 18.066,
-      "name": "smc_i3c_to_fabric_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1408354154,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 38.79,
-      "name": "smc_ijtag_basic_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1501963453,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.322,
-      "name": "smc_input_output_fabric_wr_rd_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1650494170,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 33.325,
-      "name": "smc_intr_status_partial_clear_test",
-      "reason": "positive pass evidence matched",
-      "seed": 465088521,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 16.084,
-      "name": "smc_irq_during_powergood_glitch_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1169730109,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.762,
-      "name": "smc_irq_multi_sample_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1429230890,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 14.613,
-      "name": "smc_irq_observe_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2022824531,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.149,
-      "name": "smc_jtag_axi_shape_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1577597361,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 21.173,
-      "name": "smc_jtag_boot_stall_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2021778253,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 55.813,
-      "name": "smc_jtag_dmi_smoke_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1384999315,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 16.888,
-      "name": "smc_jtag_reset_ctrl_test",
-      "reason": "positive pass evidence matched",
-      "seed": 803984,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 15.428,
-      "name": "smc_jtag_reset_proxy_test",
-      "reason": "positive pass evidence matched",
-      "seed": 167741931,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 14.212,
-      "name": "smc_local_fabric_csr_depth_test",
-      "reason": "positive pass evidence matched",
-      "seed": 816730869,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 27.208,
-      "name": "smc_log_engine_intr_mask_test",
-      "reason": "positive pass evidence matched",
-      "seed": 367774733,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 14.555,
-      "name": "smc_mailbox_data_error_test",
-      "reason": "positive pass evidence matched",
-      "seed": 216116272,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 236.446,
-      "name": "smc_input_fabric_axi_wr_rd_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1304034997,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 106.316,
-      "name": "smc_log_engine_abort_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2130126018,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 14.231,
-      "name": "smc_mailbox_event_irq_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2132494386,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 16.566,
-      "name": "smc_mailbox_field_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1284299999,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 15.036,
-      "name": "smc_mailbox_flush_test",
-      "reason": "positive pass evidence matched",
-      "seed": 812615677,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.557,
-      "name": "smc_mailbox_idle_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1296318670,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 49.115,
-      "name": "smc_mailbox_multi_instance_test",
-      "reason": "positive pass evidence matched",
-      "seed": 507198336,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 229.165,
-      "name": "smc_log_engine_transfer_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1033481617,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 87.902,
-      "name": "smc_mailbox_irq_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1185463580,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 109.752,
-      "name": "smc_mixed_boot_stall_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1023983019,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 14.952,
-      "name": "smc_mutex_semaphore_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2047767603,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 15.498,
-      "name": "smc_ndm_reset_test",
-      "reason": "positive pass evidence matched",
-      "seed": 631170287,
+      "seed": 1809178825,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 1,
       "category": "dual",
-      "duration_sec": 8.585,
-      "name": "smc_occp_sanity_test",
+      "duration_sec": 7.824,
+      "name": "smc_dual_elaboration_test",
       "reason": "1 testcase failure/error node(s)",
-      "seed": 1797119142,
+      "seed": 1301112181,
       "stage": "sim",
       "status": "FAIL"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 15.997,
-      "name": "smc_octs_credit_expired_test",
+      "duration_sec": 13.896,
+      "name": "smc_ecc_dfd_dbs_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 949834042,
+      "seed": 2008308484,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 16.601,
-      "name": "smc_octs_primary_start_test",
+      "duration_sec": 42.469,
+      "name": "smc_ecc_codeword_sec_test",
       "reason": "positive pass evidence matched",
-      "seed": 441309214,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 1,
-      "category": "ci",
-      "duration_sec": 17.387,
-      "name": "smc_occp_sanity_secure_error_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1387249221,
+      "seed": 1940777925,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 16.032,
-      "name": "smc_octs_dual_sync_test",
+      "duration_sec": 14.263,
+      "name": "smc_ecc_fault_inject_test",
       "reason": "positive pass evidence matched",
-      "seed": 1953043100,
+      "seed": 648494009,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 371.242,
-      "name": "smc_multi_reset_csr_persistence_test",
+      "duration_sec": 14.255,
+      "name": "smc_efuse_boundary_signals_test",
       "reason": "positive pass evidence matched",
-      "seed": 576660305,
+      "seed": 1999103311,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 20.846,
-      "name": "smc_octs_sanity_test",
+      "duration_sec": 14.125,
+      "name": "smc_efuse_chip_config_read_test",
       "reason": "positive pass evidence matched",
-      "seed": 1946254349,
+      "seed": 1813609160,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 13.622,
-      "name": "smc_output_fabric_slverr_inject_test",
+      "duration_sec": 14.631,
+      "name": "smc_efuse_jtag_lc_access_matrix_test",
       "reason": "positive pass evidence matched",
-      "seed": 1779236767,
+      "seed": 1717925544,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 16.949,
-      "name": "smc_output_fabric_wr_rd_responder_test",
+      "duration_sec": 15.322,
+      "name": "smc_efuse_jtag_lc_negative_test",
       "reason": "positive pass evidence matched",
-      "seed": 775001304,
+      "seed": 667698081,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 18.9,
-      "name": "smc_output_filter_remap_security_test",
+      "duration_sec": 16.01,
+      "name": "smc_efuse_guard_target_test",
       "reason": "positive pass evidence matched",
-      "seed": 769355998,
+      "seed": 671166435,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 27.686,
-      "name": "smc_output_remap_window_test",
+      "duration_sec": 15.019,
+      "name": "smc_efuse_lock_guard_test",
       "reason": "positive pass evidence matched",
-      "seed": 891328910,
+      "seed": 1531881370,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 54.169,
-      "name": "smc_periph_regblock_sweep_test",
+      "duration_sec": 14.987,
+      "name": "smc_efuse_locked_access_interrupt_test",
       "reason": "positive pass evidence matched",
-      "seed": 35600734,
+      "seed": 1781104253,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 29.289,
-      "name": "smc_peripheral_instance_decode_test",
+      "duration_sec": 14.811,
+      "name": "smc_efuse_map_read_test",
       "reason": "positive pass evidence matched",
-      "seed": 682700529,
+      "seed": 447576989,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 21.25,
-      "name": "smc_powergood_glitch_test",
+      "duration_sec": 14.218,
+      "name": "smc_efuse_otp_burn_shadow_test",
       "reason": "positive pass evidence matched",
-      "seed": 509792518,
+      "seed": 634667518,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 15.543,
-      "name": "smc_reference_counter_test",
+      "duration_sec": 14.453,
+      "name": "smc_efuse_otp_clock_config_depth_test",
       "reason": "positive pass evidence matched",
-      "seed": 1667652633,
+      "seed": 1408982858,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 25.657,
-      "name": "smc_rdl_field_sweep_test",
+      "duration_sec": 14.69,
+      "name": "smc_efuse_otp_clock_test",
       "reason": "positive pass evidence matched",
-      "seed": 2060501502,
+      "seed": 1115168372,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 17.716,
-      "name": "smc_regblock_partial_write_test",
+      "duration_sec": 12.226,
+      "name": "smc_efuse_permission_boundary_test",
       "reason": "positive pass evidence matched",
-      "seed": 830178247,
+      "seed": 1422929171,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 19.48,
-      "name": "smc_region_size_plic_clint_beu_decode_test",
+      "duration_sec": 16.228,
+      "name": "smc_efuse_read_program_timeout_test",
       "reason": "positive pass evidence matched",
-      "seed": 2066515292,
+      "seed": 1750870367,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 15.412,
-      "name": "smc_register_boundary_depth_test",
+      "duration_sec": 14.644,
+      "name": "smc_efuse_read_timeout_status_test",
       "reason": "positive pass evidence matched",
-      "seed": 668707797,
+      "seed": 165676709,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 211.467,
-      "name": "smc_primary_reset_scope_test",
+      "duration_sec": 14.491,
+      "name": "smc_efuse_shim_ctrl_test",
       "reason": "positive pass evidence matched",
-      "seed": 74943398,
+      "seed": 876824597,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 1252.809,
-      "name": "smc_mailbox_inbound_test",
+      "duration_sec": 14.52,
+      "name": "smc_ext_interrupts_pin_test",
       "reason": "positive pass evidence matched",
-      "seed": 1699078286,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "smoke",
-      "duration_sec": 15.514,
-      "name": "smc_register_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1331996935,
+      "seed": 1177791736,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 47.025,
-      "name": "smc_remap_cla_test",
+      "duration_sec": 13.676,
+      "name": "smc_external_window_pad_ctrl_decode_test",
       "reason": "positive pass evidence matched",
-      "seed": 1968929876,
+      "seed": 1117015960,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 16.531,
-      "name": "smc_reset_recovery_matrix_test",
+      "duration_sec": 28.517,
+      "name": "smc_filter_config_field_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 2003570754,
+      "seed": 631357468,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 13.796,
-      "name": "smc_reset_sync_edge_test",
+      "duration_sec": 14.295,
+      "name": "smc_filter_field_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 775366455,
+      "seed": 269548386,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 14.666,
-      "name": "smc_reset_unit_lock_test",
+      "duration_sec": 16.886,
+      "name": "smc_filter_multi_entry_test",
       "reason": "positive pass evidence matched",
-      "seed": 1918390622,
+      "seed": 947171478,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 15.972,
-      "name": "smc_sep_in_axi_flow_control_test",
+      "duration_sec": 19.858,
+      "name": "smc_filter_region_span_test",
       "reason": "positive pass evidence matched",
-      "seed": 200410215,
+      "seed": 1857666542,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 15.395,
-      "name": "smc_sep_in_axi_shape_test",
+      "duration_sec": 15.531,
+      "name": "smc_flr_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 1917619088,
+      "seed": 966830935,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 19.152,
+      "name": "smc_fw_hello_world_multicore_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1943455209,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 17.984,
+      "name": "smc_fw_hello_world_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1543570535,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 222.946,
+      "name": "smc_fw_i2c_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 895645290,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 437.532,
+      "name": "smc_fw_i2c_fifo_full_test",
+      "reason": "positive pass evidence matched",
+      "seed": 266368450,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 623.108,
+      "name": "smc_fw_i2c_target_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1511714599,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 460.174,
+      "name": "smc_fw_i2c_tx_stretch_timeout_recovery_test",
+      "reason": "positive pass evidence matched",
+      "seed": 416858325,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 27.892,
+      "name": "smc_fw_narrow_store_lane_test",
+      "reason": "positive pass evidence matched",
+      "seed": 20278774,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 61.247,
+      "name": "smc_fw_octs_p0_primary_test",
+      "reason": "positive pass evidence matched",
+      "seed": 918068062,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 116.425,
+      "name": "smc_fw_uart_log_engine_boundary_backpressure_test",
+      "reason": "positive pass evidence matched",
+      "seed": 534380760,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 507.595,
+      "name": "smc_fw_plic_claim_test",
+      "reason": "positive pass evidence matched",
+      "seed": 158436461,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 1896.131,
+      "name": "smc_fw_i2c_acq_fifo_stretch_reset_test",
+      "reason": "positive pass evidence matched",
+      "seed": 307902667,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 34.81,
+      "name": "smc_fw_uart_log_engine_single_entry_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1711089945,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 38.956,
-      "name": "smc_reset_unit_sanity_test",
+      "duration_sec": 14.205,
+      "name": "smc_gpio_boot_stall_test",
       "reason": "positive pass evidence matched",
-      "seed": 595401503,
+      "seed": 2093945344,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 23.554,
-      "name": "smc_smbus_alert_suspend_test",
+      "duration_sec": 15.071,
+      "name": "smc_gpio_ctrl_full_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 1156146156,
+      "seed": 370521119,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 228.873,
-      "name": "smc_smbus_hostnotify_test",
+      "duration_sec": 14.73,
+      "name": "smc_gpio_data_ctrl_field_test",
       "reason": "positive pass evidence matched",
-      "seed": 1175544252,
+      "seed": 1960299426,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 264.726,
-      "name": "smc_smbus_alert_ara_test",
+      "duration_sec": 17.846,
+      "name": "smc_gpio_filter_access_sep_test",
       "reason": "positive pass evidence matched",
-      "seed": 705642920,
+      "seed": 1727275783,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 330.841,
-      "name": "smc_sideband_protocol_smoke_test",
+      "duration_sec": 14.854,
+      "name": "smc_gpio_intf_full_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 819806155,
+      "seed": 364092758,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 670.496,
+      "name": "smc_fw_uart_log_engine_fetch_err_test",
+      "reason": "positive pass evidence matched",
+      "seed": 35335532,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 265.706,
-      "name": "smc_smbus_pmbus_test",
+      "duration_sec": 52.212,
+      "name": "smc_gpio_intf_regblock_sweep_test",
       "reason": "positive pass evidence matched",
-      "seed": 1825791875,
+      "seed": 231786999,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 31.817,
-      "name": "smc_ss_reset_complete_test",
+      "duration_sec": 13.744,
+      "name": "smc_gpio_irq_active_test",
       "reason": "positive pass evidence matched",
-      "seed": 1773576666,
+      "seed": 1211884446,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "firmware",
+      "duration_sec": 1032.934,
+      "name": "smc_fw_uart_log_engine_disable_during_xfer_test",
+      "reason": "positive pass evidence matched",
+      "seed": 851801806,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 38.45,
-      "name": "smc_state_fault_inject_test",
+      "duration_sec": 14.0,
+      "name": "smc_gpio_irq_mask_deassert_test",
       "reason": "positive pass evidence matched",
-      "seed": 1767738484,
+      "seed": 194652901,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 69.829,
-      "name": "smc_spi_pad_bfm_test",
+      "duration_sec": 13.758,
+      "name": "smc_gpio_irq_type_matrix_test",
       "reason": "positive pass evidence matched",
-      "seed": 635465917,
+      "seed": 57907342,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 113.78,
-      "name": "smc_spm_mem_boundary_test",
+      "duration_sec": 14.125,
+      "name": "smc_gpio_multi_sample_test",
       "reason": "positive pass evidence matched",
-      "seed": 1225423953,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "clock",
-      "duration_sec": 85.261,
-      "name": "smc_static_cg_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 55101946,
+      "seed": 1568621259,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 33.982,
-      "name": "smc_sys_axi_in_port_test",
+      "duration_sec": 14.243,
+      "name": "smc_gpio_observe_test",
       "reason": "positive pass evidence matched",
-      "seed": 498047295,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "all",
-      "duration_sec": 14.827,
-      "name": "smc_sys_out_aw_w_split_test",
-      "reason": "positive pass evidence matched",
-      "seed": 974878582,
+      "seed": 2044031142,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 17.885,
-      "name": "smc_telemetry_buffer_overflow_test",
+      "duration_sec": 13.605,
+      "name": "smc_gpio_output_driveback_test",
       "reason": "positive pass evidence matched",
-      "seed": 1515087663,
+      "seed": 157322946,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 77.158,
-      "name": "smc_telemetry_atb_capture_test",
+      "duration_sec": 14.72,
+      "name": "smc_gpio_p0_int_test",
       "reason": "positive pass evidence matched",
-      "seed": 11657430,
+      "seed": 103682163,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 19.523,
-      "name": "smc_telemetry_receiver_csr_test",
+      "duration_sec": 14.96,
+      "name": "smc_gpio_p0_mux_test",
       "reason": "positive pass evidence matched",
-      "seed": 2063203325,
+      "seed": 1322325508,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 35.446,
-      "name": "smc_temp_interrupt_test",
+      "duration_sec": 15.316,
+      "name": "smc_gpio_pad_input_readback_test",
       "reason": "positive pass evidence matched",
-      "seed": 184176568,
+      "seed": 267440442,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 68.974,
-      "name": "smc_uart_char_loopback_test",
+      "duration_sec": 15.168,
+      "name": "smc_hang_detector_data_timeout_test",
       "reason": "positive pass evidence matched",
-      "seed": 65173092,
+      "seed": 416825663,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 72.247,
-      "name": "smc_uart_error_conditions_test",
+      "duration_sec": 15.18,
+      "name": "smc_hang_detector_plic_route_test",
       "reason": "positive pass evidence matched",
-      "seed": 1302053434,
+      "seed": 531520646,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 39.179,
-      "name": "smc_uart_extremes_misc_test",
+      "duration_sec": 15.307,
+      "name": "smc_hang_detector_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 1439323225,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 55.598,
-      "name": "smc_uart_window_landing_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1229766265,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 163.449,
-      "name": "smc_uart_core_mode_select_test",
-      "reason": "positive pass evidence matched",
-      "seed": 615527164,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 43.563,
-      "name": "smc_log_engine_fetch_error_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2045349942,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 358.422,
-      "name": "smc_uart_baud_word_parity_format_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1831939947,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 76.268,
-      "name": "smc_uart_thr_paths_test",
-      "reason": "positive pass evidence matched",
-      "seed": 137884981,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 34.424,
-      "name": "smc_uart_irq_sources_priority_test",
-      "reason": "positive pass evidence matched",
-      "seed": 220165447,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.163,
-      "name": "smc_uart_log_engine_error_boundary_test",
-      "reason": "positive pass evidence matched",
-      "seed": 615872632,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 102.614,
-      "name": "smc_uart_fifo_basic_trigger_reset_test",
-      "reason": "positive pass evidence matched",
-      "seed": 2058659616,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 42.24,
-      "name": "smc_uart_log_engine_field_sweep_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1521008845,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 16.366,
-      "name": "smc_uart_log_engine_reg_rw_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1587165059,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 38.422,
-      "name": "smc_uart_loopback_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1571026169,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 22.27,
-      "name": "smc_uart_rbr_error_path_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1209938824,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 17.894,
-      "name": "smc_uart_sanity_test",
-      "reason": "positive pass evidence matched",
-      "seed": 514219304,
+      "seed": 1451592621,
       "stage": "sim",
       "status": "PASS"
     },
@@ -3238,134 +1659,1517 @@
       "attempt": 0,
       "category": "ci",
       "duration_sec": 14.437,
+      "name": "smc_hang_detector_sys_timeout_test",
+      "reason": "positive pass evidence matched",
+      "seed": 210215785,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.782,
+      "name": "smc_hang_detector_disable_test",
+      "reason": "positive pass evidence matched",
+      "seed": 527288112,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.382,
+      "name": "smc_hang_detector_timeout_test",
+      "reason": "positive pass evidence matched",
+      "seed": 173388822,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.711,
+      "name": "smc_i2c_cg_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 127201299,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 29.928,
+      "name": "smc_i2c2_controller_rdwr_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1361199632,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 36.857,
+      "name": "smc_i2c_config_regblock_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1506121991,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 35.447,
+      "name": "smc_i2c_controller_control_symbol_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1045153648,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 112.146,
+      "name": "smc_i2c_controller_disable_stop_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1446431585,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 224.809,
+      "name": "smc_i2c_bus_monitor_idle_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2042114832,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 151.416,
+      "name": "smc_i2c_controller_edge_timing_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1075663618,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 133.196,
+      "name": "smc_i2c_controller_exits_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1918146685,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 101.074,
+      "name": "smc_i2c_controller_queue_shapes_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1322574180,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 49.368,
+      "name": "smc_i2c_controller_sda_interference_test",
+      "reason": "positive pass evidence matched",
+      "seed": 367025033,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 146.638,
+      "name": "smc_i2c_controller_scl_events_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1375009319,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 45.881,
+      "name": "smc_i2c_error_fifo_depth_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2102989129,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 25.658,
+      "name": "smc_i2c_event_retain_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1454082238,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 127.755,
+      "name": "smc_i2c_controller_stretch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1195805846,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 151.907,
+      "name": "smc_i2c_window_landing_test",
+      "reason": "positive pass evidence matched",
+      "seed": 325488987,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 17.103,
+      "name": "smc_i2c_fifo_reset_pulse_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1267683292,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 20.726,
+      "name": "smc_i2c_intr_mask_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1417371780,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 19.913,
+      "name": "smc_i2c_intr_reg_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1094144853,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 303.478,
+      "name": "smc_i2c_bus_corners_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1686935922,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 272.706,
+      "name": "smc_i2c_fifo_full_test",
+      "reason": "positive pass evidence matched",
+      "seed": 543044857,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 46.009,
+      "name": "smc_i2c_master_target_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1362135535,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.74,
+      "name": "smc_i2c_multi_instance_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1117327687,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.613,
+      "name": "smc_i2c_multi_sample_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1749412294,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.49,
+      "name": "smc_i2c_p0_cfifo_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1956536771,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 25.144,
+      "name": "smc_i2c_p0_fifo_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2096181473,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 54.936,
+      "name": "smc_i2c_p0_conti_test",
+      "reason": "positive pass evidence matched",
+      "seed": 47904338,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 66.545,
+      "name": "smc_i2c_p0_multictrl_test",
+      "reason": "positive pass evidence matched",
+      "seed": 740105853,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 28.279,
+      "name": "smc_i2c_p0_nack_test",
+      "reason": "positive pass evidence matched",
+      "seed": 492601297,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 20.983,
+      "name": "smc_i2c_p0_stretch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 201028053,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 34.266,
+      "name": "smc_i2c_p0_rdwr_test",
+      "reason": "positive pass evidence matched",
+      "seed": 766329040,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 29.675,
+      "name": "smc_i2c_p0_timeout_test",
+      "reason": "positive pass evidence matched",
+      "seed": 643548140,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 52.504,
+      "name": "smc_i2c_p1_rdwr_protocol_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1903093050,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 38.528,
+      "name": "smc_i2c_target_ack_ctrl_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2066384918,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 292.954,
+      "name": "smc_i2c_target_acq_stretch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1606611207,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 321.878,
+      "name": "smc_i2c0_target_addr_stretch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1977010379,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 322.734,
+      "name": "smc_i2c1_target_addr_stretch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1644144928,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 691.43,
+      "name": "smc_i2c_protocol_interruption_test",
+      "reason": "positive pass evidence matched",
+      "seed": 24560759,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 381.452,
+      "name": "smc_i2c2_target_addr_stretch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 930478946,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 246.195,
+      "name": "smc_i2c0_target_fast_controller_test",
+      "reason": "positive pass evidence matched",
+      "seed": 552614691,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 248.002,
+      "name": "smc_i2c1_target_fast_controller_test",
+      "reason": "positive pass evidence matched",
+      "seed": 322244026,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 210.256,
+      "name": "smc_i2c2_target_fast_controller_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1510267878,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 356.882,
+      "name": "smc_i2c_target_multi_instance_stretch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1859885838,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 259.107,
+      "name": "smc_i2c_target_loopback_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1332511606,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 33.426,
+      "name": "smc_i2c_target_read_abort_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1121722605,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 919.899,
+      "name": "smc_i2c_target_bus_timeout_test",
+      "reason": "positive pass evidence matched",
+      "seed": 350126157,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 132.83,
+      "name": "smc_i2c_target_nack_timeout_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1998540798,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 21.048,
+      "name": "smc_i3c_dxt_table_test",
+      "reason": "positive pass evidence matched",
+      "seed": 121542636,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 17.97,
+      "name": "smc_i3c_private_write_test",
+      "reason": "positive pass evidence matched",
+      "seed": 594784490,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 15.147,
+      "name": "smc_i3c_to_fabric_test",
+      "reason": "positive pass evidence matched",
+      "seed": 172889749,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.626,
+      "name": "smc_ijtag_basic_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1041464359,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.195,
+      "name": "smc_input_fabric_axi_wr_rd_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1726014599,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 138.222,
+      "name": "smc_i2c_target_smbus_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1958921991,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.591,
+      "name": "smc_input_output_fabric_wr_rd_test",
+      "reason": "positive pass evidence matched",
+      "seed": 171547693,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 17.502,
+      "name": "smc_intr_status_partial_clear_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1697766550,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.954,
+      "name": "smc_irq_during_powergood_glitch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 288898659,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.85,
+      "name": "smc_irq_multi_sample_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1424923020,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.963,
+      "name": "smc_irq_observe_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2140264050,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.88,
+      "name": "smc_jtag_axi_shape_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2118836130,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.35,
+      "name": "smc_jtag_boot_stall_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1068542920,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 19.722,
+      "name": "smc_jtag_dmi_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 354234450,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.796,
+      "name": "smc_jtag_reset_ctrl_test",
+      "reason": "positive pass evidence matched",
+      "seed": 86285590,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 16.0,
+      "name": "smc_jtag_reset_proxy_test",
+      "reason": "positive pass evidence matched",
+      "seed": 160915971,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.481,
+      "name": "smc_local_fabric_csr_depth_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2037558015,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.658,
+      "name": "smc_log_engine_intr_mask_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1505558491,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.682,
+      "name": "smc_mailbox_data_error_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2027481905,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.844,
+      "name": "smc_mailbox_event_irq_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1682738135,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 108.694,
+      "name": "smc_log_engine_abort_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1042492977,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.002,
+      "name": "smc_mailbox_field_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1129862692,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.888,
+      "name": "smc_mailbox_flush_test",
+      "reason": "positive pass evidence matched",
+      "seed": 918400466,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.635,
+      "name": "smc_mailbox_idle_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2087914141,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 12.758,
+      "name": "smc_mailbox_inbound_test",
+      "reason": "positive pass evidence matched",
+      "seed": 780697345,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.532,
+      "name": "smc_mailbox_irq_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1822225957,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.72,
+      "name": "smc_mailbox_multi_instance_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1805576456,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.768,
+      "name": "smc_mixed_boot_stall_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1123759160,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 238.751,
+      "name": "smc_log_engine_transfer_test",
+      "reason": "positive pass evidence matched",
+      "seed": 146021049,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.516,
+      "name": "smc_multi_reset_csr_persistence_test",
+      "reason": "positive pass evidence matched",
+      "seed": 29355342,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.976,
+      "name": "smc_mutex_semaphore_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1781368846,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.352,
+      "name": "smc_ndm_reset_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1218052934,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.38,
+      "name": "smc_occp_sanity_secure_error_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1897396535,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 1,
+      "category": "dual",
+      "duration_sec": 7.374,
+      "name": "smc_occp_sanity_test",
+      "reason": "1 testcase failure/error node(s)",
+      "seed": 317915571,
+      "stage": "sim",
+      "status": "FAIL"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.67,
+      "name": "smc_octs_credit_expired_test",
+      "reason": "positive pass evidence matched",
+      "seed": 392293752,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.51,
+      "name": "smc_octs_primary_start_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1392549063,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.597,
+      "name": "smc_octs_dual_sync_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1368455759,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.828,
+      "name": "smc_octs_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1827148253,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 12.921,
+      "name": "smc_output_fabric_slverr_inject_test",
+      "reason": "positive pass evidence matched",
+      "seed": 251619910,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.194,
+      "name": "smc_output_fabric_wr_rd_responder_test",
+      "reason": "positive pass evidence matched",
+      "seed": 423133106,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.362,
+      "name": "smc_output_filter_remap_security_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1459321758,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.441,
+      "name": "smc_output_remap_window_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1300769701,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 19.397,
+      "name": "smc_peripheral_instance_decode_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1734009297,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.792,
+      "name": "smc_powergood_glitch_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1753209080,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 33.564,
+      "name": "smc_periph_regblock_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1835987550,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 23.149,
+      "name": "smc_rdl_field_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 57389985,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 29.384,
+      "name": "smc_primary_reset_scope_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1986515096,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.927,
+      "name": "smc_reference_counter_test",
+      "reason": "positive pass evidence matched",
+      "seed": 660498923,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 16.727,
+      "name": "smc_regblock_partial_write_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2118424583,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.613,
+      "name": "smc_region_size_plic_clint_beu_decode_test",
+      "reason": "positive pass evidence matched",
+      "seed": 542525563,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.079,
+      "name": "smc_register_boundary_depth_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1389783808,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "smoke",
+      "duration_sec": 14.107,
+      "name": "smc_register_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 695733609,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 19.694,
+      "name": "smc_remap_cla_test",
+      "reason": "positive pass evidence matched",
+      "seed": 553693212,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.738,
+      "name": "smc_reset_recovery_matrix_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1514767897,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.659,
+      "name": "smc_reset_sync_edge_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1635217919,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.199,
+      "name": "smc_reset_unit_lock_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1760981923,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.448,
+      "name": "smc_reset_unit_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1972667493,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.868,
+      "name": "smc_sep_in_axi_flow_control_test",
+      "reason": "positive pass evidence matched",
+      "seed": 596704967,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.806,
+      "name": "smc_sep_in_axi_shape_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1128932547,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.823,
+      "name": "smc_sideband_protocol_smoke_test",
+      "reason": "positive pass evidence matched",
+      "seed": 50011361,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 20.285,
+      "name": "smc_smbus_alert_suspend_test",
+      "reason": "positive pass evidence matched",
+      "seed": 231167702,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 132.498,
+      "name": "smc_smbus_alert_ara_test",
+      "reason": "positive pass evidence matched",
+      "seed": 494796282,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.226,
+      "name": "smc_spi_pad_bfm_test",
+      "reason": "positive pass evidence matched",
+      "seed": 338610872,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.032,
+      "name": "smc_spm_mem_boundary_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1154240982,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.849,
+      "name": "smc_ss_reset_complete_test",
+      "reason": "positive pass evidence matched",
+      "seed": 139139487,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 24.093,
+      "name": "smc_state_fault_inject_test",
+      "reason": "positive pass evidence matched",
+      "seed": 678117830,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "clock",
+      "duration_sec": 13.971,
+      "name": "smc_static_cg_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1656268331,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 295.193,
+      "name": "smc_smbus_hostnotify_test",
+      "reason": "positive pass evidence matched",
+      "seed": 481648761,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.609,
+      "name": "smc_sys_axi_in_port_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1157007804,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "all",
+      "duration_sec": 13.879,
+      "name": "smc_sys_out_aw_w_split_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1743778872,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.55,
+      "name": "smc_telemetry_atb_capture_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1502451358,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 304.697,
+      "name": "smc_smbus_pmbus_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2037931688,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 16.687,
+      "name": "smc_telemetry_buffer_overflow_test",
+      "reason": "positive pass evidence matched",
+      "seed": 751052339,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.347,
+      "name": "smc_telemetry_receiver_csr_test",
+      "reason": "positive pass evidence matched",
+      "seed": 179167509,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.519,
+      "name": "smc_temp_interrupt_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1865535675,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 67.909,
+      "name": "smc_uart_char_loopback_test",
+      "reason": "positive pass evidence matched",
+      "seed": 20323705,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 123.292,
+      "name": "smc_uart_core_mode_select_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1320866131,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 79.542,
+      "name": "smc_uart_error_conditions_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2093457911,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 34.828,
+      "name": "smc_uart_extremes_misc_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1213367862,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 56.832,
+      "name": "smc_uart_window_landing_test",
+      "reason": "positive pass evidence matched",
+      "seed": 281950297,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 64.387,
+      "name": "smc_uart_thr_paths_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1591684965,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 36.381,
+      "name": "smc_log_engine_fetch_error_test",
+      "reason": "positive pass evidence matched",
+      "seed": 215265095,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 25.756,
+      "name": "smc_uart_irq_sources_priority_test",
+      "reason": "positive pass evidence matched",
+      "seed": 523091814,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 391.977,
+      "name": "smc_uart_baud_word_parity_format_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1806349596,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.9,
+      "name": "smc_uart_log_engine_error_boundary_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1579739145,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 15.985,
+      "name": "smc_uart_log_engine_reg_rw_test",
+      "reason": "positive pass evidence matched",
+      "seed": 359490525,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 114.939,
+      "name": "smc_uart_fifo_basic_trigger_reset_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2019647924,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 40.048,
+      "name": "smc_uart_log_engine_field_sweep_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1103066773,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 41.548,
+      "name": "smc_uart_loopback_test",
+      "reason": "positive pass evidence matched",
+      "seed": 349333450,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 26.211,
+      "name": "smc_uart_rbr_error_path_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1309871346,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 19.313,
+      "name": "smc_uart_sanity_test",
+      "reason": "positive pass evidence matched",
+      "seed": 2133784200,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 13.496,
       "name": "smc_uart_spi_log_engine_test",
       "reason": "positive pass evidence matched",
-      "seed": 824379019,
+      "seed": 1303477936,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 16.013,
+      "duration_sec": 17.753,
       "name": "smc_wdt_key_csr_test",
       "reason": "positive pass evidence matched",
-      "seed": 931096334,
+      "seed": 1913783722,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 15.508,
+      "duration_sec": 14.373,
       "name": "smc_xvisor_remap_test",
       "reason": "positive pass evidence matched",
-      "seed": 1741557494,
+      "seed": 1410523355,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "clock",
-      "duration_sec": 15.931,
+      "duration_sec": 14.895,
       "name": "smc_zeroer_axiclk_cg_test",
       "reason": "positive pass evidence matched",
-      "seed": 1785061261,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 15.323,
-      "name": "smc_zeroer_dma_timeout_test",
-      "reason": "positive pass evidence matched",
-      "seed": 1692584850,
-      "stage": "sim",
-      "status": "PASS"
-    },
-    {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 18.795,
-      "name": "smc_zeroer_multi_burst_test",
-      "reason": "positive pass evidence matched",
-      "seed": 378967963,
+      "seed": 268513000,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "clock",
-      "duration_sec": 14.623,
+      "duration_sec": 14.605,
       "name": "smc_zeroer_cg_indep_test",
       "reason": "positive pass evidence matched",
-      "seed": 1899364827,
+      "seed": 142279408,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 14.604,
+      "name": "smc_zeroer_dma_timeout_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1658136567,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 92.395,
+      "name": "smc_wdt_timeout_pin_test",
+      "reason": "positive pass evidence matched",
+      "seed": 1719714831,
+      "stage": "sim",
+      "status": "PASS"
+    },
+    {
+      "attempt": 0,
+      "category": "ci",
+      "duration_sec": 17.442,
+      "name": "smc_zeroer_multi_burst_test",
+      "reason": "positive pass evidence matched",
+      "seed": 421051088,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "clock",
-      "duration_sec": 14.805,
+      "duration_sec": 14.862,
       "name": "smc_zeroer_regclk_cg_test",
       "reason": "positive pass evidence matched",
-      "seed": 994232706,
+      "seed": 1538910881,
       "stage": "sim",
       "status": "PASS"
     },
     {
       "attempt": 0,
       "category": "ci",
-      "duration_sec": 14.925,
+      "duration_sec": 13.87,
       "name": "smc_zeroer_sanity_test",
       "reason": "positive pass evidence matched",
-      "seed": 1207034995,
+      "seed": 1704433110,
       "stage": "sim",
       "status": "PASS"
     },
     {
-      "attempt": 0,
-      "category": "ci",
-      "duration_sec": 99.208,
-      "name": "smc_wdt_timeout_pin_test",
-      "reason": "positive pass evidence matched",
-      "seed": 886535011,
+      "attempt": 1,
+      "category": "firmware",
+      "duration_sec": 3602.021,
+      "name": "smc_fw_i2c_p1_fifo_depth_xfer_test",
+      "reason": "`/proj_soc_scratch/regr/workspace/tt-oca-harness/smc/cocotb/.venv/bin/python3` exceeded timeout of 3600s",
+      "seed": 442513197,
       "stage": "sim",
-      "status": "PASS"
+      "status": "TIMEOUT"
     }
   ],
   "timing": {
-    "duration_sec": 29958.578,
-    "end_time": "2026-09-27T16:08:07.822683+00:00",
-    "start_time": "2026-09-26T19:00:36.915931+00:00"
+    "duration_sec": 23617.618,
+    "end_time": "2026-09-27T21:20:04.811345+00:00",
+    "start_time": "2026-09-27T18:54:42.581268+00:00"
   },
-  "tool": "vcs",
-  "warnings": [
-    "JUnit XML not recorded for smc_dfd_cla_node_eap_sweep_test",
-    "JUnit XML not recorded for smc_dfd_cla_node_eap_sweep_test",
-    "JUnit XML not recorded for smc_dfd_trace_accumulator_fill_test",
-    "JUnit XML not recorded for smc_dfd_trace_sink_concurrent_test",
-    "JUnit XML not recorded for smc_dma_cg_activity_test",
-    "JUnit XML not recorded for smc_dma_reg_byte_enable_error_test",
-    "JUnit XML not recorded for smc_dual_axi_sram_probe_test",
-    "JUnit XML not recorded for smc_dma_sanity_test",
-    "JUnit XML not recorded for smc_dma_sanity_test",
-    "JUnit XML not recorded for smc_dual_base_addressing_test",
-    "JUnit XML not recorded for smc_dual_base_addressing_test",
-    "JUnit XML not recorded for smc_ecc_codeword_ded_test",
-    "JUnit XML not recorded for smc_efuse_boundary_signals_test",
-    "JUnit XML not recorded for smc_efuse_jtag_lc_negative_test",
-    "JUnit XML not recorded for smc_efuse_otp_burn_shadow_test",
-    "JUnit XML not recorded for smc_efuse_permission_boundary_test",
-    "JUnit XML not recorded for smc_efuse_read_timeout_status_test",
-    "JUnit XML not recorded for smc_ext_interrupts_pin_test",
-    "JUnit XML not recorded for smc_filter_field_sweep_test",
-    "JUnit XML not recorded for smc_fw_uart_log_engine_fetch_err_test",
-    "JUnit XML not recorded for smc_fw_uart_log_engine_fetch_err_test",
-    "JUnit XML not recorded for smc_gpio_filter_access_sep_test",
-    "JUnit XML not recorded for smc_gpio_multi_sample_test",
-    "JUnit XML not recorded for smc_hang_detector_sys_timeout_test",
-    "JUnit XML not recorded for smc_occp_sanity_secure_error_test"
-  ]
+  "tool": "vcs"
 }

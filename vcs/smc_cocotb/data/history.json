@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T16:08:10+00:00",
+  "generated_at": "2026-09-27T21:20:07+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -298,6 +298,72 @@
         }
       ],
       "test_pass_rate": 96.63
+    },
+    {
+      "failed_tests": 7,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-27T21:20:07+00:00",
+      "id": "1f58e565d3d67ef1",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-3e352fcf0724bc4b",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 91.89,
+            "branch": 86.26,
+            "condition": 81.86,
+            "fsm_state": 89.66,
+            "functional": 95.29,
+            "line": 95.23,
+            "toggle": 36.53,
+            "user": 89.3204
+          },
+          "flow": "smc",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 30,
+            "by_category": {
+              "missing_stimulus": 21,
+              "needs_review": 21,
+              "unreachable": 9,
+              "user": 4
+            },
+            "by_disposition": {
+              "cover": 25,
+              "waive": 30
+            },
+            "by_metric": {
+              "user": 55
+            },
+            "by_status": {
+              "accepted": 30,
+              "open": 25
+            },
+            "details_available": true,
+            "hole_group_count": 47,
+            "native_point_count": 55,
+            "observations_complete": false,
+            "open": 25,
+            "unclassified": 4
+          },
+          "raw_metrics": {
+            "assertion": 91.89,
+            "branch": 83.5,
+            "condition": 68.76,
+            "fsm_state": 56.18,
+            "functional": 76.85,
+            "line": 95.23,
+            "toggle": 36.87,
+            "user": 89.3204
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 97.64
     }
   ],
   "schema_version": "0.2"
