@@ -5,7 +5,8 @@
 
 One SHA-256 over every file the EL2 TCM images can draw from: the SEP DV
 firmware tree, the shared DV firmware engine, the SEP boot ROM headers the tests
-include, and the generated register headers on the include path. Build output
+include, and every generated register header directory on the include path
+(SEP, IP and vendor overlay). Build output
 (any ``build/`` directory) is not an input.
 
 ``fw.mk`` compiles the digest into each image as the string
@@ -29,6 +30,9 @@ import sys
 from pathlib import Path
 
 # Inputs, relative to the repository root. A glob entry expands to every match.
+# The generated-header entries mirror ocah_fw_reg_includes in
+# hw/common/dv/fw/reg_includes.mk: every directory it puts on the include path
+# for FW_REG_SYS=sep is an input here. A change there must be made here too.
 SOURCE_DIRS = (
     "hw/sys/sep/dv/fw",
     "hw/common/dv/fw",
@@ -36,6 +40,11 @@ SOURCE_DIRS = (
     "hw/sys/sep/regs/gen/c",
     "hw/sys/sep/dv/models/regs/gen/c",
     "hw/ip/*/dv/models/regs/gen/c",
+    "hw/ip/*/*/dv/models/regs/gen/c",
+    "hw/ip/*/regs/gen/c",
+    "hw/ip/*/*/regs/gen/c",
+    "vendor/*/*/overlay/rdl/gen/c",
+    "vendor/*/*/overlay/regs/*/regs/gen/c",
 )
 _SKIP_DIRS = frozenset({"build", "__pycache__"})
 MARKER = b"FW-BUILD-ID:"
