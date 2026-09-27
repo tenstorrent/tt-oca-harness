@@ -70,7 +70,13 @@ class sep_efuse_image_test(sep_base_test):
             "the fail-closed contrast would be vacuous"
         )
         opened_seq = SepLccFeatCtrlCheckSeq(opened)
+        mark = self.sb_mark()
         await self.start_seq(opened_seq)
+        self.assert_sb_judged(mark, "CHK-PRE-SENSE-OPEN")
+        assert opened_seq.feat_ctrl == opened, (
+            f"CHK-PRE-SENSE-OPEN FAIL: FEAT_CTRL=0x{opened_seq.feat_ctrl:016x} after "
+            f"sense-done, expected 0x{opened:016x}"
+        )
         self.logger.info(
             "CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0x%016x after sense-done (guard opened)",
             opened_seq.feat_ctrl,
@@ -134,7 +140,9 @@ class sep_efuse_image_test(sep_base_test):
         # expected image), resense, and verify the shadow tracks image + all bits.
         self.write_efuse_image(golden)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        mark = self.sb_mark()
         await self.start_seq(sep_efuse_shadow_check_seq(golden))
+        self.assert_sb_judged(mark, "CHK-W1S-PERSIST")
         self.logger.info(
             "CHK-W1S-PERSIST PASS: resense shadow == initial image + %d W1S bits", _NUM_BURN
         )

@@ -476,10 +476,16 @@ class sep_base_test(uvm_test):
         closed = feat_ctrl_expected(0xF, 0, 0)
         assert closed == 0, "CHK-PRE-SENSE-FAIL-CLOSED FAIL: invalid-LC golden is not 0"
         seq = SepLccFeatCtrlCheckSeq(closed)
+        mark = self.sb_mark()
         await self.start_seq(seq)
         assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-PRE-SENSE-FAIL-CLOSED FAIL: sense completed during the FEAT_CTRL "
             "read; the closed side was not observed"
+        )
+        self.assert_sb_judged(mark, "CHK-PRE-SENSE-FAIL-CLOSED")
+        assert seq.feat_ctrl == closed, (
+            f"CHK-PRE-SENSE-FAIL-CLOSED FAIL: FEAT_CTRL=0x{seq.feat_ctrl:016x} before "
+            f"sense-done, expected 0x{closed:016x}"
         )
         self.logger.info(
             "CHK-PRE-SENSE-FAIL-CLOSED PASS: FEAT_CTRL=0x%016x while sep_fuse_sense_done_o=0",
@@ -841,6 +847,26 @@ class sep_base_test(uvm_test):
     async def start_seq(self, seq) -> None:
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
+
+    def sb_mark(self) -> tuple[int, int]:
+        """Scoreboard error and judged-read counts, taken before a checked sequence."""
+        sb = self.env.scoreboard
+        return len(sb.errors), sb.value_checks
+
+    def assert_sb_judged(self, mark: tuple[int, int], chk: str) -> None:
+        """Fail ``chk`` unless the scoreboard judged a read and rejected none since ``mark``.
+
+        SepScoreboard.write compares every read that carries ``item.expected``:
+        a mismatch goes to ``errors`` and fails the test only at check_phase, and
+        a match counts in ``value_checks``. A CHK PASS line logged after this
+        call rests on that judgment, so it cannot print for a value the
+        scoreboard rejected.
+        """
+        errs, judged = mark
+        sb = self.env.scoreboard
+        new = sb.errors[errs:]
+        assert not new, f"{chk} FAIL: scoreboard rejected {len(new)} read(s): " + "; ".join(new)
+        assert sb.value_checks > judged, f"{chk} FAIL: the scoreboard judged no read value"
 
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).

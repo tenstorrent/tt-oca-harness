@@ -107,7 +107,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         # ---- PROD: sep_debug=0, inbound filter active -> external blocked ----
         feat_prod = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         ctl_prod = SepLccFeatCtrlCheckSeq(feat_prod)
+        mark = self.sb_mark()
         await self.start_seq(ctl_prod)
+        self.assert_sb_judged(mark, "CHK-PROD-FEAT")
+        assert ctl_prod.feat_ctrl == feat_prod, (
+            f"CHK-PROD-FEAT FAIL: FEAT_CTRL=0x{ctl_prod.feat_ctrl:016x} != golden 0x{feat_prod:016x}"
+        )
         assert ctl_prod.sep_debug == 0, (
             f"PROD sep_debug must be 0, got {ctl_prod.sep_debug} "
             f"(FEAT_CTRL=0x{ctl_prod.feat_ctrl:016x})"
@@ -155,7 +160,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, demote_2=1, sec_dis=sec_dis
         )
         ctl_d2 = SepLccFeatCtrlCheckSeq(feat_d2)
+        mark = self.sb_mark()
         await self.start_seq(ctl_d2)
+        self.assert_sb_judged(mark, "CHK-DEMOTE-INDEP")
         assert ctl_d2.sep_debug == 0, (
             f"DEMOTE_2 alone must NOT open sep_debug (a DBG_1 bit), got "
             f"{ctl_d2.sep_debug} (FEAT_CTRL=0x{ctl_d2.feat_ctrl:016x}) -- the two demote "
@@ -197,7 +204,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=1, demote_2=1, sec_dis=sec_dis
         )
         ctl_dbg = SepLccFeatCtrlCheckSeq(feat_dbg)
+        mark = self.sb_mark()
         await self.start_seq(ctl_dbg)
+        self.assert_sb_judged(mark, "CHK-DBG-FEAT")
+        assert ctl_dbg.feat_ctrl == feat_dbg, (
+            f"CHK-DBG-FEAT FAIL: FEAT_CTRL=0x{ctl_dbg.feat_ctrl:016x} != golden 0x{feat_dbg:016x}"
+        )
         assert ctl_dbg.sep_debug == 1, (
             f"PROD_DBG_1 sep_debug must be 1, got {ctl_dbg.sep_debug} "
             f"(FEAT_CTRL=0x{ctl_dbg.feat_ctrl:016x})"
