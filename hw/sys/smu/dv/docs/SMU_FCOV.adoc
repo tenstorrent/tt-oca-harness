@@ -6,192 +6,415 @@
 
 === Overview
 
-This chapter states what coverage the SMU open-source testbench collects,
-what the collected number measures, and what the verification plan is
-allowed to claim from it. The collection mechanics -- the scope file, the
-policy file and the Verilator knobs -- are under `cov/`; the release-group
-grading rules and the waiver fields are in
-`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc`.
+This plan covers the legal operating modes of the SMU wrapper that the `all`
+regression walks at the wrapper boundary: reset and boot sequencing, the
+address map and the inbound fabric, the debug bridges, the lifecycle
+broadcast, cross-trigger and clock-stop, and the external ports. It is the
+functional-coverage contract of the open-source SMU testbench.
+
+The contract is carried by ten passive modules under `cov/sv/`, one instance
+each in `tb/tb_wrapper_top.sv`. Each module has two layers: labelled
+`cover property` points declared through `OCAH_FCOV_COVER`, which every
+simulator compiles and which land in the runner's `user` family, and SV
+covergroups under `ifndef VERILATOR`, which only the commercial simulators
+compile and which urg reports as the GROUP score.
+
+Feature checkers stay on the VPLAN scorecard. A hit here says the wrapper
+presented the event at its boundary; it is not the checker's claim, which
+compares a golden.
 
 [cols=",",options="header",]
 |===
 |Field |Value
+|DUT |`smu_wrapper` (`hw/top/smu_wrapper.sv`) on its one compile profile, `compile_smu_chiplet`, with the SEP elaborated
+|Reference specification |`hw/sys/smu/doc/` and the generated register collateral under `hw/sys/*/regs/gen/`
 |Reference VPLAN |`SMU_VPLAN.adoc`
 |Reference architecture |`SMU_TB_ARCH.adoc`
 |Framework |PyUVM on cocotb
-|Simulator that collects |Verilator (`--cov`) and, on the licensed flow no public job runs, VCS through the `[coverage.vcs]` table and `cov/config/vcs/smu_wrapper_cov_scope.hier`
-|Coverage set |`--items all`, the 102-leaf package regression, as SEP grades its `all`; the SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run. The weekly `--cov` in `regress.yml` grades the toolchain-free `hosted` subset only
-|What `--dut smu` collects |line, expression and `user` over a scope that drops everything the wrapper instantiates; on the VCS flow, line, condition, FSM, branch and toggle over the SMU's own logic (`cov/config/vcs/README.md`) after `cov/config/vcs/smu_wrapper_toggle_exclusions.el`
-|Scope file |`cov/config/verilator/smu_wrapper_cov_scope.vlt`
-|Policy file |`cov/config/verilator/smu_wrapper_coverage_policy.toml` (Verilator `user`); `cov/config/vcs/smu_wrapper_coverage_policy.toml` (VCS `toggle` / `assertion`)
-|Cover-property modules |10 under `cov/sv/`, 111 points in all; see <<smu-fcov-points>>
+|Simulators |Verilator (`user`, line, expression) and VCS (the cover properties, the covergroups, and line, condition, branch and toggle over the SMU's own logic)
+|Coverage set |`--items all`, the 108-leaf package regression. The SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run; the weekly `--cov` in `regress.yml` grades the toolchain-free `hosted` subset
+|Policy files |`cov/config/verilator/smu_wrapper_coverage_policy.toml`, `cov/config/vcs/smu_wrapper_coverage_policy.toml`
 |===
 
-=== Metric Choice
+=== Coverage Goals
+
+[cols="2,2,3",options="header",]
+|===
+|Metric |Contract |Collection path
+|Phase 1 cover properties |100 percent of the collected population, with no waiver |The `user` family on Verilator; urg's `Summary for Cover Properties` in `cov/report/asserts.txt` on VCS, graded under the `assertion` family
+|Phase 1 covergroups |100 percent of the GROUP score on `smu_wrapper_uvm_top.u_smu_*_fcov` |URG Group report of a `--tool vcs --cov` run, after `cov/config/vcs/smu_wrapper_group_exclusions.el`
+|Phase 2 |Named set at the end of this plan |Not collected
+|Toggle, line, condition, branch |Not a functional-coverage contract |`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc` states the targets
+|===
+
+The GROUP score counts only the `cov/sv` covergroups. The covergroups the
+vendored I3C core declares under `u_dut` leave through the group exclusion
+file (`cov/config/vcs/README.md`, "Covergroups from vendored RTL").
+
+=== Two-Phase Scope
+
+[cols="1,4",options="header",]
+|===
+|Phase |Scope
+|*Phase 1* |The points and bins below: legal cells of the wrapper's behaviour that a named `all` test walks, or that a test added in the same change walks.
+|*Phase 2* |Error and fault paths the bench cannot produce, and encodings the specification makes illegal. Named in <<smu-fcov-phase2>>. Not compiled.
+|===
+
+A point enters Phase 1 only with a test that walks it. A point that no legal
+configuration of this bench reaches is not carried in the collected
+population as an accepted hole: it is Phase 2, and its reason and what would
+bring it back are recorded there.
+
+=== Coverage Summary
+
+[cols="2,1,1,1,3",options="header",]
+|===
+|Module |Phase 1 points |Phase 2 points |SEP=0 only |Covergroups
+|`smu_xbar_fcov` |22 |3 |0 |`cg_sep_window`, `cg_axi_in_resp` (`u_cg_bresp`, `u_cg_rresp`), `cg_map_window`
+|`smu_boot_fcov` |20 |1 |0 |`cg_boot_stall`, `cg_lifecycle`
+|`smu_rst_fcov` |17 |0 |0 |`cg_block_release`
+|`smu_dbg_fcov` |13 |0 |0 |`cg_dbg_disable_slice`
+|`smu_ext_fcov` |9 |0 |1 |`cg_smn_ids`
+|`smu_dtp_fcov` |7 |0 |0 |`cg_ic_reset_ext`
+|`smu_alias_fcov` |4 |0 |0 |`cg_alias_path`
+|`smu_lc_fcov` |3 |0 |3 |`cg_lc_at_release`
+|`smu_clk_fcov` |3 |0 |0 |`cg_tel_rate`, `cg_wdt_rate`
+|`smu_clkstop_fcov` |3 |0 |0 |`cg_clk_stop_sources`
+|Total |101 |4 |4 |14 covergroups, 15 instances
+|===
+
+The counts are the `OCAH_FCOV_COVER` invocations in each file. The four
+Phase 2 points sit behind `ifdef SMU_FCOV_PHASE2`, which no configuration
+defines. The four SEP=0 points sit in `g_nosep` generate blocks, which the
+wrapper's single target does not elaborate, so 101 points enter the database.
+
+=== Collection
+
+==== Metric choice
 
 SMU is an integration level: `hw/sys/smu/rtl/smu.sv` wires SMC, DTP, SEP and
-the AXI crossbar together and carries almost no procedural logic. Verilator
-emits no line, branch or expression instrumentation site for anything under
-`hw/sys/smu/rtl/`. An unscoped line/branch/expression build produces on the
-order of 1.3 million sites, every one of them outside SMU: the vendored trees,
-the chipyard-generated CPU cluster, `hw/ip`, `hw/common`, `hw/sys/smc` and the
-testbench account for all of them.
-
-Those three families therefore cannot grade SMU. Toggle instruments nets,
-which is what an integration level owns -- whether the interconnect it wires
-up was exercised -- so the metric this package intends is *toggle*, with the
-`cov/sv` cover properties as *functional (`user`)* coverage beside it. Each
+the AXI crossbar together and carries almost no procedural logic. An
+unscoped line, branch or expression build produces on the order of 1.3
+million sites, every one of them outside SMU, so those families cannot grade
+it. Toggle instruments nets, which is what an integration level owns; it is
+measured on the VCS flow over the SMU's own logic (`cov/config/vcs/README.md`).
+The `cov/sv` points and covergroups are the functional half beside it. Each
 subsystem grades its own internals in its own DV package.
 
-Toggle is measured on the VCS flow over the SMU's own logic: `-cm_hier`
-drops SEP, SMC and DTP, the bench and the library and interconnect cells at
-compile time and keeps `smu_wrapper`, `smu`, `smu_axi_xbar` and the other
-SMU-owned units (`cov/config/vcs/README.md`); the release figure is the
-runner's `toggle` family, every bit of every kept net in both directions after
-the exclusion files, and
-`SMU_COVERAGE_POLICY.adoc` states the target and the last measured value. The
-Verilator set for `--dut smu` leaves toggle out, as the DTP set does.
+==== What the Verilator database holds
 
-Toggle over the whole elaborated model, SMC cluster and vendored fabric
-included, produces a database of about 0.5 GB per leaf.
-`smu_wrapper_cov_scope.vlt` drops all of it at compile time so the toggle
-denominator is the wrapper's own nets; enabling toggle without the scope
-reproduces that database.
+`cov/config/verilator/smu_wrapper_cov_scope.vlt` drops everything the wrapper
+instantiates at compile time, so the Verilator line and expression figures
+are the wrapper's own file plus the `cov/sv` modules, and `user` is the
+cover-property layer. Toggle is not collected on Verilator.
 
-=== What the Toggle Number Measures
+`coverage_off -file` matches the path as Verilator opened it, and
+`+incdir+`-resolved files are opened relative, so a leading `*/` scopes only
+half the tree: `*vendor/*` matches both forms. Two vendored trees under
+`.u_smc` and `.u_dtp` (`axi_lite_demux.sv`, the `generic_dff*` family) are
+unreachable by any file pattern. Verify a scope change by counting
+instrumentation sites per source bucket in the generated model, not by the
+build passing: a wrong scope changes nothing and warns about nothing.
 
-The wrapper's ports and the nets `hw/top/smu_wrapper.sv` declares between
-them, plus the `cov/sv` modules' own registers: `coverage_off` is whole-file,
-so excluding those registers would delete the `user` points, and they stay in
-the denominator, named here. Two vendored trees the file patterns cannot
-name, `vendor/pulp-platform/axi` (`axi_lite_demux.sv`) and
-`vendor/tenstorrent/tt-hw-debug` (`generic_dff*`), sit under `.u_smc` and
-`.u_dtp`; a site of theirs that reaches the database is a hole with a
-hierarchy selector in `smu_wrapper_coverage_policy.toml`, written only from
-a real database because its count is a hard match
-(`SMU_COVERAGE_POLICY.adoc`, <<smu-cov-out>>).
+==== Three ways a point leaves the population
 
-==== Verilator glob matching
+* The scope file applies `coverage_off` by source file, so a point never
+  enters the database. Structural, by file.
+* `SepPresent` gates the `g_sep` and `g_nosep` generate blocks. A point whose
+  observable exists only with the SEP elaborated, or only without it, is not
+  elaborated on the other build. `tb_wrapper_top.sv` passes
+  `SepPresent = 1'b1`, so every `g_sep` point exists and no `g_nosep` point
+  does. Structural, by elaboration.
+* `SMU_FCOV_PHASE2` guards the Phase 2 points. Structural, by plan.
 
-`coverage_off -file` matches the path as Verilator *opened* the file, not the
-absolute path it records in the generated code, and `+incdir+`-resolved files
-are opened relative. A leading `*/` therefore scopes only half the tree:
-`*vendor/*` matches both forms, `*/vendor/*` matches only the absolute one.
+A collected point that stays unhit is a missing test, a collector that
+measures the wrong thing, or a Phase 2 point that has not been moved yet; the
+Closure Policy below says which change each takes.
 
-Two vendored trees are unreachable by any file pattern: `*vendor/*`,
-`*pulp-platform/*`, `*tt-hw-debug/*` and the bare `*axi_lite_demux.sv` /
-`*generic_dff.sv` forms all leave the site count unchanged, so none of them is
-in the scope file.
+==== Sampling rules
 
-Verify a scope change by counting `__vlCoverToggleInsert` sites per source
-bucket in the generated model, not by the build passing: a wrong scope
-changes nothing and warns about nothing.
-
-[[smu-fcov-points]]
-=== Functional Coverage Points
-
-`cov/sv/` carries 10 modules of labelled cover-property points, 111 in all,
-each declared through the `OCAH_FCOV_COVER` macro. Under `--cov` they land in
-the `user` metric family of the native coverage database, so they reach
-`cov_merge`, `cov_report` and the coverage policy.
-
-`tb/tb_wrapper_top.sv` instantiates all ten. Point counts below are the
-declarations in each file, counted from the source; the four inside `g_nosep`
-generate blocks (`smu_lc_fcov.sv`, `smu_ext_fcov.sv`) exist only on a SEP=0
-elaboration, which this package does not build, so 107 elaborate on the
-wrapper's single target.
-
-[cols="2,1,4",options="header",]
-|===
-|Module |Points |Intent it makes real
-|`smu_xbar_fcov.sv` |25 |Window programming and reprogramming, inbound AXI handshake, all four response encodings, inbound traffic not forwarded outbound
-|`smu_boot_fcov.sv` |21 |Reset-release edges, boot-stall sources and release, lifecycle broadcast, fuse sense, SRAM auto-init
-|`smu_rst_fcov.sv` |17 |Cold-reset assertion and release, per-domain reset order, power-good
-|`smu_dbg_fcov.sv` |13 |JTAG2AXI debug paths, security-disable, TAP state
-|`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI boundary
-|`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
-|`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
-|`smu_alias_fcov.sv` |4 |SEP-to-SMC dedicated-port routing at the SMU boundary
-|`smu_clk_fcov.sv` |3 |Clock mirrors `tb/tb_wrapper_top.sv` exposes
-|`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
-|===
-
-==== `SepPresent`, a third scope mechanism
-
-Two mechanisms keep a point out of a graded number, and `SepPresent` is a
-third that is easy to confuse with them.
-
-* The scope file `smu_wrapper_cov_scope.vlt` applies `coverage_off` by
-  source file at compile time, so the point never enters the database.
-  Structural OUT, by file.
-* `SepPresent` gates the `g_sep` generate blocks in `cov/sv/*_fcov.sv`. A
-  point whose observable exists only with SEP elaborated is not elaborated at
-  all on a SEP=0 build, so it never reaches the database and no waiver has to
-  name it. Structural OUT, by elaboration.
-* A `[[holes]]` entry is the opposite case: the point exists, is not hit, and
-  is carried with a category, a rationale and an owner.
-
-`tb_wrapper_top.sv` passes `SepPresent = 1'b1` unconditionally: the wrapper
-has one compile profile, `compile_smu_chiplet`, and it elaborates SEP, so every
-`g_sep` point exists there and no `g_nosep` point does. The guards are kept in
-the modules because an accepted waiver whose selector matches a covered point
-is a hard `ConfigError`, so a point which can only fire on one SEP setting
-must not exist on the other elaboration.
+* Points need stimulus beyond power-up and reset release. A level that is
+  true in the quiescent state is either absent or qualified by a sticky flag
+  recording that its counterpart happened first, so "released" means "the
+  stall lifted", not "no stall was ever applied".
+* `smu_boot_fcov` and `smu_rst_fcov` disable on `powergood`, not on reset, so
+  the reset sequence itself stays observable. The other modules disable on
+  the cold or primary reset.
+* Every register in a module has a reset branch, so a four-state simulator
+  never holds a term at X.
 
 ==== Fuse-sense run modes
 
-Every run mode in `smu_sim_cfg.toml` passes `+skip_fuse_sense`, under which
-`efuse_shadow_regs.sv` drives `fuse_sense_done` from the plusarg and loads the
-shadow array from a preload file. A test that observes fuse-sense completion
-has to run without it, so that the eFuse bank models supply the sensed data.
-`[run_modes.sep_rtl_fuse_sense]` is the one that leaves the plusarg unset, and
-it carries the only two tests needing it.
+Every run mode in `smu_sim_cfg.toml` passes `+skip_fuse_sense` except
+`[run_modes.sep_rtl_fuse_sense]`, under which the eFuse bank models supply
+the sensed data. The fuse-sense completion points need that mode, and the
+two leaves enrolled in it carry them.
 
-Points must need stimulus beyond power-up and reset release. A level that is
-true in the quiescent state is either absent or qualified by a sticky flag
-recording that its counterpart happened first, so "released" means "the stall
-lifted" rather than "no stall was ever applied".
+==== Scenario intent is not coverage
 
-=== Scenario Intent Is Not Coverage
+`cocotb/env/smu_fcov.py` is a static table from a test class name to the bins
+its scenario is claimed to reach. Running the test marks the bins; no signal
+is observed, and nothing under `tools/` or `.github/` reads its output. It is
+neither the release metric nor a gate.
 
-`cocotb/env/smu_fcov.py` is a static `TEST_FCOV_HITS` table mapping a
-test class name to the bins its scenario is *claimed* to reach. Running the
-test marks the bins; no signal is observed, and nothing under `tools/` or
-`.github/` reads its output. It records scenario intent and is neither the
-release metric nor a gate.
+=== Phase 1 coverage definitions
 
-=== What the Plan May Claim
+Each table row is one cover property, or one covergroup. A row states what
+the module must see at the wrapper boundary. Points named `g_sep.c_*` sit in
+the `g_sep` block; urg prints them with that prefix and Verilator with
+`g_sep__DOT__`.
 
-Three limits decide what `SMU_VPLAN.adoc` is allowed to say about coverage:
+==== `smu_xbar_fcov`
 
-. *Per-testcase attribution is measured, never asserted.* The `cov/sv`
-  points are free-running cover properties on DUT signals, not per-scenario
-  covergroups, so which testcase lights which point is a property of a run,
-  not of the source. <<smu-fcov-owners>> is that measurement: written by
-  `tools/dv/fcov_owners.py` from the per-leaf databases of a named `all`
-  run, it carries the commit and simulator it was measured on and is
-  regenerated after each coverage run rather than edited. A point the table
-  shows on one leaf depends on that leaf, which is what SEP's owning-tests
-  rule exists to name.
-. *`smu_fcov.py` sources no coverage claim.* It is scenario intent, as stated
-  above.
+*Description*: The SMC and SEP address windows are programmed, the inbound
+AXI port handshakes and answers with every legal response code, and inbound
+traffic is never forwarded outbound.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_map_smc_base_programmed`, `c_map_smc_size_programmed` |`smc_global_base_o` / `smc_region_size_o` move after reset
+|`c_map_smc_size_reprogrammed` |`smc_region_size_o` moves a second time
+|`g_sep.c_map_sep_base_programmed`, `g_sep.c_map_sep_size_programmed` |`sep_global_base_o` / `sep_region_size_o` move after reset
+|`g_sep.c_map_sep_size_reprogrammed` |`sep_region_size_o` moves a second time
+|`g_sep.c_map_sep_size_zero` |`sep_region_size_o` programmed to zero
+|`c_axi_in_aw_accept`, `c_axi_in_aw_stall`, `c_axi_in_ar_accept`, `c_axi_in_ar_stall` |An inbound address phase accepted, and one held with ready low
+|`c_axi_in_w_last`, `c_axi_in_r_last` |The last beat of an inbound write and read
+|`c_axi_in_{b,r}resp_{okay,slverr,decerr}` |An inbound write and read answered with each legal response
+|`c_route_inbound_not_forwarded` |The inbound write count advances without the outbound one
+|`c_axil_external_active` |The external AXI-Lite window inside the wrapper is active
+|`c_no_route_ext_in_to_ext_out` |An inbound write answered with no outbound address phase since it was accepted
+|`cg_sep_window` |The SEP window unprogrammed, programmed, and programmed to zero. A zero is recorded only once the size has been programmed, so there is no unprogrammed zero state
+|`cg_axi_in_resp` |OKAY, SLVERR and DECERR on the inbound B and R channels. EXOKAY is ignored: no subordinate behind the crossbar has an exclusive monitor
+|`cg_map_window` |The SMC window unprogrammed and programmed. The zero window is ignored: `smc_base_config` requires a non-zero power of two
+|===
+
+`smu_dtp_sep_dm_sba_test` is the leaf that programs `sep_global_base_o`.
+
+==== `smu_boot_fcov`
+
+*Description*: Reset releases in bring-up order, the boot-stall sources
+apply and release, fuse sense and SRAM auto-init complete, and the lifecycle
+broadcast and demote lanes move.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_release_cold_stable_ref`, `c_release_primary_ref`, `c_release_primary_periph`, `c_release_primary_smc` |Each reset output's release edge
+|`c_init_mem_done`, `c_fuse_sense_done`, `c_fuse_reset_released` |Each completion pin's rising edge
+|`c_reassert_cold_after_release`, `c_cold_reset_asserted` |The stable cold reset falling after a release, and the cold-reset pin low
+|`c_boot_stall_jtag_applied`, `c_boot_stall_jtag_forced_low`, `c_boot_stall_jtag_released` |The JTAG boot-stall override in force at each value, and lifted after an applied stall
+|`c_boot_stall_gpio_drive`, `c_boot_stall_gpio_released`, `c_boot_stall_both_sources` |The GPIO boot-stall strap driven, released after a drive, and both sources at once
+|`c_ext_boot_seq_done` |The boot-sequence gate high
+|`c_lc_state_changed` |The lifecycle broadcast leaves its power-up value
+|`g_sep.c_lcc_demote_state_1`, `g_sep.c_lcc_demote_state_2`, `g_sep.c_lcc_demote_both` |A demote lane at its demoted code, and both at once. Each lane is a differential code: 2'b10 not demoted, 2'b01 demoted
+|`cg_boot_stall` |The JTAG override and value, the GPIO drive, and the override against the GPIO drive
+|`cg_lifecycle` |Each of the seven lifecycle states the eFuse images encode, and each demote lane at its two codes crossed with the other. 2'b00 and 2'b11 are not codes and are ignored; any other lifecycle code is an integrity error and falls in the ungraded default bin
+|===
+
+`smu_sep_lcc_flow_test` writes DEMOTE_1 before DEMOTE_2, so it walks lane 1
+alone and both lanes; `smu_dtp_sep_dm_sba_test` walks lane 2 alone. The seven
+lifecycle states are the `smu_sep_lcc_state_*` family's eFuse images.
+
+==== `smu_rst_fcov`
+
+*Description*: Cold reset asserts through its de-glitcher and releases
+synchronously, the primary domain and the per-block resets release in
+order, and boot-time completions follow the release.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_cold_reset_deglitched_assert` |`rst_cold_stable_ref_clk_no` falls only after `rst_cold_ni` was sampled low on 32 consecutive `clk_ref` edges (`hw/sys/smu/doc/port_table.adoc`: assertion is de-glitched for 32 cycles)
+|`c_cold_reset_sync_deassert`, `c_cold_stable_ref_clk_synchronized` |The stable cold reset releasing one, and two, `clk_ref` periods after the pin rose
+|`c_cold_stable_ref_clk_active_low` |The stable cold reset falling while the pin is low
+|`c_primary_ref_reset_synchronized_to_clk_ref`, `c_primary_smc_reset_synchronized_to_clk_smu` |The primary reset releasing two periods after the pin, in its own domain
+|`c_smc_released`, `c_dtp_released`, `g_sep.c_sep_released`, `g_sep.c_xbar_released` |Each block reset releasing inside the released primary domain
+|`c_fuse_reset_n_delayed_released_after_sense`, `c_reset_release_after_boot_seq_done` |The delayed fuse reset releasing after fuse sense, and after a held boot-sequence gate went high
+|`c_skip_mem_repair_present`, `c_auto_init_runs` |`skip_mem_repair` driven at fuse sense, and SRAM auto-init completing with auto-init enabled
+|`g_sep.c_sep_fuse_sense_done_asserted` |The SEP fuse-sense pin rising
+|`c_dtp_responsive_after_powergood_stable` |The PTAP leaving Test-Logic-Reset under power-good
+|`c_periph_domain_active` |The peripheral reset releasing in its own clock domain
+|`cg_block_release` |The four block resets at the primary release edge. They release ahead of the primary, so their held state is ignored
+|===
+
+==== `smu_dbg_fcov`
+
+*Description*: The three DTP JTAG2AXI bridges complete transactions, and the
+lifecycle debug-disable slice closes the SMC fabric bridge while the OTP
+bridges stay usable.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_jtag2axi_write_reaches_smc_csr`, `c_jtag2axi_read_returns_csr_value` |The SMC fabric bridge completing a write and a read with OKAY
+|`c_smc_otp_{write,read}_response_returned` |The SMC OTP bridge completing a write and a read
+|`g_sep.c_sep_otp_{write,read}_response_returned` |The SEP OTP bridge completing a write and a read with OKAY
+|`g_sep.c_dbg_disable_blocks_smc_fabric_bridge`, `g_sep.c_no_axi_traffic_observed` |The fabric-bridge disable rising, and 255 cycles under it with no fabric launch
+|`g_sep.c_{smc,sep}_otp_bridge_enabled_under_dbg_disable`, `g_sep.c_fabric_bridge_blocked_and_otp_bridges_enabled` |The OTP bridges left enabled while the fabric bridge is disabled
+|`g_sep.c_{smc,sep}_otp_access_succeeds_while_fabric_blocked` |An OTP access completing OKAY under the fabric-bridge disable
+|`cg_dbg_disable_slice` |The fabric-bridge disable at both values against the two OTP disables. `sep_lifecycle_ctrl` ties both OTP terms low, so their set values are ignored
+|===
+
+==== `smu_ext_fcov`
+
+*Description*: The external SMN ports, the mailbox interrupt vector, the
+subsystem reset and configuration outputs and the eFuse bank-control shims
+are live at the boundary.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_inbound_id_width_8` |An inbound address phase on the 8-bit inbound ID
+|`c_mailbox_irq_out_width_32` |The top bit of the 32-entry mailbox interrupt vector rising
+|`c_ss_reset_ctrl_array_32`, `c_ss_config_present` |The subsystem reset and configuration outputs driven at the primary release
+|`c_smc_shadow_regs_present` |The SMC shadow map driven at fuse sense
+|`c_smc_efuse_bank_ctrl_{request_observed,response_returned}`, `g_sep.c_sep_efuse_bank_ctrl_{request_observed,response_returned}` |A request on each eFuse bank-control shim, and its response
+|`cg_smn_ids` |Inbound AWID zero and all-ones; outbound AWID prefixed by the SEP and by the SMC crossbar port. The crossbar prefixes each outbound ID with its slave-port index and only `sep_out` and `smc_out` reach `ext_out`, so the other prefixes are ignored
+|===
+
+==== `smu_dtp_fcov`
+
+*Description*: The external IC_RESET override slice and the four CTP pad
+groups.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_ovrd_field_present`, `c_val_field_active_low` |The override enable rising, and the active-low value asserted under it
+|`c_ctp_{req_out,req_in,ack_in,ack_out}_width_16` |Each 16-bit CTP pad group driven at the primary release
+|`c_ctp_unused_input_tied_zero_inert` |All four groups quiet for 255 cycles after release with the inputs tied to zero
+|`cg_ic_reset_ext` |The override enable against the active-low value
+|===
+
+The DTP JTAG chapter writes `reset_control` and `reset_enable` in separate
+updates, so the value is staged with the override off and released with it
+still on; `smu_jtag_reset_override_test` follows that order and walks all
+four cells.
+
+==== `smu_alias_fcov`
+
+*Description*: SEP traffic in SMC's global window takes the dedicated
+SEP-to-SMC port, and SEP traffic outside it takes the crossbar.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`g_sep.c_alias_path_bypasses_xbar` |An in-window transfer on the dedicated port while the crossbar SEP port is idle
+|`g_sep.c_no_xbar_target_activity_during_alias` |The crossbar SEP port idle for 63 cycles after such a transfer
+|`g_sep.c_alias_hit_observed_at_smc_and_absent_at_xbar` |The dedicated port's response returning with the crossbar SEP port still idle
+|`g_sep.c_sep_access_outside_window_observed_at_xbar` |An out-of-window SEP transfer on the crossbar SEP port
+|`cg_alias_path` |Each SEP egress path against direction: in-window on the dedicated port, out-of-window on the crossbar. The SEP routes SMC-aperture traffic to the dedicated port and every other non-local transfer to the SMN fabric (`hw/sys/sep/doc/fabric.adoc`), so the other two pairings are ignored
+|===
+
+`smu_sep_bidirect_test` walks the dedicated port; `smu_dtp_sep_dm_sba_test`
+reads through the crossbar.
+
+==== `smu_lc_fcov`
+
+*Description*: The lifecycle broadcast and the demote lanes are driven at
+the primary release.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_lc_state_width_8`, `c_demote_1_width_2`, `c_demote_2_width_2` |Each lifecycle output driven, at its declared width, at the primary release
+|`cg_lc_at_release` |The released lifecycle value and the demote pair at the primary release. The SEP-absent value is ignored with the SEP present, and so is a demoted lane, since SEP firmware has not run at that edge
+|===
+
+==== `smu_clk_fcov`
+
+*Description*: The four primary-domain blocks share `clk_smu`, and the
+telemetry and SEP-watchdog domains run apart from it.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_telemetry_domain_independent` |The telemetry clock's edge count over a `clk_smu` window differing from the window and non-zero
+|`g_sep.c_primary_domain_hosts_all_four_blocks` |SMC, DTP, SEP and crossbar clocks each advancing exactly the window while out of reset
+|`g_sep.c_sep_wdt_domain_active` |The SEP watchdog clock running while the SEP is out of reset
+|`cg_tel_rate`, `cg_wdt_rate` |The telemetry and watchdog edge counts against the window. The bench never gates either clock, an equal-rate count depends on phase, and the watchdog clock is an order of magnitude slower than `clk_smu`, so only the relations the bench clocks produce are graded
+|===
+
+==== `smu_clkstop_fcov`
+
+*Description*: An external clock-stop request and a JTAG DEBUG_CONTROL
+request reach the cross-trigger network, and the halt releases.
+
+[cols="2,5",options="header",]
+|===
+|Point / covergroup |What it sees
+|`c_clk_stop_req_delivered` |An external clock-stop request arriving at the cross-trigger network
+|`c_stop_clks_from_debug_control` |`dtp_stop_clks_o` rising with the DEBUG_CONTROL request set
+|`c_stop_clks_released` |The halt releasing after it was asserted
+|`cg_clk_stop_sources` |The DEBUG_CONTROL request against the external request against the halt
+|===
+
+[[smu-fcov-phase2]]
+=== Phase 2 (not collected)
+
+The points below compile only with `SMU_FCOV_PHASE2` defined. No run mode or
+target defines it, so they are outside the collected population and no
+policy entry names them.
+
+[cols="2,4,3",options="header",]
+|===
+|Point |Why it is not a legal operating mode of this bench |What brings it back
+|`c_axi_in_bresp_exokay`, `c_axi_in_rresp_exokay` |EXOKAY answers an exclusive access, and no subordinate behind the crossbar has an exclusive monitor: every AXI interconnect in the SEP and SMC is built without atomics and the memory adapters tie exokay off. `smu_axi_in_attribute_sweep_test` checks that an AxLOCK=1 access is answered OKAY |A subordinate behind the SMU crossbar with an exclusive monitor
+|`g_sep.c_lc_sigint_err` |`lc_sigint_err` rises only when the exported LC_STATE differential pair disagrees with itself. The eFuse shadow re-encodes the raw state, so the pair is valid unless corrupted in flight, which takes a fault injected inside the SEP; the SEP bench grades that path |A fault-injection hook on the exported LC_STATE pair in `tb/tb_wrapper_top.sv`
+|`c_map_smc_size_zero` |A zero SMC REGION_SIZE is illegal: `smc_base_config` requires a non-zero power of two, and zero leaves no reachable local aperture. The crossbar rule it forms has `start == end`, which the decoder's map check rejects |A specification change that makes a zero SMC window a legal state
+|===
+
+The covergroups carry the same facts as ignored bins: `cg_axi_in_resp`
+ignores EXOKAY and `cg_map_window` ignores the zero SMC window. The ignored
+bins of `cg_lifecycle`, `cg_lc_at_release`, `cg_block_release`,
+`cg_tel_rate`, `cg_wdt_rate`, `cg_dbg_disable_slice`, `cg_smn_ids` and
+`cg_alias_path`, and the state `cg_sep_window` leaves out, are values the
+design, the routing or the bench clocks cannot present, each stated beside
+its coverpoint in `cov/sv/`.
+
+=== Closure Policy
+
+Coverage closes against a finished `all` run, not against a waiver. Every
+collected point or bin the run leaves unhit takes one of three outcomes, with
+evidence:
+
+. *Reachable*: a leaf is added or extended so `all` hits it, with a testlist
+  entry, evidence ids in `cocotb/env/smu_evidence_map.py` and a VPLAN card.
+  Goldens come from generated headers, IP-XACT or the specification, never
+  from the RTL.
+. *Wrong measurement*: the collector is corrected to express the specified
+  behaviour, citing the specification or generated map line, and then hit.
+. *Not a legal operating mode*: the point moves to <<smu-fcov-phase2>> with
+  its reason and what would bring it back. A covergroup bin no legal
+  configuration reaches becomes an ignored bin with the fact beside it.
+
+The covergroups declared inside vendored RTL are the only ones the group
+exclusion file drops; `gen_smu_wrapper_group_exclusions.py` names each class
+with its reason, and a covergroup under `u_dut` that no class names stops the
+generator.
+
+==== What the plan may claim
+
+. *Per-testcase attribution is measured, never asserted.* The points are
+  free-running cover properties on boundary signals, so which testcase lights
+  which point is a property of a run. <<smu-fcov-owners>> is that
+  measurement: written by `tools/dv/fcov_owners.py` from the per-leaf
+  databases of a named `all` run, it carries the commit and simulator it was
+  measured on and is regenerated after each coverage run. A point one leaf
+  alone reaches depends on that leaf.
+. *`smu_fcov.py` sources no coverage claim.*
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
-  targets (VCS `toggle` / `assertion` 80 percent effective, Verilator `user`
-  95 percent effective) and the last measured values, says how a floor would be
-  set from a measured weekly database, and lists the fields a waiver must
-  carry.
+  targets and how a floor would be set from a measured weekly database.
 
-=== The Policy File
+==== Evidence
 
-`[coverage.verilator].policy_file` in `smu_sim_cfg.toml` names
-`cov/config/verilator/smu_wrapper_coverage_policy.toml` outright rather than
-relying on the canonical `cov/config/<tool>/coverage_policy.toml` discovery,
-so the file says which DUT it grades. It carries one `[[holes]]` entry per
-unhit point: an accepted waiver (`disposition = "waive"`), or, for a point
-that waits on stimulus, an open `cover` hole that names its tracking issue.
-It sets no threshold.
+A closure claim names the tool and the `run_dv.py` run it was read from and
+quotes the launcher `result status=` line. A Verilator run is evidence for
+the cover properties only; the covergroups need a VCS run. Local paths under
+`build/runs/` are not durable.
 
-=== Owning Tests
+==== Owning tests
 
 The table below is regenerated from the coverage run's directory:
 

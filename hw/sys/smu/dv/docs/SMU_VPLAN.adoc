@@ -4243,7 +4243,7 @@ Two things are worth reading before the entries:
 * Every step reconciles its cell count against the AR and AW handshakes the port accepted, counted on the `ext_in_*` pins rather than in the master.
 * AxATOP is not driven. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package carries no ATOP driver, so this leaf makes no ATOP claim, as `smu_axi_atomic_operation_test` records for the same reason.
 * Shrinking BASE_CONFIG.REGION_SIZE so the local aperture ends at the adopter external window puts that window outside the chiplet, and a JTAG2AXI write to it crosses `smu_axi_out`. The outbound write count moves by exactly one, the boundary carries the address the SMC was given with `w.last` and an OKAY `b.resp`, and the bench responder's memory holds the word.
-* Regrowing REGION_SIZE to its reset value is the reprogram state of the SMC aperture map (`smu_xbar_fcov` `c_map_smc_size_reprogrammed`). A zero REGION_SIZE is not driven: `smc_base_config` requires a non-zero power of two, and zero leaves no reachable local aperture, so the closed aperture would route even BASE_CONFIG writes out on `smu_axi_out` and reopen only by reset. The zero-window point is in the Phase 2 set of link:SMU_FCOV.adoc[SMU_FCOV].
+* Regrowing REGION_SIZE to its reset value is the reprogram state of the SMC aperture map (`smu_xbar_fcov` `c_map_smc_size_reprogrammed`). A zero REGION_SIZE is not driven: `smc_base_config` requires a non-zero power of two, and zero leaves no reachable local aperture, so the closed aperture would route even BASE_CONFIG writes out on `smu_axi_out` and reopen only by reset. The zero-window point is in the <<smu-fcov-phase2,Phase 2 set>> of the coverage plan.
 
 *Test Procedure*:
 
@@ -4884,10 +4884,9 @@ covered above. SEP=1 3×3 xbar receives no release credit.
 * *Cross-trigger and iJTAG have no OCAH-local model*, so the coverage those
   interfaces get is what the DTP-under-SMU tests reach through JTAG and the
   bench's pad loopbacks.
-* *No functional coverage closure target is set.* Coverage intent, the
-  metric choice and what this plan may claim from a database are in
-  `SMU_FCOV.adoc`; the wrapper's policy file is
-  `cov/config/verilator/smu_wrapper_coverage_policy.toml`.
+* *Functional coverage closes at 100 percent of its Phase 1 population
+  and no CI gate enforces it.* The phases, the collectors and what this plan
+  may claim from a database are in <<smu-dv-functional-coverage-plan>>.
 * *Verilator replaces the `ocah_prim` `prim_sync3`
   cell with the behavioural stand-in in
   `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops it. Xcelium receives
