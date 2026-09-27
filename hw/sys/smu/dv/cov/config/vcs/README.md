@@ -134,21 +134,11 @@ is taken only where the report says Not Covered. Fields
 | `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
 | `SEP-INITIATED` | bench fact of this package's coverage set: the SEP aperture (`sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR and region size), the crossbar's `sep_out` port, the SEP's SMN outbound and dedicated SMC channels, and every net, condition and branch of `axi_window_remap`, whose window `smu_pkg` fixes (`smu.sv` 987-994), are driven only by SEP firmware, and no image in `all` programs the aperture or issues alias accesses | a SEP DV firmware image that programs the SEP aperture and issues alias accesses |
 
-Not waived, and why:
-
-* `c_map_smc_size_zero` and `g_sep.c_map_sep_size_zero`: whether a zero
-  window is a legal state is the open design question carried from #2224
-  (the rule it forms has `start == end`, which `addr_decode_dync` rejects).
-* `c_cold_reset_async_assert_without_clock`: `smc_reset_ctrl.sv` (63-80)
-  passes cold reset downstream only after 32 `clk_ref` cycles of its
-  deglitcher while powergood is stable, and its only asynchronous path is
-  powergood falling, which the monitor's `not_powered` disable excludes; the
-  monitor's premise is for its owner to settle.
-* `c_axi_in_bresp_exokay` and `c_axi_in_rresp_exokay`: a bench fact for the
-  cover-property policy, which is owned with the functional coverage, not
-  here. No exclusive monitor sits behind the inbound port, and
-  `smu_axi_in_attribute_sweep_test` checks that an AxLOCK=1 access is answered
-  OKAY.
+Cover properties are not excluded here. The ones a legal operating mode of
+this bench cannot reach -- the two EXOKAY responses, the lifecycle
+signal-integrity error and the zero SMC window -- are the Phase 2 set of
+`hw/sys/smu/dv/docs/SMU_FCOV.adoc`, left out of the compile rather than
+excluded from a report.
 
 Address, id and handshake fields outside the classes that name them stay
 graded, and a hole in one is a stimulus gap.
@@ -185,7 +175,7 @@ half and are read under `assertion`.
 python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov
 ```
 
-`all` is the coverage set, as it is for SEP: the 102 leaves of the package
+`all` is the coverage set, as it is for SEP: the 108 leaves of the package
 regression, including the SEP firmware and lifecycle leaves whose images the
 `c_compile` stage builds with the RISC-V toolchain. `hosted` is the
 toolchain-free subset the workflows run and leaves that stimulus out.
