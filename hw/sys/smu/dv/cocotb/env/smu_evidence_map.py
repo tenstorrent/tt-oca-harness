@@ -373,6 +373,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SBA-DEMOTE2-ALONE",
             "DEMOTE_2 alone complements lcc_demote_state_2_o while lane 1 and DEMOTE_1 hold",
         ),
+        (
+            "CHK-SEP-SBA-EGRESS",
+            "CHK-SEP-SBA-EGRESS",
+            "a SEP read and write outside the SMC window each cross smu_axi_out once and "
+            "the read returns the written word",
+        ),
     ],
     "smu_ext_boot_seq_gate_test": [
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),

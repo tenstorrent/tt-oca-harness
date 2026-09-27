@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_sep_dm_sba_test(smu_base_test):
-    """SEP aperture base and DEMOTE_2 programmed over the SEP debug module's system bus."""
+    """SEP aperture base, DEMOTE_2 and an egress round trip over the SEP debug system bus."""
 
     use_shared_env = True
 
@@ -19,7 +19,5 @@ class smu_dtp_sep_dm_sba_test(smu_base_test):
         self.logger.info("DUT_TAG=WRAPPER smu_dtp_sep_dm_sba_test SEP=1 DTP TAP -> SEP DM SBA")
         seq = smu_dtp_sep_dm_sba_test_seq(self)
         await seq.run()
-        assert seq.s1_ok and seq.s2_ok and seq.s3_ok and seq.s4_ok and seq.s5_ok, (
-            f"sep_sba incomplete s1={seq.s1_ok} s2={seq.s2_ok} s3={seq.s3_ok} "
-            f"s4={seq.s4_ok} s5={seq.s5_ok}"
-        )
+        steps = (seq.s1_ok, seq.s2_ok, seq.s3_ok, seq.s4_ok, seq.s5_ok, seq.s6_ok)
+        assert all(steps), f"sep_sba incomplete s1..s6={steps}"

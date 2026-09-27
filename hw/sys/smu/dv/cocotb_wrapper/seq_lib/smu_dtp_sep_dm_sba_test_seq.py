@@ -19,15 +19,24 @@ S5: DEMOTE_2 alone. The two demotion controls are independent and either may
     registers at their RDL reset value, a system-bus write of DEMOTE_2.demote
     moves ``lcc_demote_state_2_o`` to the complement of its code while
     ``lcc_demote_state_1_o`` holds; the registers read back that way.
+S6: a SEP read outside the SMC window takes the crossbar. SEP traffic that is
+    neither SEP-local nor in the SMC aperture goes out to the SMN fabric
+    (``hw/sys/sep/doc/fabric.adoc``), whose crossbar connects ``sep_out`` to
+    ``ext_out``. With SEP outbound filter entry 1 opened over one page for
+    secure reads and writes, a system-bus write and read of that page each
+    cross ``smu_axi_out`` once at the address given, and the read returns the
+    written word from the bench responder.
 """
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from cocotb.triggers import ClockCycles
 
 from seq_lib.smu_addr_map import c_header_u32
+from seq_lib.smu_axi_out_addr_len_size_test_seq import _OutboundTap
 from seq_lib.smu_compose_helpers import sample
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import (
     DMI_OP_NOP,
@@ -44,6 +53,20 @@ _SEP_C = _REPO_ROOT / "hw" / "sys" / "sep" / "regs" / "gen" / "c"
 _SEP_ADDR_H = _SEP_C / "sep_addr.h"
 _SEP_CPU_CTRL_H = _SEP_C / "blocks" / "sep_cpu_ctrl.h"
 _SEP_LIFECYCLE_CTRL_H = _SEP_C / "blocks" / "sep_lifecycle_ctrl.h"
+_FILTER_CTRL_H = _REPO_ROOT / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
+
+
+def _indexed_addr(symbol: str, index: int) -> int:
+    """Evaluate a ``#define SYMBOL(idx) (BASE + (idx * STRIDE))`` from ``sep_addr.h``."""
+    pattern = re.compile(
+        rf"^#define {symbol}\(\w+\)\s+\((0x[0-9A-Fa-f]+) \+ \(\w+ \* (0x[0-9A-Fa-f]+)\)\s*\)"
+    )
+    for line in _SEP_ADDR_H.read_text(encoding="utf-8").splitlines():
+        match = pattern.match(line)
+        if match:
+            return int(match.group(1), 16) + index * int(match.group(2), 16)
+    raise KeyError(f"{symbol} not in {_SEP_ADDR_H}")
+
 
 SEP_GLOBAL_BASE_ADDR = c_header_u32(
     _SEP_ADDR_H, "OCH_SEP_TOP_SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_BASE_ADDR"
@@ -61,6 +84,33 @@ DEMOTE_RESET = c_header_u32(_SEP_LIFECYCLE_CTRL_H, "SEP_LIFECYCLE_CTRL__DEMOTE__
 # smc_base_config GLOBAL_BASE reset value (0x4000_0000), so the two apertures
 # the crossbar decodes stay disjoint.
 SEP_BASE_PROGRAMMED = 4 * SEP_REGION_SIZE_RESET
+
+OUTBOUND_ENTRY = 1
+OUTBOUND_FILTER_CONFIG = _indexed_addr(
+    "OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR", OUTBOUND_ENTRY
+)
+OUTBOUND_START_ADDR = _indexed_addr(
+    "OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR", OUTBOUND_ENTRY
+)
+OUTBOUND_END_ADDR = _indexed_addr(
+    "OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR", OUTBOUND_ENTRY
+)
+# Secure read and write, enabled, bursts allowed; ALLOW_NS stays clear because
+# the match on prot[1] is exact and the debug module's system bus is secure.
+OUTBOUND_CFG_OPEN = (
+    c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm")
+    | c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm")
+    | c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__ENTRY_ENABLED_bm")
+    | c_header_u32(_FILTER_CTRL_H, "FILTER_CTRL__FILTER_CONFIG__ALLOW_BURST_bm")
+)
+# One page of the SEP map that is neither SEP-local (``memory_map.adoc``: the
+# internal regions below 0x4000_0000 and the local alias from 0xC000_0000) nor
+# in the SMC window at its GLOBAL_BASE reset value, and clear of the firmware
+# console word the bench snoops at 0x8000_0000.
+EGRESS_ADDR = 0x9000_0000
+EGRESS_PAGE_END = EGRESS_ADDR + 0xFFF
+EGRESS_WORD = 0x5EB0_0C1D
+EGRESS_POLL_CYCLES = 4000
 
 # RISC-V Debug Specification 0.13, debug module registers.
 SBCS_ADDR = 0x38
@@ -90,6 +140,7 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
         super().__init__(test)
         self.s4_ok = False
         self.s5_ok = False
+        self.s6_ok = False
 
     async def _dmi(self, jtag, addr: int, data: int, op: int) -> int:
         """Issue one DMI op, then collect its result with NOPs; returns the data."""
@@ -200,9 +251,41 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
         )
         self.s5_ok = True
 
+    async def _egress_round_trip(self, jtag, sb) -> None:
+        await self._sba_write(jtag, OUTBOUND_START_ADDR, EGRESS_ADDR)
+        await self._sba_write(jtag, OUTBOUND_END_ADDR, EGRESS_PAGE_END)
+        await self._sba_write(jtag, OUTBOUND_FILTER_CONFIG, OUTBOUND_CFG_OPEN)
+        tap = _OutboundTap(self.dut)
+        try:
+            mark = tap.mark()
+            await self._sba_write(jtag, EGRESS_ADDR, EGRESS_WORD)
+            readback = await self._sba_read(jtag, EGRESS_ADDR)
+            for _ in range(EGRESS_POLL_CYCLES):
+                aw, ar = tap.since(mark)
+                if aw and ar:
+                    break
+                await ClockCycles(self.dut.clk_smu_i, 1)
+            aw, ar = tap.since(mark)
+        finally:
+            tap.stop()
+        aw_addrs = [phase[0] for phase in aw]
+        ar_addrs = [phase[0] for phase in ar]
+        self._log(
+            f"CHK-SEP-SBA-EGRESS aw={[hex(a) for a in aw_addrs]} "
+            f"ar={[hex(a) for a in ar_addrs]} readback=0x{readback:08x}"
+        )
+        sb.expect_eq(
+            "CHK-SEP-SBA-EGRESS",
+            (aw_addrs, ar_addrs, readback),
+            ([EGRESS_ADDR], [EGRESS_ADDR], EGRESS_WORD),
+            evidence="CHK-SEP-SBA-EGRESS",
+        )
+        self.s6_ok = True
+
     async def run(self) -> None:
         await super().run()
         sb = self.test.env.scoreboard
         jtag = self.jtag
         await self._aperture_base(jtag, sb)
         await self._demote_2_alone(jtag, sb)
+        await self._egress_round_trip(jtag, sb)

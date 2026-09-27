@@ -249,7 +249,7 @@ one-line intent.
 |`smu_dtp_otp_smc_series_error_test` |dtp |OTP series NO_INCR + decode-hole SLVERR
 |`smu_dtp_smc_stap_smoke_test` |dtp |DTP-SMC-STAP TRST + TAP_3DCR select
 |`smu_dtp_sep_dm_dmi_test` |dtp |DTP TAP → SEP debug-module `dmstatus` over the SEP TAP's `dmi` register
-|`smu_dtp_sep_dm_sba_test` |dtp |DTP TAP → SEP debug-module system-bus writes of the SEP aperture base and DEMOTE_2, observed at the SMU boundary
+|`smu_dtp_sep_dm_sba_test` |dtp |DTP TAP → SEP debug-module system-bus writes of the SEP aperture base and DEMOTE_2, and a SEP read and write through the crossbar, observed at the SMU boundary
 |`smu_jtag_chain_enhanced_test` |dtp |IDCODE/BYPASS at 1/5/10/20 MHz TCK
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=1, no Force)
 |`smu_dtp_scan_chain_boundary_test` |dtp |The iJTAG SIB hosts and the secondary TAPs leave and re-enter `smu_wrapper` at the pads, and the shift path runs through those boundary pins.
@@ -4519,13 +4519,14 @@ Two things are worth reading before the entries:
 
 *BFM / Model*: `ocah_jtag_vip`; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
 
-*Objective*: program two SEP registers that only the SEP side can write -- the SEP aperture base and one demotion control -- from the product JTAG pins through the SEP debug module's system bus, and observe each at the SMU boundary.
+*Objective*: program two SEP registers that only the SEP side can write -- the SEP aperture base and one demotion control -- from the product JTAG pins through the SEP debug module's system bus and observe each at the SMU boundary, then send a SEP read and write out through the crossbar.
 
 *Test Coverage*:
 
 * S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`: the TEST_DEV posture leaves every SEP debug path open, the SEP STAP is selected over TAP_3DCR, and `dmcontrol.dmactive` brings the debug module out of reset.
 * S4: the RISC-V Debug Specification 0.13 system-bus access (`sbcs` with a 32-bit `sbaccess`, `sbaddress0`, `sbdata0`) writes `sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR at the address `sep_addr.h` gives it. The SEP aperture base leaves the SMU on `sep_global_base_o` (`hw/sys/smu/doc/port_table.adoc`), so the port carries the written base and a system-bus read returns it. The base is four times the SEP_REGION_SIZE reset value: aligned to the region and ending below the `smc_base_config` GLOBAL_BASE reset value, so the SEP and SMC apertures the crossbar decodes stay disjoint. Writing the RDL reset value back returns the port to it.
 * S5: DEMOTE_1 and DEMOTE_2 are independent, and either may be asserted without the other (`hw/sys/sep/doc/lifecycle_controller.adoc`, "Demotion 1 and Demotion 2"); each leaves the SMU through a differential encoder (`otp_fuse_controller.adoc`). With both registers at their RDL reset value and both lanes presenting the same differential code, a system-bus write of DEMOTE_2.demote complements `lcc_demote_state_2_o` while `lcc_demote_state_1_o` holds, and the registers read back DEMOTE_1 clear and DEMOTE_2 set. `smu_sep_lcc_flow_test` writes DEMOTE_1 before DEMOTE_2 and so never presents lane 2 demoted alone.
+* S6: SEP traffic that is neither SEP-local nor in the SMC aperture goes out to the SMN fabric (`hw/sys/sep/doc/fabric.adoc`), and the crossbar connects `sep_out` to `ext_out` (`smu_axi_xbar_pkg` `Connectivity`). The outbound filter blocks by default, so entry 1 is opened over one page at `0x9000_0000` for secure reads and writes (`filter_ctrl.h` field masks; ALLOW_NS clear, since the match on `prot[1]` is exact). That page is outside the SEP-local map (`memory_map.adoc`), outside the SMC window at its GLOBAL_BASE reset value and clear of the console word the bench snoops at `0x8000_0000`. A system-bus write and read of it each cross `smu_axi_out` exactly once at that address, and the read returns the written word from the bench responder. `smu_sep_bidirect_test` walks the dedicated SEP-to-SMC port; the SEP firmware images write the console word through the crossbar but never read through it.
 * Not claimed: abstract commands, SEP_REGION_SIZE, the lock bits, and any traffic through the moved aperture.
 
 *Test Procedure*:
@@ -4534,6 +4535,7 @@ Two things are worth reading before the entries:
 . Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
 . Write SEP_GLOBAL_BASE_ADDR over the system bus, wait for `sep_global_base_o`, read the register back; write the reset value and wait for the port again.
 . Read both lanes and both demote registers, write DEMOTE_2.demote over the system bus, wait for lane 2, and read the lanes and registers again.
+. Open SEP outbound filter entry 1 over the egress page, record the outbound boundary, write and read the page over the system bus, and compare the recorded address phases and the returned word.
 
 *Checkers*:
 
@@ -4544,7 +4546,8 @@ Two things are worth reading before the entries:
 |`CHK-SEP-SBA-GLOBAL-BASE` |the system-bus write of SEP_GLOBAL_BASE_ADDR reaches `sep_global_base_o` within 200 `clk_smu` cycles and the system-bus read returns it
 |`CHK-SEP-SBA-GLOBAL-BASE-RESTORE` |writing the RDL reset value returns `sep_global_base_o` to it
 |`CHK-SEP-SBA-DEMOTE2-ALONE` |DEMOTE_2 alone complements `lcc_demote_state_2_o`, `lcc_demote_state_1_o` holds, and DEMOTE_1 reads clear while DEMOTE_2 reads set
-|assertion |sep_sba incomplete s1=<value> .. s5=<value>
+|`CHK-SEP-SBA-EGRESS` |the egress write and read each cross `smu_axi_out` exactly once at the page address, and the read returns the written word
+|assertion |sep_sba incomplete s1..s6=<values>
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
