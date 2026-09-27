@@ -43,7 +43,8 @@ Checkers:
   CHK-IRQ      enabling the two error IRQs raises aggregator [14]; clearing
                the enable drops the pin while IRQ_STATUS stays; W1C drops both
   CHK-FLUSH    CTRL.FLUSH empties the full inbound FIFO, self-clears, and
-               does not clear the sticky error bits. The outbound FIFO is
+               leaves inbound_overflow and outbound_underflow set in STATUS
+               and IRQ_STATUS until W1C. The outbound FIFO is
                empty before and after: with KM held nothing can push into
                it, so the outbound flush is not proven (VPLAN known
                limitation "KM mailbox outbound flush")
@@ -79,7 +80,6 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_STATUS_INBOUND_EMPTY,
     KM_STATUS_INBOUND_FULL,
     KM_STATUS_INBOUND_OVERFLOW,
-    KM_STATUS_LOW_MASK,
     KM_STATUS_OUTBOUND_DEPTH_LSB,
     KM_STATUS_OUTBOUND_DEPTH_MASK,
     KM_STATUS_OUTBOUND_EMPTY,
@@ -350,9 +350,16 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
 
     async def _chk_flush(self) -> None:
-        # Re-latch overflow so flush can be shown not to clear it.
+        # Latch both sticky errors in both copies, so the flush can be shown to
+        # clear neither: overflow by writing to the full inbound FIFO, underflow
+        # by reading the empty outbound FIFO.
         resp = await self.mb.write_data_raw(0xA5A5_A5A5, expect_error=True)
         assert resp == RESP_SLVERR, "CHK-FLUSH setup: write-to-full was not SLVERR"
+        resp, _data = await self.mb.read_data_raw(expect_error=True)
+        assert resp == RESP_SLVERR, "CHK-FLUSH setup: empty READ_DATA was not SLVERR"
+        sticky = {"inbound_overflow": 1, "outbound_underflow": 1}
+        await self._expect_status("CHK-FLUSH setup", inbound_depth=KM_MBOX_DEPTH, **sticky)
+        await self._expect_irq("CHK-FLUSH setup", inbound_depth=KM_MBOX_DEPTH, **sticky)
         await self.mb.write_ctrl(1 << KM_CTRL_FLUSH)
         for _ in range(16):
             if (await self.mb.read_ctrl() & (1 << KM_CTRL_FLUSH)) == 0:
@@ -361,24 +368,21 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         else:
             raise AssertionError("CHK-FLUSH FAIL: CTRL.flush did not self-clear")
 
-        st = await self.mb.read_status()
-        assert st & (1 << KM_STATUS_INBOUND_OVERFLOW), (
-            f"CHK-FLUSH FAIL: flush cleared inbound_overflow (STATUS=0x{st:08x})"
-        )
-        assert (st & KM_STATUS_LOW_MASK) == (
-            (1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)
-        ), (
-            f"CHK-FLUSH FAIL: inbound not empty, or outbound not still empty, after flush (STATUS=0x{st:08x})"
-        )
-        assert ((st >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK) == 0, (
-            f"CHK-FLUSH FAIL: inbound_depth not 0 after flush (STATUS=0x{st:08x})"
-        )
+        # Full golden after the flush: inbound empty at depth 0, outbound still
+        # empty, and both sticky errors still set in STATUS and IRQ_STATUS.
+        await self._expect_status("CHK-FLUSH FAIL", inbound_depth=0, **sticky)
+        await self._expect_irq("CHK-FLUSH FAIL", inbound_depth=0, **sticky)
 
-        await self.mb.write_status(1 << KM_STATUS_INBOUND_OVERFLOW)
-        await self.mb.write_irq_status(1 << KM_IRQ_INBOUND_OVERFLOW)
+        await self.mb.write_status(
+            (1 << KM_STATUS_INBOUND_OVERFLOW) | (1 << KM_STATUS_OUTBOUND_UNDERFLOW)
+        )
+        await self.mb.write_irq_status(
+            (1 << KM_IRQ_INBOUND_OVERFLOW) | (1 << KM_IRQ_OUTBOUND_UNDERFLOW)
+        )
         await self._expect_status("CHK-FLUSH", inbound_depth=0)
         await self._expect_irq("CHK-FLUSH", inbound_depth=0)
         self.logger.info(
-            "CHK-FLUSH PASS: flush emptied the full inbound FIFO, self-cleared, and "
-            "left the overflow sticky set until W1C (outbound was empty throughout)"
+            "CHK-FLUSH PASS: flush emptied the full inbound FIFO, self-cleared, and left "
+            "inbound_overflow and outbound_underflow set in STATUS and IRQ_STATUS until "
+            "W1C (outbound was empty throughout)"
         )

@@ -766,7 +766,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_abr_seed_sideload_test`. Mailbox dest ABR ML-DSA seed plus KEYGEN public-key equality against a direct-seed KEYGEN. The command-set leaf hits the dest cell every seed; this leaf is the consume proof.
 
 |KM mailbox protocol (FIFO status, over/underflow, flush)
-|`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties both FIFOs without clearing the stickies. KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
+|`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties the full inbound FIFO without clearing either sticky error in STATUS or `IRQ_STATUS` (outbound flush is a known limitation). KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
 
 |KM key/policy vault (extent + write-lock + seal)
 |`sep_km_key_policy_vault_test`. The seal walk lives here rather than on the command set: no mailbox command seals a slot, so over the command set an erase always frees and the retire path has no vehicle there.
@@ -6994,8 +6994,10 @@ flush) walks in one invocation.
   and leave the sticky set.
 . Enable the two error IRQs; aggregator `[14]` must rise. Clear the enable;
   the pin must drop while `IRQ_STATUS` stays. Write-1-to-clear both stickies.
-. Set flush. Both FIFOs empty, `flush` self-clears, and the overflow sticky
-  survives until write-1-to-clear.
+. Latch inbound overflow (write to the full FIFO) and outbound underflow (read
+  the empty FIFO). Set flush. The inbound FIFO empties, the outbound FIFO stays
+  empty, `flush` self-clears, and both stickies survive in STATUS and
+  `IRQ_STATUS` until write-1-to-clear.
 
 *Checkers*:
 
@@ -7023,7 +7025,7 @@ flush) walks in one invocation.
 |CHK-IRQ
 |Enabling the two error IRQs raises aggregator `[14]`. Clearing the enable drops the pin while `IRQ_STATUS` stays. Write-1-to-clear drops both.
 |CHK-FLUSH
-|`CTRL.FLUSH` empties the full inbound FIFO, self-clears, and does not clear the sticky error bits. The outbound FIFO is empty before and after, so its flush is not claimed; see Known Limitations, "KM mailbox outbound flush".
+|`CTRL.FLUSH` empties the full inbound FIFO, self-clears, and leaves both sticky errors -- `inbound_overflow` and `outbound_underflow`, each latched just before the flush -- set in STATUS and `IRQ_STATUS` until W1C. The outbound FIFO is empty before and after, so its flush is not claimed; see Known Limitations, "KM mailbox outbound flush".
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
