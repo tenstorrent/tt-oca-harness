@@ -5,18 +5,18 @@
 
 [[sep-dma]]
 
-[[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
+// Preserve the old page fragment; new references use sep-dma.
+ifdef::backend-html5[]
+++++
+<span id="direct-memory-access-controller-dma-direct-memory-access-controller-dma"></span>
+++++
+endif::backend-html5[]
 
-The module is based on the
-https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA
-Controller] design. Its primary purpose is to offload the SEP CPU from
-the overhead of large or slow data copying operations. The DMA has a
-built-in SHA2 engine for inline hashing.
-
-Consult the
-https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller
-documentation] for the authoritative core functionality of the IP. The
-register map follows the integration description.
+The SEP DMA is based on the
+https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller].
+It copies data between memory and peripherals and can compute SHA2 hashes
+during a transfer. The upstream documentation describes the core behavior;
+the OCAH integration and register map follow below.
 
 Transfers operate on a word by word basis. This is because the TL-UL
 bus, used in the OpenTitan implementation, does not support burst

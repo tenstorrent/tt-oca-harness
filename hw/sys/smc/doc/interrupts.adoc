@@ -6,14 +6,12 @@
 
 [[interrupts]]
 
-The SMC can handle interrupt sources across diverse system management
-functions. The architecture centers around the Platform-Level
-Interrupt Controller (PLIC) and Core Local Interruptor (CLINT), with
-interrupt routing and priority handling.
+SMC uses the Platform-Level Interrupt Controller (PLIC) for external
+interrupts and the Core Local Interruptor (CLINT) for timer and software
+interrupts. Bus Error Units also provide direct interrupt paths to the cores.
 
-This chapter is the single place for interrupt **address maps**, the
-**`cpu_interrupts_o` vector**, **PLIC/CLINT register** includes, and **bus
-error** behavior.
+This chapter covers controller addresses, the `cpu_interrupts_o` vector,
+register references and bus-error delivery.
 
 == Controllers
 
@@ -25,10 +23,7 @@ endif::backend-html5[]
 [[smc-interrupts-interrupt-controllers-mmio]]
 === Controller Addresses
 
-The CPU cluster integrates with system interrupt controllers via
-standardized interfaces. PLIC (AXI4-Lite) and CLINT (AXI4-Lite) are used
-for external and timer/software interrupts, respectively. Base addresses
-and interfaces (SMC-local view):
+Controller addresses below use the SMC-local address view.
 
 <<smc-interrupt-controller-addresses-table>> lists the interrupt-related MMIO blocks and
 their address ranges.

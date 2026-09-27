@@ -6,19 +6,20 @@
 
 [[peripheral-subsystem,Peripheral Subsystem]]
 
-SEP will primarily rely on external serial IO peripherals resident in
-the SMC complex. SEP has an AXI4 extension port which has unfettered
-access to the SMC. Any peripherals in SMC will thus also be available
-for use by SEP.
+SEP accesses serial-I/O peripherals in SMC through its AXI4 extension port.
+It also has a local SPI host for boot-flash access. The SPI chapter describes
+that controller; SMC documents the shared peripherals.
 
-The exception to this will be the SPI host controller which is required
-for SEP booting. It will for now be the only peripheral unit which is
-locally instantiated.
-
-_The requirement for SEP accessible GPIO straps was stated earlier in
-the Boot BL0 section of this document. We must ensure we have the
-minimum set of straps available on the SMC GPIO port which are dedicated
-to the SEP BL0 functionality.
+SEP boot uses configuration straps supplied from the SMC GPIO interface.
+For their role in selecting boot options, see
+ifdef::backend-html5[]
+xref:cpu.adoc#configuration-straps[Configuration Straps] and
+xref:rom.adoc#bl0-secure-boot-and-bl1-execution-unlock[BL0 Boot Flow].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<configuration-straps,Configuration Straps>> and
+<<bl0-secure-boot-and-bl1-execution-unlock,BL0 Boot Flow>>.
+endif::backend-pdf[]
 
 <<sep-peripheral-extension-port-figure>> shows the connection from SEP to peripherals
 shared with SMC.
