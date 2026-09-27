@@ -76,6 +76,12 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         await esrc.enable_all_irq()
         proven: list[str] = []
         for name, bm in INTR_SOURCES:
+            # Each source starts from a dropped line, so its irq == 1 below is
+            # its own and not one left high by the source before it.
+            assert self._irq_bit() == 0, (
+                f"CHK-INTR-TEST FAIL: sep_internal_interrupts[{IRQ_AGG_IDX}] already high "
+                f"before the {name} pulse"
+            )
             await esrc.pulse_intr_test(bm)
             st = await esrc.read_intr()
             irq = self._irq_bit()
@@ -97,10 +103,14 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                 f"CHK-INTR-TEST FAIL: {name} did not clear on W1C "
                 f"(INTR_STATUS=0x{st_after:08x}); a singlepulse source must not re-latch"
             )
+            assert self._irq_bit() == 0, (
+                f"CHK-INTR-TEST FAIL: {name} cleared INTR_STATUS but "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}] stayed high"
+            )
             proven.append(name)
         self.logger.info(
             "CHK-INTR-TEST PASS: all %d INTR_TEST sources set their own INTR_STATUS bit, "
-            "raised PIC source 16, and cleared on W1C: %s",
+            "raised PIC source 16 from a dropped line, and dropped it again on W1C: %s",
             len(proven),
             ", ".join(proven),
         )
