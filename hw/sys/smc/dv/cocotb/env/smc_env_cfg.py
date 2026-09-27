@@ -53,6 +53,10 @@ class SmcEnvCfg(uvm_object):
     def randomize_timing(self, seed: int | None = None) -> None:
         """Randomize the three clock periods for timing variety.
 
+        The peripheral clock is drawn only from periods of 10 ns or less:
+        ``clk_rst.adoc`` (The Peripheral Clock Domain) sets a 100 MHz minimum
+        for ``clk_periph_i``. The other two clocks have no specified bound.
+
         Uses a dedicated RNG seeded from the runner's ``RANDOM_SEED`` so
         ``run_dv.py --seed`` reproduces the chosen periods without disturbing
         global ``random`` state used elsewhere.
@@ -60,4 +64,4 @@ class SmcEnvCfg(uvm_object):
         rng = random.Random(seed)
         self.ref_clk_period_ns = rng.choice([8, 10, 12])
         self.smc_clk_period_ns = rng.choice([4, 5, 6])
-        self.periph_clk_period_ns = rng.choice([8, 10, 12])
+        self.periph_clk_period_ns = rng.choice([8, 10])
