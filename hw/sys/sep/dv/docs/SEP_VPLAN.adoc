@@ -1943,7 +1943,7 @@ leaf is fixed and runs every seed.
 |CHK-DIRECTION
 |A push at the outbound aperture raises none of the eight mailbox PIC sources, with every one of them enabled so a miswire onto a neighbour is not silent. The spec gives PIC sources 1-8 to the SMC-to-SEP (inbound) mailbox channel interrupts (`hw/sys/sep/doc/interrupts.adoc`) and gives the mailbox interrupts toward the SMC to `smc_mailbox_interrupt_o` (`hw/sys/sep/doc/port_table.adoc`).
 |CHK-SMC-LINE
-|`smc_mailbox_interrupt_o` reads zero before the firmware runs and `0b00000001` after it: the pending outbound push asserts bit 0, and the eight inbound deliveries — which did reach the CPU — never appear on this line. Observed on the testbench probe, not reported by the firmware.
+|`smc_mailbox_interrupt_o` reads zero before the firmware runs and `0b00000001` after it: the pending outbound push asserts bit 0. While each of the eight inbound interrupts is pending on `sep_internal_interrupts[7:0]`, the SMC-facing line does not carry that bit; every inbound interrupt must be seen pending, so the check runs inside each window. Observed on the testbench probes, not reported by the firmware.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
