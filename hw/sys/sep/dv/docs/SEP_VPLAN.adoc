@@ -6920,13 +6920,13 @@ its `KEY_VALID` is clear is not claimed here.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Anti-vacuity*: the identity gate precedes every compare. Every captured
-ciphertext is required to be non-zero, and the withheld-shared-key check is
-preceded by a readable one on the register-driven path. Each sideload leg is
-preceded by a run on different words, so the register the lane bypasses holds
-the wrong value when the lane is read -- a lane that delivers nothing fails on
-the inequality before the equality is reached. Every captured encapsulation and
-shared key is required to be non-zero. Seeds and messages are palindromes, so a
+*Anti-vacuity*: every captured encapsulation key and ciphertext is required to
+be non-zero. The shared key read on the register-driven path is required to be
+non-zero, and it precedes the check that the vault-sourced shared key reads
+zero. Each sideload leg is preceded by a run on different words, so the
+register the lane bypasses holds the wrong value when the lane is read -- a
+lane that delivers nothing fails on the inequality before the equality is
+reached. The ML-KEM identity words are logged as information only. Seeds and messages are palindromes, so a
 mismatch is a delivery failure and not the KM-versus-register dword ordering; D
 and Z are *different* palindromes, so a swap between them still fails. The
 shared-key consume carries its own refusal leg rather than resting on a single
