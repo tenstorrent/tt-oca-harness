@@ -92,13 +92,25 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
     ),
 ]
 
-# Fields excluded on a bit range rather than whole: (field, "[msb:lsb]", reason).
-PARTIAL: list[tuple[str, str, str]] = [
+# Fields excluded on a bit range rather than whole:
+# (class name, field, "[msb:lsb]", reason ending in what would retire it).
+PARTIAL: list[tuple[str, str, str, str]] = [
     (
+        "REGISTER-WIDTH",
+        "sep_region_size_o",
+        "[55:32]",
+        "sep_cpu_ctrl SEP_REGION_SIZE carries its size in bits [31:0] and reserves [63:32] "
+        "(the generated register description), so the 56-bit port is that field "
+        "zero-extended and bits [55:32] cannot move. Bits [31:0] stay graded. Retired by "
+        "SEP_REGION_SIZE.size widening past bit 31.",
+    ),
+    (
+        "OCTS-COUNT-DEPTH",
         "timer_count_o",
         "[63:20]",
         "the OCTS system timer counts reference clocks; bit k first rises after 2^k cycles, "
-        "and no leaf runs the 2^20 cycles bit 20 needs. Bits [19:0] stay graded.",
+        "and no leaf runs the 2^20 cycles bit 20 needs. Bits [19:0] stay graded. Retired "
+        "by a leaf that runs 2^20 reference clocks past the timer's reset.",
     ),
 ]
 
@@ -160,12 +172,12 @@ def render(checksum: str, fields: list[tuple[str, str]]) -> str:
             sys.exit(f"class {name} matched no field; the template or the rules moved")
         out += ["", f'ANNOTATION: "SMU-WRAPPER-TGL-{name}: {reason}"']
         out += [f'Toggle {field} "{signature}"' for field, signature in rows]
-    for field, part, reason in PARTIAL:
+    for name, field, part, reason in PARTIAL:
         if field not in signatures:
             sys.exit(f"partial exclusion names `{field}`, which the template does not list")
         out += [
             "",
-            f'ANNOTATION: "SMU-WRAPPER-TGL-PARTIAL: {reason}"',
+            f'ANNOTATION: "SMU-WRAPPER-TGL-{name}: {reason}"',
             f'Toggle {field} {part} "{signatures[field]}"',
         ]
     return "\n".join(out) + "\n"

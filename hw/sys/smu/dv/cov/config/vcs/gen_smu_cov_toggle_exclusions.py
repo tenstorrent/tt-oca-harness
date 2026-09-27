@@ -26,6 +26,7 @@ writes, and each class below states that fact and what would retire it:
   can drive hold constant. Past that port the channel also carries SEP
   traffic, so it stays graded.
 * APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
+* REGISTER-WIDTH: the SEP region-size bits above the register field.
 
 The SEP aperture and the SEP's outbound channels take no class: the SEP
 firmware images program the region size, `smu_dtp_sep_dm_sba_test` programs
@@ -33,7 +34,7 @@ the base and sends a read and a write out through the crossbar, and
 `smu_sep_bidirect_test` drives the dedicated SMC channel, so a hole there is a
 stimulus gap.
 
-Apart from those last four classes, whose facts name them, no class takes an
+Apart from those last five classes, whose facts name them, no class takes an
 address, id, length, size, burst, cache, protection, QoS, region, lock or
 atomic field, nor a valid, ready or enable: those are decode and handshake,
 and a hole in one is a stimulus gap.
@@ -214,6 +215,17 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window",
         None,
         ((0, 16), (31, 31)),
+    ),
+    (
+        "REGISTER-WIDTH",
+        re.compile(r"^sep_region_size_o$"),
+        "SEP region-size bits above the register field. sep_cpu_ctrl SEP_REGION_SIZE "
+        "carries its size in bits [31:0] and reserves [63:32] (the generated register "
+        "description), so the 56-bit port is that field zero-extended and bits [55:32] "
+        "cannot move; smu.sv hands the crossbar only [31:0].",
+        "SEP_REGION_SIZE.size widening past bit 31",
+        ("smu",),
+        ((32, 55),),
     ),
 ]
 

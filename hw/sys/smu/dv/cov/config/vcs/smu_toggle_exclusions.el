@@ -1084,6 +1084,9 @@ Toggle smc_global_base_o [16:0] "logic smc_global_base_o[55:0]"
 Toggle smc_region_size_o [16:0] "logic smc_region_size_o[31:0]"
 Toggle smc_region_size_o [31] "logic smc_region_size_o[31:0]"
 
+ANNOTATION: "SMU-TGL-REGISTER-WIDTH: SEP region-size bits above the register field. sep_cpu_ctrl SEP_REGION_SIZE carries its size in bits [31:0] and reserves [63:32] (the generated register description), so the 56-bit port is that field zero-extended and bits [55:32] cannot move; smu.sv hands the crossbar only [31:0]. Retired by SEP_REGION_SIZE.size widening past bit 31."
+Toggle sep_region_size_o [55:32] "logic sep_region_size_o[55:0]"
+
 CHECKSUM: "842126896 374546350"
 MODULE: smu_wrapper
 

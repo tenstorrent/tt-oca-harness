@@ -182,5 +182,8 @@ Toggle sep_lockstep_ctrl_i.disable_corruption_detection "logic sep_lockstep_ctrl
 Toggle sep_lockstep_status_o.corruption_detected "logic sep_lockstep_status_o.corruption_detected"
 Toggle sep_ext_interrupts_i "net sep_ext_interrupts_i[211:0]"
 
-ANNOTATION: "SMU-WRAPPER-TGL-PARTIAL: the OCTS system timer counts reference clocks; bit k first rises after 2^k cycles, and no leaf runs the 2^20 cycles bit 20 needs. Bits [19:0] stay graded."
+ANNOTATION: "SMU-WRAPPER-TGL-REGISTER-WIDTH: sep_cpu_ctrl SEP_REGION_SIZE carries its size in bits [31:0] and reserves [63:32] (the generated register description), so the 56-bit port is that field zero-extended and bits [55:32] cannot move. Bits [31:0] stay graded. Retired by SEP_REGION_SIZE.size widening past bit 31."
+Toggle sep_region_size_o [55:32] "logic sep_region_size_o[55:0]"
+
+ANNOTATION: "SMU-WRAPPER-TGL-OCTS-COUNT-DEPTH: the OCTS system timer counts reference clocks; bit k first rises after 2^k cycles, and no leaf runs the 2^20 cycles bit 20 needs. Bits [19:0] stay graded. Retired by a leaf that runs 2^20 reference clocks past the timer's reset."
 Toggle timer_count_o [63:20] "logic timer_count_o[63:0]"
