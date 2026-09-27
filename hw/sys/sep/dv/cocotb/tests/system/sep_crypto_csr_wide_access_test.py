@@ -1,55 +1,56 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A 64-bit CSR read must be split by the width converter without changing it.
+"""A 64-bit CSR read on each crypto host path returns its two 32-bit words.
 
-Every crypto aperture reaches its IP through an `axi_dw_converter` whose
-`gen_dw_downsize` arm elaborates: the fabric is 64-bit and the IP register
-block is 32-bit. A 64-bit access is therefore not passed through -- the
-converter has to turn one slave beat into two master beats and reassemble the
-read data in order. That is a contract, and nothing in the suite has tested it:
-every existing leaf issues 32-bit beats (`SepAxiRegDriver._AXI_SIZE = 2`), which
-take the passthrough arm and never exercise the conversion.
+`hw/sys/sep/doc/crypto.adoc:66-72` states that one 64-bit AXI slave port from
+the SEP system fabric is decoded to the accelerators, and that the host paths to
+OTBN, HMAC, AES, KMAC, ESRC, CSRNG and EDN are converted to AXI4-Lite "with
+data-width conversion where required by the endpoint". The spec does not name
+which of those paths convert. This test therefore walks every host path the
+spec names, and on each one requires a single 64-bit read to return exactly the
+data of the two 32-bit reads of the same words. The shared register driver
+issues 32-bit beats (`SepAxiRegDriver._AXI_SIZE = 2`), so this test issues its
+64-bit beats directly.
 
 `AxSIZE=3` is the whole stimulus. No burst is involved and none is possible:
-`sep_crypto_axi_interconnect.sv:111-112` routes any `AxLEN != 0` to the crypto
-error slave at `:175` / `:205`, and `hw/sys/sep/doc/crypto.adoc:117-123` states
-that single-beat rule to software. A single 64-bit beat is legal and is what
-software issues for a 64-bit load. In the converter that is `conv_ratio = 2`
-with a converted length of `1*2-0-1 = 1`
-(`vendor/pulp-platform/axi/upstream/src/axi_dw_downsizer.sv:419-426`), so the
-`R_INCR_DOWNSIZE` arm runs and returns to `R_IDLE`.
+`hw/sys/sep/doc/crypto.adoc:135-141` ("Single-Beat Access Only") states that any
+crypto access with a non-zero `AxLEN` is answered DECERR and reaches no
+accelerator. A single 64-bit beat is legal and is what software issues for a
+64-bit load.
 
 Golden. The 64-bit read is compared against the two 32-bit reads of the same
 two words, taken from the DUT's own single-beat path -- the path the rest of
-the suite already exercises -- so the comparison is converter-vs-passthrough
-and never a re-computation. Each word is read twice first; a word that does not
+the suite already exercises -- so the comparison is wide-vs-single-beat and
+never a re-computation. Each word is read twice first; a word that does not
 read the same twice is live state rather than a stable comparand and its
 aperture is reported instead of compared.
 
-Addresses come from the generated register map, and only the first two words of
-each block are touched: an address past a block's populated extent is refused
-by design, and a refusal on this master is a monitor failure, so the test does
-not go looking for one.
+Addresses come from the generated register map by symbol, and only one 8-byte
+aligned register pair of each block is touched: an address past a block's
+populated extent is refused by design, and a refusal on this master is a
+monitor failure, so the test does not go looking for one.
 
 Frontdoor only: ordinary AXI through the SEP fabric, no force, no backdoor.
 
 Outstanding reads. A read issued after the previous one retired is answered
-from a converter that is otherwise idle, so serial traffic exercises one path
+by a host path that is otherwise idle, so serial traffic exercises one path
 however much of it there is. Concurrency is the only shape under which a
-converted read can be answered with a DIFFERENT read's data, which is the
+64-bit read can be answered with a DIFFERENT read's data, which is the
 failure this phase grades. AXI permits it: several outstanding reads with
 different ids, each answered with its own data (IHI 0022 A5.3).
 
-The ids are distinct on purpose. A converter is entitled to steer a new read
-whose id matches an in-flight one behind that one to keep responses ordered,
-so equal ids would serialise the traffic and undo the concurrency.
+The ids are distinct on purpose. AXI requires same-id read responses in
+order (IHI 0022 A5.3), so a slave may hold a new read whose id matches an
+in-flight one behind that one; equal ids would serialise the traffic and undo
+the concurrency.
 
 The depth is DV-owned (`CRYPTO_CONCURRENT_READS`), not read from the RTL: the
 claim is data integrity under concurrency, which holds at any depth. Nothing
-here scores how many internal slots the converter has.
+here scores how many reads a host path can hold in flight.
 
 Checkers:
-  CHK-WIDE-SPLIT   the 64-bit read equals the two 32-bit reads, at every aperture
+  CHK-WIDE-SPLIT   the 64-bit read equals the two 32-bit reads, at every
+                   crypto host path the spec names
   CHK-WIDE-NONVAC  every aperture in the table was presented and compared
   CHK-WIDE-OUTSTANDING  eight concurrent 64-bit reads at the entropy source,
                    distinct ids AND distinct addresses, each returning its own
@@ -57,8 +58,8 @@ Checkers:
                    another's
   CHK-WIDE-SLOTS   concurrent 64-bit reads at every aperture, distinct ids,
                    each returning the golden -- the same integrity claim as
-                   CHK-WIDE-OUTSTANDING, carried to every converted aperture
-                   rather than only the entropy source
+                   CHK-WIDE-OUTSTANDING, carried to every host path in the
+                   table rather than only the entropy source
 
 Pass Criteria: every named checker PASSes. UVM_ERROR == 0.
 """
@@ -80,26 +81,27 @@ SIZE_8B = 3
 # AXI read-response encoding (IHI 0022 A3.4.4).
 RESP_OKAY = 0
 
-# One entry per axi_dw_downsizer instance inside sep_crypto, naming an 8-byte
-# aligned pair of 32-bit registers whose reset values are NOT both zero.
+# One entry per crypto host path named in hw/sys/sep/doc/crypto.adoc:66-72
+# (OTBN, HMAC, AES, KMAC, ESRC, CSRNG, EDN), in that order. Each names an 8-byte
+# aligned pair of 32-bit registers whose generated reset values are NOT both
+# zero. The spec does not say which of these paths convert data width, so
+# every path it names is walked.
 #
 # The register choice is the point. A pair that reads zero compares 0 against 0,
-# which a converter that dropped the data entirely would also satisfy. Every
-# pair below has a non-zero 64-bit value. KMAC and ESRC additionally have two
-# distinct non-zero halves, so the representative floor can detect zeroing,
+# which a path that dropped the data entirely would also satisfy. Every pair
+# below has a non-zero 64-bit value. KMAC, ESRC, CSRNG and EDN additionally have
+# two distinct non-zero halves, so the representative floor can detect zeroing,
 # duplication and swapping. Pairs with one zero or equal halves still grade
-# exact re-beating at their own converter instance, but do not claim every
-# mutation class locally.
-#
-# The TRNG aperture is absent: a plain 32-bit read of TRNG_REG_MAP_BASE_ADDR
-# answers DECERR, so the block is not reachable from this test's quiescent
-# state and a wide access there would measure that instead of the converter.
+# exact re-beating on their own path, but do not claim every mutation class
+# locally.
 APERTURES = (
-    ("aes", "AES_CTRL_AUX_SHADOWED_REG_ADDR"),
-    ("hmac", "HMAC_CFG_REG_ADDR"),
-    ("kmac", "KMAC_CFG_REGWEN_REG_ADDR"),
     ("otbn", "OTBN_STATUS_REG_ADDR"),
+    ("hmac", "HMAC_CFG_REG_ADDR"),
+    ("aes", "AES_CTRL_AUX_SHADOWED_REG_ADDR"),
+    ("kmac", "KMAC_CFG_REGWEN_REG_ADDR"),
     ("esrc", "ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR"),
+    ("csrng", "CSRNG_INT_STATE_READ_ENABLE_REG_ADDR"),
+    ("edn", "EDN_BOOT_INS_CMD_REG_ADDR"),
 )
 
 # At least this many apertures must compare a non-zero golden, or the run is
@@ -109,14 +111,14 @@ MIN_NONZERO_APERTURES = 3
 MIN_FULL_SENSITIVE_APERTURES = 2
 
 # Concurrent-outstanding phase. Serial reads are answered by an otherwise idle
-# converter, so they exercise one path however many are issued; only reads held
+# host path, so they exercise one path however many are issued; only reads held
 # in flight together can be answered with each other's data. The ids are
-# distinct because a converter may legitimately order same-id reads behind one
+# distinct because a slave may legitimately order same-id reads behind one
 # another, which would serialise the traffic and undo the concurrency.
 #
 # Eight-byte aligned entropy-source pairs, each with a different non-zero
 # reset value in the generated map. Different values are what makes a
-# cross-wired slot visible: if the converter returned another slot's data the
+# cross-wired read visible: if the path returned another read's data the
 # compare fails, where eight identical goldens would hide it.
 OUTSTANDING_REGS = (
     "ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR",
@@ -130,13 +132,13 @@ OUTSTANDING_REGS = (
 )
 
 # How many reads are held in flight. DV-owned (sep_spec_tables), deliberately
-# NOT the converter's AxiMaxReads: the graded claim is that concurrent reads
-# each return their own data, which holds at any depth. Scoring "every read
-# slot was occupied" against the RTL's own slot count would be the DUT
-# agreeing with itself.
+# NOT a hardware slot count: the graded claim is that concurrent reads each
+# return their own data, which holds at any depth. Scoring "every read slot
+# was occupied" against the RTL's own slot count would be the DUT agreeing
+# with itself.
 OUTSTANDING_DEPTH = CRYPTO_CONCURRENT_READS
 
-# A response must arrive within this window. Eight converted reads on a 32-bit
+# A response must arrive within this window. Eight 64-bit reads on a 32-bit
 # register bus settle in far fewer cycles; the cap stops a lost response
 # spending the run timeout in one wait.
 OUTSTANDING_TIMEOUT_NS = 20_000
@@ -144,7 +146,7 @@ OUTSTANDING_TIMEOUT_NS = 20_000
 
 @pyuvm.test()
 class sep_crypto_csr_wide_access_test(sep_base_test):
-    """64-bit CSR reads across the crypto width converters."""
+    """64-bit CSR reads across every crypto host path the spec names."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -160,9 +162,9 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         await self._check_outstanding()
 
         # The same integrity claim at every other aperture, so concurrency is
-        # graded at each converted instance rather than only at the entropy
-        # source. One address per aperture -- the one the phase above already
-        # proved readable -- because concurrency is a property of the reads in
+        # graded on each host path rather than only at the entropy source. One
+        # address per aperture -- the one the phase above already proved
+        # readable -- because concurrency is a property of the reads in
         # flight, not of which address they target, and probing further
         # registers risks a refusal that this master's monitor treats as a
         # failure.
@@ -180,7 +182,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
             f"{len(self.nonzero)} aperture(s) compared a non-zero value "
             f"({', '.join(self.nonzero) or 'none'}), below the floor of "
             f"{MIN_NONZERO_APERTURES}. A compare of zero against zero passes "
-            "even if the converter returned nothing, so this run would be green "
+            "even if the path returned nothing, so this run would be green "
             "without having tested re-beating."
         )
         assert len(self.full_sensitive) >= MIN_FULL_SENSITIVE_APERTURES, (
@@ -211,7 +213,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
     async def _check_outstanding(self) -> None:
         """Eight concurrent 64-bit reads, distinct ids, distinct addresses.
 
-        Serial reads are answered by an otherwise idle converter, so this is
+        Serial reads are answered by an otherwise idle host path, so this is
         the only shape that can show one read being answered with another
         read's data.
         """
@@ -255,7 +257,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
                 f"CHK-WIDE-OUTSTANDING FAIL: outstanding read id={i} "
                 f"@0x{addr:08x} returned 0x{got:016x}, but the same words read "
                 f"32 bits at a time are 0x{exp:016x}. With eight reads in flight "
-                "the converter returned data that is not this transaction's."
+                "the path returned data that is not this transaction's."
             )
 
         self.logger.info(
@@ -267,12 +269,12 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
     async def _spread_slots(self, name: str, addr: int) -> None:
         """Hold several 64-bit reads of one address in flight, distinct ids.
 
-        Integrity under concurrency, carried to every converted aperture: each
+        Integrity under concurrency, carried to every host path in the table: each
         read must return the golden, so an aperture answering a concurrent read
         with zeros or stale data fails. A cross-wire between concurrent reads
         is NOT visible here, because every id reads the same word -- the
         entropy-source phase owns that case with distinct addresses. Nothing
-        here scores the converter's internal slot count.
+        here scores how many reads the path can hold in flight.
         """
         lo = await self._rd(addr, SIZE_4B) & 0xFFFF_FFFF
         hi = await self._rd(addr + 4, SIZE_4B) & 0xFFFF_FFFF
@@ -338,8 +340,8 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         assert wide == golden, (
             f"CHK-WIDE-SPLIT FAIL [{name}] @0x{base:08x}: the 64-bit read returned "
             f"0x{wide:016x}, but the same two words read 32 bits at a time are "
-            f"0x{golden:016x} (low=0x{lo_b:08x} high=0x{hi_b:08x}). The width "
-            "converter changed the data it was asked only to re-beat."
+            f"0x{golden:016x} (low=0x{lo_b:08x} high=0x{hi_b:08x}). The host "
+            "path changed the data of a 64-bit read."
         )
         self.compared[name] = 2
         if golden:

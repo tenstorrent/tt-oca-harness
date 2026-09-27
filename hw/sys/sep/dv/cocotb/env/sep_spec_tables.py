@@ -108,11 +108,11 @@ MAILBOX_WRITE_DATA_RD_SENTINEL = 0xFEEDC0DE
 OUTPUT_REMAP_REGIONS = 16
 
 # DV-owned concurrency depth for the crypto CSR apertures. This is how hard
-# the wide-access leaf pushes a converted aperture, NOT a hardware parameter
+# the wide-access leaf pushes each crypto host path, NOT a hardware parameter
 # and NOT a scored contract: the claim graded against it is that concurrent
 # reads each return their own data, which holds at any depth. Deliberately not
-# read from the converter's AxiMaxReads -- scoring "every read slot was
-# occupied" against the RTL's own slot count is the DUT agreeing with itself.
+# read from a hardware slot count -- scoring "every read slot was occupied"
+# against the RTL's own slot count is the DUT agreeing with itself.
 # Eight is chosen because it is the most a single SEP master holds outstanding
 # on this path today; raising it only strengthens the stimulus.
 CRYPTO_CONCURRENT_READS = 8
