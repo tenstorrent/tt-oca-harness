@@ -42,8 +42,13 @@ class SepLockedFieldIrq(SepAxiRegDriver):
         not grade a locked access's response code. The caller grades a locked
         write by readback and the locked-field interrupt, and a locked read by
         its returned data and the locked-field interrupt. A timed-out locked
-        read still fails the scoreboard.
+        read still fails the scoreboard. Because a locked read may complete
+        with an error response and its data is graded, the bus monitor also
+        lane-checks that beat for X/Z, which the driver would otherwise pass
+        on as 0.
         """
+        check_error_data = locked and not write
+        mon = self.test.env.axi_monitor if check_error_data else None
         seq = SepAxiAccessSeq(
             f"lockirq_{'wr' if write else 'rd'}_{name}_w{word_idx}",
             op=SepAxiOp.WRITE if write else SepAxiOp.READ,
@@ -53,5 +58,11 @@ class SepLockedFieldIrq(SepAxiRegDriver):
             allow_unverified_write_resp=locked and write,
             allow_ungraded_read_resp=locked and not write,
         )
-        await self.test.start_seq(seq)
+        if mon is not None:
+            mon.open_error_rdata_window()
+        try:
+            await self.test.start_seq(seq)
+        finally:
+            if mon is not None:
+                mon.close_error_rdata_window()
         return seq
