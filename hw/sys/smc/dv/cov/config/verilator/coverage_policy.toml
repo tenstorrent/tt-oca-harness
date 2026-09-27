@@ -44,9 +44,8 @@
 # 89.07, expression 86.46 and user 407 of 467. Every collected `user`
 # point is expected to be hit by an enrolled leaf; a point this bench cannot
 # legally reach is not collected (see the Phase 2 list in SMC_FCOV.adoc)
-# rather than waived here. The `[[holes]]` below are the three points that
-# remain: one blocked by a spec-versus-RTL disagreement on NEXT_ID, and two
-# that Verilator alone cannot observe (the VCS run records them).
+# rather than waived here. The `[[holes]]` below are the two points that
+# Verilator alone cannot observe; the VCS run records them.
 #
 # Hole categories in this file:
 #   missing_stimulus  no enrolled test drives the condition; the rationale
@@ -91,23 +90,6 @@ tool = "verilator"
 metric_family = "expression"
 population = "effective"
 minimum_percent = 69.0
-
-[[holes]]
-id = "fcov-smc-c_next_id_0_zero_on_invalid_setup"
-title = "c next id 0 zero on invalid setup"
-category = "missing_stimulus"
-disposition = "cover"
-status = "open"
-confidence = "medium"
-rationale = "blocked by the point model: NEXT_ID_0 reads the idma transfer-id generator directly (idma_transfer_id_gen.sv resets next_q to 2 and wraps to 1 or 2 on overflow) and the reg frontend presents it unconditionally for an implemented stream, so the register can never read 0 and the point cannot be satisfied by any stimulus (SMC-DMA-STREAM0.S2:next-id-0-zero-on-invalid-setup)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_dma_fcov.c_next_id_0_zero_on_invalid_setup"
 
 [[holes]]
 id = "fcov-smc-c_i2c0_scl_contention"
