@@ -22,8 +22,8 @@ once per instance.
 
 Several collectors also carry covergroups under `ifndef VERILATOR`. They are
 the commercial simulator's `group` metric, crossing what a flat point list
-cannot; they are not part of the `user` family and not part of the Phase 1
-contract below.
+cannot. They are not part of the `user` family, and <<smc-fcov-groups>>
+states the contract they are held to.
 
 Feature checkers stay on the VPLAN scorecard. A cover point records that the
 suite presented a legal event and that it completed; the claim that the
@@ -292,6 +292,32 @@ them, isolation and FLR, and the protection and inbound filters.
 |`c_sw_isolate_per_subsystem`, `c_flr_isolate_*`, `c_single_sequence_per_rising_edge`, `c_no_sequence_on_level_hold`, `c_warm_from_*_wdt`, `c_cool_reset_from_gpio_pin_61` |Isolation terms, FLR sequencing, warm and cool reset sources
 |`c_awprot_*`, `c_arprot_*`, `c_jtag2axi_remapped`, `c_jtag2axi_filtered`, `c_inbound_filter_*` |Protection filter exact and nearest-miss matches, the JTAG2AXI path, the inbound filter
 |===
+
+[[smc-fcov-groups]]
+=== Covergroups
+
+Every covergroup bin is either walked by an `all`-group leaf or carried as an
+`ignore_bins` whose comment states the specification or bench fact that keeps
+it out of reach, the way the cover points are held. The bins that fact
+removes:
+
+[cols="2,2,4",options="header"]
+|===
+|Group |Bin |Why it is ignored
+|`smc_rst_seq_fcov::cg_primary_holds` |`cp_fabric` released |The primary
+reset covers the fabric infrastructure (`clk_rst.adoc`, Primary Reset), so
+both SEP_IN ready terms are low for the whole hold
+|`smc_fabric_fcov::cg_sep_in_shape` |`cp_wstrb` none |The bench AXI manager
+cannot present a zero-strobe beat; the matching cover point is in
+<<smc-fcov-phase2>>
+|`smc_dma_fcov::cg_dma_burst` |`cp_strb` no byte |A transfer has a non-zero
+length (`dma.adoc`, zero-length transfers are rejected) and the backend
+writes only the bytes of the programmed range, so every beat carries one
+|===
+
+`cg_sep_in_shape` crosses every AxSIZE with every burst type.
+`smc_sep_in_axi_shape_test` issues FIXED and WRAP bursts at each size, which
+the SEP_IN path refuses; the cells record the refusal at that size.
 
 [[smc-fcov-phase2]]
 === Phase 2 (not collected)

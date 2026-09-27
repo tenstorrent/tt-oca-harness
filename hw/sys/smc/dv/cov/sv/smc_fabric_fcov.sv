@@ -444,7 +444,12 @@ module smc_fabric_fcov #(
       bins wrap = {2'b10};
       ignore_bins reserved = {2'b11};
     }
-    cp_wstrb: coverpoint wstrb {bins none = {8'h00}; bins full = {8'hFF}; bins partial = default;}
+    // A zero-strobe beat is legal AXI, but the bench AXI manager derives WSTRB
+    // from the bytes a payload covers and cannot present one; it is in the
+    // Phase 2 set with c_sep_in_wstrb_none.
+    cp_wstrb: coverpoint wstrb {
+      bins full = {8'hFF}; bins partial = default; ignore_bins none = {8'h00};
+    }
     x_size_burst: cross cp_awsize, cp_awburst;
   endgroup
 

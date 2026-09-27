@@ -232,7 +232,12 @@ module smc_dma_fcov (
     cp_awlen: coverpoint awlen {
       bins single = {0}; bins short_burst = {[1 : 7]}; bins long_burst = {[8 : 255]};
     }
-    cp_strb: coverpoint strb_count {bins partial = {[1 : 7]}; bins full = {8}; bins none = {0};}
+    // Every write beat of a transfer carries at least one of its bytes: the
+    // length is non-zero (dma.adoc, zero-length transfers are rejected) and
+    // the backend writes only the bytes of the programmed range.
+    cp_strb: coverpoint strb_count {
+      bins partial = {[1 : 7]}; bins full = {8}; ignore_bins no_byte = {0};
+    }
     x_shape: cross cp_awlen, cp_strb;
   endgroup
 
