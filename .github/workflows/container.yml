@@ -99,6 +99,18 @@ jobs:
           df -h /nix 2>/dev/null || true
           sudo install -d -m 0755 /mnt/nix-build
 
+      # docker load unpacks the multi-GB image into the daemon's data-root, which
+      # sits on the small root volume and overflows even after the reclaim above.
+      # Point the data-root at the same large volume the nix store uses.
+      - name: Move Docker storage to the large volume
+        run: |
+          sudo systemctl stop docker.service docker.socket || true
+          sudo mkdir -p /mnt/docker
+          printf '{ "data-root": "/mnt/docker" }\n' | sudo tee /etc/docker/daemon.json
+          sudo rm -rf /var/lib/docker
+          sudo systemctl start docker.service
+          docker info --format 'docker data-root: {{.DockerRootDir}}'
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
         with:
