@@ -121,13 +121,17 @@ module smc_zeroer_fcov (
   `OCAH_FCOV_COVER(c_idle_state_no_axi_activity, idle_no_axi_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_address_phase_issues_aw, addr_phase_issues_aw_e, clk_smc_i, in_reset)
 
-  // Beat count against address count over one operation. Both counters clear
-  // on the trigger, so the comparison spans exactly one programmed operation.
+  // Beat count against address count over one operation. Both counters
+  // restart in the trigger sample, which is also the sample of the first
+  // address beat, so the comparison spans exactly one programmed operation.
   logic [15:0] aw_count_q, wlast_count_q;
   always_ff @(posedge clk_smc_i) begin
-    if (in_reset || trigger_starts_e) begin
+    if (in_reset) begin
       aw_count_q <= '0;
       wlast_count_q <= '0;
+    end else if (trigger_starts_e) begin
+      aw_count_q <= 16'(aw_acc);
+      wlast_count_q <= 16'(w_last_acc);
     end else begin
       if (aw_acc) aw_count_q <= aw_count_q + 16'd1;
       if (w_last_acc) wlast_count_q <= wlast_count_q + 16'd1;
@@ -175,7 +179,8 @@ module smc_zeroer_fcov (
 
   // The first address of an operation equalling the programmed destination,
   // and a burst longer than one beat: the two shapes the FSM emits.
-  wire first_aw_at_dest_e = aw_acc && (aw_count_q === 16'd0) && (awaddr_i === 56'(dest_addr_i))
+  wire first_aw_of_op = trigger_starts_e || (aw_count_q === 16'd0);
+  wire first_aw_at_dest_e = aw_acc && first_aw_of_op && (awaddr_i === 56'(dest_addr_i))
       && (dest_addr_i !== 64'd0);
   wire multi_beat_burst_e = aw_acc && (awlen_i !== 8'd0) && (^awlen_i !== 1'bx);
   `OCAH_FCOV_COVER(c_zeroer_first_aw_at_dest, first_aw_at_dest_e, clk_smc_i, in_reset)

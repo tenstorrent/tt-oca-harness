@@ -132,12 +132,15 @@ module smc_clk_fcov #(
   wire [CntWidth-1:0] d_smc = d_smc_q;
   wire [CntWidth-1:0] d_periph = d_periph_q;
 
-  // A window in which a domain produced no edge at all while ref ran is the
-  // liveness hole worth naming.
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): a window in which a domain produced no edge at
+  // all while ref ran. clk_rst.adoc gives each input clock a domain, and
+  // clk_periph_i a 100 MHz minimum, but defines no mode in which one stops.
   wire smc_stalled_e = window_tick_q && (d_ref != '0) && (d_smc == '0);
   wire periph_stalled_e = window_tick_q && (d_ref != '0) && (d_periph == '0);
   `OCAH_FCOV_COVER(c_clk_smc_stalled_window, smc_stalled_e, clk_ref_i, in_reset)
   `OCAH_FCOV_COVER(c_clk_periph_stalled_window, periph_stalled_e, clk_ref_i, in_reset)
+`endif
 
   wire smc_faster_e = window_tick_q && (d_smc > d_ref);
   wire smc_equal_e = window_tick_q && (d_smc == d_ref) && (d_ref != '0);

@@ -239,6 +239,9 @@
 // into u_dut.u_smc under smc_public_scope.vlt (TB-top public only).
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_o)
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_en_o)
+// Per-pad LSIO ownership: a pad an LSIO function selects takes that function's
+// direction instead of its INPUT_BY_DEFAULT.
+`SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_lsio_interface_select)
 // Per-pad input-buffer enable. gpio.sv drives core2pad_en from the CSRs only
 // (its default branch is 1'b0 for every instance) and carries
 // INPUT_BY_DEFAULT on pad2core_en, so this is the bus on which the padring's
@@ -567,6 +570,8 @@
 `SMC_TB_OUT(logic, tb_efuse_read_done)
 `SMC_TB_OUT(logic, tb_efuse_read_error)
 `SMC_TB_OUT(logic [31:0], tb_efuse_readback)
+`SMC_TB_OUT(logic [15:0], tb_efuse_read_addr)
+`SMC_TB_OUT(logic [15:0], tb_efuse_program_addr)
 `SMC_TB_OUT(logic [smc_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /

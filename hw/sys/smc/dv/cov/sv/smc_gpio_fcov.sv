@@ -34,7 +34,8 @@ module smc_gpio_fcov #(
   input wire [GpioWidth-1:0] core2pad_i,
   input wire [GpioWidth-1:0] core2pad_en_i,
   input wire [GpioWidth-1:0] pad2core_en_i,
-  input wire [GpioWidth-1:0] pad_i
+  input wire [GpioWidth-1:0] pad_i,
+  input wire [GpioWidth-1:0] lsio_select_i
 );
 
   wire in_reset = (rst_cold_ni !== 1'b1);
@@ -68,6 +69,10 @@ module smc_gpio_fcov #(
   always_ff @(posedge clk_smc_i) primary_smc_q <= rst_primary_smc_clk_ni;
   wire release_primary_smc = (rst_primary_smc_clk_ni === 1'b1) && (primary_smc_q === 1'b0);
 
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): the reference integration captures no strap
+  // pattern (STRAPS_LO/HI read zero whatever the pads carry), so a pattern at
+  // the pads has no consequence the bench can check.
   wire [StrapWidth-1:0] straps = pad_i[StrapWidth-1:0];
   wire straps_known = (^straps !== 1'bx);
   wire straps_all_zero_e = release_primary_smc && (straps === '0);
@@ -76,6 +81,7 @@ module smc_gpio_fcov #(
   `OCAH_FCOV_COVER(c_straps_all_zero, straps_all_zero_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_straps_all_ones, straps_all_ones_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_straps_mixed_pattern, straps_mixed_e, clk_smc_i, in_reset)
+`endif
 
   // Default-direction tallies are taken from pad2core_en_i, the per-pad
   // input-buffer enable: a pad that is an output by default has its input
@@ -95,7 +101,13 @@ module smc_gpio_fcov #(
   end
   wire default_output_count_e = release_primary_smc && (output_count == DefaultOutputCount);
   wire default_input_count_e = release_primary_smc && (input_count == DefaultInputCount);
-  wire default_map_matches_e = release_primary_smc && (pad2core_en_i === DefaultInputMap);
+  // A pad an LSIO function owns takes that function's direction rather than
+  // its INPUT_BY_DEFAULT (gpio programming.adoc, LSIO Interface Operation), so
+  // the map is compared on the pads software and the default still own.
+  wire lsio_known = (^lsio_select_i !== 1'bx);
+  wire [GpioWidth-1:0] default_map_diff = (pad2core_en_i ^ DefaultInputMap) & ~lsio_select_i;
+  wire default_map_matches_e = release_primary_smc && lsio_known && (lsio_select_i != '1)
+      && (default_map_diff === '0);
   `OCAH_FCOV_COVER(c_default_output_count_3, default_output_count_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_default_input_count_62, default_input_count_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_per_instance_default_matches_map, default_map_matches_e, clk_smc_i, in_reset)
