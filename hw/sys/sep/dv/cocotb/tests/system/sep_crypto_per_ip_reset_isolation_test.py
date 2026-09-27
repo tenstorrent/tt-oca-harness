@@ -103,8 +103,9 @@ Isolation proof (both directions, then the remaining isolated bits):
                     ``SW_RESET_N`` still shows KMAC released. The pin is
                     synchronized into ``clk_i``: the gated reset is still
                     released a picosecond after the pin rises, KMAC ``edn_req``
-                    is outstanding at that rise, and the later gated-reset
-                    edge leaves the KMAC endpoint quiet.
+                    is outstanding at that rise. On the later gated-reset
+                    edge, and on every cycle of the quiet window after it,
+                    KMAC ``edn_req``, ``edn_ack`` and ``edn_bus`` are 0.
   * CHK-EDN-HOLD / CHK-EDN-HOLD-KEEP  a KMAC reset must leave a URND word
                     unchanged when the previous cycle had not already
                     acknowledged it, and that word is the one URND is
@@ -435,9 +436,18 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"in {cycles} cycles (req=0x{self._edn_req():x} ack=0x{self._edn_ack():x})"
         )
 
-    async def _sample_edn(self, bit: int, *, req_high: bool, cycles: int, what: str) -> None:
+    async def _sample_edn(
+        self,
+        bit: int,
+        *,
+        req_high: bool,
+        cycles: int,
+        what: str,
+        check_bus: bool = False,
+    ) -> None:
         """Every cycle of the window: this client's ack stays low, and its req
-        stays at the level the reset is required to leave."""
+        stays at the level the reset is required to leave. With ``check_bus``,
+        this client's ``edn_bus`` word is also 0 on every cycle."""
         for _ in range(cycles):
             req = self._edn_req()
             ack = self._edn_ack()
@@ -450,6 +460,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     f"{what}: edn_req bit {bit} is {'low' if req_high else 'high'} "
                     f"(req=0x{req:x} ack=0x{ack:x})"
                 )
+            if check_bus:
+                bus = self._edn_bus_word(bit)
+                if bus:
+                    raise AssertionError(
+                        f"{what}: edn_bus word {bit} is 0x{bus:08x}, not 0 "
+                        f"(req=0x{req:x} ack=0x{ack:x})"
+                    )
             await RisingEdge(cocotb.top.clk_i)
 
     async def _prove_edn_cancel_before_grant(self) -> None:
@@ -676,10 +693,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         waits ``offset`` cycles past a grant, and resets KMAC. The offset
         walks one measured acknowledge period. On the falling edge of the
         KMAC gated reset the KMAC response is 0, and URND may acknowledge
-        its own word.         ``jtag`` drives the override pin and leaves ``SW_RESET_N`` showing
-        KMAC released. The pin is synchronized into ``clk_i``, so the gated
-        reset stays released for a picosecond after the pin rises and falls
-        on a later edge. KMAC ``edn_req`` is outstanding when the pin rises.
+        its own word. ``jtag`` drives the override pin and leaves
+        ``SW_RESET_N`` showing KMAC released. The pin is synchronized into
+        ``clk_i``, so the gated reset stays released for a picosecond after
+        the pin rises and falls on a later edge. KMAC ``edn_req`` is
+        outstanding when the pin rises. After that edge, KMAC ``edn_req``,
+        ``edn_ack`` and ``edn_bus`` stay 0 on every cycle of the quiet window.
         The software-reset write is an AXI transaction and outlasts one KMAC
         seed, so that leg checks the response is clear and leaves the
         pin-time request sample to the override.
@@ -853,6 +872,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     req_high=False,
                     cycles=_EDN_QUIET_CYCLES,
                     what=f"{tag} KMAC suppressed",
+                    check_bus=True,
                 )
                 suppressed = snap
             sw_note = await sw_note_for_jtag()
@@ -867,12 +887,14 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "%s PASS: KMAC edn_ack and edn_bus stayed 0 on all %d reset "
                     "edges; URND acknowledged its own beat on %d of them; an "
                     "outstanding KMAC edn_req (%s, bus=0x%08x) was quiet on the "
-                    "edge with edn_ack staying 0%s",
+                    "edge, and KMAC edn_req, edn_ack and edn_bus stayed 0 on "
+                    "every cycle of the %d-cycle quiet window%s",
                     tag,
                     steady,
                     urnd_completions,
                     when,
                     shown_bus,
+                    _EDN_QUIET_CYCLES,
                     sw_note,
                 )
             else:
